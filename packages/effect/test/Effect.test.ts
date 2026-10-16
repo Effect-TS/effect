@@ -3626,6 +3626,35 @@ describe("Effect", () => {
     })
   })
 
+  describe("catchDefect", () => {
+    it.effect("recovers pure defects", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const recovered = yield* Effect.die(defect).pipe(Effect.catchDefect(Effect.succeed))
+        assert.strictEqual(recovered, defect)
+      }))
+
+    it.effect("preserves typed failures mixed with defects", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.fail("failure").pipe(
+          Effect.ensuring(Effect.die("finalizer defect")),
+          Effect.catchDefect(() => Effect.succeed("recovered")),
+          Effect.exit
+        )
+        assert.deepStrictEqual(Exit.findErrorOption(exit), Option.some("failure"))
+      }))
+
+    it.effect("preserves interruptions mixed with defects", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.interrupt.pipe(
+          Effect.ensuring(Effect.die("finalizer defect")),
+          Effect.catchDefect(() => Effect.succeed("recovered")),
+          Effect.exit
+        )
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }))
+  })
+
   describe("catchCauseFilter", () => {
     it.effect("first argument as success", () =>
       Effect.gen(function*() {

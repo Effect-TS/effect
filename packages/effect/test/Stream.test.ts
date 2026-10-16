@@ -958,6 +958,30 @@ describe("Stream", () => {
         assertExitFailure(exit, Cause.die(defect))
       }))
 
+    it.effect("catchDefect preserves typed failures mixed with defects", () =>
+      Effect.gen(function*() {
+        const exit = yield* Stream.fromEffect(
+          Effect.fail("failure").pipe(Effect.ensuring(Effect.die("finalizer defect")))
+        ).pipe(
+          Stream.catchDefect(() => Stream.succeed("recovered")),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assert.deepStrictEqual(Exit.findErrorOption(exit), Option.some("failure"))
+      }))
+
+    it.effect("catchDefect preserves interruptions mixed with defects", () =>
+      Effect.gen(function*() {
+        const exit = yield* Stream.fromEffect(
+          Effect.interrupt.pipe(Effect.ensuring(Effect.die("finalizer defect")))
+        ).pipe(
+          Stream.catchDefect(() => Stream.succeed("recovered")),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }))
+
     it.effect("catchDefect", () =>
       Effect.gen(function*() {
         const defect = new Error("boom")

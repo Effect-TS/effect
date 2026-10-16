@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertExitFailure, assertFailure, assertTrue } from "@effect/vitest/utils"
-import { Cause, Data, Deferred, pipe, Ref } from "effect"
+import { Cause, Data, Deferred, Option, pipe, Ref } from "effect"
 import * as Arr from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -636,6 +636,30 @@ describe("Channel", () => {
     class OtherError extends Data.TaggedError("OtherError")<{
       readonly message: string
     }> {}
+
+    it.effect("catchDefect preserves typed failures mixed with defects", () =>
+      Effect.gen(function*() {
+        const exit = yield* Channel.fromEffect(
+          Effect.fail("failure").pipe(Effect.ensuring(Effect.die("finalizer defect")))
+        ).pipe(
+          Channel.catchDefect(() => Channel.succeed("recovered")),
+          Channel.runCollect,
+          Effect.exit
+        )
+        assert.deepStrictEqual(Exit.findErrorOption(exit), Option.some("failure"))
+      }))
+
+    it.effect("catchDefect preserves interruptions mixed with defects", () =>
+      Effect.gen(function*() {
+        const exit = yield* Channel.fromEffect(
+          Effect.interrupt.pipe(Effect.ensuring(Effect.die("finalizer defect")))
+        ).pipe(
+          Channel.catchDefect(() => Channel.succeed("recovered")),
+          Channel.runCollect,
+          Effect.exit
+        )
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }))
 
     it.effect("catchDefect", () =>
       Effect.gen(function*() {
