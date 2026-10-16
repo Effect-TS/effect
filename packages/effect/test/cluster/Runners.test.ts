@@ -320,7 +320,7 @@ describe.concurrent("Runners.makeRpc", () => {
       Layer.provideMerge(
         Layer.effect(MessageStorage.MessageStorage)(
           Effect.map(MessageStorage.MessageStorage, wrap)
-        ).pipe(Layer.provide(MessageStorage.layerMemory))
+        ).pipe(Layer.provideMerge(MessageStorage.layerMemory))
       ),
       Layer.provideMerge(Snowflake.layerGenerator),
       Layer.provide(ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))
@@ -388,6 +388,79 @@ describe.concurrent("Runners.makeRpc", () => {
       // Under load, the readback lags the reply saved in this process.
       repliesFor: () => Effect.succeed([])
     })))))
+
+  it.effect("delivers a local reply once when the handler and readback both observe it", () => {
+    let save: Effect.Effect<void> = Effect.void
+    let saved = false
+    const saveOnce = Effect.suspend(() => {
+      if (saved) return Effect.void
+      saved = true
+      return save
+    })
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const replies: Array<Reply.Reply<SendRpc>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          replies.push(reply)
+        }))
+      save = saveReply(storage, message, snowflake.nextUnsafe()).pipe(Effect.orDie)
+      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      yield* TestClock.adjust(0)
+      // Implementations without a readback still need the reply.
+      yield* saveOnce
+      // Later polls must not deliver the stored reply again.
+      yield* TestClock.adjust("3 hours")
+      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
+      assert.deepStrictEqual(replies.map((reply) => reply._tag === "WithExit" && reply.exit), [Exit.succeed(42)])
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      // Save while the readback runs, after any reply handler has registered.
+      repliesFor: (messages) => Effect.andThen(saveOnce, storage.repliesFor(messages))
+    }))))
+  })
+
+  it.effect("reads a committed local reply from storage when its reply handler is dropped", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const driver = yield* MessageStorage.MemoryDriver
+      const snowflake = yield* Snowflake.Generator
+      const replies: Array<Exit.Exit<number>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          if (reply._tag === "WithExit") replies.push(reply.exit)
+        }))
+      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      yield* TestClock.adjust(0)
+      // The reply commits but its notification is lost, as when the entity
+      // manager sees a commit error and unregisters the handlers instead.
+      const encoded = yield* Reply.serialize(
+        new Reply.ReplyWithContext({
+          reply: new Reply.WithExit<SendRpc>({
+            id: snowflake.nextUnsafe(),
+            requestId: message.envelope.requestId,
+            exit: Exit.succeed(42)
+          }),
+          rpc: message.rpc,
+          context: message.context
+        }),
+        Schema.toCodecJson as RpcSerialization.CodecFor
+      )
+      yield* driver.encoded.saveReply(encoded)
+      yield* storage.unregisterReplyHandler(message.envelope.requestId)
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete without polling")
+      assert.deepStrictEqual(replies, [Exit.succeed(42)])
+    }).pipe(Effect.provide(layerLocalRunners())))
 
   it.effect("keeps a duplicate local waiter alive when the first caller cancels", () =>
     Effect.gen(function*() {
