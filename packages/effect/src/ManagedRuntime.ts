@@ -1,3 +1,5 @@
+/// <reference lib="esnext.disposable" preserve="true" />
+
 /**
  * Runs many effects against services built once from a `Layer`.
  *

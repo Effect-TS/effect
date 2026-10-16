@@ -1,3 +1,5 @@
+/// <reference lib="esnext.disposable" preserve="true" />
+
 /**
  * Describes workflows that run only when executed by the Effect runtime.
  *
