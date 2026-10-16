@@ -15,6 +15,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constVoid, dual } from "../Function.ts"
+import { awaitFinalizers } from "../internal/atomRegistry.ts"
 import { shouldHydrate } from "../internal/hydration.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -185,7 +186,13 @@ export const layerOptions = (options?: {
         ...options,
         scheduleTask: options?.scheduleTask
       })
-      yield* Scope.addFinalizer(scope, Effect.sync(() => registry.dispose()))
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.suspend(() => {
+          registry.dispose()
+          return awaitFinalizers(registry)
+        })
+      )
       return registry
     })
   )

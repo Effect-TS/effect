@@ -22,6 +22,7 @@ import * as Fiber from "../Fiber.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constTrue, constVoid, dual, pipe } from "../Function.ts"
 import type * as Inspectable from "../Inspectable.ts"
+import { trackFinalizer } from "../internal/atomRegistry.ts"
 import { PipeInspectableProto } from "../internal/core.ts"
 import { getStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
@@ -566,11 +567,12 @@ function makeEffect<A, E>(
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
-    Effect.runForkWith(getServices())(closeScope(scope))
+    trackFinalizer(ctx.registry, Effect.runForkWith(getServices())(closeScope(scope)))
   })
   let syncResult: AsyncResult.AsyncResult<A, E> | undefined
   let isAsync = false
   const cancel = runCallbackSync(
+    ctx.registry,
     getServices().pipe(
       Context.add(Scope.Scope, scope),
       Context.add(AtomRegistry, ctx.registry),
@@ -608,6 +610,7 @@ const closeScope = (scope: Scope.Closeable): Effect.Effect<void> =>
   )
 
 function runCallbackSync<R, A, E, ER = never>(
+  registry: Registry.AtomRegistry,
   services: Context.Context<R>,
   effect: Effect.Effect<A, E, R>,
   onExit: (exit: Exit.Exit<A, E | ER>) => void,
@@ -631,6 +634,9 @@ function runCallbackSync<R, A, E, ER = never>(
     if (!uninterruptible) {
       fiber.interruptUnsafe()
     }
+    // An interrupted fiber can still be releasing resources, and an
+    // uninterruptible one runs to completion, releasing into a closed scope.
+    trackFinalizer(registry, fiber)
   }
   return cancel
 }
@@ -952,6 +958,7 @@ function makeStream<A, E>(
   )
 
   const cancel = runCallbackSync(
+    ctx.registry,
     services.pipe(
       Context.add(AtomRegistry, ctx.registry),
       Context.add(Scheduler.Scheduler, ctx.registry.scheduler)
@@ -1405,7 +1412,7 @@ const makeStreamPullEffect = <A, E>(
         get.setSelf(AsyncResult.waitingFrom(get.self<PullResult<A, E>>()))
         let cancel: (() => void) | undefined
         // eslint-disable-next-line prefer-const
-        cancel = runCallbackSync(services, pull, (exit) => {
+        cancel = runCallbackSync(get.registry, services, pull, (exit) => {
           if (cancel) cancels.delete(cancel)
           const result = AsyncResult.fromExitWithPrevious(exit, get.self())
           const pending = cancels.size > 0
