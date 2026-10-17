@@ -131,14 +131,11 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<Option<A>, EventJournalError | E, R>
 
   /**
-   * Record write acknowledgements from a remote source: the sequences it
-   * assigned to local entries it stored.
+   * Records the sequences a remote assigned to uploaded entries.
    *
-   * Acknowledged entries count as committed to the remote. The sequence
-   * returned by `nextRemoteSequence` only moves past an acknowledged sequence
-   * when it directly follows the sequences already received, or
-   * `firstSequence` when nothing has been received, so entries that other
-   * replicas wrote before it are still downloaded.
+   * Advances `nextRemoteSequence` only across contiguous acknowledgements,
+   * starting at the current cursor or `firstSequence`, so reconnects still
+   * download unseen entries from other replicas.
    */
   readonly writeRemoteAcks: (options: {
     readonly remoteId: RemoteId
@@ -453,8 +450,7 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
 }
 
 /**
- * Acknowledgement that a remote source stored a local entry with the given
- * sequence.
+ * Acknowledgement of a local entry stored by a remote with its assigned sequence.
  *
  * @stability unstable
  * @category models
@@ -945,8 +941,7 @@ export const makeIndexedDb = (options?: {
             "prev"
           )
           cursorRequest.onsuccess = () => {
-            // The next sequence is derived from the highest stored one, so only
-            // acknowledgements that directly follow it are stored.
+            // Store only contiguous acks: the highest stored sequence determines the cursor.
             const cursor = cursorRequest.result
             const start = Math.max(cursor ? cursor.value.sequence + 1 : 0, firstSequence ?? 0)
             const end = advanceSequence(start, acks)
@@ -985,10 +980,7 @@ export const makeIndexedDb = (options?: {
   })
 
 /**
- * Moves a remote's next sequence over acknowledged sequences that directly
- * follow it. No sequence lies below `firstSequence`. A gap means another
- * replica wrote entries that have not been received yet, so the sequence stops
- * there.
+ * Advances across contiguous acknowledgements without skipping unseen entries.
  *
  * @internal
  */

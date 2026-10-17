@@ -1,11 +1,9 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Acknowledge event log writes and stop echoing them back to the writer. This is a breaking protocol change: upgrade event log clients and servers together, because mixed versions are not supported.
+Acknowledge event log writes without echoing them to the writing connection, while preserving peer delivery and safe reconnect cursors. This is a breaking protocol change: upgrade clients and servers together; mixed old and new versions are not supported.
 
-- `EventLog.WriteSingle` and `EventLog.WriteChunked` now return the sequence assigned to each written entry, including entries the server already held. `HelloResponse` reports the server's first sequence.
-- Servers no longer send a connection the entries it wrote. Other connections, including other devices with the same identity, still receive them.
-- `EventLogRemote.write` returns the acknowledgements, and `EventLog` records them with the new `EventJournal.writeRemoteAcks`. The download sequence only moves past an acknowledged entry when every earlier sequence is known, so reconnects still fetch entries written by other replicas.
-- `SqlEventJournal` adds a remote cursors table (`remoteCursorsTable`, default `effect_event_remotes_cursors`). Existing databases are read as before until the table is written.
-- Custom server storages must follow the updated contracts: encrypted `Storage.write` returns an entry for every written entry, unencrypted `Storage.entriesAfter` returns `RemoteEntry` values, and both may set `firstSequence`.
+- Custom journals must implement `EventJournal.writeRemoteAcks`. Custom remotes may still return `void` from `write` to confirm uploads through the change stream.
+- Custom encrypted storage must return every written entry from `Storage.write`, including duplicates; unencrypted `Storage.entriesAfter` must return `RemoteEntry` values. Set `firstSequence` if sequences start above 0.
+- SQL journals create a download cursor table (`remoteCursorsTable`, default `<remotesTable>_cursors`) and retain the legacy cursor fallback for existing databases.

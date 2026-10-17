@@ -76,10 +76,8 @@ export const layerAuthMiddleware: Layer.Layer<
  * chunked writes, delegates write and change handling to the supplied callbacks,
  * and frames large change payloads into chunks.
  *
- * Each connection gets a `ConnectionWrites`. `onWrite` should run storage writes
- * through `ConnectionWrites.track`, and `changes` should pass its stream through
- * `ConnectionWrites.filter`, so that a connection is not sent back the entries it
- * wrote.
+ * Use the connection's `ConnectionWrites.track` in `onWrite` and
+ * `ConnectionWrites.filter` in `changes` to suppress its own write echoes.
  *
  * @stability unstable
  * @category layers
@@ -278,15 +276,12 @@ export class ChunkedMessageState extends Context.Reference<
 }) {}
 
 /**
- * Tracks the entries written on one RPC connection, so that the change streams
- * opened on the same connection can skip them.
+ * Tracks writes to suppress their echoes on the same RPC connection.
  *
  * **Details**
  *
- * The writer already holds those entries and learns their sequences from the
- * write acknowledgements, so sending them back would only repeat the upload.
- * Entries are tracked only while the connection has a change stream open for
- * the store they were written to.
+ * Tracks entries only while this connection has a change stream open for their
+ * store. Write acknowledgements provide their sequences instead.
  *
  * @stability unstable
  * @category models
@@ -383,7 +378,6 @@ export class ConnectionWrites {
 
 interface ConnectionStream {
   readonly ids: Set<string>
-  // The highest sequence the stream has passed.
   position: number
 }
 

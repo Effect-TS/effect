@@ -8,10 +8,9 @@
  *
  * **Compatibility**
  *
- * The protocol is not versioned, so clients and servers must be upgraded
- * together. In particular, write calls return acknowledgements and change
- * streams no longer repeat a connection's own writes; mixing clients and
- * servers from before and after that change is not supported.
+ * Write acknowledgements replace a connection's own change-stream echoes.
+ * Upgrade event log clients and servers together: the protocol has no version
+ * negotiation, and mixed old and new versions are not supported.
  *
  * @stability unstable
  * @since 4.0.0
@@ -284,8 +283,7 @@ export class ChunkedMessage
 }
 
 /**
- * Schema for the acknowledgement of one written entry, pairing the entry id
- * with the sequence the remote store assigned to it.
+ * Schema for a written entry's id and server-assigned sequence.
  *
  * **Details**
  *

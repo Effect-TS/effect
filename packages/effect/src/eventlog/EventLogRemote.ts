@@ -55,11 +55,10 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * It can write local entries to the remote, stream remote changes from a sequence
  * number, and run effects only after the supplied identity has authenticated.
  *
- * `write` returns the remote's acknowledgements: the sequence assigned to each
- * written entry. A remote that cannot acknowledge writes returns nothing, and
- * the event log then learns the sequences when the entries come back through
- * `changes`. Remotes built by this module acknowledge every write, and their
- * change streams do not repeat entries written through the same remote.
+ * `write` returns acknowledgements with each entry's assigned sequence. Custom
+ * remotes may return `void` to confirm uploads through `changes` instead.
+ * Remotes built by this module acknowledge writes and suppress their echoes
+ * on the same connection.
  *
  * @stability unstable
  * @category services
@@ -262,7 +261,6 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
         if (encoded.byteLength <= ChunkedMessage.chunkSize) {
           return yield* client["EventLog.WriteSingle"]({ data: encoded })
         }
-        // The part that completes the payload returns the acknowledgements.
         let acks: ReadonlyArray<WriteAck> = []
         for (const part of ChunkedMessage.split(chunkedIdCounter++, encoded)) {
           acks = yield* client["EventLog.WriteChunked"](part)

@@ -1068,7 +1068,6 @@ const make = Effect.gen(function*() {
             Effect.flatMap((acks) =>
               acks === undefined || acks.length === 0
                 ? Effect.void
-                // The remote does not send these entries back, so record its sequences now.
                 : journal.writeRemoteAcks({ remoteId: remote.id, acks, firstSequence: remote.firstSequence }).pipe(
                   journal.withLock(storeId)
                 )

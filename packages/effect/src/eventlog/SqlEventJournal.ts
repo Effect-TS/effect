@@ -333,7 +333,8 @@ export const make = (options?: {
       const max = yield* sql`SELECT MAX(sequence) AS max FROM ${remotesTableSql} WHERE remote_id = ${remoteId}`.pipe(
         Effect.flatMap(decodeMaxSequenceRows)
       )
-      // An acknowledgement may have committed with its cursor during the fallback read.
+      // A concurrent ack can raise MAX past unseen entries. Its cursor commits
+      // with it, so recheck that cursor before trusting the legacy maximum.
       const current = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
         Effect.flatMap(decodeCursorRows)
       )
@@ -548,8 +549,7 @@ export const make = (options?: {
       writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
         Effect.gen(function*() {
           if (acks.length === 0) return
-          // Store the cursor first: from here on the remotes table also holds
-          // uploads, so its highest sequence no longer gives the next download.
+          // Read before inserting ack rows, whose maximum may skip unseen entries.
           const cursor = yield* readCursor(remoteId)
           yield* insertRemotes(acks.map((ack) => ({
             remote_id: remoteId,
