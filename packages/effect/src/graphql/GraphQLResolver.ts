@@ -67,10 +67,13 @@ type BatchKey<Op extends GraphQL.Any> = [GraphQL.Services<Op>] extends [never] ?
 
 interface KeyRequest<K, A, E, R> extends Request.Request<A, E, R> {
   readonly key: K
+  /** The protocol URL {@link request} resolved for this lookup, if it could. */
+  readonly url: string | undefined
 }
 
-// Requests are structural, so two requests with equal keys are one request.
-const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => Request.of<KeyRequest<K, A, E, R>>()({ key })
+// Requests are structural, so two requests with equal keys and URLs are one request.
+const makeRequest = <K, A, E, R>(key: K, url: string | undefined): KeyRequest<K, A, E, R> =>
+  Request.of<KeyRequest<K, A, E, R>>()({ key, url })
 
 // -----------------------------------------------------------------------------
 // Running
@@ -132,14 +135,11 @@ export const request: {
 } = dual(
   2,
   <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R> => {
+    // Resolved in the caller's fiber, so the URL is part of the pending batch's key.
     const resolveUrl = urlResolvers.get(resolver.batchKey)
-    if (resolveUrl === undefined) return queue(makeRequest<K, A, E, R>(key), resolver)
-    // Resolve in the caller's fiber, so the URL is part of the pending batch's key.
-    return Effect.flatMap(resolveUrl, (url) => {
-      const request = makeRequest<K, A, E, R>(key)
-      requestUrls.set(request, url)
-      return queue(request, resolver)
-    })
+    return resolveUrl === undefined
+      ? queue(makeRequest<K, A, E, R>(key, undefined), resolver)
+      : Effect.flatMap(resolveUrl, (url) => queue(makeRequest<K, A, E, R>(key, url), resolver))
   }
 )
 
@@ -625,9 +625,6 @@ const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
  */
 const urlResolvers = new WeakMap<Function, Effect.Effect<string>>()
 
-// URLs resolved by `request`, one per request object.
-const requestUrls = new WeakMap<Request.Any, string>()
-
 /**
  * Groups pending entries by URL and `batchKey`, so collection limits apply to
  * each group. A URL that `request` couldn't resolve, for example after
@@ -636,23 +633,21 @@ const requestUrls = new WeakMap<Request.Any, string>()
  * context, under any span opened around the batch, carrying the URL it was
  * grouped by, so the transport doesn't resolve it again.
  */
-const makeResolver = <A extends Request.Any>(
+const makeResolver = <A extends KeyRequest<any, any, any, any>>(
   method: OperationMethod<any>,
   batchKey: ((context: Context.Context<any>) => unknown) | undefined,
   runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>, any>
 ): RequestResolver.RequestResolver<A> => {
   const resolve = internalGraphQL.rawExecutors.get(method)?.url
-  const operation = { kind: method.operation.kind, operationName: method.operation.name }
+  const resolveUrl = resolve?.({ kind: method.operation.kind, operationName: method.operation.name })
   // Arrays are compared structurally, so equal keys share a batch.
   const keyOf = (entry: Request.Entry<A>, url: string | undefined) => [url, batchKey?.(entry.context)] as const
-  const urlOf = (entry: Request.Entry<A>) => {
-    const url = requestUrls.get(entry.request)
-    return url !== undefined || resolve === undefined
-      ? Effect.succeed(url)
-      : runIn(resolve(operation), entry.context)
-  }
+  const urlOf = (entry: Request.Entry<A>) =>
+    entry.request.url !== undefined || resolveUrl === undefined
+      ? Effect.succeed(entry.request.url)
+      : runIn(resolveUrl, entry.context)
   const resolver = RequestResolver.makeGrouped<A, unknown>({
-    key: (entry) => keyOf(entry, requestUrls.get(entry.request)),
+    key: (entry) => keyOf(entry, entry.request.url),
     resolver: (entries) =>
       Effect.contextWith((current: Context.Context<never>) => {
         const span = batchSpan(current)
@@ -676,7 +671,7 @@ const makeResolver = <A extends Request.Any>(
         })
       })
   })
-  if (resolve !== undefined) urlResolvers.set(resolver.batchKey, resolve(operation))
+  if (resolveUrl !== undefined) urlResolvers.set(resolver.batchKey, resolveUrl)
   return resolver
 }
 
