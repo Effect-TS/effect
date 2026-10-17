@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Resume EventLog remote changes from the journal's current sequence after a disconnect, avoiding duplicate replay and reactivity invalidations on reconnect.
+Fix `EventLog` remote reconnects resuming from the sequence captured at startup instead of the journal's current sequence, which replayed already-written entries and re-triggered reactivity invalidations.

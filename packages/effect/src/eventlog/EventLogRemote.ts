@@ -277,8 +277,8 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
           }
         }
       }).pipe(
-        // Authentication retries reuse this subscription's cursor. Transport failures
-        // reach EventLog, which reconnects from the journal's committed sequence.
+        // Forbidden retries resubscribe with the same `startSequence`. Other failures
+        // propagate to EventLog, which reconnects from the journal's committed sequence.
         (effect) => retryForbidden(effect, options),
         Effect.mapError((cause) => {
           if (cause._tag === "EventLogRemoteError") {
