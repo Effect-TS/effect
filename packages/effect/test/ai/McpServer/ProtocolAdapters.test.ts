@@ -1584,15 +1584,7 @@ describe("McpServer protocol adapters", () => {
           type: "object",
           properties: { value: { type: "string" } },
           required: ["value"],
-          additionalProperties: true,
-          $defs: {
-            IdentifiedResult: {
-              type: "object",
-              properties: { value: { type: "string" } },
-              required: ["value"],
-              additionalProperties: true
-            }
-          }
+          additionalProperties: true
         })
       }
     }))
