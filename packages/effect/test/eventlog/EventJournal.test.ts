@@ -53,18 +53,18 @@ describe("EventJournal", () => {
       const y = entry(1_500, "A", "k1")
       const z = entry(3_000, "B", "k1")
       const replayed: Array<readonly [string, ReadonlyArray<string>]> = []
+      let callbacks = 0
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [x, y, z].map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry })),
         effect: (batch) =>
           Effect.sync(() => {
+            callbacks++
             for (const { conflicts, entry } of batch) replayed.push([entry.idString, idStrings(conflicts)])
           })
       })
 
-      // Conflicts are strictly newer committed entries with the same event and
-      // primary key; entries sharing the timestamp and the incoming batch itself
-      // are excluded.
+      assert.strictEqual(callbacks, 1)
       assert.deepStrictEqual(replayed, [
         [x.idString, [a2.idString]],
         [y.idString, [sameMillis.idString, a2.idString]],

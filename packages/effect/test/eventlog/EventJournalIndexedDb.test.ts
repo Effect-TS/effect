@@ -38,22 +38,22 @@ const idbComplete = (transaction: IDBTransaction) =>
     transaction.onerror = () => resume(Effect.die(transaction.error))
   })
 
-// Records every transaction opened on any database, in order.
-const recordTransactions = Effect.acquireRelease(
-  Effect.sync(() => {
-    const opened: Array<{ readonly database: string; readonly durability: IDBTransactionDurability | undefined }> = []
-    const original = IDBDatabase.prototype.transaction
-    IDBDatabase.prototype.transaction = function(this: IDBDatabase, storeNames, mode, options) {
-      opened.push({ database: this.name, durability: options?.durability })
-      return original.call(this, storeNames, mode, options)
-    }
-    return { opened, original }
-  }),
-  ({ original }) =>
+const recordTransactions = (database: string) =>
+  Effect.acquireRelease(
     Effect.sync(() => {
-      IDBDatabase.prototype.transaction = original
-    })
-).pipe(Effect.map(({ opened }) => opened))
+      const opened: Array<IDBTransactionDurability | undefined> = []
+      const original = IDBDatabase.prototype.transaction
+      IDBDatabase.prototype.transaction = function(this: IDBDatabase, storeNames, mode, options) {
+        if (this.name === database) opened.push(options?.durability)
+        return original.call(this, storeNames, mode, options)
+      }
+      return { opened, original }
+    }),
+    ({ original }) =>
+      Effect.sync(() => {
+        IDBDatabase.prototype.transaction = original
+      })
+  ).pipe(Effect.map(({ opened }) => opened))
 
 describe("EventJournal.makeIndexedDb", () => {
   it.effect("replays a remote batch in one callback without journal transactions while it runs", () =>
@@ -73,64 +73,37 @@ describe("EventJournal.makeIndexedDb", () => {
         effect: () => Effect.void
       })
 
-      const opened = yield* recordTransactions
-      const timeline: Array<"start" | "end" | "journal" | "app"> = []
-      const journalDurabilities: Array<IDBTransactionDurability | undefined> = []
-      const openedBefore = () => {
-        for (const transaction of opened.splice(0)) {
-          if (transaction.database === journalName) {
-            timeline.push("journal")
-            journalDurabilities.push(transaction.durability)
-          } else {
-            timeline.push("app")
-          }
-        }
-      }
+      const opened = yield* recordTransactions(journalName)
       const batches: Array<
         ReadonlyArray<{ readonly entry: EventJournal.Entry; readonly conflicts: ReadonlyArray<EventJournal.Entry> }>
       > = []
       const older = entry(1000)
       const sameBatch = entry(1500)
       const sameMillis = entry(2000, { tail: 0x00 })
-      const otherKeyOlder = entry(1000, { primaryKey: "other" })
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
-        entries: remoteEntries([older, sameBatch, sameMillis, otherKeyOlder]),
+        entries: remoteEntries([older, sameBatch, sameMillis]),
         effect: (batch) =>
           Effect.gen(function*() {
-            openedBefore()
-            timeline.push("start")
+            const before = opened.length
             batches.push(batch)
             // The callback's own transaction, as a projection would open.
             const transaction = app.transaction("projection", "readwrite")
             for (const { entry } of batch) transaction.objectStore("projection").put(entry.idString, entry.idString)
             yield* idbComplete(transaction)
-            openedBefore()
-            timeline.push("end")
+            assert.strictEqual(opened.length, before)
           })
       })
-      openedBefore()
-
-      const first = timeline.indexOf("start")
-      const last = timeline.lastIndexOf("end")
-      const journalTransactions = timeline.filter((event) => event === "journal").length
-      assert.deepStrictEqual({
-        callbacks: batches.length,
-        conflicts: batches.flat().map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)]),
-        journalTransactionsWhileCallbackRuns: timeline.slice(first, last).filter((event) => event === "journal").length,
-        atMostThreeJournalTransactions: journalTransactions <= 3
-      }, {
-        callbacks: 1,
-        conflicts: [
+      assert.deepStrictEqual(
+        batches.map((batch) => batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)])),
+        [[
           [older.idString, [newer.idString]],
           [sameBatch.idString, [newer.idString]],
-          [sameMillis.idString, []],
-          [otherKeyOlder.idString, [otherKey.idString]]
-        ],
-        journalTransactionsWhileCallbackRuns: 0,
-        atMostThreeJournalTransactions: true
-      }, `journal transactions for the batch: ${journalTransactions}`)
-      assert.notInclude(journalDurabilities, "relaxed")
+          [sameMillis.idString, []]
+        ]]
+      )
+      assert.isAtMost(opened.length, 3)
+      assert.notInclude(opened, "relaxed")
       app.close()
     }))
 

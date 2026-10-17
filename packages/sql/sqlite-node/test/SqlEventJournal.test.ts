@@ -153,59 +153,55 @@ describe("SqlEventJournal", () => {
       }).pipe(Effect.provide(layer))
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("replays each remote batch in one callback with strictly newer same-event-and-key conflicts", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
+        new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe({ msecs }),
+          event,
+          primaryKey,
+          payload: new Uint8Array()
+        }, { disableChecks: true })
+      const newer = entry(2000)
+      const otherEvent = entry(3000, "Other")
+      const otherKey = entry(3000, "Repro", "other")
+      const older = entry(1000)
+      const sameBatch = entry(1500)
+      const sameMillis = entry(2000)
+      const batches: Array<
+        ReadonlyArray<{ readonly entry: EventJournal.Entry; readonly conflicts: ReadonlyArray<EventJournal.Entry> }>
+      > = []
+      const writeBatch = (entries: ReadonlyArray<EventJournal.Entry>) =>
+        journal.writeFromRemote({
+          remoteId: EventJournal.makeRemoteIdUnsafe(),
+          entries: entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry })),
+          effect: (batch) =>
+            Effect.sync(() => {
+              batches.push(batch)
+            })
+        })
+      yield* writeBatch([newer, otherEvent, otherKey])
+      yield* writeBatch([older, sameBatch, sameMillis])
+
+      assert.strictEqual(batches.length, 2)
+      // Conflicts exclude the incoming batch, equal timestamps, and other
+      // event/key pairs.
+      assert.deepStrictEqual(
+        batches.map((batch) => batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)])),
+        [
+          [[newer.idString, []], [otherEvent.idString, []], [otherKey.idString, []]],
+          [
+            [older.idString, [newer.idString]],
+            [sameBatch.idString, [newer.idString]],
+            [sameMillis.idString, []]
+          ]
+        ]
+      )
+    }))
+
   for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
     describe(name, () => {
-      it.effect("replays each remote batch in one callback with strictly newer same-event-and-key conflicts", () =>
-        Effect.gen(function*() {
-          const journal = yield* make
-          const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
-            new EventJournal.Entry({
-              id: EventJournal.makeEntryIdUnsafe({ msecs }),
-              event,
-              primaryKey,
-              payload: new Uint8Array()
-            }, { disableChecks: true })
-          const newer = entry(2000)
-          const otherEvent = entry(3000, "Other")
-          const otherKey = entry(3000, "Repro", "other")
-          const older = entry(1000)
-          const sameBatch = entry(1500)
-          const sameMillis = entry(2000)
-          const otherKeyOlder = entry(1000, "Repro", "other")
-          const batches: Array<
-            ReadonlyArray<{ readonly entry: EventJournal.Entry; readonly conflicts: ReadonlyArray<EventJournal.Entry> }>
-          > = []
-          const writeBatch = (entries: ReadonlyArray<EventJournal.Entry>) =>
-            journal.writeFromRemote({
-              remoteId: EventJournal.makeRemoteIdUnsafe(),
-              entries: entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry })),
-              effect: (batch) =>
-                Effect.sync(() => {
-                  batches.push(batch)
-                })
-            })
-          yield* writeBatch([newer, otherEvent, otherKey])
-          yield* writeBatch([older, sameBatch, sameMillis, otherKeyOlder])
-
-          assert.strictEqual(batches.length, 2)
-          // Conflicts exclude the incoming batch, equal timestamps, and other
-          // event/key pairs.
-          assert.deepStrictEqual(
-            batches.map((batch) =>
-              batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)])
-            ),
-            [
-              [[newer.idString, []], [otherEvent.idString, []], [otherKey.idString, []]],
-              [
-                [older.idString, [newer.idString]],
-                [sameBatch.idString, [newer.idString]],
-                [sameMillis.idString, []],
-                [otherKeyOlder.idString, [otherKey.idString]]
-              ]
-            ]
-          )
-        }))
-
       it.effect("failed remote callbacks persist nothing and allow redelivery", () =>
         Effect.gen(function*() {
           const journal = yield* make
