@@ -50,6 +50,21 @@ const createLegacyJournal = (
     }
   })
 
+// Waits, for at most two seconds, until `count` backends are waiting on locks
+// or `settled` holds. Timing out only weakens a test, it never fails one.
+const waitForLockWaiters = (count: number, settled: () => boolean = () => false) =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    for (let i = 0; i < 200 && !settled(); i++) {
+      const [{ waiting }] = yield* sql<{ waiting: number }>`
+        SELECT count(*)::int4 AS waiting FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'
+      `
+      if (waiting >= count) return
+      yield* realSleep
+    }
+  })
+
 // The container is shared with the client, so tests can open more connections.
 const TestLayer = Layer.merge(PgContainer.layerClient, PgContainer.layer)
 
@@ -154,14 +169,7 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
       yield* Deferred.await(written)
       const second = yield* Effect.forkChild(journal.write({ ...localEntry("second"), effect: Effect.succeed }))
       // Upload once the second write has committed or is waiting on a lock.
-      for (let i = 0; i < 200 && second.pollUnsafe() === undefined; i++) {
-        const [{ waiting }] = yield* sql<{ waiting: number }>`
-          SELECT count(*)::int4 AS waiting FROM pg_stat_activity
-          WHERE datname = current_database() AND wait_event_type = 'Lock'
-        `
-        if (waiting > 0) break
-        yield* realSleep
-      }
+      yield* waitForLockWaiters(1, () => second.pollUnsafe() !== undefined)
       const beforeCommit = yield* uploadIds(journal, remoteId)
       yield* Deferred.succeed(release, undefined)
       const ids = [(yield* Fiber.join(first)).idString, (yield* Fiber.join(second)).idString]
@@ -242,5 +250,66 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
         entries: [legacy.idString, older.idString, written.idString],
         conflicts: [written.idString]
       })
+    }))
+
+  it.effect("concurrent opens migrate a legacy database once", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const options = { entryTable: "concurrent_open_entries", remotesTable: "concurrent_open_remotes" }
+      const legacy = entry(1000, "legacy")
+      yield* createLegacyJournal(options, [legacy])
+      const locked = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      // Index creation needs this table, so both opens stall mid-migration.
+      const blocker = yield* sql`LOCK TABLE concurrent_open_entries IN ACCESS EXCLUSIVE MODE`.pipe(
+        Effect.andThen(Deferred.succeed(locked, undefined)),
+        Effect.andThen(Deferred.await(release)),
+        sql.withTransaction,
+        Effect.forkChild
+      )
+      yield* Deferred.await(locked)
+      const opens = yield* Effect.forkChild(
+        Effect.all([SqlEventJournal.make(options), SqlEventJournal.make(options)], { concurrency: 2 })
+      )
+      yield* waitForLockWaiters(2)
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(blocker)
+      const [, journal] = yield* Fiber.join(opens)
+      assert.deepStrictEqual((yield* journal.entries).map((entry) => entry.idString), [legacy.idString])
+    }))
+
+  it.effect("an outer transaction can import an entry that another remote is importing", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const journal = yield* SqlEventJournal.make({
+        entryTable: "overlapping_entries",
+        remotesTable: "overlapping_remotes"
+      })
+      const a = entry(1000, "a")
+      const b = entry(2000, "b")
+      const importEntry = (remoteId: EventJournal.RemoteId, entry: EventJournal.Entry) =>
+        journal.writeFromRemote({
+          remoteId,
+          entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+          effect: () => Effect.void
+        })
+      const imported = yield* Deferred.make<void>()
+      const proceed = yield* Deferred.make<void>()
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const outer = yield* importEntry(remoteId, a).pipe(
+        Effect.andThen(Deferred.succeed(imported, undefined)),
+        Effect.andThen(Deferred.await(proceed)),
+        Effect.andThen(importEntry(remoteId, b)),
+        sql.withTransaction,
+        Effect.forkChild
+      )
+      yield* Deferred.await(imported)
+      const other = yield* Effect.forkChild(importEntry(EventJournal.makeRemoteIdUnsafe(), b))
+      // Continue the outer transaction once the other import is waiting on it.
+      yield* waitForLockWaiters(1, () => other.pollUnsafe() !== undefined)
+      yield* Deferred.succeed(proceed, undefined)
+      yield* Fiber.join(outer)
+      yield* Fiber.join(other)
+      assert.deepStrictEqual((yield* journal.entries).map((entry) => entry.idString), [a.idString, b.idString])
     }))
 })
