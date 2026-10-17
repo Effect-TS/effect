@@ -86,7 +86,7 @@ describe("Statement", () => {
     )
   })
 
-  it("rejects an empty insert or updateValues", () => {
+  it("rejects empty insert and updateValues rows at compilation", () => {
     const sql = Statement.make(
       Effect.void as any,
       Statement.makeCompilerSqlite(),
@@ -94,14 +94,11 @@ describe("Statement", () => {
       undefined
     )
 
-    assert.throws(
-      () => sql`INSERT INTO people ${sql.insert([])}`.compile(),
-      /sql\.insert: no rows/
-    )
-    assert.throws(
-      () => sql`UPDATE people SET ${sql.updateValues([], "data")}`.compile(),
-      /sql\.updateValues: no rows/
-    )
+    const insert = sql`INSERT INTO people ${sql.insert([])}`
+    const update = sql`UPDATE people SET ${sql.updateValues([], "data")}`
+
+    assert.throws(() => insert.compile(), Error, /^sql\.insert: no rows$/)
+    assert.throws(() => update.compile(), Error, /^sql\.updateValues: no rows$/)
   })
 
   it.effect("reads propagation overrides when executing existing statements and streams", () =>
