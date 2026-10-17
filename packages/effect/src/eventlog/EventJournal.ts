@@ -63,7 +63,12 @@ export class EventJournal extends Context.Service<EventJournal, {
    *
    * **Details**
    *
-   * Effects run sequentially in compaction bracket order.
+   * `effect` runs once with every new entry in compaction order, each paired
+   * with the stored entries for the same event and primary key that are
+   * strictly newer than it. All conflicts are read before `effect` runs and
+   * the batch is committed after it succeeds, with no journal I/O while it
+   * runs. It is not called when the batch has no new entries. If `effect`
+   * fails, no entry from the batch is committed.
    */
   readonly writeFromRemote: (
     options: {
@@ -72,10 +77,12 @@ export class EventJournal extends Context.Service<EventJournal, {
       readonly compact?:
         | ((uncommitted: ReadonlyArray<RemoteEntry>) => Effect.Effect<ReadonlyArray<Entry>, EventJournalError>)
         | undefined
-      readonly effect: (options: {
-        readonly entry: Entry
-        readonly conflicts: ReadonlyArray<Entry>
-      }) => Effect.Effect<void, EventJournalError>
+      readonly effect: (
+        entries: ReadonlyArray<{
+          readonly entry: Entry
+          readonly conflicts: ReadonlyArray<Entry>
+        }>
+      ) => Effect.Effect<void, EventJournalError>
     }
   ) => Effect.Effect<{
     readonly duplicateEntries: ReadonlyArray<Entry>
@@ -469,23 +476,21 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         ? yield* options.compact(uncommittedRemotes)
         : uncommitted
 
-      for (const originEntry of compacted) {
-        const entryMillis = entryIdMillis(originEntry.id)
-        const conflicts: Array<Entry> = []
-        for (let i = journal.length - 1; i >= -1; i--) {
-          const entry = journal[i]
-          if (entry !== undefined && entry.createdAtMillis > entryMillis) {
-            continue
-          }
-          for (let j = i + 1; j < journal.length; j++) {
-            const scannedEntry = journal[j]!
-            if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
-              conflicts.push(scannedEntry)
+      if (compacted.length > 0) {
+        const batch = compacted.map((originEntry) => {
+          const entryMillis = originEntry.createdAtMillis
+          const conflicts: Array<Entry> = []
+          let i = journal.length
+          while (i > 0 && journal[i - 1].createdAtMillis > entryMillis) i--
+          for (; i < journal.length; i++) {
+            const entry = journal[i]
+            if (entry.event === originEntry.event && entry.primaryKey === originEntry.primaryKey) {
+              conflicts.push(entry)
             }
           }
-          yield* options.effect({ entry: originEntry, conflicts })
-          break
-        }
+          return { entry: originEntry, conflicts }
+        })
+        yield* options.effect(batch)
       }
       for (const remoteEntry of uncommittedRemotes) {
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
@@ -656,29 +661,24 @@ export const makeIndexedDb = (options?: {
           const tx = db.transaction(["entries", "remotes"], "readwrite")
           const entries = tx.objectStore("entries")
           const remotes = tx.objectStore("remotes")
-          const iterator = options.entries[Symbol.iterator]()
-          const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
-            if (state.done) return
-            const remoteEntry = state.value
+          // Requests in a transaction complete in the order they were issued.
+          for (const remoteEntry of options.entries) {
             const entry = remoteEntry.entry
-            const entryIdKey = entry.id as IDBValidKey
-            entries.get(entryIdKey).onsuccess = (event) => {
-              if (event.target && "result" in event.target && event.target.result) {
+            const request = entries.getKey(entry.id as IDBValidKey)
+            request.onsuccess = () => {
+              if (request.result !== undefined) {
                 duplicateEntries.push(entry)
                 remotes.put({
                   remoteId: options.remoteId,
                   entryId: entry.id,
                   sequence: remoteEntry.remoteSequence
                 })
-                handleNext(iterator.next())
                 return
               }
               uncommitted.push(entry)
               uncommittedRemotes.push(remoteEntry)
-              handleNext(iterator.next())
             }
           }
-          handleNext(iterator.next())
           tx.oncomplete = () => resume(Effect.void)
           tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
           return Effect.sync(() => tx.abort())
@@ -688,25 +688,29 @@ export const makeIndexedDb = (options?: {
           ? yield* options.compact(uncommittedRemotes)
           : uncommitted
 
-        for (const originEntry of compacted) {
-          const conflicts: Array<Entry> = []
+        if (compacted.length > 0) {
+          // Stored entries per event and primary key in the batch, in id order.
+          const candidates = new Map<string, Map<string, Array<Entry>>>()
+          let oldestMillis = Infinity
+          for (const entry of compacted) {
+            let byKey = candidates.get(entry.event)
+            if (!byKey) {
+              byKey = new Map()
+              candidates.set(entry.event, byKey)
+            }
+            byKey.set(entry.primaryKey, [])
+            oldestMillis = Math.min(oldestMillis, entry.createdAtMillis)
+          }
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
-            const entries = tx.objectStore("entries")
-            const cursorRequest = entries.index("id").openCursor(
-              IDBKeyRange.lowerBound(originEntry.id as IDBValidKey, true),
-              "next"
+            const cursorRequest = tx.objectStore("entries").openCursor(
+              IDBKeyRange.lowerBound(entryIdLowerBound(oldestMillis + 1) as IDBValidKey)
             )
             cursorRequest.onsuccess = () => {
               const cursor = cursorRequest.result
               if (!cursor) return
-              const decodedEntry = decodeEntryIdb(cursor.value)
-              if (
-                decodedEntry.event === originEntry.event &&
-                decodedEntry.primaryKey === originEntry.primaryKey
-              ) {
-                conflicts.push(decodedEntry)
-              }
+              const value = cursor.value as { readonly event: string; readonly primaryKey: string }
+              candidates.get(value.event)?.get(value.primaryKey)?.push(decodeEntryIdb(cursor.value))
               cursor.continue()
             }
             tx.oncomplete = () => resume(Effect.void)
@@ -714,8 +718,15 @@ export const makeIndexedDb = (options?: {
               resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
             return Effect.sync(() => tx.abort())
           })
-
-          yield* options.effect({ entry: originEntry, conflicts })
+          yield* options.effect(compacted.map((entry) => {
+            const millis = entry.createdAtMillis
+            return {
+              entry,
+              conflicts: candidates.get(entry.event)!.get(entry.primaryKey)!.filter((stored) =>
+                stored.createdAtMillis > millis
+              )
+            }
+          }))
         }
 
         yield* Effect.callback<void, EventJournalError>((resume) => {
@@ -838,6 +849,16 @@ const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
     return semaphore.withPermit
   }
 })
+
+// The smallest entry id created in the given millisecond.
+const entryIdLowerBound = (millis: number): Uint8Array => {
+  const bytes = new Uint8Array(16)
+  for (let i = 5; i >= 0; i--) {
+    bytes[i] = millis % 256
+    millis = Math.floor(millis / 256)
+  }
+  return bytes
+}
 
 const decodeEntryIdb = Schema.decodeSync(Entry)
 const encodeEntryIdb = Schema.encodeSync(Entry)

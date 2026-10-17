@@ -438,6 +438,46 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
   defaultValue: constant(StoreId.make("default"))
 }) {}
 
+/**
+ * Context reference for a transaction that wraps the event handlers of each
+ * batch replayed from a remote.
+ *
+ * **When to use**
+ *
+ * Provide it when handlers project into a store with transactions, such as
+ * `sql.withTransaction` or an IndexedDB transaction over the projection
+ * tables, so a batch of N replayed events commits once instead of N times.
+ *
+ * **Details**
+ *
+ * The journal reads every conflict before the transaction starts and commits
+ * the batch after it completes, so it performs no I/O while the transaction is
+ * open. Defaults to running the handlers without a transaction. Local writes
+ * do not use it.
+ *
+ * **Gotchas**
+ *
+ * - Handler failures during replay are logged and skipped. They do not fail
+ *   the transaction, and the entry is still committed to the journal.
+ * - If the transaction itself fails, the journal commits nothing from the
+ *   batch and the batch is replayed again, so handlers must tolerate running
+ *   twice.
+ * - Unless the transaction and the journal share a database connection, the
+ *   transaction commits before the journal does. A crash between the two
+ *   replays the batch on restart; the two commits are not atomic.
+ * - The transaction must not change the error or success of the wrapped
+ *   effect. Convert its own failures into defects.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.6
+ */
+export class HandlerTransaction extends Context.Reference<
+  <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+>("effect/eventlog/EventLog/HandlerTransaction", {
+  defaultValue: constant(identity)
+}) {}
+
 const RedactedUint8Array = Schema.Uint8ArrayFromBase64.pipe(
   Schema.decodeTo(Schema.Redacted(Schema.Uint8Array), {
     decode: SchemaGetter.transform((value) => Redacted.make(value)),
@@ -810,6 +850,7 @@ const make = Effect.gen(function*() {
   const registry = yield* Registry
 
   const reactivity = yield* Reactivity
+  const handlerTransaction = yield* HandlerTransaction
   const replayFromRemote = makeReplayFromRemote({
     handlers: registry.handlers,
     storeId,
@@ -822,22 +863,21 @@ const make = Effect.gen(function*() {
     }
   })
 
-  const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
-    Effect.sync(() => {
-      for (const entry of entries) {
-        const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-          ? registry.reactivityKeys[entry.event]
-          : undefined
-        if (!keys) {
-          continue
-        }
-        for (const key of keys) {
-          reactivity.invalidateUnsafe({
-            [key]: [entry.primaryKey]
-          })
-        }
+  const invalidateReactivityEntries = Effect.fnUntraced(function*(entries: ReadonlyArray<Entry>) {
+    for (const entry of entries) {
+      const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
+        ? registry.reactivityKeys[entry.event]
+        : undefined
+      if (!keys) {
+        continue
       }
-    })
+      for (const key of keys) {
+        yield* reactivity.invalidate({
+          [key]: [entry.primaryKey]
+        })
+      }
+    }
+  })
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
@@ -891,7 +931,7 @@ const make = Effect.gen(function*() {
                 return finalEntries.sort(Entry.Order)
               })
               : undefined,
-            effect: replayFromRemote
+            effect: (batch) => handlerTransaction(Effect.forEach(batch, replayFromRemote, { discard: true }))
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),

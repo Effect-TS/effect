@@ -184,19 +184,39 @@ export const make = (options?: {
         ? yield* options.compact(uncommitted)
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
 
-      for (const entry of compacted) {
-        const conflicts = yield* sql`
+      if (compacted.length > 0) {
+        const events = new Set<string>()
+        let oldestMillis = Infinity
+        for (const entry of compacted) {
+          events.add(entry.event)
+          oldestMillis = Math.min(oldestMillis, entry.createdAtMillis)
+        }
+        const stored = yield* sql`
             SELECT *
             FROM ${entryTableSql}
-            WHERE event = ${entry.event} AND
-                  primary_key = ${entry.primaryKey} AND
-                  timestamp > ${entry.createdAtMillis}
+            WHERE ${sql.in("event", Array.from(events))} AND
+                  timestamp > ${oldestMillis}
             ORDER BY timestamp ASC
           `.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )
-        yield* options.effect({ entry, conflicts })
+        const byEventAndKey = new Map<string, Map<string, Array<EventJournal.Entry>>>()
+        for (const entry of stored) {
+          let byKey = byEventAndKey.get(entry.event)
+          if (!byKey) {
+            byKey = new Map()
+            byEventAndKey.set(entry.event, byKey)
+          }
+          const entries = byKey.get(entry.primaryKey)
+          if (entries) entries.push(entry)
+          else byKey.set(entry.primaryKey, [entry])
+        }
+        yield* options.effect(compacted.map((entry) => {
+          const millis = entry.createdAtMillis
+          const candidates = byEventAndKey.get(entry.event)?.get(entry.primaryKey) ?? []
+          return { entry, conflicts: candidates.filter((conflict) => conflict.createdAtMillis > millis) }
+        }))
       }
 
       // Keep the incoming batch out of conflict queries and persist only after
