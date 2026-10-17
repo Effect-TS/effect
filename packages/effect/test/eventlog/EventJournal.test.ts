@@ -79,16 +79,17 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(missing, Option.some(expected))
     }))
 
-  it.effect("orders the journal and peer backlog after a local write following a future import", () =>
+  it.effect("orders the journal and remote backlogs after a local write following a future import", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
       const peer = EventJournal.makeRemoteIdUnsafe()
       const source = EventJournal.makeRemoteIdUnsafe()
       yield* journal.nextRemoteSequence(peer)
+      yield* journal.nextRemoteSequence(source)
 
       const future = entry(281_474_976_710_655)
       yield* journal.writeFromRemote({
-        remoteId: source,
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
         effect: () => Effect.void
       })
@@ -101,7 +102,7 @@ describe("EventJournal", () => {
       const imported = entry(281_474_976_710_654)
       yield* journal.writeFromRemote({
         remoteId: source,
-        entries: [new EventJournal.RemoteEntry({ remoteSequence: 1, entry: imported })],
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: imported })],
         effect: () => Effect.void
       })
 
@@ -109,6 +110,8 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(idStrings(yield* journal.entries), expected)
       const missing = yield* journal.withRemoteUncommited(peer, (entries) => Effect.succeed(idStrings(entries)))
       assert.deepStrictEqual(missing, Option.some(expected))
+      const sourceMissing = yield* journal.withRemoteUncommited(source, (entries) => Effect.succeed(idStrings(entries)))
+      assert.deepStrictEqual(sourceMissing, Option.some(idStrings([local, future])))
     }))
 
   it.effect("relays an imported entry to another remote", () =>
