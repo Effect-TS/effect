@@ -1971,6 +1971,214 @@ export const SemVerRangeReviver: DeclarationReviver<null> = makeFixedDeclaration
 )
 
 /**
+ * Reviver for persisted {@link Schema.MacAddress} declarations.
+ *
+ * @see {@link Schema.MacAddress} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const MacAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/MacAddress",
+  Schema.MacAddress
+)
+
+/**
+ * Reviver for persisted {@link Schema.Ipv4Address} declarations.
+ *
+ * @see {@link Schema.Ipv4Address} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Ipv4AddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Ipv4Address",
+  Schema.Ipv4Address
+)
+
+/**
+ * Reviver for persisted {@link Schema.Ipv6Address} declarations.
+ *
+ * @see {@link Schema.Ipv6Address} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Ipv6AddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Ipv6Address",
+  Schema.Ipv6Address
+)
+
+/**
+ * Reviver for persisted {@link Schema.IpAddress} declarations.
+ *
+ * @see {@link Schema.IpAddress} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const IpAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/IpAddress",
+  Schema.IpAddress
+)
+
+/**
+ * Reviver for persisted {@link Schema.Ipv4Interface} declarations.
+ *
+ * @see {@link Schema.Ipv4Interface} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Ipv4InterfaceReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Ipv4Interface",
+  Schema.Ipv4Interface
+)
+
+/**
+ * Reviver for persisted {@link Schema.Ipv6Interface} declarations.
+ *
+ * @see {@link Schema.Ipv6Interface} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Ipv6InterfaceReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Ipv6Interface",
+  Schema.Ipv6Interface
+)
+
+/**
+ * Reviver for persisted {@link Schema.IpInterface} declarations.
+ *
+ * @see {@link Schema.IpInterface} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const IpInterfaceReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/IpInterface",
+  Schema.IpInterface
+)
+
+/**
+ * Reviver for persisted {@link Schema.Ipv4Network} declarations.
+ *
+ * @see {@link Schema.Ipv4Network} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Ipv4NetworkReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Ipv4Network",
+  Schema.Ipv4Network
+)
+
+/**
+ * Reviver for persisted {@link Schema.Ipv6Network} declarations.
+ *
+ * @see {@link Schema.Ipv6Network} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Ipv6NetworkReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/Ipv6Network",
+  Schema.Ipv6Network
+)
+
+/**
+ * Reviver for persisted {@link Schema.IpNetwork} declarations.
+ *
+ * @see {@link Schema.IpNetwork} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const IpNetworkReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/IpNetwork",
+  Schema.IpNetwork
+)
+
+/**
+ * Reviver for persisted {@link Schema.InetAddressV4} declarations.
+ *
+ * @see {@link Schema.InetAddressV4} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const InetAddressV4Reviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/InetAddressV4",
+  Schema.InetAddressV4
+)
+
+/**
+ * Reviver for persisted {@link Schema.InetAddressV6} declarations.
+ *
+ * @see {@link Schema.InetAddressV6} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const InetAddressV6Reviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/InetAddressV6",
+  Schema.InetAddressV6
+)
+
+/**
+ * Reviver for persisted {@link Schema.InetAddress} declarations.
+ *
+ * @see {@link Schema.InetAddress} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const InetAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/InetAddress",
+  Schema.InetAddress
+)
+
+/**
+ * Reviver for persisted {@link Schema.UnixPathAddress} declarations.
+ *
+ * @see {@link Schema.UnixPathAddress} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const UnixPathAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/UnixPathAddress",
+  Schema.UnixPathAddress
+)
+
+/**
+ * Reviver for persisted {@link Schema.SocketAddress} declarations.
+ *
+ * @see {@link Schema.SocketAddress} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SocketAddressReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/SocketAddress",
+  Schema.SocketAddress
+)
+
+/**
+ * Reviver for persisted {@link Schema.HostPort} declarations.
+ *
+ * @see {@link Schema.HostPort} for the corresponding schema
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.6
+ */
+export const HostPortReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/HostPort",
+  Schema.HostPort
+)
+
+/**
  * Reviver for persisted `File` declarations.
  *
  * **When to use**

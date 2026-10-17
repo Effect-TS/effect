@@ -999,6 +999,30 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives effect/net declarations", () => {
+    const cases: ReadonlyArray<readonly [Schema.Top, SchemaRepresentation.DeclarationReviver<null>]> = [
+      [Schema.MacAddress, SchemaRepresentation.MacAddressReviver],
+      [Schema.Ipv4Address, SchemaRepresentation.Ipv4AddressReviver],
+      [Schema.Ipv6Address, SchemaRepresentation.Ipv6AddressReviver],
+      [Schema.IpAddress, SchemaRepresentation.IpAddressReviver],
+      [Schema.Ipv4Interface, SchemaRepresentation.Ipv4InterfaceReviver],
+      [Schema.Ipv6Interface, SchemaRepresentation.Ipv6InterfaceReviver],
+      [Schema.IpInterface, SchemaRepresentation.IpInterfaceReviver],
+      [Schema.Ipv4Network, SchemaRepresentation.Ipv4NetworkReviver],
+      [Schema.Ipv6Network, SchemaRepresentation.Ipv6NetworkReviver],
+      [Schema.IpNetwork, SchemaRepresentation.IpNetworkReviver],
+      [Schema.InetAddressV4, SchemaRepresentation.InetAddressV4Reviver],
+      [Schema.InetAddressV6, SchemaRepresentation.InetAddressV6Reviver],
+      [Schema.InetAddress, SchemaRepresentation.InetAddressReviver],
+      [Schema.UnixPathAddress, SchemaRepresentation.UnixPathAddressReviver],
+      [Schema.SocketAddress, SchemaRepresentation.SocketAddressReviver],
+      [Schema.HostPort, SchemaRepresentation.HostPortReviver]
+    ]
+    for (const [schema, reviver] of cases) {
+      assertDeclarationReviver({ schema, id: reviver.id, payload: null, reviver })
+    }
+  })
+
   it("revives File", () => {
     assertDeclarationReviver({
       schema: Schema.File,
