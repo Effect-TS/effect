@@ -463,9 +463,6 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of options.entries) {
         if (byId.has(remoteEntry.entry.idString)) {
           duplicateEntries.push(remoteEntry.entry)
-          if (remoteEntry.remoteSequence >= remote.sequence) {
-            remote.sequence = remoteEntry.remoteSequence + 1
-          }
           continue
         }
         uncommittedRemotes.push(remoteEntry)
@@ -480,11 +477,17 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         const batch = compacted.map((originEntry) => {
           const entryMillis = originEntry.createdAtMillis
           const conflicts: Array<Entry> = []
-          let i = journal.length
+          // Only the newer suffix can conflict, unless local writes left the
+          // journal unordered.
+          let i = journalSorted ? journal.length : 0
           while (i > 0 && journal[i - 1].createdAtMillis > entryMillis) i--
           for (; i < journal.length; i++) {
             const entry = journal[i]
-            if (entry.event === originEntry.event && entry.primaryKey === originEntry.primaryKey) {
+            if (
+              entry.createdAtMillis > entryMillis &&
+              entry.event === originEntry.event &&
+              entry.primaryKey === originEntry.primaryKey
+            ) {
               conflicts.push(entry)
             }
           }
@@ -494,6 +497,9 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       }
       for (const remoteEntry of uncommittedRemotes) {
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
+      }
+      // Advance past duplicates only once the batch commits.
+      for (const remoteEntry of options.entries) {
         if (remoteEntry.remoteSequence >= remote.sequence) {
           remote.sequence = remoteEntry.remoteSequence + 1
         }
@@ -658,9 +664,8 @@ export const makeIndexedDb = (options?: {
         const duplicateEntries: Array<Entry> = []
 
         yield* Effect.callback<void, EventJournalError>((resume) => {
-          const tx = db.transaction(["entries", "remotes"], "readwrite")
+          const tx = db.transaction("entries", "readonly")
           const entries = tx.objectStore("entries")
-          const remotes = tx.objectStore("remotes")
           // Requests in a transaction complete in the order they were issued.
           for (const remoteEntry of options.entries) {
             const entry = remoteEntry.entry
@@ -668,11 +673,6 @@ export const makeIndexedDb = (options?: {
             request.onsuccess = () => {
               if (request.result !== undefined) {
                 duplicateEntries.push(entry)
-                remotes.put({
-                  remoteId: options.remoteId,
-                  entryId: entry.id,
-                  sequence: remoteEntry.remoteSequence
-                })
                 return
               }
               uncommitted.push(entry)
@@ -735,6 +735,10 @@ export const makeIndexedDb = (options?: {
           const remotes = tx.objectStore("remotes")
           for (const remoteEntry of uncommittedRemotes) {
             entries.add(encodeEntryIdb(remoteEntry.entry))
+          }
+          // Duplicates are recorded with the batch, so a failed batch leaves
+          // the remote sequence unchanged.
+          for (const remoteEntry of options.entries) {
             remotes.put({
               remoteId: options.remoteId,
               entryId: remoteEntry.entry.id,
