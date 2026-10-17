@@ -509,7 +509,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
     ).pipe(
       span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
-      Effect.onError((cause) => Queue.failCause(queue, cause)),
+      Effect.onError((cause) => {
+        if (!Cause.hasInterruptsOnly(cause)) entries.delete(id)
+        return Queue.failCause(queue, cause)
+      }),
       Effect.interruptible,
       Effect.forkIn(scope, { startImmediately: true })
     )
@@ -790,7 +793,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         return Effect.forEach(
           requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
-        )
+        ).pipe(Effect.uninterruptible)
       }
       default: {
         return Effect.void
@@ -1099,11 +1102,17 @@ export const makeProtocolSocket = (options?: {
     })
     let currentError: RpcClientError | undefined
 
-    const broadcast = (response: FromServerEncoded) =>
-      Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+    const broadcast = (response: FromServerEncoded) => {
+      if (response._tag === "Defect" || response._tag === "ClientProtocolError") {
+        requestClientMap.clear()
+        return Effect.forEach(Array.from(clientIds), (clientId) => writeResponse(clientId, response)).pipe(
+          Effect.uninterruptible
+        )
+      }
+      return Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+    }
     const broadcastError = (error: RpcClientError) => {
       currentError = error
-      requestClientMap.clear()
       return broadcast({
         _tag: "ClientProtocolError",
         error
@@ -1217,17 +1226,22 @@ export const makeProtocolSocket = (options?: {
     )
 
     return {
-      send(clientId, request) {
+      send: Effect.fnUntraced(function*(clientId: number, request: FromClientEncoded) {
         if (currentError) {
-          return Effect.fail(currentError)
+          return yield* Effect.fail(currentError)
         }
         if (request._tag === "Request") {
           requestClientMap.set(request.id, clientId)
+        } else if (request._tag === "Interrupt") {
+          requestClientMap.delete(request.requestId)
         }
         const encoded = parser.encode(request)
-        if (encoded === undefined) return Effect.void
-        return Effect.orDie(writer.write(encoded))
-      },
+        if (encoded !== undefined) yield* Effect.orDie(writer.write(encoded))
+      }, (effect, _clientId, request) =>
+        Effect.onError(effect, () =>
+          Effect.sync(() => {
+            if (request._tag === "Request") requestClientMap.delete(request.id)
+          }))),
       supportsAck: true,
       supportsTransferables: false,
       codecFor: serialization.codecFor
