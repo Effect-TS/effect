@@ -37,6 +37,7 @@ import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
+import * as Http2 from "node:http2"
 import * as Net from "node:net"
 import * as Zlib from "node:zlib"
 
@@ -822,6 +823,41 @@ describe("HttpServer", () => {
       assert.isTrue(Exit.isFailure(exit))
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
+  describe("when writeHead throws", () => {
+    it.live("answers rejected HTTP/1.1 headers with a 500 and reports the failure", () =>
+      Effect.gen(function*() {
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serve(
+          Effect.succeed(HttpServerResponse.formData(new FormData(), { headers: { "x-invalid": "a\nb" } })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        ).pipe(Layer.build)
+
+        const response = yield* HttpClient.get("/")
+        assert.strictEqual(response.status, 500)
+        assert.strictEqual(yield* response.text, "")
+        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(NodeHttpServer.layerTest)))
+
+    it.live("closes an h2c stream whose headers HTTP/2 forbids and reports the failure", () =>
+      Effect.gen(function*() {
+        const server = Http2.createServer()
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serve(
+          Effect.succeed(HttpServerResponse.text("ok", { headers: { "keep-alive": "timeout=5" } })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server as any, { port: 0 })),
+          Layer.build
+        )
+
+        const address = server.address()
+        assert(address !== null && typeof address !== "string")
+        const answer = yield* h2Request(address.port).pipe(Effect.timeout("2 seconds"))
+        assert.deepStrictEqual(answer, { _tag: "Closed" })
+        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+      }))
+  })
+
   it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
     const requestStarted = Latch.makeUnsafe()
     const releaseResponse = Latch.makeUnsafe()
@@ -1394,6 +1430,20 @@ const getStatusText = (port: number) =>
     request.on("error", (error) => resume(Effect.fail(error)))
     return Effect.sync(() => request.destroy())
   })
+
+const h2Request = (port: number) =>
+  Effect.callback<{ readonly _tag: "Status"; readonly status: unknown } | { readonly _tag: "Closed" }>(
+    (resume) => {
+      const session = Http2.connect(`http://127.0.0.1:${port}`)
+      session.on("error", constVoid)
+      const stream = session.request({ ":path": "/" })
+      stream.on("error", constVoid)
+      stream.on("response", (headers) => resume(Effect.succeed({ _tag: "Status", status: headers[":status"] })))
+      stream.on("close", () => resume(Effect.succeed({ _tag: "Closed" })))
+      stream.end()
+      return Effect.sync(() => session.destroy())
+    }
+  )
 
 const tcpPort = (server: Http.Server): number => {
   const address = server.address()
