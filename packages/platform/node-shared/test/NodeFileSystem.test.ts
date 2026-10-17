@@ -52,7 +52,7 @@ const untypedLayer = Layer.effect(
   FileSystem.FileSystem,
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    return FileSystem.make({ ...fs, glob: undefined })
+    return FileSystem.make({ ...fs, glob: undefined, readDirectoryEntries: undefined })
   })
 ).pipe(Layer.provide(NodeFileSystem.layer))
 
