@@ -100,12 +100,18 @@ describe("EventJournal", () => {
         effect: Effect.succeed
       })
       const imported = entry(281_474_976_710_654)
+      let conflicts: Array<string> = []
       yield* journal.writeFromRemote({
         remoteId: source,
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: imported })],
-        effect: () => Effect.void
+        effect: (batch) =>
+          Effect.sync(() => {
+            conflicts = batch.flatMap((item) => idStrings(item.conflicts))
+          })
       })
 
+      // The unordered journal still reports the newer future entry.
+      assert.deepStrictEqual(conflicts, idStrings([future]))
       const expected = idStrings([local, imported, future])
       assert.deepStrictEqual(idStrings(yield* journal.entries), expected)
       const missing = yield* journal.withRemoteUncommited(peer, (entries) => Effect.succeed(idStrings(entries)))

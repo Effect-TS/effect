@@ -138,7 +138,15 @@ describe("EventJournal.makeIndexedDb", () => {
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
       const remoteId = EventJournal.makeRemoteIdUnsafe()
-      const entries = remoteEntries([entry(1000), entry(2000)])
+      const stored = entry(500)
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: remoteEntries([stored]),
+        effect: () => Effect.void
+      })
+      const added = entry(1000)
+      // A new entry followed by an echo of an entry the journal already has.
+      const entries = remoteEntries([added, stored])
       const failed = yield* Effect.exit(journal.writeFromRemote({
         remoteId,
         entries,
@@ -146,27 +154,27 @@ describe("EventJournal.makeIndexedDb", () => {
       }))
       const afterFailure = {
         failed: failed._tag === "Failure",
-        entries: (yield* journal.entries).length,
+        entries: (yield* journal.entries).map((entry) => entry.idString),
         sequence: yield* journal.nextRemoteSequence(remoteId)
       }
-      let retryCalls = 0
+      const retried: Array<string> = []
       yield* journal.writeFromRemote({
         remoteId,
         entries,
-        effect: () =>
+        effect: (batch) =>
           Effect.sync(() => {
-            retryCalls++
+            for (const { entry } of batch) retried.push(entry.idString)
           })
       })
       assert.deepStrictEqual({
         afterFailure,
-        retryCalls,
+        retried,
         entries: (yield* journal.entries).map((entry) => entry.idString),
         sequence: yield* journal.nextRemoteSequence(remoteId)
       }, {
-        afterFailure: { failed: true, entries: 0, sequence: 0 },
-        retryCalls: 1,
-        entries: entries.map(({ entry }) => entry.idString),
+        afterFailure: { failed: true, entries: [stored.idString], sequence: 0 },
+        retried: [added.idString],
+        entries: [stored.idString, added.idString],
         sequence: 2
       })
     }))

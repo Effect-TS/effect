@@ -10,6 +10,8 @@ import * as EventLogRemote from "effect/eventlog/EventLogRemote"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
+import * as SqlError from "effect/sql/SqlError"
+import { TestClock } from "effect/testing"
 
 const makeJournal = Effect.gen(function*() {
   const sql = yield* SqliteClient.make({ filename: ":memory:" })
@@ -69,6 +71,88 @@ describe("SqlEventJournal", () => {
       }).pipe(Effect.provide(layer))
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 
+  it.effect("rolls back a failed same-client handler transaction with the journal and redelivers the batch", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      yield* sql`CREATE TABLE projection (id TEXT PRIMARY KEY)`
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const group = EventGroup.empty.add({
+        tag: "UserCreated",
+        primaryKey: (payload) => payload.id,
+        payload: Schema.Struct({ id: Schema.String })
+      })
+      const handlers = EventLog.group(group, (handlers) =>
+        handlers.handle("UserCreated", ({ payload }) =>
+          // The primary key turns a missing rollback into a failed redelivery.
+          sql`INSERT INTO projection (id) VALUES (${payload.id})`.pipe(Effect.orDie))).pipe(
+          Layer.merge(EventLog.groupReactivity(group, ["users"])),
+          Layer.provide(EventLog.layerRegistry)
+        )
+      let attempts = 0
+      const layer = EventLog.layer(EventLog.schema(group), handlers).pipe(
+        Layer.provide([
+          Layer.succeed(EventJournal.EventJournal, journal),
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
+            sql.withTransaction(effect).pipe(
+              Effect.catchIf(SqlError.isSqlError, Effect.die),
+              // Abort the first attempt after the handler transaction completes,
+              // so only the enclosing journal transaction can roll it back.
+              Effect.tap(() => attempts++ === 0 ? Effect.die("aborted") : Effect.void)
+            ))
+        ])
+      )
+      const reactivity = yield* Reactivity.Reactivity
+      // Queries re-run after the replay releases the journal lock and transaction.
+      const results = yield* reactivity.query(
+        ["users"],
+        Effect.all({
+          projection: sql<{ id: string }>`SELECT id FROM projection ORDER BY id`.pipe(
+            Effect.map((rows) => rows.map((row) => row.id))
+          ),
+          journal: Effect.map(journal.entries, (entries) => entries.map((entry) => entry.primaryKey))
+        })
+      )
+      assert.deepStrictEqual(yield* Queue.take(results), { projection: [], journal: [] })
+      const encode = Schema.encodeUnknownEffect(group.events.UserCreated.payloadSchemaBinary)
+      const entries: Array<EventJournal.RemoteEntry> = []
+      for (const id of ["user-1", "user-2"]) {
+        entries.push(
+          new EventJournal.RemoteEntry({
+            remoteSequence: entries.length,
+            entry: new EventJournal.Entry({
+              id: EventJournal.makeEntryIdUnsafe(),
+              event: "UserCreated",
+              primaryKey: id,
+              payload: yield* encode({ id })
+            }, { disableChecks: true })
+          })
+        )
+      }
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          // Every subscription redelivers from the requested sequence.
+          changes: ({ startSequence }) =>
+            Effect.tap(
+              Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>(),
+              (queue) => Queue.offerAll(queue, entries.filter((entry) => entry.remoteSequence >= startSequence))
+            ),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        const afterFailure = yield* Queue.take(results)
+        yield* TestClock.adjust("200 millis")
+        const afterRedelivery = yield* Queue.take(results)
+        assert.deepStrictEqual({ afterFailure, afterRedelivery, attempts }, {
+          afterFailure: { projection: [], journal: [] },
+          afterRedelivery: { projection: ["user-1", "user-2"], journal: ["user-1", "user-2"] },
+          attempts: 2
+        })
+      }).pipe(Effect.provide(layer))
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
     describe(name, () => {
       it.effect("replays each remote batch in one callback with strictly newer same-event-and-key conflicts", () =>
@@ -126,13 +210,25 @@ describe("SqlEventJournal", () => {
         Effect.gen(function*() {
           const journal = yield* make
           const remoteId = EventJournal.makeRemoteIdUnsafe()
-          const entry = new EventJournal.Entry({
-            id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 }),
-            event: "Repro",
-            primaryKey: "key",
-            payload: new Uint8Array()
-          }, { disableChecks: true })
-          const entries = [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })]
+          const entry = (msecs: number) =>
+            new EventJournal.Entry({
+              id: EventJournal.makeEntryIdUnsafe({ msecs }),
+              event: "Repro",
+              primaryKey: "key",
+              payload: new Uint8Array()
+            }, { disableChecks: true })
+          const stored = entry(500)
+          yield* journal.writeFromRemote({
+            remoteId: EventJournal.makeRemoteIdUnsafe(),
+            entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: stored })],
+            effect: () => Effect.void
+          })
+          const added = entry(1000)
+          // A new entry followed by an echo of an entry the journal already has.
+          const entries = [
+            new EventJournal.RemoteEntry({ remoteSequence: 0, entry: added }),
+            new EventJournal.RemoteEntry({ remoteSequence: 1, entry: stored })
+          ]
           const exit = yield* Effect.exit(journal.writeFromRemote({
             remoteId,
             entries,
@@ -146,24 +242,27 @@ describe("SqlEventJournal", () => {
           }))
           assert.isTrue(Exit.isFailure(exit))
           const afterFailure = {
-            entries: yield* journal.entries,
+            entries: (yield* journal.entries).map((entry) => entry.idString),
             sequence: yield* journal.nextRemoteSequence(remoteId)
           }
-          let retryCalls = 0
+          const retried: Array<string> = []
           yield* journal.writeFromRemote({
             remoteId,
             entries,
-            effect: () =>
+            effect: (batch) =>
               Effect.sync(() => {
-                retryCalls++
+                for (const { entry } of batch) retried.push(entry.idString)
               })
           })
-          assert.deepStrictEqual({ afterFailure, retryCalls }, {
-            afterFailure: { entries: [], sequence: 0 },
-            retryCalls: 1
+          assert.deepStrictEqual({ afterFailure, retried }, {
+            afterFailure: { entries: [stored.idString], sequence: 0 },
+            retried: [added.idString]
           })
-          assert.deepStrictEqual((yield* journal.entries).map((entry) => entry.idString), [entry.idString])
-          assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+          assert.deepStrictEqual((yield* journal.entries).map((entry) => entry.idString), [
+            stored.idString,
+            added.idString
+          ])
+          assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 2)
         }))
     })
   }
