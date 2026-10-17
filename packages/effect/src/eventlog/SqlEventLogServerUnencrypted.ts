@@ -28,6 +28,8 @@ import * as EventLogServerUnencrypted from "./EventLogServerUnencrypted.ts"
 
 let storageIdCounter = 0
 const withTracerDisabled = Effect.withTracerEnabled(false)
+// Keeps each history lookup within dialect parameter limits.
+const lookupBatchSize = 200
 
 type StorageOptions = {
   readonly entryTablePrefix?: string
@@ -58,8 +60,6 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   const entriesTable = options?.entryTablePrefix ?? "effect_events"
   const remoteIdTable = options?.remoteIdTable ?? "effect_remote_id"
   const insertBatchSize = options?.insertBatchSize ?? 200
-  // Keeps each lookup under the 2100 parameter limit of MSSQL.
-  const lookupBatchSize = 200
   const storesTable = `${entriesTable}_stores`
   const sessionAuthBindingsTable = `${entriesTable}_session_auth_bindings`
 
@@ -146,10 +146,9 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
           )`
   })
 
-  // Serves the batch lookup in `entriesAfter`. Postgres limits B-tree rows to
-  // about 2.7 kB, so it indexes hashes of the unbounded text columns; MySQL
-  // indexes prefixes. MSSQL has no bounded index yet, so its lookups still scan
-  // the store's id range.
+  // Serves the batch lookup in `entriesAfter`. Postgres indexes hashes to stay
+  // under its B-tree row limit, MySQL indexes prefixes, and MSSQL has no
+  // bounded index yet.
   const eventKeyIndex = `${entriesTable}_event_key_idx`
   yield* sql.onDialectOrElse({
     pg: () =>
@@ -399,7 +398,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       Effect.flatMap(decodeRemoteEntries)
     )
 
-  // Exact comparisons stay alongside the Postgres hashes to rule out
+  // Postgres matches on the indexed hashes, then on the values to rule out
   // collisions.
   const matchesKey = sql.onDialectOrElse({
     pg: () => (event: string, primaryKeys: ReadonlyArray<string>) =>
@@ -415,7 +414,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   })
 
   // One SELECT per index lookup, joined with UNION ALL: MySQL scans the whole
-  // store for the equivalent OR. Rows can repeat and are unordered.
+  // store for the equivalent OR.
   const selectChunkHistory = (storeId: string, oldest: Entry, entries: ReadonlyArray<Entry>) => {
     const primaryKeysByEvent = new Map<string, Set<string>>()
     for (const entry of entries) {
@@ -445,6 +444,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     return Effect.flatMap(statement, decodeRemoteEntries)
   }
 
+  // Chunks and the UNION ALL branches can return the same row more than once.
   const selectBatchHistory = (storeId: string, oldest: Entry, batch: Arr.NonEmptyReadonlyArray<Entry>) =>
     Effect.forEach(
       Arr.chunksOf(batch, lookupBatchSize),
@@ -452,10 +452,8 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     ).pipe(
       Effect.map((chunks) => {
         const bySequence = new Map<number, RemoteEntry>()
-        for (const chunk of chunks) {
-          for (const remoteEntry of chunk) {
-            bySequence.set(remoteEntry.remoteSequence, remoteEntry)
-          }
+        for (const remoteEntry of chunks.flat()) {
+          bySequence.set(remoteEntry.remoteSequence, remoteEntry)
         }
         return Array.from(bySequence.values()).sort((a, b) => a.remoteSequence - b.remoteSequence)
       })
