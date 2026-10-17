@@ -654,20 +654,33 @@ export const makeIndexedDb = (options?: {
 }): Effect.Effect<EventJournal["Service"], EventJournalError, Scope> =>
   Effect.gen(function*() {
     const database = options?.database ?? "effect_event_journal"
-    const openRequest = indexedDB.open(database, 1)
-    openRequest.onupgradeneeded = () => {
+    const openRequest = indexedDB.open(database, 2)
+    openRequest.onupgradeneeded = (event) => {
       const db = openRequest.result
 
-      const entries = db.createObjectStore("entries", { keyPath: "id" })
-      entries.createIndex("id", "id", { unique: true })
-      entries.createIndex("event", "event")
+      if (event.oldVersion < 1) {
+        const entries = db.createObjectStore("entries", { keyPath: "id" })
+        entries.createIndex("id", "id", { unique: true })
+        entries.createIndex("event", "event")
 
-      const remotes = db.createObjectStore("remotes", { keyPath: ["remoteId", "entryId"] })
-      remotes.createIndex("id", ["remoteId", "entryId"], { unique: true })
-      remotes.createIndex("sequence", ["remoteId", "sequence"], { unique: true })
+        const remotes = db.createObjectStore("remotes", { keyPath: ["remoteId", "entryId"] })
+        remotes.createIndex("id", ["remoteId", "entryId"], { unique: true })
+        remotes.createIndex("sequence", ["remoteId", "sequence"], { unique: true })
 
-      const remoteEntryId = db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] })
-      remoteEntryId.createIndex("id", "remoteId", { unique: true })
+        const remoteEntryId = db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] })
+        remoteEntryId.createIndex("id", "remoteId", { unique: true })
+      }
+
+      // Entry ids order creation, not insertion, so uploads checkpoint an
+      // insertion sequence instead. Backfill it from the existing entries.
+      const sequence = db.createObjectStore("entrySequence", { autoIncrement: true })
+      const cursorRequest = openRequest.transaction!.objectStore("entries").openKeyCursor()
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result
+        if (!cursor) return
+        sequence.add(cursor.primaryKey)
+        cursor.continue()
+      }
     }
 
     const db = yield* Effect.acquireRelease(
@@ -682,10 +695,12 @@ export const makeIndexedDb = (options?: {
         const committed = makeEntries(entries)
         return restore(effect(committed)).pipe(
           Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
-            const tx = db.transaction("entries", "readwrite")
+            const tx = db.transaction(["entries", "entrySequence"], "readwrite")
             const store = tx.objectStore("entries")
+            const sequence = tx.objectStore("entrySequence")
             for (const entry of committed) {
               store.put(encodeEntryIdb(entry))
+              sequence.add(entry.id as IDBValidKey)
             }
             onTransactionDone(tx, "writeMany", resume, constVoid)
           })),
@@ -757,11 +772,13 @@ export const makeIndexedDb = (options?: {
         }
 
         yield* Effect.callback<void, EventJournalError>((resume) => {
-          const tx = db.transaction(["entries", "remotes"], "readwrite")
+          const tx = db.transaction(["entries", "remotes", "entrySequence"], "readwrite")
           const entries = tx.objectStore("entries")
           const remotes = tx.objectStore("remotes")
+          const sequence = tx.objectStore("entrySequence")
           for (const remoteEntry of uncommittedRemotes) {
             entries.add(encodeEntryIdb(remoteEntry.entry))
+            sequence.add(remoteEntry.entry.id as IDBValidKey)
           }
           // Sequences advance with the commit, so a failed batch is redelivered.
           for (const remoteEntry of options.entries) {
@@ -778,54 +795,61 @@ export const makeIndexedDb = (options?: {
           duplicateEntries
         }
       }),
-      withRemoteUncommited: (remoteId, f) =>
-        Effect.callback<ReadonlyArray<Entry>, EventJournalError>((resume) => {
-          const entries: Array<Entry> = []
-          const tx = db.transaction(["entries", "remotes", "remoteEntryId"], "readwrite")
-
-          const entriesStore = tx.objectStore("entries")
-          const remotesStore = tx.objectStore("remotes")
-          const remoteEntryIdStore = tx.objectStore("remoteEntryId")
-
-          const remoteIdKey = remoteId as IDBValidKey
-          const request = remoteEntryIdStore.get(remoteIdKey) as IDBRequest<{ entryId: IDBValidKey } | undefined>
-          request.onsuccess = () => {
-            const startEntryId = request.result?.entryId
-            const entryCursor = entriesStore.index("id").openCursor(
-              startEntryId ? IDBKeyRange.lowerBound(startEntryId, true) : null,
-              "next"
-            )
-            entryCursor.onsuccess = () => {
-              const cursor = entryCursor.result
-              if (!cursor) return
-              const entry = decodeEntryIdb(cursor.value)
-              remotesStore.get([remoteIdKey, entry.id as IDBValidKey]).onsuccess = (event) => {
-                if (!(event.target && "result" in event.target && event.target.result)) entries.push(entry)
+      withRemoteUncommited: (remoteId, f) => {
+        const remoteIdKey = remoteId as IDBValidKey
+        return Effect.callback<{ readonly entries: Array<Entry>; readonly sequence: number }, EventJournalError>(
+          (resume) => {
+            const entries: Array<Entry> = []
+            // The last insertion sequence visited, or 0 when nothing follows the checkpoint.
+            let sequence = 0
+            const tx = db.transaction(["entries", "remotes", "remoteEntryId", "entrySequence"], "readonly")
+            const entriesStore = tx.objectStore("entries")
+            const remotesStore = tx.objectStore("remotes")
+            const checkpoint = tx.objectStore("remoteEntryId").get([remoteIdKey]) as IDBRequest<Checkpoint | undefined>
+            checkpoint.onsuccess = () => {
+              const cursorRequest = tx.objectStore("entrySequence").openCursor(
+                IDBKeyRange.lowerBound(checkpoint.result?.sequence ?? 0, true)
+              )
+              cursorRequest.onsuccess = () => {
+                const cursor = cursorRequest.result
+                if (!cursor) return
+                sequence = cursor.key as number
+                const entryId = cursor.value as IDBValidKey
+                const known = remotesStore.getKey([remoteIdKey, entryId])
+                known.onsuccess = () => {
+                  if (known.result !== undefined) return
+                  const entry = entriesStore.get(entryId)
+                  entry.onsuccess = () => {
+                    entries.push(decodeEntryIdb(entry.result))
+                  }
+                }
                 cursor.continue()
               }
             }
+            onTransactionDone(tx, "withRemoteUncommited", resume, () => ({ entries, sequence }))
+            return Effect.sync(() => tx.abort())
           }
-
-          onTransactionDone(tx, "withRemoteUncommited", resume, () => entries)
-          return Effect.sync(() => tx.abort())
-        }).pipe(
-          Effect.flatMap((entries) => {
-            if (!Arr.isReadonlyArrayNonEmpty(entries)) return Effect.succeedNone
-            const entryId = entries[entries.length - 1].id
+        ).pipe(
+          Effect.flatMap(({ entries, sequence }) => {
+            if (sequence === 0) return Effect.succeedNone
+            entries.sort(byEntryId)
             return Effect.uninterruptibleMask((restore) =>
-              restore(f(entries)).pipe(
-                Effect.tap(
-                  idbReq("withRemoteUncommited", () =>
-                    db.transaction("remoteEntryId", "readwrite").objectStore("remoteEntryId").put({
-                      remoteId,
-                      entryId
-                    }))
-                ),
-                Effect.asSome
+              restore(Arr.isReadonlyArrayNonEmpty(entries) ? Effect.asSome(f(entries)) : Effect.succeedNone).pipe(
+                Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
+                  // Uploads can complete out of order; the checkpoint only moves forward.
+                  const tx = db.transaction("remoteEntryId", "readwrite")
+                  const store = tx.objectStore("remoteEntryId")
+                  const checkpoint = store.get([remoteIdKey]) as IDBRequest<Checkpoint | undefined>
+                  checkpoint.onsuccess = () => {
+                    if ((checkpoint.result?.sequence ?? 0) < sequence) store.put({ remoteId, sequence })
+                  }
+                  onTransactionDone(tx, "withRemoteUncommited", resume, constVoid)
+                }))
               )
             )
           })
-        ),
+        )
+      },
       nextRemoteSequence: (remoteId) =>
         Effect.callback<number, EventJournalError>((resume) => {
           const tx = db.transaction("remotes", "readonly")
@@ -874,6 +898,15 @@ const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
     return semaphore.withPermit
   }
 })
+
+// Upload progress for a remote. Rows written before database version 2 hold
+// an `entryId` instead; it cannot account for later imports of older entries,
+// so it is ignored.
+interface Checkpoint {
+  readonly sequence?: number
+}
+
+const byEntryId = (a: Entry, b: Entry) => indexedDB.cmp(a.id as IDBValidKey, b.id as IDBValidKey)
 
 // The smallest entry id created in the given millisecond.
 const entryIdLowerBound = (millis: number): Uint8Array => {

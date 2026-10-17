@@ -44,6 +44,56 @@ const countTransactions = (database: string) =>
   ).pipe(Effect.map(({ transactions }) => transactions))
 
 describe("EventJournal.makeIndexedDb", () => {
+  it.effect("withRemoteUncommited does not resend entries after a successful callback without a remote echo", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.write({
+        event: "Repro",
+        primaryKey: "a",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      })
+      yield* journal.withRemoteUncommited(remoteId, () => Effect.void)
+
+      const b = yield* journal.write({
+        event: "Repro",
+        primaryKey: "b",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      })
+      const second = yield* journal.withRemoteUncommited(
+        remoteId,
+        (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+      )
+      assert.deepStrictEqual(second, Option.some([b.idString]))
+    }))
+
+  it.effect("withRemoteUncommited forwards older entries imported after a successful upload", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const local = yield* journal.write({
+        event: "Repro",
+        primaryKey: "local",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      })
+      yield* journal.withRemoteUncommited(remoteId, () => Effect.void)
+
+      const older = entry(local.createdAtMillis - 1)
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: remoteEntries([older]),
+        effect: () => Effect.void
+      })
+      const forwarded = yield* journal.withRemoteUncommited(
+        remoteId,
+        (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+      )
+      assert.deepStrictEqual(forwarded, Option.some([older.idString]))
+    }))
+
   it.effect("writeMany commits and publishes a batch in one transaction only when its callback succeeds", () =>
     Effect.gen(function*() {
       const database = uniqueName("journal")
