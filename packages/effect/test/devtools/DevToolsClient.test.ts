@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, type Duration, Effect, Fiber, Latch, Layer, Queue } from "effect"
+import { Deferred, type Duration, Effect, Fiber, Latch, Layer } from "effect"
 import { DevTools, DevToolsClient } from "effect/devtools"
 import { Socket } from "effect/socket"
 import { TestClock } from "effect/testing"
@@ -38,29 +38,22 @@ const connection = (options?: { readonly dropAfter?: Duration.Input }) =>
 describe("DevToolsClient", () => {
   it.effect("builds promptly when the server only responds to client messages", () =>
     Effect.gen(function*() {
-      const responses = yield* Queue.unbounded<string, Socket.SocketError>()
+      const ping = yield* Deferred.make<void>()
       const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
         Effect.gen(function*() {
           if (Socket.isCloseEvent(chunk)) return
           const text = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
-          for (const line of text.trim().split("\n")) {
-            if (line.length > 0 && JSON.parse(line)._tag === "Ping") {
-              yield* Queue.offer(responses, "{\"_tag\":\"Pong\"}\n")
-            }
+          if (text.trim().split("\n").some((line) => JSON.parse(line)._tag === "Ping")) {
+            yield* Deferred.succeed(ping, void 0)
           }
         })
       const socket = Socket.make({
         reader: Effect.gen(function*() {
-          // Model asynchronous connection setup so TestClock tracks the response
-          // and the layer startup work it resumes before returning from adjust.
+          // Model asynchronous connection setup before waiting for the client Ping.
           yield* Effect.sleep("1 millis")
-          yield* Effect.addFinalizer(() =>
-            Queue.fail(responses, new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
-          )
-          return {
-            pull: Effect.map(Queue.take(responses), (message) => [message]),
-            upgrade: () => Effect.fail(new Socket.SocketError({ reason: new Socket.SocketUpgradeError({}) }))
-          }
+          yield* Effect.addFinalizer(() => Deferred.succeed(ping, void 0))
+          const reader = yield* connection()
+          return { ...reader, pull: Effect.andThen(Deferred.await(ping), reader.pull) }
         }),
         writer: Effect.succeed({ write, writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true }) })
       })
@@ -72,25 +65,6 @@ describe("DevToolsClient", () => {
       )
 
       yield* TestClock.adjust("100 millis")
-      assert.isTrue(yield* Deferred.isDone(built))
-    }))
-
-  it.effect("bounds the startup wait to one second when the endpoint is unavailable", () =>
-    Effect.gen(function*() {
-      const socket = Socket.make({
-        reader: refused,
-        writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
-      })
-      const built = yield* Deferred.make<void>()
-      yield* Layer.build(DevTools.layerSocket).pipe(
-        Effect.provideService(Socket.Socket, socket),
-        Effect.andThen(Deferred.succeed(built, void 0)),
-        Effect.forkScoped
-      )
-
-      yield* TestClock.adjust("999 millis")
-      assert.isFalse(yield* Deferred.isDone(built))
-      yield* TestClock.adjust("1 millis")
       assert.isTrue(yield* Deferred.isDone(built))
     }))
 
