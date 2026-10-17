@@ -48,6 +48,28 @@ describe("HttpRouter", () => {
     }
   })
 
+  it("toWebHandler shares in-progress disposal", async () => {
+    const started = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.promise(async () => {
+          started.resolve()
+          await release.promise
+        })
+      )),
+      { disableLogger: true }
+    )
+    await handler(new Request("http://localhost/"))
+
+    const first = dispose()
+    await started.promise
+    const second = dispose()
+    release.resolve()
+    await Promise.all([first, second])
+    assert.strictEqual(second, first)
+  })
+
   for (
     const { prefix, requestUrl } of [
       { prefix: "/", requestUrl: "/users" },
