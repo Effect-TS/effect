@@ -1,10 +1,5 @@
 /**
- * SQL-backed persistence for the unstable event-log journal.
- *
- * This module implements `EventJournal` on top of a `SqlClient`. It stores event
- * entries as encoded bytes and stores per-remote sequence metadata in separate
- * tables, giving event-log programs a durable journal that can be replayed after
- * restart and synchronized with remote journals.
+ * SQL-backed event journal with per-remote upload checkpoints.
  *
  * @stability unstable
  * @since 4.0.0
@@ -29,8 +24,13 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  *
  * **Details**
  *
- * The constructor creates the entry and remote metadata tables when needed,
- * persists local and remote entries, and uses the configured `SqlClient`.
+ * Maintains `entryTable`, `remotesTable`, `${entryTable}_sequence` and
+ * `${remotesTable}_checkpoints` using the configured `SqlClient`.
+ *
+ * **Gotchas**
+ *
+ * Creating or migrating the schema requires a writable connection. Migrated
+ * databases can be reopened read-only.
  *
  * @stability unstable
  * @category constructors
@@ -50,88 +50,212 @@ export const make = (options?: {
     const entryTable = options?.entryTable ?? "effect_event_journal"
     const remotesTable = options?.remotesTable ?? "effect_event_remotes"
 
+    const sequenceTable = `${entryTable}_sequence`
+    const checkpointsTable = `${remotesTable}_checkpoints`
+
     const entryTableSql = sql(entryTable)
     const remotesTableSql = sql(remotesTable)
+    const sequenceTableSql = sql(sequenceTable)
+    const checkpointsTableSql = sql(checkpointsTable)
 
-    yield* sql.onDialectOrElse({
-      pg: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${entryTableSql} (
-            id BYTEA PRIMARY KEY,
-            event TEXT NOT NULL,
-            primary_key TEXT NOT NULL,
-            payload BYTEA NOT NULL,
-            timestamp BIGINT NOT NULL
-          )`,
-      mysql: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${entryTableSql} (
-            id BINARY(16) PRIMARY KEY,
-            event TEXT NOT NULL,
-            primary_key TEXT NOT NULL,
-            payload BLOB NOT NULL,
-            timestamp BIGINT NOT NULL
-          )`,
-      mssql: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${entryTableSql} (
-            id UNIQUEIDENTIFIER PRIMARY KEY,
-            event NVARCHAR(MAX) NOT NULL,
-            primary_key NVARCHAR(MAX) NOT NULL,
-            payload VARBINARY(MAX) NOT NULL,
-            timestamp BIGINT NOT NULL
-          )`,
-      orElse: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${entryTableSql} (
-            id BLOB PRIMARY KEY,
-            event TEXT NOT NULL,
-            primary_key TEXT NOT NULL,
-            payload BLOB NOT NULL,
-            timestamp INTEGER NOT NULL
-          )`
-    }).pipe(withTracerDisabled)
+    // to_regclass folds unquoted names to lowercase, so pass the quoted identifier.
+    const quotedSequenceTable = sql`${sequenceTableSql}`.compile(true)[0]
 
-    yield* sql.onDialectOrElse({
-      pg: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-            remote_id BYTEA NOT NULL,
-            entry_id BYTEA NOT NULL,
-            sequence INT NOT NULL,
-            PRIMARY KEY (remote_id, entry_id)
-          )`,
+    // The sequence table marks a complete migration; skip DDL for read-only reopen.
+    const sequenceTableExists = sql.onDialectOrElse({
+      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quotedSequenceTable}) IS NOT NULL`,
       mysql: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-            remote_id BINARY(16) NOT NULL,
-            entry_id BINARY(16) NOT NULL,
-            sequence INT NOT NULL,
-            PRIMARY KEY (remote_id, entry_id)
-          )`,
-      mssql: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-            remote_id UNIQUEIDENTIFIER NOT NULL,
-            entry_id UNIQUEIDENTIFIER NOT NULL,
-            sequence INT NOT NULL,
-            PRIMARY KEY (remote_id, entry_id)
-          )`,
-      orElse: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-            remote_id BLOB NOT NULL,
-            entry_id BLOB NOT NULL,
-            sequence INT NOT NULL,
-            PRIMARY KEY (remote_id, entry_id)
-          )`
-    }).pipe(withTracerDisabled)
+        sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${sequenceTable}`,
+      mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${sequenceTable}, 'U') IS NOT NULL`,
+      orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${sequenceTable}`
+    }).pipe(Effect.map((rows) => rows.length > 0))
+
+    // PostgreSQL needs a lock and recheck to make concurrent schema creation safe.
+    const migrate = Effect.gen(function*() {
+      yield* sql.onDialectOrElse({
+        pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quotedSequenceTable}))`,
+        orElse: () => Effect.void
+      })
+      if (yield* sequenceTableExists) return
+
+      const eventIndex = sql(`${entryTable}_event_idx`)
+      const timestampIndex = sql(`${entryTable}_timestamp_idx`)
+      const sequenceIndex = sql(`${remotesTable}_sequence_idx`)
+
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${entryTableSql} (
+              id BYTEA PRIMARY KEY,
+              event TEXT NOT NULL,
+              primary_key TEXT NOT NULL,
+              payload BYTEA NOT NULL,
+              timestamp BIGINT NOT NULL
+            )`,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${entryTableSql} (
+              id BINARY(16) PRIMARY KEY,
+              event TEXT NOT NULL,
+              primary_key TEXT NOT NULL,
+              payload BLOB NOT NULL,
+              timestamp BIGINT NOT NULL
+            )`,
+        mssql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${entryTableSql} (
+              id UNIQUEIDENTIFIER PRIMARY KEY,
+              event NVARCHAR(MAX) NOT NULL,
+              primary_key NVARCHAR(MAX) NOT NULL,
+              payload VARBINARY(MAX) NOT NULL,
+              timestamp BIGINT NOT NULL
+            )`,
+        orElse: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${entryTableSql} (
+              id BLOB PRIMARY KEY,
+              event TEXT NOT NULL,
+              primary_key TEXT NOT NULL,
+              payload BLOB NOT NULL,
+              timestamp INTEGER NOT NULL
+            )`
+      })
+
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
+              remote_id BYTEA NOT NULL,
+              entry_id BYTEA NOT NULL,
+              sequence INT NOT NULL,
+              PRIMARY KEY (remote_id, entry_id)
+            )`,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
+              remote_id BINARY(16) NOT NULL,
+              entry_id BINARY(16) NOT NULL,
+              sequence INT NOT NULL,
+              PRIMARY KEY (remote_id, entry_id)
+            )`,
+        mssql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
+              remote_id UNIQUEIDENTIFIER NOT NULL,
+              entry_id UNIQUEIDENTIFIER NOT NULL,
+              sequence INT NOT NULL,
+              PRIMARY KEY (remote_id, entry_id)
+            )`,
+        orElse: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
+              remote_id BLOB NOT NULL,
+              entry_id BLOB NOT NULL,
+              sequence INT NOT NULL,
+              PRIMARY KEY (remote_id, entry_id)
+            )`
+      })
+
+      // Insertion sequences let uploads include older entries imported later.
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${sequenceTableSql} (
+              sequence BIGSERIAL PRIMARY KEY,
+              entry_id BYTEA NOT NULL UNIQUE
+            )`,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${sequenceTableSql} (
+              sequence BIGINT AUTO_INCREMENT PRIMARY KEY,
+              entry_id BINARY(16) NOT NULL UNIQUE
+            )`,
+        mssql: () =>
+          sql`
+            CREATE TABLE ${sequenceTableSql} (
+              sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
+              entry_id UNIQUEIDENTIFIER NOT NULL UNIQUE
+            )`,
+        orElse: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${sequenceTableSql} (
+              sequence INTEGER PRIMARY KEY,
+              entry_id BLOB NOT NULL UNIQUE
+            )`
+      })
+
+      yield* sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${checkpointsTableSql} (
+              remote_id BYTEA PRIMARY KEY,
+              sequence BIGINT NOT NULL
+            )`,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${checkpointsTableSql} (
+              remote_id BINARY(16) PRIMARY KEY,
+              sequence BIGINT NOT NULL
+            )`,
+        mssql: () =>
+          sql`
+            CREATE TABLE ${checkpointsTableSql} (
+              remote_id UNIQUEIDENTIFIER PRIMARY KEY,
+              sequence BIGINT NOT NULL
+            )`,
+        orElse: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${checkpointsTableSql} (
+              remote_id BLOB PRIMARY KEY,
+              sequence INTEGER NOT NULL
+            )`
+      })
+
+      yield* sql.onDialectOrElse({
+        // MySQL indexes TEXT columns by prefix only.
+        mysql: () =>
+          Effect.andThen(
+            sql`CREATE INDEX ${eventIndex} ON ${entryTableSql} (event(191), primary_key(191), timestamp)`,
+            sql`CREATE INDEX ${timestampIndex} ON ${entryTableSql} (timestamp)`
+          ),
+        // B-tree entries are limited to about 2.7 KB, so index hashes of the
+        // unbounded columns.
+        pg: () =>
+          Effect.andThen(
+            sql`CREATE INDEX IF NOT EXISTS ${eventIndex} ON ${entryTableSql} (md5(event), md5(primary_key), timestamp)`,
+            sql`CREATE INDEX IF NOT EXISTS ${timestampIndex} ON ${entryTableSql} (timestamp)`
+          ),
+        // NVARCHAR(MAX) columns cannot be index keys.
+        mssql: () => sql`CREATE INDEX ${timestampIndex} ON ${entryTableSql} (timestamp)`,
+        orElse: () =>
+          Effect.andThen(
+            sql`CREATE INDEX IF NOT EXISTS ${eventIndex} ON ${entryTableSql} (event, primary_key, timestamp)`,
+            sql`CREATE INDEX IF NOT EXISTS ${timestampIndex} ON ${entryTableSql} (timestamp)`
+          )
+      })
+      yield* sql.onDialectOrElse({
+        mysql: () => sql`CREATE INDEX ${sequenceIndex} ON ${remotesTableSql} (remote_id, sequence)`,
+        mssql: () => sql`CREATE INDEX ${sequenceIndex} ON ${remotesTableSql} (remote_id, sequence)`,
+        orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sequenceIndex} ON ${remotesTableSql} (remote_id, sequence)`
+      })
+
+      // Number existing entries in creation order. `WHERE true` keeps SQLite
+      // from parsing ON CONFLICT as a join constraint.
+      yield* sql`
+        INSERT INTO ${sequenceTableSql} (entry_id)
+        SELECT id FROM ${entryTableSql} WHERE true ORDER BY timestamp ASC, id ASC
+        ON CONFLICT DO NOTHING
+      `
+    }).pipe(sql.withTransaction, withTracerDisabled)
+
+    if (!(yield* withTracerDisabled(sequenceTableExists))) {
+      yield* migrate
+    }
 
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
     const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
     const toEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> => rows.map(toEntry)
-    // Sort by id bytes, which dialects do not all collate alike. Rows are
-    // already in timestamp order, so this only reorders timestamp ties.
+    // Sort timestamp ties by id bytes consistently across dialects.
     const toOrderedEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> =>
       rows.map(toEntry).sort(EventJournal.Entry.Order)
 
@@ -143,6 +267,16 @@ export const make = (options?: {
       Request: RemoteRowArray,
       execute: (entries) => sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
+    // Serialize writers so checkpoints cannot skip out-of-order commits.
+    // Lock before callbacks in both paths to avoid projection-row deadlocks.
+    const lockWriters = sql.onDialectOrElse({
+      pg: () => Effect.asVoid(sql`LOCK TABLE ${sequenceTableSql} IN SHARE ROW EXCLUSIVE MODE`),
+      orElse: () => Effect.void
+    })
+    const insertSequence = (entries: ReadonlyArray<EventJournal.Entry>) =>
+      sql`INSERT INTO ${sequenceTableSql} ${
+        sql.insert(entries.map((entry) => ({ entry_id: entry.id })))
+      } ON CONFLICT DO NOTHING`
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
 
@@ -158,6 +292,8 @@ export const make = (options?: {
         entry_id: remoteEntry.entry.id,
         sequence: remoteEntry.remoteSequence
       }))
+
+      yield* lockWriters
 
       const existingIds = new Set<string>()
       if (entries.length > 0) {
@@ -187,13 +323,22 @@ export const make = (options?: {
 
       if (compacted.length > 0) {
         const index = new ConflictIndex(compacted)
-        const stored = yield* sql`
-            SELECT *
-            FROM ${entryTableSql}
-            WHERE ${sql.in("event", index.events)} AND
-                  timestamp > ${index.oldestMillis}
-            ORDER BY timestamp ASC
-          `.pipe(
+        const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
+        // Match the hash index; exact predicates below rule out hash collisions.
+        const hashed = sql.onDialectOrElse({
+          pg: () => [
+            sql`md5(event) IN (${sql.csv(index.events.map((event) => sql`md5(${event})`))})`,
+            sql`md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))})`
+          ],
+          orElse: () => []
+        })
+        const conflicts = sql.and([
+          ...hashed,
+          sql.in("event", index.events),
+          sql.in("primary_key", primaryKeys),
+          sql`timestamp > ${index.oldestMillis}`
+        ])
+        const stored = yield* sql`SELECT * FROM ${entryTableSql} WHERE ${conflicts} ORDER BY timestamp ASC`.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )
@@ -203,10 +348,10 @@ export const make = (options?: {
         yield* options.effect(index.toBatch())
       }
 
-      // Keep the incoming batch out of conflict queries and persist only after
-      // compaction and every callback have succeeded.
+      // Persist after replay so conflict queries exclude the incoming batch.
       if (entries.length > 0) {
         yield* insertEntries(entries.map(toEntryRow))
+        yield* insertSequence(entries)
       }
       if (remoteRows.length > 0) {
         yield* insertRemotes(remoteRows)
@@ -220,11 +365,20 @@ export const make = (options?: {
     const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
       Effect.uninterruptibleMask((restore) => {
         const committed = EventJournal.makeEntries(entries)
-        return restore(effect(committed)).pipe(
-          Effect.tap(
-            insertEntries(committed.map(toEntryRow)).pipe(
-              Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeMany" }))
-            )
+        return Effect.gen(function*() {
+          yield* lockWriters
+          const result = yield* restore(effect(committed)).pipe(
+            Effect.mapError((error) => new CallbackFailure(error))
+          )
+          yield* insertEntries(committed.map(toEntryRow))
+          yield* insertSequence(committed)
+          return result
+        }).pipe(
+          sql.withTransaction,
+          Effect.mapError((error) =>
+            error instanceof CallbackFailure
+              ? error.error
+              : new EventJournal.EventJournalError({ cause: error, method: "writeMany" })
           ),
           Effect.tap(PubSub.publishAll(pubsub, committed))
         )
@@ -250,18 +404,41 @@ export const make = (options?: {
         ),
       withRemoteUncommited: Effect.fnUntraced(
         function*(remoteId, f) {
+          const mapError = Effect.mapError((cause: unknown) =>
+            new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" })
+          )
+          // Capture an upper bound so entries committed during upload remain pending.
+          const [{ checkpoint, latest }] = yield* sql`
+            SELECT
+              COALESCE((SELECT sequence FROM ${checkpointsTableSql} WHERE remote_id = ${remoteId}), 0) AS checkpoint,
+              COALESCE((SELECT MAX(sequence) FROM ${sequenceTableSql}), 0) AS latest
+          `.pipe(Effect.flatMap(decodeUploadBounds), mapError)
+          if (latest <= checkpoint) return yield* Effect.succeedNone
           const entries = yield* sql`
-            SELECT *
-            FROM ${entryTableSql}
-            WHERE id NOT IN (SELECT entry_id FROM ${remotesTableSql} WHERE remote_id = ${remoteId})
-            ORDER BY timestamp ASC
+            SELECT e.*
+            FROM ${sequenceTableSql} s
+            JOIN ${entryTableSql} e ON e.id = s.entry_id
+            WHERE s.sequence > ${checkpoint} AND
+                  s.sequence <= ${latest} AND
+                  NOT EXISTS (
+                    SELECT 1 FROM ${remotesTableSql} r WHERE r.remote_id = ${remoteId} AND r.entry_id = s.entry_id
+                  )
           `.pipe(
             Effect.flatMap(decodeEntryRows),
             Effect.map(toOrderedEntries),
-            Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" }))
+            mapError
           )
-          if (!Arr.isReadonlyArrayNonEmpty(entries)) return yield* Effect.succeedNone
-          return yield* Effect.asSome(f(entries))
+          // Uploads can complete out of order; the checkpoint only moves forward.
+          const saveCheckpoint = sql`
+            INSERT INTO ${checkpointsTableSql} ${sql.insert({ remote_id: remoteId, sequence: latest })}
+            ON CONFLICT (remote_id) DO UPDATE SET sequence = excluded.sequence
+            WHERE ${checkpointsTableSql}.sequence < excluded.sequence
+          `.pipe(mapError)
+          return yield* Effect.uninterruptibleMask((restore) =>
+            restore(Arr.isReadonlyArrayNonEmpty(entries) ? Effect.asSome(f(entries)) : Effect.succeedNone).pipe(
+              Effect.tap(saveCheckpoint)
+            )
+          )
         },
         withTracerDisabled
       ),
@@ -280,6 +457,8 @@ export const make = (options?: {
       destroy: Effect.gen(function*() {
         yield* sql`DROP TABLE ${entryTableSql}`
         yield* sql`DROP TABLE ${remotesTableSql}`
+        yield* sql`DROP TABLE ${sequenceTableSql}`
+        yield* sql`DROP TABLE ${checkpointsTableSql}`
       }).pipe(
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "destroy" }))
@@ -294,25 +473,11 @@ export const make = (options?: {
   })
 
 /**
- * Provides `EventJournal` using the SQL-backed implementation created by
- * `make`.
- *
- * **When to use**
- *
- * Use when composing a Layer graph that should provide a persistent SQL-backed
- * `EventJournal` from an existing `SqlClient` service.
- *
- * **Details**
- *
- * The layer delegates to `make(options)`, so the same optional `entryTable` and
- * `remotesTable` settings are used and construction requires `SqlClient` and
- * may fail with `SqlError`.
+ * Provides a SQL-backed `EventJournal` from an existing `SqlClient` service.
  *
  * **Gotchas**
  *
- * Layer construction performs the same minimal `CREATE TABLE IF NOT EXISTS`
- * setup as `make`; manage indexes and schema migrations outside this layer when
- * your SQL schema needs more than the built-in tables.
+ * Creating or migrating the schema requires a writable connection.
  *
  * @see {@link make} for constructing the SQL-backed service directly
  * @see {@link EventJournal.layerMemory} for an in-memory `EventJournal` layer
@@ -367,6 +532,9 @@ const EntryRow = Schema.Struct({
 })
 
 const EntryRowArray = Schema.Array(EntryRow)
+const decodeUploadBounds = Schema.decodeUnknownEffect(Schema.Tuple([
+  Schema.Struct({ checkpoint: SqlNatural, latest: SqlNatural })
+]))
 const EntryIdRowArray = Schema.Array(Schema.Struct({ id: SqlEntryId }))
 
 type EntryRow = Schema.Schema.Type<typeof EntryRow>
@@ -396,3 +564,11 @@ const RemoteRow = Schema.Struct({
 const RemoteRowArray = Schema.Array(RemoteRow)
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
+
+// Preserve callback errors without wrapping them as journal SQL errors.
+class CallbackFailure<E> {
+  readonly error: E
+  constructor(error: E) {
+    this.error = error
+  }
+}
