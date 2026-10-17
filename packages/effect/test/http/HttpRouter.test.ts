@@ -119,30 +119,42 @@ describe("HttpRouter", () => {
       assert.strictEqual(body, "/users")
     }))
 
-  it.effect("names maxParamLength when a path parameter is too long", () =>
+  it.effect("describes route misses caused by maxParamLength", () =>
     Effect.gen(function*() {
-      const handled = Effect.gen(function*() {
-        const router = yield* HttpRouter.HttpRouter
-        yield* router.add("GET", "/addresses/:address", HttpServerResponse.text("ok"))
-        return yield* router.asHttpEffect()
-      }).pipe(
-        Effect.provide(HttpRouter.layer),
-        Effect.provideService(
-          HttpServerRequest.HttpServerRequest,
-          HttpServerRequest.fromWeb(new Request("http://localhost/addresses/" + "a".repeat(101)))
-        ),
-        Effect.flip
-      )
-      const error = yield* handled
-      assert.strictEqual(HttpServerError.isHttpServerError(error), true)
-      if (!HttpServerError.isHttpServerError(error)) return
-      const reason = error.reason
-      assert.strictEqual(reason._tag, "RouteNotFound")
-      if (reason._tag !== "RouteNotFound") return
+      const lookup = (method: string, path: string) =>
+        Effect.gen(function*() {
+          const router = yield* HttpRouter.HttpRouter
+          yield* router.add("GET", "/addresses/:address", HttpServerResponse.text("ok"))
+          return yield* router.asHttpEffect()
+        }).pipe(
+          Effect.provide(HttpRouter.layer),
+          Effect.provideService(HttpRouter.RouterConfig, { maxParamLength: 5 }),
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request(`http://localhost${path}`, { method }))
+          ),
+          Effect.scoped
+        )
+      const notFound = (method: string, path: string) =>
+        lookup(method, path).pipe(
+          Effect.flip,
+          Effect.map((error) => {
+            assert.instanceOf(error, HttpServerError.HttpServerError)
+            assert.instanceOf(error.reason, HttpServerError.RouteNotFound)
+            return error.reason.description
+          })
+        )
+
+      const response = yield* lookup("GET", "/addresses/abcde")
+      assert.strictEqual(response.status, 200)
       assert.strictEqual(
-        reason.message,
-        "RouteNotFound (GET /addresses/" + "a".repeat(101) +
-          "): path parameter is longer than maxParamLength (100)"
+        yield* notFound("GET", "/addresses/abcdef"),
+        "path parameter is longer than maxParamLength (5)"
       )
+      assert.strictEqual(
+        yield* notFound("HEAD", "/addresses/abcdef"),
+        "path parameter is longer than maxParamLength (5)"
+      )
+      assert.isUndefined(yield* notFound("GET", "/missing"))
     }))
 })
