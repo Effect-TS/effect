@@ -26,6 +26,7 @@ import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as NetAddress from "effect/net/NetAddress"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as References from "effect/References"
 import * as Schema from "effect/Schema"
@@ -33,6 +34,7 @@ import type * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+import * as Http2 from "node:http2"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -659,6 +661,28 @@ describe("DenoHttpServer", () => {
       }).pipe(Effect.provide(DenoHttpServer.layerTest)))
   })
 
+  it.effect("takes the host header from the HTTP/2 authority", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.succeed(HttpServerResponse.text(
+            `${request.headers.host} ${Option.getOrThrow(HttpServerRequest.toURL(request)).href}`
+          ))
+        )
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+
+      assert.strictEqual(
+        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573" }),
+        "example.test:4573 http://example.test:4573/info"
+      )
+      assert.strictEqual(
+        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host: "client.test" }),
+        "example.test:4573 http://example.test:4573/info"
+      )
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("RouterConfig", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add("GET", "/:param", Effect.succeed(HttpServerResponse.empty())).pipe(
@@ -898,4 +922,21 @@ const connectWebSocket = (url: string, onOpen: (socket: WebSocket) => void, mess
         return messages
       }),
     (socket) => Effect.sync(() => socket.close())
+  )
+
+const http2Get = (port: number, headers: Http2.OutgoingHttpHeaders) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
+    (session) =>
+      Effect.callback<string, Error>((resume) => {
+        const stream = session.request(headers)
+        let body = ""
+        stream.setEncoding("utf8")
+        stream.on("data", (chunk: string) => {
+          body += chunk
+        })
+        stream.on("end", () => resume(Effect.succeed(body)))
+        stream.on("error", (error) => resume(Effect.fail(error)))
+      }),
+    (session) => Effect.callback<void>((resume) => session.close(() => resume(Effect.void)))
   )
