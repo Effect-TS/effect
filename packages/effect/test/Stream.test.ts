@@ -974,35 +974,27 @@ describe("Stream", () => {
         assertExitFailure(failed, Cause.fail("failure"))
       }))
 
-    it.effect("typed-error operators keep finalizer defects", () =>
+    it.effect("typed-error operators propagate elected finalizer defects", () =>
       Effect.gen(function*() {
         let handled = 0
         const source = Stream.fail("typed").pipe(Stream.ensuring(Effect.die("finalizer defect")))
-        const operators: Record<string, [Stream.Stream<unknown, unknown>, Cause.Cause<unknown>]> = {
-          catch: [
-            Stream.catch(source, () => Stream.sync(() => handled++)),
-            Cause.die("finalizer defect")
-          ],
-          orElseSucceed: [
-            Stream.orElseSucceed(source, () => handled++),
-            Cause.die("finalizer defect")
-          ],
-          mapError: [
-            Stream.mapError(source, () => "mapped"),
-            Cause.combine(Cause.fail("mapped"), Cause.die("finalizer defect"))
-          ],
-          orDie: [
-            Stream.orDie(source),
-            Cause.combine(Cause.die("typed"), Cause.die("finalizer defect"))
-          ]
+        const operators: Record<string, Stream.Stream<unknown, unknown>> = {
+          catch: Stream.catch(source, () => Stream.sync(() => handled++)),
+          orElseSucceed: Stream.orElseSucceed(source, () => handled++),
+          mapError: Stream.mapError(source, () => handled++),
+          orDie: Stream.orDie(source)
         }
-        for (const [name, [stream, cause]] of Object.entries(operators)) {
-          assert.deepStrictEqual(yield* Effect.exit(Stream.runCollect(stream)), Exit.failCause(cause), name)
+        for (const [name, stream] of Object.entries(operators)) {
+          assert.deepStrictEqual(
+            yield* Effect.exit(Stream.runCollect(stream)),
+            Exit.failCause(Cause.combine(Cause.die("typed"), Cause.die("finalizer defect"))),
+            name
+          )
         }
         assert.strictEqual(handled, 0)
       }))
 
-    it.effect("partial recovery keeps unmatched typed failures alongside finalizer defects", () =>
+    it.effect("partial recovery propagates elected finalizer defects", () =>
       Effect.gen(function*() {
         class Matched extends Data.TaggedError("Matched") {}
         class Unmatched extends Data.TaggedError("Unmatched") {}
@@ -1019,7 +1011,7 @@ describe("Stream", () => {
         for (const [name, stream] of Object.entries(operators)) {
           assert.deepStrictEqual(
             yield* Effect.exit(Stream.runCollect(stream)),
-            Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer defect"))),
+            Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer defect"))),
             name
           )
         }

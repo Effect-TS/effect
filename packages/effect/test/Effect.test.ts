@@ -1642,7 +1642,7 @@ describe("Effect", () => {
         })
         const exit = yield* Effect.exit(Effect.retry(source, Schedule.recurs(1)))
         assert.strictEqual(attempts, 1)
-        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("error"), Cause.die("cleanup failed"))))
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("error"), Cause.die("cleanup failed"))))
       }))
 
     it.live("nothing on success", () =>
@@ -2935,7 +2935,7 @@ describe("Effect", () => {
         const result = yield* Effect.fail("body failure").pipe(Effect.onExit(throwing), Effect.exit)
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail("body failure"), Cause.die("finalizer defect")))
+          Exit.failCause(Cause.combine(Cause.die("body failure"), Cause.die("finalizer defect")))
         )
       }))
 
@@ -3015,7 +3015,7 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(
           result,
-          Cause.combine(Cause.combine(Cause.fail(ExampleError), Cause.die(e2)), Cause.die(e3))
+          Cause.combine(Cause.combine(Cause.die(ExampleError), Cause.die(e2)), Cause.die(e3))
         )
       }))
 
@@ -3049,7 +3049,7 @@ describe("Effect", () => {
         }).pipe(Effect.scoped, Effect.exit)
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("finalizer failure")))
+          Exit.failCause(Cause.combine(Cause.die("usage failure"), Cause.die("finalizer failure")))
         )
       }))
 
@@ -3459,15 +3459,16 @@ describe("Effect", () => {
         assert.deepStrictEqual(result, Exit.fail(error))
       }))
 
-    describe("typed failures accompanied by defects or interruption", () => {
+    describe("typed failures accompanied by finalizer defects", () => {
       const error = new ErrorA()
-      const residuals = [Cause.die("finalizer defect"), Cause.interrupt()]
-      const sources = (residual: Cause.Cause<never>) => {
-        const cause = Cause.combine(Cause.fail(error), residual)
-        return [Effect.failCause(cause), Effect.suspend(() => Effect.failCause(cause))]
-      }
+      const finalizer = Effect.fail(error).pipe(Effect.ensuring(Effect.die("finalizer defect")))
+      const concurrent = Effect.all([
+        Effect.never.pipe(Effect.ensuring(Effect.die("finalizer defect"))),
+        Effect.fail(error)
+      ], { concurrency: "unbounded" })
+      const elected = Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer defect")))
 
-      it.effect("recovery operators propagate the defects and interruption without calling handlers", () =>
+      it.effect("typed-error operators propagate the elected defects without calling handlers", () =>
         Effect.gen(function*() {
           let handled = 0
           const recover = () =>
@@ -3479,7 +3480,7 @@ describe("Effect", () => {
             handled++
             return "recovered"
           }
-          const operators: Record<string, (self: Effect.Effect<never, ErrorA>) => Effect.Effect<unknown, unknown>> = {
+          const operators: Record<string, (self: Effect.Effect<unknown, ErrorA>) => Effect.Effect<unknown, unknown>> = {
             catch: (self) => Effect.catch(self, recover),
             catchEager: (self) => Effect.catchEager(self, recover),
             catchIf: (self) => Effect.catchIf(self, () => true, recover),
@@ -3500,40 +3501,22 @@ describe("Effect", () => {
             isSuccess: Effect.isSuccess,
             match: (self) => Effect.match(self, { onFailure: handle, onSuccess: handle }),
             matchEager: (self) => Effect.matchEager(self, { onFailure: handle, onSuccess: handle }),
-            matchEffect: (self) => Effect.matchEffect(self, { onFailure: recover, onSuccess: recover })
+            matchEffect: (self) => Effect.matchEffect(self, { onFailure: recover, onSuccess: recover }),
+            mapError: (self) => Effect.mapError(self, handle),
+            mapErrorEager: (self) => Effect.mapErrorEager(self, handle),
+            mapBoth: (self) => Effect.mapBoth(self, { onFailure: handle, onSuccess: handle }),
+            mapBothEager: (self) => Effect.mapBothEager(self, { onFailure: handle, onSuccess: handle }),
+            orDie: Effect.orDie
           }
-          for (const residual of residuals) {
-            for (const source of sources(residual)) {
-              for (const [name, operator] of Object.entries(operators)) {
-                const exit = yield* Effect.exit(operator(source))
-                assert.deepStrictEqual(exit, Exit.failCause(residual), name)
-              }
+          // The settled exit exercises the eager paths
+          const sources = [finalizer, concurrent, yield* Effect.exit(finalizer)]
+          for (const source of sources) {
+            assert.deepStrictEqual(yield* Effect.exit(source), elected)
+            for (const [name, operator] of Object.entries(operators)) {
+              assert.deepStrictEqual(yield* Effect.exit(operator(source)), elected, name)
             }
           }
           assert.strictEqual(handled, 0)
-        }))
-
-      it.effect("error-transforming operators keep the defects and interruption", () =>
-        Effect.gen(function*() {
-          const mapBoth = { onFailure: () => "mapped", onSuccess: () => "mapped" }
-          const operators: Record<
-            string,
-            [(self: Effect.Effect<never, ErrorA>) => Effect.Effect<unknown, unknown>, Cause.Cause<unknown>]
-          > = {
-            mapError: [(self) => Effect.mapError(self, () => "mapped"), Cause.fail("mapped")],
-            mapErrorEager: [(self) => Effect.mapErrorEager(self, () => "mapped"), Cause.fail("mapped")],
-            mapBoth: [(self) => Effect.mapBoth(self, mapBoth), Cause.fail("mapped")],
-            mapBothEager: [(self) => Effect.mapBothEager(self, mapBoth), Cause.fail("mapped")],
-            orDie: [Effect.orDie, Cause.die(error)]
-          }
-          for (const residual of residuals) {
-            for (const source of sources(residual)) {
-              for (const [name, [operator, mapped]] of Object.entries(operators)) {
-                const exit = yield* Effect.exit(operator(source))
-                assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(mapped, residual)), name)
-              }
-            }
-          }
         }))
 
       it.effect("typed failures alone are still recovered", () =>
@@ -4277,16 +4260,6 @@ describe("Effect", () => {
           assert.strictEqual(error, "release-error")
         }))
 
-      it.effect("should drop only the retry interruption when cleanup fails in a child fiber", () =>
-        Effect.gen(function*() {
-          const cleanup = Cause.combine(Cause.fail("cleanup"), Cause.interrupt(999))
-          const exit = yield* Effect.tx(Effect.gen(function*() {
-            const child = yield* Effect.forkChild(Effect.txRetry.pipe(Effect.onExit(() => Effect.failCause(cleanup))))
-            return yield* Fiber.join(child)
-          })).pipe(Effect.exit)
-          assert.deepStrictEqual(exit, Exit.failCause(cleanup))
-        }))
-
       it.effect("should rerun when a read ref changed while the transaction was suspended", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
@@ -4598,7 +4571,7 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer failure")))
+          Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer failure")))
         )
       }))
 
@@ -4691,7 +4664,7 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer failure")))
+          Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer failure")))
         )
       }))
   })

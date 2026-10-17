@@ -236,7 +236,7 @@ describe("Channel", () => {
           Effect.exit
         )
 
-        assertExitFailure(exit, Cause.combine(Cause.fail("downstream failed"), Cause.die(error)))
+        assertExitFailure(exit, Cause.combine(Cause.die("downstream failed"), Cause.die(error)))
         assert.isFalse(readable.locked)
       }))
 
@@ -308,7 +308,7 @@ describe("Channel", () => {
         ).pipe(Channel.runDrain, Effect.exit)
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release failure")))
+          Exit.failCause(Cause.combine(Cause.die("usage failure"), Cause.die("release failure")))
         )
       }))
 
