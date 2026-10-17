@@ -376,6 +376,36 @@ describe("SqlEventLogServer", () => {
       assert.strictEqual(next.sequence, 3)
     }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
 
+  it.effect("publishes each entry only once when the same batch is written twice", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const storage = yield* SqlEventLogServer.makeStorage().pipe(
+        Effect.provideService(SqlClient.SqlClient, sql)
+      )
+      const entries = [makePersistedEntry(1), makePersistedEntry(2)]
+      const written = yield* storage.write("client-1", storeIdA, entries)
+      assert.deepStrictEqual(written.map((entry) => entry.sequence), [1, 2])
+
+      const changes = yield* storage.changes("client-1", storeIdA, 0).pipe(
+        Stream.toQueue({ capacity: "unbounded" })
+      )
+      assert.deepStrictEqual([yield* Queue.take(changes), yield* Queue.take(changes)], written)
+
+      yield* storage.write("client-1", storeIdA, entries)
+      const next = yield* storage.write("client-1", storeIdA, [makePersistedEntry(3)])
+      // A fresh entry marks the end of the replay without a sleep or timeout.
+      const published = yield* Stream.fromQueue(changes).pipe(
+        Stream.takeUntil((entry) => entry.sequence === next[0].sequence),
+        Stream.runCollect
+      )
+      const backlog = yield* storage.changes("client-1", storeIdA, 0).pipe(
+        Stream.take(3),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(backlog, [...written, ...next])
+      assert.deepStrictEqual(published, next)
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+
   it.effect("isolates same publicKey across storeIds", () =>
     Effect.gen(function*() {
       const sql = yield* SqliteClient.make({ filename: ":memory:" })
