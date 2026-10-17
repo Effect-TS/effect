@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
+import * as SchemaBinary from "effect/encoding/SchemaBinary"
 import { Entry, RemoteEntry } from "effect/eventlog/EventJournal"
 import { ChangesRpc, ChunkedMessage, StoreId, WriteEntriesUnencrypted } from "effect/eventlog/EventLogMessage"
 
@@ -78,12 +79,15 @@ describe("EventLogMessage", () => {
 
     it.effect("unencrypted changes frame", () =>
       Effect.gen(function*() {
-        const remoteEntries = entries.map((entry, i) => new RemoteEntry({ remoteSequence: i + 7, entry }))
+        const remoteEntries = [
+          new RemoteEntry({ remoteSequence: 7, entry: entries[0] }),
+          new RemoteEntry({ remoteSequence: 8, entry: entries[1] })
+        ] as const
         const decoded = yield* ChangesRpc.decodeUnencrypted(fromHex(wire.changes))
         assert.deepStrictEqual(decoded, remoteEntries)
         assert.instanceOf(decoded[0], RemoteEntry)
         assert.instanceOf(decoded[0].entry, Entry)
-        assert.strictEqual(toHex(yield* ChangesRpc.encodeUnencrypted(remoteEntries as any)), wire.changes)
+        assert.strictEqual(toHex(yield* ChangesRpc.encodeUnencrypted(remoteEntries)), wire.changes)
       }))
 
     it.effect("unencrypted write frame", () =>
@@ -93,6 +97,19 @@ describe("EventLogMessage", () => {
         assert.deepStrictEqual(decoded, request)
         assert.instanceOf(decoded.entries[0], Entry)
         assert.strictEqual(toHex(yield* request.encoded), wire.write)
+      }))
+
+    it.effect("decoders forward parse options", () =>
+      Effect.gen(function*() {
+        const missingKeys = (error: Schema.SchemaError) =>
+          [...error.message.matchAll(/Missing key\n\s+at (.+)/g)].map((match) => match[1]).sort()
+        const emptyStruct = Schema.encodeSync(SchemaBinary.toCodec(Schema.Struct({})))({})
+        const emptyRemoteEntries = Schema.encodeSync(SchemaBinary.toCodec(Schema.Array(Schema.Struct({}))))([{}])
+
+        const write = yield* Effect.flip(WriteEntriesUnencrypted.decode(emptyStruct, { errors: "all" }))
+        assert.deepStrictEqual(missingKeys(write), [`["entries"]`, `["publicKey"]`, `["storeId"]`])
+        const changes = yield* Effect.flip(ChangesRpc.decodeUnencrypted(emptyRemoteEntries, { errors: "all" }))
+        assert.deepStrictEqual(missingKeys(changes), [`[0]["entry"]`, `[0]["remoteSequence"]`])
       }))
   })
 })
