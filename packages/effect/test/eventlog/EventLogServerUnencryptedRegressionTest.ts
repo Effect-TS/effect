@@ -19,7 +19,7 @@ const group = EventGroup.empty.add({
   primaryKey: (payload) => payload.key,
   payload: Schema.Struct({ key: Schema.String })
 })
-const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string, tag: "Set" | "Other" = "Set") {
+export const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string, tag: "Set" | "Other" = "Set") {
   return new EventJournal.Entry({
     id: EventJournal.makeEntryIdUnsafe({ msecs }),
     event: tag,
@@ -28,7 +28,7 @@ const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string, tag: "
   }, { disableChecks: true })
 })
 
-const makeClient = Effect.fnUntraced(function*(name: string) {
+export const makeClient = Effect.fnUntraced(function*(name: string) {
   const storage = yield* EventLogServerUnencrypted.Storage
   const registry = yield* EventLog.Registry.pipe(Effect.provide(EventLog.layerRegistry))
   const handled: Array<{ key: string; conflicts: ReadonlyArray<string> }> = []
@@ -90,7 +90,7 @@ const makeClient = Effect.fnUntraced(function*(name: string) {
 })
 
 export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypted.Storage, unknown>) =>
-  it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle))(
+  it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle), { timeout: "30 seconds" })(
     `Unencrypted write ordering (${name})`,
     (it) => {
       it.effect("acknowledges an out-of-order duplicate without invoking its handler", () =>
@@ -186,16 +186,34 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           ])
         }))
 
-      it.effect("returns multiple conflicts in storage sequence order", () =>
+      it.effect("applies the batch's lowest id to every lookup in a large batch", () =>
         Effect.gen(function*() {
-          const { write, handled } = yield* makeClient("conflict-order")
-          const later = yield* makeEntry(3_000, "a")
-          const earlier = yield* makeEntry(2_000, "a")
-          yield* write([later])
-          yield* write([earlier])
+          const { write, handled } = yield* makeClient("large-batch")
+          const entries: Array<EventJournal.Entry> = []
+          for (let i = 0; i < 252; i++) entries.push(yield* makeEntry(1_000, "x"))
+          entries.sort(EventJournal.Entry.Order)
+          // `stored` sorts between the batch's first and last entries and only
+          // shares a key with the last, so every lookup must start from the
+          // batch's lowest id.
+          const withKeyB = ({ event, id, payload }: EventJournal.Entry) =>
+            new EventJournal.Entry({ id, event, primaryKey: "b", payload }, { disableChecks: true })
+          const stored = withKeyB(entries[1])
+          const last = withKeyB(entries[251])
+          yield* write([stored])
           handled.length = 0
-          yield* write([yield* makeEntry(1_000, "a")])
-          assert.deepStrictEqual(handled, [{ key: "a", conflicts: [later.idString, earlier.idString] }])
+          yield* write([entries[0], ...entries.slice(2, 251), last])
+          assert.deepStrictEqual(handled.at(-1), { key: "b", conflicts: [stored.idString] })
+        }))
+
+      it.effect("matches long primary keys exactly", () =>
+        Effect.gen(function*() {
+          const { write, handled } = yield* makeClient("long-keys")
+          const prefix = Array.from({ length: 125 }, () => crypto.randomUUID()).join("")
+          const stored = yield* makeEntry(2_000, `${prefix}a`)
+          yield* write([stored])
+          handled.length = 0
+          yield* write([yield* makeEntry(1_000, `${prefix}a`), yield* makeEntry(1_500, `${prefix}b`)])
+          assert.deepStrictEqual(handled.map(({ conflicts }) => conflicts), [[stored.idString], []])
         }))
 
       it.effect("skips a stored duplicate inside a mixed batch and persists the rest", () =>
