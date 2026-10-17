@@ -142,12 +142,12 @@ export const makeStorage = (options?: {
                   entry_ids BYTEA NOT NULL,
                   encrypted_batch BYTEA NOT NULL
                 )`.pipe(
-                Effect.andThen(sql`CREATE INDEX IF NOT EXISTS ${indexSql} ON ${tableSql} (last_sequence)`),
-                Effect.andThen(sql`
+              Effect.andThen(sql`CREATE INDEX IF NOT EXISTS ${indexSql} ON ${tableSql} (last_sequence)`),
+              Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
                   entry_id BYTEA PRIMARY KEY
                 )`)
-              ),
+            ),
           mysql: () =>
             sql`
                 CREATE TABLE IF NOT EXISTS ${tableSql} (
@@ -158,11 +158,11 @@ export const makeStorage = (options?: {
                   encrypted_batch LONGBLOB NOT NULL,
                   INDEX (last_sequence)
                 )`.pipe(
-                Effect.andThen(sql`
+              Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
                   entry_id BINARY(16) PRIMARY KEY
                 )`)
-              ),
+            ),
           mssql: () =>
             sql`
                 CREATE TABLE IF NOT EXISTS ${tableSql} (
@@ -173,11 +173,11 @@ export const makeStorage = (options?: {
                   encrypted_batch VARBINARY(MAX) NOT NULL,
                   INDEX ${indexSql} NONCLUSTERED (last_sequence)
                 )`.pipe(
-                Effect.andThen(sql`
+              Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
                   entry_id VARBINARY(16) PRIMARY KEY
                 )`)
-              ),
+            ),
           orElse: () =>
             sql`
                 CREATE TABLE IF NOT EXISTS ${tableSql} (
@@ -187,12 +187,12 @@ export const makeStorage = (options?: {
                   entry_ids BLOB NOT NULL,
                   encrypted_batch BLOB NOT NULL
                 )`.pipe(
-                Effect.andThen(sql`CREATE INDEX IF NOT EXISTS ${indexSql} ON ${tableSql} (last_sequence)`),
-                Effect.andThen(sql`
+              Effect.andThen(sql`CREATE INDEX IF NOT EXISTS ${indexSql} ON ${tableSql} (last_sequence)`),
+              Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
                   entry_id BLOB PRIMARY KEY
                 )`)
-              )
+            )
         })
 
         const pubsub = yield* Effect.acquireRelease(

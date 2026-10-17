@@ -197,7 +197,12 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
         const decrypted = yield* Effect.promise(() =>
           Promise.all(batches.map((batch) =>
             crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: batch.iv, additionalData: additionalData(storeId, batch.entryIds), tagLength: 128 },
+              {
+                name: "AES-GCM",
+                iv: batch.iv,
+                additionalData: additionalData(storeId, batch.entryIds),
+                tagLength: 128
+              },
               key,
               batch.encryptedBatch
             )
