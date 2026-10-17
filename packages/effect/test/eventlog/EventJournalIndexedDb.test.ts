@@ -74,6 +74,35 @@ describe("EventJournal.makeIndexedDb", () => {
       assert.deepStrictEqual(second, Option.some([b.idString]))
     }))
 
+  it.effect("withRemoteUncommited forwards older entries imported after a successful upload", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const local = yield* journal.write({
+        event: "Repro",
+        primaryKey: "local",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      })
+      const uploaded = yield* journal.withRemoteUncommited(
+        remoteId,
+        (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+      )
+      assert.deepStrictEqual(uploaded, Option.some([local.idString]))
+
+      const older = entry(local.createdAtMillis - 1)
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: remoteEntries([older]),
+        effect: () => Effect.void
+      })
+      const forwarded = yield* journal.withRemoteUncommited(
+        remoteId,
+        (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+      )
+      assert.deepStrictEqual(forwarded, Option.some([older.idString]))
+    }))
+
   it.effect("withRemoteUncommited does not advance the checkpoint when its callback fails", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
