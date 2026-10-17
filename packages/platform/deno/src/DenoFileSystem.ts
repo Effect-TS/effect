@@ -141,22 +141,28 @@ const openOptions = (flag: FileSystem.OpenFlag = "r", mode?: number): Deno.OpenO
   }
 }
 
-const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
-  type: info.isFile ?
+// `Deno.DirEntry` only reports the first three flags
+const fileType = (info: Deno.DirEntry | Deno.FileInfo): FileSystem.File.Type => {
+  const flags: Partial<Deno.FileInfo> = info
+  return info.isFile ?
     "File" :
     info.isDirectory ?
     "Directory" :
     info.isSymlink ?
     "SymbolicLink" :
-    info.isBlockDevice ?
+    flags.isBlockDevice ?
     "BlockDevice" :
-    info.isCharDevice ?
+    flags.isCharDevice ?
     "CharacterDevice" :
-    info.isFifo ?
+    flags.isFifo ?
     "FIFO" :
-    info.isSocket ?
+    flags.isSocket ?
     "Socket" :
-    "Unknown",
+    "Unknown"
+}
+
+const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
+  type: fileType(info),
   mtime: Option.fromNullishOr(info.mtime),
   atime: Option.fromNullishOr(info.atime),
   birthtime: Option.fromNullishOr(info.birthtime),
@@ -405,11 +411,7 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
 const readDirectoryEntries = (path: string) =>
   Effect.map(
     collectAsyncIterable("readDirectoryEntries", path, () => Deno.readDir(path)),
-    (entries) =>
-      entries.map((entry): FileSystem.DirectoryEntry => ({
-        name: entry.name,
-        type: entry.isFile ? "File" : entry.isDirectory ? "Directory" : entry.isSymlink ? "SymbolicLink" : "Unknown"
-      }))
+    (entries) => entries.map((entry): FileSystem.DirectoryEntry => ({ name: entry.name, type: fileType(entry) }))
   )
 
 const readFile: FileSystem.FileSystem["readFile"] = (path) =>

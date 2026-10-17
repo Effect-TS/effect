@@ -15,11 +15,11 @@ export interface TestLayerOptions {
   readonly noFollow?: boolean
 }
 
+const runWith = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
+  Effect.runPromise(Effect.provide(self, layer))
+
 export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: TestLayerOptions = {}) => {
-  const runPromise = <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
-    Effect.runPromise(
-      Effect.provide(self, layer)
-    )
+  const runPromise = runWith(layer)
 
   it("readFile", () =>
     runPromise(Effect.gen(function*() {
@@ -648,10 +648,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
 }
 
 export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
-  const runPromise = <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
-    Effect.runPromise(
-      Effect.provide(self, layer)
-    )
+  const runPromise = runWith(layer)
 
   const globFixture = Effect.gen(function*() {
     const fs = yield* Fs.FileSystem

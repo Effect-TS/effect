@@ -103,7 +103,7 @@ export const make = (pattern: string, options?: {
   const self = Object.create(GlobProto)
   self.pattern = pattern
   self.dot = dot
-  self.compiled = internal.compile(pattern, dot)
+  self.compiled = internal.compile([pattern], dot)
   return self
 }
 
