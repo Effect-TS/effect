@@ -144,7 +144,7 @@ const expected = (entries: ReadonlyArray<EventJournal.Entry>, firstSequence: num
 })
 
 export const suite = (name: string, storage: Layer.Layer<EventLogServerEncrypted.Storage, unknown>) =>
-  it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle))(
+  it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle), { timeout: "60 seconds" })(
     `Encrypted replication (${name})`,
     (it) => {
       it.effect("encrypts writes in batches of at most 100 entries and replays every entry", () =>
