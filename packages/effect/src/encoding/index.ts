@@ -43,6 +43,12 @@ export * as Ndjson from "./Ndjson.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.6
+ */
+export * as Protobuf from "./Protobuf.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as SchemaBinary from "./SchemaBinary.ts"
