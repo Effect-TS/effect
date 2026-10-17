@@ -15711,7 +15711,7 @@ Schema.toFormatter(schema)
 
 - `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
-- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect (run before the stream starts pulling), covering asyncEffect; signal end/failure through the provided Queue.
+- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect, covering asyncEffect. Unlike v3, it is started before the stream pulls but not awaited: it runs synchronously until its first async boundary, so asynchronous setup may still be in progress when pulling begins. Signal end/failure through the provided Queue.
 
 - `Stream.asyncPush` -> `Stream.callback`: Stream.callback's register effect can use Scope for acquire/release of the external subscription, replacing asyncPush; the Emit ops helpers become plain Queue operations.
 

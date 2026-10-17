@@ -342,10 +342,12 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
       this.source.addEventListener("readystatechange", onReadyStateChange)
       this.source.addEventListener("error", onError)
       onReadyStateChange()
-      return Effect.sync(() => {
-        this.source.removeEventListener("readystatechange", onReadyStateChange)
-        this.source.removeEventListener("error", onError)
-      })
+      return Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          this.source.removeEventListener("readystatechange", onReadyStateChange)
+          this.source.removeEventListener("error", onError)
+        })
+      )
     })
   }
 

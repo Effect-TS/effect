@@ -136,6 +136,24 @@ describe("Stream", () => {
         assert.strictEqual(offered, 4)
         assert.isFalse(done)
       }))
+
+    it.effect("register effect has run when the stream starts pulling", () =>
+      Effect.gen(function*() {
+        let emit: ((n: number) => void) | undefined
+        const fiber = yield* Stream.callback<number>((queue) =>
+          Effect.sync(() => {
+            emit = (n) => Queue.offerUnsafe(queue, n)
+          })
+        ).pipe(
+          Stream.take(1),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.isUndefined(fiber.pollUnsafe())
+        assert.isDefined(emit, "register effect has not run")
+        emit!(1)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [1])
+      }))
   })
 
   describe("destructors", () => {

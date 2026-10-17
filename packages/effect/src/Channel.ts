@@ -488,7 +488,7 @@ const asyncQueue = <A, E = never, R = never>(
     Effect.tap((queue) =>
       Scope.provide(f(queue), scope).pipe(
         Effect.catchCause((cause) => Queue.failCause(queue, cause)),
-        Effect.forkIn(scope)
+        Effect.forkIn(scope, { startImmediately: true })
       )
     )
   )
