@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix IndexedDB event journal upload checkpoints so successful uploads do not resend earlier entries or rescan the whole journal. Use a read-only transaction when collecting entries to upload.
+Fix IndexedDB event journal uploads to resume without rescanning or resending successful batches, while still forwarding entries imported with older IDs. Existing databases upgrade automatically; entries not confirmed by a remote may be uploaded once again after the upgrade.
