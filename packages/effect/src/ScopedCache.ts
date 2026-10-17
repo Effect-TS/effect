@@ -775,11 +775,11 @@ const invalidateAllImpl = <Key, A, E>(
   // Detach the batch before finalizers can reenter the cache.
   const entries = Array.from(MutableHashMap.values(map))
   MutableHashMap.clear(map)
-  const fibers = Arr.empty<Fiber.Fiber<unknown, unknown>>()
+  const fibers = Arr.empty<Fiber.Fiber<void>>()
   for (const entry of entries) {
     fibers.push(effect.forkUnsafe(parent as any, Scope.close(entry.scope, effect.exitVoid), true, true))
   }
-  return effect.fiberAwaitAll(fibers)
+  return effect.flatMap(effect.fiberAwaitAll(fibers), Exit.asVoidAll)
 }
 
 /**
