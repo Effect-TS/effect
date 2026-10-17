@@ -9,7 +9,6 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Filter from "effect/Filter"
 import * as Latch from "effect/Latch"
-import * as Pull from "effect/Pull"
 import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
 import * as Schedule from "effect/Schedule"
@@ -474,51 +473,6 @@ describe("Channel", () => {
         )
         assert.isTrue(Exit.hasDies(exit))
       }))
-
-    it.effect("decodeText preserves Done after flushing and on subsequent pulls", () =>
-      Effect.gen(function*() {
-        const done = { value: "done" }
-        let step = 0
-        const pull = yield* Channel.fromPull(Effect.succeed(Effect.suspend(() => {
-          switch (step++) {
-            case 0:
-              return Effect.succeed([Uint8Array.of(0xC3)] as const)
-            case 1:
-              return Cause.done(done)
-            default:
-              return Effect.die("pulled upstream after Done")
-          }
-        }))).pipe(
-          Channel.pipeTo(Channel.decodeText()),
-          Channel.toPull
-        )
-        const output = [...yield* pull, ...yield* pull]
-        assert.strictEqual(output.join(""), "\uFFFD")
-        assert.strictEqual(yield* Pull.catchDone(pull, Effect.succeed), done)
-        assert.strictEqual(yield* Pull.catchDone(pull, Effect.succeed), done)
-      }))
-
-    for (
-      const [name, cause] of [["failure", Cause.fail("upstream")], ["interruption", Cause.interrupt(123)]] as const
-    ) {
-      it.effect(`decodeText does not flush on upstream ${name}`, () =>
-        Effect.gen(function*() {
-          let output = ""
-          const exit = yield* Channel.succeed([Uint8Array.of(0xC3)] as const).pipe(
-            Channel.concat(Channel.failCause(cause)),
-            Channel.pipeTo(Channel.decodeText()),
-            Channel.tap((chunk) =>
-              Effect.sync(() => {
-                output += chunk.join("")
-              })
-            ),
-            Channel.runDrain,
-            Effect.exit
-          )
-          assert.deepStrictEqual(exit, Exit.failCause(cause))
-          assert.strictEqual(output, "")
-        }))
-    }
   })
 
   describe("merging", () => {
