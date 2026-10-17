@@ -36,6 +36,14 @@ import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
  * batches in dialect-specific tables, creating per-identity/store batch and entry
  * id tables as needed.
  *
+ * **Gotchas**
+ *
+ * Storage does not retry sequence conflicts between competing instances.
+ * `EventLog.runRemote` retries failed writes; direct `EventLogRemote.write`
+ * callers must retry failures other than Forbidden themselves. Live notifications
+ * are local to each storage instance; clients on other instances must reconnect
+ * to read those writes.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -74,7 +82,8 @@ export const makeStorage = (options?: {
           )`,
       mssql: () =>
         sql`
-          CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
+          IF OBJECT_ID(${remoteIdTable}, N'U') IS NULL
+          CREATE TABLE ${remoteIdTableSql} (
             remote_id VARBINARY(16) PRIMARY KEY
           )`,
       orElse: () =>
@@ -99,7 +108,8 @@ export const makeStorage = (options?: {
           )`,
       mssql: () =>
         sql`
-          CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
+          IF OBJECT_ID(${sessionAuthBindingsTable}, N'U') IS NULL
+          CREATE TABLE ${sessionAuthBindingsTableSql} (
             public_key NVARCHAR(191) PRIMARY KEY,
             signing_public_key VARBINARY(32) NOT NULL
           )`,
@@ -165,7 +175,8 @@ export const makeStorage = (options?: {
             ),
           mssql: () =>
             sql`
-                CREATE TABLE IF NOT EXISTS ${tableSql} (
+                IF OBJECT_ID(${table}, N'U') IS NULL
+                CREATE TABLE ${tableSql} (
                   sequence INT PRIMARY KEY,
                   last_sequence INT NOT NULL,
                   iv VARBINARY(12) NOT NULL,
@@ -174,7 +185,8 @@ export const makeStorage = (options?: {
                   INDEX ${indexSql} NONCLUSTERED (last_sequence)
                 )`.pipe(
               Effect.andThen(sql`
-                CREATE TABLE IF NOT EXISTS ${idsTableSql} (
+                IF OBJECT_ID(${`${table}_ids`}, N'U') IS NULL
+                CREATE TABLE ${idsTableSql} (
                   entry_id VARBINARY(16) PRIMARY KEY
                 )`)
             ),
@@ -199,8 +211,7 @@ export const makeStorage = (options?: {
           PubSub.unbounded<EventLogEncryption.EncryptedRemoteBatch>(),
           PubSub.shutdown
         )
-        // Serializes writes from this process; concurrent writers in other
-        // processes fail on the sequence primary key and are retried by clients.
+        // Serializes writes within this storage instance.
         const semaphore = yield* Semaphore.make(1)
         return { pubsub, semaphore, tableSql, idsTableSql } as const
       }, withTracerDisabled),
@@ -218,7 +229,7 @@ export const makeStorage = (options?: {
         mssql: () =>
           sql`
             MERGE ${idsTableSql} WITH (HOLDLOCK) AS target
-            USING (VALUES ${sql.join(",")(ids.map((id) => sql`(${id})`))}) AS source (entry_id)
+            USING (VALUES ${sql.join(",", false)(ids.map((id) => sql`(${id})`))}) AS source (entry_id)
             ON target.entry_id = source.entry_id
             WHEN NOT MATCHED THEN
               INSERT (entry_id) VALUES (source.entry_id)
