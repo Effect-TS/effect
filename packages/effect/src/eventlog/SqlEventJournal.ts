@@ -190,7 +190,7 @@ export const make = (options?: {
         const stored = yield* sql`
             SELECT *
             FROM ${entryTableSql}
-            WHERE ${sql.in("event", Array.from(index.events))} AND
+            WHERE ${sql.in("event", index.events)} AND
                   timestamp > ${index.oldestMillis}
             ORDER BY timestamp ASC
           `.pipe(

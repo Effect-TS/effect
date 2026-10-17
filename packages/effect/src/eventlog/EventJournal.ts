@@ -459,20 +459,18 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     writeFromRemote: Effect.fnUntraced(function*(options) {
       const remote = ensureRemote(options.remoteId)
       const uncommittedRemotes: Array<RemoteEntry> = []
-      const uncommitted: Array<Entry> = []
       const duplicateEntries: Array<Entry> = []
       for (const remoteEntry of options.entries) {
         if (byId.has(remoteEntry.entry.idString)) {
           duplicateEntries.push(remoteEntry.entry)
-          continue
+        } else {
+          uncommittedRemotes.push(remoteEntry)
         }
-        uncommittedRemotes.push(remoteEntry)
-        uncommitted.push(remoteEntry.entry)
       }
 
       const compacted = options.compact
         ? yield* options.compact(uncommittedRemotes)
-        : uncommitted
+        : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
       if (compacted.length > 0) {
         const index = new ConflictIndex(compacted)
@@ -649,7 +647,6 @@ export const makeIndexedDb = (options?: {
           )
         }),
       writeFromRemote: Effect.fnUntraced(function*(options) {
-        const uncommitted: Array<Entry> = []
         const uncommittedRemotes: Array<RemoteEntry> = []
         const duplicateEntries: Array<Entry> = []
 
@@ -658,15 +655,13 @@ export const makeIndexedDb = (options?: {
           const entries = tx.objectStore("entries")
           // Requests in a transaction complete in the order they were issued.
           for (const remoteEntry of options.entries) {
-            const entry = remoteEntry.entry
-            const request = entries.getKey(entry.id as IDBValidKey)
+            const request = entries.getKey(remoteEntry.entry.id as IDBValidKey)
             request.onsuccess = () => {
               if (request.result !== undefined) {
-                duplicateEntries.push(entry)
-                return
+                duplicateEntries.push(remoteEntry.entry)
+              } else {
+                uncommittedRemotes.push(remoteEntry)
               }
-              uncommitted.push(entry)
-              uncommittedRemotes.push(remoteEntry)
             }
           }
           tx.oncomplete = () => resume(Effect.void)
@@ -676,7 +671,7 @@ export const makeIndexedDb = (options?: {
 
         const compacted = options.compact
           ? yield* options.compact(uncommittedRemotes)
-          : uncommitted
+          : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
         if (compacted.length > 0) {
           const index = new ConflictIndex(compacted)

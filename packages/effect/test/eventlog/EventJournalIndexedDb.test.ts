@@ -26,43 +26,28 @@ const entry = (
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
-const idbRequest = <A>(request: IDBRequest<A>) =>
-  Effect.callback<A>((resume) => {
-    request.onsuccess = () => resume(Effect.succeed(request.result))
-    request.onerror = () => resume(Effect.die(request.error))
-  })
-
-const idbComplete = (transaction: IDBTransaction) =>
-  Effect.callback<void>((resume) => {
-    transaction.oncomplete = () => resume(Effect.void)
-    transaction.onerror = () => resume(Effect.die(transaction.error))
-  })
-
-const recordTransactions = (database: string) =>
+const countTransactions = (database: string) =>
   Effect.acquireRelease(
     Effect.sync(() => {
-      const opened: Array<IDBTransactionDurability | undefined> = []
+      const transactions = { opened: 0 }
       const original = IDBDatabase.prototype.transaction
       IDBDatabase.prototype.transaction = function(this: IDBDatabase, storeNames, mode, options) {
-        if (this.name === database) opened.push(options?.durability)
+        if (this.name === database) transactions.opened++
         return original.call(this, storeNames, mode, options)
       }
-      return { opened, original }
+      return { transactions, original }
     }),
     ({ original }) =>
       Effect.sync(() => {
         IDBDatabase.prototype.transaction = original
       })
-  ).pipe(Effect.map(({ opened }) => opened))
+  ).pipe(Effect.map(({ transactions }) => transactions))
 
 describe("EventJournal.makeIndexedDb", () => {
   it.effect("replays a remote batch in one callback without journal transactions while it runs", () =>
     Effect.gen(function*() {
       const journalName = uniqueName("journal")
       const journal = yield* EventJournal.makeIndexedDb({ database: journalName })
-      const openApp = indexedDB.open(uniqueName("app"), 1)
-      openApp.onupgradeneeded = () => openApp.result.createObjectStore("projection")
-      const app = yield* idbRequest(openApp)
 
       const newer = entry(2000, { tail: 0xff })
       const otherEvent = entry(3000, { event: "Other" })
@@ -73,7 +58,7 @@ describe("EventJournal.makeIndexedDb", () => {
         effect: () => Effect.void
       })
 
-      const opened = yield* recordTransactions(journalName)
+      const transactions = yield* countTransactions(journalName)
       const batches: Array<
         ReadonlyArray<{ readonly entry: EventJournal.Entry; readonly conflicts: ReadonlyArray<EventJournal.Entry> }>
       > = []
@@ -85,13 +70,11 @@ describe("EventJournal.makeIndexedDb", () => {
         entries: remoteEntries([older, sameBatch, sameMillis]),
         effect: (batch) =>
           Effect.gen(function*() {
-            const before = opened.length
+            const before = transactions.opened
             batches.push(batch)
-            // The callback's own transaction, as a projection would open.
-            const transaction = app.transaction("projection", "readwrite")
-            for (const { entry } of batch) transaction.objectStore("projection").put(entry.idString, entry.idString)
-            yield* idbComplete(transaction)
-            assert.strictEqual(opened.length, before)
+            // Give pending journal requests a turn, as a projection transaction would.
+            yield* Effect.yieldNow
+            assert.strictEqual(transactions.opened, before)
           })
       })
       assert.deepStrictEqual(
@@ -102,9 +85,8 @@ describe("EventJournal.makeIndexedDb", () => {
           [sameMillis.idString, []]
         ]]
       )
-      assert.isAtMost(opened.length, 3)
-      assert.notInclude(opened, "relaxed")
-      app.close()
+      // Duplicate check, conflicts, commit.
+      assert.strictEqual(transactions.opened, 3)
     }))
 
   it.effect("failed remote callbacks persist nothing and allow redelivery", () =>

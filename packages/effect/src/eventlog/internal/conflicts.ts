@@ -29,8 +29,8 @@ export class ConflictIndex {
     this.oldestMillis = oldestMillis
   }
 
-  get events(): Iterable<string> {
-    return this.stored.keys()
+  get events(): Array<string> {
+    return Array.from(this.stored.keys())
   }
 
   /** Whether a stored entry with this event and key can conflict with the batch. */

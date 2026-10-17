@@ -20,6 +20,17 @@ const makeJournal = Effect.gen(function*() {
   )
 }).pipe(Effect.provide(Reactivity.layer))
 
+const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
+  new EventJournal.Entry({
+    id: EventJournal.makeEntryIdUnsafe({ msecs }),
+    event,
+    primaryKey,
+    payload: new Uint8Array()
+  }, { disableChecks: true })
+
+const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
+  entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
+
 describe("SqlEventJournal", () => {
   it.effect("replay invalidation observes committed entries from another connection", () =>
     Effect.gen(function*() {
@@ -156,13 +167,6 @@ describe("SqlEventJournal", () => {
   it.effect("replays each remote batch in one callback with strictly newer same-event-and-key conflicts", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal
-      const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
-        new EventJournal.Entry({
-          id: EventJournal.makeEntryIdUnsafe({ msecs }),
-          event,
-          primaryKey,
-          payload: new Uint8Array()
-        }, { disableChecks: true })
       const newer = entry(2000)
       const otherEvent = entry(3000, "Other")
       const otherKey = entry(3000, "Repro", "other")
@@ -175,7 +179,7 @@ describe("SqlEventJournal", () => {
       const writeBatch = (entries: ReadonlyArray<EventJournal.Entry>) =>
         journal.writeFromRemote({
           remoteId: EventJournal.makeRemoteIdUnsafe(),
-          entries: entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry })),
+          entries: remoteEntries(entries),
           effect: (batch) =>
             Effect.sync(() => {
               batches.push(batch)
@@ -206,25 +210,15 @@ describe("SqlEventJournal", () => {
         Effect.gen(function*() {
           const journal = yield* make
           const remoteId = EventJournal.makeRemoteIdUnsafe()
-          const entry = (msecs: number) =>
-            new EventJournal.Entry({
-              id: EventJournal.makeEntryIdUnsafe({ msecs }),
-              event: "Repro",
-              primaryKey: "key",
-              payload: new Uint8Array()
-            }, { disableChecks: true })
           const stored = entry(500)
           yield* journal.writeFromRemote({
             remoteId: EventJournal.makeRemoteIdUnsafe(),
-            entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: stored })],
+            entries: remoteEntries([stored]),
             effect: () => Effect.void
           })
           const added = entry(1000)
           // A new entry followed by an echo of an entry the journal already has.
-          const entries = [
-            new EventJournal.RemoteEntry({ remoteSequence: 0, entry: added }),
-            new EventJournal.RemoteEntry({ remoteSequence: 1, entry: stored })
-          ]
+          const entries = remoteEntries([added, stored])
           const exit = yield* Effect.exit(journal.writeFromRemote({
             remoteId,
             entries,
