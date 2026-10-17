@@ -831,9 +831,8 @@ export const makeReplayFromRemote = (options: {
     readonly effect: string
   }
 }) => {
-  const replayEntry = makeReplayEntryFromRemote(options)
-  return (input: ReplayInput) =>
-    Effect.contextWith((context: Context.Context<never>) => replayEntry(input, makeReplayBatch(context, undefined)))
+  const replayBatch = makeReplayBatchFromRemote(options)
+  return (input: ReplayInput) => replayBatch([input])
 }
 
 type ReplayInput = {
@@ -843,42 +842,28 @@ type ReplayInput = {
 
 type DecodedConflict = { entry: Entry; payload: unknown }
 
-/**
- * State for one replay execution. Handler contexts are merged with the context
- * captured when the execution starts, so transaction retries start fresh.
- */
 type ReplayBatch = {
   readonly context: Context.Context<never>
-  readonly handlerContexts: Map<Handlers.Item<any>, ReplayHandlerContexts>
-  readonly decodedConflicts: Map<Entry, DecodedConflict> | undefined
+  readonly handlerContexts: Map<Handlers.Item<any>, Context.Context<any>>
+  readonly decodedConflicts: Map<Entry, DecodedConflict>
 }
-
-type ReplayHandlerContexts = {
-  // Conflicts decode with the caller's Identity; payloads and handlers use the log's.
-  readonly conflicts: Context.Context<any>
-  readonly handler: Context.Context<any>
-}
-
-const makeReplayBatch = (
-  context: Context.Context<never>,
-  decodedConflicts: Map<Entry, DecodedConflict> | undefined
-): ReplayBatch => ({ context, handlerContexts: new Map(), decodedConflicts })
 
 /**
- * Replays a batch, decoding each conflict entry shared by several entries once.
- * The batch state is created per execution, so transaction retries start fresh.
+ * Replays a batch, merging each handler's context with the batch context once
+ * and decoding each conflict entry shared by several entries once. The batch
+ * state is created per execution, so transaction retries start fresh.
  */
 const makeReplayBatchFromRemote = (options: Parameters<typeof makeReplayFromRemote>[0]) => {
   const replayEntry = makeReplayEntryFromRemote(options)
   return (batch: ReadonlyArray<ReplayInput>) =>
     Effect.contextWith((context: Context.Context<never>) => {
-      const state = makeReplayBatch(context, new Map())
+      const state: ReplayBatch = { context, handlerContexts: new Map(), decodedConflicts: new Map() }
       return Effect.forEach(batch, (input) => replayEntry(input, state), { discard: true })
     })
 }
 
-// Each entry runs in the batch context plus its own log annotations, so the
-// merged handler context only needs the entry's annotations added.
+// An entry's context is the batch context plus its log annotations, so only
+// the annotations need to be copied into the merged handler context.
 const withEntryAnnotations = (context: Context.Context<any>, entryContext: Context.Context<any>) =>
   Context.add(context, CurrentLogAnnotations, Context.get(entryContext, CurrentLogAnnotations))
 
@@ -896,14 +881,13 @@ const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemo
     }
     return decoder
   }
-  const contextsFor = (batch: ReplayBatch, handler: Handlers.Item<any>) => {
-    let contexts = batch.handlerContexts.get(handler)
-    if (contexts === undefined) {
-      const conflicts = Context.merge(handler.context, batch.context)
-      contexts = { conflicts, handler: Context.add(conflicts, Identity, options.identity) }
-      batch.handlerContexts.set(handler, contexts)
+  const contextFor = (batch: ReplayBatch, handler: Handlers.Item<any>) => {
+    let context = batch.handlerContexts.get(handler)
+    if (context === undefined) {
+      context = Context.merge(handler.context, batch.context)
+      batch.handlerContexts.set(handler, context)
     }
-    return contexts
+    return context
   }
 
   return Effect.fnUntraced(
@@ -917,23 +901,24 @@ const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemo
       }
 
       const decodePayload = decoderFor(handler)
-      const contexts = contextsFor(batch, handler)
+      const context = contextFor(batch, handler)
       const conflictPayloads: Array<DecodedConflict> = new Array(conflicts.length)
       for (let i = 0; i < conflicts.length; i++) {
         const conflict = conflicts[i]
-        let decoded = batch.decodedConflicts?.get(conflict)
+        let decoded = batch.decodedConflicts.get(conflict)
         if (!decoded) {
           decoded = {
             entry: conflict,
             payload: yield* decodePayload(conflict.payload).pipe(
-              Effect.updateContext((input) => withEntryAnnotations(contexts.conflicts, input))
+              Effect.updateContext((input) => withEntryAnnotations(context, input))
             ) as any
           }
-          batch.decodedConflicts?.set(conflict, decoded)
+          batch.decodedConflicts.set(conflict, decoded)
         }
         conflictPayloads[i] = decoded
       }
 
+      // Conflicts decode with the caller's Identity; the payload and handler use the log's.
       yield* decodePayload(entry.payload).pipe(
         Effect.flatMap((payload) =>
           handler.handler({
@@ -943,7 +928,7 @@ const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemo
             conflicts: conflictPayloads
           })
         ),
-        Effect.updateContext((input) => withEntryAnnotations(contexts.handler, input)),
+        Effect.updateContext((input) => Context.add(withEntryAnnotations(context, input), Identity, options.identity)),
         Effect.asVoid
       ) as any
 
