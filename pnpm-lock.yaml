@@ -340,6 +340,36 @@ importers:
         specifier: ^3.5.43
         version: 3.5.43(typescript@7.0.2)
 
+  packages/auth:
+    devDependencies:
+      '@effect/graphql-generator':
+        specifier: workspace:^
+        version: link:../tools/graphql-generator
+      '@effect/openapi-generator':
+        specifier: workspace:^
+        version: link:../tools/openapi-generator
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform/node
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
+      saxes:
+        specifier: ^6.0.0
+        version: 6.0.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      typescript-compiler:
+        specifier: npm:typescript@6.0.3
+        version: typescript@6.0.3
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+
   packages/effect:
     devDependencies:
       '@types/node':
@@ -4748,6 +4778,9 @@ packages:
 
   jju@1.4.0:
     resolution: {integrity: sha512-8wb9Yw966OSxApiCt0K3yNJL8pnNeIv+OEq2YMidz4FKP6nonSRoOXc80iXY4JaN2FC11B9qsNmDsm+ZOfMROA==}
+
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   js-base64@3.9.4:
     resolution: {integrity: sha512-PtOMXpEGuP0RRiRXsjzHzl44dMHxSu2CPvAhinupR1tBa88me+1DPqsobl7eupn5UukjLkln1ZnAOAOXOrYG0Q==}
@@ -10190,6 +10223,8 @@ snapshots:
       supports-color: 8.1.1
 
   jju@1.4.0: {}
+
+  jose@6.2.12: {}
 
   js-base64@3.9.4: {}
 

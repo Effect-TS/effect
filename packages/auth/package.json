@@ -1,0 +1,100 @@
+{
+  "name": "@effect/auth",
+  "version": "4.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "JOSE, OAuth, and OpenID Connect protocols for Effect",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/auth"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "effect",
+    "auth",
+    "jose",
+    "jwt",
+    "jwks",
+    "oauth",
+    "oidc",
+    "pkce"
+  ],
+  "keywords": [
+    "typescript",
+    "effect",
+    "auth",
+    "jose",
+    "jwt",
+    "jwks",
+    "oauth",
+    "oidc",
+    "pkce"
+  ],
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null,
+    "./index": null,
+    "./*/index": null,
+    "./jose": "./src/jose/index.ts",
+    "./oauth": "./src/oauth/index.ts",
+    "./oauth/providers": "./src/oauth/providers/index.ts",
+    "./oauth/providers/internal/*": null
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./*": "./dist/*.js",
+      "./internal/*": null,
+      "./index": null,
+      "./*/index": null,
+      "./jose": "./dist/jose/index.js",
+      "./oauth": "./dist/oauth/index.js",
+      "./oauth/providers": "./dist/oauth/providers/index.js",
+      "./oauth/providers/internal/*": null
+    }
+  },
+  "scripts": {
+    "codegen": "effect-utils codegen && pnpm codegen:providers",
+    "codegen:providers": "node codegen/bin.ts generate",
+    "codegen:providers:check": "node codegen/bin.ts check",
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "devDependencies": {
+    "@effect/graphql-generator": "workspace:^",
+    "@effect/openapi-generator": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^",
+    "jose": "6.2.12",
+    "saxes": "^6.0.0",
+    "typescript": "^7.0.2",
+    "typescript-compiler": "npm:typescript@6.0.3",
+    "yaml": "^2.9.1"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^"
+  }
+}
