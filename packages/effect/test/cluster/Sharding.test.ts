@@ -1928,6 +1928,14 @@ const DefectRecoveryEntity = Entity.make("DefectRecovery", [DefectRecoveryRun.an
 const DefectRecoverySharding = <R>(entityLayer: Layer.Layer<never, never, R>) =>
   entityLayer.pipe(Layer.provideMerge(UnregisteredSharding({})))
 
+// Restarts after 1ms, so tests only advance the clock as far as a restart
+// needs instead of waking every background Sharding loop along the way.
+const defectRetryPolicy = Schedule.spaced(1)
+
+// Steps the test clock until `effect` completes.
+const advanceUntil = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.raceFirst(effect, Effect.forever(TestClock.adjust(1)))
+
 // Counts handler builds. Building the `blocked` generation waits until
 // `acquired` completes, holding the entity in replacement acquisition.
 const makeGenerations = Effect.fnUntraced(function*(blocked?: number) {
@@ -2002,25 +2010,27 @@ describe.concurrent("Sharding defect recovery", () => {
       const entity = DefectRecoveryEntity
       const generations = yield* makeGenerations()
       const attempts = yield* Ref.make(0)
-      const entityLayer = entity.toLayer(Effect.as(
-        generations.next,
-        entity.of({
-          run: Effect.fnUntraced(function*({ payload }) {
-            if ((yield* Ref.updateAndGet(attempts, (n) => n + 1)) <= 3) {
-              return yield* Effect.die("repeated defect")
-            }
-            return payload.id
+      const entityLayer = entity.toLayer(
+        Effect.as(
+          generations.next,
+          entity.of({
+            run: Effect.fnUntraced(function*({ payload }) {
+              if ((yield* Ref.updateAndGet(attempts, (n) => n + 1)) <= 3) {
+                return yield* Effect.die("repeated defect")
+              }
+              return payload.id
+            })
           })
-        })
-      ))
+        ),
+        { defectRetryPolicy }
+      )
 
       yield* Effect.gen(function*() {
         const client = (yield* entity.client)("repeated")
         const work = yield* client.run({ id: "request" }).pipe(Effect.forkChild)
-        yield* TestClock.adjust("30 seconds")
+        assert.strictEqual(yield* advanceUntil(Fiber.join(work)), "request")
         assert.strictEqual(yield* Ref.get(attempts), 4)
         assert.strictEqual(yield* Ref.get(generations.count), 4)
-        assert.strictEqual(yield* Fiber.join(work), "request")
       }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
     }))
 
@@ -2056,7 +2066,7 @@ describe.concurrent("Sharding defect recovery", () => {
               return payload.id
             })
           })),
-        { concurrency: "unbounded" }
+        { concurrency: "unbounded", defectRetryPolicy }
       )
 
       yield* Effect.gen(function*() {
@@ -2065,12 +2075,11 @@ describe.concurrent("Sharding defect recovery", () => {
         const second = yield* client.run({ id: "second" }).pipe(Effect.forkChild)
         yield* Deferred.await(bothStarted)
         yield* Deferred.succeed(fail, undefined)
-        yield* TestClock.adjust("10 seconds")
-        yield* Deferred.await(generations.acquiring)
+        yield* advanceUntil(Deferred.await(generations.acquiring))
         const third = yield* client.run({ id: "third" }).pipe(Effect.forkChild)
         yield* TestClock.adjust(1)
         yield* Deferred.succeed(generations.acquired, undefined)
-        yield* TestClock.adjust("30 seconds")
+        yield* advanceUntil(Fiber.joinAll([first, second, third]))
         assert.strictEqual(yield* Fiber.join(first), "first")
         assert.strictEqual(yield* Fiber.join(second), "second")
         assert.strictEqual(yield* Fiber.join(third), "third")
