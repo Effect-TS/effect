@@ -245,7 +245,9 @@ export const readerBytes = (
  *
  * **Details**
  *
- * The `TextDecoder` is created once per acquisition.
+ * The `TextDecoder` is created once per acquisition and decodes in streaming
+ * mode, so multi-byte characters may span binary frames. On a normal close
+ * (code 1000), incomplete trailing characters become U+FFFD.
  *
  * @stability unstable
  * @category combinators
@@ -261,14 +263,25 @@ export const readerString = (
 > =>
   Effect.map(self.reader, ({ pull }) => {
     const decoder = new TextDecoder(encoding)
-    return Effect.map(pull, (chunk) => {
+    const streamOptions = { stream: true }
+    let pullString: Effect.Effect<NonEmptyReadonlyArray<string>, SocketError> = Effect.map(pull, (chunk) => {
       const out = new Array<string>(chunk.length)
       for (let i = 0; i < chunk.length; i++) {
         const item = chunk[i]
-        out[i] = typeof item === "string" ? item : decoder.decode(item)
+        out[i] = typeof item === "string" ? item : decoder.decode(item, streamOptions)
       }
       return out as unknown as NonEmptyReadonlyArray<string>
-    })
+    }).pipe(
+      Effect.catch((error) => {
+        if (error.reason._tag !== "SocketCloseError" || error.reason.code !== 1000) {
+          return Effect.fail(error)
+        }
+        pullString = Effect.fail(error)
+        const last = decoder.decode()
+        return last.length > 0 ? Effect.succeed([last] as const) : pullString
+      })
+    )
+    return Effect.suspend(() => pullString)
   })
 
 const CloseEventTypeId = "~effect/socket/Socket/CloseEvent"
