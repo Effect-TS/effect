@@ -1508,6 +1508,13 @@ export const flip = <A, E>(self: Result<A, E>): Result<E, A> =>
  * - The return value of the generator is wrapped in `Success`
  * - Evaluated eagerly and synchronously (unlike `Effect.gen`)
  *
+ * **Gotchas**
+ *
+ * A yielded failure skips `catch` blocks but still runs `finally` blocks and
+ * `using` disposal. A failure yielded during cleanup replaces the original one.
+ * If a `finally` block returns, even `undefined`, the result is a `Success` of
+ * that value.
+ *
  * **Example** (Composing multiple Results)
  *
  * ```ts import.meta.vitest
@@ -1530,16 +1537,22 @@ export const flip = <A, E>(self: Result<A, E>): Result<E, A> =>
 export const gen: Gen.Gen<ResultTypeLambda> = (...args) => {
   const f = args.length === 1 ? args[0] : args[1].bind(args[0])
   const iterator = f()
+  let failure: Result<any, any> | undefined
   let state: IteratorResult<any> = iterator.next()
   while (!state.done) {
     const current = state.value
     if (isFailure(current)) {
-      return current
+      failure = current
+      state = iterator.return(genCloseSentinel as never)
+    } else {
+      state = iterator.next(current.success as never)
     }
-    state = iterator.next(current.success as never)
   }
-  return succeed(state.value) as any
+  return (state.value === genCloseSentinel ? failure : succeed(state.value)) as any
 }
+
+// Tells an unchanged short-circuit apart from a `finally` that returns, even `undefined`
+const genCloseSentinel = Symbol("~effect/Result/gen/CloseSentinel")
 
 // -------------------------------------------------------------------------------------
 // do notation
