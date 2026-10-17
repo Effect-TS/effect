@@ -781,14 +781,14 @@ export const makeIndexedDb = (options?: {
       withRemoteUncommited: (remoteId, f) =>
         Effect.callback<ReadonlyArray<Entry>, EventJournalError>((resume) => {
           const entries: Array<Entry> = []
-          const tx = db.transaction(["entries", "remotes", "remoteEntryId"], "readwrite")
+          const tx = db.transaction(["entries", "remotes", "remoteEntryId"], "readonly")
 
           const entriesStore = tx.objectStore("entries")
           const remotesStore = tx.objectStore("remotes")
           const remoteEntryIdStore = tx.objectStore("remoteEntryId")
 
           const remoteIdKey = remoteId as IDBValidKey
-          const request = remoteEntryIdStore.get(remoteIdKey) as IDBRequest<{ entryId: IDBValidKey } | undefined>
+          const request = remoteEntryIdStore.get([remoteIdKey]) as IDBRequest<{ entryId: IDBValidKey } | undefined>
           request.onsuccess = () => {
             const startEntryId = request.result?.entryId
             const entryCursor = entriesStore.index("id").openCursor(
