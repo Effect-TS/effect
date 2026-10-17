@@ -79,6 +79,38 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(missing, Option.some(expected))
     }))
 
+  it.effect("orders the journal and peer backlog after a local write following a future import", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const peer = EventJournal.makeRemoteIdUnsafe()
+      const source = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.nextRemoteSequence(peer)
+
+      const future = entry(281_474_976_710_655)
+      yield* journal.writeFromRemote({
+        remoteId: source,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
+        effect: () => Effect.void
+      })
+      const local = yield* journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      })
+      const imported = entry(281_474_976_710_654)
+      yield* journal.writeFromRemote({
+        remoteId: source,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 1, entry: imported })],
+        effect: () => Effect.void
+      })
+
+      const expected = idStrings([local, imported, future])
+      assert.deepStrictEqual(idStrings(yield* journal.entries), expected)
+      const missing = yield* journal.withRemoteUncommited(peer, (entries) => Effect.succeed(idStrings(entries)))
+      assert.deepStrictEqual(missing, Option.some(expected))
+    }))
+
   it.effect("relays an imported entry to another remote", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
