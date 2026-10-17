@@ -4,7 +4,6 @@ import { Effect } from "effect"
 import type * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import type { StoreId } from "effect/eventlog/EventLogMessage"
-import * as EventLogServer from "effect/eventlog/EventLogServerEncrypted"
 import * as SqlEventLogServer from "effect/eventlog/SqlEventLogServerEncrypted"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
@@ -16,10 +15,21 @@ vi.mock("tedious", async (importOriginal) => {
   const original = await importOriginal<typeof Tedious>()
 
   class MockConnection extends original.Connection {
+    readonly entryIds = new Set<string>()
+
     override connect(callback?: (error?: Error) => void) {
       callback?.()
     }
     override close() {}
+    override beginTransaction(callback: (error?: Error | null) => void) {
+      callback()
+    }
+    override commitTransaction(callback: (error?: Error | null) => void) {
+      callback()
+    }
+    override rollbackTransaction(callback: (error?: Error | null) => void) {
+      callback()
+    }
     override cancel() {
       return false
     }
@@ -29,21 +39,23 @@ vi.mock("tedious", async (importOriginal) => {
       }
       const query = request.sqlTextOrProcedure?.trimStart() ?? ""
       if (query.startsWith("MERGE")) {
-        // Return each source row as an inserted row, preserving the bound bytes.
         const rows = []
-        for (let i = 0; i < request.parameters.length; i += 3) {
-          rows.push([
-            { metadata: { colName: "sequence" }, value: i / 3 + 1 },
-            { metadata: { colName: "iv" }, value: request.parameters[i].value },
-            { metadata: { colName: "entry_id" }, value: request.parameters[i + 1].value },
-            { metadata: { colName: "encrypted_entry" }, value: request.parameters[i + 2].value }
-          ])
+        for (const parameter of request.parameters) {
+          const id = parameter.value as Uint8Array
+          const key = Array.from(id).join(",")
+          if (this.entryIds.has(key)) continue
+          this.entryIds.add(key)
+          rows.push([{ metadata: { colName: "entry_id" }, value: id }])
         }
         request.callback(null, rows.length, rows)
         return
       }
       if (!query.startsWith("SELECT")) {
         request.callback(null, 0, [])
+        return
+      }
+      if (query.startsWith("SELECT MAX(last_sequence)")) {
+        request.callback(null, 1, [[{ metadata: { colName: "last_sequence" }, value: null }]])
         return
       }
       const rows = request.parameters.map((parameter) => [
@@ -91,17 +103,15 @@ for (
       const written = yield* storage.write(
         "public-key",
         "store-a" as StoreId,
-        ids.map((id, index) =>
-          new EventLogServer.PersistedEntry({
-            entryId: id as EventJournal.EntryId,
-            iv: new Uint8Array(12),
-            encryptedEntry: Uint8Array.of(index)
-          })
-        )
+        ids.map((id, index): EventLogEncryption.EncryptedBatch => ({
+          entryIds: [id as EventJournal.EntryId],
+          iv: new Uint8Array(12),
+          encryptedBatch: Uint8Array.of(index)
+        }))
       )
 
       assert.deepStrictEqual(
-        written.map((entry) => Array.from(entry.entryId)),
+        written.flatMap((batch) => batch.entryIds.map((id) => Array.from(id))),
         expected.map((byte) => Array(16).fill(byte))
       )
     }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))

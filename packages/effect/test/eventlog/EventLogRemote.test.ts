@@ -96,7 +96,8 @@ describe("EventLogRemote", () => {
 
       assert.strictEqual(decoded.publicKey, identity.publicKey)
       assert.strictEqual(decoded.storeId, defaultStoreId)
-      assert.strictEqual(decoded.encryptedEntries.length, 1)
+      assert.strictEqual(decoded.batches.length, 1)
+      assert.strictEqual(decoded.batches[0].entryIds.length, 1)
 
       request.resume(Effect.void)
       yield* Fiber.join(writeFiber)
