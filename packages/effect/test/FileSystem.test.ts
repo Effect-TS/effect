@@ -21,25 +21,30 @@ const info = (type: FileSystem.File.Type): FileSystem.File.Info => ({
 const failure = (_tag: PlatformError.SystemErrorTag, method: string, path: string) =>
   PlatformError.systemError({ _tag, module: "FileSystem", method, pathOrDescriptor: path })
 
-// A directory `a` containing `x.ts`, with `glob` derived by `FileSystem.make`
-// from untyped listings, so entry types come from `stat` and `readLink`.
+// Each directory holds the file `x.ts`, and `glob` and `readDirectoryEntries`
+// are derived by `FileSystem.make`, so entry types come from `stat` and
+// `readLink`.
 const makeFileSystem = (overrides: {
+  readonly directories?: Record<string, ReadonlyArray<string>>
+  readonly readDirectory?: (path: string) => Effect.Effect<Array<string>, PlatformError.PlatformError> | undefined
   readonly stat?: (path: string) => Effect.Effect<FileSystem.File.Info, PlatformError.PlatformError> | undefined
   readonly readLink?: (path: string) => Effect.Effect<string, PlatformError.PlatformError>
 }) => {
-  const directories: Record<string, ReadonlyArray<string>> = { ".": ["a"], "a": ["x.ts"] }
+  const directories = overrides.directories ?? { ".": ["a"], "a": ["x.ts"] }
   return FileSystem.make({
     ...FileSystem.makeNoop({}),
     glob: undefined,
+    readDirectoryEntries: undefined,
     readDirectory: (path) =>
-      path in directories
-        ? Effect.succeed([...directories[path]])
-        : Effect.fail(failure("NotFound", "readDirectory", path)),
+      overrides.readDirectory?.(path) ??
+        (path in directories
+          ? Effect.succeed([...directories[path]])
+          : Effect.fail(failure("NotFound", "readDirectory", path))),
     stat: (path) =>
       overrides.stat?.(path) ??
         (path in directories
           ? Effect.succeed(info("Directory"))
-          : path === "a/x.ts"
+          : path.endsWith("/x.ts") && path.slice(0, -5) in directories
           ? Effect.succeed(info("File"))
           : Effect.fail(failure("NotFound", "stat", path))),
     // Node and Deno report EINVAL as "Unknown" for a path that is not a link
@@ -47,7 +52,22 @@ const makeFileSystem = (overrides: {
   })
 }
 
+// `secret` and `src` are named by literal pattern segments below, and `open`
+// is only reached through wildcards
+const permissionTree = {
+  ".": ["open", "secret", "src"],
+  "open": ["x.ts"],
+  "secret": ["x.ts"],
+  "src": ["x.ts"]
+}
+
 describe("FileSystem", () => {
+  it.effect("make derives readDirectoryEntries from readDirectory", () =>
+    Effect.gen(function*() {
+      const fs = makeFileSystem({})
+      assert.deepStrictEqual(yield* fs.readDirectoryEntries("a"), [{ name: "x.ts", type: "Unknown" }])
+    }))
+
   describe("derived glob", () => {
     it.effect("traverses directories whose readLink reports that they are not links", () =>
       Effect.gen(function*() {
@@ -78,6 +98,44 @@ describe("FileSystem", () => {
       Effect.gen(function*() {
         const fs = makeFileSystem({ stat: (path) => path === "." ? Effect.die("boom") : undefined })
         assert.isTrue(Exit.hasDies(yield* Effect.exit(fs.glob("."))))
+      }))
+
+    it.effect.each<{ readonly pattern: string; readonly root?: string }>([
+      { pattern: "**", root: "secret" },
+      { pattern: "secret/**" },
+      { pattern: "secret/*.ts" }
+    ])(
+      "fails when a directory named by $pattern (root: $root) cannot be read",
+      ({ pattern, root }) =>
+        Effect.gen(function*() {
+          const error = failure("PermissionDenied", "readDirectory", "secret")
+          const fs = makeFileSystem({
+            directories: permissionTree,
+            readDirectory: (path) => path === "secret" ? Effect.fail(error) : undefined
+          })
+          assert.deepStrictEqual(yield* Effect.exit(fs.glob(pattern, { root })), Exit.fail(error))
+        })
+    )
+
+    it.effect("reads a literal prefix whose parent cannot be listed", () =>
+      Effect.gen(function*() {
+        const fs = makeFileSystem({
+          directories: permissionTree,
+          readDirectory: (path) =>
+            path === "." ? Effect.fail(failure("PermissionDenied", "readDirectory", path)) : undefined
+        })
+        assert.deepStrictEqual(yield* fs.glob("src/*.ts"), ["src/x.ts"])
+      }))
+
+    it.effect("skips unreadable directories reached through wildcards and missing literal prefixes", () =>
+      Effect.gen(function*() {
+        const fs = makeFileSystem({
+          directories: permissionTree,
+          readDirectory: (path) =>
+            path === "secret" ? Effect.fail(failure("PermissionDenied", "readDirectory", path)) : undefined
+        })
+        assert.deepStrictEqual(yield* fs.glob("*/x.ts"), ["open/x.ts", "src/x.ts"])
+        assert.deepStrictEqual(yield* fs.glob("missing/**"), [])
       }))
 
     it.effect("propagates defects from readLink", () =>
