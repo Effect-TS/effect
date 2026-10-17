@@ -347,6 +347,9 @@ const make = Effect.gen(function*() {
   // allow them to move to another runner.
 
   const releasingShards = MutableHashSet.empty<ShardId>()
+  // Keep startup fibers behind singleton initialization without moving resource
+  // acquisition (and therefore changing the shutdown finalizer order).
+  const singletonsReady = Latch.makeUnsafe(false)
   // Hands every held shard off on shutdown, set when this is a runner
   let handoff: Effect.Effect<void> = Effect.void
   // Shards whose entities must be force interrupted and locks fully released
@@ -485,6 +488,7 @@ const make = Effect.gen(function*() {
     })
 
     yield* Effect.gen(function*() {
+      yield* singletonsReady.await
       activeShardsLatch.openUnsafe()
 
       while (true) {
@@ -660,6 +664,7 @@ const make = Effect.gen(function*() {
     yield* Effect.suspend(() => shardLocksHealthyLatch.isOpen() ? refreshShardLocks : probeShardLocks).pipe(
       Effect.repeat(Schedule.fixed(shardLockInterval)),
       Effect.forever,
+      (effect) => Effect.andThen(singletonsReady.await, effect),
       Effect.forkIn(shardingScope)
     )
 
@@ -1800,6 +1805,8 @@ const make = Effect.gen(function*() {
     // wait for the stopped singletons without the lock
     (stops) => Effect.all(stops, { discard: true })
   )
+
+  singletonsReady.openUnsafe()
 
   // --- Entities ---
 
