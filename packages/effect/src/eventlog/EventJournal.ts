@@ -51,6 +51,14 @@ export class EventJournal extends Context.Service<EventJournal, {
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
 
   /**
+   * Read the stored entries with the given ids. The result is aligned with
+   * `ids`, with `undefined` for ids that are not in the journal.
+   */
+  readonly entriesById: (
+    ids: ReadonlyArray<EntryId>
+  ) => Effect.Effect<ReadonlyArray<Entry | undefined>, EventJournalError>
+
+  /**
    * Write an event to the journal, performing an effect before committing the
    * event.
    */
@@ -605,6 +613,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           })
       ),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
+    entriesById: (ids) => Effect.sync(() => ids.map((id) => byId.get(Uuid.stringify(id)))),
     changes: PubSub.subscribe(pubsub),
     destroy: Effect.sync(() => {
       journal.length = 0
@@ -742,6 +751,20 @@ export const makeIndexedDb = (options?: {
           .getAll()).pipe(
           Effect.map((rows) => rows.map(entryFromIdb))
         ),
+      entriesById: (ids) =>
+        Effect.callback<Array<Entry | undefined>, EventJournalError>((resume) => {
+          const entries: Array<Entry | undefined> = ids.map(() => undefined)
+          const tx = db.transaction("entries", "readonly")
+          const store = tx.objectStore("entries")
+          for (let i = 0; i < ids.length; i++) {
+            const request = store.get(ids[i] as IDBValidKey)
+            request.onsuccess = () => {
+              if (request.result !== undefined) entries[i] = entryFromIdb(request.result)
+            }
+          }
+          onTransactionDone(tx, "entriesById", resume, () => entries)
+          return Effect.sync(() => tx.abort())
+        }),
       write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
       writeMany,
       writeFromRemote: Effect.fnUntraced(function*(options) {

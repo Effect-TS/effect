@@ -24,7 +24,7 @@ import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import type * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
-import type { Entry, RemoteEntry, RemoteId } from "./EventJournal.ts"
+import { type Entry, type EventJournal, type EventJournalError, RemoteEntry, type RemoteId } from "./EventJournal.ts"
 import { type Identity, Registry } from "./EventLog.ts"
 import { EventLogEncryption, layerSubtle } from "./EventLogEncryption.ts"
 import {
@@ -64,6 +64,11 @@ export class EventLogRemote extends Context.Service<EventLogRemote, {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
     readonly startSequence: number
+    /**
+     * Looks up locally stored entries by id, so the remote can reuse them
+     * instead of decoding the matching changes.
+     */
+    readonly knownEntries?: EventJournal["Service"]["entriesById"] | undefined
   }) => Effect.Effect<Queue.Dequeue<RemoteEntry, EventLogRemoteError>, never, Scope.Scope>
   readonly write: (options: {
     readonly identity: Identity["Service"]
@@ -172,8 +177,9 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   }) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
   readonly decodeChanges: (
     identity: Identity["Service"],
-    data: Uint8Array<ArrayBuffer>
-  ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError>
+    data: Uint8Array<ArrayBuffer>,
+    knownEntries?: EventJournal["Service"]["entriesById"]
+  ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError | EventJournalError>
 }): Effect.fn.Return<EventLogRemote["Service"], EventLogRemoteError, Scope.Scope | EventLogRemoteClient | Registry> {
   const client = yield* EventLogRemoteClient
   const registry = yield* Registry
@@ -268,12 +274,12 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i]
             if (part._tag === "Single") {
-              yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, part.data))
+              yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, part.data, options.knownEntries))
               continue
             }
             const data = ChunkedMessage.join(chunkedState, part)
             if (!data) continue
-            yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, data))
+            yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, data, options.knownEntries))
           }
         }
       }).pipe(
@@ -324,6 +330,26 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
 > {
   const encryption = yield* EventLogEncryption
 
+  // Stored entries stand in for changes the journal already has, so they skip
+  // decryption but still reach the journal with their remote sequence.
+  const decodeChanges = Effect.fnUntraced(function*(
+    identity: Identity["Service"],
+    data: Uint8Array<ArrayBuffer>,
+    knownEntries?: EventJournal["Service"]["entriesById"]
+  ) {
+    const entries = yield* ChangesRpc.decodeEncrypted(data)
+    if (knownEntries === undefined) return yield* encryption.decrypt(identity, entries)
+    const stored = yield* knownEntries(entries.map((entry) => entry.entryId))
+    const decrypted = yield* encryption.decrypt(identity, entries.filter((_, i) => stored[i] === undefined))
+    let next = 0
+    return entries.map((encrypted, i) => {
+      const entry = stored[i]
+      return entry === undefined
+        ? decrypted[next++]
+        : new RemoteEntry({ remoteSequence: encrypted.sequence, entry }, { disableChecks: true })
+    })
+  })
+
   return yield* makeWith({
     encodeWrite: (options) =>
       encryption.encrypt(options.identity, options.entries).pipe(
@@ -339,10 +365,7 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
           }).encoded
         )
       ),
-    decodeChanges: (identity, data) =>
-      ChangesRpc.decodeEncrypted(data).pipe(
-        Effect.flatMap((entries) => encryption.decrypt(identity, entries))
-      )
+    decodeChanges
   })
 })
 

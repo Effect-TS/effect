@@ -63,8 +63,6 @@ const toArrayBuffer = (data: Uint8Array): ArrayBuffer => {
   return buffer
 }
 
-const toBufferSource = (data: Uint8Array): ArrayBufferView<ArrayBuffer> => new Uint8Array(toArrayBuffer(data))
-
 /**
  * Service that provides identity generation, entry
  * encryption and decryption, and SHA-256 hashing for event-log replication.
@@ -118,9 +116,9 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
             data.map((entry) => {
               const iv = crypto.getRandomValues(new Uint8Array(12))
               return crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: toBufferSource(iv), tagLength: 128 },
+                { name: "AES-GCM", iv, tagLength: 128 },
                 key,
-                toBufferSource(entry)
+                entry
               ).then((encryptedEntry) => ({ iv, encryptedEntry: new Uint8Array(encryptedEntry) }))
             })
           )
@@ -131,9 +129,9 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
         const decryptedData = (yield* Effect.promise(() =>
           Promise.all(entries.map((data) =>
             crypto.subtle.decrypt(
-              { name: "AES-GCM", iv: toBufferSource(data.iv), tagLength: 128 },
+              { name: "AES-GCM", iv: data.iv, tagLength: 128 },
               key,
-              toBufferSource(data.encryptedEntry)
+              data.encryptedEntry
             )
           ))
         )).map((buffer) => new Uint8Array(buffer))
