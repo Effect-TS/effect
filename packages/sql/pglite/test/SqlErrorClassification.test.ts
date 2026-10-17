@@ -26,6 +26,7 @@ const assertUniqueViolation = (reason: SqlError.SqlErrorReason, constraint: stri
 }
 
 const makeFailingClient = (cause: unknown) => ({
+  exec: () => Promise.reject(cause),
   query: () => Promise.reject(cause)
 })
 
