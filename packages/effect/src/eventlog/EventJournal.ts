@@ -685,8 +685,7 @@ export const makeIndexedDb = (options?: {
       }
 
       if (event.oldVersion < 3) {
-        // Lets remote writes scan only the stored entries that share an event
-        // and primary key with the batch.
+        // Bounds conflict reads to one event and primary key.
         openRequest.transaction!.objectStore("entries").createIndex("conflict", ["event", "primaryKey", "id"])
       }
     }
@@ -757,8 +756,7 @@ export const makeIndexedDb = (options?: {
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
             const conflicts = tx.objectStore("entries").index("conflict")
-            // One read per event and primary key, of the entries newer than the
-            // oldest in the batch, in id order.
+            // One read per group of the entries newer than its oldest, in id order.
             for (const group of index.groups()) {
               const request = conflicts.getAll(IDBKeyRange.bound(
                 [group.event, group.primaryKey, entryIdLowerBound(group.oldestMillis + 1)],

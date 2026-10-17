@@ -10,7 +10,7 @@ import type { Entry } from "../EventJournal.ts"
 export class ConflictIndex {
   readonly batch: ReadonlyArray<Entry>
   readonly oldestMillis: number
-  private readonly stored = new Map<string, Map<string, Group>>()
+  private readonly stored = new Map<string, Map<string, ConflictGroup>>()
 
   constructor(batch: ReadonlyArray<Entry>) {
     this.batch = batch
@@ -23,7 +23,12 @@ export class ConflictIndex {
       }
       const group = byKey.get(entry.primaryKey)
       if (group === undefined) {
-        byKey.set(entry.primaryKey, { oldestMillis: entry.createdAtMillis, entries: [] })
+        byKey.set(entry.primaryKey, {
+          event: entry.event,
+          primaryKey: entry.primaryKey,
+          oldestMillis: entry.createdAtMillis,
+          entries: []
+        })
       } else {
         group.oldestMillis = Math.min(group.oldestMillis, entry.createdAtMillis)
       }
@@ -36,16 +41,10 @@ export class ConflictIndex {
     return Array.from(this.stored.keys())
   }
 
-  /**
-   * The `(event, primaryKey)` pairs in the batch, each with the creation time
-   * of its oldest entry. Only stored entries in a pair, created after that
-   * time, can conflict.
-   */
-  *groups(): Iterable<{ readonly event: string; readonly primaryKey: string; readonly oldestMillis: number }> {
-    for (const [event, byKey] of this.stored) {
-      for (const [primaryKey, group] of byKey) {
-        yield { event, primaryKey, oldestMillis: group.oldestMillis }
-      }
+  /** The `(event, primaryKey)` groups in the batch. */
+  *groups(): Iterable<ConflictGroup> {
+    for (const byKey of this.stored.values()) {
+      yield* byKey.values()
     }
   }
 
@@ -66,7 +65,11 @@ export class ConflictIndex {
   }
 }
 
-interface Group {
+/** An event and primary key in the batch, with the stored entries added for it. */
+export interface ConflictGroup {
+  readonly event: string
+  readonly primaryKey: string
+  /** Creation time of the oldest incoming entry. Only stored entries created later can conflict. */
   oldestMillis: number
   readonly entries: Array<Entry>
 }
