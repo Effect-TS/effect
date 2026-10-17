@@ -895,8 +895,7 @@ const make = Effect.gen(function*() {
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),
-            // Flush replay invalidations once per batch, after the lock and
-            // any journal transaction have completed.
+            // Outside the lock, so queries re-run after the journal transaction commits.
             reactivity.withBatch
           )
         }
