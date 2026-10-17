@@ -49,6 +49,7 @@ const makeEffect = Effect.gen(function*() {
   const socket = yield* Socket.Socket
   const services = yield* Effect.context<never>()
   const requests = yield* Queue.unbounded<DevToolsSchema.Request>()
+  yield* Queue.offer(requests, { _tag: "Ping" })
   const connected = yield* Deferred.make<void>()
   let closing = false
   let writable = false
