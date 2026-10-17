@@ -219,13 +219,7 @@ export const make = (options?: {
 
     const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
       Effect.uninterruptibleMask((restore) => {
-        const committed = Arr.map(entries, ({ event, payload, primaryKey }) =>
-          new EventJournal.Entry({
-            id: EventJournal.makeEntryIdUnsafe(),
-            event,
-            primaryKey,
-            payload
-          }, { disableChecks: true }))
+        const committed = EventJournal.makeEntries(entries)
         return restore(effect(committed)).pipe(
           Effect.tap(
             insertEntries(committed.map(toEntryRow)).pipe(

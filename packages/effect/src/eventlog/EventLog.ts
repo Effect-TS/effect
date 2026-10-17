@@ -10,7 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Arr from "../Array.ts"
+import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as FiberMap from "../FiberMap.ts"
@@ -1009,64 +1009,47 @@ const make = Effect.gen(function*() {
 
   const writeEvents = (
     events: Arr.NonEmptyReadonlyArray<{ readonly event: string; readonly payload: unknown }>
-  ): Effect.Effect<Arr.NonEmptyArray<unknown>, unknown> => {
-    const handlers: Array<Handlers.Item<any>> = []
-    for (const { event } of events) {
+  ): Effect.Effect<Arr.NonEmptyArray<unknown>, unknown> =>
+    Effect.forEach(events, ({ event, payload }) => {
       const handler = registry.handlers.get(event) as Handlers.Item<any> | undefined
       if (handler === undefined) {
         return Effect.die(`Event handler not found for: "${event}"`)
       }
-      handlers.push(handler)
-    }
-    return Effect.forEach(
-      events,
-      ({ event, payload }, i) =>
-        Schema.encodeUnknownEffect(handlers[i].event.payloadSchemaBinary)(payload).pipe(
-          Effect.orDie,
-          Effect.map((encoded) => ({
-            event,
-            primaryKey: handlers[i].event.primaryKey(payload as never),
-            payload: encoded as Uint8Array
-          }))
-        )
-    ).pipe(
-      Effect.flatMap((entries) =>
+      return Schema.encodeUnknownEffect(handler.event.payloadSchemaBinary)(payload).pipe(
+        Effect.orDie,
+        Effect.map((encoded) => ({
+          handler,
+          payload,
+          entry: { event, primaryKey: handler.event.primaryKey(payload as never), payload: encoded as Uint8Array }
+        }))
+      )
+    }).pipe(
+      Effect.flatMap((writes) =>
         journal.withLock(storeId)(journal.writeMany({
-          entries,
+          entries: Arr.map(writes, (write) => write.entry),
           effect: (written) =>
-            handlerTransaction(Effect.forEach(written, (entry, i) =>
-              handlers[i].handler({
-                storeId,
-                payload: events[i].payload,
-                entry,
-                conflicts: []
-              }).pipe(
-                Effect.updateContext((input) => Context.merge(handlers[i].context, input)),
+            handlerTransaction(Effect.forEach(written, (entry, i) => {
+              const { handler, payload } = writes[i]
+              return handler.handler({ storeId, payload, entry, conflicts: [] }).pipe(
+                Effect.updateContext((input) => Context.merge(handler.context, input)),
                 Effect.provideService(Identity, identity),
                 Effect.tap(() => invalidateEntry(reactivity, registry.reactivityKeys, entry))
-              )))
+              )
+            }))
         }))
       ),
       // Outside the lock, so queries re-run after the handler transaction and
       // the journal commit.
       reactivity.withBatch
     ) as Effect.Effect<Arr.NonEmptyArray<unknown>, unknown>
-  }
-
-  const eventLogWrite = (options: {
-    readonly event: string
-    readonly payload: unknown
-  }) => Effect.map(writeEvents([options]), (results) => results[0])
-
-  const eventLogWriteMany = (options: {
-    readonly events: Arr.NonEmptyReadonlyArray<{ readonly event: string; readonly payload: unknown }>
-  }) => writeEvents(options.events)
 
   yield* registry.handleRemote(runRemote)
 
   return EventLog.of({
-    write: eventLogWrite as EventLog["Service"]["write"],
-    writeMany: eventLogWriteMany as EventLog["Service"]["writeMany"],
+    write: ((options: { readonly event: string; readonly payload: unknown }) =>
+      Effect.map(writeEvents([options]), Arr.headNonEmpty)) as EventLog["Service"]["write"],
+    writeMany: ((options: { readonly events: Arr.NonEmptyReadonlyArray<any> }) =>
+      writeEvents(options.events)) as EventLog["Service"]["writeMany"],
     entries: journal.entries,
     destroy: journal.destroy
   })

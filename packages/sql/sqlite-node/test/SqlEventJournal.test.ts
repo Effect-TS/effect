@@ -212,11 +212,6 @@ describe("SqlEventJournal", () => {
         Effect.gen(function*() {
           const journal = yield* make
           const changes = yield* journal.changes
-          const published = Effect.flatMap(
-            PubSub.remaining(changes),
-            (remaining): Effect.Effect<ReadonlyArray<EventJournal.Entry>> =>
-              remaining === 0 ? Effect.succeed([]) : PubSub.takeAll(changes)
-          )
           const entries = [localEntry("a"), localEntry("b"), localEntry("c")] as const
           const failed = yield* Effect.exit(
             journal.writeMany({ entries, effect: () => Effect.fail("callback failed") })
@@ -224,7 +219,7 @@ describe("SqlEventJournal", () => {
           const afterFailure = {
             failed: Exit.isFailure(failed),
             entries: (yield* journal.entries).length,
-            published: (yield* published).length
+            published: yield* PubSub.remaining(changes)
           }
           const written = yield* journal.writeMany({ entries, effect: Effect.succeed })
           const ids = written.map((entry) => entry.idString)
@@ -239,7 +234,7 @@ describe("SqlEventJournal", () => {
               EventJournal.makeRemoteIdUnsafe(),
               (entries) => Effect.succeed(entries.map((entry) => entry.idString))
             ),
-            published: (yield* published).map((entry) => entry.idString)
+            published: (yield* PubSub.takeAll(changes)).map((entry) => entry.idString)
           }, {
             afterFailure: { failed: true, entries: 0, published: 0 },
             keys: ["a", "b", "c"],

@@ -53,20 +53,21 @@ describe("EventJournal.makeIndexedDb", () => {
       const local = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
       const entries = [local("a"), local("b"), local("c")] as const
       const failed = yield* Effect.exit(journal.writeMany({ entries, effect: () => Effect.fail("callback failed") }))
-      const afterFailure = { failed: Exit.isFailure(failed), transactions: transactions.opened }
+      const afterFailure = {
+        failed: Exit.isFailure(failed),
+        transactions: transactions.opened,
+        published: yield* PubSub.remaining(changes)
+      }
       const written = yield* journal.writeMany({ entries, effect: Effect.succeed })
-      const afterCommit = transactions.opened
       const ids = written.map((entry) => entry.idString)
       assert.deepStrictEqual({
         afterFailure,
-        afterCommit,
+        transactions: transactions.opened,
         committed: (yield* journal.entries).map((entry) => entry.idString),
-        published: (yield* PubSub.remaining(changes)) === 0
-          ? []
-          : (yield* PubSub.takeAll(changes)).map((entry) => entry.idString)
+        published: (yield* PubSub.takeAll(changes)).map((entry) => entry.idString)
       }, {
-        afterFailure: { failed: true, transactions: 0 },
-        afterCommit: 1,
+        afterFailure: { failed: true, transactions: 0, published: 0 },
+        transactions: 1,
         committed: ids,
         published: ids
       })

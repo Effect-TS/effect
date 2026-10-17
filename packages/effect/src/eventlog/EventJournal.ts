@@ -436,7 +436,8 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
   entry: Entry
 }) {}
 
-const makeEntries = (
+/** @internal */
+export const makeEntries = (
   entries: Arr.NonEmptyReadonlyArray<
     { readonly event: string; readonly primaryKey: string; readonly payload: Uint8Array }
   >
