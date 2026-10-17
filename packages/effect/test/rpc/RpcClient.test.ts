@@ -7,10 +7,12 @@ import {
   Effect,
   Exit,
   Fiber,
+  identity,
   Layer,
   Queue,
   Schedule,
   Schema,
+  SchemaTransformation,
   Scope,
   Stream,
   Tracer
@@ -191,6 +193,78 @@ describe("RpcClient", () => {
       const retryRequestId = takeRequestId(yield* Queue.take(sent))
       yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
+  it.effect("removes the entries of requests that fail without a reply", () =>
+    Effect.gen(function*() {
+      // the client decodes a reply only while it holds an entry for its request
+      let decodedReplies = 0
+      const CountedString = Schema.String.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transform({
+          decode: (value) => {
+            decodedReplies++
+            return value
+          },
+          encode: identity
+        })
+      ))
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
+      })
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      let sendMode: "ok" | "fails" | "hangs" = "ok"
+      const client = yield* RpcClient.make(RpcGroup.make(Rpc.make("Ping", { success: CountedString }))).pipe(
+        Effect.provideService(
+          RpcClient.Protocol,
+          RpcClient.Protocol.of({
+            codecFor: RpcSerialization.json.codecFor,
+            supportsAck: false,
+            supportsTransferables: false,
+            run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+            send: (_clientId, message) =>
+              Effect.andThen(
+                Queue.offer(sent, message),
+                message._tag !== "Request" || sendMode === "ok"
+                  ? Effect.void
+                  : sendMode === "fails"
+                  ? Effect.fail(error)
+                  : Effect.never
+              )
+          })
+        )
+      )
+      const handle = yield* Deferred.await(received)
+
+      const inFlight = yield* client.Ping().pipe(Effect.exit, Effect.forkChild)
+      const inFlightId = takeRequestId(yield* Queue.take(sent))
+      yield* Effect.yieldNow
+      yield* handle({ _tag: "ClientProtocolError", error })
+      assert.isTrue(Exit.isFailure(yield* Fiber.join(inFlight)))
+
+      const defected = yield* client.Ping().pipe(Effect.exit, Effect.forkChild)
+      const defectedId = takeRequestId(yield* Queue.take(sent))
+      yield* Effect.yieldNow
+      yield* handle({ _tag: "Defect", defect: "connection defect" })
+      assert.isTrue(Exit.isFailure(yield* Fiber.join(defected)))
+
+      sendMode = "fails"
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(client.Ping())))
+      const failedSendId = takeRequestId(yield* Queue.take(sent))
+
+      // a request interrupted during its send keeps its entry until the server is told
+      sendMode = "hangs"
+      const interrupted = yield* client.Ping().pipe(Effect.forkChild)
+      const interruptedId = takeRequestId(yield* Queue.take(sent))
+      yield* Fiber.interrupt(interrupted)
+      const interrupt = yield* Queue.take(sent)
+      assert(interrupt._tag === "Interrupt" && interrupt.requestId === interruptedId)
+
+      for (const requestId of [inFlightId, defectedId, failedSendId]) {
+        yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: "late" } })
+      }
+      assert.strictEqual(decodedReplies, 0)
     }))
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
