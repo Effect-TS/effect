@@ -72,15 +72,9 @@ export interface AuthorizationInput extends Omit<OAuthProvider.AuthorizationInpu
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: AuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: OAuthProvider.ExchangeInput
-  ) => Effect.Effect<OAuthProvider.ExchangeResult<Profile>, ConfigurationError | Rejected | Unavailable>
-}>()("@effect/auth/oauth/providers/GitHub/Client") {}
+export class Client extends Context.Service<Client, OAuthProvider.Client<Profile, AuthorizationInput>>()(
+  "@effect/auth/oauth/providers/GitHub/Client"
+) {}
 
 const OptionsSchema = Schema.Struct({
   ...Provider.Options.fields,
@@ -109,7 +103,7 @@ const Terminal = Schema.Struct({
 
 const ReturnedScopes = Schema.Array(Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_:-]{1,256}$/))).check(
   Schema.isMaxLength(64),
-  Schema.makeFilter((scopes) => new Set(scopes).size === scopes.length)
+  Schema.isUnique()
 )
 
 const checkedTokens = Effect.fnUntraced(function*(receipt: OAuth.TokenReceipt, scopes: ReadonlyArray<string>) {

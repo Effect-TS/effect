@@ -9,13 +9,11 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
-import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
 import * as Validation from "../../internal/validation.ts"
-import type * as OAuth from "../OAuth.ts"
-import { ConfigurationError, type Rejected, type Unavailable } from "../OAuthError.ts"
+import { ConfigurationError, type Unavailable } from "../OAuthError.ts"
 import * as OAuthProvider from "../OAuthProvider.ts"
 import * as Oidc from "../Oidc.ts"
 import * as Provider from "./internal/provider.ts"
@@ -28,7 +26,7 @@ import * as Provider from "./internal/provider.ts"
  * @category schemas
  * @since 4.1.0
  */
-export const Profile = Schema.Struct(OAuthProvider.StandardProfile.fields)
+export const Profile = OAuthProvider.StandardProfile
 
 /**
  * Value described by the Profile schema.
@@ -61,19 +59,9 @@ export interface Options extends OAuthProvider.Options {
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: OAuthProvider.OidcAuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: OAuthProvider.OidcExchangeInput
-  ) => Effect.Effect<
-    OAuthProvider.ExchangeResult<Profile>,
-    ConfigurationError | Rejected | Unavailable,
-    Oidc.VerificationRequirements
-  >
-}>()("@effect/auth/oauth/providers/Cognito/Client") {}
+export class Client
+  extends Context.Service<Client, OAuthProvider.OidcClient<Profile>>()("@effect/auth/oauth/providers/Cognito/Client")
+{}
 
 const OptionsSchema = Schema.Struct({
   ...Provider.Options.fields,
@@ -87,11 +75,7 @@ const OptionsSchema = Schema.Struct({
     Schema.isMaxLength(64),
     Schema.isPattern(/^[a-z]{2}(?:-[a-z0-9]+)+_[A-Za-z0-9]+$/u)
   ),
-  scopes: Schema.optionalKey(
-    Schema.Array(Schema.Literals(["openid", "profile", "email"])).check(
-      Schema.makeFilter((scopes) => scopes.includes("openid") && new Set(scopes).size === scopes.length)
-    )
-  )
+  scopes: Schema.optionalKey(Provider.OidcScopes)
 }).check(Schema.makeFilter((options) => options.userPoolId.startsWith(`${options.region}_`)))
 
 /**
@@ -114,38 +98,24 @@ export const make = Effect.fnUntraced(function*(
 ): Effect.fn.Return<Client["Service"], ConfigurationError | Unavailable, HttpClient.HttpClient | Scope.Scope> {
   const options = yield* Validation.configuration(OptionsSchema, input)
   const issuer = `https://cognito-idp.${options.region}.amazonaws.com/${options.userPoolId}`
-  const scopes = Object.freeze([...(options.scopes ?? ["openid"])])
-  return yield* Effect.acquireUseRelease(
-    Provider.copySecret(options.clientSecret),
-    (clientSecret) =>
-      Effect.gen(function*() {
+  return Client.of(
+    yield* Provider.makeOidcClient(options, {
+      metadata: Effect.gen(function*() {
         const metadata = yield* Oidc.discover(issuer, options)
         if (metadata.issuer !== issuer || metadata.jwks_uri !== `${issuer}/.well-known/jwks.json`) {
           return yield* ConfigurationError.make({ reason: "metadata" })
         }
-        const discovered = {
+        return {
           ...metadata,
           // Cognito supports S256 but omits its advertisement. Preserve explicit incompatible capabilities.
           code_challenge_methods_supported: metadata.code_challenge_methods_supported ?? ["S256"]
         }
-        return Client.of(
-          yield* Provider.makeOidc({
-            client: {
-              clientId: options.clientId,
-              authentication: { method: "client_secret_basic", secret: clientSecret },
-              metadata: discovered,
-              timeout: options.timeout,
-              maxResponseBytes: options.maxResponseBytes
-            },
-            redirectUri: options.redirectUri,
-            scopes,
-            profile: Profile,
-            subject: (_, verified) => Effect.succeed(verified.subject),
-            verifier: { algorithms: Oidc.defaultIdTokenAlgorithms }
-          })
-        )
       }),
-    (secret) => Effect.sync(() => Redacted.wipeUnsafe(secret))
+      authentication: "client_secret_basic",
+      scopes: options.scopes ?? ["openid"],
+      profile: Profile,
+      verifier: { algorithms: Oidc.defaultIdTokenAlgorithms }
+    })
   )
 })
 

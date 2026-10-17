@@ -98,15 +98,9 @@ export interface ExchangeInput extends Omit<OAuthProvider.ExchangeInput, "pkceVe
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: AuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: ExchangeInput
-  ) => Effect.Effect<OAuthProvider.ExchangeResult<Profile>, ConfigurationError | Rejected | Unavailable>
-}>()("@effect/auth/oauth/providers/Notion/Client") {}
+export class Client extends Context.Service<Client, OAuthProvider.Client<Profile, AuthorizationInput, ExchangeInput>>()(
+  "@effect/auth/oauth/providers/Notion/Client"
+) {}
 
 const TokenIdentity = Schema.Struct({
   owner: Schema.Struct({ type: Schema.Literal("user"), user: User }),

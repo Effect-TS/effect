@@ -9,7 +9,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
-import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
@@ -72,26 +71,16 @@ export interface Options extends OAuthProvider.Options {
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: OAuthProvider.OidcAuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: OAuthProvider.OidcExchangeInput
-  ) => Effect.Effect<
-    OAuthProvider.ExchangeResult<Profile>,
-    ConfigurationError | Rejected | Unavailable,
-    Oidc.VerificationRequirements
-  >
-}>()("@effect/auth/oauth/providers/Microsoft/Client") {}
+export class Client
+  extends Context.Service<Client, OAuthProvider.OidcClient<Profile>>()("@effect/auth/oauth/providers/Microsoft/Client")
+{}
 
 const OptionsSchema = Schema.Struct({
   ...Provider.Options.fields,
   tenant: Schema.optionalKey(Schema.Union([Schema.Literals(["common", "organizations", "consumers"]), tenantId])),
   scopes: Schema.optionalKey(
     Schema.Array(Schema.Literals(["openid", "profile", "email", "offline_access"])).check(
-      Schema.makeFilter((scopes) => new Set(scopes).size === scopes.length)
+      Schema.isUnique()
     )
   ),
   authenticationMethod: Schema.optionalKey(Schema.Literals(["client_secret_basic", "client_secret_post"]))
@@ -138,37 +127,23 @@ export const make = Effect.fnUntraced(function*(
   const options = yield* Validation.configuration(OptionsSchema, input)
   const authority = options.tenant === "consumers" ? personalTenant : (options.tenant ?? "common")
   const issuer = `${origin}/${authority}/v2.0`
-  const scopes = Object.freeze([
+  const scopes = [
     "openid",
     "profile",
     ...(options.scopes ?? []).filter((scope) => scope !== "openid" && scope !== "profile")
-  ])
-  return yield* Effect.acquireUseRelease(
-    Provider.copySecret(options.clientSecret),
-    (clientSecret) =>
-      Effect.gen(function*() {
-        const metadata = yield* supplementDiscovery(yield* Oidc.discover(issuer, options))
-        return Client.of(
-          yield* Provider.makeOidc({
-            client: {
-              clientId: options.clientId,
-              authentication: { method: options.authenticationMethod ?? "client_secret_basic", secret: clientSecret },
-              metadata,
-              timeout: options.timeout,
-              maxResponseBytes: options.maxResponseBytes
-            },
-            redirectUri: options.redirectUri,
-            scopes,
-            profile: Profile,
-            subject: (profile, _, issuer) =>
-              issuer !== `${origin}/${profile.tid}/v2.0` ||
-                (authority === "organizations" && profile.tid === personalTenant)
-                ? Rejected.make({ reason: "claims" })
-                : Effect.succeed(`${profile.oid}:${profile.tid}`)
-          })
-        )
-      }),
-    (secret) => Effect.sync(() => Redacted.wipeUnsafe(secret))
+  ]
+  return Client.of(
+    yield* Provider.makeOidcClient(options, {
+      metadata: Oidc.discover(issuer, options).pipe(Effect.flatMap(supplementDiscovery)),
+      authentication: options.authenticationMethod ?? "client_secret_basic",
+      scopes,
+      profile: Profile,
+      subject: (profile, _, issuer) =>
+        issuer !== `${origin}/${profile.tid}/v2.0` ||
+          (authority === "organizations" && profile.tid === personalTenant)
+          ? Rejected.make({ reason: "claims" })
+          : Effect.succeed(`${profile.oid}:${profile.tid}`)
+    })
   )
 })
 

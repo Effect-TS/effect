@@ -24,8 +24,7 @@ import * as Validation from "../../internal/validation.ts"
 import * as Jwk from "../../jose/Jwk.ts"
 import type * as Jws from "../../jose/Jws.ts"
 import * as Jwt from "../../jose/Jwt.ts"
-import type * as OAuth from "../OAuth.ts"
-import { ConfigurationError, type Rejected, Unavailable } from "../OAuthError.ts"
+import { ConfigurationError, Unavailable } from "../OAuthError.ts"
 import * as OAuthProvider from "../OAuthProvider.ts"
 import * as Oidc from "../Oidc.ts"
 import * as Provider from "./internal/provider.ts"
@@ -112,19 +111,11 @@ export interface ExchangeInput extends Omit<OAuthProvider.OidcExchangeInput, "pk
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: AuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: ExchangeInput
-  ) => Effect.Effect<
-    OAuthProvider.ExchangeResult<Profile>,
-    ConfigurationError | Rejected | Unavailable,
-    Oidc.VerificationRequirements
-  >
-}>()("@effect/auth/oauth/providers/Apple/Client") {}
+export class Client
+  extends Context.Service<Client, OAuthProvider.OidcClient<Profile, AuthorizationInput, ExchangeInput>>()(
+    "@effect/auth/oauth/providers/Apple/Client"
+  )
+{}
 
 const SigningOptions = Schema.Struct({
   clientId: Validation.text(1024),
@@ -145,7 +136,7 @@ const OptionsSchema = Schema.Struct({
   clientSecretLifetimeSeconds: SigningOptions.fields.lifetimeSeconds,
   scopes: Schema.optionalKey(
     Schema.Array(Schema.Literals(["openid", "email", "name"])).check(
-      Schema.makeFilter((scopes) => new Set(scopes).size === scopes.length)
+      Schema.isUnique()
     )
   )
 })
