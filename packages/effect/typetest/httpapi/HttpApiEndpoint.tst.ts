@@ -1,6 +1,7 @@
 import { type Effect, hole, Schema, type Stream, Struct } from "effect"
 import { HttpApiEndpoint, HttpApiError, HttpApiMiddleware, HttpApiSchema } from "effect/http-api"
 import type { HttpServerResponse } from "effect/http/HttpServerResponse"
+import type * as Socket from "effect/socket/Socket"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpApiEndpoint", () => {
@@ -562,6 +563,37 @@ describe("HttpApiEndpoint", () => {
       >()
       expect<ReturnType<HttpApiEndpoint.HandlerRaw<typeof endpoint, never, never>>>().type.toBe<
         Effect.Effect<Success | HttpServerResponse, never>
+      >()
+    })
+
+    it("passes the upgraded socket to handlers that return void", () => {
+      const endpoint = HttpApiEndpoint.post("a", "/a", {
+        success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+      })
+
+      expect<HttpApiEndpoint.Request<typeof endpoint>["socket"]>().type.toBe<Socket.Socket>()
+      expect<HttpApiEndpoint.RequestRaw<typeof endpoint>["socket"]>().type.toBe<Socket.Socket>()
+      expect<ReturnType<HttpApiEndpoint.Handler<typeof endpoint, never, never>>>().type.toBe<
+        Effect.Effect<void | HttpServerResponse, never>
+      >()
+      const plain = HttpApiEndpoint.post("b", "/b")
+      expect<"socket" extends keyof HttpApiEndpoint.Request<typeof plain> ? true : false>().type.toBe<false>()
+    })
+
+    it("passes a MessageSocket to handlers of upgrades with messages", () => {
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.Upgrade({
+          protocol: "chat",
+          client: Schema.Struct({ text: Schema.String }),
+          server: Schema.Struct({ count: Schema.Number })
+        })
+      })
+
+      expect<HttpApiEndpoint.Request<typeof endpoint>["socket"]>().type.toBe<
+        HttpApiSchema.MessageSocket<{ readonly text: string }, { readonly count: number }>
+      >()
+      expect<ReturnType<HttpApiEndpoint.Handler<typeof endpoint, never, never>>>().type.toBe<
+        Effect.Effect<void | HttpServerResponse, never>
       >()
     })
 

@@ -479,4 +479,43 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
       )
     }
   })
+
+  describe("Upgrade", () => {
+    const upgrade = HttpApiSchema.Upgrade({ protocol: "tcp" })
+
+    it.each([
+      {
+        name: "with another success",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { success: [upgrade, Schema.String] }),
+        message: "Cannot combine an upgrade with other success responses"
+      },
+      {
+        name: "on HEAD",
+        make: () => HttpApiEndpoint.head("attach", "/attach", { success: upgrade }),
+        message: "HEAD endpoints cannot declare an upgrade"
+      },
+      {
+        name: "with a payload",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { payload: Schema.String, success: upgrade }),
+        message: "Upgrade endpoints cannot declare a payload"
+      },
+      {
+        name: "as an error",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { error: upgrade as any }),
+        message: "Upgrade schemas are not supported in error responses"
+      },
+      {
+        name: "with only client messages",
+        make: () => HttpApiSchema.Upgrade({ protocol: "chat", client: Schema.String } as any),
+        message: "Upgrade requires both client and server message schemas"
+      },
+      {
+        name: "to WebSocket",
+        make: () => HttpApiSchema.Upgrade({ protocol: "WebSocket" }),
+        message: "Upgrade does not support WebSocket"
+      }
+    ])("rejects an upgrade $name", ({ make, message }) => {
+      assert.throws(make, message)
+    })
+  })
 })

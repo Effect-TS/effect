@@ -120,6 +120,15 @@ export const mapHttpClientError = dual<
         })
       }))
     }
+    case "UpgradeNotSupportedError": {
+      return Effect.fail(AiError.make({
+        module: "OpenAiClient",
+        method,
+        reason: new AiError.InvalidRequestError({
+          description: reason.message
+        })
+      }))
+    }
   }
 })
 

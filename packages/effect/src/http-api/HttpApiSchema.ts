@@ -10,7 +10,11 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
+import * as Effect from "../Effect.ts"
+import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
+import * as Exit from "../Exit.ts"
 import { constVoid, type LazyArg } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpStatus from "../http/HttpStatus.ts"
@@ -19,6 +23,8 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import * as Scope from "../Scope.ts"
+import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 
 declare module "../Schema.ts" {
@@ -455,6 +461,269 @@ export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.T
  */
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
+
+const UpgradeTypeId = "~effect/http-api/HttpApiSchema/Upgrade"
+
+/**
+ * Schema for a success response that switches the connection to another
+ * protocol with an HTTP/1.1 upgrade.
+ *
+ * **Details**
+ *
+ * Created with {@link Upgrade}. The response is `101 Switching Protocols`, and
+ * the connection then carries raw bytes in both directions as a `Socket`.
+ *
+ * @see {@link UpgradeWithMessages} for an upgrade that carries typed messages
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface Upgrade extends
+  Schema.Bottom<
+    Socket.Socket,
+    Socket.Socket,
+    never,
+    never,
+    SchemaAST.Declaration,
+    Upgrade
+  >
+{
+  readonly "Rebuild": Upgrade
+  readonly [UpgradeTypeId]: typeof UpgradeTypeId
+  readonly _tag: "Upgrade"
+  readonly protocol: string
+}
+
+/**
+ * Schema for a success response that upgrades the connection and then
+ * carries typed messages in both directions.
+ *
+ * **Details**
+ *
+ * Created with {@link Upgrade} when `client` and `server` message schemas are
+ * given. `Client` describes the messages the client sends, and `Server` the
+ * messages the server sends. Each message is one line of JSON.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface UpgradeWithMessages<Client extends Schema.Top, Server extends Schema.Top> extends
+  Schema.Bottom<
+    Socket.Socket,
+    Socket.Socket,
+    never,
+    never,
+    SchemaAST.Declaration,
+    UpgradeWithMessages<Client, Server>
+  >
+{
+  readonly "Rebuild": UpgradeWithMessages<Client, Server>
+  readonly [UpgradeTypeId]: typeof UpgradeTypeId
+  readonly _tag: "UpgradeWithMessages"
+  readonly protocol: string
+  readonly client: Client
+  readonly server: Server
+}
+
+/**
+ * The typed connection of an {@link UpgradeWithMessages} endpoint, as seen by
+ * one side: it receives `Receive` messages and sends `Send` messages.
+ *
+ * **Details**
+ *
+ * The connection is opened the first time `messages` is read or `send` is
+ * called. On the server, that sends the `101 Switching Protocols` response.
+ *
+ * `messages` ends when the other side ends its messages. Read it once: every
+ * run pulls from the same connection. `send` writes one message and waits for
+ * backpressure, so messages from concurrent fibers are not interleaved. `end`
+ * half-closes the connection: the other side's `messages` ends, and this side
+ * can still read.
+ *
+ * The connection closes when the server handler returns, or when the client's
+ * scope closes.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface MessageSocket<Receive, Send, R = never> {
+  readonly messages: Stream.Stream<Receive, MessageSocketError, R>
+  readonly send: (message: Send) => Effect.Effect<void, MessageSocketError, R>
+  readonly end: Effect.Effect<void>
+}
+
+/**
+ * Failures of a {@link MessageSocket}: the connection failed, a message did
+ * not match its schema, or a message was not valid JSON.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type MessageSocketError = Socket.SocketError | Schema.SchemaError | Ndjson.NdjsonError
+
+const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
+
+/**
+ * Declares an endpoint success that upgrades the connection to `protocol`,
+ * such as Docker's `tcp` for container attach.
+ *
+ * **When to use**
+ *
+ * Use as the only success schema of an endpoint that hands over its
+ * connection after `101 Switching Protocols`. Give `client` and `server`
+ * message schemas to exchange typed messages instead of raw bytes. For
+ * WebSocket, upgrade the request with `HttpServerRequest.upgrade` and connect
+ * with `Socket.makeWebSocket` instead.
+ *
+ * **Details**
+ *
+ * Without message schemas, the handler receives the connection as a `Socket`
+ * named `socket`, and the client returns it with the response headers. With
+ * them, both receive a {@link MessageSocket} instead: the handler receives
+ * `client` messages and sends `server` messages, and the client the reverse.
+ * Each message is one line of JSON.
+ *
+ * The `101` response is sent when the handler first uses the connection, so
+ * a handler can still fail with a declared error before then. Requests that
+ * do not ask for `protocol` get `426 Upgrade Required`. Other responses are
+ * decoded as the endpoint's errors on the client.
+ *
+ * The endpoint cannot declare a payload or other success schemas.
+ *
+ * **Example** (Declaring a typed chat endpoint)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
+ *
+ * const chat = HttpApiEndpoint.get("chat", "/rooms/:room/chat", {
+ *   params: { room: Schema.String },
+ *   success: HttpApiSchema.Upgrade({
+ *     protocol: "chat",
+ *     client: Schema.Struct({ text: Schema.String }),
+ *     server: Schema.Struct({ from: Schema.String, text: Schema.String })
+ *   })
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.6
+ */
+export const Upgrade: {
+  (options: {
+    readonly protocol: string
+  }): Upgrade
+  <Client extends Schema.Top, Server extends Schema.Top>(options: {
+    readonly protocol: string
+    readonly client: Client
+    readonly server: Server
+  }): UpgradeWithMessages<Client, Server>
+} = (options: {
+  readonly protocol: string
+  readonly client?: Schema.Top | undefined
+  readonly server?: Schema.Top | undefined
+}): any => {
+  if (options.protocol.toLowerCase() === "websocket") {
+    throw new Error("Upgrade does not support WebSocket")
+  }
+  if ((options.client === undefined) !== (options.server === undefined)) {
+    throw new Error("Upgrade requires both client and server message schemas")
+  }
+  return Schema.make(upgradeSchema.ast, {
+    [UpgradeTypeId]: UpgradeTypeId,
+    protocol: options.protocol,
+    ...(options.client === undefined ?
+      { _tag: "Upgrade" } :
+      { _tag: "UpgradeWithMessages", client: options.client, server: options.server })
+  })
+}
+
+/**
+ * @internal
+ */
+export const isUpgrade = (u: unknown): u is Upgrade | UpgradeWithMessages<Schema.Top, Schema.Top> =>
+  Schema.isSchema(u) && Predicate.hasProperty(u, UpgradeTypeId)
+
+/**
+ * @internal
+ */
+export const isUpgradeWithMessages = (u: unknown): u is UpgradeWithMessages<Schema.Top, Schema.Top> =>
+  isUpgrade(u) && u._tag === "UpgradeWithMessages"
+
+/**
+ * @internal
+ */
+export const rebuildUpgradeWithMessages = (
+  schema: UpgradeWithMessages<Schema.Top, Schema.Top>,
+  client: Schema.Top,
+  server: Schema.Top
+): UpgradeWithMessages<Schema.Top, Schema.Top> =>
+  Schema.make(schema.ast, {
+    [UpgradeTypeId]: UpgradeTypeId,
+    _tag: "UpgradeWithMessages",
+    protocol: schema.protocol,
+    client,
+    server
+  })
+
+const encoder = new TextEncoder()
+
+/**
+ * Wraps an upgraded connection as a {@link MessageSocket} that decodes
+ * received lines with `receive` and encodes sent messages with `send`. The
+ * connection is acquired on first use and released with the current scope.
+ *
+ * @internal
+ */
+export const makeMessageSocket = (
+  socket: Socket.Socket,
+  options: {
+    readonly receive: Schema.Top
+    readonly send: Schema.Top
+  }
+): Effect.Effect<MessageSocket<unknown, unknown, unknown>, never, Scope.Scope> =>
+  Effect.gen(function*() {
+    const scope = yield* Effect.scope
+    const writerScope = yield* Scope.fork(scope)
+    // The writer waits for the reader, so both are acquired on first use.
+    const open = yield* Effect.cached(Effect.all([
+      Scope.provide(Socket.readerBytes(socket), scope),
+      Scope.provide(socket.writer, writerScope)
+    ]))
+    const encode = Schema.encodeUnknownEffect(options.send)
+    const pull = Effect.map(open, ([pull]) =>
+      pull.pipe(
+        // a clean close ends the messages
+        Effect.catchReason(
+          "SocketError",
+          "SocketCloseError",
+          (reason, error): Effect.Effect<never, Cause.Done | Socket.SocketError> =>
+            reason.code === 1000 ? Cause.done() : Effect.fail(error)
+        )
+      ))
+    return {
+      messages: Stream.fromPull(pull).pipe(
+        Stream.pipeThroughChannel(Ndjson.decodeSchema(options.receive)<Socket.SocketError>())
+      ),
+      send: (message) =>
+        Effect.flatMap(Effect.zip(open, encode(message)), ([[, writer], encoded]) =>
+          Effect.suspend((): Effect.Effect<void, MessageSocketError> => {
+            const line = JSON.stringify(encoded)
+            if (line === undefined) {
+              return Effect.fail(
+                new Ndjson.NdjsonError({ kind: "Pack", cause: new TypeError("Value cannot be represented as JSON") })
+              )
+            }
+            return writer.write(encoder.encode(line + "\n"))
+          })),
+      end: Effect.andThen(Effect.ignore(open), Scope.close(writerScope, Exit.void))
+    }
+  })
 
 function defaultStreamContentType(mode: StreamMode): string {
   switch (mode) {

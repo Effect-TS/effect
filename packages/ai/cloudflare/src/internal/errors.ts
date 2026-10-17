@@ -96,6 +96,8 @@ export const mapHttpClientError = Effect.fnUntraced(
         )
       case "StatusCodeError":
         return yield* mapResponseError(source.response)
+      case "UpgradeNotSupportedError":
+        return yield* fail(new AiError.InvalidRequestError({ description: source.message }))
     }
   }
 )

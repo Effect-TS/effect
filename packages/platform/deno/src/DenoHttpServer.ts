@@ -1,6 +1,10 @@
 /**
  * Native Deno implementation of the Effect `HttpServer`.
  *
+ * `Deno.serve` can only upgrade requests to WebSocket, so other HTTP/1.1
+ * upgrades fail. Serve them with `NodeHttpServer` from
+ * `@effect/platform-node`, which runs on Deno's `node:http`.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -464,7 +468,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             reason: new Error.RequestParseError({
               request: this,
               cause,
-              description: "Not an upgradeable ServerRequest"
+              description: isRawUpgrade(this.source)
+                ? "Deno.serve only supports WebSocket upgrades"
+                : "Not an upgradeable ServerRequest"
             })
           })
       }),
@@ -568,6 +574,11 @@ const upgradedResponse = ServerResponse.empty({ status: 101 })
 
 // Keyed by source so request copies from `modify` share the upgrade state.
 const upgradedSources = new WeakSet<Request>()
+
+const isRawUpgrade = (request: Request): boolean => {
+  const protocol = request.headers.get("upgrade")
+  return protocol !== null && protocol.toLowerCase() !== "websocket"
+}
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
   if (body._tag === "Raw" && typeof ReadableStream !== "undefined" && body.body instanceof ReadableStream) {

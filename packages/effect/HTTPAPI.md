@@ -2003,6 +2003,119 @@ Things to know:
 - An endpoint may declare at most one streaming success schema, `HEAD` endpoints cannot declare one, and streaming schemas are not supported in error responses.
 - The `effect/http-api/stream/failure` event name is reserved: `events` schemas may not declare it, and the client treats such an event as a stream failure only when its `data` decodes to a `Cause`.
 
+## Upgrading the Connection
+
+`HttpApiSchema.Upgrade({ protocol })` declares an endpoint that switches the connection to another protocol with an HTTP/1.1 upgrade, like Docker's `Upgrade: tcp` for container attach. After `101 Switching Protocols` the connection carries raw bytes in both directions as a `Socket`.
+
+The handler receives the connection as `socket` and returns when it is done with it. The `101` is sent when the handler acquires the socket's reader, so the handler can still fail with a declared error before then. Socket operations fail with `SocketError`, which the handler handles itself, since the response has already switched protocols.
+
+**Example** (Implementing an Attach Endpoint)
+
+```ts
+import { Effect, Schema } from "effect"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}, { httpApiStatus: 404 }) {}
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("containers").add(
+    HttpApiEndpoint.post("attach", "/containers/:id/attach", {
+      params: { id: Schema.String },
+      success: HttpApiSchema.Upgrade({ protocol: "tcp" }),
+      error: NotFound
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "containers",
+  (handlers) =>
+    handlers.handle("attach", ({ params, socket }) =>
+      Effect.gen(function*() {
+        if (params.id !== "abc") return yield* new NotFound()
+        const reader = yield* socket.reader // sends the 101
+        const writer = yield* socket.writer
+        yield* writer.write("attached\n")
+        const chunks = yield* reader.pull
+        yield* writer.writeAll(chunks)
+      }).pipe(
+        // the connection is already upgraded, so socket failures end the handler
+        Effect.catchTag("SocketError", () => Effect.void),
+        Effect.scoped
+      ))
+)
+```
+
+The derived client sends `Connection: Upgrade` and `Upgrade: tcp`, and resolves to the `101` response headers and the connection. Any other response is decoded as one of the endpoint's errors.
+
+```ts
+const { headers, socket } = yield * client.containers.attach({ params: { id: "abc" } })
+const reader = yield * socket.reader
+```
+
+### Typed Messages
+
+Give `client` and `server` message schemas to exchange typed messages instead of raw bytes. `client` describes the messages the client sends, and `server` the messages the server sends. Each message travels as one line of JSON.
+
+The handler and the derived client then receive a `HttpApiSchema.MessageSocket` as `socket`:
+
+- `messages` is a `Stream` of the messages from the other side. It ends when the other side ends its messages. Read it once.
+- `send(message)` writes one message.
+- `end` stops sending (a half-close), while `messages` can still be read.
+
+On the server the connection lives as long as the handler. On the client it lives as long as the scope the method runs in.
+
+**Example** (Implementing a Typed Chat Endpoint)
+
+```ts
+import { Effect, Schema, Stream } from "effect"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("rooms").add(
+    HttpApiEndpoint.get("chat", "/rooms/:room/chat", {
+      params: { room: Schema.String },
+      success: HttpApiSchema.Upgrade({
+        protocol: "chat",
+        client: Schema.Struct({ text: Schema.String }),
+        server: Schema.Struct({ room: Schema.String, text: Schema.String })
+      })
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "rooms",
+  (handlers) =>
+    handlers.handle("chat", ({ params, socket }) =>
+      // Answer every message until the client ends its messages
+      Stream.runForEach(socket.messages, (message) => socket.send({ room: params.room, text: message.text })).pipe(
+        Effect.orDie
+      ))
+)
+```
+
+On the client:
+
+```ts
+const { socket } = yield * client.rooms.chat({ params: { room: "effect" } })
+yield * socket.send({ text: "hello" })
+yield * socket.end
+const replies = yield * Stream.runCollect(socket.messages)
+```
+
+The OpenAPI document describes both message schemas in an `x-effect-socket` extension on the `101` response.
+
+Things to know:
+
+- The client needs a backend that can hand over the connection: `NodeHttpClient.layerNodeHttp` (Node, Bun 1.4+, Deno) or `NodeHttpClient.layerUndici` (Node, Deno). Fetch and `XMLHttpRequest` clients fail with an `UpgradeNotSupportedError`.
+- Serve upgrade endpoints with `NodeHttpServer`, which also works on Bun 1.4+ and Deno. `Bun.serve` and `Deno.serve` only upgrade to WebSocket, so `BunHttpServer` and `DenoHttpServer` fail these upgrades.
+- Requests that do not ask for the declared protocol get `426 Upgrade Required`.
+- An upgrade endpoint cannot declare a payload or other success schemas, and upgrades are not supported in error responses. For WebSocket, use `HttpServerRequest.upgrade` and `Socket.makeWebSocket` instead.
+- Releasing the writer's scope half-closes the connection, and releasing the reader's scope closes it.
+
 # Error Handling
 
 ## Adding Custom Error Responses

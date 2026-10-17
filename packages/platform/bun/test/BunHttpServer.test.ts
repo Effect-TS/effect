@@ -574,4 +574,23 @@ describe("BunHttpServer", () => {
       const failed = yield* Deferred.await(secondReaderFailed)
       assert.isTrue(failed)
     }))
+
+  it.effect("fails upgrades to protocols other than WebSocket", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
+      yield* server.serve(Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const error = yield* Effect.flip(request.upgrade)
+        return HttpServerResponse.text(error.reason.message, { status: 501 })
+      }))
+      const port = (server.address as NetAddress.InetAddress).port
+      const response = yield* Effect.promise(() =>
+        fetch(`http://127.0.0.1:${port}/attach`, {
+          method: "POST",
+          headers: { connection: "Upgrade", upgrade: "tcp" }
+        })
+      )
+      assert.strictEqual(response.status, 501)
+      assert.include(yield* Effect.promise(() => response.text()), "Bun.serve only supports WebSocket upgrades")
+    }))
 })

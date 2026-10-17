@@ -61,6 +61,7 @@ import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import * as Upgrade from "./internal/upgrade.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
 import * as NodeMultipart from "./NodeMultipart.ts"
@@ -231,8 +232,17 @@ export const makeHandler = <
 
 /**
  * Creates a Node `upgrade` event handler for an Effect HTTP application,
- * exposing the upgraded WebSocket as the request's `upgrade` effect and
+ * exposing the upgraded connection as the request's `upgrade` effect and
  * interrupting the request fiber when the socket closes early.
+ *
+ * **Details**
+ *
+ * `Upgrade: websocket` requests complete the WebSocket handshake. Any other
+ * protocol answers `101 Switching Protocols` with the requested protocol and
+ * exposes the raw connection, with bytes the client sent after the request
+ * head first on the reader. Either response is sent when the socket's reader
+ * is acquired. A handler that never asks for `upgrade` answers with its
+ * response as usual.
  *
  * @stability unstable
  * @category handlers
@@ -278,7 +288,7 @@ export const makeUpgradeHandler = <
         }
         return nodeResponse_
       }
-      const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
+      const webSocketUpgrade = Socket.fromWebSocket(Effect.flatMap(
         lazyWss,
         (wss) =>
           Effect.acquireRelease(
@@ -304,6 +314,17 @@ export const makeUpgradeHandler = <
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
       ))
+      // Other protocols switch to the raw connection, also once the socket's
+      // reader is acquired.
+      const protocol = nodeRequest.headers.upgrade
+      const upgradeEffect = protocol === undefined || protocol.toLowerCase() === "websocket" ?
+        webSocketUpgrade :
+        Upgrade.toSocket(socket, () => {
+          if (request.upgraded) return
+          request.upgraded = true
+          Upgrade.takeOver(socket, head)
+          socket.write(`HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: ${protocol}\r\n\r\n`)
+        })
       const request = new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
       const context = Context.add(services, HttpServerRequest, request)
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)

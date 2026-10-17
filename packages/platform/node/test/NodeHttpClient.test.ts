@@ -3,7 +3,9 @@ import * as NodeClient from "@effect/platform-node/NodeHttpClient"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import { flow } from "effect/Function"
 import {
   HttpBody,
   HttpClient,
@@ -16,8 +18,10 @@ import {
 } from "effect/http"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Http from "node:http"
+import type * as Net from "node:net"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -122,7 +126,22 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   HttpRouter.route("GET", "/hang", Effect.never),
   HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
   HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
-  HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
+  HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 }))),
+  HttpRouter.route(
+    "POST",
+    "/upgrade",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      if (request.headers.authorization !== "Bearer token") {
+        return HttpServerResponse.jsonUnsafe({ message: "unauthorized" }, { status: 401 })
+      }
+      const socket = yield* Effect.orDie(request.upgrade)
+      const reader = yield* socket.reader
+      const writer = yield* socket.writer
+      yield* writer.write(`echo:${yield* readUntilClose(reader)}`)
+      return HttpServerResponse.empty()
+    }).pipe(Effect.scoped)
+  )
 ]))
 ;[
   {
@@ -271,6 +290,35 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         expect(response._tag).toEqual("None")
       }).pipe(Effect.provide(localServerTestLayer)))
 
+    if (name !== "fetch") {
+      it.effect("upgrades to a raw connection", () =>
+        Effect.gen(function*() {
+          const response = yield* HttpClient.execute(
+            HttpClientRequest.post("/upgrade").pipe(
+              HttpClientRequest.bearerToken("token"),
+              HttpClientRequest.upgrade("tcp")
+            )
+          )
+          assert.strictEqual(response.status, 101)
+          assert.strictEqual(response.headers["upgrade"], "tcp")
+          const socket = yield* response.upgrade
+          const reader = yield* socket.reader
+          yield* Effect.scoped(Effect.flatMap(socket.writer, (writer) => writer.write("ping")))
+          assert.strictEqual(yield* readUntilClose(reader), "echo:ping")
+        }).pipe(Effect.scoped, Effect.provide(localServerTestLayer)))
+
+      it.effect("reads a refused upgrade as an ordinary response", () =>
+        Effect.gen(function*() {
+          const response = yield* HttpClient.execute(
+            HttpClientRequest.post("/upgrade").pipe(HttpClientRequest.upgrade("tcp"))
+          )
+          assert.strictEqual(response.status, 401)
+          const error = yield* Effect.flip(response.upgrade)
+          assert.strictEqual(error.reason._tag, "StatusCodeError")
+          assert.deepStrictEqual(yield* response.json, { message: "unauthorized" })
+        }).pipe(Effect.provide(localServerTestLayer)))
+    }
+
     it.effect("close early", () =>
       Effect.gen(function*() {
         const response = yield* HttpClient.get("/large")
@@ -296,3 +344,111 @@ it.live("returns a stream body encoding failure", () =>
     Layer.provide(NodeClient.layerNodeHttp),
     Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
   ))))
+
+// Answers upgrade requests by hand, sending bytes in the same write as the
+// response head, like a Docker Engine attach endpoint.
+const makeUpgradeServer = (onClose: Effect.Effect<void>) =>
+  Effect.acquireRelease(
+    Effect.callback<Http.Server>((resume) => {
+      const server = Http.createServer()
+      server.on("upgrade", (request: Http.IncomingMessage, socket: Net.Socket) => {
+        socket.on("close", () => Effect.runFork(onClose))
+        socket.write(
+          "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\n" +
+            `Upgrade: ${request.headers.upgrade}\r\nX-Url: ${request.url}\r\n` +
+            `X-Authorization: ${request.headers.authorization}\r\n\r\nhello|`
+        )
+        socket.on("data", (chunk) => socket.write(`echo:${chunk}|`))
+        socket.on("end", () => socket.end("bye"))
+      })
+      server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+    }),
+    (server) =>
+      Effect.callback<void>((resume) => {
+        server.closeAllConnections()
+        server.close(() => resume(Effect.void))
+      })
+  ).pipe(
+    Effect.map((server) =>
+      HttpClient.mapRequest(flow(
+        HttpClientRequest.prependUrl(`http://127.0.0.1:${(server.address() as Net.AddressInfo).port}/base`),
+        HttpClientRequest.bearerToken("token")
+      ))
+    )
+  )
+
+const readUntilClose = (reader: Socket.Reader) =>
+  Effect.gen(function*() {
+    const decoder = new TextDecoder()
+    let text = ""
+    while (true) {
+      const chunks = yield* reader.pull.pipe(
+        Effect.catchReason("SocketError", "SocketCloseError", () => Effect.succeed(undefined))
+      )
+      if (chunks === undefined) return text
+      for (const chunk of chunks) text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+    }
+  })
+
+describe("NodeHttpClient upgrade", () => {
+  ;[
+    { name: "node:http", layer: NodeClient.layerNodeHttp },
+    { name: "undici", layer: NodeClient.layerUndici }
+  ].forEach(({ layer, name }) => {
+    describe(name, () => {
+      it.effect("hands over the connection of a 101 response", () =>
+        Effect.gen(function*() {
+          const client = (yield* HttpClient.HttpClient).pipe(yield* makeUpgradeServer(Effect.void))
+          const response = yield* client.execute(
+            HttpClientRequest.post("/attach").pipe(HttpClientRequest.upgrade("tcp"))
+          )
+          assert.strictEqual(response.status, 101)
+          assert.strictEqual(response.headers["upgrade"], "tcp")
+          assert.strictEqual(response.headers["x-url"], "/base/attach")
+          assert.strictEqual(response.headers["x-authorization"], "Bearer token")
+
+          const socket = yield* response.upgrade
+          const reader = yield* socket.reader
+          // releasing the writer half-closes, so the server answers "bye"
+          yield* Effect.scoped(Effect.flatMap(socket.writer, (writer) => writer.write("ping")))
+          assert.strictEqual(yield* readUntilClose(reader), "hello|echo:ping|bye")
+        }).pipe(Effect.scoped, Effect.provide(layer)))
+
+      it.effect("closes the connection with the reader's scope", () =>
+        Effect.gen(function*() {
+          const closed = yield* Deferred.make<void>()
+          const client = (yield* HttpClient.HttpClient).pipe(yield* makeUpgradeServer(Deferred.succeed(closed, void 0)))
+          const response = yield* client.execute(
+            HttpClientRequest.post("/attach").pipe(HttpClientRequest.upgrade("tcp"))
+          )
+          const socket = yield* response.upgrade
+          const reader = yield* Effect.scoped(socket.reader)
+          yield* Deferred.await(closed)
+          const error = yield* Effect.flip(reader.pull)
+          assert.strictEqual(error.reason._tag, "SocketCloseError")
+        }).pipe(Effect.scoped, Effect.provide(layer)))
+
+      it.effect("closes the connection with the request's scope", () =>
+        Effect.gen(function*() {
+          const closed = yield* Deferred.make<void>()
+          const client = (yield* HttpClient.HttpClient).pipe(
+            yield* makeUpgradeServer(Deferred.succeed(closed, void 0)),
+            HttpClient.withScope
+          )
+          yield* client.execute(HttpClientRequest.post("/attach").pipe(HttpClientRequest.upgrade("tcp"))).pipe(
+            Effect.flatMap((response) => response.upgrade),
+            Effect.scoped
+          )
+          yield* Deferred.await(closed)
+        }).pipe(Effect.scoped, Effect.provide(layer)))
+    })
+  })
+
+  it.effect("fetch fails an upgrade request before sending it", () =>
+    Effect.gen(function*() {
+      const error = yield* HttpClient.execute(
+        HttpClientRequest.post("http://127.0.0.1:1/attach").pipe(HttpClientRequest.upgrade("tcp"))
+      ).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "UpgradeNotSupportedError")
+    }).pipe(Effect.provide(NodeClient.layerFetch)))
+})

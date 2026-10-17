@@ -847,6 +847,7 @@ function handlerToHttpEffect(
   )
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
+  const upgrade = getUpgradeSuccessSchema(endpoint)
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
@@ -884,9 +885,32 @@ function handlerToHttpEffect(
           request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
       }
-      let response = yield* handler(request)
+      let messageScope: Scope.Closeable | undefined
+      if (upgrade !== undefined) {
+        if (httpRequest.headers.upgrade?.toLowerCase() !== upgrade.protocol.toLowerCase()) {
+          return upgradeRequired(upgrade.protocol)
+        }
+        const socket = yield* Effect.orDie(httpRequest.upgrade)
+        if (HttpApiSchema.isUpgradeWithMessages(upgrade)) {
+          // The typed connection lives as long as the handler.
+          messageScope = yield* Scope.make()
+          request.socket = yield* Scope.provide(
+            HttpApiSchema.makeMessageSocket(socket, { receive: upgrade.client, send: upgrade.server }),
+            messageScope
+          )
+        } else {
+          request.socket = socket
+        }
+      }
+      let response = yield* messageScope === undefined
+        ? handler(request)
+        : Effect.onExit(handler(request), (exit) => Scope.close(messageScope, exit))
       if (Response.isHttpServerResponse(response)) {
         return response
+      }
+      if (upgrade !== undefined) {
+        // The server replaces this with the 101 once the connection is upgraded.
+        return Response.empty()
       }
       let responseHeaders: unknown | undefined
       if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
@@ -1107,6 +1131,20 @@ function makeStreamEncoder(
     ))
   }
 }
+
+function getUpgradeSuccessSchema(
+  endpoint: HttpApiEndpoint.Top
+): HttpApiSchema.Upgrade | HttpApiSchema.UpgradeWithMessages<Schema.Top, Schema.Top> | undefined {
+  for (const schema of endpoint.success) {
+    if (HttpApiSchema.isUpgrade(schema)) return schema
+  }
+}
+
+const upgradeRequired = (protocol: string) =>
+  Response.empty({
+    status: 426,
+    headers: { connection: "Upgrade", upgrade: protocol }
+  })
 
 function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
   for (const schema of endpoint.success) {

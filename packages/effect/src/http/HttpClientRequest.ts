@@ -463,6 +463,58 @@ export const accept: {
 export const acceptJson: (self: HttpClientRequest) => HttpClientRequest = accept("application/json")
 
 /**
+ * Asks the server to switch the connection to another protocol by setting the
+ * `Connection: Upgrade` and `Upgrade` headers.
+ *
+ * **When to use**
+ *
+ * Use to switch an HTTP/1.1 connection to a raw byte stream, such as Docker's
+ * `Upgrade: tcp` for container attach. For WebSocket, use `Socket.makeWebSocket`.
+ *
+ * **Details**
+ *
+ * The request is otherwise ordinary, so client transforms such as base URLs,
+ * authentication, and tracing apply to it. When the server answers `101
+ * Switching Protocols`, `HttpClientResponse.upgrade` hands over the
+ * connection as a `Socket`. Any other response is read as usual.
+ *
+ * **Example** (Attaching to a Docker container)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { HttpClient, HttpClientRequest } from "effect/http"
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* HttpClient.HttpClient
+ *   const response = yield* client.execute(
+ *     HttpClientRequest.post("/containers/abc/attach?stream=1&stdout=1").pipe(
+ *       HttpClientRequest.upgrade("tcp")
+ *     )
+ *   )
+ *   const socket = yield* response.upgrade
+ *   const reader = yield* socket.reader
+ *   return yield* reader.pull
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.6
+ */
+export const upgrade: {
+  (protocol: string): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, protocol: string): HttpClientRequest
+} = dual(2, (self: HttpClientRequest, protocol: string): HttpClientRequest =>
+  makeWith(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    Headers.set(Headers.set(self.headers, "connection", "Upgrade"), "upgrade", protocol),
+    self.body
+  ))
+
+/**
  * Sets the request URL. When given a `URL`, its search parameters and hash are extracted into the request's structured fields.
  *
  * @stability unstable

@@ -5,9 +5,11 @@
  * `Request` values into `HttpServerRequest` values and Effect
  * `HttpServerResponse` values back into Web `Response` values. The server
  * supports streaming bodies, multipart requests, file responses through
- * `BunHttpPlatform`, and WebSocket upgrades. This module also provides layers
- * for the server alone, the Bun HTTP support services, the combined server,
- * configurable server options, and a test server with an HTTP client.
+ * `BunHttpPlatform`, and WebSocket upgrades. `Bun.serve` cannot hand over the
+ * connection for other protocols, so other upgrades fail. This module also
+ * provides layers for the server alone, the Bun HTTP support services, the
+ * combined server, configurable server options, and a test server with an
+ * HTTP client.
  *
  * @stability unstable
  * @since 4.0.0
@@ -241,6 +243,11 @@ const upgradedResponse = ServerResponse.empty({ status: 101 })
 
 // Keyed by source so request copies from `modify` share the upgrade state.
 const upgradedSources = new WeakSet<Request>()
+
+const isRawUpgrade = (request: Request): boolean => {
+  const protocol = request.headers.get("upgrade")
+  return protocol !== null && protocol.toLowerCase() !== "websocket"
+}
 
 const makeResponse = (
   request: ServerRequest.HttpServerRequest,
@@ -627,7 +634,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           new Error.HttpServerError({
             reason: new Error.RequestParseError({
               request: this,
-              description: "Not an upgradeable ServerRequest"
+              description: isRawUpgrade(this.source)
+                ? "Bun.serve only supports WebSocket upgrades"
+                : "Not an upgradeable ServerRequest"
             })
           })
         ))

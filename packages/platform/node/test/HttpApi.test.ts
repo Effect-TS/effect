@@ -1,4 +1,5 @@
 import { NodeHttpServer } from "@effect/platform-node"
+import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient"
 import { assert, describe, expect, it } from "@effect/vitest"
 import {
   Array,
@@ -44,6 +45,8 @@ import {
   HttpApiTest,
   OpenApi
 } from "effect/http-api"
+import type * as Socket from "effect/socket/Socket"
+import * as Http from "node:http"
 
 function* assertServerText(res: HttpClientResponse.HttpClientResponse, status: number, text: string) {
   assert.strictEqual(res.status, status)
@@ -930,6 +933,115 @@ describe("HttpApi", () => {
       }).pipe(Effect.provide(ApiLayer))
     })
 
+    it.effect("upgrade", () => {
+      class NotFound extends Schema.Error<NotFound>("NotFound")({
+        _tag: Schema.tag("NotFound")
+      }, {
+        httpApiStatus: 404
+      }) {}
+      const Api = HttpApi.make("api")
+        .add(
+          HttpApiGroup.make("containers")
+            .add(
+              HttpApiEndpoint.post("attach", "/containers/:id/attach", {
+                params: { id: Schema.String },
+                success: HttpApiSchema.Upgrade({ protocol: "tcp" }),
+                error: NotFound
+              })
+            )
+        )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "containers",
+        (handlers) =>
+          handlers.handle("attach", ({ params, socket }) =>
+            Effect.gen(function*() {
+              // fails before the 101 is sent
+              if (params.id !== "abc") return yield* new NotFound()
+              const reader = yield* socket.reader
+              const writer = yield* socket.writer
+              yield* writer.write(`${params.id}:${yield* readUntilClose(reader)}`)
+            }).pipe(Effect.catchTag("SocketError", Effect.die), Effect.scoped))
+      )
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+        { disableListenLog: true, disableLogger: true }
+      ).pipe(
+        Layer.provideMerge(HttpServer.layerTestClient),
+        Layer.provide(NodeHttpClient.layerNodeHttp),
+        Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+      )
+
+      return Effect.gen(function*() {
+        // server side
+        const refused = yield* HttpClient.post("/containers/abc/attach")
+        assert.strictEqual(refused.status, 426)
+        assert.strictEqual(refused.headers.upgrade, "tcp")
+
+        // client side
+        const client = yield* HttpApiClient.make(Api)
+        const { headers, socket } = yield* client.containers.attach({ params: { id: "abc" } })
+        assert.strictEqual(headers.upgrade, "tcp")
+        const reader = yield* socket.reader
+        yield* Effect.scoped(Effect.flatMap(socket.writer, (writer) => writer.write("ping")))
+        assert.strictEqual(yield* readUntilClose(reader), "abc:ping")
+
+        const error = yield* Effect.flip(client.containers.attach({ params: { id: "missing" } }))
+        assert.deepStrictEqual(error, new NotFound())
+      }).pipe(Effect.scoped, Effect.provide(ApiLayer))
+    })
+
+    it.effect("upgrade with messages", () => {
+      const Api = HttpApi.make("api")
+        .add(
+          HttpApiGroup.make("rooms")
+            .add(
+              HttpApiEndpoint.get("chat", "/rooms/:room/chat", {
+                params: { room: Schema.String },
+                success: HttpApiSchema.Upgrade({
+                  protocol: "chat",
+                  client: Schema.Struct({ text: Schema.String }),
+                  // Date is not JSON, so this checks the messages use JSON codecs
+                  server: Schema.Struct({ room: Schema.String, text: Schema.String, at: Schema.Date })
+                })
+              })
+            )
+        )
+      const at = new Date(0)
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "rooms",
+        (handlers) =>
+          handlers.handle("chat", ({ params, socket }) =>
+            Stream.runForEach(
+              socket.messages,
+              (message) => socket.send({ room: params.room, text: message.text.toUpperCase(), at })
+            ).pipe(Effect.orDie))
+      )
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+        { disableListenLog: true, disableLogger: true }
+      ).pipe(
+        Layer.provideMerge(HttpServer.layerTestClient),
+        Layer.provide(NodeHttpClient.layerNodeHttp),
+        Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+      )
+
+      return Effect.gen(function*() {
+        const client = yield* HttpApiClient.make(Api)
+        const { headers, socket } = yield* client.rooms.chat({ params: { room: "effect" } })
+        assert.strictEqual(headers.upgrade, "chat")
+        yield* socket.send({ text: "hello" })
+        yield* socket.send({ text: "world" })
+        // the server's messages end after it handles ours
+        yield* socket.end
+        assert.deepStrictEqual(yield* Stream.runCollect(socket.messages), [
+          { room: "effect", text: "HELLO", at },
+          { room: "effect", text: "WORLD", at }
+        ])
+      }).pipe(Effect.scoped, Effect.provide(ApiLayer))
+    })
+
     it("no content via toWebHandler", async () => {
       const Api = HttpApi.make("api")
         .add(
@@ -1489,6 +1601,19 @@ describe("HttpApi", () => {
       ))
   })
 })
+
+const readUntilClose = (reader: Socket.Reader) =>
+  Effect.gen(function*() {
+    const decoder = new TextDecoder()
+    let text = ""
+    while (true) {
+      const chunks = yield* reader.pull.pipe(
+        Effect.catchReason("SocketError", "SocketCloseError", () => Effect.succeed(undefined))
+      )
+      if (chunks === undefined) return text
+      for (const chunk of chunks) text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+    }
+  })
 
 class UserError extends Schema.Error<UserError>("UserError")({
   _tag: Schema.tag("UserError")

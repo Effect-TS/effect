@@ -1,5 +1,5 @@
 /** @effect-diagnostics missingEffectContext:skip-file */
-import { Effect, hole, Schema, type Stream } from "effect"
+import { Effect, hole, Schema, type Scope, type Stream } from "effect"
 import type * as Sse from "effect/encoding/Sse"
 import { FetchHttpClient, HttpClient, type HttpClientError, type HttpClientResponse } from "effect/http"
 import {
@@ -870,6 +870,52 @@ describe("HttpApiClient", () => {
         Effect.Effect<
           [ClientStream, HttpClientResponse.HttpClientResponse],
           HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+    })
+
+    it("returns the response headers and socket for Upgrade successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.post("a", "/a", {
+                success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.group.a()).type.toBe<
+        Effect.Effect<HttpApiClient.Upgraded, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+    })
+
+    it("returns a scoped MessageSocket for Upgrade successes with messages", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: HttpApiSchema.Upgrade({
+                  protocol: "chat",
+                  client: Schema.Struct({ text: Schema.String }),
+                  server: Schema.Struct({ count: Schema.Number })
+                })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.group.a()).type.toBe<
+        Effect.Effect<
+          HttpApiClient.Upgraded<HttpApiSchema.MessageSocket<{ readonly count: number }, { readonly text: string }>>,
+          HttpClientError.HttpClientError | Schema.SchemaError,
+          Scope.Scope
         >
       >()
     })
