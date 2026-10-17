@@ -137,18 +137,44 @@ describe("OpenApi", () => {
       { name: "cursor", in: "path", required: true, schema: { type: "string" } },
       { name: "x-page-size", in: "header", required: false, schema: { type: "string" } },
       { name: "limit", in: "query", required: false, schema: { type: "string" } },
-      {
-        name: "offset",
-        in: "query",
-        required: false,
-        schema: { anyOf: [{ type: "string" }, { type: "null" }] }
-      },
+      { name: "offset", in: "query", required: false, schema: { type: "string" } },
       {
         name: "search",
         in: "query",
         required: true,
         schema: { type: "string", allOf: [{ description: "Search text" }] }
       }
+    ])
+  })
+
+  it("does not document optional parameters as nullable", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("list", "/list", {
+          query: {
+            cursor: Schema.optional(Schema.NullOr(Schema.String)),
+            search: Schema.optional(Schema.String).annotate({ description: "Search text" }),
+            sort: Schema.optional(Schema.String).annotate({ identifier: "Sort" }),
+            order: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("asc")))
+          },
+          headers: {
+            "x-trace-id": Schema.optional(Schema.String)
+          }
+        })
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [
+      { name: "x-trace-id", in: "header", required: false, schema: { type: "string" } },
+      {
+        name: "cursor",
+        in: "query",
+        required: false,
+        schema: { anyOf: [{ type: "string", enum: ["null"] }, { type: "string" }] }
+      },
+      { name: "search", in: "query", required: false, schema: { type: "string", description: "Search text" } },
+      { name: "sort", in: "query", required: false, schema: { type: "string" } },
+      { name: "order", in: "query", required: false, schema: { type: "string" } }
     ])
   })
 
@@ -516,7 +542,7 @@ describe("OpenApi", () => {
         required: false
       },
       "x-offset": {
-        schema: { anyOf: [{ type: "string" }, { type: "null" }] },
+        schema: { type: "string" },
         required: false
       }
     })

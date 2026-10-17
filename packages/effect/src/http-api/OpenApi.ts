@@ -737,12 +737,52 @@ function makePropertiesRepresentation(
         .filter((property) => select?.(property) ?? true)
         .map((property) => ({
           ...property,
-          name: String(property.name)
+          name: String(property.name),
+          type: property.isOptional ? omitUndefined(property.type, references) : property.type
         }))
       : [],
     indexSignatures: [],
     checks: []
   }
+}
+
+// An optional HTTP property is omitted rather than sent as `undefined`, and `required: false` already says so.
+function omitUndefined(
+  representation: SchemaRepresentation.Representation,
+  references: SchemaRepresentation.References
+): SchemaRepresentation.Representation {
+  const resolved = resolveRepresentation(representation, references)
+  return resolved._tag === "Union"
+    ? omitUndefinedMembers(resolved, references, new Set([resolved])) ?? representation
+    : representation
+}
+
+function omitUndefinedMembers(
+  union: SchemaRepresentation.Union,
+  references: SchemaRepresentation.References,
+  seen: ReadonlySet<SchemaRepresentation.Union>
+): SchemaRepresentation.Representation | undefined {
+  let changed = false
+  const types: Array<SchemaRepresentation.Representation> = []
+  for (const type of union.types) {
+    const resolved = resolveRepresentation(type, references)
+    if (resolved._tag === "Undefined") {
+      changed = true
+      continue
+    }
+    const omitted = resolved._tag === "Union" && !seen.has(resolved)
+      ? omitUndefinedMembers(resolved, references, new Set(seen).add(resolved))
+      : undefined
+    if (omitted !== undefined) changed = true
+    types.push(omitted ?? type)
+  }
+  if (!changed || types.length === 0) return undefined
+  if (types.length > 1 || union.checks.length > 0) return { ...union, types }
+  const [type] = types
+  if (union.annotations === undefined) return type
+  return type._tag === "Reference"
+    ? { ...union, types }
+    : { ...type, annotations: { ...type.annotations, ...union.annotations } }
 }
 
 function resolveRepresentation(
