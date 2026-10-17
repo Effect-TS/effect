@@ -444,7 +444,7 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
  *
  * **When to use**
  *
- * Provide it when handlers project into a store with transactions, such as
+ * Use when handlers project into a store with transactions, such as
  * `sql.withTransaction` or an IndexedDB transaction over the projection
  * tables, so a batch of N replayed events commits once instead of N times.
  *
