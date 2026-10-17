@@ -6,9 +6,12 @@ import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
+import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as EventLogRemote from "effect/eventlog/EventLogRemote"
+import * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
+import * as RpcTest from "effect/rpc/RpcTest"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as SqlError from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -607,4 +610,61 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(uncommittedCalls, 1)
       assert.deepStrictEqual(seenConflicts, [[], []])
     }))
+
+  it.effect("does not re-upload an acknowledged entry that the server has not echoed", () =>
+    Effect.gen(function*() {
+      const storeId = EventLogMessage.StoreId.make("default")
+      const server = yield* Layer.build(EventLogServerUnencrypted.layerRpcHandlers.pipe(
+        Layer.provide([
+          EventLogServerUnencrypted.layerStorageMemory,
+          EventLog.layerRegistry,
+          EventLogServerUnencrypted.layerStoreMappingStatic({ storeId }),
+          Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, {
+            authorizeWrite: () => Effect.void,
+            authorizeRead: () => Effect.void,
+            authorizeIdentity: () => Effect.void
+          })
+        ])
+      ))
+      const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(Effect.provide(server))
+      const remote = yield* EventLogRemote.makeUnencrypted.pipe(
+        Effect.provideService(EventLogRemote.EventLogRemoteClient, client),
+        Effect.provide(EventLog.layerRegistry)
+      )
+      const group = EventGroup.empty.add({
+        tag: "UserCreated",
+        primaryKey: (payload) => payload.id,
+        payload: Schema.Struct({ id: Schema.String })
+      })
+      const layer = EventLog.layer(
+        EventLog.schema(group),
+        EventLog.group(group, (handlers) => handlers.handle("UserCreated", () => Effect.void)).pipe(
+          Layer.provide(EventLog.layerRegistry)
+        )
+      ).pipe(
+        Layer.provide([
+          Layer.effect(EventJournal.EventJournal, makeJournal),
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle))
+        ])
+      )
+      yield* Effect.gen(function*() {
+        const log = yield* EventLog.EventLog
+        const registry = yield* EventLog.Registry
+        const uploads = yield* Queue.unbounded<ReadonlyArray<string>>()
+        yield* log.write({ schema: EventLog.schema(group), event: "UserCreated", payload: { id: "user-1" } })
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          ...remote,
+          // No echo arrives, so only the write acknowledgement can mark user-1 as uploaded.
+          changes: () => Queue.unbounded(),
+          write: (options) =>
+            Queue.offer(uploads, options.entries.map((entry) => entry.primaryKey)).pipe(
+              Effect.andThen(remote.write(options))
+            )
+        }))
+        const first = yield* Queue.take(uploads)
+        yield* log.write({ schema: EventLog.schema(group), event: "UserCreated", payload: { id: "user-2" } })
+        const second = yield* Queue.take(uploads)
+        assert.deepStrictEqual([first, second], [["user-1"], ["user-2"]])
+      }).pipe(Effect.provide(layer))
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 })
