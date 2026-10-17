@@ -153,6 +153,70 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(logLayer(handled)))
     }))
 
+  it.effect("writes a batch of events under one lock and handler transaction and returns results in order", () =>
+    Effect.gen(function*() {
+      const timeline: Array<string> = []
+      const RenameGroup = EventGroup.empty.add({
+        tag: "UserRenamed",
+        primaryKey: (payload) => payload.id,
+        payload: UserPayload,
+        success: Schema.String
+      })
+      const renameSchema = EventLog.schema(RenameGroup)
+      const handlers = EventLog.group(
+        RenameGroup,
+        (handlers) =>
+          handlers.handle("UserRenamed", ({ payload }) =>
+            Effect.sync(() => {
+              timeline.push(`handle ${payload.id}`)
+              return payload.id.toUpperCase()
+            }))
+      ).pipe(Layer.provide(EventLog.layerRegistry))
+      const journal = Layer.effect(
+        EventJournal.EventJournal,
+        Effect.map(EventJournal.makeMemory, (journal) =>
+          EventJournal.EventJournal.of({
+            ...journal,
+            withLock: (storeId) => (effect) =>
+              Effect.sync(() => timeline.push("lock")).pipe(
+                Effect.andThen(journal.withLock(storeId)(effect)),
+                Effect.ensuring(Effect.sync(() => timeline.push("unlock")))
+              )
+          }))
+      )
+      const layer = EventLog.layer(renameSchema, handlers).pipe(
+        Layer.provide([
+          journal,
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
+            Effect.sync(() => timeline.push("begin")).pipe(
+              Effect.andThen(effect),
+              Effect.ensuring(Effect.sync(() => timeline.push("commit")))
+            ))
+        ])
+      )
+      return yield* Effect.gen(function*() {
+        const log = yield* EventLog.EventLog
+        const results = yield* log.writeMany({
+          schema: renameSchema,
+          events: [
+            { event: "UserRenamed", payload: { id: "a" } },
+            { event: "UserRenamed", payload: { id: "b" } },
+            { event: "UserRenamed", payload: { id: "c" } }
+          ]
+        })
+        assert.deepStrictEqual({
+          results,
+          timeline,
+          committed: (yield* log.entries).map((entry) => entry.primaryKey)
+        }, {
+          results: ["A", "B", "C"],
+          timeline: ["lock", "begin", "handle a", "handle b", "handle c", "commit", "unlock"],
+          committed: ["a", "b", "c"]
+        })
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("replays each remote batch inside one handler transaction and invalidates once per batch", () =>
     Effect.gen(function*() {
       const timeline: Array<string> = []

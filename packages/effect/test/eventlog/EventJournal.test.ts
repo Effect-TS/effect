@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Option } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 
@@ -27,6 +27,28 @@ describe("EventJournal", () => {
       id.set(prefix)
       assert.strictEqual(EventJournal.entryIdMillis(id), millis)
       assert.strictEqual(entry(millis).createdAtMillis, millis)
+    }
+  })
+
+  it("generates strictly ascending entry ids when the clock stalls or moves backwards", () => {
+    // Later than any clock-based id generated so far in this process.
+    const start = Date.now() + 1_000_000
+    const now = vi.spyOn(Date, "now").mockReturnValue(start)
+    try {
+      const ids = Array.from({ length: 10_000 }, () => EventJournal.makeEntryIdUnsafe())
+      now.mockReturnValue(start - 60_000)
+      ids.push(EventJournal.makeEntryIdUnsafe())
+      for (let i = 1; i < ids.length; i++) {
+        if (EventJournal.EntryIdOrder(ids[i - 1], ids[i]) !== -1) {
+          assert.fail(`id ${i} does not sort after id ${i - 1}`)
+        }
+      }
+      // Exhausting a millisecond may move timestamps ahead slightly, never back.
+      const millis = ids.map(EventJournal.entryIdMillis)
+      assert.isAtLeast(Math.min(...millis), start)
+      assert.isAtMost(Math.max(...millis), start + 3)
+    } finally {
+      now.mockRestore()
     }
   })
 
