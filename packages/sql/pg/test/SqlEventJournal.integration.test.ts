@@ -5,6 +5,7 @@ import * as EventJournal from "effect/eventlog/EventJournal"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
+import * as Crypto from "node:crypto"
 import { PgContainer, realSleep } from "./utils.ts"
 
 const entry = (msecs: number, primaryKey: string) =>
@@ -19,6 +20,35 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 
 const uploadIds = (journal: EventJournal.EventJournal["Service"], remoteId: EventJournal.RemoteId) =>
   journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries.map((entry) => entry.idString)))
+
+// Creates the schema of the first SqlEventJournal release and inserts entries into it.
+const createLegacyJournal = (
+  options: { readonly entryTable: string; readonly remotesTable: string },
+  entries: ReadonlyArray<EventJournal.Entry>
+) =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    yield* sql`
+      CREATE TABLE ${sql(options.entryTable)} (
+        id BYTEA PRIMARY KEY,
+        event TEXT NOT NULL,
+        primary_key TEXT NOT NULL,
+        payload BYTEA NOT NULL,
+        timestamp BIGINT NOT NULL
+      )`
+    yield* sql`
+      CREATE TABLE ${sql(options.remotesTable)} (
+        remote_id BYTEA NOT NULL,
+        entry_id BYTEA NOT NULL,
+        sequence INT NOT NULL,
+        PRIMARY KEY (remote_id, entry_id)
+      )`
+    for (const { event, id, primaryKey, payload, createdAtMillis } of entries) {
+      yield* sql`INSERT INTO ${sql(options.entryTable)} ${
+        sql.insert({ id, event, primary_key: primaryKey, payload, timestamp: createdAtMillis })
+      }`
+    }
+  })
 
 // The container is shared with the client, so tests can open more connections.
 const TestLayer = Layer.merge(PgContainer.layerClient, PgContainer.layer)
@@ -149,30 +179,10 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
         startupParameters: { default_transaction_read_only: "on" }
       })
       const options = { entryTable: "legacy_entries", remotesTable: "legacy_remotes" }
-      // The schema as created by the first release of SqlEventJournal.
-      yield* sql`
-        CREATE TABLE legacy_entries (
-          id BYTEA PRIMARY KEY,
-          event TEXT NOT NULL,
-          primary_key TEXT NOT NULL,
-          payload BYTEA NOT NULL,
-          timestamp BIGINT NOT NULL
-        )`
-      yield* sql`
-        CREATE TABLE legacy_remotes (
-          remote_id BYTEA NOT NULL,
-          entry_id BYTEA NOT NULL,
-          sequence INT NOT NULL,
-          PRIMARY KEY (remote_id, entry_id)
-        )`
       const remoteId = EventJournal.makeRemoteIdUnsafe()
       const local = entry(1000, "local")
       const imported = entry(2000, "imported")
-      for (const { event, id, primaryKey, payload, createdAtMillis } of [local, imported]) {
-        yield* sql`INSERT INTO legacy_entries ${
-          sql.insert({ id, event, primary_key: primaryKey, payload, timestamp: createdAtMillis })
-        }`
-      }
+      yield* createLegacyJournal(options, [local, imported])
       yield* sql`INSERT INTO legacy_remotes ${sql.insert({ remote_id: remoteId, entry_id: imported.id, sequence: 0 })}`
 
       const readonlyLegacy = yield* Effect.exit(
@@ -205,4 +215,32 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
         }
       })
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("migrates and writes entries with primary keys beyond the PostgreSQL index tuple limit", () =>
+    Effect.gen(function*() {
+      const options = { entryTable: "long_key_entries", remotesTable: "long_key_remotes" }
+      // Random text barely compresses, so these keys stay well above the ~2.7 KB B-tree tuple limit.
+      const longKey = () => Crypto.randomBytes(6000).toString("base64")
+      const legacy = entry(1000, longKey())
+      yield* createLegacyJournal(options, [legacy])
+      const journal = yield* SqlEventJournal.make(options)
+      const written = yield* journal.write({ ...localEntry(longKey()), effect: Effect.succeed })
+      const older = entry(written.createdAtMillis - 1, written.primaryKey)
+      const conflicts: Array<string> = []
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: older })],
+        effect: (batch) =>
+          Effect.sync(() => {
+            for (const { conflicts: stored } of batch) conflicts.push(...stored.map((entry) => entry.idString))
+          })
+      })
+      assert.deepStrictEqual({
+        entries: (yield* journal.entries).map((entry) => entry.idString),
+        conflicts
+      }, {
+        entries: [legacy.idString, older.idString, written.idString],
+        conflicts: [written.idString]
+      })
+    }))
 })
