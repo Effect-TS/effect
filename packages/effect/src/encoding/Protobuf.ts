@@ -7,23 +7,26 @@
  * one. The bytes match what other protobuf implementations write for a
  * message with the same field numbers and types.
  *
- * | Schema                                                        | Protobuf                                              |
- * | ------------------------------------------------------------- | ----------------------------------------------------- |
- * | `Struct`, `Class`                                             | `message`; each wire property needs {@link field}     |
- * | `String`, `Boolean`, `Uint8Array`                             | `string`, `bool`, `bytes`                             |
- * | `Number`                                                      | `double`; {@link Int32}, {@link Float}, … otherwise   |
- * | `BigInt`                                                      | `int64`; {@link UInt64}, {@link SInt64}, … otherwise  |
- * | `Enum` with numeric members, numeric `Literals`               | `enum`; {@link enumNumbers} for other literals        |
- * | `Array(A)`                                                    | `repeated A`, packed for numeric types                |
- * | `Record(K, A)`                                                | `map<K, A>`                                           |
- * | required scalar property                                      | implicit presence                                     |
- * | `optionalKey`, `optional`, `NullOr`, `UndefinedOr`, `Option`  | explicit presence (`optional`)                        |
- * | `Literal` property                                            | constant, not on the wire                             |
- * | `Union` property                                              | `oneof`                                               |
- * | `DateTimeUtc`, `Date`                                         | `google.protobuf.Timestamp`                           |
- * | `Duration`                                                    | `google.protobuf.Duration`                            |
- * | `Json`, `Unknown`                                             | `google.protobuf.Value`                               |
- * | other declarations                                            | their `Schema.toCodecJson` form                       |
+ * | Schema                                                        | Protobuf                                                 |
+ * | ------------------------------------------------------------- | -------------------------------------------------------- |
+ * | `Struct`, `Class`                                             | `message`; each wire property needs {@link field}        |
+ * | `String`, `Boolean`, `Uint8Array`                             | `string`, `bool`, `bytes`                                |
+ * | `Number`                                                      | `double`; {@link Int32}, {@link Float}, … otherwise      |
+ * | `BigInt`                                                      | `int64`; {@link UInt64}, {@link SInt64}, … otherwise     |
+ * | `Enum` with numeric members, numeric `Literals`               | `enum`                                                   |
+ * | string or boolean `Literals`                                  | `string` or `bool`; {@link enumNumbers} makes an `enum`  |
+ * | `Array(A)`                                                    | `repeated A`, packed for numeric types                   |
+ * | `Record(K, A)`                                                | `map<K, A>`                                              |
+ * | `Tuple`                                                       | a message with element `i` at field `i + 1`              |
+ * | `StructWithRest`                                              | a message with a `map` per index signature               |
+ * | required scalar property                                      | implicit presence                                        |
+ * | `optionalKey`, `optional`, `NullOr`, `UndefinedOr`, `Option`  | explicit presence (`optional`)                           |
+ * | unnumbered `Literal` property                                 | constant, not on the wire                                |
+ * | `Union` property                                              | `oneof`                                                  |
+ * | `DateTimeUtc`, `Date`                                         | `google.protobuf.Timestamp`                              |
+ * | `Duration`                                                    | `google.protobuf.Duration`                               |
+ * | `Json`, `Unknown`                                             | `google.protobuf.Value`                                  |
+ * | other declarations                                            | their `Schema.toCodecJson` (or `toCodec`) form           |
  *
  * A required scalar, enum, repeated, or map property uses implicit presence:
  * its zero value is not written, and an absent field decodes to the zero
@@ -32,12 +35,19 @@
  *
  * A union property becomes a `oneof`. Each member either carries its own field
  * number, or is a tagged struct whose only non-literal property is numbered.
+ * Nested unions are flattened, and a numbered literal member is an empty
+ * message case.
  *
- * Fields are written in field-number order. Decoding skips unknown fields
- * (including proto2 groups) without keeping them, accepts packed and unpacked
- * repeated fields, and merges repeated occurrences of a message field. proto2
- * `required` fields and `[default = …]` values are not modelled, and groups
- * cannot be declared.
+ * A value that protobuf cannot hold directly is wrapped in a message
+ * `{ value = 1 }`: a collection or union inside an array, map value, or oneof
+ * case, an optional array element or map value, a nested `Option`, and a root
+ * that is not a message. `ReadonlyMap` and `HashMap` are arrays of key-value
+ * tuples, which have the bytes of a protobuf `map`.
+ *
+ * Fields are written in field-number order. Decoding skips unknown fields,
+ * keeping them only in an {@link UnknownFields} property, accepts packed and
+ * unpacked repeated fields, accepts both encodings of a message field, and
+ * merges repeated occurrences of a message field.
  *
  * @stability unstable
  * @since 4.0.6
@@ -59,6 +69,7 @@ const MAP_KEY_KEY = "~effect/encoding/Protobuf/mapKey"
 const WRAPPER_KEY = "~effect/encoding/Protobuf/wrapper"
 const ENUM_KEY = "~effect/encoding/Protobuf/enum"
 const WKT_KEY = "~effect/encoding/Protobuf/wkt"
+const UNKNOWN_KEY = "~effect/encoding/Protobuf/unknown"
 
 const WRAPPER_ANNOTATIONS = { [WRAPPER_KEY]: true }
 
@@ -91,6 +102,16 @@ export interface FieldOptions {
    * @default true
    */
   readonly packed?: boolean | undefined
+  /**
+   * Writes a singular scalar or enum field even when it holds its zero value,
+   * as proto2 `required` fields are.
+   */
+  readonly presence?: "always" | undefined
+  /**
+   * Writes a message field between group tags instead of length-prefixed,
+   * like proto2 groups and the `DELIMITED` message encoding of editions.
+   */
+  readonly encoding?: "delimited" | undefined
 }
 
 /**
@@ -125,7 +146,12 @@ export function field(number: number, options?: FieldOptions) {
       `Protobuf field number must be an integer in [1, ${MAX_FIELD_NUMBER}] outside [19000, 19999], got ${number}`
     )
   }
-  const annotation: FieldAnnotation = { number, packed: options?.packed }
+  const annotation: FieldAnnotation = {
+    number,
+    packed: options?.packed,
+    presence: options?.presence,
+    encoding: options?.encoding
+  }
   const annotations = { [FIELD_KEY]: annotation }
   return <S extends Schema.Top>(self: S): S["Rebuild"] => self.rebuild(SchemaAST.annotateKey(self.ast, annotations))
 }
@@ -141,8 +167,9 @@ export function field(number: number, options?: FieldOptions) {
  *
  * **Details**
  *
- * Unions of numeric literals and `Schema.Enum` with numeric members are enums
- * without this annotation.
+ * Without it, unions of numeric literals and `Schema.Enum` with numeric members
+ * are enums, and unions of string or boolean literals are `string` or `bool`
+ * fields.
  *
  * **Example** (Mapping string literals to enum numbers)
  *
@@ -543,6 +570,39 @@ export const Int64Value: Schema.BigInt = wrapper(Int64)
  */
 export const UInt64Value: Schema.BigInt = wrapper(UInt64)
 
+/**
+ * Schema for the fields of a message that its schema does not declare, as their
+ * raw bytes.
+ *
+ * **When to use**
+ *
+ * Use as an unnumbered struct property to pass fields from newer peers
+ * through: decoding collects them, and encoding writes them back after the
+ * declared fields.
+ *
+ * **Details**
+ *
+ * A required property decodes to empty bytes when there are no unknown fields;
+ * an `optionalKey` property is left out.
+ *
+ * **Example** (Keeping unknown fields)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Protobuf } from "effect/encoding"
+ *
+ * const User = Schema.Struct({
+ *   name: Schema.String.pipe(Protobuf.field(1)),
+ *   unknownFields: Protobuf.UnknownFields
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const UnknownFields: Schema.Uint8Array = Schema.Uint8Array.annotate({ [UNKNOWN_KEY]: true })
+
 // -----------------------------------------------------------------------------
 // codec
 // -----------------------------------------------------------------------------
@@ -570,10 +630,12 @@ const codecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  *
  * **Details**
  *
- * The root schema is a message: a struct or class, a well-known type such as
- * {@link Timestamp} or {@link Struct}, a wrapper such as {@link StringValue},
- * or `Schema.Void` for an empty message. Derived codecs are memoized by schema
- * identity.
+ * The root schema is usually a message: a struct, class, or tuple, a
+ * well-known type such as {@link Timestamp}, or a wrapper such as
+ * {@link StringValue}. `Schema.Void` is an empty message, a record whose
+ * values carry field numbers is a message of maps, and any other root is
+ * wrapped in a message `{ value = 1 }`, the bytes of a `google.protobuf`
+ * wrapper for a scalar. Derived codecs are memoized by schema identity.
  *
  * **Gotchas**
  *
@@ -648,6 +710,8 @@ const MAX_DEPTH = 512
 interface FieldAnnotation {
   readonly number: number
   readonly packed: boolean | undefined
+  readonly presence: "always" | undefined
+  readonly encoding: "delimited" | undefined
 }
 
 type ScalarName =
@@ -725,7 +789,7 @@ function representationId(ast: SchemaAST.AST): string | undefined {
 }
 
 // Declarations with a native protobuf mapping. Any other declaration is
-// replaced by its JSON encoding before the layout is compiled.
+// replaced by its JSON encoding (or its codec) before the layout is compiled.
 const NATIVE_DECLARATIONS = new Set([
   "effect/schema/Date",
   "effect/schema/DateTimeUtc",
@@ -752,9 +816,11 @@ function toProtobufASTStep(ast: SchemaAST.AST): SchemaAST.AST {
       const id = representationId(ast)
       if (id !== undefined && NATIVE_DECLARATIONS.has(id)) return ast.recur(toProtobufAST)
       const getJson = ast.annotations?.toCodecJson
-      if (!Predicate.isFunction(getJson)) return ast
+      const getCodec = ast.annotations?.toCodec
+      if (!Predicate.isFunction(getJson) && !Predicate.isFunction(getCodec)) return ast
       const typeParameters = ast.typeParameters.map((tp) => Schema.make<Schema.Constraint>(SchemaAST.toEncoded(tp)))
-      const link = getJson(typeParameters)
+      const link = (Predicate.isFunction(getJson) ? getJson(typeParameters) : undefined) ??
+        (Predicate.isFunction(getCodec) ? getCodec(typeParameters) : undefined)
       return link === undefined ? ast : SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, toProtobufAST)])
     }
     case "Arrays":
@@ -786,6 +852,12 @@ interface ScalarLayout {
   readonly asNumber: boolean
 }
 
+// A registered symbol, written as its `Symbol.keyFor` key.
+interface SymbolLayout {
+  readonly _tag: "Symbol"
+  readonly wireType: typeof WIRE_LEN
+}
+
 interface WrapperLayout {
   readonly _tag: "Wrapper"
   readonly wireType: typeof WIRE_LEN
@@ -812,32 +884,55 @@ interface WktLayout {
   readonly wkt: WktName
 }
 
-type ValueLayout = ScalarLayout | WrapperLayout | EnumLayout | MessageLayout | WktLayout
+// An empty message standing for a constant: a literal oneof case.
+interface ConstantLayout {
+  readonly _tag: "Constant"
+  readonly wireType: typeof WIRE_LEN
+  readonly value: unknown
+}
+
+type ValueLayout =
+  | ScalarLayout
+  | SymbolLayout
+  | WrapperLayout
+  | EnumLayout
+  | MessageLayout
+  | WktLayout
+  | ConstantLayout
 
 /**
- * How a property is represented when its field is absent on the wire:
+ * How a slot is represented when its field is absent on the wire:
  *
  * - `"zero"`: implicit presence, the zero value
  * - `"omit"`: the key is left out
  * - `"null"` / `"undefined"`: that value
  * - `"none"`: `Option.none()`
  * - `"required"`: left out, for the schema to report
+ * - `"constant"`: the field's constant
  */
-type Absent = "zero" | "omit" | "null" | "undefined" | "none" | "required"
+type Absent = "zero" | "omit" | "null" | "undefined" | "none" | "required" | "constant"
 
 interface Field {
   readonly _tag: "Field"
-  readonly key: string
+  readonly key: PropertyKey
   readonly number: number
-  readonly kind: "singular" | "repeated" | "map"
+  // `rest`: the entries of an index signature, spread into the struct.
+  readonly kind: "singular" | "repeated" | "map" | "rest"
   readonly type: ValueLayout
   readonly mapKey: ScalarLayout | undefined
+  readonly parameter: SchemaAST.IndexSignature["parameter"] | undefined
+  // Map entries whose value is `undefined` are left out (optional values).
+  readonly optionalValues: boolean
   readonly absent: Absent
+  readonly constant: unknown
+  // Writes the zero value of an implicit-presence field.
+  readonly always: boolean
   readonly packed: boolean
+  readonly delimited: boolean
 }
 
 interface Oneof {
-  readonly key: string
+  readonly key: PropertyKey
   readonly index: number
   readonly absent: Absent
   readonly cases: Array<Case>
@@ -854,19 +949,32 @@ interface Case {
   // `key`, and the literals are restored on decode.
   readonly unwrap: { readonly key: string; readonly literals: ReadonlyArray<readonly [string, unknown]> } | undefined
   readonly guard: ((value: unknown) => boolean) | undefined
+  readonly delimited: boolean
 }
 
 type Slot = Field | Case
 
 interface Message {
   readonly name: string
+  // - `struct`: an object with a slot per property
+  // - `tuple`: an array, element `i` at field `i + 1` and the rest after them
+  // - `box`: a synthesized message whose single slot holds the value itself
+  readonly shape: "struct" | "tuple" | "box"
+  readonly elements: number
   readonly fields: Array<Field>
+  readonly rest: Array<Field>
   readonly oneofs: Array<Oneof>
-  readonly literals: Array<readonly [string, unknown]>
+  readonly literals: Array<readonly [PropertyKey, unknown]>
+  readonly declared: Set<PropertyKey>
+  unknown: { readonly key: PropertyKey; readonly optional: boolean } | undefined
   readonly byNumber: Map<number, Slot>
   // Field-number order, the order fields are written in.
   readonly sorted: Array<Slot>
 }
+
+// The slot keys of synthesized messages, never part of an issue path.
+const BOX_VALUE = Symbol("Protobuf/box")
+const TUPLE_REST = Symbol("Protobuf/rest")
 
 type Root = ValueLayout | { readonly _tag: "Void"; readonly value: null | undefined }
 
@@ -878,7 +986,7 @@ interface Resolved {
   readonly annotations: Readonly<Record<string, unknown>>
 }
 
-const RESOLVED_KEYS = [SCALAR_KEY, MAP_KEY_KEY, WRAPPER_KEY, ENUM_KEY, WKT_KEY]
+const RESOLVED_KEYS = [SCALAR_KEY, MAP_KEY_KEY, WRAPPER_KEY, ENUM_KEY, WKT_KEY, UNKNOWN_KEY]
 
 // Follows the encoding chain of a node to its encoded side, collecting the
 // identifier and protobuf annotations of the nodes along the way.
@@ -919,6 +1027,61 @@ function isNullish(ast: SchemaAST.AST): boolean {
   return ast._tag === "Null" || ast._tag === "Undefined" || ast._tag === "Void"
 }
 
+function isLiteral(ast: SchemaAST.AST): boolean {
+  return resolveEncoded(ast).ast._tag === "Literal"
+}
+
+// The value of a unit schema: a literal, a unique symbol, or a nullish keyword.
+function constantOf(ast: SchemaAST.AST): { readonly value: unknown } | undefined {
+  switch (ast._tag) {
+    case "Literal":
+      return { value: ast.literal }
+    case "UniqueSymbol":
+      return { value: ast.symbol }
+    case "Null":
+      return { value: null }
+    case "Undefined":
+    case "Void":
+      return { value: undefined }
+    default:
+      return undefined
+  }
+}
+
+// Members of a union, with unnumbered nested unions expanded. Unions of
+// literals stay whole, since their annotations decide the enum numbers.
+function flattenUnion(ast: SchemaAST.Union): Array<SchemaAST.AST> {
+  const out: Array<SchemaAST.AST> = []
+  for (const member of ast.types) {
+    const inner = resolveEncoded(member).ast
+    if (inner._tag === "Union" && getFieldAnnotation(member) === undefined && !inner.types.every(isLiteral)) {
+      out.push(...flattenUnion(inner))
+    } else {
+      out.push(member)
+    }
+  }
+  return out
+}
+
+// The value schema of an optional record value: its `undefined` entries are
+// left out, so they need no representation.
+function withoutUndefined(ast: SchemaAST.AST): SchemaAST.AST {
+  const resolved = resolveEncoded(ast).ast
+  if (resolved._tag !== "Union") return ast
+  const rest = resolved.types.filter((member) => resolveEncoded(member).ast._tag !== "Undefined")
+  return rest.length === 1 ? rest[0] : ast
+}
+
+// An array whose elements all share one schema, written as a repeated field.
+function isUniformArray(ast: SchemaAST.Arrays): boolean {
+  if (ast.rest.length !== 1) return false
+  const element = ast.rest[0]
+  return ast.elements.every((item) =>
+    item === element ||
+    SchemaAST.getContextOwner(resolveEncoded(item).ast) === SchemaAST.getContextOwner(resolveEncoded(element).ast)
+  )
+}
+
 function scalarLayout(scalar: ScalarName, asNumber = false): ScalarLayout {
   return { _tag: "Scalar", scalar, wireType: scalarWireType(scalar), asNumber }
 }
@@ -945,6 +1108,8 @@ function isPackable(type: ValueLayout): boolean {
   return type._tag === "Enum" || (type._tag === "Scalar" && type.wireType !== WIRE_LEN)
 }
 
+const SYMBOL_LAYOUT: SymbolLayout = { _tag: "Symbol", wireType: WIRE_LEN }
+
 const WRAPPED_SCALARS = new Set<ScalarName>([
   "double",
   "float",
@@ -961,141 +1126,286 @@ function layoutError(message: string): Error {
   return new Error(`Protobuf layout: ${message}`)
 }
 
-function compileRoot(ast: SchemaAST.AST): Root {
-  const messages = new Map<SchemaAST.AST, Message>()
+function describeKey(key: PropertyKey): string {
+  if (key === BOX_VALUE) return "value"
+  if (key === TUPLE_REST) return "rest"
+  return typeof key === "string" ? `"${key}"` : String(key)
+}
 
-  function compileMessage(ast: SchemaAST.Objects, identifier: string | undefined): Message {
-    const owner = SchemaAST.getContextOwner(ast)
-    const cached = messages.get(owner)
-    if (cached !== undefined) return cached
-    const message: Message = {
-      name: identifier ?? "message",
+// The wire type of a single literal: the scalar it is a value of.
+function literalScalar(literal: SchemaAST.LiteralValue): ScalarLayout {
+  switch (typeof literal) {
+    case "string":
+      return scalarLayout("string")
+    case "boolean":
+      return scalarLayout("bool")
+    case "bigint":
+      return scalarLayout("int64")
+    default:
+      return scalarLayout(isInt32(literal) ? "int32" : "double")
+  }
+}
+
+function compileRoot(ast: SchemaAST.AST): Root {
+  // Messages by the body they are compiled from, so that a message used at
+  // several positions, or recursively, is compiled once.
+  const structs = new Map<SchemaAST.AST, Message>()
+  const tuples = new Map<SchemaAST.AST, Message>()
+  const boxes = new Map<SchemaAST.AST, Message>()
+
+  function makeMessage(name: string, shape: Message["shape"], elements = 0): Message {
+    return {
+      name,
+      shape,
+      elements,
       fields: [],
+      rest: [],
       oneofs: [],
       literals: [],
+      declared: new Set(),
+      unknown: undefined,
       byNumber: new Map(),
       sorted: []
     }
-    messages.set(owner, message)
-    if (ast.indexSignatures.length > 0) {
-      throw layoutError(`${message.name} mixes properties and index signatures`)
-    }
-    const register = (number: number, slot: Slot, key: string) => {
+  }
+
+  function addSlot(message: Message, entry: Field | Oneof | undefined): void {
+    if (entry === undefined) return
+    const register = (number: number, slot: Slot) => {
       if (message.byNumber.has(number)) {
-        throw layoutError(`duplicate field number ${number} in ${message.name} (property "${key}")`)
+        throw layoutError(`duplicate field number ${number} in ${message.name} (${describeKey(entry.key)})`)
       }
       message.byNumber.set(number, slot)
       message.sorted.push(slot)
     }
-    for (const ps of ast.propertySignatures) {
-      if (typeof ps.name !== "string") {
-        throw layoutError(`${message.name} has a non-string property key`)
-      }
-      const entry = compileProperty(message, ps.name, ps.type)
-      if (entry === undefined) continue
-      if ("_tag" in entry) {
-        message.fields.push(entry)
-        register(entry.number, entry, entry.key)
-      } else {
-        message.oneofs.push(entry)
-        for (const c of entry.cases) register(c.number, c, entry.key)
-      }
+    if ("_tag" in entry) {
+      if (entry.kind === "rest") message.rest.push(entry)
+      else message.fields.push(entry)
+      register(entry.number, entry)
+    } else {
+      message.oneofs.push(entry)
+      for (const c of entry.cases) register(c.number, c)
     }
+  }
+
+  function done(message: Message): Message {
     message.sorted.sort((a, b) => a.number - b.number)
     return message
   }
 
-  function compileProperty(message: Message, key: string, type: SchemaAST.AST): Field | Oneof | undefined {
-    const where = `property "${key}" of ${message.name}`
-    let annotation = getFieldAnnotation(type)
+  function compileStruct(ast: SchemaAST.Objects, identifier: string | undefined): Message {
+    const owner = SchemaAST.getContextOwner(ast)
+    const cached = structs.get(owner)
+    if (cached !== undefined) return cached
+    const message = makeMessage(identifier ?? "message", "struct")
+    structs.set(owner, message)
+    for (const ps of ast.propertySignatures) {
+      message.declared.add(ps.name)
+      const where = `property ${describeKey(ps.name)} of ${message.name}`
+      addSlot(message, compileSlot(message, ps.name, ps.type, where, undefined, true))
+    }
+    for (const signature of ast.indexSignatures) {
+      const where = `index signature of ${message.name}`
+      const annotation = getFieldAnnotation(signature.type)
+      if (annotation === undefined) {
+        throw layoutError(`${where} has no field number; annotate the record value with Protobuf.field(n)`)
+      }
+      addSlot(message, {
+        ...mapField(signature, where),
+        key: TUPLE_REST,
+        number: annotation.number,
+        kind: "rest",
+        absent: "zero",
+        parameter: signature.parameter
+      })
+    }
+    return done(message)
+  }
+
+  function compileTuple(ast: SchemaAST.Arrays, where: string): Message {
+    const owner = SchemaAST.getContextOwner(ast)
+    const cached = tuples.get(owner)
+    if (cached !== undefined) return cached
+    const message = makeMessage(where, "tuple", ast.elements.length)
+    tuples.set(owner, message)
+    ast.elements.forEach((element, i) => {
+      const annotation: FieldAnnotation = {
+        number: i + 1,
+        packed: undefined,
+        presence: SchemaAST.isOptional(element) ? undefined : "always",
+        encoding: undefined
+      }
+      addSlot(message, compileSlot(message, i, element, `element ${i} of ${where}`, annotation, false))
+    })
+    if (ast.rest.length > 1) throw layoutError(`${where} has elements after its rest element`)
+    if (ast.rest.length === 1) {
+      const element = compileValue(resolveEncoded(ast.rest[0]), `rest element of ${where}`)
+      addSlot(message, repeatedField(TUPLE_REST, ast.elements.length + 1, element, "zero", undefined))
+    }
+    return done(message)
+  }
+
+  // A synthesized message `{ value = 1 }` for a value that cannot be a field
+  // on its own: a collection, a union, or an optional value in an element,
+  // map value, oneof case, or root position.
+  function compileBox(ast: SchemaAST.AST, where: string): Message {
+    const owner = SchemaAST.getContextOwner(ast)
+    const cached = boxes.get(owner)
+    if (cached !== undefined) return cached
+    const message = makeMessage(where, "box")
+    boxes.set(owner, message)
+    const annotation: FieldAnnotation = { number: 1, packed: undefined, presence: undefined, encoding: undefined }
+    addSlot(message, compileSlot(message, BOX_VALUE, ast, where, annotation, true))
+    return done(message)
+  }
+
+  function repeatedField(
+    key: PropertyKey,
+    number: number,
+    element: ValueLayout,
+    absent: Absent,
+    annotation: FieldAnnotation | undefined
+  ): Field {
+    return {
+      _tag: "Field",
+      key,
+      number,
+      kind: "repeated",
+      type: element,
+      mapKey: undefined,
+      parameter: undefined,
+      optionalValues: false,
+      absent,
+      constant: undefined,
+      always: false,
+      packed: annotation?.packed ?? isPackable(element),
+      delimited: annotation?.encoding === "delimited"
+    }
+  }
+
+  function mapField(signature: SchemaAST.IndexSignature, where: string): Omit<Field, "key" | "number" | "absent"> {
+    const optionalValues = SchemaAST.isOptional(signature.type)
+    return {
+      _tag: "Field",
+      kind: "map",
+      type: compileValue(
+        resolveEncoded(optionalValues ? withoutUndefined(signature.type) : signature.type),
+        `${where} (map value)`
+      ),
+      mapKey: compileMapKey(resolveEncoded(signature.parameter), where),
+      parameter: undefined,
+      optionalValues,
+      constant: undefined,
+      always: false,
+      packed: false,
+      delimited: false
+    }
+  }
+
+  // Compiles a struct property, a tuple element, or the value of a box. A
+  // union becomes a oneof of `message` when `oneofs` is set, and a boxed oneof
+  // otherwise.
+  function compileSlot(
+    message: Message,
+    key: PropertyKey,
+    type: SchemaAST.AST,
+    where: string,
+    fixed: FieldAnnotation | undefined,
+    oneofs: boolean
+  ): Field | Oneof | undefined {
+    let annotation = fixed ?? getFieldAnnotation(type)
     let resolved = resolveEncoded(type)
     let ast = resolved.ast
-    if (ast._tag === "Literal") {
-      if (annotation !== undefined) {
-        throw layoutError(`${where} is a literal, which is a constant and never on the wire; remove Protobuf.field`)
-      }
-      message.literals.push([key, ast.literal])
+
+    if (resolved.annotations[UNKNOWN_KEY] === true && message.shape === "struct") {
+      if (annotation !== undefined) throw layoutError(`${where} holds unknown fields and takes no field number`)
+      if (message.unknown !== undefined) throw layoutError(`${message.name} has several UnknownFields properties`)
+      message.unknown = { key, optional: SchemaAST.isOptional(type) }
       return undefined
     }
 
-    let absent: Absent | undefined = SchemaAST.isOptional(type) ? "omit" : undefined
-    if (ast._tag === "Declaration" && representationId(ast) === "effect/schema/Option") {
-      absent = "none"
-      resolved = resolveEncoded(ast.typeParameters[0])
-      ast = resolved.ast
+    const constant = constantOf(ast)
+    if (constant !== undefined) {
+      // A tuple element is numbered by its position, so a nullish one stays a
+      // constant too.
+      if (annotation === undefined || (fixed !== undefined && isNullish(ast))) {
+        message.literals.push([key, constant.value])
+        return undefined
+      }
+      if (isNullish(ast)) throw layoutError(`${where} is ${ast._tag}, which has no wire representation`)
+      return {
+        _tag: "Field",
+        key,
+        number: annotation.number,
+        kind: "singular",
+        type: ast._tag === "Literal" ? literalScalar(ast.literal) : SYMBOL_LAYOUT,
+        mapKey: undefined,
+        parameter: undefined,
+        optionalValues: false,
+        absent: "constant",
+        constant: constant.value,
+        always: true,
+        packed: false,
+        delimited: false
+      }
     }
 
-    // Nullish members make the field explicit-presence. The remaining members
-    // are a oneof, unless they are literals of an enum.
+    let absent: Absent | undefined = SchemaAST.isOptional(type) ? "omit" : undefined
+    // Nullish members and `Option` make the field explicit-presence. The other
+    // members of a union are a oneof, unless they are literals.
     let literals: ReadonlyArray<SchemaAST.AST> | undefined
-    while (ast._tag === "Union") {
-      const types = ast.types
-      const rest = types.filter((member) => !isNullish(resolveEncoded(member).ast))
-      if (rest.length < types.length) {
-        absent ??= types.some((member) => resolveEncoded(member).ast._tag === "Null") ? "null" : "undefined"
-        if (rest.length === 1) {
-          annotation ??= getFieldAnnotation(rest[0])
-          const inner = resolveEncoded(rest[0])
-          resolved = { ...inner, annotations: { ...inner.annotations, ...resolved.annotations } }
-          ast = resolved.ast
-          continue
+    if (oneofs) {
+      if (ast._tag === "Declaration" && representationId(ast) === "effect/schema/Option") {
+        absent = "none"
+        resolved = resolveEncoded(ast.typeParameters[0])
+        ast = resolved.ast
+      }
+      while (ast._tag === "Union") {
+        const types = flattenUnion(ast)
+        const rest = types.filter((member) => !isNullish(resolveEncoded(member).ast))
+        if (rest.length < types.length) {
+          absent ??= types.some((member) => resolveEncoded(member).ast._tag === "Null") ? "null" : "undefined"
+          if (rest.length === 1) {
+            if (fixed === undefined) annotation ??= getFieldAnnotation(rest[0])
+            const inner = resolveEncoded(rest[0])
+            resolved = { ...inner, annotations: { ...inner.annotations, ...resolved.annotations } }
+            ast = resolved.ast
+            continue
+          }
         }
+        if (rest.length === 0) throw layoutError(`${where} has no protobuf mapping for a nullish union`)
+        if (rest.every(isLiteral)) {
+          literals = rest
+          break
+        }
+        if (annotation !== undefined && fixed === undefined) {
+          throw layoutError(`${where} is a oneof; number its members instead of the property`)
+        }
+        return compileOneof(message, key, rest, absent ?? "required", where)
       }
-      if (rest.length === 0) throw layoutError(`${where} has no protobuf mapping for a nullish union`)
-      if (rest.every((member) => resolveEncoded(member).ast._tag === "Literal")) {
-        literals = rest
-        break
-      }
-      if (annotation !== undefined) {
-        throw layoutError(`${where} is a oneof; number its members instead of the property`)
-      }
-      return compileOneof(message, key, rest, absent ?? "required")
     }
 
     if (annotation === undefined) {
       throw layoutError(`${where} has no field number; annotate it with Protobuf.field(n)`)
     }
     const number = annotation.number
+    const wkt = resolved.annotations[WKT_KEY]
 
-    const wkt = resolved.annotations[WKT_KEY] as WktName | undefined
-    if (wkt === undefined && ast._tag === "Arrays") {
-      const items = [...ast.elements, ...ast.rest]
-      if (ast.rest.length === 0 || items.some((item) => !sameEncoded(item, items[0]))) {
-        throw layoutError(`${where} is a tuple; only arrays are supported`)
-      }
-      const element = compileValue(resolveEncoded(items[0]), `${where} (element)`)
-      if (annotation.packed === true && !isPackable(element)) {
-        throw layoutError(`${where} cannot be packed`)
-      }
-      return {
-        _tag: "Field",
-        key,
-        number,
-        kind: "repeated",
-        type: element,
-        mapKey: undefined,
-        absent: absent ?? "zero",
-        packed: annotation.packed ?? isPackable(element)
-      }
+    if (wkt === undefined && ast._tag === "Arrays" && isUniformArray(ast)) {
+      const element = compileValue(resolveEncoded(ast.rest[0]), `${where} (element)`)
+      if (annotation.packed === true && !isPackable(element)) throw layoutError(`${where} cannot be packed`)
+      checkDelimited(annotation, element, where)
+      return repeatedField(key, number, element, absent ?? "zero", annotation)
     }
-    if (wkt === undefined && ast._tag === "Objects" && ast.indexSignatures.length > 0) {
-      if (ast.propertySignatures.length > 0 || ast.indexSignatures.length > 1) {
-        throw layoutError(`${where} is a record with several key schemas or properties; only maps are supported`)
-      }
-      const signature = ast.indexSignatures[0]
-      return {
-        _tag: "Field",
-        key,
-        number,
-        kind: "map",
-        type: compileValue(resolveEncoded(signature.type), `${where} (map value)`),
-        mapKey: compileMapKey(resolveEncoded(signature.parameter), where),
-        absent: absent ?? "zero",
-        packed: false
-      }
+    if (
+      wkt === undefined && ast._tag === "Objects" && ast.propertySignatures.length === 0 &&
+      ast.indexSignatures.length === 1
+    ) {
+      return { ...mapField(ast.indexSignatures[0], where), key, number, absent: absent ?? "zero" }
     }
 
-    const value = literals === undefined ? compileValue(resolved, where) : literalEnum(literals, resolved, where)
+    const value = literals === undefined ? compileValue(resolved, where) : literalValue(literals, resolved, where)
+    checkDelimited(annotation, value, where)
     return {
       _tag: "Field",
       key,
@@ -1103,30 +1413,44 @@ function compileRoot(ast: SchemaAST.AST): Root {
       kind: "singular",
       type: value,
       mapKey: undefined,
+      parameter: undefined,
+      optionalValues: false,
       absent: absent ?? (value._tag === "Scalar" || value._tag === "Enum" ? "zero" : "required"),
-      packed: false
+      constant: undefined,
+      always: annotation.presence === "always",
+      packed: false,
+      delimited: annotation.encoding === "delimited"
+    }
+  }
+
+  function checkDelimited(annotation: FieldAnnotation, type: ValueLayout, where: string): void {
+    if (annotation.encoding === "delimited" && type._tag !== "Message") {
+      throw layoutError(`${where} is not a message; only messages can use the delimited encoding`)
     }
   }
 
   function compileOneof(
     message: Message,
-    key: string,
+    key: PropertyKey,
     members: ReadonlyArray<SchemaAST.AST>,
-    absent: Absent
+    absent: Absent,
+    where: string
   ): Oneof {
     const oneof: Oneof = { key, index: message.oneofs.length, absent, cases: [], discriminator: undefined }
-    const where = `oneof "${key}" of ${message.name}`
     for (const member of members) {
       const resolved = resolveEncoded(member)
       const annotation = getFieldAnnotation(member)
       if (annotation !== undefined) {
+        const type = compileCaseValue(resolved, where)
+        checkDelimited(annotation, type, where)
         oneof.cases.push({
           _tag: "Case",
           oneof,
           number: annotation.number,
-          type: compileCaseValue(resolved, where),
+          type,
           unwrap: undefined,
-          guard: Schema.is(Schema.make(SchemaAST.toEncoded(member)))
+          guard: Schema.is(Schema.make(SchemaAST.toEncoded(member))),
+          delimited: annotation.encoding === "delimited"
         })
         continue
       }
@@ -1141,13 +1465,16 @@ function compileRoot(ast: SchemaAST.AST): Root {
         }
         const annotation = wire.length === 1 ? getFieldAnnotation(wire[0].type) : undefined
         if (annotation !== undefined && typeof wire[0].name === "string") {
+          const type = compileCaseValue(resolveEncoded(wire[0].type), where)
+          checkDelimited(annotation, type, where)
           oneof.cases.push({
             _tag: "Case",
             oneof,
             number: annotation.number,
-            type: compileCaseValue(resolveEncoded(wire[0].type), where),
+            type,
             unwrap: { key: wire[0].name, literals },
-            guard: Schema.is(Schema.make(SchemaAST.toEncoded(member)))
+            guard: Schema.is(Schema.make(SchemaAST.toEncoded(member))),
+            delimited: annotation.encoding === "delimited"
           })
           continue
         }
@@ -1161,11 +1488,10 @@ function compileRoot(ast: SchemaAST.AST): Root {
     return oneof
   }
 
+  // A literal case is an empty message: its presence is the value.
   function compileCaseValue(resolved: Resolved, where: string): ValueLayout {
-    const ast = resolved.ast
-    if (ast._tag === "Union" && ast.types.every((member) => resolveEncoded(member).ast._tag === "Literal")) {
-      return literalEnum(ast.types, resolved, where)
-    }
+    const constant = constantOf(resolved.ast)
+    if (constant !== undefined) return { _tag: "Constant", wireType: WIRE_LEN, value: constant.value }
     return compileValue(resolved, where)
   }
 
@@ -1200,6 +1526,11 @@ function compileRoot(ast: SchemaAST.AST): Root {
         if (!is64Bit(s)) throw layoutError(`${where} is a bigint, not ${s}`)
         return scalarLayout(s)
       }
+      case "Literal":
+        return literalScalar(ast.literal)
+      case "Symbol":
+      case "UniqueSymbol":
+        return SYMBOL_LAYOUT
       case "Enum": {
         for (const [name, value] of ast.enums) {
           if (typeof value !== "number" || !isInt32(value)) {
@@ -1208,18 +1539,17 @@ function compileRoot(ast: SchemaAST.AST): Root {
         }
         return { _tag: "Enum", wireType: WIRE_VARINT, toNumber: undefined, fromNumber: undefined }
       }
-      case "Union":
-        if (ast.types.every((member) => resolveEncoded(member).ast._tag === "Literal")) {
-          return literalEnum(ast.types, resolved, where)
-        }
-        throw layoutError(`${where} is a union; unions are only supported as oneof properties`)
+      case "Union": {
+        const members = flattenUnion(ast)
+        if (members.every(isLiteral)) return literalValue(members, resolved, where)
+        return box(ast, where)
+      }
       case "Objects":
-        if (ast.indexSignatures.length > 0) {
-          throw layoutError(`${where} is a record; records are only supported as map properties`)
-        }
-        return { _tag: "Message", wireType: WIRE_LEN, message: compileMessage(ast, resolved.identifier) }
+        if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 1) return box(ast, where)
+        return { _tag: "Message", wireType: WIRE_LEN, message: compileStruct(ast, resolved.identifier) }
       case "Arrays":
-        throw layoutError(`${where} is an array; arrays are only supported as repeated properties`)
+        if (isUniformArray(ast)) return box(ast, where)
+        return { _tag: "Message", wireType: WIRE_LEN, message: compileTuple(ast, where) }
       case "Declaration":
         switch (representationId(ast)) {
           case "effect/schema/DateTimeUtc":
@@ -1234,27 +1564,34 @@ function compileRoot(ast: SchemaAST.AST): Root {
           case "effect/schema/MutableJson":
             return { _tag: "Wkt", wireType: WIRE_LEN, wkt: "value" }
           case "effect/schema/Option":
-            throw layoutError(`${where} is an Option; Option is only supported as a property`)
+            return box(ast, where)
         }
-        throw layoutError(`${where} is a declaration without a protobuf mapping or JSON encoding`)
+        throw layoutError(`${where} is a declaration without a protobuf mapping or codec annotation`)
       case "Unknown":
       case "Any":
+      case "ObjectKeyword":
         return { _tag: "Wkt", wireType: WIRE_LEN, wkt: "value" }
-      case "Literal":
-        throw layoutError(`${where} is a literal; literals are only supported as constant properties`)
       default:
         throw layoutError(`${where} has no protobuf mapping for ${ast._tag}`)
     }
   }
 
-  function literalEnum(members: ReadonlyArray<SchemaAST.AST>, resolved: Resolved, where: string): EnumLayout {
+  function box(ast: SchemaAST.AST, where: string): MessageLayout {
+    return { _tag: "Message", wireType: WIRE_LEN, message: compileBox(ast, where) }
+  }
+
+  // Unions of literals: an enum with `enumNumbers` or numeric members, and
+  // otherwise the scalar the literals share.
+  function literalValue(members: ReadonlyArray<SchemaAST.AST>, resolved: Resolved, where: string): ValueLayout {
     const literals = members.map((member) => (resolveEncoded(member).ast as SchemaAST.Literal).literal)
     const mapping = resolved.annotations[ENUM_KEY] as Readonly<Record<string, number>> | undefined
     if (mapping === undefined) {
       if (literals.every((literal) => typeof literal === "number" && isInt32(literal))) {
         return { _tag: "Enum", wireType: WIRE_VARINT, toNumber: undefined, fromNumber: undefined }
       }
-      throw layoutError(`${where} is a union of literals; annotate it with Protobuf.enumNumbers({ ... })`)
+      const kind = typeof literals[0]
+      if (literals.every((literal) => typeof literal === kind)) return literalScalar(literals[0])
+      throw layoutError(`${where} is a union of literals of different types; annotate it with Protobuf.enumNumbers`)
     }
     const toNumber = new Map<unknown, number>()
     const fromNumber = new Map<number, unknown>()
@@ -1279,30 +1616,29 @@ function compileRoot(ast: SchemaAST.AST): Root {
         break
       case "Number": {
         const s = declared ?? "int32"
-        if (is64Bit(s)) return scalarLayout(s, true)
-        if (s !== "double" && s !== "float" && s !== "bool" && s !== "string" && s !== "bytes") {
-          return scalarLayout(s)
-        }
+        if (s !== "bool" && s !== "string" && s !== "bytes") return scalarLayout(s, is64Bit(s))
         break
       }
     }
-    throw layoutError(`${where} has an unsupported map key; use String, Int32 (and friends), or Protobuf.mapKey`)
+    throw layoutError(
+      `${where} has an unsupported map key; use String, Number, Int32 (and friends), or Protobuf.mapKey`
+    )
   }
 
   const resolved = resolveEncoded(ast)
-  if (isNullish(resolved.ast)) {
-    return { _tag: "Void", value: resolved.ast._tag === "Null" ? null : undefined }
+  const node = resolved.ast
+  if (isNullish(node)) return { _tag: "Void", value: node._tag === "Null" ? null : undefined }
+  // A record whose values are numbered is a message of maps.
+  if (
+    node._tag === "Objects" && node.indexSignatures.length > 0 && resolved.annotations[WKT_KEY] === undefined &&
+    node.indexSignatures.every((signature) => getFieldAnnotation(signature.type) !== undefined)
+  ) {
+    return { _tag: "Message", wireType: WIRE_LEN, message: compileStruct(node, resolved.identifier) }
   }
   const root = compileValue(resolved, "the root schema")
-  if (root._tag === "Scalar" || root._tag === "Enum") {
-    throw layoutError(`the root schema must be a message, got ${describe(root, resolved.ast)}`)
-  }
-  return root
-}
-
-function sameEncoded(a: SchemaAST.AST, b: SchemaAST.AST): boolean {
-  return a === b ||
-    SchemaAST.getContextOwner(resolveEncoded(a).ast) === SchemaAST.getContextOwner(resolveEncoded(b).ast)
+  if (root._tag === "Message" || root._tag === "Wkt" || root._tag === "Wrapper") return root
+  // Any other root is the value of a box, like the google.protobuf wrappers.
+  return box(ast, "the root schema")
 }
 
 function describe(layout: ValueLayout, ast: SchemaAST.AST): string {
@@ -1354,8 +1690,9 @@ class WireError extends Error {
   }
 }
 
-function withKey(e: unknown, key: PropertyKey): never {
-  if (e instanceof WireError) e.path.unshift(key)
+// Rethrows a wire error with the slot it occurred in prepended to its path.
+function rethrowAt(e: unknown, key: PropertyKey | undefined): never {
+  if (e instanceof WireError && key !== undefined && key !== BOX_VALUE && key !== TUPLE_REST) e.path.unshift(key)
   throw e
 }
 
@@ -1502,6 +1839,12 @@ class Writer {
       n = n >>> 7
     }
     buf[p] = n
+  }
+
+  raw(bytes: Uint8Array): void {
+    this.ensure(bytes.length)
+    this.buf.set(bytes, this.pos)
+    this.pos += bytes.length
   }
 
   bytes(bytes: Uint8Array): void {
@@ -1739,20 +2082,40 @@ function encodeRoot(root: Root, value: unknown): Uint8Array<ArrayBuffer> {
     case "Wrapper":
       encodeWrapper(root.scalar, value, w)
       break
+    default:
+      throw new WireError("unexpected root")
   }
   return w.finish()
 }
 
+// The value a slot of `message` holds in `container`.
+function slotValue(message: Message, container: unknown, key: PropertyKey): unknown {
+  switch (message.shape) {
+    case "struct":
+      return (container as Record<PropertyKey, unknown>)[key]
+    case "tuple":
+      return key === TUPLE_REST
+        ? (container as ReadonlyArray<unknown>).slice(message.elements)
+        : (container as ReadonlyArray<unknown>)[key as number]
+    case "box":
+      return container
+  }
+}
+
 function encodeMessage(message: Message, value: unknown, w: Writer): void {
-  if (!Predicate.isObject(value)) throw new WireError(`expected an object for ${message.name}`, value)
-  const obj = value as Record<string, unknown>
-  let key: string | undefined
+  if (message.shape === "struct" && !Predicate.isObject(value)) {
+    throw new WireError(`expected an object for ${message.name}`, value)
+  }
+  if (message.shape === "tuple" && !Array.isArray(value)) {
+    throw new WireError(`expected an array for ${message.name}`, value)
+  }
+  let key: PropertyKey | undefined
   try {
     // The case of each oneof, so that it is written in field-number order.
     const cases: Array<Case | undefined> = []
     for (const oneof of message.oneofs) {
       key = oneof.key
-      const v = present(oneof.absent, obj[key])
+      const v = present(oneof.absent, slotValue(message, value, key))
       const c = v === undefined ? undefined : matchCase(oneof, v)
       if (v !== undefined && c === undefined) throw new WireError("value matches no oneof case", v)
       cases.push(c)
@@ -1761,16 +2124,27 @@ function encodeMessage(message: Message, value: unknown, w: Writer): void {
       if (slot._tag === "Case") {
         if (cases[slot.oneof.index] !== slot) continue
         key = slot.oneof.key
-        const v = present(slot.oneof.absent, obj[key])
-        encodeValue(slot.number, slot.type, slot.unwrap === undefined ? v : unwrapCase(slot.unwrap.key, v), w)
+        const v = present(slot.oneof.absent, slotValue(message, value, key))
+        const caseValue = slot.unwrap === undefined ? v : unwrapCase(slot.unwrap.key, v)
+        encodeValue(slot.number, slot.type, caseValue, w, slot.delimited)
+      } else if (slot.kind === "rest") {
+        key = undefined
+        encodeRest(message, slot, value as Record<PropertyKey, unknown>, w)
       } else {
         key = slot.key
-        encodeField(slot, obj[key], w)
+        encodeField(slot, slotValue(message, value, key), w)
+      }
+    }
+    if (message.unknown !== undefined) {
+      key = message.unknown.key
+      const bytes = (value as Record<PropertyKey, unknown>)[key]
+      if (bytes !== undefined) {
+        if (!(bytes instanceof Uint8Array)) throw new WireError("expected the bytes of unknown fields", bytes)
+        w.raw(bytes)
       }
     }
   } catch (e) {
-    if (key !== undefined) withKey(e, key)
-    throw e
+    rethrowAt(e, key)
   }
 }
 
@@ -1778,7 +2152,7 @@ function unwrapCase(key: string, member: unknown): unknown {
   return (member as Record<string, unknown>)[key]
 }
 
-// The value of an explicit-presence property, or `undefined` when it is absent.
+// The value of an explicit-presence slot, or `undefined` when it is absent.
 function present(absent: Absent, value: unknown): unknown {
   if (value === null) return undefined
   if (absent === "none" && value !== undefined) {
@@ -1793,35 +2167,64 @@ function encodeField(field: Field, value: unknown, w: Writer): void {
   if (v === undefined) return
   switch (field.kind) {
     case "singular":
-      if (field.absent === "zero" && isZero(field.type, v)) return
-      encodeValue(field.number, field.type, v, w)
+      if (field.absent === "zero" && !field.always && isZero(field.type, v)) return
+      encodeValue(field.number, field.type, v, w, field.delimited)
       return
     case "repeated": {
       if (!Array.isArray(v)) throw new WireError("expected an array", v)
       if (v.length === 0) return
-      if (field.packed) {
-        w.tag(field.number, WIRE_LEN)
-        const start = w.begin()
-        for (const item of v) encodePacked(field.type, item, w)
-        w.end(start)
-      } else {
-        for (const item of v) encodeValue(field.number, field.type, item, w)
+      let i = 0
+      try {
+        if (field.packed) {
+          w.tag(field.number, WIRE_LEN)
+          const start = w.begin()
+          for (; i < v.length; i++) encodePacked(field.type, v[i], w)
+          w.end(start)
+        } else {
+          for (; i < v.length; i++) encodeValue(field.number, field.type, v[i], w, field.delimited)
+        }
+      } catch (e) {
+        rethrowAt(e, i)
       }
       return
     }
     case "map": {
       if (!Predicate.isObject(v)) throw new WireError("expected a record", v)
       const record = v as Record<string, unknown>
-      for (const k of Object.keys(record)) {
-        w.tag(field.number, WIRE_LEN)
-        const start = w.begin()
-        w.tag(1, field.mapKey!.wireType)
-        encodeScalar(field.mapKey!, mapKeyFromString(field.mapKey!, k), w)
-        encodeValue(2, field.type, record[k], w)
-        w.end(start)
-      }
+      for (const k of Object.keys(record)) encodeEntry(field, k, record[k], w)
       return
     }
+  }
+}
+
+// Writes the keys of a struct that its index signature `field` selects, and
+// that no declared property or earlier index signature claims.
+function encodeRest(message: Message, field: Field, obj: Record<PropertyKey, unknown>, w: Writer): void {
+  for (const k of SchemaAST.getIndexSignatureKeys(obj, field.parameter!)) {
+    if (typeof k !== "string" || message.declared.has(k) || claimedBefore(message, field, k)) continue
+    encodeEntry(field, k, obj[k], w)
+  }
+}
+
+function claimedBefore(message: Message, field: Field, key: string): boolean {
+  for (const other of message.rest) {
+    if (other === field) return false
+    if (SchemaAST.getIndexSignatureKeys({ [key]: null }, other.parameter!).length > 0) return true
+  }
+  return false
+}
+
+function encodeEntry(field: Field, key: string, value: unknown, w: Writer): void {
+  if (value === undefined && field.optionalValues) return
+  try {
+    w.tag(field.number, WIRE_LEN)
+    const start = w.begin()
+    w.tag(1, field.mapKey!.wireType)
+    encodeScalar(field.mapKey!, mapKeyFromString(field.mapKey!, key), w)
+    encodeValue(2, field.type, value, w, false)
+    w.end(start)
+  } catch (e) {
+    rethrowAt(e, key)
   }
 }
 
@@ -1830,7 +2233,13 @@ function encodePacked(type: ValueLayout, value: unknown, w: Writer): void {
   else encodeScalar(type as ScalarLayout, value, w)
 }
 
-function encodeValue(number: number, type: ValueLayout, value: unknown, w: Writer): void {
+function encodeValue(number: number, type: ValueLayout, value: unknown, w: Writer, delimited: boolean): void {
+  if (delimited) {
+    w.tag(number, WIRE_SGROUP)
+    encodeMessage((type as MessageLayout).message, value, w)
+    w.tag(number, WIRE_EGROUP)
+    return
+  }
   w.tag(number, type.wireType)
   switch (type._tag) {
     case "Scalar":
@@ -1838,6 +2247,15 @@ function encodeValue(number: number, type: ValueLayout, value: unknown, w: Write
       return
     case "Enum":
       w.int32(enumNumber(type, value))
+      return
+    case "Symbol": {
+      const key = typeof value === "symbol" ? Symbol.keyFor(value) : undefined
+      if (key === undefined) throw new WireError("expected a registered symbol (Symbol.for)", value)
+      w.string(key)
+      return
+    }
+    case "Constant":
+      w.varint32(0)
       return
     default: {
       const start = w.begin()
@@ -1975,6 +2393,12 @@ function mapKeyFromString(type: ScalarLayout, key: string): unknown {
       if (key === "true") return true
       if (key === "false") return false
       break
+    case "double":
+    case "float": {
+      const n = Number(key)
+      if (String(n) === key) return n
+      break
+    }
     default:
       if (!INTEGER_KEY.test(key)) break
       return is64Bit(type.scalar) && !type.asNumber ? BigInt(key) : Number(key)
@@ -2071,7 +2495,7 @@ function encodeJsonStruct(value: unknown, w: Writer): void {
     try {
       encodeJsonValue(record[key], w)
     } catch (e) {
-      withKey(e, key)
+      rethrowAt(e, key)
     }
     w.end(start)
     w.end(entry)
@@ -2086,7 +2510,7 @@ function encodeJsonList(value: unknown, w: Writer): void {
     try {
       encodeJsonValue(value[i], w)
     } catch (e) {
-      withKey(e, i)
+      rethrowAt(e, i)
     }
     w.end(start)
   }
@@ -2102,7 +2526,7 @@ function decodeRoot(root: Root, bytes: Uint8Array): unknown {
   const end = bytes.length
   switch (root._tag) {
     case "Message":
-      return decodeMessage(root.message, r, end, undefined, 0)
+      return decodeMessage(root.message, r, end, undefined, 0, undefined)
     case "Wkt":
       return decodeWkt(root.wkt, r, end, 0)
     case "Wrapper":
@@ -2112,121 +2536,220 @@ function decodeRoot(root: Root, bytes: Uint8Array): unknown {
   }
 }
 
-// Decodes a message, merging into `target` when the message occurred before,
-// then fills in absent fields and literals.
+// Decodes a message up to `end`, or up to the end group tag of field `group`.
+// A message that occurred before is merged into: `previous` is its value.
 function decodeMessage(
   message: Message,
   r: Reader,
   end: number,
-  target: Record<string, unknown> | undefined,
-  depth: number
-): Record<string, unknown> {
+  previous: unknown,
+  depth: number,
+  group: number | undefined
+): unknown {
   if (depth > MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
-  const obj: Record<string, unknown> = target ?? {}
-  let key: string | undefined
+  const acc = accumulator(message, previous)
+  let unknown: Array<Uint8Array> | undefined
+  let key: PropertyKey | undefined
   try {
-    while (r.pos < end) {
+    while (true) {
+      if (r.pos >= end) {
+        if (group !== undefined) throw new WireError("premature end of input")
+        break
+      }
+      const start = r.pos
       const tag = readTag(r)
       const wireType = tag & 7
-      const slot = message.byNumber.get(tag >>> 3)
+      const number = tag >>> 3
+      if (wireType === WIRE_EGROUP) {
+        if (number === group) break
+        throw new WireError(`unexpected end group tag for field ${number}`)
+      }
+      const slot = message.byNumber.get(number)
       if (slot === undefined) {
         key = undefined
-        r.skip(wireType, tag >>> 3, depth)
+        r.skip(wireType, number, depth)
+        if (message.unknown !== undefined) (unknown ??= []).push(r.buf.subarray(start, r.pos))
         continue
       }
       if (slot._tag === "Case") {
         const oneof = slot.oneof
         key = oneof.key
-        const previous = present(oneof.absent, obj[key])
-        const merge = previous !== undefined && matchCase(oneof, previous) === slot
-          ? (slot.unwrap === undefined ? previous : unwrapCase(slot.unwrap.key, previous))
+        const before = present(oneof.absent, acc[key])
+        const merge = before !== undefined && matchCase(oneof, before) === slot
+          ? (slot.unwrap === undefined ? before : unwrapCase(slot.unwrap.key, before))
           : undefined
-        let value = decodeValue(slot.type, wireType, r, merge, depth)
+        let value = decodeValue(slot.type, wireType, r, merge, depth, number)
         if (slot.unwrap !== undefined) {
           const member: Record<string, unknown> = {}
           for (const [k, literal] of slot.unwrap.literals) member[k] = literal
           member[slot.unwrap.key] = value
           value = member
         }
-        obj[key] = oneof.absent === "none" ? Option.some(value) : value
+        acc[key] = oneof.absent === "none" ? Option.some(value) : value
         continue
       }
-      key = slot.key
-      decodeField(slot, obj, wireType, r, depth)
+      key = slot.kind === "rest" ? undefined : slot.key
+      decodeField(slot, acc, wireType, r, depth, number)
     }
-    if (r.pos !== end) throw new WireError("field overruns its message")
+    if (group === undefined && r.pos !== end) throw new WireError("field overruns its message")
   } catch (e) {
-    if (key !== undefined) withKey(e, key)
-    throw e
+    rethrowAt(e, key)
   }
-  for (const [k, literal] of message.literals) obj[k] = literal
+  for (const [k, literal] of message.literals) acc[k] = literal
   for (const field of message.fields) {
-    if (!(field.key in obj)) fillAbsent(obj, field.key, field.absent, field)
+    if (!(field.key in acc)) fillAbsent(acc, field.key, field.absent, field)
   }
   for (const oneof of message.oneofs) {
-    if (!(oneof.key in obj)) fillAbsent(obj, oneof.key, oneof.absent, undefined)
+    if (!(oneof.key in acc)) fillAbsent(acc, oneof.key, oneof.absent, undefined)
   }
-  return obj
+  if (message.unknown !== undefined) {
+    const k = message.unknown.key
+    if (unknown !== undefined) {
+      const before = acc[k]
+      acc[k] = concatBytes(before instanceof Uint8Array ? [before, ...unknown] : unknown)
+    } else if (!(k in acc) && !message.unknown.optional) {
+      acc[k] = new Uint8Array(0)
+    }
+  }
+  return materialize(message, acc)
 }
 
-function fillAbsent(obj: Record<string, unknown>, key: string, absent: Absent, field: Field | undefined): void {
+// The slots of a message being decoded, keyed like the message's slots.
+function accumulator(message: Message, previous: unknown): Record<PropertyKey, unknown> {
+  if (previous === undefined) return {}
+  switch (message.shape) {
+    case "struct":
+      return previous as Record<PropertyKey, unknown>
+    case "tuple": {
+      const array = previous as ReadonlyArray<unknown>
+      const acc: Record<PropertyKey, unknown> = {}
+      for (let i = 0; i < Math.min(message.elements, array.length); i++) acc[i] = array[i]
+      acc[TUPLE_REST] = array.slice(message.elements)
+      return acc
+    }
+    case "box":
+      return { [BOX_VALUE]: previous }
+  }
+}
+
+function materialize(message: Message, acc: Record<PropertyKey, unknown>): unknown {
+  switch (message.shape) {
+    case "struct":
+      return acc
+    case "tuple": {
+      const out: Array<unknown> = []
+      for (let i = 0; i < message.elements && i in acc; i++) out.push(acc[i])
+      const rest = acc[TUPLE_REST]
+      if (out.length === message.elements && Array.isArray(rest)) out.push(...rest)
+      return out
+    }
+    case "box":
+      return acc[BOX_VALUE]
+  }
+}
+
+function concatBytes(chunks: ReadonlyArray<Uint8Array>): Uint8Array<ArrayBuffer> {
+  let length = 0
+  for (const chunk of chunks) length += chunk.length
+  const out = new Uint8Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    out.set(chunk, offset)
+    offset += chunk.length
+  }
+  return out
+}
+
+function fillAbsent(
+  acc: Record<PropertyKey, unknown>,
+  key: PropertyKey,
+  absent: Absent,
+  field: Field | undefined
+): void {
   switch (absent) {
     case "zero":
-      obj[key] = field!.kind === "repeated" ? [] : field!.kind === "map" ? {} : zeroValue(field!.type)
+      acc[key] = field!.kind === "repeated" ? [] : field!.kind === "map" ? {} : zeroValue(field!.type)
       return
     case "null":
-      obj[key] = null
+      acc[key] = null
       return
     case "undefined":
-      obj[key] = undefined
+      acc[key] = undefined
       return
     case "none":
-      obj[key] = Option.none()
+      acc[key] = Option.none()
+      return
+    case "constant":
+      acc[key] = field!.constant
       return
   }
 }
 
-function decodeField(field: Field, obj: Record<string, unknown>, wireType: number, r: Reader, depth: number): void {
+function decodeField(
+  field: Field,
+  acc: Record<PropertyKey, unknown>,
+  wireType: number,
+  r: Reader,
+  depth: number,
+  number: number
+): void {
   const key = field.key
   switch (field.kind) {
     case "singular": {
-      const previous = present(field.absent, obj[key])
-      const value = decodeValue(field.type, wireType, r, previous, depth)
-      obj[key] = field.absent === "none" ? Option.some(value) : value
+      const before = present(field.absent, acc[key])
+      const value = decodeValue(field.type, wireType, r, before, depth, number)
+      acc[key] = field.absent === "none" ? Option.some(value) : value
       return
     }
     case "repeated": {
-      const previous = present(field.absent, obj[key])
-      const list = Array.isArray(previous) ? previous : []
-      if (wireType === WIRE_LEN && isPackable(field.type)) {
-        const end = r.delimited()
-        while (r.pos < end) list.push(decodePacked(field.type, r))
-        if (r.pos !== end) throw new WireError("packed element overruns its field")
-      } else {
-        list.push(decodeValue(field.type, wireType, r, undefined, depth))
+      const before = present(field.absent, acc[key])
+      const list = Array.isArray(before) ? before : []
+      try {
+        if (wireType === WIRE_LEN && isPackable(field.type)) {
+          const end = r.delimited()
+          while (r.pos < end) list.push(decodePacked(field.type, r))
+          if (r.pos !== end) throw new WireError("packed element overruns its field")
+        } else {
+          list.push(decodeValue(field.type, wireType, r, undefined, depth, number))
+        }
+      } catch (e) {
+        rethrowAt(e, list.length)
       }
-      obj[key] = field.absent === "none" ? Option.some(list) : list
+      acc[key] = field.absent === "none" ? Option.some(list) : list
       return
     }
     case "map": {
-      expectWireType(wireType, WIRE_LEN)
-      const end = r.delimited()
-      let k: unknown = undefined
-      let value: unknown = undefined
-      while (r.pos < end) {
-        const tag = readTag(r)
-        if (tag >>> 3 === 1) k = decodeScalarField(field.mapKey!, tag & 7, r)
-        else if (tag >>> 3 === 2) value = decodeValue(field.type, tag & 7, r, undefined, depth)
-        else r.skip(tag & 7, tag >>> 3, depth)
-      }
-      if (r.pos !== end) throw new WireError("map entry overruns its field")
-      const previous = present(field.absent, obj[key])
-      const record = (Predicate.isObject(previous) ? previous : {}) as Record<string, unknown>
-      record[String(k ?? zeroScalar(field.mapKey!))] = value ?? zeroValue(field.type)
-      obj[key] = field.absent === "none" ? Option.some(record) : record
+      const before = present(field.absent, acc[key])
+      const record = (Predicate.isObject(before) ? before : {}) as Record<string, unknown>
+      decodeEntry(field, record, wireType, r, depth)
+      acc[key] = field.absent === "none" ? Option.some(record) : record
       return
     }
+    case "rest":
+      decodeEntry(field, acc, wireType, r, depth)
+      return
   }
+}
+
+function decodeEntry(
+  field: Field,
+  target: Record<PropertyKey, unknown>,
+  wireType: number,
+  r: Reader,
+  depth: number
+): void {
+  expectWireType(wireType, WIRE_LEN)
+  const end = r.delimited()
+  let k: unknown = undefined
+  let value: unknown = undefined
+  while (r.pos < end) {
+    const tag = readTag(r)
+    if (tag >>> 3 === 1) k = decodeScalarField(field.mapKey!, tag & 7, r)
+    else if (tag >>> 3 === 2) value = decodeValue(field.type, tag & 7, r, undefined, depth, 2)
+    else r.skip(tag & 7, tag >>> 3, depth)
+  }
+  if (r.pos !== end) throw new WireError("map entry overruns its field")
+  target[String(k ?? zeroScalar(field.mapKey!))] = value === undefined ? zeroValue(field.type) : value
 }
 
 function expectWireType(actual: number, expected: number): void {
@@ -2241,7 +2764,18 @@ function decodePacked(type: ValueLayout, r: Reader): unknown {
   return decodeScalar(type as ScalarLayout, r)
 }
 
-function decodeValue(type: ValueLayout, wireType: number, r: Reader, previous: unknown, depth: number): unknown {
+function decodeValue(
+  type: ValueLayout,
+  wireType: number,
+  r: Reader,
+  previous: unknown,
+  depth: number,
+  number: number
+): unknown {
+  // Messages are read in either encoding, whichever the field declares.
+  if (type._tag === "Message" && wireType === WIRE_SGROUP) {
+    return decodeMessage(type.message, r, r.buf.length, mergeTarget(type.message, previous), depth + 1, number)
+  }
   expectWireType(wireType, type.wireType)
   switch (type._tag) {
     case "Scalar":
@@ -2249,19 +2783,29 @@ function decodeValue(type: ValueLayout, wireType: number, r: Reader, previous: u
     case "Enum":
       r.varint64()
       return enumValue(type, r.lo | 0)
+    case "Symbol":
+      return Symbol.for(r.string())
+    case "Constant":
+      r.pos = r.delimited()
+      return type.value
     case "Message":
       return decodeMessage(
         type.message,
         r,
         r.delimited(),
-        Predicate.isObject(previous) ? previous as Record<string, unknown> : undefined,
-        depth + 1
+        mergeTarget(type.message, previous),
+        depth + 1,
+        undefined
       )
     case "Wkt":
       return decodeWkt(type.wkt, r, r.delimited(), depth + 1)
     case "Wrapper":
       return decodeWrapper(type.scalar, r, r.delimited(), depth + 1)
   }
+}
+
+function mergeTarget(message: Message, previous: unknown): unknown {
+  return message.shape !== "struct" || Predicate.isObject(previous) ? previous : undefined
 }
 
 // Unknown numbers pass through for the schema to judge.
@@ -2489,11 +3033,15 @@ function zeroValue(type: ValueLayout): unknown {
     case "Enum":
       return enumValue(type, 0)
     case "Message":
-      return decodeMessage(type.message, new Reader(EMPTY), 0, undefined, 0)
+      return decodeMessage(type.message, new Reader(EMPTY), 0, undefined, 0, undefined)
     case "Wkt":
       return decodeWkt(type.wkt, new Reader(EMPTY), 0, 0)
     case "Wrapper":
       return zeroScalar(type.scalar)
+    case "Constant":
+      return type.value
+    case "Symbol":
+      return Symbol.for("")
   }
 }
 

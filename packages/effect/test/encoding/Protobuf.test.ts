@@ -46,6 +46,29 @@ const decode = <A, I>(schema: Schema.Codec<A, I>, hex: string): A =>
 // message Wide { string text = 1; acme.v1.Point point = 2; int32 high = 536870911; }
 // message Doubles { double value = 1; }
 // message Numbers { int64 signed = 1 [jstype = JS_NUMBER]; uint64 unsigned = 2 [jstype = JS_NUMBER]; }
+//
+// // test/v1/structural.proto: the synthesized messages
+// message Pair { optional string first = 1; optional int32 second = 2; }
+// message Triple { optional string first = 1; optional bool second = 2; repeated int32 rest = 3; }
+// message Tuples { Pair pair = 1; Triple triple = 2; }
+// message ByPoint { map<int32, acme.v1.Point> entries = 1; }
+// message DoubleKeys { message Entry { optional double key = 1; optional string value = 2; } repeated Entry entries = 1; }
+// message Grid { message Row { repeated int32 value = 1; } repeated Row rows = 1; }
+// message Sparse { message Item { optional string value = 1; } repeated Item items = 1; map<string, Item> labels = 2; }
+// message Maybe { message Inner { optional string value = 1; } optional Inner value = 1; }
+// message Mixed { message Item { oneof value { string label = 1; acme.v1.Point point = 2; } } repeated Item items = 1; }
+// message Mode { oneof mode { google.protobuf.Empty auto = 1; int32 fixed = 2; string named = 3; } }
+// message Versioned { string version = 1; int32 revision = 2; string color = 3; }
+// message Bag { string name = 1; map<string, int32> extra = 2; } // keys "x-…"
+// message Ints { repeated int32 value = 1; }
+// message RootChoice { oneof value { string text = 1; int32 number = 2; } }
+// message Symbols { string key = 1; }
+//
+// // test/v2/legacy.proto (proto2)
+// message Legacy {
+//   required int32 id = 1;
+//   optional group Item = 2 { optional string name = 3; }
+//   repeated group Entry = 4 { optional int32 n = 5; } }
 
 const Point = Schema.Struct({
   x: Protobuf.Int32.pipe(Protobuf.field(1)),
@@ -158,6 +181,24 @@ const Numbers = Schema.Struct({
   signed: Protobuf.Int64Number.pipe(Protobuf.field(1)),
   unsigned: Protobuf.UInt64Number.pipe(Protobuf.field(2))
 })
+
+const Tuples = Schema.Struct({
+  pair: Schema.Tuple([Schema.String, Protobuf.Int32]).pipe(Protobuf.field(1)),
+  triple: Schema.TupleWithRest(Schema.Tuple([Schema.String, Schema.optionalKey(Schema.Boolean)]), [Protobuf.Int32])
+    .pipe(Protobuf.field(2))
+})
+
+const Legacy = Schema.Struct({
+  id: Protobuf.Int32.pipe(Protobuf.field(1, { presence: "always" })),
+  item: Schema.optionalKey(Schema.Struct({ name: Schema.optionalKey(Schema.String).pipe(Protobuf.field(3)) }))
+    .pipe(Protobuf.field(2, { encoding: "delimited" })),
+  entry: Schema.Array(Schema.Struct({ n: Schema.optionalKey(Protobuf.Int32).pipe(Protobuf.field(5)) }))
+    .pipe(Protobuf.field(4, { encoding: "delimited" }))
+})
+
+const Keeper = Schema.Struct({ x: Protobuf.Int32.pipe(Protobuf.field(1)), unknownFields: Protobuf.UnknownFields })
+
+const RootChoice = Schema.Union([Schema.String.pipe(Protobuf.field(1)), Protobuf.Int32.pipe(Protobuf.field(2))])
 
 const zeroScalars = {
   fDouble: 0,
@@ -311,6 +352,131 @@ describe("Protobuf", () => {
     }
   })
 
+  // Same provenance, for the messages synthesized around values that protobuf
+  // cannot hold directly.
+  describe("writes and reads synthesized messages like @bufbuild/protobuf", () => {
+    const cases: ReadonlyArray<readonly [string, Schema.Codec<any, any>, unknown, string]> = [
+      ["tuples, with every element written", Tuples, {
+        pair: ["a", 0],
+        triple: ["x", true, 1, 2]
+      }, "0a050a01611000 12090a017810011a020102"],
+      [
+        "tuples without optional and rest elements",
+        Tuples,
+        { pair: ["", 5], triple: ["x"] },
+        "0a040a001005 12030a0178"
+      ],
+      [
+        "a ReadonlyMap, as a map",
+        Schema.Struct({ entries: Schema.ReadonlyMap(Protobuf.Int32, Point).pipe(Protobuf.field(1)) }),
+        { entries: new Map([[1, { x: 1, y: 0 }], [2, { x: 0, y: 0 }]]) },
+        "0a06080112020801 0a0408021200"
+      ],
+      [
+        "double map keys, as repeated entries",
+        Schema.Struct({ entries: Schema.Record(Protobuf.Double, Schema.String).pipe(Protobuf.field(1)) }),
+        { entries: { 0: "", 1.5: "a" } },
+        "0a0b0900000000000000001200 0a0c09000000000000f83f120161"
+      ],
+      [
+        "nested arrays, boxed",
+        Schema.Struct({ rows: Schema.Array(Schema.Array(Protobuf.Int32)).pipe(Protobuf.field(1)) }),
+        { rows: [[1, 2], [], [3]] },
+        "0a040a020102 0a00 0a030a0103"
+      ],
+      [
+        "nullable elements and map values, boxed",
+        Schema.Struct({
+          items: Schema.Array(Schema.NullOr(Schema.String)).pipe(Protobuf.field(1)),
+          labels: Schema.Record(Schema.String, Schema.NullOr(Schema.String)).pipe(Protobuf.field(2))
+        }),
+        { items: ["a", null, ""], labels: { x: null, y: "b" } },
+        "0a030a0161 0a00 0a020a00 12050a01781200 12080a017912030a0162"
+      ],
+      ...([
+        [Option.some(Option.some("a")), "0a030a0161"],
+        [Option.some(Option.none()), "0a00"],
+        [Option.none(), ""]
+      ] as const).map(([value, hex]) =>
+        [
+          `a nested Option: ${String(value)}`,
+          Schema.Struct({ value: Schema.Option(Schema.Option(Schema.String)).pipe(Protobuf.field(1)) }),
+          { value },
+          hex
+        ] as const
+      ),
+      [
+        "unions as array elements, boxed as oneofs",
+        Schema.Struct({
+          items: Schema.Array(Schema.Union([Schema.String.pipe(Protobuf.field(1)), Point.pipe(Protobuf.field(2))]))
+            .pipe(Protobuf.field(1))
+        }),
+        { items: ["a", { x: 1, y: 0 }] },
+        "0a030a0161 0a0412020801"
+      ],
+      ...([["auto", "0a00"], [7, "1007"], ["low", "1a036c6f77"]] as const).map(([mode, hex]) =>
+        [
+          `a oneof with literal cases: ${mode}`,
+          Schema.Struct({
+            mode: Schema.Union([
+              Schema.Literal("auto").pipe(Protobuf.field(1)),
+              Protobuf.Int32.pipe(Protobuf.field(2)),
+              Schema.Literals(["low", "high"]).pipe(Protobuf.field(3))
+            ])
+          }),
+          { mode },
+          hex
+        ] as const
+      ),
+      [
+        "numbered literals and string literal unions",
+        Schema.Struct({
+          version: Schema.Literal("v2").pipe(Protobuf.field(1)),
+          revision: Schema.Literal(3).pipe(Protobuf.field(2)),
+          color: Schema.Literals(["red", "green"]).pipe(Protobuf.field(3))
+        }),
+        { version: "v2", revision: 3, color: "green" },
+        "0a027632 1003 1a05677265656e"
+      ],
+      [
+        "a struct with rest, as a map",
+        Schema.StructWithRest(Schema.Struct({ name: Schema.String.pipe(Protobuf.field(1)) }), [
+          Schema.Record(Schema.TemplateLiteral(["x-", Schema.String]), Protobuf.Int32.pipe(Protobuf.field(2)))
+        ]),
+        { name: "n", "x-a": 1, "x-b": 0 },
+        "0a016e 12070a03782d611001 12070a03782d621000"
+      ],
+      ["an array root, boxed", Schema.Array(Protobuf.Int32), [1, 2], "0a020102"],
+      ["a scalar root, boxed like StringValue", Schema.String, "a", "0a0161"],
+      ["a union root, boxed as a oneof", RootChoice, "hi", "0a026869"],
+      ["a union root holding its second case", RootChoice, 5, "1005"],
+      [
+        "registered symbols",
+        Schema.Struct({ key: Schema.Symbol.pipe(Protobuf.field(1)) }),
+        { key: Symbol.for("k") },
+        "0a016b"
+      ],
+      [
+        "proto2 required fields and groups",
+        Legacy,
+        { id: 0, item: { name: "x" }, entry: [{ n: 1 }, { n: 2 }] },
+        "0800 13 1a0178 14 23 2801 24 23 2802 24"
+      ],
+      [
+        "unknown fields, kept and written back",
+        Schema.Struct({ fDouble: Schema.Number.pipe(Protobuf.field(1)), unknownFields: Protobuf.UnknownFields }),
+        { fDouble: 1, unknownFields: bytes("18ffffffffffffffffff01 720173") },
+        "09000000000000f03f 18ffffffffffffffffff01 720173"
+      ]
+    ]
+    for (const [name, schema, value, hex] of cases) {
+      it(name, () => {
+        assert.strictEqual(encode(schema, value), hex.replaceAll(" ", ""))
+        assert.deepStrictEqual(decode(schema, hex), value)
+      })
+    }
+  })
+
   describe("decodes", () => {
     const cases: ReadonlyArray<readonly [string, Schema.Codec<any, any>, string, unknown]> = [
       ["a packed field declared unpacked", Unpacked, "0a03010203", { values: [1, 2, 3], zigzag: [] }],
@@ -324,7 +490,13 @@ describe("Protobuf", () => {
         "1801 210000000000000000 2a0161 3500000000 3b08013c 0805",
         { x: 5, y: 0 }
       ],
-      ["a Timestamp to millisecond precision", Protobuf.Timestamp, "0801 10e0c65b", DateTime.makeUnsafe(1001)]
+      ["a Timestamp to millisecond precision", Protobuf.Timestamp, "0801 10e0c65b", DateTime.makeUnsafe(1001)],
+      ["a delimited field sent length-prefixed", Legacy, "0800 12031a0178", { id: 0, item: { name: "x" }, entry: [] }],
+      ["unknown fields of every wire type into UnknownFields", Keeper, "0805 1801 2a0161 3b08013c", {
+        x: 5,
+        unknownFields: bytes("1801 2a0161 3b08013c")
+      }],
+      ["no unknown fields as empty bytes", Keeper, "0805", { x: 5, unknownFields: new Uint8Array(0) }]
     ]
     for (const [name, schema, hex, value] of cases) {
       it(name, () => {
@@ -433,27 +605,7 @@ describe("Protobuf", () => {
       [
         "a duplicate field number",
         Schema.Struct({ a: Schema.String.pipe(Protobuf.field(1)), b: Schema.String.pipe(Protobuf.field(1)) }),
-        /duplicate field number 1 in message \(property "b"\)/
-      ],
-      [
-        "a nested array",
-        Schema.Struct({ a: Schema.Array(Schema.Array(Schema.String)).pipe(Protobuf.field(1)) }),
-        /is an array; arrays are only supported as repeated properties/
-      ],
-      [
-        "a tuple",
-        Schema.Struct({ a: Schema.Tuple([Schema.String, Schema.Number]).pipe(Protobuf.field(1)) }),
-        /is a tuple/
-      ],
-      [
-        "string literals without enum numbers",
-        Schema.Struct({ a: Schema.Literals(["x", "y"]).pipe(Protobuf.field(1)) }),
-        /annotate it with Protobuf.enumNumbers/
-      ],
-      [
-        "a numbered literal",
-        Schema.Struct({ a: Schema.Literal("x").pipe(Protobuf.field(1)) }),
-        /is a literal, which is a constant/
+        /duplicate field number 1 in message \("b"\)/
       ],
       [
         "a numbered oneof property",
@@ -467,7 +619,17 @@ describe("Protobuf", () => {
       [
         "a oneof member without a number",
         Schema.Struct({ a: Schema.Union([Schema.String.pipe(Protobuf.field(1)), Point]) }),
-        /member 1 of oneof "a" of message is not a oneof case/
+        /member 1 of property "a" of message is not a oneof case/
+      ],
+      [
+        "literals of different types",
+        Schema.Struct({ a: Schema.Literals(["x", 1]).pipe(Protobuf.field(1)) }),
+        /literals of different types; annotate it with Protobuf.enumNumbers/
+      ],
+      [
+        "a numbered null",
+        Schema.Struct({ a: Schema.Null.pipe(Protobuf.field(1)) }),
+        /is Null, which has no wire representation/
       ],
       [
         "a packed string array",
@@ -475,21 +637,37 @@ describe("Protobuf", () => {
         /cannot be packed/
       ],
       [
-        "a double map key",
-        Schema.Struct({ a: Schema.Record(Protobuf.Double, Schema.String).pipe(Protobuf.field(1)) }),
+        "a delimited scalar",
+        Schema.Struct({ a: Schema.String.pipe(Protobuf.field(1, { encoding: "delimited" })) }),
+        /only messages can use the delimited encoding/
+      ],
+      [
+        "symbol map keys",
+        Schema.Struct({ a: Schema.Record(Schema.Symbol, Schema.String).pipe(Protobuf.field(1)) }),
         /unsupported map key/
       ],
       [
-        "an Option outside a property",
-        Schema.Struct({ a: Schema.Array(Schema.Option(Schema.String)).pipe(Protobuf.field(1)) }),
-        /is an Option/
+        "an unnumbered index signature",
+        Schema.StructWithRest(Schema.Struct({ a: Schema.String.pipe(Protobuf.field(1)) }), [
+          Schema.Record(Schema.String, Schema.Number)
+        ]),
+        /index signature of message has no field number; annotate the record value/
       ],
       [
-        "a declaration without a JSON encoding",
-        Schema.Struct({ a: Schema.instanceOf(Opaque).pipe(Protobuf.field(1)) }),
-        /declaration without a protobuf mapping/
+        "elements after a rest element",
+        Schema.Struct({
+          a: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.String]).pipe(
+            Protobuf.field(1)
+          )
+        }),
+        /has elements after its rest element/
       ],
-      ["a scalar root", Schema.String, /the root schema must be a message, got string/]
+      [
+        "a declaration without a codec",
+        Schema.Struct({ a: Schema.instanceOf(Opaque).pipe(Protobuf.field(1)) }),
+        /declaration without a protobuf mapping or codec annotation/
+      ],
+      ["Never", Schema.Struct({ a: Schema.Never.pipe(Protobuf.field(1)) }), /no protobuf mapping for Never/]
     ]
     for (const [name, schema, message] of cases) {
       it(name, () => {
