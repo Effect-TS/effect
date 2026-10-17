@@ -466,6 +466,7 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "createResponse")
         assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
         body: { invalid: "response" } as any
@@ -957,6 +958,34 @@ describe("OpenAiClient", () => {
           {
             type: "response.completed",
             response: makeResponseBody()
+          }
+        ]
+      }))))
+
+    it.effect("maps a malformed stream event to a non-retryable InvalidOutputError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponseStream({
+          model: "gpt-4o",
+          input: "test"
+        }).pipe(
+          Effect.andThen(([_, stream]) => Stream.runDrain(stream)),
+          Effect.flip
+        )
+
+        assert.strictEqual(result._tag, "AiError")
+        assert.strictEqual(result.method, "createResponseStream")
+        assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.isFalse(result.isRetryable)
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [
+          {
+            type: "response.output_text.delta",
+            output_index: "zero",
+            item_id: "msg_123",
+            content_index: 0,
+            delta: "hello"
           }
         ]
       }))))

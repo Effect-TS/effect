@@ -187,6 +187,25 @@ describe("AiError", () => {
         assert.isTrue(error.isRetryable)
       })
 
+      it("should not be retryable when marked as a deterministic provider response failure", () => {
+        const error = new AiError.InvalidOutputError({
+          description: "Unexpected response envelope",
+          retryable: false
+        })
+        assert.isFalse(error.isRetryable)
+        assert.isFalse(AiError.make({ module: "Test", method: "test", reason: error }).isRetryable)
+      })
+
+      it("should preserve non-retryable classification through schema round trip", () => {
+        const error = new AiError.InvalidOutputError({
+          description: "Unexpected response envelope",
+          retryable: false
+        })
+        const encoded = Schema.encodeUnknownSync(AiError.InvalidOutputError)(error)
+        const decoded = Schema.decodeUnknownSync(AiError.InvalidOutputError)(encoded)
+        assert.isFalse(decoded.isRetryable)
+      })
+
       it("should format message with description", () => {
         const error = new AiError.InvalidOutputError({
           description: "Expected string but got number"
@@ -208,6 +227,7 @@ describe("AiError", () => {
               const parseError = AiError.InvalidOutputError.fromSchemaError(cause.error)
               assert.strictEqual(parseError._tag, "InvalidOutputError")
               assert.isString(parseError.description)
+              assert.isTrue(parseError.isRetryable)
             }
           }
         }))
