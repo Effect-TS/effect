@@ -654,7 +654,7 @@ export const makeIndexedDb = (options?: {
 }): Effect.Effect<EventJournal["Service"], EventJournalError, Scope> =>
   Effect.gen(function*() {
     const database = options?.database ?? "effect_event_journal"
-    const openRequest = indexedDB.open(database, 2)
+    const openRequest = indexedDB.open(database, 3)
     openRequest.onupgradeneeded = (event) => {
       const db = openRequest.result
 
@@ -671,15 +671,22 @@ export const makeIndexedDb = (options?: {
         remoteEntryId.createIndex("id", "remoteId", { unique: true })
       }
 
-      // Entry ids order creation, not insertion, so uploads checkpoint an
-      // insertion sequence instead. Backfill it from the existing entries.
-      const sequence = db.createObjectStore("entrySequence", { autoIncrement: true })
-      const cursorRequest = openRequest.transaction!.objectStore("entries").openKeyCursor()
-      cursorRequest.onsuccess = () => {
-        const cursor = cursorRequest.result
-        if (!cursor) return
-        sequence.add(cursor.primaryKey)
-        cursor.continue()
+      if (event.oldVersion < 2) {
+        // Entry ids order creation, not insertion, so uploads checkpoint an
+        // insertion sequence instead. Backfill it from the existing entries.
+        const sequence = db.createObjectStore("entrySequence", { autoIncrement: true })
+        const cursorRequest = openRequest.transaction!.objectStore("entries").openKeyCursor()
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result
+          if (!cursor) return
+          sequence.add(cursor.primaryKey)
+          cursor.continue()
+        }
+      }
+
+      if (event.oldVersion < 3) {
+        // Bounds conflict reads to one event and primary key.
+        openRequest.transaction!.objectStore("entries").createIndex("conflict", ["event", "primaryKey", "id"])
       }
     }
 
@@ -714,11 +721,7 @@ export const makeIndexedDb = (options?: {
           .objectStore("entries")
           .index("id")
           .getAll()).pipe(
-          Effect.flatMap((_) =>
-            decodeEntryIdbArray(_).pipe(
-              Effect.mapError((cause) => new EventJournalError({ method: "entries", cause }))
-            )
-          )
+          Effect.map((rows) => rows.map(entryFromIdb))
         ),
       write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
       writeMany,
@@ -752,18 +755,16 @@ export const makeIndexedDb = (options?: {
           const index = new ConflictIndex(compacted)
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
-            const cursorRequest = tx.objectStore("entries").openCursor(
-              IDBKeyRange.lowerBound(entryIdLowerBound(index.oldestMillis + 1) as IDBValidKey)
-            )
-            cursorRequest.onsuccess = () => {
-              const cursor = cursorRequest.result
-              if (!cursor) return
-              // Decode only the entries that can conflict.
-              const value = cursor.value as { readonly event: string; readonly primaryKey: string }
-              if (index.wants(value.event, value.primaryKey)) {
-                index.add(decodeEntryIdb(cursor.value))
+            const conflicts = tx.objectStore("entries").index("conflict")
+            // One read per group of the entries newer than its oldest, in id order.
+            for (const group of index.groups()) {
+              const request = conflicts.getAll(IDBKeyRange.bound(
+                [group.event, group.primaryKey, entryIdLowerBound(group.oldestMillis + 1)],
+                [group.event, group.primaryKey, entryIdUpperBound]
+              ))
+              request.onsuccess = () => {
+                for (const row of request.result) index.add(entryFromIdb(row))
               }
-              cursor.continue()
             }
             onTransactionDone(tx, "writeFromRemote", resume, constVoid)
             return Effect.sync(() => tx.abort())
@@ -820,7 +821,7 @@ export const makeIndexedDb = (options?: {
                   if (known.result !== undefined) return
                   const entry = entriesStore.get(entryId)
                   entry.onsuccess = () => {
-                    entries.push(decodeEntryIdb(entry.result))
+                    entries.push(entryFromIdb(entry.result))
                   }
                 }
                 cursor.continue()
@@ -918,10 +919,26 @@ const entryIdLowerBound = (millis: number): Uint8Array => {
   return bytes
 }
 
-const decodeEntryIdb = Schema.decodeSync(Entry)
+// Greater than or equal to every entry id.
+const entryIdUpperBound = new Uint8Array(16).fill(0xff)
+
+interface EntryIdb {
+  readonly id: EntryId
+  readonly event: string
+  readonly primaryKey: string
+  readonly payload: Uint8Array
+}
+
+// Rows are written by `encodeEntryIdb`, so they are not validated again.
+const entryFromIdb = (row: EntryIdb): Entry =>
+  new Entry({
+    id: row.id,
+    event: row.event,
+    primaryKey: row.primaryKey,
+    payload: row.payload
+  }, { disableChecks: true })
+
 const encodeEntryIdb = Schema.encodeSync(Entry)
-const EntryIdbArray = Schema.Array(Entry)
-const decodeEntryIdbArray = Schema.decodeUnknownEffect(EntryIdbArray)
 
 /**
  * Provides `EventJournal` using the IndexedDB-backed implementation created by
