@@ -70,11 +70,12 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const pgLockNamespaceOid = pgLockNamespace >>> 0
 
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
-  // reserved connection, including when advisory locks are disabled.
+  // dedicated session, including when advisory locks are disabled. Drivers
+  // open it outside their pool, so a one-connection client is not starved.
   const acquireLockConn = singleSession ? undefined : sql.onDialectOrElse({
     pg: () =>
       Effect.fnUntraced(function*(scope: Scope.Scope) {
-        const conn = yield* Effect.orDie(sql.reserve).pipe(
+        const conn = yield* Effect.orDie(sql.reserveSession).pipe(
           Scope.provide(scope)
         )
         const pid = disableAdvisoryLocks
@@ -92,7 +93,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       }, Effect.orDie),
     mysql: () =>
       Effect.fnUntraced(function*(scope: Scope.Scope) {
-        const conn = yield* Effect.orDie(sql.reserve).pipe(
+        const conn = yield* Effect.orDie(sql.reserveSession).pipe(
           Scope.provide(scope)
         )
         if (disableAdvisoryLocks) return [conn, 0] as const
@@ -151,16 +152,19 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     )
   }
   // SQL failures replace the held connection; deadlines are handled by withLockOperationDeadline.
+  // A failed acquisition leaves no rebuild pending, so start one instead of
+  // waiting for the deadline.
   const useLockConn = <A, E, R>(
     f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
-    Effect.flatMap(
-      lockConn!.await,
-      (held) =>
+    Effect.suspend(() => lockConn!.getUnsafe() === undefined ? rebuildLockConn() : Effect.void).pipe(
+      Effect.andThen(lockConn!.await),
+      Effect.flatMap((held) =>
         Effect.onError(
           f(held[0], held[1]),
           (cause) => Cause.hasInterruptsOnly(cause) ? Effect.void : rebuildLockConn(held)
         )
+      )
     )
 
   const runnersTable = table("runners")
@@ -680,6 +684,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
  *
  * Changing `prefix` changes all generated table names, so runners using
  * different prefixes do not share registrations or shard locks.
+ *
+ * PostgreSQL and MySQL storage holds one connection from
+ * `SqlClient.reserveSession` for shard locks. The pg and mysql2 drivers open
+ * it outside the pool, so it is one connection more than `maxConnections`.
  *
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix

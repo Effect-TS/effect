@@ -222,6 +222,11 @@ export interface MysqlClientConfig {
 /**
  * Creates a scoped MySQL client backed by a managed mysql2 pool, verifying connectivity and supporting streaming queries through mysql2 query streams.
  *
+ * **Details**
+ *
+ * `reserveSession` opens a separate connection that does not count against
+ * `maxConnections`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -318,8 +323,8 @@ export const make = (
       }
     }
 
-    const pool = options.url
-      ? Mysql.createPool({
+    const poolOptions: Mysql.PoolOptions = options.url
+      ? {
         uri: Redacted.value(options.url),
         multipleStatements: true,
         supportBigNumbers: true,
@@ -327,8 +332,8 @@ export const make = (
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
           : undefined as any
-      })
-      : Mysql.createPool({
+      }
+      : {
         ...options.poolConfig,
         host: options.host,
         port: options.port,
@@ -343,7 +348,8 @@ export const make = (
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
           : options.poolConfig?.idleTimeout
-      } as Mysql.PoolOptions)
+      } as Mysql.PoolOptions
+    const pool = Mysql.createPool(poolOptions)
 
     yield* Effect.acquireRelease(
       Effect.callback<void, SqlError>((resume) => {
@@ -381,23 +387,39 @@ export const make = (
 
     const poolConnection = new ConnectionImpl(pool)
 
-    const acquireConn = Effect.acquireRelease(
-      Effect.callback<Mysql.PoolConnection, SqlError>((resume) => {
-        pool.getConnection((cause, conn) => {
-          if (cause) {
-            resume(
-              Effect.fail(
-                new SqlError({
-                  reason: classifyError(cause, "Failed to acquire connection", "acquireConnection")
-                })
+    const getConnection = (pool: Mysql.Pool) =>
+      Effect.acquireRelease(
+        Effect.callback<Mysql.PoolConnection, SqlError>((resume) => {
+          pool.getConnection((cause, conn) => {
+            if (cause) {
+              resume(
+                Effect.fail(
+                  new SqlError({
+                    reason: classifyError(cause, "Failed to acquire connection", "acquireConnection")
+                  })
+                )
               )
-            )
-          } else {
-            resume(Effect.succeed(conn))
-          }
+            } else {
+              resume(Effect.succeed(conn))
+            }
+          })
+        }),
+        (conn) => Effect.sync(() => conn.release())
+      )
+    const acquireConn = getConnection(pool)
+
+    // A one-connection pool of its own keeps the session outside
+    // `maxConnections` while reusing the pool's options, error handling and
+    // shutdown.
+    const sessionAcquirer = Effect.acquireRelease(
+      Effect.sync(() => Mysql.createPool({ ...poolOptions, connectionLimit: 1 })),
+      (sessionPool) =>
+        Effect.callback<void>((resume) => {
+          sessionPool.end(() => resume(Effect.void))
         })
-      }),
-      (conn) => Effect.sync(() => conn.release())
+    ).pipe(
+      Effect.flatMap(getConnection),
+      Effect.map((conn) => new ConnectionImpl(conn))
     )
 
     const transactionAcquirer = Effect.map(
@@ -421,6 +443,7 @@ export const make = (
         driver: "mysql2",
         acquirer: Effect.succeed(poolConnection),
         transactionAcquirer,
+        sessionAcquirer,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         compiler,
         spanAttributes,
