@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { Effect, Equal, Hash, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 
 const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
@@ -23,8 +23,11 @@ const legacyStringify = (bytes: Uint8Array): string =>
   ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
 
 describe("EventJournal", () => {
-  it("formats random, v4 and v7 ids identically to the original UUID formatter", () => {
+  it("formats schema-accepted ids identically to the original UUID formatter", () => {
     const ids: Array<Uint8Array> = [new Uint8Array(16), new Uint8Array(16).fill(0xff)]
+    for (let length = 0; length < 16; length++) {
+      ids.push(Uint8Array.from({ length }, (_, offset) => offset + 1))
+    }
     // Exercise every lookup-table value, including bytes that need a leading zero.
     for (let start = 0; start < 256; start += 16) {
       ids.push(Uint8Array.from({ length: 16 }, (_, offset) => start + offset))
@@ -38,11 +41,11 @@ describe("EventJournal", () => {
     }
     for (const id of ids) {
       const item = new EventJournal.Entry({
-        id: id as EventJournal.EntryId,
+        id: Schema.decodeUnknownSync(EventJournal.EntryId)(id),
         event: "Repro",
         primaryKey: "key",
         payload: new Uint8Array()
-      }, { disableChecks: true })
+      })
       assert.strictEqual(item.idString, legacyStringify(id))
     }
   })
@@ -63,6 +66,29 @@ describe("EventJournal", () => {
     id.fill(0x11)
     assert.strictEqual(first.idString, "00000000-0000-0000-0000-000000000000")
     assert.strictEqual(second.idString, "ffffffff-ffff-ffff-ffff-ffffffffffff")
+  })
+
+  it("keeps equality, hashing and JSON independent of idString access", () => {
+    const first = entry(1_000)
+    const second = new EventJournal.Entry({
+      id: first.id,
+      event: first.event,
+      primaryKey: first.primaryKey,
+      payload: first.payload
+    })
+    const json = JSON.stringify(first)
+
+    assert.strictEqual(first.idString, legacyStringify(first.id))
+    assert.deepStrictEqual({
+      equal: Equal.equals(first, second),
+      sameHash: Hash.hash(first) === Hash.hash(second),
+      json: JSON.stringify(first)
+    }, { equal: true, sameHash: true, json })
+  })
+
+  it("reads idString on a frozen entry", () => {
+    const item = Object.freeze(entry(1_000))
+    assert.strictEqual(item.idString, legacyStringify(item.id))
   })
 
   it("decodes the 48-bit UUID v7 timestamp from entry ids", () => {
