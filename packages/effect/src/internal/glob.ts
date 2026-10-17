@@ -565,16 +565,21 @@ const isIgnorable = (error: PlatformError): boolean =>
   error.reason._tag === "NotFound" || error.reason._tag === "PermissionDenied" ||
   error.reason._tag === "BadResource"
 
+// Node and Deno report `readLink` on a path that is not a link as "Unknown"
+const isNotLink = (error: PlatformError): boolean => isIgnorable(error) || error.reason._tag === "Unknown"
+
+// Directories the caller named, the root and those reached only through
+// literal segments, must be readable; elsewhere unreadable directories are
+// skipped. Missing paths and non-directories are always treated as empty.
+const isAbsent = (error: PlatformError, named: boolean): boolean =>
+  named ? error.reason._tag === "NotFound" || error.reason._tag === "BadResource" : isIgnorable(error)
+
 const byName = (self: FileSystem.DirectoryEntry, that: FileSystem.DirectoryEntry): number =>
   self.name < that.name ? -1 : self.name > that.name ? 1 : 0
 
 /** @internal */
 export const walk = (
-  fs: Pick<FileSystem.FileSystem, "readDirectory" | "stat" | "readLink"> & {
-    readonly readDirectoryEntries?:
-      | ((path: string) => Effect.Effect<ReadonlyArray<FileSystem.DirectoryEntry>, PlatformError>)
-      | undefined
-  },
+  fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
   compiled: Compiled,
   options?: {
     readonly root?: string | undefined
@@ -601,52 +606,66 @@ export const walk = (
   const isExcluded = (relative: string, isDirectory: boolean): boolean =>
     excludes.some((exclude) => match(exclude, relative) || (isDirectory && match(exclude, `${relative}/`)))
 
-  // Without typed listings every entry is "Unknown" and is inspected with
-  // `stat` and `readLink` only when the walk needs to know.
-  const list = (relative: string): Effect.Effect<Array<FileSystem.DirectoryEntry>, PlatformError> =>
+  const list = (relative: string, named: boolean): Effect.Effect<Array<FileSystem.DirectoryEntry>, PlatformError> =>
     Effect.catchIf(
-      fs.readDirectoryEntries === undefined
-        ? Effect.map(
-          fs.readDirectory(toFsPath(relative)),
-          (names) => names.sort().map((name): FileSystem.DirectoryEntry => ({ name, type: "Unknown" }))
-        )
-        : Effect.map(fs.readDirectoryEntries(toFsPath(relative)), (entries) => [...entries].sort(byName)),
-      isIgnorable,
+      Effect.map(fs.readDirectoryEntries(toFsPath(relative)), (entries) => [...entries].sort(byName)),
+      (error: PlatformError) => isAbsent(error, named),
       () => Effect.succeed([])
     )
 
-  // Listings never contain `.`, `..`, or the root of an absolute pattern, so
-  // literal segments naming them are added when they exist.
+  // Listings never contain `.`, `..`, or the root of an absolute pattern
   const isUnlisted = (value: string, relative: string): boolean =>
     value === "." || value === ".." || (relative === "" && isRoot(value))
 
-  const exists = (relative: string): Effect.Effect<boolean, PlatformError> =>
+  // Checks a named entry with `stat`. A missing target may still be a broken
+  // link, which is kept so literal and wildcard segments agree.
+  const probe = (relative: string, named: boolean): Effect.Effect<FileSystem.File.Type | undefined, PlatformError> =>
     Effect.matchEffect(fs.stat(toFsPath(relative)), {
-      onFailure: (error) => isIgnorable(error) ? Effect.succeed(false) : Effect.fail(error),
-      onSuccess: () => Effect.succeed(true)
+      onFailure: (error) =>
+        error.reason._tag === "NotFound"
+          ? Effect.matchEffect(fs.readLink(toFsPath(relative)), {
+            onFailure: (error) => isNotLink(error) ? Effect.succeed(undefined) : Effect.fail(error),
+            onSuccess: () => Effect.succeed("SymbolicLink" as const)
+          })
+          : isAbsent(error, named)
+          ? Effect.succeed(undefined)
+          : Effect.fail(error),
+      onSuccess: (info) => Effect.succeed(info.type)
     })
 
+  // Leading literal segments are probed instead of listing their parent, so a
+  // readable prefix is found even when its parent cannot be listed.
   const entries = (
     relative: string,
-    states: States
-  ): Effect.Effect<Array<FileSystem.DirectoryEntry>, PlatformError> => {
-    const unlisted = new Set<string>()
-    let listed = false
+    states: States,
+    named: boolean
+  ): Effect.Effect<{ readonly entries: Array<FileSystem.DirectoryEntry>; readonly listed: boolean }, PlatformError> => {
+    const literals = new Set<string>()
+    let listed = !named
     for (const state of states) {
       const segment = segmentAt(compiled, state)
-      if (segment?._tag === "Literal" && isUnlisted(segment.value, relative)) {
-        unlisted.add(segment.value)
+      if (segment?._tag === "Literal") {
+        literals.add(segment.value)
       } else if (segment !== undefined) {
         listed = true
       }
     }
+    const probed = listed ? [...literals].filter((value) => isUnlisted(value, relative)) : [...literals]
     return Effect.zipWith(
-      listed ? list(relative) : Effect.succeed([]),
-      Effect.filter([...unlisted], (name) => exists(join(relative, name))),
-      (entries, names) =>
-        names.length === 0
-          ? entries
-          : [...names.map((name): FileSystem.DirectoryEntry => ({ name, type: "Unknown" })), ...entries].sort(byName)
+      listed ? list(relative, named) : Effect.succeed([]),
+      Effect.forEach(
+        probed,
+        (name) =>
+          Effect.map(
+            probe(join(relative, name), named),
+            (type): FileSystem.DirectoryEntry | undefined => type === undefined ? undefined : { name, type }
+          ),
+        { concurrency: 16 }
+      ),
+      (entries, found) => {
+        const extra = found.filter((entry) => entry !== undefined)
+        return { entries: extra.length === 0 ? entries : [...extra, ...entries].sort(byName), listed }
+      }
     )
   }
 
@@ -684,11 +703,7 @@ export const walk = (
       const followed = canDescend(compiled, result.explicit) ? result.explicit : undefined
       return type === "Unknown"
         ? Effect.matchEffect(fs.readLink(toFsPath(relative)), {
-          // Node and Deno report EINVAL for non-links as Unknown.
-          onFailure: (error) =>
-            isIgnorable(error) || error.reason._tag === "Unknown"
-              ? Effect.succeed({ relative, accepted, next })
-              : Effect.fail(error),
+          onFailure: (error) => isNotLink(error) ? Effect.succeed({ relative, accepted, next }) : Effect.fail(error),
           onSuccess: () => Effect.succeed({ relative, accepted, next: followed })
         })
         : { relative, accepted, next: type === "SymbolicLink" ? followed : next }
@@ -711,9 +726,15 @@ export const walk = (
     )
   }
 
-  const directory = (relative: string, states: States, out: Array<string>): Effect.Effect<void, PlatformError> =>
+  const directory = (
+    relative: string,
+    states: States,
+    named: boolean,
+    out: Array<string>
+  ): Effect.Effect<void, PlatformError> =>
     Effect.gen(function*() {
-      const visited = (yield* entries(relative, states)).map((entry) => visit(entry, relative, states))
+      const { entries: listing, listed } = yield* entries(relative, states, named)
+      const visited = listing.map((entry) => visit(entry, relative, states))
       const pending: Array<Effect.Effect<Child | undefined, PlatformError>> = []
       for (const entry of visited) {
         if (Effect.isEffect(entry)) {
@@ -733,13 +754,13 @@ export const walk = (
           out.push(child.relative)
         }
         if (child.next !== undefined) {
-          yield* directory(child.relative, child.next, out)
+          yield* directory(child.relative, child.next, named && !listed, out)
         }
       }
     })
 
   return Effect.suspend(() => {
     const out: Array<string> = []
-    return Effect.as(directory("", initial(compiled), out), out)
+    return Effect.as(directory("", initial(compiled), true, out), out)
   })
 }

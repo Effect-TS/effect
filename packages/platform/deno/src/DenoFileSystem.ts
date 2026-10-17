@@ -404,7 +404,7 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
 
 const readDirectoryEntries = (path: string) =>
   Effect.map(
-    collectAsyncIterable("readDirectory", path, () => Deno.readDir(path)),
+    collectAsyncIterable("readDirectoryEntries", path, () => Deno.readDir(path)),
     (entries) =>
       entries.map((entry): FileSystem.DirectoryEntry => ({
         name: entry.name,
