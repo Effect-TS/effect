@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Speed up EventLog event processing by decoding entry id timestamps without allocating and by merging remote imports into the in-memory `EventJournal` instead of re-sorting the whole journal on every batch.
+Decode `EventJournal` entry timestamps without allocating, and merge remote imports into the in-memory journal instead of re-sorting it on every batch.

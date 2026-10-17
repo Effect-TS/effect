@@ -393,11 +393,12 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
  */
 export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(function*() {
   const journal: Array<Entry> = []
-  // Local writes append in commit order, so an entry imported with a future
-  // timestamp can leave the journal unordered until the next import.
+  // Local writes append in commit order, so an import with a future timestamp
+  // leaves the journal unordered until the next import re-sorts it. Remote
+  // backlogs are subsequences of the journal, so one flag covers them too.
   let journalSorted = true
   const byId = new Map<string, Entry>()
-  const remotes = new Map<string, { sequence: number; missing: Array<Entry>; sorted: boolean }>()
+  const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
   const pubsub = yield* PubSub.unbounded<Entry>()
   const storeSemaphores = new Map<StoreId, Semaphore.Semaphore>()
   const withLock = (storeId: StoreId) => {
@@ -413,7 +414,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     const remoteIdString = Uuid.stringify(remoteId)
     const remote = remotes.get(remoteIdString)
     if (remote) return remote
-    const created = { sequence: 0, missing: journal.slice(), sorted: journalSorted }
+    const created = { sequence: 0, missing: journal.slice() }
     remotes.set(remoteIdString, created)
     return created
   }
@@ -434,10 +435,14 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         (entry, exit) =>
           Effect.suspend(() => {
             if (exit._tag === "Failure" || byId.has(entry.idString)) return Effect.void
-            journalSorted = appendOrdered(journal, entry, journalSorted)
+            const last = journal[journal.length - 1]
+            if (last !== undefined && last.createdAtMillis > entry.createdAtMillis) {
+              journalSorted = false
+            }
+            journal.push(entry)
             byId.set(entry.idString, entry)
             remotes.forEach((remote) => {
-              remote.sorted = appendOrdered(remote.missing, entry, remote.sorted)
+              remote.missing.push(entry)
             })
             return PubSub.publish(pubsub, entry)
           })
@@ -488,18 +493,16 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           remote.sequence = remoteEntry.remoteSequence + 1
         }
       }
-      // Stable, so entries sharing a timestamp keep batch order.
       const imported = uncommittedRemotes.map((remoteEntry) => remoteEntry.entry).sort(byCreatedAt)
       insertOrdered(journal, journalSorted, imported)
-      journalSorted = true
       remotes.forEach((target) => {
         if (target !== remote) {
-          insertOrdered(target.missing, target.sorted, imported)
-        } else if (!target.sorted) {
+          insertOrdered(target.missing, journalSorted, imported)
+        } else if (!journalSorted) {
           target.missing.sort(byCreatedAt)
         }
-        target.sorted = true
       })
+      journalSorted = true
       return {
         duplicateEntries
       }
@@ -536,12 +539,6 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
 
 const byCreatedAt = (a: Entry, b: Entry) => a.createdAtMillis - b.createdAtMillis
 
-const appendOrdered = (entries: Array<Entry>, entry: Entry, sorted: boolean): boolean => {
-  const last = entries[entries.length - 1]
-  entries.push(entry)
-  return sorted && (last === undefined || last.createdAtMillis <= entry.createdAtMillis)
-}
-
 // Same result as appending `additions` and stable-sorting by creation time:
 // existing entries stay ahead of additions that share their timestamp.
 const insertOrdered = (entries: Array<Entry>, sorted: boolean, additions: ReadonlyArray<Entry>): void => {
@@ -553,7 +550,7 @@ const insertOrdered = (entries: Array<Entry>, sorted: boolean, additions: Readon
     entries.sort(byCreatedAt)
     return
   }
-  // Merge from the back so additions newer than every entry cost O(additions).
+  // Merge from the back, so additions newer than the whole array cost O(additions).
   let j = additions.length - 1
   let k = entries.length - 1
   while (j >= 0) {
