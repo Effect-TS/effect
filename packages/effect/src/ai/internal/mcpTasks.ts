@@ -130,6 +130,9 @@ export const toolkit: typeof McpTasks.toolkit = (tools, handlers, options) => {
           return outcome.value
         }).pipe(Effect.provideService(WorkflowEngine.WorkflowEngine, engine)))
       yield* binding.install(workflow._tag, {
+        update: Effect.fnUntraced(function*(taskId, _responses, invocation) {
+          yield* findOwned(taskId, invocation)
+        }),
         get: Effect.fnUntraced(function*(taskId, invocation): Effect.fn.Return<Binding.TaskRecord, Binding.TaskError> {
           const fact = yield* findOwned(taskId, invocation)
           const base = { taskId, createdAt: fact.createdAt, lastUpdatedAt: fact.createdAt }
