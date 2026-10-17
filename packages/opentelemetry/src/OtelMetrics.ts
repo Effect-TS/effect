@@ -79,33 +79,34 @@ export const registerProducer = (
     readonly shutdownTimeout?: Duration.Input | undefined
   }
 ): Effect.Effect<Array<any>, never, Scope.Scope> =>
-  Effect.suspend(() => {
-    const readers: Array<MetricReader> = []
-    const shutdown = Effect.promise(() =>
-      Promise.all(
-        readers.map((reader) => reader.shutdown())
-      )
-    ).pipe(
-      Effect.ignore,
-      Effect.interruptible,
-      Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
-    )
-    return Effect.acquireRelease(
-      Effect.sync(() => {
-        const reader = metricReader()
-        const pending: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
-        for (const reader of pending) {
+  Effect.acquireRelease(
+    Effect.suspend(() => {
+      const reader = metricReader()
+      const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
+      const bound: Array<MetricReader> = []
+      try {
+        for (const reader of readers) {
           reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self)
-          readers.push(reader)
+          bound.push(reader)
         }
-        return readers
-      }).pipe(
-        // Roll back only readers bound by this acquisition if a later binding fails.
-        Effect.onError(() => shutdown)
-      ),
-      () => shutdown
-    )
-  })
+        return Effect.succeed(bound)
+      } catch (error) {
+        // Roll back only the readers bound by this acquisition.
+        return Effect.andThen(shutdownReaders(bound, options), Effect.die(error))
+      }
+    }),
+    (readers) => shutdownReaders(readers, options)
+  )
+
+const shutdownReaders = (
+  readers: ReadonlyArray<MetricReader>,
+  options?: { readonly shutdownTimeout?: Duration.Input | undefined }
+) =>
+  Effect.promise(() => Promise.all(readers.map((reader) => reader.shutdown()))).pipe(
+    Effect.ignore,
+    Effect.interruptible,
+    Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
+  )
 
 /**
  * Creates a Layer that registers a metric producer with metric readers.
