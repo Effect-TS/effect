@@ -195,6 +195,8 @@ export interface ToolRegistration {
  * @internal
  */
 export interface Tools {
+  readonly get: (name: string) => Effect.Effect<ToolRegistration | undefined>
+
   readonly decorate: (name: string, f: (registration: ToolRegistration) => ToolRegistration) => Effect.Effect<void>
 
   readonly register: (
@@ -579,6 +581,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       return registration.handle(call, invocation)
     })
   const tools: Tools = {
+    get: (name) => Effect.sync(() => registrations.get(name)),
     register: (registration) =>
       Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)

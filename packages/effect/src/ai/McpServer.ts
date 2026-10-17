@@ -3283,6 +3283,14 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
   const registry = yield* McpServer
+  const registrations = yield* makeToolkitRegistrations(toolkit)
+  for (const registration of registrations) yield* registry.addTool(registration)
+})
+
+/** @internal */
+export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
+  toolkit: Toolkit.Toolkit<Tools>
+) {
   const built = yield* (toolkit as unknown as Effect.Effect<
     Toolkit.WithHandler<Record<string, Tool.Any>>,
     never,
@@ -3310,7 +3318,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         Effect.as(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
       )
   }
-  const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
+  const registrations: Array<Parameters<McpServer["Service"]["addTool"]>[0]> = []
   for (const tool of Object.values(built.tools)) {
     const strict = Tool.getStrictMode(tool) === true
     const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
@@ -3436,9 +3444,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       services
     })
   }
-  for (const registration of registrations) {
-    yield* registry.addTool(registration)
-  }
+  return registrations
 })
 
 const isParameterValidationError = (
