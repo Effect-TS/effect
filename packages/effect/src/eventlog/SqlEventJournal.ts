@@ -283,7 +283,7 @@ export const make = (options?: {
     // could commit out of order and an upload checkpoint would skip one. Both
     // write paths take this lock first, before their callback, so writers never
     // wait on each other's row locks in opposite orders. Readers are not blocked.
-    const lockWriters: Effect.Effect<void, SqlError.SqlError> = sql.onDialectOrElse({
+    const lockWriters = sql.onDialectOrElse({
       pg: () => Effect.asVoid(sql`LOCK TABLE ${sequenceTableSql} IN SHARE ROW EXCLUSIVE MODE`),
       orElse: () => Effect.void
     })
@@ -341,20 +341,19 @@ export const make = (options?: {
         // PostgreSQL indexes md5 hashes of the unbounded columns; the exact
         // predicates still decide which rows match.
         const hashed = sql.onDialectOrElse({
-          pg: () =>
-            sql`md5(event) IN (${sql.csv(index.events.map((event) => sql`md5(${event})`))}) AND
-                md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))}) AND`,
-          orElse: () => sql``
+          pg: () => [
+            sql`md5(event) IN (${sql.csv(index.events.map((event) => sql`md5(${event})`))})`,
+            sql`md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))})`
+          ],
+          orElse: () => []
         })
-        const stored = yield* sql`
-            SELECT *
-            FROM ${entryTableSql}
-            WHERE ${hashed}
-                  ${sql.in("event", index.events)} AND
-                  ${sql.in("primary_key", primaryKeys)} AND
-                  timestamp > ${index.oldestMillis}
-            ORDER BY timestamp ASC
-          `.pipe(
+        const conflicts = sql.and([
+          ...hashed,
+          sql.in("event", index.events),
+          sql.in("primary_key", primaryKeys),
+          sql`timestamp > ${index.oldestMillis}`
+        ])
+        const stored = yield* sql`SELECT * FROM ${entryTableSql} WHERE ${conflicts} ORDER BY timestamp ASC`.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )
@@ -368,9 +367,7 @@ export const make = (options?: {
       // compaction and every callback have succeeded.
       if (entries.length > 0) {
         yield* insertEntries(entries.map(toEntryRow))
-      }
-      if (uncommitted.length > 0) {
-        yield* insertSequence(uncommitted.map((remoteEntry) => remoteEntry.entry))
+        yield* insertSequence(entries)
       }
       if (remoteRows.length > 0) {
         yield* insertRemotes(remoteRows)
@@ -428,15 +425,13 @@ export const make = (options?: {
           const mapError = Effect.mapError((cause: unknown) =>
             new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" })
           )
-          const [bounds] = yield* sql`
-            SELECT
-              (SELECT sequence FROM ${checkpointsTableSql} WHERE remote_id = ${remoteId}) AS checkpoint,
-              (SELECT MAX(sequence) FROM ${sequenceTableSql}) AS latest
-          `.pipe(Effect.flatMap(decodeUploadBounds), mapError)
-          const checkpoint = bounds.checkpoint ?? 0
           // Bound the upload by the latest sequence, so the checkpoint never
           // passes entries committed while the upload runs.
-          const latest = bounds.latest ?? 0
+          const [{ checkpoint, latest }] = yield* sql`
+            SELECT
+              COALESCE((SELECT sequence FROM ${checkpointsTableSql} WHERE remote_id = ${remoteId}), 0) AS checkpoint,
+              COALESCE((SELECT MAX(sequence) FROM ${sequenceTableSql}), 0) AS latest
+          `.pipe(Effect.flatMap(decodeUploadBounds), mapError)
           if (latest <= checkpoint) return yield* Effect.succeedNone
           const entries = yield* sql`
             SELECT e.*
@@ -571,10 +566,7 @@ const EntryRow = Schema.Struct({
 
 const EntryRowArray = Schema.Array(EntryRow)
 const decodeUploadBounds = Schema.decodeUnknownEffect(Schema.Tuple([
-  Schema.Struct({
-    checkpoint: Schema.NullOr(SqlNatural),
-    latest: Schema.NullOr(SqlNatural)
-  })
+  Schema.Struct({ checkpoint: SqlNatural, latest: SqlNatural })
 ]))
 const EntryIdRowArray = Schema.Array(Schema.Struct({ id: SqlEntryId }))
 
