@@ -333,11 +333,7 @@ export class WriteEntriesUnencrypted
     Effect.map(
       decodeWriteEntriesUnencryptedFields(data, options),
       (fields) =>
-        Schema.makeClassTrusted(WriteEntriesUnencrypted, {
-          publicKey: fields.publicKey,
-          storeId: fields.storeId,
-          entries: fields.entries.map(entryFromFields)
-        })
+        Schema.makeClassTrusted(WriteEntriesUnencrypted, { ...fields, entries: fields.entries.map(entryFromFields) })
     )
   get encoded() {
     return WriteEntriesUnencrypted.encode(this)
