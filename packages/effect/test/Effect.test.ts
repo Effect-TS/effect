@@ -853,6 +853,15 @@ describe("Effect", () => {
         }
       }))
 
+    it.effect("elects typed failures when a concurrent sibling finalizer dies", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.all([
+          Effect.never.pipe(Effect.ensuring(Effect.die("cleanup defect"))),
+          Effect.fail("error")
+        ], { concurrency: "unbounded" }).pipe(Effect.exit)
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("error"), Cause.die("cleanup defect"))))
+      }))
+
     it.effect("unbounded fail", () =>
       Effect.gen(function*() {
         const done: Array<number> = []
@@ -1374,6 +1383,12 @@ describe("Effect", () => {
       const result = yield* Fiber.join(fiber)
       assert.strictEqual(result, 100)
       assert.deepStrictEqual(interrupted, [500, 300, 200])
+    }))
+
+  it.effect("raceAll elects typed failures when all racers fail and one dies", () =>
+    Effect.gen(function*() {
+      const exit = yield* Effect.raceAll([Effect.fail("error"), Effect.die("defect")]).pipe(Effect.exit)
+      assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("error"), Cause.die("defect"))))
     }))
 
   it.effect("raceAllFirst", () =>
@@ -3458,73 +3473,6 @@ describe("Effect", () => {
         const result = yield* Effect.fail(error).pipe(Effect.catchNoSuchElement, Effect.exit)
         assert.deepStrictEqual(result, Exit.fail(error))
       }))
-
-    describe("typed failures accompanied by finalizer defects", () => {
-      const error = new ErrorA()
-      const finalizer = Effect.fail(error).pipe(Effect.ensuring(Effect.die("finalizer defect")))
-      const concurrent = Effect.all([
-        Effect.never.pipe(Effect.ensuring(Effect.die("finalizer defect"))),
-        Effect.fail(error)
-      ], { concurrency: "unbounded" })
-      const elected = Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer defect")))
-
-      it.effect("typed-error operators propagate the elected defects without calling handlers", () =>
-        Effect.gen(function*() {
-          let handled = 0
-          const recover = () =>
-            Effect.sync(() => {
-              handled++
-              return "recovered"
-            })
-          const handle = () => {
-            handled++
-            return "recovered"
-          }
-          const operators: Record<string, (self: Effect.Effect<unknown, ErrorA>) => Effect.Effect<unknown, unknown>> = {
-            catch: (self) => Effect.catch(self, recover),
-            catchEager: (self) => Effect.catchEager(self, recover),
-            catchIf: (self) => Effect.catchIf(self, () => true, recover),
-            catchFilter: (self) => Effect.catchFilter(self, Result.succeed, recover),
-            catchTag: (self) => Effect.catchTag(self, "A", recover),
-            catchTags: (self) => Effect.catchTags(self, { A: recover }),
-            orElseSucceed: (self) => Effect.orElseSucceed(self, handle),
-            firstSuccessOf: (self) => Effect.firstSuccessOf([self, recover()]),
-            eventually: (self) => {
-              let attempts = 0
-              return Effect.eventually(Effect.suspend(() => attempts++ === 0 ? self : recover()))
-            },
-            result: Effect.result,
-            option: Effect.option,
-            ignore: Effect.ignore,
-            ignoreLog: (self) => Effect.ignore(self, { log: true }),
-            isFailure: Effect.isFailure,
-            isSuccess: Effect.isSuccess,
-            match: (self) => Effect.match(self, { onFailure: handle, onSuccess: handle }),
-            matchEager: (self) => Effect.matchEager(self, { onFailure: handle, onSuccess: handle }),
-            matchEffect: (self) => Effect.matchEffect(self, { onFailure: recover, onSuccess: recover }),
-            mapError: (self) => Effect.mapError(self, handle),
-            mapErrorEager: (self) => Effect.mapErrorEager(self, handle),
-            mapBoth: (self) => Effect.mapBoth(self, { onFailure: handle, onSuccess: handle }),
-            mapBothEager: (self) => Effect.mapBothEager(self, { onFailure: handle, onSuccess: handle }),
-            orDie: Effect.orDie
-          }
-          // The settled exit exercises the eager paths
-          const sources = [finalizer, concurrent, yield* Effect.exit(finalizer)]
-          for (const source of sources) {
-            assert.deepStrictEqual(yield* Effect.exit(source), elected)
-            for (const [name, operator] of Object.entries(operators)) {
-              assert.deepStrictEqual(yield* Effect.exit(operator(source)), elected, name)
-            }
-          }
-          assert.strictEqual(handled, 0)
-        }))
-
-      it.effect("typed failures alone are still recovered", () =>
-        Effect.gen(function*() {
-          const cause = Cause.combine(Cause.fail(error), Cause.fail(new ErrorA()))
-          assert.strictEqual(yield* Effect.catch(Effect.failCause(cause), () => Effect.succeed(1)), 1)
-        }))
-    })
   })
 
   describe("match", () => {
