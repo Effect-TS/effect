@@ -3589,6 +3589,32 @@ describe("Atom", { concurrent: false }, () => {
       expect(updated.value).toEqual(24)
     })
   })
+
+  describe("initialValues for an Effect atom", () => {
+    it("keeps the value when the Effect completes synchronously", async () => {
+      let runs = 0
+      const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+      const initial = AsyncResult.success(10)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, initial)] })
+      r.mount(atom)
+      await vitest.advanceTimersByTimeAsync(10)
+
+      assert.strictEqual(runs, 1)
+      assert.deepStrictEqual(r.get(atom), initial)
+    })
+
+    it("keeps the value when the Effect completes asynchronously", async () => {
+      let runs = 0
+      const atom = Atom.make(Effect.sleep(10).pipe(Effect.map(() => ++runs))).pipe(Atom.keepAlive)
+      const initial = AsyncResult.success(10)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, initial)] })
+      r.mount(atom)
+      await vitest.advanceTimersByTimeAsync(10)
+
+      assert.strictEqual(runs, 1)
+      assert.deepStrictEqual(r.get(atom), initial)
+    })
+  })
 })
 
 interface BuildCounter {
