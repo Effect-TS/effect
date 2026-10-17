@@ -25,6 +25,7 @@ export type TaskRecord =
   }
   & (
     | { readonly status: "working" | "cancelled" }
+    | { readonly status: "input_required"; readonly inputRequests: Readonly<Record<string, McpSchema.McpInputRequest>> }
     | { readonly status: "completed"; readonly result: McpSchema.CallToolResult }
     | {
       readonly status: "failed"
@@ -53,6 +54,11 @@ export type TaskCallOutcome =
   | { readonly _tag: "Inline"; readonly outcome: McpCore.OperationOutcome<McpSchema.CallToolResult> }
 
 interface Operations {
+  readonly update: (
+    id: string,
+    responses: Readonly<Record<string, McpSchema.McpInputResponse>>,
+    invocation: McpCore.McpInvocation
+  ) => Effect.Effect<void, TaskError>
   readonly get: (id: string, invocation: McpCore.McpInvocation) => Effect.Effect<TaskRecord, TaskError>
   readonly cancel: (id: string, invocation: McpCore.McpInvocation) => Effect.Effect<void, TaskError>
 }
@@ -128,10 +134,10 @@ export const get = memoize((core: McpCore.McpCore) => {
     update: Effect.fnUntraced(
       function*(
         id: string,
-        _responses: Readonly<Record<string, McpSchema.McpInputResponse>>,
+        responses: Readonly<Record<string, McpSchema.McpInputResponse>>,
         invocation: McpCore.McpInvocation
       ) {
-        yield* (yield* resolve(id)).get(id, invocation)
+        yield* (yield* resolve(id)).update(id, responses, invocation)
       }
     ),
     cancel: Effect.fnUntraced(function*(id: string, invocation: McpCore.McpInvocation) {
