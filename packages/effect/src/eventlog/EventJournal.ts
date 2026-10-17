@@ -19,6 +19,7 @@ import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import { constVoid } from "../Function.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import type { Option } from "../Option.ts"
@@ -57,6 +58,25 @@ export class EventJournal extends Context.Service<EventJournal, {
     readonly primaryKey: string
     readonly payload: Uint8Array
     readonly effect: (entry: Entry) => Effect.Effect<A, E, R>
+  }) => Effect.Effect<A, EventJournalError | E, R>
+
+  /**
+   * Write several events to the journal, performing an effect before
+   * committing them.
+   *
+   * **Details**
+   *
+   * `effect` runs once with every entry, in input order and with ascending
+   * ids. The entries are committed together and then published to `changes`
+   * only after it succeeds. If it fails, nothing is committed or published.
+   */
+  readonly writeMany: <A, E, R>(options: {
+    readonly entries: Arr.NonEmptyReadonlyArray<{
+      readonly event: string
+      readonly primaryKey: string
+      readonly payload: Uint8Array
+    }>
+    readonly effect: (entries: Arr.NonEmptyReadonlyArray<Entry>) => Effect.Effect<A, E, R>
   }) => Effect.Effect<A, EventJournalError | E, R>
 
   /**
@@ -257,6 +277,9 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
   return 0
 })
 
+let lastEntryIdMillis = 0
+let entryIdCounter = 0
+
 /**
  * Generates a UUID v7 `EntryId`, optionally using the supplied millisecond
  * timestamp.
@@ -266,17 +289,44 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * Use when generating an event-log entry id internally and the UUID v7 bytes
  * are trusted to satisfy the brand.
  *
+ * **Details**
+ *
+ * Ids taken from the clock are strictly ascending within the current process.
+ * Ids created in the same millisecond carry an incrementing 12-bit counter. If
+ * the clock stalls or moves backwards, ids keep the last millisecond, and
+ * after 4096 ids in one millisecond they move to the next one.
+ *
  * **Gotchas**
  *
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
+ * Ordering is only guaranteed within one process. Ids from different tabs or
+ * devices in the same millisecond sort by their random bytes. Ids created with
+ * an explicit `msecs` are not part of the sequence.
+ *
  * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
-export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
-  Uuid.v7Bytes(options.msecs ?? DateTime.nowUnsafe().epochMilliseconds) as EntryId
+export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId => {
+  if (options.msecs !== undefined) {
+    return Uuid.v7Bytes(options.msecs) as EntryId
+  }
+  const now = DateTime.nowUnsafe().epochMilliseconds
+  if (now > lastEntryIdMillis) {
+    lastEntryIdMillis = now
+    entryIdCounter = 0
+  } else if (++entryIdCounter > 0xfff) {
+    lastEntryIdMillis++
+    entryIdCounter = 0
+  }
+  const bytes = Uuid.v7Bytes(lastEntryIdMillis)
+  // The counter replaces the 12 random `rand_a` bits after the version.
+  bytes[6] = 0x70 | (entryIdCounter >> 8)
+  bytes[7] = entryIdCounter & 0xff
+  return bytes as EntryId
+}
 
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.
@@ -387,6 +437,20 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
   entry: Entry
 }) {}
 
+/** @internal */
+export const makeEntries = (
+  entries: Arr.NonEmptyReadonlyArray<
+    { readonly event: string; readonly primaryKey: string; readonly payload: Uint8Array }
+  >
+): Arr.NonEmptyArray<Entry> =>
+  Arr.map(entries, ({ event, payload, primaryKey }) =>
+    new Entry({
+      id: makeEntryIdUnsafe(),
+      event,
+      primaryKey,
+      payload
+    }, { disableChecks: true }))
+
 /**
  * Creates an in-memory `EventJournal` service.
  *
@@ -427,22 +491,14 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     return created
   }
 
-  return EventJournal.of({
-    entries: Effect.sync(() => journal.slice()),
-    write({ effect, event, payload, primaryKey }) {
-      return Effect.acquireUseRelease(
-        Effect.sync(() =>
-          new Entry({
-            id: makeEntryIdUnsafe(),
-            event,
-            primaryKey,
-            payload
-          }, { disableChecks: true })
-        ),
-        effect,
-        (entry, exit) =>
-          Effect.suspend(() => {
-            if (exit._tag === "Failure" || byId.has(entry.idString)) return Effect.void
+  const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => makeEntries(entries)),
+      effect,
+      (entries, exit) =>
+        Effect.suspend(() => {
+          if (exit._tag === "Failure") return Effect.void
+          for (const entry of entries) {
             const last = journal[journal.length - 1]
             if (last !== undefined && last.createdAtMillis > entry.createdAtMillis) {
               journalSorted = false
@@ -452,10 +508,15 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
             remotes.forEach((remote) => {
               remote.missing.push(entry)
             })
-            return PubSub.publish(pubsub, entry)
-          })
-      )
-    },
+          }
+          return PubSub.publishAll(pubsub, entries)
+        })
+    )
+
+  return EventJournal.of({
+    entries: Effect.sync(() => journal.slice()),
+    write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
+    writeMany,
     writeFromRemote: Effect.fnUntraced(function*(options) {
       const remote = ensureRemote(options.remoteId)
       const uncommittedRemotes: Array<RemoteEntry> = []
@@ -616,6 +677,22 @@ export const makeIndexedDb = (options?: {
 
     const pubsub = yield* PubSub.unbounded<Entry>()
 
+    const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
+      Effect.uninterruptibleMask((restore) => {
+        const committed = makeEntries(entries)
+        return restore(effect(committed)).pipe(
+          Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
+            const tx = db.transaction("entries", "readwrite")
+            const store = tx.objectStore("entries")
+            for (const entry of committed) {
+              store.put(encodeEntryIdb(entry))
+            }
+            onTransactionDone(tx, "writeMany", resume, constVoid)
+          })),
+          Effect.tap(PubSub.publishAll(pubsub, committed))
+        )
+      })
+
     return EventJournal.of({
       entries: idbReq("entries", () =>
         db.transaction("entries", "readonly")
@@ -628,24 +705,8 @@ export const makeIndexedDb = (options?: {
             )
           )
         ),
-      write: ({ effect, event, payload, primaryKey }) =>
-        Effect.uninterruptibleMask((restore) => {
-          const entry = new Entry({
-            id: makeEntryIdUnsafe(),
-            event,
-            primaryKey,
-            payload
-          }, { disableChecks: true })
-          return restore(effect(entry)).pipe(
-            Effect.tap(
-              idbReq("write", () =>
-                db.transaction("entries", "readwrite")
-                  .objectStore("entries")
-                  .put(encodeEntryIdb(entry)))
-            ),
-            Effect.tap(PubSub.publish(pubsub, entry))
-          )
-        }),
+      write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
+      writeMany,
       writeFromRemote: Effect.fnUntraced(function*(options) {
         const uncommittedRemotes: Array<RemoteEntry> = []
         const duplicateEntries: Array<Entry> = []
@@ -664,8 +725,7 @@ export const makeIndexedDb = (options?: {
               }
             }
           }
-          tx.oncomplete = () => resume(Effect.void)
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+          onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
 
@@ -690,9 +750,7 @@ export const makeIndexedDb = (options?: {
               }
               cursor.continue()
             }
-            tx.oncomplete = () => resume(Effect.void)
-            tx.onerror = () =>
-              resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+            onTransactionDone(tx, "writeFromRemote", resume, constVoid)
             return Effect.sync(() => tx.abort())
           })
           yield* options.effect(index.toBatch())
@@ -713,8 +771,7 @@ export const makeIndexedDb = (options?: {
               sequence: remoteEntry.remoteSequence
             })
           }
-          tx.oncomplete = () => resume(Effect.void)
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+          onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
         return {
@@ -749,9 +806,7 @@ export const makeIndexedDb = (options?: {
             }
           }
 
-          tx.oncomplete = () => resume(Effect.succeed(entries))
-          tx.onerror = () =>
-            resume(Effect.fail(new EventJournalError({ method: "withRemoteUncommited", cause: tx.error })))
+          onTransactionDone(tx, "withRemoteUncommited", resume, () => entries)
           return Effect.sync(() => tx.abort())
         }).pipe(
           Effect.flatMap((entries) => {
@@ -785,9 +840,7 @@ export const makeIndexedDb = (options?: {
             if (!cursor) return
             sequence = cursor.value.sequence + 1
           }
-          tx.oncomplete = () => resume(Effect.succeed(sequence))
-          tx.onerror = () =>
-            resume(Effect.fail(new EventJournalError({ method: "nextRemoteSequence", cause: tx.error })))
+          onTransactionDone(tx, "nextRemoteSequence", resume, () => sequence)
           return Effect.sync(() => tx.abort())
         }),
       changes: PubSub.subscribe(pubsub),
@@ -852,6 +905,18 @@ export const layerIndexedDb = (options?: {
     EventJournal,
     makeIndexedDb(options)
   )
+
+// Resumes when the transaction commits, and fails if it errors or aborts. An
+// abort, such as a failed commit, does not always dispatch an error first.
+const onTransactionDone = <A>(
+  tx: IDBTransaction,
+  method: string,
+  resume: (effect: Effect.Effect<A, EventJournalError>) => void,
+  onComplete: () => A
+): void => {
+  tx.oncomplete = () => resume(Effect.succeed(onComplete()))
+  tx.onerror = tx.onabort = () => resume(Effect.fail(new EventJournalError({ method, cause: tx.error })))
+}
 
 const idbReq = <T>(method: string, evaluate: () => IDBRequest<T>) =>
   Effect.callback<T, EventJournalError>((resume) => {

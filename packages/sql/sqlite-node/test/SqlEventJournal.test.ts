@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, FileSystem, Layer, Option, Queue, Schema } from "effect"
+import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -27,6 +27,8 @@ const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
     primaryKey,
     payload: new Uint8Array()
   }, { disableChecks: true })
+
+const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
 
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
@@ -206,6 +208,43 @@ describe("SqlEventJournal", () => {
 
   for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
     describe(name, () => {
+      it.effect("writeMany commits and publishes a batch in order only when its callback succeeds", () =>
+        Effect.gen(function*() {
+          const journal = yield* make
+          const changes = yield* journal.changes
+          const entries = [localEntry("a"), localEntry("b"), localEntry("c")] as const
+          const failed = yield* Effect.exit(
+            journal.writeMany({ entries, effect: () => Effect.fail("callback failed") })
+          )
+          const afterFailure = {
+            failed: Exit.isFailure(failed),
+            entries: (yield* journal.entries).length,
+            published: yield* PubSub.remaining(changes)
+          }
+          const written = yield* journal.writeMany({ entries, effect: Effect.succeed })
+          const ids = written.map((entry) => entry.idString)
+          assert.deepStrictEqual({
+            afterFailure,
+            keys: written.map((entry) => entry.primaryKey),
+            ascending: written.every((entry, i) =>
+              i === 0 || EventJournal.EntryIdOrder(written[i - 1].id, entry.id) < 0
+            ),
+            committed: (yield* journal.entries).map((entry) => entry.idString),
+            uncommitted: yield* journal.withRemoteUncommited(
+              EventJournal.makeRemoteIdUnsafe(),
+              (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+            ),
+            published: (yield* PubSub.takeAll(changes)).map((entry) => entry.idString)
+          }, {
+            afterFailure: { failed: true, entries: 0, published: 0 },
+            keys: ["a", "b", "c"],
+            ascending: true,
+            committed: ids,
+            uncommitted: Option.some(ids),
+            published: ids
+          })
+        }))
+
       it.effect("failed remote callbacks persist nothing and allow redelivery", () =>
         Effect.gen(function*() {
           const journal = yield* make

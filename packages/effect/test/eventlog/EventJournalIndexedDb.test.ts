@@ -1,7 +1,7 @@
 // oxlint-disable-next-line no-unassigned-import
 import "fake-indexeddb/auto"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 
 let databaseId = 0
@@ -44,6 +44,77 @@ const countTransactions = (database: string) =>
   ).pipe(Effect.map(({ transactions }) => transactions))
 
 describe("EventJournal.makeIndexedDb", () => {
+  it.effect("writeMany commits and publishes a batch in one transaction only when its callback succeeds", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      const changes = yield* journal.changes
+      const transactions = yield* countTransactions(database)
+      const local = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
+      const entries = [local("a"), local("b"), local("c")] as const
+      const failed = yield* Effect.exit(journal.writeMany({ entries, effect: () => Effect.fail("callback failed") }))
+      const afterFailure = {
+        failed: Exit.isFailure(failed),
+        transactions: transactions.opened,
+        published: yield* PubSub.remaining(changes)
+      }
+      const written = yield* journal.writeMany({ entries, effect: Effect.succeed })
+      const ids = written.map((entry) => entry.idString)
+      assert.deepStrictEqual({
+        afterFailure,
+        transactions: transactions.opened,
+        committed: (yield* journal.entries).map((entry) => entry.idString),
+        published: (yield* PubSub.takeAll(changes)).map((entry) => entry.idString)
+      }, {
+        afterFailure: { failed: true, transactions: 0, published: 0 },
+        transactions: 1,
+        committed: ids,
+        published: ids
+      })
+    }))
+
+  it.live("writeMany fails when its transaction aborts after the puts succeed", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      const changes = yield* journal.changes
+      // Abort once the put has succeeded and no request is pending, so the
+      // transaction dispatches `abort` without an `error` event, as a failed
+      // commit would.
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          const put = IDBObjectStore.prototype.put
+          IDBObjectStore.prototype.put = function(this: IDBObjectStore, value, key) {
+            const request = put.call(this, value, key)
+            if (this.transaction.db.name === database) {
+              request.addEventListener("success", () => this.transaction.abort())
+            }
+            return request
+          }
+          return put
+        }),
+        (put) =>
+          Effect.sync(() => {
+            IDBObjectStore.prototype.put = put
+          })
+      )
+      const write = yield* journal.writeMany({
+        entries: [{ event: "Repro", primaryKey: "a", payload: new Uint8Array() }],
+        effect: Effect.succeed
+      }).pipe(Effect.flip, Effect.forkDetach)
+      // The commit is uninterruptible, so bound the wait without interrupting it.
+      const error = yield* Fiber.join(write).pipe(Effect.timeoutOption("2 seconds"))
+      assert.deepStrictEqual({
+        failed: Option.map(error, (error) => (error as EventJournal.EventJournalError)._tag),
+        committed: (yield* journal.entries).length,
+        published: yield* PubSub.remaining(changes)
+      }, {
+        failed: Option.some("EventJournalError"),
+        committed: 0,
+        published: 0
+      })
+    }))
+
   it.effect("replays a remote batch in one callback without journal transactions while it runs", () =>
     Effect.gen(function*() {
       const journalName = uniqueName("journal")
