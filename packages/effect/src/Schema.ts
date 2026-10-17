@@ -9941,6 +9941,8 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * @category schemas
  * @since 4.0.0
  */
+// Read the global inside the guard: resolving globalThis.FormData at module
+// scope loads undici on Node.
 export const FormData: FormData = declare((u): u is globalThis.FormData => u instanceof globalThis.FormData, {
   representation: {
     id: "effect/schema/FormData",

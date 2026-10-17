@@ -2,9 +2,9 @@ import type * as Http from "node:http"
 import type * as Https from "node:https"
 import { createRequire } from "node:module"
 
-// ESM imports of node:http snapshot its lazy WebSocket exports, loading undici
-// even when no web APIs are used. Keep the CommonJS objects instead. The
-// filename fallback also supports bundlers emitting CommonJS on Node 18.
+// Importing node:http as ESM evaluates its lazy WebSocket exports, which loads
+// undici. Load the CommonJS modules instead. `__filename` covers bundlers that
+// emit CommonJS, where `import.meta.url` is undefined.
 const require = createRequire(typeof __filename === "string" ? __filename : import.meta.url)
 
 export const http: typeof Http = require("node:http")
