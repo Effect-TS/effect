@@ -814,6 +814,8 @@ export const groupReactivity = <Events extends Event.Any>(
  * schema, runs the matching handler with the supplied identity and store id, logs
  * failures, and invalidates configured reactivity keys. Invalidations are
  * deferred until the end of an enclosing `Reactivity.withBatch`.
+ * Successful conflict decodes are shared by the returned handler, separately for
+ * each registered event handler. Create a new replay handler for each batch.
  *
  * @stability unstable
  * @category handlers
@@ -829,8 +831,9 @@ export const makeReplayFromRemote = (options: {
     readonly service: string
     readonly effect: string
   }
-}) =>
-  Effect.fnUntraced(
+}) => {
+  const conflictCache = new WeakMap<Handlers.Item<any>, WeakMap<Entry, { entry: Entry; payload: unknown }>>()
+  return Effect.fnUntraced(
     function*({ conflicts, entry }: {
       readonly entry: Entry
       readonly conflicts: ReadonlyArray<Entry>
@@ -841,14 +844,26 @@ export const makeReplayFromRemote = (options: {
       }
 
       const decodePayload = Schema.decodeUnknownEffect(handler.event.payloadSchemaBinary)
+      let cached = conflictCache.get(handler)
+      if (!cached) {
+        cached = new WeakMap()
+        conflictCache.set(handler, cached)
+      }
       const decodedConflicts: Array<{ entry: Entry; payload: unknown }> = new Array(conflicts.length)
       for (let i = 0; i < conflicts.length; i++) {
-        decodedConflicts[i] = {
-          entry: conflicts[i],
-          payload: yield* decodePayload(conflicts[i].payload).pipe(
-            Effect.updateContext((input) => Context.merge(handler.context, input))
-          ) as any
+        const conflict = conflicts[i]
+        let decoded = cached.get(conflict)
+        if (!decoded) {
+          decoded = {
+            entry: conflict,
+            payload: yield* decodePayload(conflict.payload).pipe(
+              Effect.updateContext((input) => Context.merge(handler.context, input))
+            ) as any
+          }
+          // Cache successes only: failed decodes keep the existing logging/retry behaviour.
+          cached.set(conflict, decoded)
         }
+        decodedConflicts[i] = decoded
       }
 
       yield* decodePayload(entry.payload).pipe(
@@ -874,6 +889,7 @@ export const makeReplayFromRemote = (options: {
         entryId: entry.idString
       })
   )
+}
 
 const invalidateEntry = (
   reactivity: Reactivity,
@@ -898,17 +914,6 @@ const make = Effect.gen(function*() {
 
   const reactivity = yield* Reactivity
   const handlerTransaction = yield* HandlerTransaction
-  const replayFromRemote = makeReplayFromRemote({
-    handlers: registry.handlers,
-    storeId,
-    identity,
-    reactivity,
-    reactivityKeys: registry.reactivityKeys,
-    logAnnotations: {
-      service: "EventLog",
-      effect: "writeFromRemote"
-    }
-  })
 
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
     Effect.forEach(entries, (entry) => invalidateEntry(reactivity, registry.reactivityKeys, entry), { discard: true })
@@ -970,7 +975,22 @@ const make = Effect.gen(function*() {
                 return finalEntries.flat()
               })
               : undefined,
-            effect: (batch) => handlerTransaction(Effect.forEach(batch, replayFromRemote, { discard: true }))
+            effect: (batch) =>
+              handlerTransaction(Effect.suspend(() => {
+                // A fresh cache for each batch execution, including transaction retries.
+                const replayFromRemote = makeReplayFromRemote({
+                  handlers: registry.handlers,
+                  storeId,
+                  identity,
+                  reactivity,
+                  reactivityKeys: registry.reactivityKeys,
+                  logAnnotations: {
+                    service: "EventLog",
+                    effect: "writeFromRemote"
+                  }
+                })
+                return Effect.forEach(batch, replayFromRemote, { discard: true })
+              }))
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),
