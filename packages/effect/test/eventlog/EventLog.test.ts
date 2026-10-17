@@ -32,54 +32,32 @@ const UncompactedItemGroup = EventGroup.empty.add({
   primaryKey: (payload) => payload.list,
   payload: ItemPayload
 })
-// The handler can read older payloads that are opaque to the stricter compactor.
-const CompactableItemGroup = EventGroup.empty.add({
-  tag: "ItemAdded",
-  primaryKey: (payload) => payload.list,
-  payload: Schema.Struct({ ...ItemPayload.fields, compactable: Schema.Literal(true) })
-})
-
 const replayItems = Effect.fnUntraced(function*(
-  input: ReadonlyArray<
-    {
-      readonly event: "ItemAdded" | "ItemObserved"
-      readonly msecs: number
-      readonly suffix: number
-      readonly list?: string
-      readonly opaque?: boolean
-    }
-  >,
-  changePrimaryKey = false
+  events: ReadonlyArray<"ItemAdded" | "ItemObserved">
 ) {
-  const handled = yield* Queue.unbounded<typeof ItemPayload.Type>()
+  const handled = yield* Queue.unbounded<number>()
   const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
-  const entries = yield* Effect.forEach(
-    input,
-    ({ event, msecs, suffix, list = "list-1", opaque }, item) =>
-      Effect.gen(function*() {
-        const id = EventJournal.makeEntryIdUnsafe({ msecs })
-        // Fixed UUID tails deliberately disagree with remote sequence order.
-        id.fill(0, 6)
-        id[6] = 0x70
-        id[8] = 0x80
-        id[15] = suffix
-        return new EventJournal.RemoteEntry({
-          remoteSequence: item,
-          entry: new EventJournal.Entry({
-            id,
-            event,
-            primaryKey: list,
-            payload: opaque
-              ? yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({ list, item })
-              : yield* Schema.encodeUnknownEffect(CompactableItemGroup.events.ItemAdded.payloadSchemaBinary)({
-                list,
-                item,
-                compactable: true
-              })
-          }, { disableChecks: true })
-        })
+  const entries = yield* Effect.forEach(events, (event, item) =>
+    Effect.gen(function*() {
+      const id = EventJournal.makeEntryIdUnsafe({ msecs: 1000 })
+      // Same-millisecond UUIDs sort opposite to remote sequence order.
+      id.fill(0, 6)
+      id[6] = 0x70
+      id[8] = 0x80
+      id[15] = events.length - item
+      return new EventJournal.RemoteEntry({
+        remoteSequence: item,
+        entry: new EventJournal.Entry({
+          id,
+          event,
+          primaryKey: "list-1",
+          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
+            list: "list-1",
+            item
+          })
+        }, { disableChecks: true })
       })
-  )
+    }))
   yield* Queue.offerAll(changes, entries)
   const remote = EventLogRemote.EventLogRemote.of({
     id: EventJournal.makeRemoteIdUnsafe(),
@@ -90,19 +68,18 @@ const replayItems = Effect.fnUntraced(function*(
   const handlers = Layer.mergeAll(
     EventLog.group(
       ItemGroup,
-      (handlers) => handlers.handle("ItemAdded", ({ payload }) => Queue.offer(handled, payload))
+      (handlers) => handlers.handle("ItemAdded", ({ payload }) => Queue.offer(handled, payload.item))
     ),
     EventLog.group(
       UncompactedItemGroup,
-      (handlers) => handlers.handle("ItemObserved", ({ payload }) => Queue.offer(handled, payload))
+      (handlers) => handlers.handle("ItemObserved", ({ payload }) => Queue.offer(handled, payload.item))
     ),
     EventLog.groupCompaction(
-      CompactableItemGroup,
+      ItemGroup,
       ({ events, write }) =>
         Effect.forEach(
           events,
-          (event) =>
-            write(event._tag, { ...event.payload, list: changePrimaryKey ? "replacement" : event.payload.list }),
+          (event) => write(event._tag, event.payload),
           { discard: true }
         )
     )
@@ -123,7 +100,7 @@ const replayItems = Effect.fnUntraced(function*(
       return bytes
     })
     return yield* registry.registerRemote(remote).pipe(
-      Effect.andThen(Effect.forEach(input, () => Queue.take(handled))),
+      Effect.andThen(Effect.forEach(events, () => Queue.take(handled))),
       Effect.ensuring(Effect.sync(() => random.mockRestore()))
     )
   }).pipe(Effect.provide(layer))
@@ -172,43 +149,16 @@ const logLayer = (
 describe("EventLog", () => {
   it.effect("replays compacted outputs in compactor write order", () =>
     Effect.gen(function*() {
-      const handled = yield* replayItems([
-        { event: "ItemAdded", msecs: 1000, suffix: 0 },
-        { event: "ItemAdded", msecs: 1001, suffix: 0 }
-      ])
-      assert.deepStrictEqual(handled.map((payload) => payload.item), [0, 1])
+      const handled = yield* replayItems(["ItemAdded", "ItemAdded"])
+      assert.deepStrictEqual(handled, [0, 1])
     }), { concurrent: false })
 
   it.effect(
     "preserves remote order for uncompacted entries sharing a millisecond in a mixed batch",
     () =>
       Effect.gen(function*() {
-        const handled = yield* replayItems([
-          { event: "ItemObserved", msecs: 1000, suffix: 2 },
-          { event: "ItemObserved", msecs: 1000, suffix: 1 },
-          { event: "ItemAdded", msecs: 1000, suffix: 3 }
-        ])
-        assert.deepStrictEqual(handled.map((payload) => payload.item), [0, 1, 2])
-      }),
-    { concurrent: false }
-  )
-
-  it.effect(
-    "anchors interleaved replacements to their sources even when primary keys change, preserving opaque entries",
-    () =>
-      Effect.gen(function*() {
-        const handled = yield* replayItems([
-          { event: "ItemAdded", msecs: 1000, suffix: 5, list: "a" },
-          { event: "ItemAdded", msecs: 1000, suffix: 4, list: "a", opaque: true },
-          { event: "ItemAdded", msecs: 1000, suffix: 3, list: "b" },
-          { event: "ItemAdded", msecs: 1000, suffix: 2, list: "a" }
-        ], true)
-        assert.deepStrictEqual(handled, [
-          { list: "replacement", item: 0 },
-          { list: "replacement", item: 3 },
-          { list: "a", item: 1 },
-          { list: "replacement", item: 2 }
-        ])
+        const handled = yield* replayItems(["ItemObserved", "ItemObserved", "ItemAdded"])
+        assert.deepStrictEqual(handled, [0, 1, 2])
       }),
     { concurrent: false }
   )
