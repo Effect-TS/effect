@@ -3679,6 +3679,19 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
     })
 
+    it("runs the Effect when the value is replaced while the runtime loads", async () => {
+      let runs = 0
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.sleep(5)))
+      const atom = runtime.atom(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(10))] })
+      r.mount(atom)
+      r.ensureNode(atom).setInitialValue(AsyncResult.initial(true))
+
+      await vitest.advanceTimersByTimeAsync(10)
+      assert.strictEqual(runs, 1)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+    })
+
     // A kept value has unknown dependencies, so the next write anywhere
     // runs the Effect once
     describe("the first write", () => {

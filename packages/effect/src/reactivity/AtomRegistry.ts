@@ -862,7 +862,7 @@ class NodeImpl<A> {
 
   setInitialValue(value: A): void {
     if ((this.state & NodeFlags.initialized) === 0) {
-      // an Initial is not a value to keep, so its effect or stream still runs
+      // an Initial does not suppress its effect or stream
       this.hydrating = !(Result.isAsyncResult(value) && Result.isInitial(value))
       this.preserveInitialValueOnBuild = true
       this.state = NodeState.stale
@@ -873,6 +873,8 @@ class NodeImpl<A> {
       return
     }
 
+    // a value set after the first read replaces the one being kept
+    this.endHydration()
     this.setValue(value)
   }
 
