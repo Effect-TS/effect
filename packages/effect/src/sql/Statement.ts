@@ -933,6 +933,9 @@ const CompilerProto = {
         }
 
         case "RecordInsertHelper": {
+          if (segment.value.length === 0) {
+            throw new Error("sql.insert: no rows")
+          }
           const keys = Object.keys(segment.value[0])
 
           if (opts.onInsert) {
@@ -1053,6 +1056,9 @@ const CompilerProto = {
         }
 
         case "RecordUpdateHelper": {
+          if (segment.value.length === 0) {
+            throw new Error("sql.updateValues: no rows")
+          }
           const keys = Object.keys(segment.value[0])
           const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
           let placeholders = ""
