@@ -122,10 +122,18 @@ export const make = Effect.fnUntraced(function*(
         if (upgradedSources.has(denoRequest.source)) {
           return Effect.as(cancelResponseBody(response.body), upgradedResponse)
         }
-        return Effect.flatMap(
-          makeResponse(request, response, services, scope),
-          (response) => Effect.sync(() => denoRequest.resolve(response))
-        )
+        return Effect.matchCauseEffect(makeResponse(request, response, services, scope), {
+          onSuccess: (webResponse) => Effect.sync(() => denoRequest.resolve(webResponse)),
+          // Always answer the request, without waiting for body cleanup
+          onFailure: (cause) =>
+            Effect.suspend(() => {
+              denoRequest.resolve(new Response(undefined, { status: 500 }))
+              if (response.body._tag === "Raw" && response.body.body instanceof ReadableStream) {
+                cancelFailedResponseBody(response.body.body)
+              }
+              return Effect.failCause(cause)
+            })
+        })
       }, middleware)
 
       function handler(
@@ -180,8 +188,9 @@ const makeResponse = Effect.fnUntraced(function*(
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
   if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
+    const webResponse = new Response(undefined, fields)
     yield* cancelResponseBody(response.body)
-    return new Response(undefined, fields)
+    return webResponse
   }
   response = HttpEffect.scopeTransferToStream(response)
   const body = response.body
@@ -198,17 +207,22 @@ const makeResponse = Effect.fnUntraced(function*(
     }
     case "FormData":
       return new Response(body.formData as any, fields)
-    case "Stream":
-      return new Response(
-        Stream.toReadableStreamWith(
-          Stream.unwrap(Effect.withFiber((fiber) => {
-            Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
-          })),
-          context
-        ),
-        fields
+    case "Stream": {
+      const stream = Stream.toReadableStreamWith(
+        Stream.unwrap(Effect.withFiber((fiber) => {
+          Fiber.runIn(fiber, scope)
+          return Effect.succeed(body.stream)
+        })),
+        context
       )
+      try {
+        return new Response(stream, fields)
+      } catch (defect) {
+        // The stream owns the request scope, so cancel it to let the scope close
+        cancelFailedResponseBody(stream)
+        throw defect
+      }
+    }
   }
 })
 
@@ -575,6 +589,12 @@ const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
     return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void
+}
+
+const cancelFailedResponseBody = (stream: ReadableStream): void => {
+  try {
+    void stream.cancel().catch(() => {})
+  } catch {}
 }
 
 const emptyReadableStream = new ReadableStream<Uint8Array>({
