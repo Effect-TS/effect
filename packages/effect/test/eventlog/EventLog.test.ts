@@ -449,6 +449,82 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("resumes remote changes from the committed sequence without duplicate writes or invalidations", () =>
+    Effect.gen(function*() {
+      const handled = yield* Ref.make<ReadonlyArray<string>>([])
+      const offered: Array<ReadonlyArray<string>> = []
+      const journalLayer = Layer.effect(
+        EventJournal.EventJournal,
+        Effect.map(EventJournal.makeMemory, (journal) =>
+          EventJournal.EventJournal.of({
+            ...journal,
+            writeFromRemote: (options) =>
+              Effect.sync(() => offered.push(options.entries.map(({ entry }) => entry.primaryKey))).pipe(
+                Effect.andThen(journal.writeFromRemote(options))
+              )
+          }))
+      )
+      const layer = logLayer(handled, journalLayer).pipe(
+        Layer.provide(EventLog.groupReactivity(UserGroup, ["users"]).pipe(Layer.provide(EventLog.layerRegistry))),
+        Layer.merge(Reactivity.layer)
+      )
+      return yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        const reactivity = yield* Reactivity.Reactivity
+        let invalidations = 0
+        reactivity.registerUnsafe(["users"], () => {
+          invalidations++
+        })
+        const entries = yield* Effect.forEach(
+          ["user-1", "user-2"],
+          (id, remoteSequence) =>
+            Effect.map(makeCompactionEntry({ id }), (entry) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
+        )
+        const attempts = yield* Queue.unbounded<number>()
+        let connections = 0
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: ({ startSequence }) =>
+            Effect.gen(function*() {
+              const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+              connections++
+              if (connections <= 2) {
+                // A real remote sends only entries at or after the requested cursor.
+                yield* Queue.offerAll(changes, entries.filter((entry) => entry.remoteSequence >= startSequence))
+                // Buffered entries drain before the disconnection is observed.
+                yield* Queue.fail(
+                  changes,
+                  new EventLogRemote.EventLogRemoteError({ method: "changes", cause: "offline" })
+                )
+              }
+              yield* Queue.offer(attempts, startSequence)
+              return changes
+            }),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+
+        const initial = yield* Queue.take(attempts)
+        yield* TestClock.adjust("200 millis")
+        const reconnect = yield* Queue.take(attempts)
+        yield* TestClock.adjust("300 millis")
+        const nextReconnect = yield* Queue.take(attempts)
+        // The third connection is a barrier: both preceding streams have drained,
+        // their journal transactions committed, and reactivity batches completed.
+        assert.deepStrictEqual({
+          startSequences: [initial, reconnect, nextReconnect],
+          offered,
+          invalidations,
+          handled: yield* Ref.get(handled)
+        }, {
+          startSequences: [0, 2, 2],
+          offered: [["user-1", "user-2"]],
+          invalidations: 1,
+          handled: ["user-1", "user-2"]
+        })
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("retries a failed remote write and flushes changes made during the retry", () =>
     Effect.gen(function*() {
       const handled = yield* Ref.make<ReadonlyArray<string>>([])
