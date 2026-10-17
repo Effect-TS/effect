@@ -43,7 +43,7 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
  *
  * The default mode supports compatible schema evolution. `fingerprint: true`
  * uses positional layouts and an 8-byte layout hash for smaller frames, but
- * requires peers to use the same schema definition.
+ * requires peers to use an identical encoded layout.
  *
  * @stability unstable
  * @category models
@@ -96,8 +96,9 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
  *
  * Bytes carry the layout of the schema that wrote them. In the default mode,
  * decode them with that schema or a compatible evolution of it; fingerprint
- * mode requires the same schema. A union codec usually prefixes each value with
- * a member selector, so it cannot read bytes written by a member's own codec.
+ * mode requires an identical encoded layout. A union codec usually prefixes each
+ * value with a member selector; when it does, it cannot read bytes written by a
+ * member's own codec.
  *
  * **Example** (Deriving a binary codec)
  *

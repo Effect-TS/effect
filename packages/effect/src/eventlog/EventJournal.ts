@@ -354,10 +354,10 @@ export const entryIdMillis = (entryId: EntryId): number =>
  * **Gotchas**
  *
  * `EventLog` encodes `payload` with the `payloadSchemaBinary` of the event whose
- * tag is `entry.event`, so decode it with that event's codec. A codec for a
- * different shape, such as a union of a group's payload schemas, cannot read
- * it. Entries from remote journals can carry tags the local schema does not
- * define.
+ * tag is `entry.event`, so decode it with that event's codec. A codec with an
+ * incompatible wire layout, such as a union of a group's tagged payload schemas,
+ * cannot read it. Entries from remote journals can carry tags the local schema
+ * does not define.
  *
  * @stability unstable
  * @category schemas
