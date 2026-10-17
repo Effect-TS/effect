@@ -131,6 +131,22 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<Option<A>, EventJournalError | E, R>
 
   /**
+   * Record write acknowledgements from a remote source: the sequences it
+   * assigned to local entries it stored.
+   *
+   * Acknowledged entries count as committed to the remote. The sequence
+   * returned by `nextRemoteSequence` only moves past an acknowledged sequence
+   * when it directly follows the sequences already received, or
+   * `firstSequence` when nothing has been received, so entries that other
+   * replicas wrote before it are still downloaded.
+   */
+  readonly writeRemoteAcks: (options: {
+    readonly remoteId: RemoteId
+    readonly acks: ReadonlyArray<RemoteAck>
+    readonly firstSequence?: number | undefined
+  }) => Effect.Effect<void, EventJournalError>
+
+  /**
    * Retrieve the first unused sequence number for a remote source.
    */
   readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
@@ -437,6 +453,19 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
 }
 
 /**
+ * Acknowledgement that a remote source stored a local entry with the given
+ * sequence.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface RemoteAck {
+  readonly entryId: EntryId
+  readonly sequence: number
+}
+
+/**
  * Schema for an event journal entry received from a remote source.
  *
  * **Details**
@@ -616,6 +645,11 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
             }
           })
       ),
+    writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
+      Effect.sync(() => {
+        const remote = ensureRemote(remoteId)
+        remote.sequence = advanceSequence(remote.sequence, acks, firstSequence)
+      }),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
     entriesById: (ids) => Effect.sync(() => ids.map((id) => byId.get(Uuid.stringify(id)))),
     changes: PubSub.subscribe(pubsub),
@@ -901,6 +935,30 @@ export const makeIndexedDb = (options?: {
           })
         )
       },
+      writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
+        Effect.callback<void, EventJournalError>((resume) => {
+          const tx = db.transaction("remotes", "readwrite")
+          const remotes = tx.objectStore("remotes")
+          const remoteIdKey = remoteId as IDBValidKey
+          const cursorRequest = remotes.index("sequence").openCursor(
+            IDBKeyRange.bound([remoteIdKey, 0], [remoteIdKey, Infinity]),
+            "prev"
+          )
+          cursorRequest.onsuccess = () => {
+            // The next sequence is derived from the highest stored one, so only
+            // acknowledgements that directly follow it are stored.
+            const cursor = cursorRequest.result
+            const start = Math.max(cursor ? cursor.value.sequence + 1 : 0, firstSequence ?? 0)
+            const end = advanceSequence(start, acks)
+            for (const ack of acks) {
+              if (ack.sequence >= start && ack.sequence < end) {
+                remotes.put({ remoteId, entryId: ack.entryId, sequence: ack.sequence })
+              }
+            }
+          }
+          onTransactionDone(tx, "writeRemoteAcks", resume, constVoid)
+          return Effect.sync(() => tx.abort())
+        }),
       nextRemoteSequence: (remoteId) =>
         Effect.callback<number, EventJournalError>((resume) => {
           const tx = db.transaction("remotes", "readonly")
@@ -925,6 +983,28 @@ export const makeIndexedDb = (options?: {
       withLock: yield* makeBrowserWithLock(database)
     })
   })
+
+/**
+ * Moves a remote's next sequence over acknowledged sequences that directly
+ * follow it. No sequence lies below `firstSequence`. A gap means another
+ * replica wrote entries that have not been received yet, so the sequence stops
+ * there.
+ *
+ * @internal
+ */
+export const advanceSequence = (
+  next: number,
+  acks: ReadonlyArray<RemoteAck>,
+  firstSequence = 0
+): number => {
+  next = Math.max(next, firstSequence)
+  const sequences = acks.map((ack) => ack.sequence).sort((a, b) => a - b)
+  for (const sequence of sequences) {
+    if (sequence === next) next++
+    else if (sequence > next) break
+  }
+  return next
+}
 
 const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
   if (typeof navigator !== "undefined" && "locks" in navigator) {

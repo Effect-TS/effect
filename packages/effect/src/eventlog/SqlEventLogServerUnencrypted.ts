@@ -485,6 +485,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
 
   return EventLogServerUnencrypted.Storage.of({
     getId: Effect.succeed(remoteId),
+    firstSequence: 1,
     getOrCreateSessionAuthBinding: Effect.fnUntraced(
       function*(publicKey, signingPublicKey) {
         const existing = yield* getSessionAuthBinding(publicKey)
@@ -504,7 +505,6 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     ),
     entriesAfter: (storeId, entry, batch) =>
       (batch === undefined ? selectEntriesFrom(storeId, entry) : selectBatchHistory(storeId, entry, batch)).pipe(
-        Effect.map(Arr.map((r) => r.entry)),
         Effect.orDie,
         withTracerDisabled
       ),

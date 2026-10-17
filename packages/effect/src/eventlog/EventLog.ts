@@ -1061,7 +1061,20 @@ const make = Effect.gen(function*() {
         Effect.forkScoped
       )
 
-      const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write({ identity, entries, storeId }))
+      const write = journal.withRemoteUncommited(
+        remote.id,
+        (entries) =>
+          remote.write({ identity, entries, storeId }).pipe(
+            Effect.flatMap((acks) =>
+              acks === undefined || acks.length === 0
+                ? Effect.void
+                // The remote does not send these entries back, so record its sequences now.
+                : journal.writeRemoteAcks({ remoteId: remote.id, acks, firstSequence: remote.firstSequence }).pipe(
+                  journal.withLock(storeId)
+                )
+            )
+          )
+      )
       const writeUntilSuccess = write.pipe(
         Effect.tapCause(Effect.logDebug),
         Effect.retry(remoteRetrySchedule)

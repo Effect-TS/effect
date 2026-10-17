@@ -39,6 +39,7 @@ import {
   EventLogProtocolError,
   EventLogRemoteRpcs,
   type StoreId,
+  type WriteAck,
   WriteEntriesUnencrypted
 } from "./EventLogMessage.ts"
 import * as EventLogServer from "./EventLogServer.ts"
@@ -104,8 +105,10 @@ export const makeWrite = <Groups extends EventGroup.Any>(
  * **Details**
  *
  * Incoming plaintext entries are authorized, mapped to a server store, checked
- * for conflicts, run through registered handlers, and persisted; change streams
- * include compacted backlog entries when compactors are registered.
+ * for conflicts, run through registered handlers, and persisted. Each written
+ * entry is acknowledged with its stored sequence, including duplicates of
+ * stored entries. Change streams include compacted backlog entries when
+ * compactors are registered, and skip entries written on the same connection.
  *
  * @stability unstable
  * @category layers
@@ -129,10 +132,15 @@ export const layerRpcHandlers: Layer.Layer<
     readonly entries: Arr.NonEmptyReadonlyArray<Entry>
   }) {
     const entries = Arr.sort(options.entries, Entry.Order)
-    const index = new HistoryIndex(yield* storage.entriesAfter(options.storeId, entries[0], entries))
+    const stored = yield* storage.entriesAfter(options.storeId, entries[0], entries)
+    const index = new HistoryIndex(stored.map((remoteEntry) => remoteEntry.entry))
     const persistedEntries = Arr.empty<Entry>()
+    const duplicateEntries = Arr.empty<Entry>()
     for (const entry of entries) {
-      if (index.has(entry)) continue
+      if (index.has(entry)) {
+        duplicateEntries.push(entry)
+        continue
+      }
       const conflicts = index.conflicts(entry)
       yield* handler({
         publicKey: options.publicKey,
@@ -142,11 +150,30 @@ export const layerRpcHandlers: Layer.Layer<
       })
       persistedEntries.push(entry)
     }
-    yield* storage.write(options.storeId, persistedEntries)
+    const committed = yield* storage.write(options.storeId, persistedEntries)
+
+    // Acknowledge in request order. Duplicates keep their stored sequence.
+    const sequences = new Map<string, number>()
+    for (const remoteEntry of committed) {
+      sequences.set(remoteEntry.entry.idString, remoteEntry.remoteSequence)
+    }
+    for (const entry of duplicateEntries) {
+      const idString = entry.idString
+      if (sequences.has(idString)) continue
+      const existing = stored.find((remoteEntry) => remoteEntry.entry.idString === idString)
+      if (existing !== undefined) sequences.set(idString, existing.remoteSequence)
+    }
+    const acks: Array<WriteAck> = []
+    for (const entry of options.entries) {
+      const sequence = sequences.get(entry.idString)
+      if (sequence !== undefined) acks.push({ entryId: entry.id, sequence })
+    }
+    return acks
   }, storage.withTransaction)
 
   return EventLogServer.layerRpcHandlers({
     remoteId,
+    firstSequence: storage.firstSequence,
     authorizeIdentity: (publicKey) =>
       auth.authorizeIdentity({ publicKey }).pipe(
         Effect.mapError((error) =>
@@ -160,7 +187,7 @@ export const layerRpcHandlers: Layer.Layer<
       ),
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
-    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys) {
+    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys, writes) {
       const request = yield* WriteEntriesUnencrypted.decode(data).pipe(
         Effect.mapError((_) =>
           new EventLogProtocolError({
@@ -179,7 +206,7 @@ export const layerRpcHandlers: Layer.Layer<
           message: "Identity is not authenticated"
         })
       }
-      if (!Arr.isReadonlyArrayNonEmpty(request.entries)) return
+      if (!Arr.isReadonlyArrayNonEmpty(request.entries)) return []
 
       const resolvedStoreId = yield* mapping.resolve({
         publicKey: request.publicKey,
@@ -210,11 +237,17 @@ export const layerRpcHandlers: Layer.Layer<
           })
         )
       )
-      yield* processEntries({
+      return yield* processEntries({
         publicKey: request.publicKey,
         storeId: resolvedStoreId,
         entries: request.entries
       }).pipe(
+        (write) =>
+          writes.track({
+            publicKey: request.publicKey,
+            storeId: request.storeId,
+            entryIds: request.entries.map((entry) => entry.id)
+          }, write),
         Effect.catchCause((_) =>
           Effect.fail(
             new EventLogProtocolError({
@@ -237,11 +270,19 @@ export const layerRpcHandlers: Layer.Layer<
         publicKey: request.publicKey,
         storeId
       })
-      return storage.changes({
-        storeId,
-        startSequence: request.startSequence,
-        compactors: registry.compactors
-      }).pipe(
+      return request.writes.filter(
+        {
+          publicKey: request.publicKey,
+          storeId: request.storeId,
+          entryIds: (remoteEntry) => [remoteEntry.entry.id],
+          sequence: (remoteEntry) => remoteEntry.remoteSequence
+        },
+        storage.changes({
+          storeId,
+          startSequence: request.startSequence,
+          compactors: registry.compactors
+        })
+      ).pipe(
         Stream.mapArrayEffect((entries) => Effect.map(ChangesRpc.encodeUnencrypted(entries), Arr.of))
       )
     }, Stream.unwrap)
@@ -377,7 +418,8 @@ export const layerStoreMappingStatic = (options: {
  *
  * It provides the server remote id, stores session authentication bindings,
  * allocates remote sequence numbers, persists entries, streams changes, and
- * exposes a transaction boundary.
+ * exposes a transaction boundary. `entriesAfter` returns stored entries with
+ * their sequences, so that duplicate writes can be acknowledged.
  *
  * @stability unstable
  * @category services
@@ -385,6 +427,11 @@ export const layerStoreMappingStatic = (options: {
  */
 export class Storage extends Context.Service<Storage, {
   readonly getId: Effect.Effect<RemoteId>
+  /**
+   * The lowest sequence `write` assigns, or 0 when omitted. A value above the
+   * real lowest sequence makes clients skip entries, so omit it when unsure.
+   */
+  readonly firstSequence?: number | undefined
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
@@ -400,7 +447,7 @@ export class Storage extends Context.Service<Storage, {
     storeId: StoreId,
     entry: Entry,
     batch?: Arr.NonEmptyReadonlyArray<Entry>
-  ) => Effect.Effect<Array<Entry>>
+  ) => Effect.Effect<Array<RemoteEntry>>
   readonly write: (
     storeId: StoreId,
     entries: ReadonlyArray<Entry>
@@ -680,6 +727,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
 
   return Storage.of({
     getId: Effect.succeed(remoteId),
+    firstSequence: 1,
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       Effect.sync(() => {
         const existing = sessionAuthBindings.get(publicKey)
@@ -693,7 +741,6 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         if (batch === undefined) {
           return store.journal
             .filter((remoteEntry) => Entry.Order(remoteEntry.entry, oldest) >= 0)
-            .map((remoteEntry) => remoteEntry.entry)
         }
         const found = new Set<RemoteEntry>()
         const scanned = new Set<ReadonlyArray<RemoteEntry>>()
@@ -709,7 +756,6 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         }
         return Array.from(found)
           .sort((a, b) => a.remoteSequence - b.remoteSequence)
-          .map((remoteEntry) => remoteEntry.entry)
       }),
     write,
     changes: Effect.fnUntraced(function*({ storeId, startSequence, compactors }) {

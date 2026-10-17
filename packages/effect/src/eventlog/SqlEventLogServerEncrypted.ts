@@ -26,6 +26,7 @@ import type * as Statement from "../sql/Statement.ts"
 import * as Stream from "../Stream.ts"
 import { type EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
+import type { WriteAck } from "./EventLogMessage.ts"
 import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
 
 /**
@@ -154,7 +155,8 @@ export const makeStorage = (options?: {
               Effect.andThen(sql`CREATE INDEX IF NOT EXISTS ${indexSql} ON ${tableSql} (last_sequence)`),
               Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
-                  entry_id BYTEA PRIMARY KEY
+                  entry_id BYTEA PRIMARY KEY,
+                  sequence INTEGER NOT NULL
                 )`)
             ),
           mysql: () =>
@@ -169,7 +171,8 @@ export const makeStorage = (options?: {
                 )`.pipe(
               Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
-                  entry_id BINARY(16) PRIMARY KEY
+                  entry_id BINARY(16) PRIMARY KEY,
+                  sequence INT NOT NULL
                 )`)
             ),
           mssql: () =>
@@ -186,7 +189,8 @@ export const makeStorage = (options?: {
               Effect.andThen(sql`
                 IF OBJECT_ID(${`${table}_ids`}, N'U') IS NULL
                 CREATE TABLE ${idsTableSql} (
-                  entry_id VARBINARY(16) PRIMARY KEY
+                  entry_id VARBINARY(16) PRIMARY KEY,
+                  sequence INT NOT NULL
                 )`)
             ),
           orElse: () =>
@@ -201,7 +205,8 @@ export const makeStorage = (options?: {
               Effect.andThen(sql`CREATE INDEX IF NOT EXISTS ${indexSql} ON ${tableSql} (last_sequence)`),
               Effect.andThen(sql`
                 CREATE TABLE IF NOT EXISTS ${idsTableSql} (
-                  entry_id BLOB PRIMARY KEY
+                  entry_id BLOB PRIMARY KEY,
+                  sequence INTEGER NOT NULL
                 )`)
             )
         })
@@ -217,10 +222,10 @@ export const makeStorage = (options?: {
       idleTimeToLive: "5 minutes"
     })
 
-    // Returns how many of the ids were not stored yet.
-    const insertNewIds = (idsTableSql: Statement.Identifier, ids: ReadonlyArray<Uint8Array>) => {
-      const rows = ids.map((entry_id) => ({ entry_id }))
-      return sql.onDialectOrElse({
+    // Returns how many of the ids were not stored yet. Stored ids keep their
+    // first sequence.
+    const insertNewIds = (idsTableSql: Statement.Identifier, rows: ReadonlyArray<IdRow>) =>
+      sql.onDialectOrElse({
         mysql: () =>
           sql`INSERT IGNORE INTO ${idsTableSql} ${sql.insert(rows)}`.raw.pipe(
             Effect.map((result) => (result as { affectedRows: number }).affectedRows)
@@ -228,10 +233,12 @@ export const makeStorage = (options?: {
         mssql: () =>
           sql`
             MERGE ${idsTableSql} WITH (HOLDLOCK) AS target
-            USING (VALUES ${sql.join(",", false)(ids.map((id) => sql`(${id})`))}) AS source (entry_id)
+            USING (VALUES ${
+            sql.join(",", false)(rows.map((row) => sql`(${row.entry_id}, ${row.sequence})`))
+          }) AS source (entry_id, sequence)
             ON target.entry_id = source.entry_id
             WHEN NOT MATCHED THEN
-              INSERT (entry_id) VALUES (source.entry_id)
+              INSERT (entry_id, sequence) VALUES (source.entry_id, source.sequence)
             OUTPUT inserted.entry_id;
           `.pipe(Effect.map((inserted) => inserted.length)),
         orElse: () =>
@@ -240,7 +247,6 @@ export const makeStorage = (options?: {
             ON CONFLICT DO NOTHING RETURNING entry_id
           `.pipe(Effect.map((inserted) => inserted.length))
       })
-    }
 
     const getSessionAuthBinding = (publicKey: string) =>
       sql`
@@ -258,6 +264,8 @@ export const makeStorage = (options?: {
 
     return EventLogServerEncrypted.Storage.of({
       getId: Effect.succeed(remoteId),
+      // Auto-increment sequences start at 1.
+      firstSequence: 1,
       getOrCreateSessionAuthBinding: Effect.fnUntraced(
         function*(publicKey, signingPublicKey) {
           const existing = yield* getSessionAuthBinding(publicKey)
@@ -283,23 +291,25 @@ export const makeStorage = (options?: {
 
           const writeBatches = Effect.gen(function*() {
             const stored: Array<EventLogEncryption.EncryptedRemoteBatch> = []
-            let nextSequence: number | undefined
+            // Read before inserting ids, which record the sequence they are stored at.
+            const [last] = yield* sql<{ last_sequence: number | string | null }>`
+              SELECT MAX(last_sequence) AS last_sequence FROM ${tableSql}
+            `
+            let nextSequence = Number(last?.last_sequence ?? 0) + 1
             for (const batch of batches) {
               // Inserting the ids decides whether the batch is new. SQL Server's
               // MERGE also requires unique source ids.
-              const ids = new Map<string, Uint8Array>()
-              for (const id of batch.entryIds) ids.set(id.join(","), id)
+              const ids = new Map<string, IdRow>()
+              for (let i = 0; i < batch.entryIds.length; i++) {
+                const entry_id = batch.entryIds[i]
+                const key = entry_id.join(",")
+                if (!ids.has(key)) ids.set(key, { entry_id, sequence: nextSequence + i })
+              }
               let inserted = 0
               for (const chunk of Arr.chunksOf(ids.values(), 200)) {
                 inserted += yield* insertNewIds(idsTableSql, chunk)
               }
               if (inserted === 0) continue
-              if (nextSequence === undefined) {
-                const [row] = yield* sql<{ last_sequence: number | string | null }>`
-                  SELECT MAX(last_sequence) AS last_sequence FROM ${tableSql}
-                `
-                nextSequence = Number(row?.last_sequence ?? 0) + 1
-              }
               const row: BatchRow = {
                 sequence: nextSequence,
                 last_sequence: nextSequence + batch.entryIds.length - 1,
@@ -319,6 +329,22 @@ export const makeStorage = (options?: {
             yield* PubSub.publishAll(pubsub, stored)
             return stored
           }))
+        },
+        Effect.orDie,
+        Effect.scoped,
+        withTracerDisabled
+      ),
+      entrySequences: Effect.fnUntraced(
+        function*(publicKey, storeId, entryIds) {
+          const { idsTableSql } = yield* RcMap.get(resources, makeEncryptedScopeKey(publicKey, storeId))
+          const acks: Array<WriteAck> = []
+          for (const chunk of Arr.chunksOf(entryIds, 200)) {
+            const rows = yield* sql`
+              SELECT entry_id, sequence FROM ${idsTableSql} WHERE ${sql.in("entry_id", chunk)}
+            `.pipe(Effect.flatMap(decodeIdRows))
+            for (const row of rows) acks.push({ entryId: row.entry_id as EntryId, sequence: row.sequence })
+          }
+          return acks
         },
         Effect.orDie,
         Effect.scoped,
@@ -344,6 +370,16 @@ export const makeStorage = (options?: {
       )
     })
   }).pipe(withTracerDisabled)
+
+type IdRow = {
+  readonly entry_id: Uint8Array
+  readonly sequence: number
+}
+
+const decodeIdRows = Schema.decodeUnknownEffect(Schema.Array(Schema.Struct({
+  entry_id: Schema.Uint8Array,
+  sequence: Schema.Number
+})))
 
 type BatchRow = {
   readonly sequence: number

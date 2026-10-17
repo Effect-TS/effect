@@ -6,6 +6,13 @@
  * hello/authenticate session handshake, remote calls for writes and changes,
  * and message formats for encrypted or plaintext journal entries.
  *
+ * **Compatibility**
+ *
+ * The protocol is not versioned, so clients and servers must be upgraded
+ * together. In particular, write calls return acknowledgements and change
+ * streams no longer repeat a connection's own writes; mixing clients and
+ * servers from before and after that change is not supported.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -20,7 +27,7 @@ import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
 import * as Schema from "../Schema.ts"
 import type * as SchemaAST from "../SchemaAST.ts"
 import * as Transferable from "../workers/Transferable.ts"
-import { Entry, EntryFields, entryFromFields, RemoteEntry, RemoteId } from "./EventJournal.ts"
+import { Entry, EntryFields, entryFromFields, EntryId, RemoteEntry, RemoteId } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
 import { EncryptedBatch, EncryptedRemoteBatch } from "./EventLogEncryption.ts"
 
@@ -111,8 +118,10 @@ export class EventLogAuthentication extends RpcMiddleware.Service<EventLogAuthen
  *
  * **Details**
  *
- * It contains the server remote id and a challenge that must be signed by the
- * client.
+ * It contains the server remote id, a challenge that must be signed by the
+ * client, and the lowest sequence the server assigns to entries. Clients use
+ * that sequence to record write acknowledgements before any entry has been
+ * downloaded. When it is absent, clients assume 0.
  *
  * @stability unstable
  * @category protocols
@@ -120,7 +129,8 @@ export class EventLogAuthentication extends RpcMiddleware.Service<EventLogAuthen
  */
 export class HelloResponse extends Schema.Class<HelloResponse>("effect/eventlog/EventLogRemote/HelloResponse")({
   remoteId: RemoteId,
-  challenge: Transferable.Uint8Array
+  challenge: Transferable.Uint8Array,
+  firstSequence: Schema.optional(Schema.Natural)
 }) {}
 
 /**
@@ -274,7 +284,39 @@ export class ChunkedMessage
 }
 
 /**
+ * Schema for the acknowledgement of one written entry, pairing the entry id
+ * with the sequence the remote store assigned to it.
+ *
+ * **Details**
+ *
+ * Entries that the store already held are acknowledged with their original
+ * sequence.
+ *
+ * @stability unstable
+ * @category protocols
+ * @since 4.0.6
+ */
+export const WriteAck = Schema.Struct({
+  entryId: EntryId,
+  sequence: Schema.Natural
+})
+
+/**
+ * Acknowledgement of one written entry.
+ *
+ * @stability unstable
+ * @category protocols
+ * @since 4.0.6
+ */
+export type WriteAck = typeof WriteAck.Type
+
+/**
  * RPC used to send one chunk of a large encoded write payload.
+ *
+ * **Details**
+ *
+ * The response to the part that completes the payload acknowledges every
+ * written entry, in request order. Earlier parts return no acknowledgements.
  *
  * @stability unstable
  * @category protocols
@@ -282,6 +324,7 @@ export class ChunkedMessage
  */
 export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
   payload: ChunkedMessage,
+  success: Schema.Array(WriteAck),
   error: EventLogProtocolError
 }).middleware(EventLogAuthentication) {}
 
@@ -348,6 +391,10 @@ const decodeWriteEntriesUnencryptedFields = Schema.decodeEffect(SchemaBinary.toC
 /**
  * RPC used to send an encoded write payload that fits in one message.
  *
+ * **Details**
+ *
+ * The response acknowledges every written entry, in request order.
+ *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
@@ -356,6 +403,7 @@ export class WriteSingleRpc extends Rpc.make("EventLog.WriteSingle", {
   payload: {
     data: Transferable.Uint8Array
   },
+  success: Schema.Array(WriteAck),
   error: EventLogProtocolError
 }).middleware(EventLogAuthentication) {}
 
@@ -366,7 +414,8 @@ export class WriteSingleRpc extends Rpc.make("EventLog.WriteSingle", {
  * **Details**
  *
  * Responses are encoded as either `SingleMessage` values or `ChunkedMessage`
- * parts.
+ * parts. Entries written on the same connection are not sent back, because
+ * their writer already received them as write acknowledgements.
  *
  * @stability unstable
  * @category protocols

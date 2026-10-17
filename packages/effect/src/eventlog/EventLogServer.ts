@@ -19,13 +19,14 @@ import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
+import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as Stream from "../Stream.ts"
-import type { RemoteId } from "./EventJournal.ts"
+import type { EntryId, RemoteId } from "./EventJournal.ts"
 import * as EventLog from "./EventLog.ts"
 import {
   ChunkedMessage,
@@ -34,7 +35,8 @@ import {
   EventLogRemoteRpcs,
   HelloResponse,
   SingleMessage,
-  type StoreId
+  type StoreId,
+  type WriteAck
 } from "./EventLogMessage.ts"
 import * as EventLogSessionAuth from "./EventLogSessionAuth.ts"
 
@@ -74,12 +76,18 @@ export const layerAuthMiddleware: Layer.Layer<
  * chunked writes, delegates write and change handling to the supplied callbacks,
  * and frames large change payloads into chunks.
  *
+ * Each connection gets a `ConnectionWrites`. `onWrite` should run storage writes
+ * through `ConnectionWrites.track`, and `changes` should pass its stream through
+ * `ConnectionWrites.filter`, so that a connection is not sent back the entries it
+ * wrote.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
+  readonly firstSequence?: number | undefined
   readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
@@ -87,12 +95,14 @@ export const layerRpcHandlers = (options: {
   ) => Effect.Effect<Uint8Array<ArrayBuffer>>
   readonly onWrite: (
     data: Uint8Array<ArrayBuffer>,
-    authenticatedPublicKeys: ReadonlySet<string>
-  ) => Effect.Effect<void, EventLogProtocolError>
+    authenticatedPublicKeys: ReadonlySet<string>,
+    writes: ConnectionWrites
+  ) => Effect.Effect<ReadonlyArray<WriteAck>, EventLogProtocolError>
   readonly changes: (options: {
     readonly publicKey: string
     readonly storeId: StoreId
     readonly startSequence: number
+    readonly writes: ConnectionWrites
   }) => Stream.Stream<Uint8Array<ArrayBuffer>, unknown>
 }): Layer.Layer<
   Rpc.ToHandler<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>> | EventLogAuthentication
@@ -130,7 +140,8 @@ export const layerRpcHandlers = (options: {
         const challenge = yield* Cache.get(clientChallenges, client.id)
         return new HelloResponse({
           remoteId: options.remoteId,
-          challenge
+          challenge,
+          firstSequence: options.firstSequence
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {
@@ -185,22 +196,26 @@ export const layerRpcHandlers = (options: {
           })
           .annotate(AuthenticatedIdentities, authenticatedIdentities)
           .annotate(ChunkedMessageState, new Map())
+        if (!Context.getOrUndefined(client.annotations, ConnectionWritesState)) {
+          void client.annotate(ConnectionWritesState, new ConnectionWrites())
+        }
       }),
-      "EventLog.WriteSingle": Effect.fnUntraced(function*(request, { client }) {
-        yield* options.onWrite(
+      "EventLog.WriteSingle": (request, { client }) =>
+        options.onWrite(
           request.data,
-          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set()
-        )
-      }),
-      "EventLog.WriteChunked": Effect.fnUntraced(function*(request, { client }) {
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set(),
+          getConnectionWrites(client.annotations)
+        ),
+      "EventLog.WriteChunked": (request, { client }) => {
         const state = Context.get(client.annotations, ChunkedMessageState)
         const data = ChunkedMessage.join(state, request)
-        if (!data) return
-        yield* options.onWrite(
+        if (!data) return Effect.succeed([])
+        return options.onWrite(
           data,
-          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set()
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set(),
+          getConnectionWrites(client.annotations)
         )
-      }),
+      },
       "EventLog.Changes": (request, { client }) => {
         const authenticatedIdentities = Context.getOrUndefined(client.annotations, AuthenticatedIdentities)
         if (!authenticatedIdentities?.has(request.publicKey)) {
@@ -216,7 +231,8 @@ export const layerRpcHandlers = (options: {
         return options.changes({
           publicKey: request.publicKey,
           storeId: request.storeId,
-          startSequence: request.startSequence
+          startSequence: request.startSequence,
+          writes: getConnectionWrites(client.annotations)
         }).pipe(
           Stream.mapArray(Arr.flatMap((data): NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
             if (data.byteLength <= ChunkedMessage.chunkSize) {
@@ -263,6 +279,125 @@ export class ChunkedMessageState extends Context.Reference<
 >("effect/eventlog/EventLogServer/ChunkedMessageState", {
   defaultValue: () => new Map()
 }) {}
+
+/**
+ * Tracks the entries written on one RPC connection, so that the change streams
+ * opened on the same connection can skip them.
+ *
+ * **Details**
+ *
+ * The writer already holds those entries and learns their sequences from the
+ * write acknowledgements, so sending them back would only repeat the upload.
+ * Entries are tracked only while the connection has a change stream open for
+ * the store they were written to.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export class ConnectionWrites {
+  private readonly streams = new Map<string, Set<ConnectionStream>>()
+
+  /**
+   * Runs a storage write for the given entries, so that change streams on this
+   * connection skip them.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  track<E, R>(
+    options: {
+      readonly publicKey: string
+      readonly storeId: StoreId
+      readonly entryIds: ReadonlyArray<EntryId>
+    },
+    write: Effect.Effect<ReadonlyArray<WriteAck>, E, R>
+  ): Effect.Effect<ReadonlyArray<WriteAck>, E, R> {
+    const open = this.streams.get(makeStreamKey(options.publicKey, options.storeId))
+    if (open === undefined || options.entryIds.length === 0) return write
+    const streams = Array.from(open)
+    const ids = options.entryIds.map(Uuid.stringify)
+    // Track before writing: storage can publish an entry before the write returns.
+    for (const stream of streams) {
+      for (const id of ids) stream.ids.add(id)
+    }
+    return Effect.onExit(write, (exit) =>
+      Effect.sync(() => {
+        for (const stream of streams) {
+          if (exit._tag === "Failure") {
+            for (const id of ids) stream.ids.delete(id)
+            continue
+          }
+          // Entries at or before the stream position, such as duplicates of
+          // stored entries, will not be published again.
+          for (const ack of exit.value) {
+            if (ack.sequence <= stream.position) stream.ids.delete(Uuid.stringify(ack.entryId))
+          }
+        }
+      }))
+  }
+
+  /**
+   * Removes items written on this connection from a change stream for the
+   * given store. An item can hold several entries, and `sequence` returns its
+   * highest one.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  filter<A, E, R>(
+    options: {
+      readonly publicKey: string
+      readonly storeId: StoreId
+      readonly entryIds: (item: A) => ReadonlyArray<EntryId>
+      readonly sequence: (item: A) => number
+    },
+    stream: Stream.Stream<A, E, R>
+  ): Stream.Stream<A, E, R> {
+    return Stream.suspend(() => {
+      const key = makeStreamKey(options.publicKey, options.storeId)
+      const state: ConnectionStream = { ids: new Set(), position: -1 }
+      let open = this.streams.get(key)
+      if (open === undefined) {
+        open = new Set()
+        this.streams.set(key, open)
+      }
+      open.add(state)
+      return stream.pipe(
+        Stream.filter((item) => {
+          const sequence = options.sequence(item)
+          if (sequence > state.position) state.position = sequence
+          if (state.ids.size === 0) return true
+          // An item is written by one request, so it is either all or none of ours.
+          let own = true
+          for (const id of options.entryIds(item)) {
+            if (!state.ids.delete(Uuid.stringify(id))) own = false
+          }
+          return !own
+        }),
+        Stream.ensuring(Effect.sync(() => {
+          open.delete(state)
+          if (open.size === 0) this.streams.delete(key)
+        }))
+      )
+    })
+  }
+}
+
+interface ConnectionStream {
+  readonly ids: Set<string>
+  // The highest sequence the stream has passed.
+  position: number
+}
+
+const makeStreamKey = (publicKey: string, storeId: StoreId): string => `${publicKey}/${storeId}`
+
+class ConnectionWritesState extends Context.Service<ConnectionWritesState, ConnectionWrites>()(
+  "effect/eventlog/EventLogServer/ConnectionWrites"
+) {}
+
+const getConnectionWrites = (annotations: Context.Context<never>): ConnectionWrites =>
+  Context.getOrUndefined(annotations, ConnectionWritesState) ?? new ConnectionWrites()
 
 /**
  * Annotation containing the public keys authenticated on an RPC connection.
