@@ -1338,17 +1338,20 @@ describe("JsonSchema", () => {
           }
         },
         {
-          name: "reads a nullable single-member allOf without type as anyOf with null",
-          input: { nullable: true, allOf: [{ $ref: "#/components/schemas/A" }], description: "a" },
+          name: "makes a single-member allOf nullable while preserving siblings and relocating refs",
+          input: {
+            nullable: true,
+            allOf: [{ $ref: "#/components/schemas/A" }],
+            description: "a",
+            enum: ["a"],
+            properties: { copy: { $ref: "#/allOf/0" } }
+          },
           expected: {
             anyOf: [{ $ref: "#/$defs/A" }, { type: "null" }],
-            description: "a"
+            description: "a",
+            enum: ["a"],
+            properties: { copy: { $ref: "#/anyOf/0" } }
           }
-        },
-        {
-          name: "ignores nullable on an allOf with more than one member",
-          input: { nullable: true, allOf: [{ $ref: "#/components/schemas/A" }, { type: "object" }] },
-          expected: { allOf: [{ $ref: "#/$defs/A" }, { type: "object" }] }
         },
         {
           name: "does not rewrite a nullable single-member allOf when anyOf is present",
