@@ -92,7 +92,6 @@ export class EventLogEncryption extends Context.Service<EventLogEncryption, {
     identity: Identity["Service"],
     entries: ReadonlyArray<EncryptedRemoteEntry>
   ) => Effect.Effect<Array<RemoteEntry>>
-  readonly sha256String: (data: Uint8Array) => Effect.Effect<string>
   readonly sha256: (data: Uint8Array) => Effect.Effect<Uint8Array>
   readonly generateIdentity: Effect.Effect<Identity["Service"]>
 }>()("effect/eventlog/EventLogEncryption") {}
@@ -143,17 +142,6 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
       sha256: (data) =>
         Effect.promise(() => crypto.subtle.digest("SHA-256", toArrayBuffer(data))).pipe(
           Effect.map((hash) => new Uint8Array(hash))
-        ),
-      sha256String: (data) =>
-        Effect.map(
-          Effect.promise(() => crypto.subtle.digest("SHA-256", toArrayBuffer(data))),
-          (hash) => {
-            const hashArray = Array.from(new Uint8Array(hash))
-            const hashHex = hashArray
-              .map((bytes) => bytes.toString(16).padStart(2, "0"))
-              .join("")
-            return hashHex
-          }
         ),
       generateIdentity: Effect.sync(() => ({
         publicKey: crypto.randomUUID(),
