@@ -216,18 +216,15 @@ export const make = Effect.gen(function*() {
         let paramLimit = result === undefined ? getMaxParamLengthExceeded(router) : undefined
         if (result === undefined && request.method === "HEAD") {
           result = router.find("GET", request.url)
-          if (result === undefined) {
-            paramLimit = paramLimit ?? getMaxParamLengthExceeded(router)
-          }
+          paramLimit ??= getMaxParamLengthExceeded(router)
         }
         if (result === undefined) {
-          const description = paramLimit === undefined
-            ? undefined
-            : `path parameter is longer than maxParamLength (${paramLimit})`
           return Effect.fail(
             new HttpServerError.HttpServerError({
               reason: new HttpServerError.RouteNotFound(
-                description === undefined ? { request } : { request, description }
+                paramLimit === undefined
+                  ? { request }
+                  : { request, description: `path parameter is longer than maxParamLength (${paramLimit})` }
               )
             })
           )
@@ -318,9 +315,7 @@ function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
  * **Details**
  *
  * The value is passed to the route matcher when an `HttpRouter` is created and
- * defaults to an empty configuration. `maxParamLength` still defaults to 100:
- * a longer path parameter does not match, and the miss is a `RouteNotFound`
- * that names the limit.
+ * defaults to an empty configuration.
  *
  * @stability unstable
  * @category services
