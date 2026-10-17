@@ -1,6 +1,6 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Option, Redacted } from "effect"
+import { Clock, Deferred, Effect, Exit, Fiber, Layer, Option, Redacted } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
@@ -374,6 +374,54 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
       assert.deepStrictEqual({ count, entries: (yield* journal.entries).map((entry) => entry.idString) }, {
         count: 2,
         entries: [imported.idString, written.idString]
+      })
+    }))
+
+  it.effect("a write without an outer transaction rolls back its callback when it fails or is interrupted", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const journal = yield* SqlEventJournal.make({
+        entryTable: "standalone_entries",
+        remotesTable: "standalone_remotes"
+      })
+      yield* sql`CREATE TABLE standalone_projection (id TEXT PRIMARY KEY)`
+      const project = (id: string) => Effect.orDie(sql`INSERT INTO standalone_projection (id) VALUES (${id})`)
+
+      let callbackError: unknown
+      const failed = yield* Effect.flip(journal.write({
+        ...localEntry("failed"),
+        effect: () =>
+          project("failed").pipe(
+            Effect.andThen(sql`SELECT * FROM standalone_missing`),
+            Effect.tapError((error) => Effect.sync(() => callbackError = error))
+          )
+      }))
+
+      const entered = yield* Deferred.make<void>()
+      const interrupted = yield* journal.write({
+        ...localEntry("interrupted"),
+        effect: () =>
+          project("interrupted").pipe(
+            Effect.andThen(Deferred.succeed(entered, undefined)),
+            Effect.andThen(Effect.never)
+          )
+      }).pipe(Effect.forkChild)
+      yield* Deferred.await(entered)
+      yield* Fiber.interrupt(interrupted)
+      // The interrupted write must have released the writer lock.
+      yield* journal.write({ ...localEntry("written"), effect: () => project("written") }).pipe(
+        Effect.timeout("10 seconds"),
+        Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
+      )
+
+      const projection = yield* sql<{ id: string }>`SELECT id FROM standalone_projection`
+      assert.strictEqual(failed, callbackError)
+      assert.deepStrictEqual({
+        projection: projection.map((row) => row.id),
+        entries: (yield* journal.entries).map((entry) => entry.primaryKey)
+      }, {
+        projection: ["written"],
+        entries: ["written"]
       })
     }))
 })
