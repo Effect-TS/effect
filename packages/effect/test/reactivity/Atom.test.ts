@@ -2592,14 +2592,14 @@ describe("Atom", { concurrent: false }, () => {
 
     assert.deepStrictEqual(r.get(atom), initial)
     assert.deepStrictEqual(r.get(source), initial)
-    assert.strictEqual(runs, 1)
+    assert.strictEqual(runs, 0)
 
     r.refresh(atom)
 
     const result = r.get(atom)
     assert(AsyncResult.isSuccess(result))
-    assert.strictEqual(result.value, 2)
-    assert.strictEqual(runs, 2)
+    assert.strictEqual(result.value, 1)
+    assert.strictEqual(runs, 1)
   })
 
   // it("dehydrate", async () => {
@@ -3590,7 +3590,7 @@ describe("Atom", { concurrent: false }, () => {
     })
   })
 
-  describe("initialValues for an Effect atom", () => {
+  describe("initialValues", () => {
     it("keeps the value when the Effect completes synchronously", async () => {
       let runs = 0
       const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
@@ -3599,7 +3599,7 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(atom)
       await vitest.advanceTimersByTimeAsync(10)
 
-      assert.strictEqual(runs, 1)
+      assert.strictEqual(runs, 0)
       assert.deepStrictEqual(r.get(atom), initial)
     })
 
@@ -3611,8 +3611,146 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(atom)
       await vitest.advanceTimersByTimeAsync(10)
 
-      assert.strictEqual(runs, 1)
+      assert.strictEqual(runs, 0)
       assert.deepStrictEqual(r.get(atom), initial)
+    })
+
+    it("keeps the value when a Stream emits", async () => {
+      let runs = 0
+      const atom = Atom.make(Stream.fromEffect(Effect.sync(() => ++runs))).pipe(Atom.keepAlive)
+      const initial = AsyncResult.success(10)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, initial)] })
+      r.mount(atom)
+      await vitest.advanceTimersByTimeAsync(10)
+
+      assert.strictEqual(runs, 0)
+      assert.deepStrictEqual(r.get(atom), initial)
+    })
+
+    it("runs the Effect when refreshed before the first read", () => {
+      let runs = 0
+      const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(10))] })
+      r.refresh(atom)
+      r.mount(atom)
+
+      assert.strictEqual(runs, 1)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+    })
+
+    it("runs the Effect for an Initial value", async () => {
+      let runs = 0
+      const atom = Atom.make(Effect.sleep(10).pipe(Effect.map(() => ++runs))).pipe(Atom.keepAlive)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.initial(true))] })
+      r.mount(atom)
+      await vitest.advanceTimersByTimeAsync(10)
+
+      assert.strictEqual(runs, 1)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+    })
+
+    it("drops the value when a dependency changes during the first read", () => {
+      const dependency = Atom.make(0).pipe(Atom.keepAlive)
+      const atom = Atom.make((get) => {
+        const value = get(dependency)
+        if (value === 0) get.set(dependency, 1)
+        return value * 2
+      }).pipe(Atom.keepAlive)
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, 100)] })
+      r.mount(atom)
+
+      assert.strictEqual(r.get(atom), 2)
+    })
+
+    it("keeps a value set on the node before the first read", () => {
+      let runs = 0
+      const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+      const initial = AsyncResult.success(10)
+      const r = AtomRegistry.make()
+      r.ensureNode(atom).setInitialValue(initial)
+      r.mount(atom)
+
+      assert.strictEqual(runs, 0)
+      assert.deepStrictEqual(r.get(atom), initial)
+
+      r.refresh(atom)
+
+      assert.strictEqual(runs, 1)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+    })
+
+    // A kept value has unknown dependencies, so the next write anywhere
+    // runs the Effect once
+    describe("the first write", () => {
+      it("runs the Effect once", () => {
+        let runs = 0
+        const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+        const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(10))] })
+        r.mount(atom)
+        assert.strictEqual(runs, 0)
+
+        r.set(unrelated, 1)
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+
+        r.set(unrelated, 2)
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      })
+
+      it("does not count before the first read", () => {
+        let runs = 0
+        const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+        const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(10))] })
+        r.set(unrelated, 1)
+        r.mount(atom)
+        assert.strictEqual(runs, 0)
+
+        r.set(unrelated, 2)
+        assert.strictEqual(runs, 1)
+      })
+
+      it("does not run an Effect without an initial value", () => {
+        let runs = 0
+        const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+        const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        assert.strictEqual(runs, 1)
+
+        r.set(unrelated, 1)
+        assert.strictEqual(runs, 1)
+      })
+
+      it("does not run an Effect that ran before its value was set", () => {
+        let runs = 0
+        const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+        const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        r.ensureNode(atom).setInitialValue(AsyncResult.success(10))
+        assert.strictEqual(runs, 1)
+
+        r.set(unrelated, 1)
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      })
+
+      it("does not run an Effect for an Initial value again", async () => {
+        let runs = 0
+        const atom = Atom.make(Effect.sleep(10).pipe(Effect.map(() => ++runs))).pipe(Atom.keepAlive)
+        const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.initial(true))] })
+        r.mount(atom)
+        await vitest.advanceTimersByTimeAsync(10)
+        assert.strictEqual(runs, 1)
+
+        r.set(unrelated, 1)
+        await vitest.advanceTimersByTimeAsync(10)
+        assert.strictEqual(runs, 1)
+      })
     })
   })
 })

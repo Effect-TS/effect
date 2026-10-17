@@ -516,7 +516,7 @@ class RegistryImpl implements AtomRegistry {
         if (target === atom) {
           node.setValue(decoded)
         } else {
-          targetNode.setHydratedValue(decoded)
+          targetNode.setInitialValue(decoded)
         }
       }
     }
@@ -849,11 +849,6 @@ class NodeImpl<A> {
     return Option.some(this._value)
   }
 
-  setHydratedValue(value: A): void {
-    this.hydrating = (this.state & NodeFlags.initialized) === 0
-    this.setInitialValue(value)
-  }
-
   endHydration(): void {
     this.hydrating = false
     this.pendingRuntime = undefined
@@ -861,6 +856,8 @@ class NodeImpl<A> {
 
   setInitialValue(value: A): void {
     if ((this.state & NodeFlags.initialized) === 0) {
+      // an Initial is not a value to keep, so its effect or stream still runs
+      this.hydrating = !(Result.isAsyncResult(value) && Result.isInitial(value))
       this.preserveInitialValueOnBuild = true
       this.state = NodeState.stale
       this._value = value
@@ -914,6 +911,7 @@ class NodeImpl<A> {
 
   invalidate(parent?: NodeImpl<any>): void {
     if (parent === undefined || parent.atom !== this.pendingRuntime) {
+      this.preserveInitialValueOnBuild = false
       this.endHydration()
     }
     this.registry.hydratedWithUnknownDependencies.delete(this)
