@@ -333,6 +333,11 @@ export const make = (options?: {
       const max = yield* sql`SELECT MAX(sequence) AS max FROM ${remotesTableSql} WHERE remote_id = ${remoteId}`.pipe(
         Effect.flatMap(decodeMaxSequenceRows)
       )
+      // An acknowledgement may have committed with its cursor during the fallback read.
+      const current = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
+        Effect.flatMap(decodeCursorRows)
+      )
+      if (current.length > 0) return { next: current[0].next_sequence, stored: true }
       const value = max[0]?.max
       return { next: value === null || value === undefined ? 0 : value + 1, stored: false }
     })
