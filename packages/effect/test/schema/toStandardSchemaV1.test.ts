@@ -1,5 +1,5 @@
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, type Option, Predicate, Schema, SchemaGetter, SchemaIssue } from "effect"
+import { Context, Effect, type Option, Predicate, Result, Schema, SchemaGetter, SchemaIssue } from "effect"
 import type { StandardSchemaV1 } from "effect/StandardSchema"
 import { describe, it } from "vitest"
 
@@ -283,6 +283,37 @@ describe("toStandardSchemaV1", () => {
   })
 
   describe("should respect the `message` annotation", () => {
+    it("preserves annotated filter paths in both formatters", () => {
+      const schema = Schema.Record(Schema.String, Schema.Number).check(
+        Schema.isPropertyNames(Schema.String.check(Schema.isMaxLength(2)), { message: "Custom message" })
+      )
+      expectSyncFailure(Schema.toStandardSchemaV1(schema), { abc: 1 }, [
+        { message: "Custom message", path: ["abc"] }
+      ])
+      const result = Schema.decodeUnknownResult(schema)({ abc: 1 })
+      assertTrue(Result.isFailure(result))
+      strictEqual(
+        SchemaIssue.makeFormatterDefault()(result.failure.issue),
+        `Custom message
+  at ["abc"]`
+      )
+    })
+
+    it("does not apply a struct message to multiple filter failures", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+        .annotate({ message: "Struct message" })
+        .check(Schema.makeFilter(() => [
+          { path: ["a"], issue: "Invalid a" },
+          { path: ["b"], issue: "Invalid b" }
+        ]))
+      const standardSchema = Schema.toStandardSchemaV1(schema)
+      expectSyncFailure(standardSchema, null, [{ message: "Struct message", path: [] }])
+      expectSyncFailure(standardSchema, { a: "a", b: "b" }, [
+        { message: "Invalid a", path: ["a"] },
+        { message: "Invalid b", path: ["b"] }
+      ])
+    })
+
     describe("String", () => {
       it("String & annotation", () => {
         const schema = Schema.String.annotate({ message: "Custom message" })

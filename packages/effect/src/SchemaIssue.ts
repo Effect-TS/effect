@@ -1333,16 +1333,14 @@ function toDefaultIssues(
   issue: Issue,
   path: ReadonlyArray<PropertyKey>,
   leafHook: LeafHook,
-  checkHook: CheckHook
+  checkHook: CheckHook,
+  messageOverride?: string
 ): Array<DefaultIssue> {
   switch (issue._tag) {
     case "Filter": {
-      const message = checkHook(issue)
-      if (message !== undefined) {
-        return [{ path, message }]
-      }
-      if (issue.issue._tag !== "InvalidValue") {
-        return toDefaultIssues(issue.issue, path, leafHook, checkHook)
+      const message = messageOverride ?? checkHook(issue)
+      if (message !== undefined || issue.issue._tag !== "InvalidValue") {
+        return toDefaultIssues(issue.issue, path, leafHook, checkHook, message)
       }
       const expected = findExpected(issue.issue)
       return [{
@@ -1353,22 +1351,23 @@ function toDefaultIssues(
       }]
     }
     case "Encoding":
-      return toDefaultIssues(issue.issue, path, leafHook, checkHook)
+      return toDefaultIssues(issue.issue, path, leafHook, checkHook, messageOverride)
     case "Pointer":
-      return toDefaultIssues(issue.issue, [...path, ...issue.path], leafHook, checkHook)
+      return toDefaultIssues(issue.issue, [...path, ...issue.path], leafHook, checkHook, messageOverride)
     case "Composite":
-      return issue.issues.flatMap((issue) => toDefaultIssues(issue, path, leafHook, checkHook))
+      return issue.issues.flatMap((issue) => toDefaultIssues(issue, path, leafHook, checkHook, messageOverride))
     case "AnyOf": {
       if (issue.issues.length === 0) {
         return [{
           path,
-          message: findMessage(issue) ?? getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
+          message: messageOverride ?? findMessage(issue) ??
+            getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
         }]
       }
-      return issue.issues.flatMap((issue) => toDefaultIssues(issue, path, leafHook, checkHook))
+      return issue.issues.flatMap((issue) => toDefaultIssues(issue, path, leafHook, checkHook, messageOverride))
     }
     default:
-      return [{ path, message: leafHook(issue) }]
+      return [{ path, message: messageOverride ?? leafHook(issue) }]
   }
 }
 
@@ -1431,45 +1430,43 @@ export function makeFormatterDefault(): Formatter<string> {
 /** @internal */
 export const defaultFormatter = makeFormatterDefault()
 
-function formatIssue(issue: Issue, path: string): string {
+function formatIssue(issue: Issue, path: string, messageOverride?: string): string {
   let message: string
   switch (issue._tag) {
     case "Filter": {
-      const annotated = defaultCheckHook(issue)
-      if (annotated !== undefined) {
-        message = annotated
-      } else {
-        if (issue.issue._tag !== "InvalidValue") {
-          return formatIssue(issue.issue, path)
-        }
-        const expected = findExpected(issue.issue)
-        message = expected === undefined
-          ? getExpectedMessage(formatCheck(issue.filter), issue)
-          : getExpectedMessage(expected, issue.issue)
+      const annotated = messageOverride ?? defaultCheckHook(issue)
+      if (annotated !== undefined || issue.issue._tag !== "InvalidValue") {
+        return formatIssue(issue.issue, path, annotated)
       }
+      const expected = findExpected(issue.issue)
+      message = expected === undefined
+        ? getExpectedMessage(formatCheck(issue.filter), issue)
+        : getExpectedMessage(expected, issue.issue)
       break
     }
     case "Encoding":
-      return formatIssue(issue.issue, path)
+      return formatIssue(issue.issue, path, messageOverride)
     case "Pointer":
-      return formatIssue(issue.issue, path + formatPath(issue.path))
+      return formatIssue(issue.issue, path + formatPath(issue.path), messageOverride)
     case "Composite":
     case "AnyOf": {
       if (issue._tag === "Composite" || issue.issues.length > 0) {
-        return issue.issues.map((issue) => formatIssue(issue, path)).join("\n")
+        return issue.issues.map((issue) => formatIssue(issue, path, messageOverride)).join("\n")
       }
-      message = findMessage(issue) ?? getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
+      message = messageOverride ?? findMessage(issue) ??
+        getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
       break
     }
     default:
-      message = defaultLeafHook(issue)
+      message = messageOverride ?? defaultLeafHook(issue)
       break
   }
   return path ? `${message}\n  at ${path}` : message
 }
 
 function findMessage(issue: Issue): string | undefined {
-  if (issue._tag === "Pointer") return
+  // A Composite's ast describes the whole schema, not the failures it groups.
+  if (issue._tag === "Pointer" || issue._tag === "Composite") return
   if (issue._tag === "Encoding") return findMessage(issue.issue)
   const annotations = issue._tag === "Filter"
     ? issue.filter.annotations
