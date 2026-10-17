@@ -165,10 +165,19 @@ export const make = (options?: {
       if (compacted.length > 0) {
         const index = new ConflictIndex(compacted)
         const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
+        // PostgreSQL indexes hashes of the unbounded columns; the exact
+        // predicates below still decide which rows match.
+        const hashed = sql.onDialectOrElse({
+          pg: () =>
+            sql`md5(event) IN (${sql.csv(index.events.map((event) => sql`md5(${event})`))}) AND
+                md5(primary_key) IN (${sql.csv(primaryKeys.map((primaryKey) => sql`md5(${primaryKey})`))}) AND`,
+          orElse: () => sql``
+        })
         const stored = yield* sql`
             SELECT *
             FROM ${entryTableSql}
-            WHERE ${sql.in("event", index.events)} AND
+            WHERE ${hashed}
+                  ${sql.in("event", index.events)} AND
                   ${sql.in("primary_key", primaryKeys)} AND
                   timestamp > ${index.oldestMillis}
             ORDER BY timestamp ASC
@@ -495,6 +504,13 @@ const migrate = (sql: SqlClient.SqlClient, tables: {
         Effect.andThen(
           sql`CREATE INDEX ${eventIndex} ON ${entryTableSql} (event(191), primary_key(191), timestamp)`,
           sql`CREATE INDEX ${timestampIndex} ON ${entryTableSql} (timestamp)`
+        ),
+      // B-tree entries are limited to about 2.7 KB, so index hashes of the
+      // unbounded columns.
+      pg: () =>
+        Effect.andThen(
+          sql`CREATE INDEX IF NOT EXISTS ${eventIndex} ON ${entryTableSql} (md5(event), md5(primary_key), timestamp)`,
+          sql`CREATE INDEX IF NOT EXISTS ${timestampIndex} ON ${entryTableSql} (timestamp)`
         ),
       // NVARCHAR(MAX) columns cannot be index keys.
       mssql: () => sql`CREATE INDEX ${timestampIndex} ON ${entryTableSql} (timestamp)`,
