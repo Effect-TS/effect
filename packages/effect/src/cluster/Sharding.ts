@@ -472,6 +472,33 @@ const make = Effect.gen(function*() {
     // normal path while it is pending, otherwise the bulk release wipes a lock
     // the runner already considers acquired.
     const forcedShardReleasePending = () => forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) > 0
+    // Names the shards and the entity types and singletons still stopping
+    const warnForcedReleasePending = (shardIds: ReadonlyArray<ShardId>) =>
+      Effect.suspend(() => {
+        const includesShard = (shardId: ShardId) => shardIds.some((pending) => Equal.equals(pending, shardId))
+        const entityTypes = new Set<string>()
+        for (const { entityType, shardId } of pendingEntityInterrupts.values()) {
+          if (includesShard(shardId)) entityTypes.add(entityType)
+        }
+        const singletonNames = new Set<string>()
+        for (const shardId of shardIds) {
+          for (const [address] of singletons.get(shardId) ?? []) {
+            if (FiberMap.hasUnsafe(singletonFibers, address)) singletonNames.add(address.name)
+          }
+        }
+        MutableHashMap.forEach(stoppingSingletons, (_, address) => {
+          if (includesShard(address.shardId)) singletonNames.add(address.name)
+        })
+        return Effect.logWarning(
+          "Forced shard release is still pending; reacquisition is blocked until release completes"
+        ).pipe(Effect.annotateLogs({
+          module: "effect/cluster/Sharding",
+          runner: selfAddress,
+          shardIds: shardIds.map(String),
+          entityTypes: [...entityTypes],
+          singletonNames: [...singletonNames]
+        }))
+      })
     const releaseForcedShards = Effect.suspend(() => {
       if (forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) === 0) {
         return Effect.void
@@ -481,37 +508,10 @@ const make = Effect.gen(function*() {
       return Effect.gen(function*() {
         // Observe independently: a timeout around release cannot interrupt
         // uninterruptible work, and must not allow locks to be reacquired.
-        const monitor = yield* Effect.forkIn(
-          Effect.sleep(config.shardLockExpiration).pipe(
-            Effect.andThen(Effect.suspend(() => {
-              const includesShard = (shardId: ShardId) => shardIds.some((pending) => Equal.equals(pending, shardId))
-              const entityTypes = new Set<string>()
-              for (const { entityType, shardId } of pendingEntityInterrupts.values()) {
-                if (includesShard(shardId)) entityTypes.add(entityType)
-              }
-              const singletonNames = new Set<string>()
-              for (const [shardId, map] of singletons) {
-                if (!includesShard(shardId)) continue
-                for (const [address] of map) {
-                  if (FiberMap.hasUnsafe(singletonFibers, address)) singletonNames.add(address.name)
-                }
-              }
-              MutableHashMap.forEach(stoppingSingletons, (_, address) => {
-                if (includesShard(address.shardId)) singletonNames.add(address.name)
-              })
-              return Effect.logWarning(
-                "Forced shard release is still pending; reacquisition is blocked until release completes"
-              ).pipe(Effect.annotateLogs({
-                module: "effect/cluster/Sharding",
-                runner: selfAddress,
-                shardIds: shardIds.map((shardId) => `${shardId.group}:${shardId.id}`),
-                entityTypes: [...entityTypes],
-                singletonNames: [...singletonNames]
-              }))
-            })),
-            Effect.interruptible
-          ),
-          releaseScope
+        const monitor = yield* Effect.sleep(config.shardLockExpiration).pipe(
+          Effect.andThen(warnForcedReleasePending(shardIds)),
+          Effect.interruptible,
+          Effect.forkIn(releaseScope)
         )
         yield* runShardRelease(shardIds, true, runnerStorage.releaseAll(selfAddress)).pipe(
           retryShardRelease({ fiber: "releaseForcedShards" }),
