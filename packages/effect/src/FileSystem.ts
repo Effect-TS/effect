@@ -131,7 +131,7 @@ export interface FileSystem {
     gid: number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Find the paths under `root` that match a glob pattern.
+   * Finds paths under `root` that match a glob pattern.
    *
    * **Details**
    *
@@ -145,19 +145,15 @@ export interface FileSystem {
    * directories are not read. Entries whose type cannot be determined, such
    * as broken links, are treated as files.
    *
-   * Fails when the root, or a directory named by the pattern's leading literal
-   * segments, cannot be read, for example because read permission is missing.
-   * If the root or such a directory does not exist, the result is empty.
-   * Directories reached through wildcards that are missing or unreadable are
+   * Read failures at the root or a leading literal directory propagate. Missing
+   * paths return an empty result; unreadable wildcard-reached directories are
    * skipped.
    *
    * **Gotchas**
    *
-   * Names are compared exactly as directory listings return them, even on
-   * case-insensitive file systems, except for the pattern's leading literal
-   * segments. Those are checked with `stat` instead of listing their parent,
-   * so on a case-insensitive file system they match regardless of case and
-   * results keep the pattern's spelling.
+   * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
+   * so their case sensitivity follows the file system and results retain the
+   * pattern's spelling.
    */
   readonly glob: (
     pattern: string,
@@ -280,17 +276,14 @@ export interface FileSystem {
    *
    * **Details**
    *
-   * Names are bare entry names, excluding `.` and `..`, in no particular
-   * order, and must match `readDirectory(path)`. `type` describes the entry
-   * itself, as `lstat` would: a symbolic link is `"SymbolicLink"`, never its
-   * target's type. `"Unknown"` is always allowed and means the type must be
-   * found with `stat`.
+   * Returns the same bare names as `readDirectory(path)`, excluding `.` and
+   * `..`, in no particular order. Types describe entries, not symlink targets.
+   * `"Unknown"` is allowed when the listing cannot determine the type.
    *
    * **Gotchas**
    *
-   * A file system that wraps another one and changes `readDirectory`, for
-   * example by prefixing paths, must change `readDirectoryEntries` the same
-   * way, or `glob` lists the wrong directory.
+   * Wrappers that change `readDirectory`, such as by prefixing paths, must
+   * apply the same change here for `glob` to list the correct directory.
    */
   readonly readDirectoryEntries: (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>
   /**
@@ -525,13 +518,8 @@ export type OpenFlag =
 export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Service("effect/FileSystem")
 
 /**
- * A directory entry together with its own type.
- *
- * **Details**
- *
- * The type describes the entry itself, so a symbolic link is
- * `"SymbolicLink"` regardless of what it points to. `"Unknown"` means the
- * listing could not tell.
+ * A directory entry with its type, independent of any symlink target.
+ * `"Unknown"` means the listing could not determine the type.
  *
  * @see {@link FileSystem} `readDirectoryEntries`, which returns these entries
  *
@@ -559,9 +547,8 @@ export interface DirectoryEntry {
  * default implementations for `exists`, `readFileString`, `stream`, `sink`, and
  * `writeFileString` methods based on the provided core methods. When
  * `readDirectoryEntries` is omitted, it lists with `readDirectory` and reports
- * every entry as `"Unknown"`. When `glob` is omitted, it walks the tree with
- * `readDirectoryEntries`, using `stat` and `readLink` only for entries whose
- * type is `"Unknown"`.
+ * every entry as `"Unknown"`. When `glob` is omitted, it derives a tree walk
+ * from `readDirectoryEntries`, `stat`, and `readLink`.
  *
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
