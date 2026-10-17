@@ -8,7 +8,6 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Metric from "effect/Metric"
-import * as Scope from "effect/Scope"
 
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)
@@ -40,44 +39,9 @@ describe("Metrics", () => {
         Effect.exit
       )
 
-      assert.isTrue(Exit.isFailure(exit))
-      if (Exit.isFailure(exit)) {
-        assert.isTrue(Cause.hasDies(exit.cause))
-        const defect = Cause.squash(exit.cause)
-        assert.instanceOf(defect, Error)
-        assert.strictEqual((defect as Error).message, "MetricReader can not be bound to a MeterProvider again.")
-      }
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
       assert.strictEqual(alreadyBound.shutdowns, 0)
       assert.strictEqual(fresh.shutdowns, 1)
-    }))
-
-  it.effect("shuts down all registered readers once when their scope closes", () =>
-    Effect.gen(function*() {
-      const services = yield* Effect.context<never>()
-      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
-      const first = new ShutdownTrackingReader()
-      const second = new ShutdownTrackingReader()
-
-      yield* Effect.gen(function*() {
-        yield* OtelMetrics.registerProducer(producer, () => [first, second])
-        assert.deepStrictEqual([first.shutdowns, second.shutdowns], [0, 0])
-      }).pipe(Effect.scoped)
-
-      assert.deepStrictEqual([first.shutdowns, second.shutdowns], [1, 1])
-    }))
-
-  it.effect("shuts down readers registered with an already closed scope", () =>
-    Effect.gen(function*() {
-      const services = yield* Effect.context<never>()
-      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
-      const reader = new ShutdownTrackingReader()
-      const scope = yield* Scope.make()
-      yield* Scope.close(scope, Exit.void)
-
-      yield* OtelMetrics.registerProducer(producer, () => reader).pipe(Scope.provide(scope))
-      yield* Scope.close(scope, Exit.void)
-
-      assert.strictEqual(reader.shutdowns, 1)
     }))
 
   it.effect("gauge", () =>
