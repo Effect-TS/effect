@@ -172,6 +172,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   }) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
   readonly decodeChanges: (
     identity: Identity["Service"],
+    storeId: StoreId,
     data: Uint8Array<ArrayBuffer>
   ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError>
 }): Effect.fn.Return<EventLogRemote["Service"], EventLogRemoteError, Scope.Scope | EventLogRemoteClient | Registry> {
@@ -263,17 +264,25 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
           startSequence: options.startSequence
         }, { asQueue: true })
 
+        // A batch can start before `startSequence`; its earlier entries are dropped.
+        const offer = Effect.fnUntraced(function*(data: Uint8Array<ArrayBuffer>) {
+          const entries = yield* decodeChanges(options.identity, options.storeId, data)
+          const first = entries.findIndex((entry) => entry.remoteSequence >= options.startSequence)
+          if (first === -1) return
+          yield* Queue.offerAll(outgoing, first === 0 ? entries : entries.slice(first))
+        })
+
         while (true) {
           const parts = yield* Queue.takeAll(incoming)
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i]
             if (part._tag === "Single") {
-              yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, part.data))
+              yield* offer(part.data)
               continue
             }
             const data = ChunkedMessage.join(chunkedState, part)
             if (!data) continue
-            yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, data))
+            yield* offer(data)
           }
         }
       }).pipe(
@@ -326,22 +335,18 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
 
   return yield* makeWith({
     encodeWrite: (options) =>
-      encryption.encrypt(options.identity, options.entries).pipe(
-        Effect.flatMap((encryptedEntries) =>
+      encryption.encrypt(options.identity, options.storeId, options.entries).pipe(
+        Effect.flatMap((batches) =>
           new WriteEntries({
             publicKey: options.identity.publicKey,
             storeId: options.storeId,
-            encryptedEntries: encryptedEntries.map((entry, i) => ({
-              entryId: options.entries[i].id,
-              iv: entry.iv,
-              encryptedEntry: entry.encryptedEntry
-            }))
+            batches
           }).encoded
         )
       ),
-    decodeChanges: (identity, data) =>
+    decodeChanges: (identity, storeId, data) =>
       ChangesRpc.decodeEncrypted(data).pipe(
-        Effect.flatMap((entries) => encryption.decrypt(identity, entries))
+        Effect.flatMap((batches) => encryption.decrypt(identity, storeId, batches))
       )
   })
 })
@@ -364,7 +369,7 @@ export const makeUnencrypted: Effect.Effect<
       storeId: options.storeId,
       entries: options.entries
     }).encoded,
-  decodeChanges: (_identity, data) => ChangesRpc.decodeUnencrypted(data)
+  decodeChanges: (_identity, _storeId, data) => ChangesRpc.decodeUnencrypted(data)
 })
 
 /**
