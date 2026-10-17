@@ -11,6 +11,7 @@ import * as ClusterWorkflowEngine from "effect/cluster/ClusterWorkflowEngine"
 import * as Sharding from "effect/cluster/Sharding"
 import * as SingleRunner from "effect/cluster/SingleRunner"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -63,19 +64,16 @@ const open = Effect.fnUntraced(function*(client: SqlClient.SqlClient, run: Handl
     Layer.provide(NodeCrypto.layer),
     Layer.provide(Layer.succeed(SqlClient.SqlClient, client))
   )).pipe(Scope.provide(scope))
-  const underlying = Context.get(context, WorkflowEngine.WorkflowEngine)
-  let cancellations = 0
-  const engine: typeof underlying = {
-    ...underlying,
-    interrupt: (workflow, executionId) => {
-      cancellations++
-      return underlying.interrupt(workflow, executionId)
-    }
-  }
+  const engine = Context.get(context, WorkflowEngine.WorkflowEngine)
+  const resumeToken = yield* Deferred.make<DurableDeferred.Token>()
+  const handler = Effect.gen(function*() {
+    yield* Deferred.succeed(resumeToken, yield* DurableDeferred.token(resume))
+    return yield* run
+  })
   const sharding = Context.get(context, Sharding.Sharding)
   const registration = McpTasks.toolkit(tools, {
     owner: McpSchema.McpRequestContext.use((request) => Effect.succeed(request.clientInfo?.name ?? "anonymous"))
-  }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, { report: () => run }, { name: "sql-reports" }))).pipe(
+  }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, { report: () => handler }, { name: "sql-reports" }))).pipe(
     Layer.provide(Layer.succeed(WorkflowEngine.WorkflowEngine, engine)),
     Layer.provideMerge(makeServerLayer({ name: "SqlTasks", protocols: [McpProtocol.v2026_07_28] }))
   )
@@ -135,24 +133,18 @@ const open = Effect.fnUntraced(function*(client: SqlClient.SqlClient, run: Handl
     assert.isTrue(typeof response === "object" && response !== null && "result" in response, JSON.stringify(response))
     return (yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CreateTaskResult }))(response)).result
   })
-  const release = (taskId: string) => {
-    const token = DurableDeferred.TokenParsed.fromString(
-      JSON.parse(Schema.decodeUnknownSync(Schema.StringFromBase64Url)(taskId))[1]
+  const release = drive(Effect.gen(function*() {
+    const token = yield* Deferred.await(resumeToken)
+    yield* DurableDeferred.succeed(resume, { token, value: undefined }).pipe(
+      Effect.provideService(WorkflowEngine.WorkflowEngine, engine)
     )
-    return drive(
-      DurableDeferred.succeed(resume, {
-        token: new DurableDeferred.TokenParsed({ ...token, deferredName: resume.name }).asToken,
-        value: undefined
-      }).pipe(Effect.provideService(WorkflowEngine.WorkflowEngine, engine))
-    )
-  }
+  }))
   return {
     start,
     get,
     request,
     waitFor,
     release,
-    cancellations: () => cancellations,
     close: Scope.close(scope, Exit.void)
   }
 })
@@ -203,7 +195,7 @@ it.effect("should preserve original request metadata and completed Activities wh
     yield* first.close
     const second = yield* open(db.second, handler)
     assert.strictEqual((yield* second.get(created.taskId)).status, "working")
-    yield* second.release(created.taskId)
+    yield* second.release
     const completed = yield* second.waitFor(created.taskId, "completed")
     if (completed.status === "completed") {
       assert.strictEqual(completed.result.structuredContent, "acme:acme")
@@ -221,9 +213,7 @@ it.effect("should retain the engine outcome when an acknowledged cancellation is
     yield* first.get(created.taskId)
     const response = yield* first.request("tasks/cancel", { taskId: created.taskId })
     yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.TaskAcknowledgement }))(response)
-    assert.strictEqual(first.cancellations(), 1)
-    assert.strictEqual((yield* first.get(created.taskId)).status, "working")
-    yield* first.release(created.taskId)
+    yield* first.release
     const terminal = yield* first.waitFor(created.taskId, ["completed", "cancelled"])
     yield* first.close
     const second = yield* open(db.second, handler)

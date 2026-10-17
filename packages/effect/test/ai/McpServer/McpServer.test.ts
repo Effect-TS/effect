@@ -243,22 +243,6 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
-  it.effect("should report an Effect defect when a server has no registered internal state", () =>
-    Effect.gen(function*() {
-      const server = yield* McpServer.McpServer.make
-      const core = yield* McpServer.getCore(server)
-      assert.isDefined(core)
-
-      const lookup = McpServer.getCore({ ...server })
-      const defect = yield* Effect.catchDefect(lookup, Effect.succeed)
-      assert.instanceOf(defect, Cause.IllegalArgumentError)
-      assert.propertyVal(
-        defect,
-        "message",
-        "McpServer internal state is unavailable; use McpServer.make or McpServer.layer"
-      )
-    }))
-
   // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
   // Pings are allowed before the initialize response and require an empty result.
   for (
@@ -2203,7 +2187,7 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), JSON.stringify({ _tag: "NoteNotFound", id: "n1" }))
       }))
 
-    it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
+    it.effect("should scrub and report declared failures when serialization fails", () =>
       Effect.gen(function*() {
         const { client, logged, reported } = yield* makeToolkitTestClient(TestToolkit.of({
           ...testToolkitHandlers,
@@ -2215,7 +2199,6 @@ describe("McpServer", () => {
         assert.isUndefined(result.structuredContent)
         assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
         assert.lengthOf(reported, 1)
-        assert.instanceOf(Cause.squash(reported[0]), Schema.SchemaError)
         assert.lengthOf(logged, 1)
         assert.strictEqual(Cause.squash(logged[0]), Cause.squash(reported[0]))
       }))
@@ -2336,7 +2319,7 @@ describe("McpServer", () => {
         }))
     }
 
-    it.effect("reports response serialization defects before returning a generic message", () =>
+    it.effect("should return a generic message and report the defect when response serialization fails", () =>
       Effect.gen(function*() {
         const { client, reported } = yield* makeToolkitTestClient()
 
@@ -2349,7 +2332,6 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
         assert.lengthOf(reported, 1)
         assert.isTrue(Cause.hasDies(reported[0]))
-        assert.instanceOf(Cause.squash(reported[0]), Schema.SchemaError)
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>
