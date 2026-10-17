@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `PubSub.takeBetween` throwing a `RangeError` when a large backlog is taken at once.
+Fix `PubSub.takeBetween` throwing `RangeError` on large backlogs.
