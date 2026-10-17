@@ -780,14 +780,13 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           })
         ) as Effect.Effect<void>
       }
+      // Clear entries before resuming callers, as they can start new requests
       case "Defect": {
-        // Resuming callers can synchronously start new requests.
         entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
-        // Resuming callers can synchronously start new requests.
         const requestIds = Array.from(entries.keys())
         entries.clear()
         return Effect.forEach(
@@ -1225,23 +1224,24 @@ export const makeProtocolSocket = (options?: {
       Effect.forkScoped
     )
 
-    return {
-      send: Effect.fnUntraced(function*(clientId: number, request: FromClientEncoded) {
-        if (currentError) {
-          return yield* Effect.fail(currentError)
-        }
-        if (request._tag === "Request") {
-          requestClientMap.set(request.id, clientId)
-        } else if (request._tag === "Interrupt") {
-          requestClientMap.delete(request.requestId)
-        }
+    const write = (request: FromClientEncoded) =>
+      Effect.suspend(() => {
         const encoded = parser.encode(request)
-        if (encoded !== undefined) yield* Effect.orDie(writer.write(encoded))
-      }, (effect, _clientId, request) =>
-        Effect.onError(effect, () =>
-          Effect.sync(() => {
-            if (request._tag === "Request") requestClientMap.delete(request.id)
-          }))),
+        return encoded === undefined ? Effect.void : Effect.orDie(writer.write(encoded))
+      })
+
+    return {
+      send(clientId, request) {
+        if (currentError) {
+          return Effect.fail(currentError)
+        }
+        if (request._tag !== "Request") {
+          if (request._tag === "Interrupt") requestClientMap.delete(request.requestId)
+          return write(request)
+        }
+        requestClientMap.set(request.id, clientId)
+        return Effect.onError(write(request), () => Effect.sync(() => requestClientMap.delete(request.id)))
+      },
       supportsAck: true,
       supportsTransferables: false,
       codecFor: serialization.codecFor
