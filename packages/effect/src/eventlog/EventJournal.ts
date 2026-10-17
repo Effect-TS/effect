@@ -523,10 +523,14 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       const remote = ensureRemote(options.remoteId)
       const uncommittedRemotes: Array<RemoteEntry> = []
       const duplicateEntries: Array<Entry> = []
+      // Overlapping batches can repeat an entry; the first copy wins.
+      const incomingIds = new Set<string>()
       for (const remoteEntry of options.entries) {
-        if (byId.has(remoteEntry.entry.idString)) {
+        const idString = remoteEntry.entry.idString
+        if (byId.has(idString)) {
           duplicateEntries.push(remoteEntry.entry)
-        } else {
+        } else if (!incomingIds.has(idString)) {
+          incomingIds.add(idString)
           uncommittedRemotes.push(remoteEntry)
         }
       }
@@ -730,6 +734,8 @@ export const makeIndexedDb = (options?: {
       writeFromRemote: Effect.fnUntraced(function*(options) {
         const uncommittedRemotes: Array<RemoteEntry> = []
         const duplicateEntries: Array<Entry> = []
+        // Overlapping batches can repeat an entry; the first copy wins.
+        const incomingIds = new Set<string>()
 
         yield* Effect.callback<void, EventJournalError>((resume) => {
           const tx = db.transaction("entries", "readonly")
@@ -738,9 +744,11 @@ export const makeIndexedDb = (options?: {
           for (const remoteEntry of options.entries) {
             const request = entries.getKey(remoteEntry.entry.id as IDBValidKey)
             request.onsuccess = () => {
+              const idString = remoteEntry.entry.idString
               if (request.result !== undefined) {
                 duplicateEntries.push(remoteEntry.entry)
-              } else {
+              } else if (!incomingIds.has(idString)) {
+                incomingIds.add(idString)
                 uncommittedRemotes.push(remoteEntry)
               }
             }
