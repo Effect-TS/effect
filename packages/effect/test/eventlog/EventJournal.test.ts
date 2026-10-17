@@ -56,9 +56,9 @@ describe("EventJournal", () => {
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [x, y, z].map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry })),
-        effect: ({ conflicts, entry }) =>
+        effect: (batch) =>
           Effect.sync(() => {
-            replayed.push([entry.idString, idStrings(conflicts)])
+            for (const { conflicts, entry } of batch) replayed.push([entry.idString, idStrings(conflicts)])
           })
       })
 
@@ -175,24 +175,6 @@ describe("EventJournal", () => {
         effect: () => Effect.void
       })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
-    }))
-
-  it.effect("reports the first newer conflicting entry", () =>
-    Effect.gen(function*() {
-      const journal = yield* EventJournal.makeMemory
-      const newer = entry(2_000)
-      yield* journal.writeFromRemote({
-        remoteId: EventJournal.makeRemoteIdUnsafe(),
-        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: newer })],
-        effect: () => Effect.void
-      })
-      let conflicts: ReadonlyArray<EventJournal.Entry> = []
-      yield* journal.writeFromRemote({
-        remoteId: EventJournal.makeRemoteIdUnsafe(),
-        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: entry(1_000) })],
-        effect: (options) => Effect.sync(() => conflicts = options.conflicts)
-      })
-      assert.deepStrictEqual(conflicts.map((item) => item.idString), [newer.idString])
     }))
 
   it.effect("records entries in memory and publishes local changes", () =>

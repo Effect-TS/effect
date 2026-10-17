@@ -1,10 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
+import { Deferred, Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogRemote from "effect/eventlog/EventLogRemote"
+import { Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 
 const UserPayload = Schema.Struct({
@@ -150,6 +151,92 @@ describe("EventLog", () => {
         assert.strictEqual(entries[0].event, "UserCreated")
         assert.deepStrictEqual(seen, ["user-1"])
       }).pipe(Effect.provide(logLayer(handled)))
+    }))
+
+  it.effect("replays each remote batch inside one handler transaction and invalidates once per batch", () =>
+    Effect.gen(function*() {
+      const timeline: Array<string> = []
+      const handled = new Map(["user-3", "user-4", "user-5"].map((id) => [id, Deferred.makeUnsafe<void>()]))
+      const handlers = EventLog.group(
+        UserGroup,
+        (handlers) =>
+          handlers.handle("UserCreated", ({ payload }) =>
+            Effect.gen(function*() {
+              timeline.push(`handle ${payload.id}`)
+              const done = handled.get(payload.id)
+              if (done) yield* Deferred.succeed(done, undefined)
+              if (payload.id === "user-2") return yield* Effect.die("handler failed")
+            }))
+      ).pipe(
+        Layer.merge(EventLog.groupReactivity(UserGroup, ["users"])),
+        Layer.provide(EventLog.layerRegistry)
+      )
+      const layer = EventLog.layer(schema, handlers).pipe(
+        Layer.provide([
+          EventJournal.layerMemory,
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
+            Effect.sync(() => timeline.push("begin")).pipe(
+              Effect.andThen(effect),
+              Effect.ensuring(Effect.sync(() => timeline.push("commit")))
+            ))
+        ]),
+        Layer.merge(Reactivity.layer)
+      )
+      return yield* Effect.gen(function*() {
+        const log = yield* EventLog.EventLog
+        const reactivity = yield* Reactivity.Reactivity
+        const registry = yield* EventLog.Registry
+        reactivity.registerUnsafe(["users"], () => {
+          timeline.push("invalidate")
+        })
+        const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+        let remoteSequence = 0
+        const offer = (entries: ReadonlyArray<EventJournal.Entry>) =>
+          Queue.offerAll(
+            changes,
+            entries.map((entry) => new EventJournal.RemoteEntry({ remoteSequence: remoteSequence++, entry }))
+          )
+        const users = yield* Effect.forEach(
+          ["user-1", "user-2", "user-3", "user-4", "user-5"],
+          (id) => makeCompactionEntry({ id })
+        )
+
+        yield* offer(users.slice(0, 3))
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        yield* Deferred.await(handled.get("user-3")!)
+        // The remote echoes the first batch back alongside a new entry.
+        yield* offer([...users.slice(0, 3), users[3]])
+        yield* Deferred.await(handled.get("user-4")!)
+        yield* offer([users[4]])
+        yield* Deferred.await(handled.get("user-5")!)
+
+        // A failed handler is logged and its batch still commits; duplicates
+        // invalidate with their batch rather than once per entry.
+        assert.deepStrictEqual(timeline.slice(0, timeline.indexOf("handle user-5") + 1), [
+          "begin",
+          "handle user-1",
+          "handle user-2",
+          "handle user-3",
+          "commit",
+          "invalidate",
+          "begin",
+          "handle user-4",
+          "commit",
+          "invalidate",
+          "begin",
+          "handle user-5"
+        ])
+        assert.deepStrictEqual(
+          (yield* log.entries).map((entry) => entry.primaryKey).filter((id) => id !== "user-5"),
+          ["user-1", "user-2", "user-3", "user-4"]
+        )
+      }).pipe(Effect.provide(layer))
     }))
 
   it.effect("retries a failed remote write and flushes changes made during the retry", () =>

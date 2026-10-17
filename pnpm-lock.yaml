@@ -357,6 +357,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
       immer:
         specifier: ^11.1.21
         version: 11.1.21
