@@ -3767,6 +3767,68 @@ describe("Atom", { concurrent: false }, () => {
         assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
       })
 
+      it.each([
+        { when: "", writes: false },
+        { when: " when the parent writes", writes: true }
+      ])("runs an Effect and its parent once$when", ({ writes }) => {
+        let parentRuns = 0
+        let runs = 0
+        const other = Atom.make(0).pipe(Atom.keepAlive)
+        const parent = Atom.make((get) =>
+          Effect.sync(() => {
+            parentRuns++
+            if (writes) get.set(other, parentRuns)
+            return parentRuns
+          })
+        ).pipe(Atom.keepAlive)
+        const atom = Atom.make((get) => {
+          const value = get(parent)
+          return Effect.sync(() => {
+            runs++
+            return AsyncResult.getOrThrow(value) * 2
+          })
+        }).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make({
+          initialValues: [
+            Atom.initialValue(parent, AsyncResult.success(10)),
+            Atom.initialValue(atom, AsyncResult.success(20))
+          ]
+        })
+        r.mount(atom)
+
+        r.set(Atom.make(0), 1)
+        assert.strictEqual(parentRuns, 1)
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 2)
+      })
+
+      it("runs the parent first when an Effect waited on a loading runtime", async () => {
+        let parentRuns = 0
+        let runs = 0
+        const runtime = Atom.runtime(Layer.effectDiscard(Effect.sleep(5)))
+        const parent = Atom.make(Effect.sync(() => ++parentRuns)).pipe(Atom.keepAlive)
+        const atom = runtime.atom((get) => {
+          const value = get(parent)
+          return Effect.sync(() => {
+            runs++
+            return AsyncResult.getOrThrow(value) * 2
+          })
+        }).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make({
+          initialValues: [
+            Atom.initialValue(parent, AsyncResult.success(5)),
+            Atom.initialValue(atom, AsyncResult.success(10))
+          ]
+        })
+        r.mount(atom)
+        await vitest.advanceTimersByTimeAsync(5)
+
+        r.set(Atom.make(0), 1)
+        assert.strictEqual(parentRuns, 1)
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 2)
+      })
+
       it("does not run an Effect without an initial value or that ran before its value was set", () => {
         let runs = 0
         let setRuns = 0

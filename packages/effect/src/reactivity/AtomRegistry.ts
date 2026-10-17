@@ -439,8 +439,9 @@ class RegistryImpl implements AtomRegistry {
     } catch (error) {
       failure = error
     }
-    this.#writeDepth--
-    if (this.#writeDepth === 0) {
+    // the depth stays up while invalidating, so a write made by a rebuilt
+    // atom does not start another pass over the same atoms
+    if (this.#writeDepth === 1) {
       // what `f` wrote before it failed is committed, so it still invalidates
       try {
         this.invalidateHydratedWithUnknownDependencies()
@@ -448,14 +449,31 @@ class RegistryImpl implements AtomRegistry {
         if (failure === noFailure) failure = error
       }
     }
+    this.#writeDepth--
     if (failure !== noFailure) throw failure
   }
 
   invalidateHydratedWithUnknownDependencies(): void {
     if (this.hydratedWithUnknownDependencies.size === 0) return
-    const nodes = Array.from(this.hydratedWithUnknownDependencies)
-    this.hydratedWithUnknownDependencies.clear()
-    runAll(nodes, (node) => node.pendingRuntime !== undefined ? node.endHydration() : node.invalidate())
+    const nodes: Array<NodeImpl<any>> = []
+    const visited = new Set<NodeImpl<any>>()
+    // parents go first, so an atom is not rebuilt before an atom it reads
+    const visit = (node: NodeImpl<any>): void => {
+      if (visited.has(node)) return
+      visited.add(node)
+      for (const parent of node.parents) visit(parent)
+      if (this.hydratedWithUnknownDependencies.has(node)) nodes.push(node)
+    }
+    for (const node of this.hydratedWithUnknownDependencies) visit(node)
+    runAll(nodes, (node) => {
+      // skip an atom already rebuilt by an earlier one in this pass
+      if (!this.hydratedWithUnknownDependencies.delete(node)) return
+      if (node.pendingRuntime !== undefined) {
+        node.endHydration()
+      } else {
+        node.invalidate()
+      }
+    })
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
