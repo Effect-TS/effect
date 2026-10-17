@@ -111,12 +111,14 @@ export const make = (options?: {
       Request: RemoteRowArray,
       execute: (entries) => sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
-    // Writers take this lock first in their transaction, before reading or
-    // inserting entries. PostgreSQL hands out sequence values before commit, so
-    // concurrent writers could commit them out of order and an upload checkpoint
-    // would skip the later commit. Taking it before any entry row also keeps
-    // writers from waiting on each other's uncommitted entries. It serializes
-    // writers until commit without blocking readers.
+    // Writers take this lock first in their transaction, before their callback
+    // runs and before reading or inserting entries. PostgreSQL hands out
+    // sequence values before commit, so concurrent writers could commit them
+    // out of order and an upload checkpoint would skip the later commit.
+    // Callbacks can lock other rows, such as projections, and writers insert
+    // entries, so taking it at the same point everywhere keeps writers from
+    // waiting on each other's uncommitted work. It serializes writers until
+    // commit without blocking readers.
     const lockWriters: Effect.Effect<void, SqlError.SqlError> = sql.onDialectOrElse({
       pg: () => Effect.asVoid(sql`LOCK TABLE ${sequenceTableSql} IN SHARE ROW EXCLUSIVE MODE`),
       orElse: () => Effect.void
@@ -218,14 +220,22 @@ export const make = (options?: {
     const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
       Effect.uninterruptibleMask((restore) => {
         const committed = EventJournal.makeEntries(entries)
-        return restore(effect(committed)).pipe(
-          Effect.tap(
-            lockWriters.pipe(
-              Effect.andThen(insertEntries(committed.map(toEntryRow))),
-              Effect.andThen(insertSequence(committed)),
-              sql.withTransaction,
-              Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeMany" }))
-            )
+        // The callback runs in the journal transaction, so a failure or
+        // interruption rolls back its SQL along with the entries.
+        return Effect.gen(function*() {
+          yield* lockWriters
+          const result = yield* restore(effect(committed)).pipe(
+            Effect.mapError((error) => new CallbackFailure(error))
+          )
+          yield* insertEntries(committed.map(toEntryRow))
+          yield* insertSequence(committed)
+          return result
+        }).pipe(
+          sql.withTransaction,
+          Effect.mapError((error) =>
+            error instanceof CallbackFailure
+              ? error.error
+              : new EventJournal.EventJournalError({ cause: error, method: "writeMany" })
           ),
           Effect.tap(PubSub.publishAll(pubsub, committed))
         )
@@ -617,3 +627,11 @@ const RemoteRow = Schema.Struct({
 const RemoteRowArray = Schema.Array(RemoteRow)
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
+
+// Keeps a write callback's own failures apart from journal SQL errors.
+class CallbackFailure<E> {
+  readonly error: E
+  constructor(error: E) {
+    this.error = error
+  }
+}
