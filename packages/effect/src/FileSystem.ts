@@ -587,7 +587,7 @@ export const make = (
     [TypeId]: TypeId,
     readDirectoryEntries,
     glob: impl.glob ??
-      ((pattern, options) => Glob.walk(walker, Glob.compile(pattern, options?.dot ?? false), options)),
+      ((pattern, options) => Glob.walk(walker, Glob.compile([pattern], options?.dot ?? false), options)),
     exists: (path) =>
       pipe(
         impl.access(path),
