@@ -1,10 +1,5 @@
 /**
- * SQL-backed persistence for the unstable event-log journal.
- *
- * This module implements `EventJournal` on top of a `SqlClient`. It stores event
- * entries as encoded bytes and stores per-remote sequence metadata and upload
- * checkpoints in separate tables, giving event-log programs a durable journal
- * that can be replayed after restart and synchronized with remote journals.
+ * SQL-backed event journal with per-remote upload checkpoints.
  *
  * @stability unstable
  * @since 4.0.0
@@ -29,14 +24,13 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  *
  * **Details**
  *
- * The constructor creates the entry and remote metadata tables when needed,
- * persists local and remote entries, and uses the configured `SqlClient`.
+ * Maintains `entryTable`, `remotesTable`, `${entryTable}_sequence` and
+ * `${remotesTable}_checkpoints` using the configured `SqlClient`.
  *
- * Besides `entryTable` and `remotesTable`, it maintains `${entryTable}_sequence`,
- * which numbers entries in insertion order, and `${remotesTable}_checkpoints`,
- * which records the last uploaded insertion sequence for each remote. Databases
- * created before these tables existed are migrated the first time they are
- * opened, so that first open needs a writable connection.
+ * **Gotchas**
+ *
+ * Creating or migrating the schema requires a writable connection. Migrated
+ * databases can be reopened read-only.
  *
  * @stability unstable
  * @category constructors
@@ -67,9 +61,7 @@ export const make = (options?: {
     // to_regclass folds unquoted names to lowercase, so pass the quoted identifier.
     const quotedSequenceTable = sql`${sequenceTableSql}`.compile(true)[0]
 
-    // The sequence table is the newest part of the schema. When it exists, so
-    // does the rest, and opening issues no writes, so read-only connections can
-    // open a migrated database.
+    // The sequence table marks a complete migration; skip DDL for read-only reopen.
     const sequenceTableExists = sql.onDialectOrElse({
       pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quotedSequenceTable}) IS NOT NULL`,
       mysql: () =>
@@ -78,9 +70,7 @@ export const make = (options?: {
       orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${sequenceTable}`
     }).pipe(Effect.map((rows) => rows.length > 0))
 
-    // Creates the missing tables and indexes and numbers the existing entries,
-    // all in one transaction. PostgreSQL does not make concurrent
-    // CREATE ... IF NOT EXISTS safe, so it takes a lock and rechecks under it.
+    // PostgreSQL needs a lock and recheck to make concurrent schema creation safe.
     const migrate = Effect.gen(function*() {
       yield* sql.onDialectOrElse({
         pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quotedSequenceTable}))`,
@@ -166,8 +156,7 @@ export const make = (options?: {
             )`
       })
 
-      // Entry ids are ordered by creation time, not insertion, so uploads
-      // checkpoint an insertion sequence instead.
+      // Insertion sequences let uploads include older entries imported later.
       yield* sql.onDialectOrElse({
         pg: () =>
           sql`
@@ -266,8 +255,7 @@ export const make = (options?: {
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
     const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
     const toEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> => rows.map(toEntry)
-    // Sort by id bytes, which dialects do not all collate alike. Rows are
-    // already in timestamp order, so this only reorders timestamp ties.
+    // Sort timestamp ties by id bytes consistently across dialects.
     const toOrderedEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> =>
       rows.map(toEntry).sort(EventJournal.Entry.Order)
 
@@ -279,10 +267,8 @@ export const make = (options?: {
       Request: RemoteRowArray,
       execute: (entries) => sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
-    // PostgreSQL assigns sequence values before commit, so concurrent writers
-    // could commit out of order and an upload checkpoint would skip one. Both
-    // write paths take this lock first, before their callback, so writers never
-    // wait on each other's row locks in opposite orders. Readers are not blocked.
+    // Serialize writers so checkpoints cannot skip out-of-order commits.
+    // Lock before callbacks in both paths to avoid projection-row deadlocks.
     const lockWriters = sql.onDialectOrElse({
       pg: () => Effect.asVoid(sql`LOCK TABLE ${sequenceTableSql} IN SHARE ROW EXCLUSIVE MODE`),
       orElse: () => Effect.void
@@ -338,8 +324,7 @@ export const make = (options?: {
       if (compacted.length > 0) {
         const index = new ConflictIndex(compacted)
         const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
-        // PostgreSQL indexes md5 hashes of the unbounded columns; the exact
-        // predicates still decide which rows match.
+        // Match the hash index; exact predicates below rule out hash collisions.
         const hashed = sql.onDialectOrElse({
           pg: () => [
             sql`md5(event) IN (${sql.csv(index.events.map((event) => sql`md5(${event})`))})`,
@@ -363,8 +348,7 @@ export const make = (options?: {
         yield* options.effect(index.toBatch())
       }
 
-      // Keep the incoming batch out of conflict queries and persist only after
-      // compaction and every callback have succeeded.
+      // Persist after replay so conflict queries exclude the incoming batch.
       if (entries.length > 0) {
         yield* insertEntries(entries.map(toEntryRow))
         yield* insertSequence(entries)
@@ -381,8 +365,6 @@ export const make = (options?: {
     const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
       Effect.uninterruptibleMask((restore) => {
         const committed = EventJournal.makeEntries(entries)
-        // The callback runs inside the journal transaction, so a failure or
-        // interruption also rolls back any SQL it ran.
         return Effect.gen(function*() {
           yield* lockWriters
           const result = yield* restore(effect(committed)).pipe(
@@ -425,8 +407,7 @@ export const make = (options?: {
           const mapError = Effect.mapError((cause: unknown) =>
             new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" })
           )
-          // Bound the upload by the latest sequence, so the checkpoint never
-          // passes entries committed while the upload runs.
+          // Capture an upper bound so entries committed during upload remain pending.
           const [{ checkpoint, latest }] = yield* sql`
             SELECT
               COALESCE((SELECT sequence FROM ${checkpointsTableSql} WHERE remote_id = ${remoteId}), 0) AS checkpoint,
@@ -492,25 +473,11 @@ export const make = (options?: {
   })
 
 /**
- * Provides `EventJournal` using the SQL-backed implementation created by
- * `make`.
- *
- * **When to use**
- *
- * Use when composing a Layer graph that should provide a persistent SQL-backed
- * `EventJournal` from an existing `SqlClient` service.
- *
- * **Details**
- *
- * The layer delegates to `make(options)`, so the same optional `entryTable` and
- * `remotesTable` settings are used and construction requires `SqlClient` and
- * may fail with `SqlError`.
+ * Provides a SQL-backed `EventJournal` from an existing `SqlClient` service.
  *
  * **Gotchas**
  *
- * Layer construction performs the same table and index setup as `make`, so
- * the first construction against a database created by an older release must
- * use a writable connection to migrate it.
+ * Creating or migrating the schema requires a writable connection.
  *
  * @see {@link make} for constructing the SQL-backed service directly
  * @see {@link EventJournal.layerMemory} for an in-memory `EventJournal` layer
@@ -598,7 +565,7 @@ const RemoteRowArray = Schema.Array(RemoteRow)
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
-// Tells a write callback's own failure apart from journal SQL errors.
+// Preserve callback errors without wrapping them as journal SQL errors.
 class CallbackFailure<E> {
   readonly error: E
   constructor(error: E) {
