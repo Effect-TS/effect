@@ -100,6 +100,18 @@ describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
     assertResult("unused", "", "{\"dataListeners\":0}")
   })
 
+  it("preserves piped stdin when a flag is supplied explicitly", () => {
+    assertResult("explicit-flag", "hello world", "{\"profile\":\"x\",\"input\":\"hello world\"}")
+  })
+
+  it("preserves piped stdin after a successful fallback prompt", () => {
+    assertResult("fallback-prompt", "hello world", "{\"profile\":\"x\",\"input\":\"hello world\"}")
+  })
+
+  it("preserves piped stdin after composed successful fallback prompts", () => {
+    assertResult("composed-fallback", "hello world", "{\"profile\":\"x\",\"input\":\"hello world\"}")
+  })
+
   it("fails a prompt with QuitError after piped input is exhausted", () => {
     assertResult("prompts", "y\n", "{\"first\":true,\"second\":\"QuitError\"}")
   })
