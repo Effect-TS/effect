@@ -233,7 +233,13 @@ const makeTester = <R, ExtraContext>(
 
 const makeProp =
   <ExtraContext>(it: V.TestAPI<ExtraContext>): Vitest.Vitest.Methods["prop"] => (name, arbitraries, self, timeout) =>
-    registerProp(it, name, arbitraries, (values, ctx) => (self(values as any, ctx) as unknown) !== false, timeout)
+    registerProp(it, name, arbitraries, (values, ctx) => {
+      const result = self(values as any, ctx)
+      if (result !== undefined && typeof result !== "boolean") {
+        throw new TypeError("it.prop callbacks must return boolean or void. Use it.effect.prop for Effect callbacks.")
+      }
+      return result !== false
+    }, timeout)
 
 const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
 <R, E>(
