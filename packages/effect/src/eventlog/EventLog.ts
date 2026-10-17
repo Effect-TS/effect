@@ -726,7 +726,8 @@ export const groupReactivity = <Events extends Event.Any>(
  *
  * The returned handler decodes the entry and conflicts with the registered event
  * schema, runs the matching handler with the supplied identity and store id, logs
- * failures, and invalidates configured reactivity keys.
+ * failures, and invalidates configured reactivity keys. Invalidations are
+ * deferred until the end of an enclosing `Reactivity.withBatch`.
  *
  * @stability unstable
  * @category handlers
@@ -783,7 +784,7 @@ export const makeReplayFromRemote = (options: {
         : undefined
       if (keys) {
         for (const key of keys) {
-          options.reactivity.invalidateUnsafe({
+          yield* options.reactivity.invalidate({
             [key]: [entry.primaryKey]
           })
         }
@@ -893,7 +894,10 @@ const make = Effect.gen(function*() {
             effect: replayFromRemote
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
-            journal.withLock(storeId)
+            journal.withLock(storeId),
+            // Flush replay invalidations once per batch, after the lock and
+            // any journal transaction have completed.
+            reactivity.withBatch
           )
         }
       }).pipe(
