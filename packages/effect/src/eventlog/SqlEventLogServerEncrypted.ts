@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -19,6 +20,7 @@ import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type * as SqlError from "../sql/SqlError.ts"
+import type * as Statement from "../sql/Statement.ts"
 import * as Stream from "../Stream.ts"
 import { EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
@@ -171,6 +173,42 @@ export const makeStorage = (options?: {
       idleTimeToLive: "5 minutes"
     })
 
+    // Inserts rows whose entry_id is not stored yet and returns only those rows.
+    const insertNewEntries = (tableSql: Statement.Identifier, rows: ReadonlyArray<EntryRow>) =>
+      sql.onDialectOrElse({
+        mysql: () =>
+          // MySQL has no INSERT RETURNING. Track successful inserts rather
+          // than pre-selecting ids, which can race with concurrent writers.
+          Effect.gen(function*() {
+            const insertedIds: Array<Uint8Array> = []
+            for (const row of rows) {
+              const result = yield* sql`INSERT IGNORE INTO ${tableSql} ${sql.insert(row)}`.raw
+              if ((result as { affectedRows: number }).affectedRows > 0) {
+                insertedIds.push(row.entry_id)
+              }
+            }
+            if (insertedIds.length === 0) return []
+            return yield* sql`SELECT * FROM ${tableSql} WHERE ${sql.in("entry_id", insertedIds)}`
+          }).pipe(sql.withTransaction),
+        mssql: () =>
+          sql`
+            MERGE ${tableSql} WITH (HOLDLOCK) AS target
+            USING (VALUES ${
+            sql.join(",")(rows.map((row) => sql`(${row.iv}, ${row.entry_id}, ${row.encrypted_entry})`))
+          }) AS source (iv, entry_id, encrypted_entry)
+            ON target.entry_id = source.entry_id
+            WHEN NOT MATCHED THEN
+              INSERT (iv, entry_id, encrypted_entry)
+              VALUES (source.iv, source.entry_id, source.encrypted_entry)
+            OUTPUT inserted.*;
+          `,
+        orElse: () =>
+          sql`
+            INSERT INTO ${tableSql} ${sql.insert(rows)}
+            ON CONFLICT DO NOTHING RETURNING *
+          `
+      })
+
     const getSessionAuthBinding = (publicKey: string) =>
       sql`
           SELECT public_key, signing_public_key
@@ -209,82 +247,24 @@ export const makeStorage = (options?: {
           if (entries.length === 0) return []
           const scopeKey = makeEncryptedScopeKey(publicKey, storeId)
           const { pubsub, table } = yield* RcMap.get(resources, scopeKey)
-          const forInsert: Array<{
-            readonly entries: Array<{
-              iv: Uint8Array
-              entry_id: Uint8Array
-              encrypted_entry: Uint8Array
-            }>
-          }> = [{ entries: [] }]
-          let currentBatch = forInsert[0]
+          const tableSql = sql(table)
+
+          // SQL Server's MERGE rejects duplicate source keys, so dedupe up front for every dialect.
+          const rows = new Map<string, EntryRow>()
           for (const entry of entries) {
-            currentBatch.entries.push({
-              iv: entry.iv,
-              entry_id: entry.entryId,
-              encrypted_entry: entry.encryptedEntry
-            })
-            if (currentBatch.entries.length === insertBatchSize) {
-              currentBatch = { entries: [] }
-              forInsert.push(currentBatch)
-            }
+            const key = entry.entryId.join(",")
+            if (rows.has(key)) continue
+            rows.set(key, { iv: entry.iv, entry_id: entry.entryId, encrypted_entry: entry.encryptedEntry })
           }
 
           const allEntries: Array<EventLogEncryption.EncryptedRemoteEntry> = []
-          for (const batch of forInsert) {
-            if (batch.entries.length === 0) continue
-            const encryptedEntries = yield* sql.onDialectOrElse({
-              mysql: () =>
-                Effect.gen(function*() {
-                  // MySQL has no INSERT RETURNING. Track successful inserts rather
-                  // than pre-selecting ids, which can race with concurrent writers.
-                  const insertedIds: Array<Uint8Array> = []
-                  for (const entry of batch.entries) {
-                    const result = yield* sql`
-                      INSERT IGNORE INTO ${sql(table)} ${sql.insert(entry)}
-                    `.raw
-                    if ((result as { affectedRows: number }).affectedRows > 0) {
-                      insertedIds.push(entry.entry_id)
-                    }
-                  }
-                  if (insertedIds.length === 0) return []
-                  return yield* sql`
-                    SELECT * FROM ${sql(table)}
-                    WHERE ${sql.in("entry_id", insertedIds)} ORDER BY sequence ASC
-                  `
-                }).pipe(sql.withTransaction),
-              mssql: () => {
-                const seen = new Set<string>()
-                const uniqueEntries = batch.entries.filter((entry) => {
-                  const id = Array.from(entry.entry_id).join(",")
-                  if (seen.has(id)) return false
-                  seen.add(id)
-                  return true
-                })
-                return sql`
-                  MERGE ${sql(table)} WITH (HOLDLOCK) AS target
-                  USING (VALUES ${
-                  sql.join(",")(
-                    uniqueEntries.map((entry) => sql`(${entry.iv}, ${entry.entry_id}, ${entry.encrypted_entry})`)
-                  )
-                }) AS source (iv, entry_id, encrypted_entry)
-                  ON target.entry_id = source.entry_id
-                  WHEN NOT MATCHED THEN
-                    INSERT (iv, entry_id, encrypted_entry)
-                    VALUES (source.iv, source.entry_id, source.encrypted_entry)
-                  OUTPUT inserted.*;
-                `
-              },
-              orElse: () =>
-                sql`
-                  INSERT INTO ${sql(table)} ${sql.insert(batch.entries)}
-                  ON CONFLICT DO NOTHING RETURNING *
-                `
-            }).pipe(
+          for (const batch of Arr.chunksOf(rows.values(), insertBatchSize)) {
+            const inserted = yield* insertNewEntries(tableSql, batch).pipe(
               Effect.flatMap(decodeEntries),
               Effect.map((entries) => [...entries].sort((a, b) => a.sequence - b.sequence))
             )
-            yield* PubSub.publishAll(pubsub, encryptedEntries)
-            allEntries.push(...encryptedEntries)
+            yield* PubSub.publishAll(pubsub, inserted)
+            allEntries.push(...inserted)
           }
           return allEntries
         },
@@ -310,6 +290,12 @@ export const makeStorage = (options?: {
       )
     })
   }).pipe(withTracerDisabled)
+
+type EntryRow = {
+  readonly iv: Uint8Array
+  readonly entry_id: Uint8Array
+  readonly encrypted_entry: Uint8Array
+}
 
 const EncryptedRemoteEntrySql = Schema.Struct({
   sequence: Schema.Natural,
