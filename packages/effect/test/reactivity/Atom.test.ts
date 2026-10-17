@@ -3751,6 +3751,40 @@ describe("Atom", { concurrent: false }, () => {
         await vitest.advanceTimersByTimeAsync(10)
         assert.strictEqual(runs, 1)
       })
+
+      it("runs the Effect when the write fails after setting a value", () => {
+        const count = Atom.make(0).pipe(Atom.keepAlive)
+        const atom = Atom.make((get) => Effect.sync(() => get(count))).pipe(Atom.keepAlive)
+        const failing = Atom.writable(() => 0, (ctx) => {
+          ctx.set(count, 2)
+          throw new Error("write failed")
+        })
+        const r = AtomRegistry.make({ initialValues: [Atom.initialValue(atom, AsyncResult.success(10))] })
+        r.mount(atom)
+
+        assert.throws(() => r.set(failing, 0), /write failed/)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 2)
+      })
+
+      it("runs every Effect when one of them fails", () => {
+        let builds = 0
+        const failing = Atom.make(() => {
+          if (++builds > 1) throw new Error("read failed")
+          return Effect.succeed(1)
+        }).pipe(Atom.keepAlive)
+        const atom = Atom.make(Effect.succeed(2)).pipe(Atom.keepAlive)
+        const r = AtomRegistry.make({
+          initialValues: [
+            Atom.initialValue(failing, AsyncResult.success(10)),
+            Atom.initialValue(atom, AsyncResult.success(20))
+          ]
+        })
+        r.mount(failing)
+        r.mount(atom)
+
+        assert.throws(() => r.set(Atom.make(0), 1), /read failed/)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 2)
+      })
     })
   })
 })

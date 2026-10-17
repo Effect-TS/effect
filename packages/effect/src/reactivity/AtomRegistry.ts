@@ -433,23 +433,29 @@ class RegistryImpl implements AtomRegistry {
   #writeDepth = 0
   write(f: () => void): void {
     this.#writeDepth++
+    let failure: unknown = noFailure
     try {
       f()
-    } finally {
-      this.#writeDepth--
+    } catch (error) {
+      failure = error
     }
+    this.#writeDepth--
     if (this.#writeDepth === 0) {
-      this.invalidateHydratedWithUnknownDependencies()
+      // what `f` wrote before it failed is committed, so it still invalidates
+      try {
+        this.invalidateHydratedWithUnknownDependencies()
+      } catch (error) {
+        if (failure === noFailure) failure = error
+      }
     }
+    if (failure !== noFailure) throw failure
   }
 
   invalidateHydratedWithUnknownDependencies(): void {
     if (this.hydratedWithUnknownDependencies.size === 0) return
     const nodes = Array.from(this.hydratedWithUnknownDependencies)
     this.hydratedWithUnknownDependencies.clear()
-    for (const node of nodes) {
-      node.invalidate()
-    }
+    runAll(nodes, (node) => node.invalidate())
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
