@@ -390,6 +390,8 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
    */
   static Order = Order.make<Entry>((a, b) => EntryIdOrder(a.id, b.id))
 
+  #idString: string | undefined
+
   /**
    * String representation of the entry id.
    *
@@ -397,7 +399,7 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
    * @since 4.0.0
    */
   get idString(): string {
-    return Uuid.stringify(this.id)
+    return this.#idString ??= Uuid.stringify(this.id)
   }
 
   /**
