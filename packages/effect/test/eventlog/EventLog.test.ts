@@ -1,10 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
+import { Deferred, Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogRemote from "effect/eventlog/EventLogRemote"
+import { Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
 
 const UserPayload = Schema.Struct({
@@ -150,6 +151,81 @@ describe("EventLog", () => {
         assert.strictEqual(entries[0].event, "UserCreated")
         assert.deepStrictEqual(seen, ["user-1"])
       }).pipe(Effect.provide(logLayer(handled)))
+    }))
+
+  it.effect("invalidates group reactivity keys once per replayed remote batch", () =>
+    Effect.gen(function*() {
+      let notifications = 0
+      const seen: Array<readonly [id: string, notifications: number]> = []
+      const firstBatchHandled = yield* Deferred.make<void>()
+      const secondBatchHandled = yield* Deferred.make<void>()
+      const lastInBatch = new Map([["user-3", firstBatchHandled], ["user-5", secondBatchHandled]])
+      const handlers = EventLog.group(UserGroup, (handlers) =>
+        handlers.handle("UserCreated", ({ payload }) =>
+          Effect.gen(function*() {
+            seen.push([payload.id, notifications])
+            const batchHandled = lastInBatch.get(payload.id)
+            if (batchHandled) {
+              yield* Deferred.succeed(batchHandled, undefined)
+            }
+          }))).pipe(
+          Layer.merge(EventLog.groupReactivity(UserGroup, ["users"])),
+          Layer.provide(EventLog.layerRegistry)
+        )
+      const layer = EventLog.layer(schema, handlers).pipe(
+        Layer.provide(EventJournal.layerMemory),
+        Layer.provide(
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(
+            Layer.provide(EventLogEncryption.layerSubtle)
+          )
+        ),
+        Layer.merge(Reactivity.layer)
+      )
+      return yield* Effect.gen(function*() {
+        const reactivity = yield* Reactivity.Reactivity
+        const registry = yield* EventLog.Registry
+        reactivity.registerUnsafe(["users"], () => {
+          notifications++
+        })
+        const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+        const remote = EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () =>
+            Effect.succeed(changes),
+          write: () =>
+            Effect.void,
+          whenAuthenticated: (effect) => effect
+        })
+        let remoteSequence = 0
+        const offerBatch = Effect.fnUntraced(function*(ids: ReadonlyArray<string>) {
+          const entries: Array<EventJournal.RemoteEntry> = []
+          for (const id of ids) {
+            entries.push(
+              new EventJournal.RemoteEntry({
+                remoteSequence: remoteSequence++,
+                entry: yield* makeCompactionEntry({ id })
+              })
+            )
+          }
+          yield* Queue.offerAll(changes, entries)
+        })
+
+        yield* offerBatch(["user-1", "user-2", "user-3"])
+        yield* registry.registerRemote(remote)
+        yield* Deferred.await(firstBatchHandled)
+        yield* offerBatch(["user-4", "user-5"])
+        yield* Deferred.await(secondBatchHandled)
+
+        // No invalidation fires while a batch replays; the first batch's
+        // invalidations are delivered before the second batch starts.
+        assert.deepStrictEqual(seen, [
+          ["user-1", 0],
+          ["user-2", 0],
+          ["user-3", 0],
+          ["user-4", 1],
+          ["user-5", 1]
+        ])
+      }).pipe(Effect.provide(layer))
     }))
 
   it.effect("retries a failed remote write and flushes changes made during the retry", () =>
