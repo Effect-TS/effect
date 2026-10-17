@@ -243,27 +243,46 @@ describe("EventLog write acknowledgements", () => {
       }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
   }
 
-  it.effect("records an acknowledged upload without waiting for its echo", () =>
-    Effect.gen(function*() {
-      const server = yield* makeServer(encryptedServer)
-      const identity = yield* EventLog.makeIdentity
-      const connection = yield* server.connect(identity)
-      const journal = yield* EventJournal.makeMemory
-      const device = yield* makeDevice({
-        identity,
-        journal,
-        // The change stream stays silent, so only the acknowledgement can record the upload.
-        remote: { ...connection.remote, changes: () => Queue.unbounded() }
-      })
+  // The unencrypted server numbers from 1, so it relies on the first sequence
+  // reported in the handshake.
+  for (const serverCase of [encryptedServer, unencryptedServer]) {
+    it.effect(`${serverCase.name} server: records an acknowledged upload without waiting for its echo`, () =>
+      Effect.gen(function*() {
+        const server = yield* makeServer(serverCase)
+        const identity = yield* EventLog.makeIdentity
+        const connection = yield* server.connect(identity)
+        const journal = yield* EventJournal.makeMemory
+        const device = yield* makeDevice({
+          identity,
+          journal,
+          // The change stream stays silent, so only the acknowledgement can record the upload.
+          remote: { ...connection.remote, changes: () => Queue.unbounded() }
+        })
 
-      yield* device.writeUser("user-1")
-      yield* device.register
-      yield* device.firstUploadHandled
+        yield* device.writeUser("user-1")
+        yield* device.register
+        yield* device.firstUploadHandled
 
-      const observer = yield* server.connect(identity)
-      const stored = yield* Queue.take(yield* observer.remote.changes({ identity, storeId, startSequence: 0 }))
-      assert.strictEqual(yield* journal.nextRemoteSequence(connection.remote.id), stored.remoteSequence + 1)
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+        const observer = yield* server.connect(identity)
+        const stored = yield* Queue.take(yield* observer.remote.changes({ identity, storeId, startSequence: 0 }))
+        const next = yield* journal.nextRemoteSequence(connection.remote.id)
+        // A reconnect resumes after the upload instead of downloading it again.
+        const reconnected = yield* (yield* server.connect(identity)).remote.changes({
+          identity,
+          storeId,
+          startSequence: next
+        })
+        const later = makeEntry()
+        yield* observer.writeSingle([later])
+        assert.deepStrictEqual({
+          next,
+          firstAfterReconnect: (yield* Queue.take(reconnected)).entry.idString
+        }, {
+          next: stored.remoteSequence + 1,
+          firstAfterReconnect: later.idString
+        })
+      }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+  }
 
   it.effect("still downloads entries from other devices that precede an acknowledged upload", () =>
     Effect.gen(function*() {

@@ -571,4 +571,28 @@ describe("EventJournal.makeIndexedDb", () => {
         batches: [[[incoming.idString, stored.slice(1).map(describeEntry)]]]
       })
     }))
+
+  it.effect("advances the remote sequence only across acknowledgements that follow it", () =>
+    Effect.gen(function*() {
+      const open = EventJournal.makeIndexedDb({ database: uniqueName("journal") })
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const ack = (sequence: number) => ({ entryId: EventJournal.makeEntryIdUnsafe(), sequence })
+      yield* Effect.gen(function*() {
+        const journal = yield* open
+        // Sequence 0, written by another replica, has not been downloaded.
+        yield* journal.writeRemoteAcks({ remoteId, acks: [ack(2), ack(1)] })
+        assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 0)
+        yield* journal.writeFromRemote({ remoteId, entries: remoteEntries([entry(1_000)]), effect: () => Effect.void })
+        assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+        yield* journal.writeRemoteAcks({ remoteId, acks: [ack(2), ack(1), ack(0)] })
+        assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 3)
+      }).pipe(Effect.scoped)
+
+      const journal = yield* open
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 3)
+      // A remote that numbers from 1 can be acknowledged before any download.
+      const otherRemoteId = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.writeRemoteAcks({ remoteId: otherRemoteId, acks: [ack(1), ack(2)], firstSequence: 1 })
+      assert.strictEqual(yield* journal.nextRemoteSequence(otherRemoteId), 3)
+    }))
 })

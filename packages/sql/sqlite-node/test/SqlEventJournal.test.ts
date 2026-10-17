@@ -611,6 +611,46 @@ describe("SqlEventJournal", () => {
       assert.deepStrictEqual(seenConflicts, [[], []])
     }))
 
+  it.effect("advances the remote sequence only across acknowledgements that follow it", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const open = SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const ack = (sequence: number, entryId = EventJournal.makeEntryIdUnsafe()) => ({ entryId, sequence })
+      // A database from before the cursors table: every remote row was downloaded.
+      yield* sql`CREATE TABLE effect_event_remotes (
+        remote_id BLOB NOT NULL,
+        entry_id BLOB NOT NULL,
+        sequence INT NOT NULL,
+        PRIMARY KEY (remote_id, entry_id)
+      )`
+      yield* sql`INSERT INTO effect_event_remotes ${
+        sql.insert({ remote_id: remoteId, entry_id: EventJournal.makeEntryIdUnsafe(), sequence: 4 })
+      }`
+      const journal = yield* open
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 5)
+
+      // Sequence 5, written by another replica, has not been downloaded.
+      const local = yield* journal.write({ ...localEntry("local-1"), effect: Effect.succeed })
+      yield* journal.writeRemoteAcks({ remoteId, acks: [ack(6, local.id)] })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 5)
+      assert.isTrue(Option.isNone(yield* journal.withRemoteUncommited(remoteId, () => Effect.void)))
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry: entry(1_000) })],
+        effect: () => Effect.void
+      })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
+      yield* journal.writeRemoteAcks({ remoteId, acks: [ack(7), ack(6, local.id), ack(3)] })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 8)
+      assert.strictEqual(yield* (yield* open).nextRemoteSequence(remoteId), 8)
+
+      // A remote that numbers from 1 can be acknowledged before any download.
+      const otherRemoteId = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.writeRemoteAcks({ remoteId: otherRemoteId, acks: [ack(2), ack(1)], firstSequence: 1 })
+      assert.strictEqual(yield* journal.nextRemoteSequence(otherRemoteId), 3)
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("does not re-upload an acknowledged entry that the server has not echoed", () =>
     Effect.gen(function*() {
       const storeId = EventLogMessage.StoreId.make("default")
