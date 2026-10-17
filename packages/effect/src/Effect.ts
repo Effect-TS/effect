@@ -15420,16 +15420,26 @@ export const effectify: {
   (<A>(fn: Function, onError?: (e: any, args: any) => any, onSyncError?: (e: any, args: any) => any) =>
   (...args: Array<any>) =>
     callback<A, globalThis.Error>((resume) => {
+      let synchronous = true
+      let pending: Effect<A, globalThis.Error> | undefined
       try {
         fn(...args, (err: globalThis.Error | null, result: A) => {
-          if (err) {
-            resume(onError ? suspend(() => fail(onError(err, args))) : fail(err))
+          const effect = err
+            ? onError ? suspend(() => fail(onError(err, args))) : fail(err)
+            : succeed(result)
+          if (synchronous) {
+            // Keep the first callback result until registration succeeds.
+            pending ??= effect
           } else {
-            resume(succeed(result))
+            resume(effect)
           }
         })
       } catch (err) {
-        resume(onSyncError ? fail(onSyncError(err, args)) : die(err))
+        pending = onSyncError ? fail(onSyncError(err, args)) : die(err)
+      }
+      synchronous = false
+      if (pending) {
+        resume(pending)
       }
     })) as any
 
