@@ -5614,7 +5614,10 @@ export const forkIn: {
     }
   ): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
     withFiber((parent) => {
-      const fiber = forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
+      // A closed scope gets an unstarted fiber, which is interrupted below
+      const fiber = scope.state._tag === "Closed"
+        ? new FiberImpl<A, E>(parent.context)
+        : forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
           const key = {}

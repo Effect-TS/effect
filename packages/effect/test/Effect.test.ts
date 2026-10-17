@@ -2912,6 +2912,24 @@ describe("Effect", () => {
   })
 
   describe("forkIn", () => {
+    for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
+      it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
+        Effect.gen(function*() {
+          const scope = yield* Scope.make()
+          yield* Scope.close(scope, Exit.void)
+          let ran = false
+          const fiber = yield* Effect.forkIn(
+            Effect.sync(() => {
+              ran = true
+            }),
+            scope,
+            options
+          )
+          const exit = yield* Fiber.await(fiber)
+          assert.deepStrictEqual([ran, Exit.hasInterrupts(exit)], [false, true])
+        }))
+    }
+
     it.effect("is interrupted when scope is closed", () =>
       Effect.gen(function*() {
         let interrupted = false
@@ -2930,6 +2948,23 @@ describe("Effect", () => {
   })
 
   describe("forkScoped", () => {
+    for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
+      it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
+        Effect.gen(function*() {
+          const scope = yield* Scope.make()
+          yield* Scope.close(scope, Exit.void)
+          let ran = false
+          const fiber = yield* Effect.forkScoped(
+            Effect.sync(() => {
+              ran = true
+            }),
+            options
+          ).pipe(Scope.provide(scope))
+          const exit = yield* Fiber.await(fiber)
+          assert.deepStrictEqual([ran, Exit.hasInterrupts(exit)], [false, true])
+        }))
+    }
+
     it.effect("is interrupted when scope is closed", () =>
       Effect.gen(function*() {
         let interrupted = false
