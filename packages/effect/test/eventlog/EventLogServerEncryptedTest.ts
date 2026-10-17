@@ -20,7 +20,7 @@ const makeEntries = (count: number) =>
       payload: Uint8Array.of(i % 256, 1, 2, 3)
     }, { disableChecks: true }))
 
-const hex = (bytes: BufferSource) =>
+const hex = (bytes: ArrayBufferLike | ArrayBufferView) =>
   Array.from(
     ArrayBuffer.isView(bytes) ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength) : new Uint8Array(bytes)
   )
@@ -79,12 +79,12 @@ const intercept = (client: Client, options: {
   readonly frame?: (data: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>
 }): Client => ({
   ...client,
-  "EventLog.Changes": ((payload: any, opts: any) =>
+  "EventLog.Changes": ((payload: any) =>
     Effect.gen(function*() {
       const incoming = yield* client["EventLog.Changes"]({
         ...payload,
         storeId: options.storeId ?? payload.storeId
-      }, { ...opts, asQueue: true })
+      }, { asQueue: true })
       const outgoing = yield* Queue.make<any, any>()
       yield* Queue.takeAll(incoming).pipe(
         Effect.flatMap((parts) =>
