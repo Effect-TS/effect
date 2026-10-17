@@ -418,6 +418,37 @@ describe("GraphQLResolver", () => {
         }))
     }
 
+    it.effect("withCache separates the same ID by URL and reuses results on the same URL", () =>
+      Effect.gen(function*() {
+        const sent: Array<string> = []
+        const layer = GraphQLProtocol.layerHttp({
+          url: ({ context }) => `http://${Context.get(context, GitHubHost)}/graphql`
+        }).pipe(
+          Layer.provide(httpClientLayer((_, bodyText, url) => {
+            const { ids } = JSON.parse(bodyText!).variables as { ids: Array<string> }
+            sent.push(`${url.host}: ${ids}`)
+            return graphqlResponse({ data: { nodes: ids.map((id) => repo(`${url.host}/${id}`)) } })
+          }))
+        )
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(layer))
+        const resolver = yield* GraphQLResolver.ordered(client.RepoNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"]
+        }).pipe(RequestResolver.withCache({ capacity: 2 }))
+        const get = GraphQLResolver.request(resolver)
+
+        const first = yield* get("R_1")
+        const otherHost = yield* Effect.provideService(get("R_1"), GitHubHost, "api.acme.ghe.com")
+        const cached = yield* get("R_1")
+
+        assert.deepStrictEqual([first, otherHost, cached], [
+          repo("api.github.com/R_1"),
+          repo("api.acme.ghe.com/R_1"),
+          repo("api.github.com/R_1")
+        ])
+        assert.deepStrictEqual(sent, ["api.github.com: R_1", "api.acme.ghe.com: R_1"])
+      }))
+
     it.effect("applies batchN per asynchronous URL with an implicit default host and evaluates each URL once", () =>
       Effect.gen(function*() {
         let evaluations = 0
