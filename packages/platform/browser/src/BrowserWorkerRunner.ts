@@ -126,7 +126,11 @@ export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatf
             Effect.sync(() => {
               port.removeEventListener("message", onMsg)
               port.removeEventListener("messageerror", onMessageError)
-              port.close()
+              // Bun's worker global implements the messaging surface but not
+              // close(); the owning parent still terminates the worker.
+              if ("close" in port) {
+                port.close()
+              }
             })
           ))
         }
