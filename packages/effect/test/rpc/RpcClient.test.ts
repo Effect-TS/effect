@@ -195,6 +195,78 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
     }))
 
+  it.effect("completes all detached calls when protocol error delivery is interrupted", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const delivery = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
+      })
+      const first = yield* client.Unary().pipe(
+        Effect.catch(() =>
+          Effect.gen(function*() {
+            const receiver = yield* Deferred.await(delivery)
+            yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+          })
+        ),
+        Effect.forkChild
+      )
+      takeRequestId(yield* Queue.take(sent))
+      yield* client.Good(undefined, { asQueue: true })
+      takeRequestId(yield* Queue.take(sent))
+      const last = yield* client.Unary().pipe(Effect.exit, Effect.forkChild)
+      takeRequestId(yield* Queue.take(sent))
+      yield* Effect.yieldNow
+
+      const receiver = yield* Effect.withFiber((fiber) =>
+        Deferred.succeed(delivery, fiber).pipe(
+          Effect.andThen(handle({ _tag: "ClientProtocolError", error }))
+        )
+      ).pipe(Effect.forkChild)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      yield* Fiber.join(first)
+      assert.deepStrictEqual(last.pollUnsafe(), Exit.succeed(Exit.fail(error)))
+    }))
+
+  it.effect.each(["send failure", "interruption"] as const)(
+    "only interrupts unfinished streaming requests after %s",
+    (failure) =>
+      Effect.gen(function*() {
+        const sent: Array<string> = []
+        const sending = yield* Deferred.make<void>()
+        const scope = yield* Scope.make()
+        yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
+        const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
+          onFromClient: ({ message }) =>
+            Effect.gen(function*() {
+              sent.push(message._tag)
+              if (message._tag !== "Request") return
+              yield* Deferred.succeed(sending, void 0)
+              if (failure === "interruption") return yield* Effect.never
+              return yield* Effect.fail("send failed")
+            })
+        }).pipe(
+          Effect.provideService(Scope.Scope, scope)
+        )
+        const queue = yield* client.Events(undefined, { asQueue: true }).pipe(
+          Effect.provideService(Scope.Scope, scope)
+        )
+        if (failure === "interruption") {
+          yield* Deferred.await(sending)
+        } else {
+          assert(Exit.isFailure(yield* Queue.take(queue).pipe(Effect.exit)))
+        }
+        yield* Scope.close(scope, Exit.void)
+        assert.deepStrictEqual(
+          sent,
+          failure === "interruption"
+            ? ["Request", "Interrupt"]
+            : ["Request"]
+        )
+      })
+  )
+
   it.effect.each(["protocol error", "defect", "send failure", "encoding failure", "interruption"] as const)(
     "ignores late replies after %s",
     (failure) =>
@@ -262,6 +334,112 @@ describe("RpcClient", () => {
         // A retained request would still decode the late reply using its caller's context.
         yield* handle({ _tag: "Exit", requestId: 0, exit: { _tag: "Success", value: "late" } })
         assert.strictEqual(decodedReplies, 0)
+      })
+  )
+
+  it.effect.each(
+    ["encoding failure", "write failure", "cancelled write", "interrupt", "defect", "decode error"] as const
+  )(
+    "releases socket routing after %s without removing reentrant requests",
+    (failure) =>
+      Effect.gen(function*() {
+        const frames = yield* Queue.unbounded<string>()
+        const received = yield* Queue.unbounded<{
+          clientId: number
+          message: Parameters<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>[0]
+        }>()
+        const writing = yield* Deferred.make<void>()
+        const write = () =>
+          Deferred.succeed(writing, void 0).pipe(Effect.andThen(
+            failure === "write failure" ?
+              Effect.die("write failed") :
+              failure === "cancelled write"
+              ? Effect.never
+              : Effect.void
+          ))
+        const socket = Socket.make({
+          reader: Effect.succeed({
+            pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+            upgrade: Socket.SocketUpgradeError.unsupported
+          }),
+          writer: Effect.succeed({ write, writeAll: write })
+        })
+        const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+          Effect.provideService(Socket.Socket, socket),
+          Effect.provideService(RpcSerialization.RpcSerialization, {
+            ...RpcSerialization.json,
+            makeUnsafe: () => ({
+              ...RpcSerialization.json.makeUnsafe(),
+              encode: (message) => {
+                if (failure === "encoding failure") throw new Error("encode failed")
+                return JSON.stringify(message)
+              }
+            })
+          })
+        )
+        const request = (id: string) => ({ _tag: "Request" as const, id, tag: "Ping", payload: undefined, headers: [] })
+        let interruptDelivery = false
+        for (const clientId of [1, 2]) {
+          yield* protocol.run(clientId, (message) =>
+            Queue.offer(received, { clientId, message }).pipe(
+              Effect.andThen(() =>
+                clientId === 1 && (message._tag === "Defect" || message._tag === "ClientProtocolError")
+                  ? interruptDelivery
+                    ? Effect.withFiber((fiber) => Effect.sync(() => fiber.interruptUnsafe(fiber.id)))
+                    : protocol.send(2, request("new")).pipe(Effect.orDie)
+                  : Effect.void
+              )
+            )).pipe(Effect.forkChild({ startImmediately: true }))
+        }
+        const sending = yield* Effect.suspend(() => protocol.send(1, request("old"))).pipe(
+          Effect.exit,
+          Effect.forkChild
+        )
+        if (failure === "cancelled write") {
+          yield* Deferred.await(writing)
+          yield* Fiber.interrupt(sending)
+        } else {
+          const exit = yield* Fiber.join(sending)
+          assert.strictEqual(Exit.isFailure(exit), failure === "encoding failure" || failure === "write failure")
+        }
+        if (failure === "interrupt") yield* protocol.send(1, { _tag: "Interrupt", requestId: "old" })
+        const broadcast = failure === "defect" || failure === "decode error"
+        if (broadcast) {
+          yield* Queue.offer(
+            frames,
+            failure === "defect" ? JSON.stringify({ _tag: "Defect", defect: "boom" }) : "invalid JSON"
+          )
+          assert.strictEqual((yield* Queue.take(received)).clientId, 1)
+          assert.strictEqual((yield* Queue.take(received)).clientId, 2)
+        }
+
+        yield* Queue.offer(
+          frames,
+          JSON.stringify([
+            { _tag: "Exit", requestId: "old", exit: { _tag: "Success", value: "late" } },
+            ...(broadcast ? [{ _tag: "Exit", requestId: "new", exit: { _tag: "Success", value: "ok" } }] : []),
+            { _tag: "Chunk", requestId: "barrier", values: [] }
+          ])
+        )
+        const routes: Array<[string | number, number]> = []
+        while (true) {
+          const { clientId, message } = yield* Queue.take(received)
+          assert(message._tag === "Exit" || message._tag === "Chunk")
+          if (message.requestId === "barrier" && clientId === 2) break
+          if (message.requestId !== "barrier") routes.push([message.requestId, clientId])
+        }
+        // Unowned replies are broadcast; a retained route would send "old" only to client 1.
+        assert.deepStrictEqual(routes, broadcast ? [["old", 1], ["old", 2], ["new", 2]] : [["old", 1], ["old", 2]])
+        if (broadcast) {
+          interruptDelivery = true
+          yield* Queue.offer(
+            frames,
+            failure === "defect" ? JSON.stringify({ _tag: "Defect", defect: "boom" }) : "invalid JSON"
+          )
+          const first = yield* Queue.take(received)
+          const last = yield* Queue.take(received)
+          assert.deepStrictEqual(last, { clientId: 2, message: first.message })
+        }
       })
   )
 
