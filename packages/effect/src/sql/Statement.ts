@@ -933,7 +933,12 @@ const CompilerProto = {
         }
 
         case "RecordInsertHelper": {
-          const keys = Object.keys(segment.value[0])
+          // columns come from the first row
+          const row = segment.value[0]
+          if (row === undefined) {
+            throw new Error("sql.insert: no rows")
+          }
+          const keys = Object.keys(row)
 
           if (opts.onInsert) {
             const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
@@ -1053,7 +1058,12 @@ const CompilerProto = {
         }
 
         case "RecordUpdateHelper": {
-          const keys = Object.keys(segment.value[0])
+          // columns come from the first row
+          const row = segment.value[0]
+          if (row === undefined) {
+            throw new Error("sql.updateValues: no rows")
+          }
+          const keys = Object.keys(row)
           const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
           let placeholders = ""
           for (let i = 0; i < segment.value.length; i++) {
