@@ -196,15 +196,12 @@ export const layerRpcHandlers = (options: {
           })
           .annotate(AuthenticatedIdentities, authenticatedIdentities)
           .annotate(ChunkedMessageState, new Map())
-        if (!Context.getOrUndefined(client.annotations, ConnectionWritesState)) {
-          void client.annotate(ConnectionWritesState, new ConnectionWrites())
-        }
       }),
       "EventLog.WriteSingle": (request, { client }) =>
         options.onWrite(
           request.data,
           Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set(),
-          getConnectionWrites(client.annotations)
+          getConnectionWrites(client)
         ),
       "EventLog.WriteChunked": (request, { client }) => {
         const state = Context.get(client.annotations, ChunkedMessageState)
@@ -213,7 +210,7 @@ export const layerRpcHandlers = (options: {
         return options.onWrite(
           data,
           Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set(),
-          getConnectionWrites(client.annotations)
+          getConnectionWrites(client)
         )
       },
       "EventLog.Changes": (request, { client }) => {
@@ -232,7 +229,7 @@ export const layerRpcHandlers = (options: {
           publicKey: request.publicKey,
           storeId: request.storeId,
           startSequence: request.startSequence,
-          writes: getConnectionWrites(client.annotations)
+          writes: getConnectionWrites(client)
         }).pipe(
           Stream.mapArray(Arr.flatMap((data): NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
             if (data.byteLength <= ChunkedMessage.chunkSize) {
@@ -396,8 +393,13 @@ class ConnectionWritesState extends Context.Service<ConnectionWritesState, Conne
   "effect/eventlog/EventLogServer/ConnectionWrites"
 ) {}
 
-const getConnectionWrites = (annotations: Context.Context<never>): ConnectionWrites =>
-  Context.getOrUndefined(annotations, ConnectionWritesState) ?? new ConnectionWrites()
+const getConnectionWrites = (client: Rpc.ServerClient): ConnectionWrites => {
+  const existing = Context.getOrUndefined(client.annotations, ConnectionWritesState)
+  if (existing !== undefined) return existing
+  const writes = new ConnectionWrites()
+  client.annotate(ConnectionWritesState, writes)
+  return writes
+}
 
 /**
  * Annotation containing the public keys authenticated on an RPC connection.

@@ -135,12 +135,8 @@ export const layerRpcHandlers: Layer.Layer<
     const stored = yield* storage.entriesAfter(options.storeId, entries[0], entries)
     const index = new HistoryIndex(stored.map((remoteEntry) => remoteEntry.entry))
     const persistedEntries = Arr.empty<Entry>()
-    const duplicateEntries = Arr.empty<Entry>()
     for (const entry of entries) {
-      if (index.has(entry)) {
-        duplicateEntries.push(entry)
-        continue
-      }
+      if (index.has(entry)) continue
       const conflicts = index.conflicts(entry)
       yield* handler({
         publicKey: options.publicKey,
@@ -154,14 +150,11 @@ export const layerRpcHandlers: Layer.Layer<
 
     // Acknowledge in request order. Duplicates keep their stored sequence.
     const sequences = new Map<string, number>()
-    for (const remoteEntry of committed) {
+    for (const remoteEntry of stored) {
       sequences.set(remoteEntry.entry.idString, remoteEntry.remoteSequence)
     }
-    for (const entry of duplicateEntries) {
-      const idString = entry.idString
-      if (sequences.has(idString)) continue
-      const existing = stored.find((remoteEntry) => remoteEntry.entry.idString === idString)
-      if (existing !== undefined) sequences.set(idString, existing.remoteSequence)
+    for (const remoteEntry of committed) {
+      sequences.set(remoteEntry.entry.idString, remoteEntry.remoteSequence)
     }
     const acks: Array<WriteAck> = []
     for (const entry of options.entries) {
