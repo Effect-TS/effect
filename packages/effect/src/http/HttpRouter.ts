@@ -221,14 +221,14 @@ export const make = Effect.gen(function*() {
           }
         }
         if (result === undefined) {
+          const description = paramLimit === undefined
+            ? undefined
+            : `path parameter is longer than maxParamLength (${paramLimit})`
           return Effect.fail(
             new HttpServerError.HttpServerError({
-              reason: new HttpServerError.RouteNotFound({
-                request,
-                description: paramLimit === undefined
-                  ? undefined
-                  : `path parameter is longer than maxParamLength (${paramLimit})`
-              })
+              reason: new HttpServerError.RouteNotFound(
+                description === undefined ? { request } : { request, description }
+              )
             })
           )
         }

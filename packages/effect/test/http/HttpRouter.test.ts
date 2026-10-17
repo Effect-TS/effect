@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -134,6 +134,8 @@ describe("HttpRouter", () => {
         Effect.flip
       )
       const error = yield* handled
+      assert.strictEqual(HttpServerError.isHttpServerError(error), true)
+      if (!HttpServerError.isHttpServerError(error)) return
       const reason = error.reason
       assert.strictEqual(reason._tag, "RouteNotFound")
       if (reason._tag !== "RouteNotFound") return
