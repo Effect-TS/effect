@@ -1719,11 +1719,17 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
     }
   })
 
-const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
+const showUserError = (error: CliError.UserFacing): Effect.Effect<void> =>
   Effect.gen(function*() {
     const formatter = yield* CliOutput.Formatter
-    yield* Console.error(formatter.formatError(error))
-    error[Runtime.errorReported] = false
+    const rendered = CliError.isCliError(error) && error._tag === "UserError"
+      ? error
+      : new CliError.UserError({
+        cause: error,
+        userMessage: error.userMessage
+      })
+    yield* Console.error(formatter.formatError(rendered))
+    ;(error as unknown as { [Runtime.errorReported]: boolean })[Runtime.errorReported] = false
   })
 
 /**
@@ -1735,7 +1741,8 @@ const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
  * entry point.
  *
  * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
+ * user-facing handler failures (`CliError.UserError` or any error that
+ * implements `CliError.UserFacing`) are also rendered with the installed
  * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
  * `false` when the host application owns error rendering.
  *
@@ -1825,7 +1832,8 @@ export const run: {
  * commands with specific arguments.
  *
  * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
+ * user-facing handler failures (`CliError.UserError` or any error that
+ * implements `CliError.UserFacing`) are also rendered with the installed
  * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
  * `false` when the host application owns error rendering.
  *
@@ -2003,7 +2011,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
     ),
     Effect.catchFilter(
       (error) =>
-        config.renderErrors !== false && CliError.isCliError(error) && error._tag === "UserError"
+        config.renderErrors !== false && CliError.isUserFacing(error)
           ? Result.succeed(error)
           : Result.fail(error),
       (error) => Effect.andThen(showUserError(error), Effect.fail(error))
