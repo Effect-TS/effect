@@ -109,6 +109,16 @@ it("falls back when a parameter exceeds maxParamLength", () => {
   assert.strictEqual(router.find("GET", "/users/long")?.handler, "wildcard")
 })
 
+it("records the limit when a long parameter matches nothing else", () => {
+  const router = Router.make<string>()
+  router.on("GET", "/addresses/:address", "address")
+
+  assert.isUndefined(router.find("GET", "/addresses/" + "a".repeat(101)))
+  assert.strictEqual(router.maxParamLengthExceeded, 100)
+  assert.isUndefined(router.find("GET", "/missing"))
+  assert.isUndefined(router.maxParamLengthExceeded)
+})
+
 it("avoids backtracking across static parameter separators", { timeout: 1_000 }, () => {
   const router = Router.make<boolean>()
   router.on("GET", "/:foo-:bar-", true)

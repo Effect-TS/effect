@@ -213,13 +213,22 @@ export const make = Effect.gen(function*() {
         let context = fiber.context
         const request = Context.getUnsafe(context, HttpServerRequest.HttpServerRequest)
         let result = router.find(request.method, request.url)
+        let paramLimit = result === undefined ? router.maxParamLengthExceeded : undefined
         if (result === undefined && request.method === "HEAD") {
           result = router.find("GET", request.url)
+          if (result === undefined) {
+            paramLimit = paramLimit ?? router.maxParamLengthExceeded
+          }
         }
         if (result === undefined) {
           return Effect.fail(
             new HttpServerError.HttpServerError({
-              reason: new HttpServerError.RouteNotFound({ request })
+              reason: new HttpServerError.RouteNotFound({
+                request,
+                description: paramLimit === undefined
+                  ? undefined
+                  : `path parameter is longer than maxParamLength (${paramLimit})`
+              })
             })
           )
         }
@@ -309,7 +318,9 @@ function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
  * **Details**
  *
  * The value is passed to the route matcher when an `HttpRouter` is created and
- * defaults to an empty configuration.
+ * defaults to an empty configuration. `maxParamLength` still defaults to 100:
+ * a longer path parameter does not match, and the miss is a `RouteNotFound`
+ * that names the limit.
  *
  * @stability unstable
  * @category services

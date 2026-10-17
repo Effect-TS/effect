@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { HttpRouter, type HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -117,5 +117,30 @@ describe("HttpRouter", () => {
       const body = yield* fetchText(routes, "/api/app/users")
 
       assert.strictEqual(body, "/users")
+    }))
+
+  it.effect("names maxParamLength when a path parameter is too long", () =>
+    Effect.gen(function*() {
+      const handled = Effect.gen(function*() {
+        const router = yield* HttpRouter.HttpRouter
+        yield* router.add("GET", "/addresses/:address", HttpServerResponse.text("ok"))
+        return yield* router.asHttpEffect()
+      }).pipe(
+        Effect.provide(HttpRouter.layer),
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(new Request("http://localhost/addresses/" + "a".repeat(101)))
+        ),
+        Effect.flip
+      )
+      const error = yield* handled
+      const reason = error.reason
+      assert.strictEqual(reason._tag, "RouteNotFound")
+      if (reason._tag !== "RouteNotFound") return
+      assert.strictEqual(
+        reason.message,
+        "RouteNotFound (GET /addresses/" + "a".repeat(101) +
+          "): path parameter is longer than maxParamLength (100)"
+      )
     }))
 })

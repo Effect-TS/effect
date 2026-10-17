@@ -61,6 +61,7 @@ class RouterImpl<A> implements Router.Router<A> {
   }
 
   readonly options: Router.RouterConfig
+  maxParamLengthExceeded: number | undefined = undefined
   routes: Array<Route> = []
   trees: Record<string, StaticNode> = Object.create(null)
   staticRoutes: Record<string, Map<string, Handler>> = Object.create(null)
@@ -309,6 +310,7 @@ class RouterImpl<A> implements Router.Router<A> {
   }
 
   find(method: string, path: string): Router.FindResult<A> | undefined {
+    this.maxParamLengthExceeded = undefined
     let currentNode: Node | undefined = this.trees[method]
     if (currentNode === undefined) return undefined
 
@@ -394,6 +396,7 @@ class RouterImpl<A> implements Router.Router<A> {
             searchParams: QS.parse(querystring)
           } as const
         }
+        this.maxParamLengthExceeded = maxParamLength
       }
     }
 
@@ -483,6 +486,7 @@ class RouterImpl<A> implements Router.Router<A> {
             const matchedParam = matchedParameters[i] ?? ""
             if (matchedParam.length > maxParamLength) {
               maxParamLengthExceeded = true
+              this.maxParamLengthExceeded = maxParamLength
               break
             }
           }
@@ -504,6 +508,7 @@ class RouterImpl<A> implements Router.Router<A> {
           }
         } else {
           if (param.length > maxParamLength) {
+            this.maxParamLengthExceeded = maxParamLength
             if (brothersNodesStack.length === 0) {
               return undefined
             }
