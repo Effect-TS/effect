@@ -1,7 +1,7 @@
 // oxlint-disable-next-line no-unassigned-import
 import "fake-indexeddb/auto"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, PubSub } from "effect"
+import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 
 let databaseId = 0
@@ -69,6 +69,48 @@ describe("EventJournal.makeIndexedDb", () => {
         afterCommit: 1,
         committed: ids,
         published: ids
+      })
+    }))
+
+  it.live("writeMany fails when its transaction aborts after the puts succeed", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      const changes = yield* journal.changes
+      // Abort once the put has succeeded and no request is pending, so the
+      // transaction dispatches `abort` without an `error` event, as a failed
+      // commit would.
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          const put = IDBObjectStore.prototype.put
+          IDBObjectStore.prototype.put = function(this: IDBObjectStore, value, key) {
+            const request = put.call(this, value, key)
+            if (this.transaction.db.name === database) {
+              request.addEventListener("success", () => this.transaction.abort())
+            }
+            return request
+          }
+          return put
+        }),
+        (put) =>
+          Effect.sync(() => {
+            IDBObjectStore.prototype.put = put
+          })
+      )
+      const write = yield* journal.writeMany({
+        entries: [{ event: "Repro", primaryKey: "a", payload: new Uint8Array() }],
+        effect: Effect.succeed
+      }).pipe(Effect.flip, Effect.forkDetach)
+      // The commit is uninterruptible, so bound the wait without interrupting it.
+      const error = yield* Fiber.join(write).pipe(Effect.timeoutOption("2 seconds"))
+      assert.deepStrictEqual({
+        failed: Option.map(error, (error) => (error as EventJournal.EventJournalError)._tag),
+        committed: (yield* journal.entries).length,
+        published: yield* PubSub.remaining(changes)
+      }, {
+        failed: Option.some("EventJournalError"),
+        committed: 0,
+        published: 0
       })
     }))
 
