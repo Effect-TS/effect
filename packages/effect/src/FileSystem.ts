@@ -137,15 +137,27 @@ export interface FileSystem {
    *
    * Patterns follow `Glob.make`: wildcards skip names that start with `.`
    * unless the pattern segment starts with `.` or `dot` is `true`, and
-   * `dir/**` includes `dir` itself. Names are compared exactly as directory
-   * listings return them, even on case-insensitive file systems. Results are
-   * `/`-separated paths relative to `root` (or absolute for an absolute
-   * pattern), visited depth-first with each directory's entries sorted by
-   * name. `**` does not traverse symbolic links to directories, but a link
-   * named by another segment is followed. Paths that match an `exclude`
-   * pattern are dropped, and excluded directories are not read. Directories
-   * that are missing or unreadable are treated as empty, and entries whose
-   * type cannot be determined, such as broken links, are treated as files.
+   * `dir/**` includes `dir` itself. Results are `/`-separated paths relative
+   * to `root` (or absolute for an absolute pattern), visited depth-first with
+   * each directory's entries sorted by name. `**` does not traverse symbolic
+   * links to directories, but a link named by another segment is followed.
+   * Paths that match an `exclude` pattern are dropped, and excluded
+   * directories are not read. Entries whose type cannot be determined, such
+   * as broken links, are treated as files.
+   *
+   * Fails when the root, or a directory named by the pattern's leading literal
+   * segments, cannot be read, for example because read permission is missing.
+   * If the root or such a directory does not exist, the result is empty.
+   * Directories reached through wildcards that are missing or unreadable are
+   * skipped.
+   *
+   * **Gotchas**
+   *
+   * Names are compared exactly as directory listings return them, even on
+   * case-insensitive file systems, except for the pattern's leading literal
+   * segments. Those are checked with `stat` instead of listing their parent,
+   * so on a case-insensitive file system they match regardless of case and
+   * results keep the pattern's spelling.
    */
   readonly glob: (
     pattern: string,
@@ -263,6 +275,24 @@ export interface FileSystem {
       readonly recursive?: boolean | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
+  /**
+   * Lists a directory with the type of each entry.
+   *
+   * **Details**
+   *
+   * Names are bare entry names, excluding `.` and `..`, in no particular
+   * order, and must match `readDirectory(path)`. `type` describes the entry
+   * itself, as `lstat` would: a symbolic link is `"SymbolicLink"`, never its
+   * target's type. `"Unknown"` is always allowed and means the type must be
+   * found with `stat`.
+   *
+   * **Gotchas**
+   *
+   * A file system that wraps another one and changes `readDirectory`, for
+   * example by prefixing paths, must change `readDirectoryEntries` the same
+   * way, or `glob` lists the wrong directory.
+   */
+  readonly readDirectoryEntries: (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>
   /**
    * Read the contents of a file.
    */
@@ -503,7 +533,7 @@ export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Servi
  * `"SymbolicLink"` regardless of what it points to. `"Unknown"` means the
  * listing could not tell.
  *
- * @see {@link make} for supplying typed listings to the derived `glob`
+ * @see {@link FileSystem} `readDirectoryEntries`, which returns these entries
  *
  * @stability unstable
  * @category models
@@ -527,10 +557,11 @@ export interface DirectoryEntry {
  *
  * This function takes a partial FileSystem implementation and automatically provides
  * default implementations for `exists`, `readFileString`, `stream`, `sink`, and
- * `writeFileString` methods based on the provided core methods. When `glob` is
- * omitted, it walks the tree with `readDirectory`, `stat`, and `readLink`, or
- * with `readDirectoryEntries` when it is provided so entry types come from the
- * listing instead of one `stat` per entry.
+ * `writeFileString` methods based on the provided core methods. When
+ * `readDirectoryEntries` is omitted, it lists with `readDirectory` and reports
+ * every entry as `"Unknown"`. When `glob` is omitted, it walks the tree with
+ * `readDirectoryEntries`, using `stat` and `readLink` only for entries whose
+ * type is `"Unknown"`.
  *
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
@@ -541,24 +572,35 @@ export interface DirectoryEntry {
  */
 export const make = (
   impl:
-    & Omit<FileSystem, typeof TypeId | "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
+    & Omit<
+      FileSystem,
+      | typeof TypeId
+      | "exists"
+      | "glob"
+      | "readDirectoryEntries"
+      | "readFileString"
+      | "stream"
+      | "sink"
+      | "writeFileString"
+    >
     & {
       readonly glob?: FileSystem["glob"] | undefined
-      /**
-       * Lists a directory with the type of each entry. Links must be reported
-       * as `"SymbolicLink"` rather than their target's type; `"Unknown"`
-       * entries fall back to `stat` and `readLink`.
-       */
-      readonly readDirectoryEntries?:
-        | ((path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>)
-        | undefined
+      readonly readDirectoryEntries?: FileSystem["readDirectoryEntries"] | undefined
     }
 ): FileSystem => {
-  const { glob, readDirectoryEntries: _, ...rest } = impl
+  const readDirectoryEntries = impl.readDirectoryEntries ??
+    ((path: string) =>
+      Effect.map(
+        impl.readDirectory(path),
+        (names) => names.map((name): DirectoryEntry => ({ name, type: "Unknown" }))
+      ))
+  const walker = { readDirectoryEntries, stat: impl.stat, readLink: impl.readLink }
   return FileSystem.of({
-    ...rest,
+    ...impl,
     [TypeId]: TypeId,
-    glob: glob ?? ((pattern, options) => Glob.walk(impl, Glob.compile(pattern, options?.dot ?? false), options)),
+    readDirectoryEntries,
+    glob: impl.glob ??
+      ((pattern, options) => Glob.walk(walker, Glob.compile(pattern, options?.dot ?? false), options)),
     exists: (path) =>
       pipe(
         impl.access(path),
@@ -745,6 +787,9 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
     },
     readDirectory(path) {
       return Effect.fail(notFound("readDirectory", path))
+    },
+    readDirectoryEntries(path) {
+      return Effect.fail(notFound("readDirectoryEntries", path))
     },
     readFile(path) {
       return Effect.fail(notFound("readFile", path))

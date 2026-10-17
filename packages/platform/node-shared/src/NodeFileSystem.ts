@@ -514,7 +514,7 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
 const readDirectoryEntries = (path: string) =>
   Effect.tryPromise({
     try: () => NFS.promises.readdir(path, { withFileTypes: true }),
-    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
+    catch: (err) => handleErrnoException("FileSystem", "readDirectoryEntries")(err as any, [path])
   }).pipe(
     Effect.map((entries) =>
       entries.map((entry): FileSystem.DirectoryEntry => ({ name: entry.name, type: fileType(entry) }))
