@@ -19,6 +19,7 @@ import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import { constVoid } from "../Function.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import type { Option } from "../Option.ts"
@@ -686,8 +687,7 @@ export const makeIndexedDb = (options?: {
             for (const entry of committed) {
               store.put(encodeEntryIdb(entry))
             }
-            tx.oncomplete = () => resume(Effect.void)
-            tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeMany", cause: tx.error })))
+            onTransactionDone(tx, "writeMany", resume, constVoid)
           })),
           Effect.tap(PubSub.publishAll(pubsub, committed))
         )
@@ -725,8 +725,7 @@ export const makeIndexedDb = (options?: {
               }
             }
           }
-          tx.oncomplete = () => resume(Effect.void)
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+          onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
 
@@ -751,9 +750,7 @@ export const makeIndexedDb = (options?: {
               }
               cursor.continue()
             }
-            tx.oncomplete = () => resume(Effect.void)
-            tx.onerror = () =>
-              resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+            onTransactionDone(tx, "writeFromRemote", resume, constVoid)
             return Effect.sync(() => tx.abort())
           })
           yield* options.effect(index.toBatch())
@@ -774,8 +771,7 @@ export const makeIndexedDb = (options?: {
               sequence: remoteEntry.remoteSequence
             })
           }
-          tx.oncomplete = () => resume(Effect.void)
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+          onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
         return {
@@ -810,9 +806,7 @@ export const makeIndexedDb = (options?: {
             }
           }
 
-          tx.oncomplete = () => resume(Effect.succeed(entries))
-          tx.onerror = () =>
-            resume(Effect.fail(new EventJournalError({ method: "withRemoteUncommited", cause: tx.error })))
+          onTransactionDone(tx, "withRemoteUncommited", resume, () => entries)
           return Effect.sync(() => tx.abort())
         }).pipe(
           Effect.flatMap((entries) => {
@@ -846,9 +840,7 @@ export const makeIndexedDb = (options?: {
             if (!cursor) return
             sequence = cursor.value.sequence + 1
           }
-          tx.oncomplete = () => resume(Effect.succeed(sequence))
-          tx.onerror = () =>
-            resume(Effect.fail(new EventJournalError({ method: "nextRemoteSequence", cause: tx.error })))
+          onTransactionDone(tx, "nextRemoteSequence", resume, () => sequence)
           return Effect.sync(() => tx.abort())
         }),
       changes: PubSub.subscribe(pubsub),
@@ -913,6 +905,18 @@ export const layerIndexedDb = (options?: {
     EventJournal,
     makeIndexedDb(options)
   )
+
+// Resumes when the transaction commits, and fails if it errors or aborts. An
+// abort, such as a failed commit, does not always dispatch an error first.
+const onTransactionDone = <A>(
+  tx: IDBTransaction,
+  method: string,
+  resume: (effect: Effect.Effect<A, EventJournalError>) => void,
+  onComplete: () => A
+): void => {
+  tx.oncomplete = () => resume(Effect.succeed(onComplete()))
+  tx.onerror = tx.onabort = () => resume(Effect.fail(new EventJournalError({ method, cause: tx.error })))
+}
 
 const idbReq = <T>(method: string, evaluate: () => IDBRequest<T>) =>
   Effect.callback<T, EventJournalError>((resume) => {
