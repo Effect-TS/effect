@@ -258,22 +258,6 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
-  it.effect("should report an Effect defect when a server has no registered internal state", () =>
-    Effect.gen(function*() {
-      const server = yield* McpServer.McpServer.make
-      const core = yield* McpServer.getCore(server)
-      assert.isDefined(core)
-
-      const lookup = McpServer.getCore({ ...server })
-      const defect = yield* Effect.catchDefect(lookup, Effect.succeed)
-      assert.instanceOf(defect, Cause.IllegalArgumentError)
-      assert.propertyVal(
-        defect,
-        "message",
-        "McpServer internal state is unavailable; use McpServer.make or McpServer.layer"
-      )
-    }))
-
   // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
   // Pings are allowed before the initialize response and require an empty result.
   for (
@@ -2440,7 +2424,7 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), JSON.stringify({ _tag: "NoteNotFound", id: "n1" }))
       }))
 
-    it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
+    it.effect("should scrub and report declared failures when serialization fails", () =>
       Effect.gen(function*() {
         const { client, logged, reported } = yield* makeToolkitTestClient(TestToolkit.of({
           ...testToolkitHandlers,

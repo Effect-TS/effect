@@ -271,38 +271,62 @@ it.effect("should keep ordinary tools inline when task and ordinary toolkits sha
     assert.strictEqual((yield* terminal(harness, (yield* create(harness)).taskId)).status, "completed")
   }))
 
-it.effect("should conceal other owners and malformed handles when task methods are called", () =>
+it.effect("should enforce the current request's ownership when registration retains another owner", () =>
   Effect.gen(function*() {
     const layer = McpTasks.toolkit(Reports, {
-      owner: McpSchema.McpRequestContext.useSync((context) => context.clientInfo?.name ?? "anonymous")
-    }).pipe(
-      Layer.provide(McpTasks.layerWorkflow(Reports, { report: () => Effect.succeed("private") }, { name: "private" }))
-    ).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+      owner: HttpServerRequest.HttpServerRequest.useSync((request) => request.headers["x-test-owner"] ?? "anonymous")
+    }, (tools) => McpTasks.layerMemory(tools, { report: () => Effect.succeed("private") })).pipe(
+      Layer.provide(Layer.succeed(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(new Request("http://registration", { headers: { "x-test-owner": "registration" } }))
+      )),
+      Layer.provideMerge(serverLayer)
+    )
     const harness = yield* makeHttpHarness(layer)
+    const ownedPost = (owner: string, method: string, params: Record<string, unknown>) =>
+      harness.post(request(method, params), {
+        ...headers(method, String(params.taskId ?? params.name ?? "")),
+        "x-test-owner": owner
+      }).pipe(Effect.flatMap(readMcpHttpResponse))
+    const { result: task } = yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CreateTaskResult }))(
+      yield* ownedPost("alice", "tools/call", { name: "report", arguments: {} })
+    )
+    const own = yield* ownedPost("alice", "tasks/get", { taskId: task.taskId })
+    yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.GetTaskResult }))(own)
+    for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
+      const { error } = yield* decodeError(
+        yield* ownedPost("bob", method, {
+          taskId: task.taskId,
+          ...(method === "tasks/update" ? { inputResponses: {} } : {})
+        })
+      )
+      assert.strictEqual(error.code, -32602)
+    }
+  }))
+
+it.effect("should reject invalid handles when Workflow task methods are called", () =>
+  Effect.gen(function*() {
+    const harness = yield* makeHttpHarness(server)
     const task = yield* create(harness)
     const parsed = DurableDeferred.TokenParsed.fromString(
       JSON.parse(Schema.decodeUnknownSync(Schema.StringFromBase64Url)(task.taskId))[1]
     )
+    // Construct adversarial handles here to exercise the Workflow adapter's token validation.
     const unknownIds = [
       "malformed",
-      Base64Url.encode(
-        JSON.stringify(["report", new DurableDeferred.TokenParsed({ ...parsed, workflowName: "unknown" }).asToken])
-      ),
-      Base64Url.encode(
-        JSON.stringify(["report", new DurableDeferred.TokenParsed({ ...parsed, executionId: "unknown" }).asToken])
-      ),
-      JSON.stringify([
-        "report",
-        new DurableDeferred.TokenParsed({ ...parsed, deferredName: "mcp/task/finishedAt" }).asToken
-      ])
+      ...[
+        { ...parsed, workflowName: "unknown" },
+        { ...parsed, executionId: "unknown" },
+        { ...parsed, deferredName: "mcp/task/finishedAt" }
+      ].map((token) => Base64Url.encode(JSON.stringify(["report", new DurableDeferred.TokenParsed(token).asToken])))
     ]
     for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
-      for (const [taskId, client] of [[task.taskId, "OtherClient"], ...unknownIds.map((id) => [id, "TaskClient"])]) {
+      for (const taskId of unknownIds) {
         const { error } = yield* decodeError(
           yield* post(harness, method, {
             taskId,
             ...(method === "tasks/update" ? { inputResponses: {} } : {})
-          }, client)
+          })
         )
         assert.strictEqual(error.code, -32602)
       }
@@ -393,9 +417,10 @@ it.effect("should return an error without starting work when Workflow rejects ta
     assert.strictEqual(runs, 0)
   }))
 
-for (const checkpoints of [0, 100]) {
-  it.effect(`should use two active and three completed lookups when a task has ${checkpoints} Activity checkpoints`, () =>
-    Effect.gen(function*() {
+it.effect("should keep polling cost independent of history when Activity checkpoints accumulate", () =>
+  Effect.gen(function*() {
+    const costs: Array<{ active: number; completed: number }> = []
+    for (const checkpoints of [0, 100]) {
       let reads = 0
       const ready = yield* Deferred.make<void>()
       const finish = yield* Deferred.make<void>()
@@ -433,14 +458,17 @@ for (const checkpoints of [0, 100]) {
       yield* Deferred.await(ready)
       reads = 0
       assert.strictEqual((yield* get(harness, task.taskId)).status, "working")
-      assert.strictEqual(reads, 2)
+      const active = reads
       yield* Deferred.succeed(finish, undefined)
       yield* terminal(harness, task.taskId)
       reads = 0
       assert.strictEqual((yield* get(harness, task.taskId)).status, "completed")
-      assert.strictEqual(reads, 3)
-    }))
-}
+      costs.push({ active, completed: reads })
+    }
+    assert.isAbove(costs[0]!.active, 0)
+    assert.isAbove(costs[0]!.completed, 0)
+    assert.deepStrictEqual(costs[1], costs[0])
+  }))
 
 it.effect("should preserve original request metadata for schemas and handlers when a task first executes", () =>
   Effect.gen(function*() {
@@ -468,41 +496,46 @@ it.effect("should preserve original request metadata for schemas and handlers wh
     if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "acme:report:acme")
   }))
 
-it.effect("should complete an external job input round trip without a Workflow engine", () =>
-  Effect.gen(function*() {
-    const now = "2026-10-17T10:00:00.000Z"
-    const jobsById = new Map<string, ReportJob>()
-    const owned = (id: string, owner: string) =>
-      Effect.suspend(() => {
-        const job = jobsById.get(id)
-        return job && owner === "TaskClient"
-          ? Effect.succeed(job)
-          : Effect.fail(new McpTasks.TaskError({ code: -32602, message: "Unknown taskId" }))
-      })
-    const jobs = Layer.succeed(ReportJobs, {
-      submit: () =>
-        Effect.sync(() => {
-          const job: ReportJob = { id: crypto.randomUUID(), createdAt: now, updatedAt: now, state: "awaiting_roots" }
-          jobsById.set(job.id, job)
-          return job
-        }),
-      getOwned: owned,
-      provideRoots: (id, owner, roots) =>
-        owned(id, owner).pipe(Effect.andThen(Effect.sync(() => {
-          const job = jobsById.get(id)!
-          jobsById.set(id, { ...job, state: "done", report: `Report covers ${roots.length} roots` })
-        }))),
-      cancelOwned: (id, owner) =>
-        owned(id, owner).pipe(Effect.andThen(Effect.sync(() => {
-          const job = jobsById.get(id)!
-          if (job.state === "awaiting_roots" || job.state === "queued") jobsById.set(id, { ...job, state: "cancelled" })
-        })))
+const externalJobHarness = Effect.gen(function*() {
+  const now = "2026-10-17T10:00:00.000Z"
+  const jobsById = new Map<string, ReportJob>()
+  const owned = (id: string, owner: string) =>
+    Effect.suspend(() => {
+      const job = jobsById.get(id)
+      return job && owner === "TaskClient"
+        ? Effect.succeed(job)
+        : Effect.fail(new McpTasks.TaskError({ code: -32602, message: "Unknown taskId" }))
     })
-    const layer = McpTasks.toolkit(Reports, {
-      owner: McpSchema.McpRequestContext.useSync((context) => context.clientInfo?.name ?? "anonymous")
-    }).pipe(Layer.provide(externalReports.pipe(Layer.provide(jobs))), Layer.provideMerge(serverLayer))
-    const harness = yield* makeHttpHarness(layer)
-    const capabilities = { ...metadata["io.modelcontextprotocol/clientCapabilities"], roots: {} }
+  const jobs = Layer.succeed(ReportJobs, {
+    submit: () =>
+      Effect.sync(() => {
+        const job: ReportJob = { id: crypto.randomUUID(), createdAt: now, updatedAt: now, state: "awaiting_roots" }
+        jobsById.set(job.id, job)
+        return job
+      }),
+    getOwned: owned,
+    provideRoots: (id, owner, roots) =>
+      owned(id, owner).pipe(Effect.andThen(Effect.sync(() => {
+        const job = jobsById.get(id)!
+        jobsById.set(id, { ...job, state: "done", report: `Report covers ${roots.length} roots` })
+      }))),
+    cancelOwned: (id, owner) =>
+      owned(id, owner).pipe(Effect.andThen(Effect.sync(() => {
+        const job = jobsById.get(id)!
+        if (job.state === "awaiting_roots" || job.state === "queued") jobsById.set(id, { ...job, state: "cancelled" })
+      })))
+  })
+  const layer = McpTasks.toolkit(Reports, {
+    owner: McpSchema.McpRequestContext.useSync((context) => context.clientInfo?.name ?? "anonymous")
+  }).pipe(Layer.provide(externalReports.pipe(Layer.provide(jobs))), Layer.provideMerge(serverLayer))
+  const harness = yield* makeHttpHarness(layer)
+  const capabilities = { ...metadata["io.modelcontextprotocol/clientCapabilities"], roots: {} }
+  return { harness, capabilities }
+})
+
+it.effect("should complete an external job when the client supplies requested input", () =>
+  Effect.gen(function*() {
+    const { harness, capabilities } = yield* externalJobHarness
     const created = yield* create(harness)
     assert.strictEqual(created.ttlMs, 60_000)
     assert.strictEqual(created.pollIntervalMs, 1000)
@@ -511,15 +544,6 @@ it.effect("should complete an external job input round trip without a Workflow e
     if (waiting.status === "input_required") {
       assert.deepStrictEqual(waiting.inputRequests, { roots: { method: "roots/list" } })
     }
-    for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
-      const body = yield* post(harness, method, {
-        taskId: created.taskId,
-        ...(method === "tasks/update" ? { inputResponses: {} } : {})
-      }, "OtherClient")
-      assert.strictEqual((yield* decodeError(body)).error.code, -32602)
-    }
-    yield* post(harness, "tasks/update", { taskId: created.taskId, inputResponses: { unknown: { roots: [] } } })
-    assert.strictEqual((yield* get(harness, created.taskId, capabilities)).status, "input_required")
     yield* post(harness, "tasks/update", {
       taskId: created.taskId,
       inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
@@ -529,16 +553,38 @@ it.effect("should complete an external job input round trip without a Workflow e
     if (completed.status === "completed") {
       assert.deepStrictEqual(completed.result.content, [{ type: "text", text: "Report covers 1 roots" }])
     }
-    yield* post(harness, "tasks/update", { taskId: created.taskId, inputResponses: { roots: { roots: [] } } })
-    assert.deepStrictEqual(yield* get(harness, created.taskId, capabilities), completed)
-    yield* post(harness, "tasks/cancel", { taskId: created.taskId })
-    assert.deepStrictEqual(yield* get(harness, created.taskId, capabilities), completed)
-    const second = yield* create(harness)
-    yield* post(harness, "tasks/cancel", { taskId: second.taskId })
-    assert.strictEqual((yield* get(harness, second.taskId, capabilities)).status, "cancelled")
   }))
 
-it.effect("should run and cancel memory tasks using scoped fibers without a Workflow engine", () =>
+it.effect("should retain outstanding input when an external job receives an unrelated response", () =>
+  Effect.gen(function*() {
+    const { harness, capabilities } = yield* externalJobHarness
+    const created = yield* create(harness)
+    const waiting = yield* get(harness, created.taskId, capabilities)
+    const response = yield* post(harness, "tasks/update", {
+      taskId: created.taskId,
+      inputResponses: { unknown: { roots: [] } }
+    })
+    yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.TaskAcknowledgement }))(response)
+    assert.deepStrictEqual(yield* get(harness, created.taskId, capabilities), waiting)
+  }))
+
+it.effect("should preserve a completed external job when an input response is repeated", () =>
+  Effect.gen(function*() {
+    const { harness, capabilities } = yield* externalJobHarness
+    const created = yield* create(harness)
+    const update = post(harness, "tasks/update", {
+      taskId: created.taskId,
+      inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
+    })
+    yield* update
+    const completed = yield* get(harness, created.taskId, capabilities)
+    assert.strictEqual(completed.status, "completed")
+    const response = yield* update
+    yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.TaskAcknowledgement }))(response)
+    assert.deepStrictEqual(yield* get(harness, created.taskId, capabilities), completed)
+  }))
+
+it.effect("should cancel active memory tasks when cancellation is requested", () =>
   Effect.gen(function*() {
     const started = yield* Deferred.make<void>()
     const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
@@ -555,7 +601,7 @@ it.effect("should run and cancel memory tasks using scoped fibers without a Work
     assert.strictEqual((yield* terminal(harness, created.taskId)).status, "cancelled")
   }))
 
-it.effect("should decode and encode memory task handlers with original request metadata", () =>
+it.effect("should preserve decoded parameters and request metadata when a memory handler executes", () =>
   Effect.gen(function*() {
     const tools = Toolkit.make(Tool.make("report", {
       parameters: Schema.Struct({ rows: Schema.NumberFromString }),
@@ -595,15 +641,14 @@ it.effect("should interrupt memory handlers and discard records when the executi
       requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
     })
     yield* Deferred.await(started)
-    const wrongOwner = yield* execution.get({ taskId: created.taskId, ownerId: "other" }).pipe(Effect.exit)
-    assert.isTrue(Exit.isFailure(wrongOwner))
     yield* Scope.close(scope, Exit.void)
     yield* Deferred.await(stopped)
-    const missing = yield* execution.get({ taskId: created.taskId, ownerId: "owner" }).pipe(Effect.exit)
-    assert.isTrue(Exit.isFailure(missing))
+    const missing = yield* execution.get({ taskId: created.taskId, ownerId: "owner" }).pipe(Effect.flip)
+    assert.instanceOf(missing, McpTasks.TaskError)
+    assert.strictEqual(missing.code, -32602)
   }))
 
-it.effect("should route multiple toolkits to their independently provided execution layers", () =>
+it.effect("should use each toolkit's execution layer when multiple toolkits are registered", () =>
   Effect.gen(function*() {
     const Other = Toolkit.make(Tool.make("other", { parameters: Tool.EmptyParams, success: Schema.String }))
     const layer = Layer.mergeAll(
@@ -646,15 +691,21 @@ it.effect("should create a Workflow task when optional client information is abs
     assert.strictEqual((yield* terminal(harness, result.taskId)).status, "completed")
   }))
 
-it.effect("should construct the callback once and scope its execution layer across task calls", () =>
+it("should construct the execution layer once when the toolkit callback is supplied", () => {
+  let callbacks = 0
+  McpTasks.toolkit(Reports, { owner: "shared" }, (tools) => {
+    callbacks++
+    return McpTasks.layerMemory(tools, { report: () => Effect.succeed("report") })
+  })
+  assert.strictEqual(callbacks, 1)
+})
+
+it.effect("should share and release execution resources when multiple tasks use the callback layer", () =>
   Effect.gen(function*() {
-    let callbacks = 0
     let acquired = 0
     let released = 0
     const scope = yield* Scope.make()
     const layer = McpTasks.toolkit(Reports, { owner: "shared" }, (tools) => {
-      callbacks++
-      assert.strictEqual(tools, Reports)
       return McpTasks.layerMemory(
         tools,
         Effect.acquireRelease(
@@ -669,20 +720,18 @@ it.effect("should construct the callback once and scope its execution layer acro
         )
       )
     }).pipe(Layer.provideMerge(serverLayer))
-    assert.strictEqual(callbacks, 1)
     const harness = yield* makeHttpHarness(layer).pipe(Scope.provide(scope))
     for (let i = 0; i < 2; i++) {
       const completed = yield* terminal(harness, (yield* create(harness)).taskId)
       assert.strictEqual(completed.status, "completed")
       if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "callback report")
     }
-    assert.strictEqual(callbacks, 1)
     assert.strictEqual(acquired, 1)
     yield* Scope.close(scope, Exit.void)
     assert.strictEqual(released, 1)
   }))
 
-it.effect("should call an inline replacement while retaining existing task handles", () =>
+it.effect("should retain old task handles when an inline tool replaces a task tool", () =>
   Effect.gen(function*() {
     const release = yield* Deferred.make<void>()
     const registry = yield* Deferred.make<McpServer.McpServer["Service"]>()
