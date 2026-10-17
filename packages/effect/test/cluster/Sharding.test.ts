@@ -19,6 +19,7 @@ import {
   Ref,
   Result,
   Schedule,
+  Scheduler,
   Schema,
   Scope,
   Stream
@@ -60,6 +61,44 @@ import {
   TestEntityState,
   User
 } from "./TestEntity.ts"
+
+describe("Sharding startup", () => {
+  it.effect("initializes singleton synchronization before startup fibers run", () =>
+    Effect.gen(function*() {
+      const causes: Array<string> = []
+      const logger = Logger.make(({ cause }) => {
+        if (cause.reasons.length > 0) causes.push(Cause.pretty(cause))
+      })
+      const layer = Sharding.layer.pipe(
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 1
+        }))
+      )
+      const scheduler = new Scheduler.MixedScheduler()
+      const scope = yield* Scope.make()
+      yield* Effect.withFiber((startupFiber) =>
+        Layer.buildWithScope(layer, scope).pipe(
+          Effect.provide(Logger.layer([logger])),
+          // Let startup fibers run to their first suspension whenever construction yields.
+          Effect.provideService(Scheduler.Scheduler, {
+            executionMode: scheduler.executionMode,
+            makeDispatcher: () => scheduler.makeDispatcher(),
+            shouldYield: (fiber) => fiber === startupFiber && fiber.currentOpCount >= 4
+          })
+        )
+      )
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      // Drain the retry/handoff delay too, so a regression fails without leaking a scope.
+      yield* TestClock.adjust(10_000)
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(causes, [])
+    }))
+})
 
 // Isolate the long-lived stream from concurrent shard-metric tests.
 // Use a nonzero assignment refresh interval when advancing through claim expiry

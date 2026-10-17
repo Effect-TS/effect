@@ -11,6 +11,7 @@ import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as NetAddress from "effect/net/NetAddress"
 import * as References from "effect/References"
@@ -313,6 +314,37 @@ describe("BunHttpServer", () => {
       assert.strictEqual(unixServer.address._tag === "UnixPathAddress" ? unixServer.address.path : undefined, path)
       assert.strictEqual(NetAddress.formatUrlUnsafe(unixServer.address), `unix://${path}`)
     }))
+
+  it.effect("answers CONNECT with 501 without running the app", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      yield* HttpRouter.add(
+        "*",
+        "*",
+        Effect.sync(() => {
+          calls++
+          return HttpServerResponse.empty()
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      // fetch cannot send CONNECT.
+      const statusLine = yield* Effect.callback<string, Error>((resume) => {
+        const socket = Net.createConnection({ host: "127.0.0.1", port })
+        let received = ""
+        socket.on("connect", () => socket.write("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n"))
+        socket.on("error", (error) => resume(Effect.fail(error)))
+        socket.on("data", (chunk) => {
+          received += chunk.toString()
+          const lineEnd = received.indexOf("\r\n")
+          if (lineEnd !== -1) resume(Effect.succeed(received.slice(0, lineEnd)))
+        })
+        socket.on("close", () => resume(Effect.succeed(received)))
+        return Effect.sync(() => socket.destroy())
+      })
+      assert.strictEqual(statusLine.split(" ")[1], "501")
+      assert.strictEqual(calls, 0)
+    }).pipe(Effect.provide(BunHttpServer.layerTest)))
 
   it.effect("closing an older serve scope keeps the newer handler active", () =>
     Effect.gen(function*() {

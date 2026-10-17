@@ -574,6 +574,20 @@ const handleResponse = (
     headers["set-cookie"] = toSet
   }
 
+  try {
+    return writeResponse(request, response, nodeResponse, headers)
+  } catch (defect) {
+    // `writeHead` throws synchronously on headers Node rejects
+    return handleCause(nodeResponse, response)(Cause.die(defect))
+  }
+}
+
+const writeResponse = (
+  request: HttpServerRequest,
+  response: HttpServerResponse,
+  nodeResponse: Http.ServerResponse,
+  headers: Record<string, string | Array<string>>
+): Effect.Effect<unknown, HttpServerError> => {
   if (request.method === "HEAD") {
     nodeResponse.writeHead(response.status, response.statusText, headers)
     return Effect.andThen(
@@ -642,26 +656,24 @@ const handleResponse = (
       }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "FormData": {
-      return Effect.suspend(() => {
-        const r = new globalThis.Response(body.formData)
-        const formHeaders = { ...headers, ...Object.fromEntries(r.headers) }
-        nodeResponse.writeHead(response.status, response.statusText, formHeaders)
-        return Effect.tryPromise({
-          try: (signal) => pipeTo(Readable.fromWeb(r.body as any), nodeResponse, formHeaders, signal),
-          catch: (cause) =>
-            new HttpServerError({
-              reason: new ResponseError({
-                request,
-                response,
-                description: "Error writing FormData response",
-                cause
-              })
+      const r = new globalThis.Response(body.formData)
+      const formHeaders = { ...headers, ...Object.fromEntries(r.headers) }
+      nodeResponse.writeHead(response.status, response.statusText, formHeaders)
+      return Effect.tryPromise({
+        try: (signal) => pipeTo(Readable.fromWeb(r.body as any), nodeResponse, formHeaders, signal),
+        catch: (cause) =>
+          new HttpServerError({
+            reason: new ResponseError({
+              request,
+              response,
+              description: "Error writing FormData response",
+              cause
             })
-        }).pipe(
-          Effect.interruptible,
-          Effect.tapCause(handleCause(nodeResponse, response))
-        )
-      })
+          })
+      }).pipe(
+        Effect.interruptible,
+        Effect.tapCause(handleCause(nodeResponse, response))
+      )
     }
     case "Stream": {
       nodeResponse.writeHead(response.status, response.statusText, headers)
@@ -744,12 +756,18 @@ const handleCause = (
 <E>(originalCause: Cause.Cause<E>) =>
   Effect.flatMap(causeResponse(originalCause), ([response, cause]) => {
     const headersSent = nodeResponse.headersSent
+    let abort = headersSent
     if (!headersSent) {
-      nodeResponse.writeHead(response.status, response.statusText)
+      try {
+        nodeResponse.writeHead(response.status, response.statusText)
+      } catch {
+        // HTTP/2 keeps the headers of a rejected `writeHead`, so the fallback can throw too
+        abort = true
+      }
     }
     if (!nodeResponse.writableEnded) {
       // Ending a started response normally would make a partial body look complete
-      if (headersSent) nodeResponse.destroy()
+      if (abort) nodeResponse.destroy()
       else nodeResponse.end()
     }
     return Effect.failCause(

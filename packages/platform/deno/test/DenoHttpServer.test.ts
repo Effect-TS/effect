@@ -309,6 +309,43 @@ describe("DenoHttpServer", () => {
       )
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
+  it.effect("answers CONNECT with 501 without running the app", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      yield* HttpRouter.add(
+        "*",
+        "*",
+        Effect.sync(() => {
+          calls++
+          return HttpServerResponse.empty()
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      // fetch cannot send CONNECT.
+      const statusLine = yield* Effect.acquireUseRelease(
+        Effect.promise(() => Deno.connect({ hostname: "127.0.0.1", port })),
+        (conn) =>
+          Effect.promise(async () => {
+            await conn.write(
+              new TextEncoder().encode("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n")
+            )
+            const decoder = new TextDecoder()
+            const buffer = new Uint8Array(1024)
+            let received = ""
+            while (!received.includes("\r\n")) {
+              const read = await conn.read(buffer)
+              if (read === null) break
+              received += decoder.decode(buffer.subarray(0, read), { stream: true })
+            }
+            return received.split("\r\n")[0]
+          }),
+        (conn) => Effect.sync(() => conn.close())
+      )
+      assert.strictEqual(statusLine.split(" ")[1], "501")
+      assert.strictEqual(calls, 0)
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("file", () =>
     Effect.gen(function*() {
       yield* (yield* HttpServerResponse.file(fixture).pipe(

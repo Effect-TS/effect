@@ -1537,7 +1537,9 @@ const takeRemainderLoop = <A>(
     return Effect.succeed(acc)
   }
   return Effect.flatMap(takeUpTo(self, max), (bs) => {
-    acc.push(...bs)
+    for (let i = 0; i < bs.length; i++) {
+      acc.push(bs[i])
+    }
     const remaining = min - bs.length
     if (remaining === 1) {
       return Effect.map(take(self), (b) => {

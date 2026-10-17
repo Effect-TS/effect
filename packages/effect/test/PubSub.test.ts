@@ -12,6 +12,15 @@ describe("PubSub", () => {
       assert.isFalse(PubSub.isPubSub(null))
     }))
 
+  it.effect("takeBetween returns a large backlog", () =>
+    Effect.gen(function*() {
+      const values = Array.makeBy(200000, (i) => i)
+      const pubsub = yield* PubSub.unbounded<number>()
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publishAll(pubsub, values)
+      assert.deepStrictEqual(yield* PubSub.takeBetween(subscription, 1, values.length), values)
+    }))
+
   for (const batch of [false, true]) {
     it.effect.each([1, 2, 3])(
       `sliding capacity %s delivers each retained message once per subscriber (batch: ${batch})`,

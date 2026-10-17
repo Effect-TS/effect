@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { HttpRouter, type HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -46,6 +46,28 @@ describe("HttpRouter", () => {
     } finally {
       await dispose()
     }
+  })
+
+  it("toWebHandler shares in-progress disposal", async () => {
+    const started = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.promise(async () => {
+          started.resolve()
+          await release.promise
+        })
+      )),
+      { disableLogger: true }
+    )
+    await handler(new Request("http://localhost/"))
+
+    const first = dispose()
+    await started.promise
+    const second = dispose()
+    release.resolve()
+    await Promise.all([first, second])
+    assert.strictEqual(second, first)
   })
 
   for (
@@ -117,5 +139,44 @@ describe("HttpRouter", () => {
       const body = yield* fetchText(routes, "/api/app/users")
 
       assert.strictEqual(body, "/users")
+    }))
+
+  it.effect("describes route misses caused by maxParamLength", () =>
+    Effect.gen(function*() {
+      const lookup = (method: string, path: string) =>
+        Effect.gen(function*() {
+          const router = yield* HttpRouter.HttpRouter
+          yield* router.add("GET", "/addresses/:address", HttpServerResponse.text("ok"))
+          return yield* router.asHttpEffect()
+        }).pipe(
+          Effect.provide(HttpRouter.layer),
+          Effect.provideService(HttpRouter.RouterConfig, { maxParamLength: 5 }),
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request(`http://localhost${path}`, { method }))
+          ),
+          Effect.scoped
+        )
+      const notFound = (method: string, path: string) =>
+        lookup(method, path).pipe(
+          Effect.flip,
+          Effect.map((error) => {
+            assert.instanceOf(error, HttpServerError.HttpServerError)
+            assert.instanceOf(error.reason, HttpServerError.RouteNotFound)
+            return error.reason.description
+          })
+        )
+
+      const response = yield* lookup("GET", "/addresses/abcde")
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(
+        yield* notFound("GET", "/addresses/abcdef"),
+        "path parameter is longer than maxParamLength (5)"
+      )
+      assert.strictEqual(
+        yield* notFound("HEAD", "/addresses/abcdef"),
+        "path parameter is longer than maxParamLength (5)"
+      )
+      assert.isUndefined(yield* notFound("GET", "/missing"))
     }))
 })
