@@ -9941,7 +9941,7 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * @category schemas
  * @since 4.0.0
  */
-export const FormData: FormData = instanceOf(globalThis.FormData, {
+export const FormData: FormData = declare((u): u is globalThis.FormData => u instanceof globalThis.FormData, {
   representation: {
     id: "effect/schema/FormData",
     payload: null
