@@ -205,15 +205,15 @@ export const UndiciOptions = Context.Reference<Partial<Undici.Dispatcher.Request
 export const makeUndici = Effect.gen(function*() {
   const dispatcher = yield* Dispatcher
   return Client.make((request, url, signal, fiber) =>
-    convertBody(request.body).pipe(
-      Effect.flatMap((body) =>
+    convertBody(request).pipe(
+      Effect.flatMap(({ body, headers }) =>
         Effect.tryPromise({
           try: () =>
             dispatcher.request({
               ...fiber.getRef(UndiciOptions),
               signal,
               method: request.method,
-              headers: request.headers,
+              headers,
               origin: url.origin,
               path: url.pathname + url.search,
               body,
@@ -235,23 +235,38 @@ export const makeUndici = Effect.gen(function*() {
   )
 })
 
-function convertBody(
-  body: Body.HttpBody
-): Effect.Effect<Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>> {
+function convertBody(request: HttpClientRequest): Effect.Effect<{
+  readonly body: Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>
+  readonly headers: Headers.Headers
+}> {
+  const body = request.body
   switch (body._tag) {
     case "Empty": {
-      return Effect.succeed(null)
+      return Effect.succeed({ body: null, headers: request.headers })
     }
     case "Uint8Array":
     case "Raw": {
-      return Effect.succeed(body.body as Uint8Array)
+      return Effect.succeed({ body: body.body as Uint8Array, headers: request.headers })
     }
     case "FormData": {
-      return Effect.succeed(body.formData as any)
+      // undici only encodes its own `FormData` class, not Node's global one
+      const encoded = encodeFormData(body.formData)
+      return Effect.succeed({
+        body: encoded.body,
+        headers: Headers.set(request.headers, "content-type", encoded.contentType)
+      })
     }
     case "Stream": {
-      return NodeStream.toReadable(body.stream)
+      return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers: request.headers }))
     }
+  }
+}
+
+const encodeFormData = (formData: FormData): { readonly body: Readable; readonly contentType: string } => {
+  const response = new globalThis.Response(formData)
+  return {
+    body: Readable.fromWeb(response.body! as any),
+    contentType: response.headers.get("content-type")!
   }
 }
 
@@ -589,14 +604,11 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        const response = new globalThis.Response(body.formData)
-
-        response.headers.forEach((value, key) => {
-          nodeRequest.setHeader(key, value)
-        })
+        const encoded = encodeFormData(body.formData)
+        nodeRequest.setHeader("content-type", encoded.contentType)
 
         return Effect.tryPromise({
-          try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
+          try: () => pipeline(encoded.body, nodeRequest),
           catch: (cause) =>
             new Error.HttpClientError({
               reason: new Error.TransportError({

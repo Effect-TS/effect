@@ -12,7 +12,8 @@ import {
   HttpRouter,
   HttpServer,
   HttpServerRequest,
-  HttpServerResponse
+  HttpServerResponse,
+  Multipart
 } from "effect/http"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
@@ -107,6 +108,31 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   HttpRouter.route("GET", "/bytes", Effect.succeed(HttpServerResponse.uint8Array(responseBytes))),
   HttpRouter.route(
     "POST",
+    "/multipart",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const parts = yield* request.multipartStream.pipe(
+        Stream.mapEffect((part) =>
+          Effect.gen(function*() {
+            if (Multipart.isField(part)) {
+              return { key: part.key, value: part.value }
+            }
+            const content = yield* part.contentEffect
+            return {
+              key: part.key,
+              name: part.name,
+              contentType: part.contentType,
+              content: new TextDecoder().decode(content)
+            }
+          })
+        ),
+        Stream.runCollect
+      )
+      return HttpServerResponse.jsonUnsafe(parts)
+    })
+  ),
+  HttpRouter.route(
+    "POST",
     "/bom-json",
     Effect.gen(function*() {
       const request = yield* HttpServerRequest.HttpServerRequest
@@ -176,6 +202,20 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name === "undici") {
+      it.live("sends form data request bodies as multipart", () =>
+        Effect.gen(function*() {
+          const formData = new FormData()
+          formData.append("title", "effect")
+          formData.append("file", new Blob(["file contents"], { type: "text/plain" }), "notes.txt")
+          const response = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
+            Effect.timeout("2 seconds")
+          )
+          assert.deepStrictEqual(yield* response.json, [
+            { key: "title", value: "effect" },
+            { key: "file", name: "notes.txt", contentType: "text/plain", content: "file contents" }
+          ])
+        }).pipe(Effect.provide(localServerTestLayer)))
+
       it.effect.each(formDataResponses)("parses $name response form data", ({ path }) =>
         Effect.gen(function*() {
           const response = yield* HttpClient.get(path)
