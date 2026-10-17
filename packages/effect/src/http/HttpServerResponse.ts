@@ -1091,26 +1091,23 @@ export const toWeb = (
   const withoutBody = outerOmitsBody || options?.withoutBody === true
   if (body._tag === "Raw" && body.body instanceof Response) {
     const raw = body.body
-    if (!withoutBody) {
-      const omitContentLength = omitsContentLength(raw.status)
-      if (headers.keys().next().done && !(omitContentLength && raw.headers.has("content-length"))) {
-        return raw
-      }
-      const copy = new Response(raw.body, raw)
-      mergeHeaders(copy.headers, headers)
-      if (omitContentLength) copy.headers.delete("content-length")
-      return copy
-    }
     // A bodyless outer status is what the caller chose to send; otherwise the
-    // body is only omitted for HEAD and the raw Response describes the resource.
+    // raw Response describes the resource and its body is only omitted for HEAD.
     const source = outerOmitsBody ? response : raw
-    const merged = mergeHeaders(new globalThis.Headers(raw.headers), headers)
-    if (omitsContentLength(source.status)) merged.delete("content-length")
-    return new Response(undefined, {
-      status: source.status,
-      statusText: source.statusText as string,
-      headers: merged
-    })
+    const omitContentLength = omitsContentLength(source.status)
+    if (!withoutBody && headers.keys().next().done && !(omitContentLength && raw.headers.has("content-length"))) {
+      return raw
+    }
+    const copy = withoutBody
+      ? new Response(undefined, {
+        status: source.status,
+        statusText: source.statusText as string,
+        headers: raw.headers
+      })
+      : new Response(raw.body, raw)
+    mergeHeaders(copy.headers, headers)
+    if (omitContentLength) copy.headers.delete("content-length")
+    return copy
   }
   if (withoutBody) {
     if (body._tag === "Raw" && isReadableStream(body.body)) {
