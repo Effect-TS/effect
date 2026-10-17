@@ -277,11 +277,10 @@ export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
  * @category getters
  * @since 4.0.0
  */
-export const entryIdMillis = (entryId: EntryId): number => {
-  const bytes = new Uint8Array(8)
-  bytes.set(entryId.subarray(0, 6), 2)
-  return Number(new DataView(bytes.buffer).getBigUint64(0))
-}
+export const entryIdMillis = (entryId: EntryId): number =>
+  // Multiply instead of shifting: bitwise operators are signed 32-bit.
+  ((((entryId[0] * 256 + entryId[1]) * 256 + entryId[2]) * 256 + entryId[3]) * 256 + entryId[4]) * 256 +
+  entryId[5]
 
 /**
  * Schema for a committed event journal entry.
@@ -394,6 +393,10 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
  */
 export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(function*() {
   const journal: Array<Entry> = []
+  // Local writes append in commit order, so an import with a future timestamp
+  // leaves the journal unordered until the next import re-sorts it. Remote
+  // backlogs are subsequences of the journal, so one flag covers them too.
+  let journalSorted = true
   const byId = new Map<string, Entry>()
   const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
   const pubsub = yield* PubSub.unbounded<Entry>()
@@ -432,6 +435,10 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         (entry, exit) =>
           Effect.suspend(() => {
             if (exit._tag === "Failure" || byId.has(entry.idString)) return Effect.void
+            const last = journal[journal.length - 1]
+            if (last !== undefined && last.createdAtMillis > entry.createdAtMillis) {
+              journalSorted = false
+            }
             journal.push(entry)
             byId.set(entry.idString, entry)
             remotes.forEach((remote) => {
@@ -481,21 +488,21 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         }
       }
       for (const remoteEntry of uncommittedRemotes) {
-        journal.push(remoteEntry.entry)
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
-        remotes.forEach((target) => {
-          if (target !== remote) {
-            target.missing.push(remoteEntry.entry)
-          }
-        })
         if (remoteEntry.remoteSequence >= remote.sequence) {
           remote.sequence = remoteEntry.remoteSequence + 1
         }
       }
-      journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
-      remotes.forEach((remote) => {
-        remote.missing.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      const imported = uncommittedRemotes.map((remoteEntry) => remoteEntry.entry).sort(byCreatedAt)
+      insertOrdered(journal, journalSorted, imported)
+      remotes.forEach((target) => {
+        if (target !== remote) {
+          insertOrdered(target.missing, journalSorted, imported)
+        } else if (!journalSorted) {
+          target.missing.sort(byCreatedAt)
+        }
       })
+      journalSorted = true
       return {
         duplicateEntries
       }
@@ -522,12 +529,38 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     changes: PubSub.subscribe(pubsub),
     destroy: Effect.sync(() => {
       journal.length = 0
+      journalSorted = true
       byId.clear()
       remotes.clear()
     }),
     withLock
   })
 })
+
+const byCreatedAt = (a: Entry, b: Entry) => a.createdAtMillis - b.createdAtMillis
+
+// Same result as appending `additions` and stable-sorting by creation time:
+// existing entries stay ahead of additions that share their timestamp.
+const insertOrdered = (entries: Array<Entry>, sorted: boolean, additions: ReadonlyArray<Entry>): void => {
+  let i = entries.length - 1
+  for (let n = 0; n < additions.length; n++) {
+    entries.push(additions[n])
+  }
+  if (!sorted) {
+    entries.sort(byCreatedAt)
+    return
+  }
+  // Merge from the back, so additions newer than the whole array cost O(additions).
+  let j = additions.length - 1
+  let k = entries.length - 1
+  while (j >= 0) {
+    if (i >= 0 && entries[i].createdAtMillis > additions[j].createdAtMillis) {
+      entries[k--] = entries[i--]
+    } else {
+      entries[k--] = additions[j--]
+    }
+  }
+}
 
 /**
  * Layer that provides an in-memory `EventJournal`.
