@@ -1047,6 +1047,8 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           // resume a pull blocked in another fiber before detaching
           fail(closeError(1006))
           ws.removeEventListener("message", onMessage)
+          // Keep late errors handled when release aborts a pending ws handshake.
+          ws.addEventListener("error", constVoid)
           ws.removeEventListener("error", onError)
           ws.removeEventListener("close", onClose)
           // let the close handshake proceed once nothing is pulling
