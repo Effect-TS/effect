@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Clock, Duration, Effect, Fiber, Latch, Layer, Queue, Schema } from "effect"
+import { Clock, Deferred, Duration, Effect, Fiber, Latch, Layer, Queue, Schema } from "effect"
 import * as BackingPersistenceTest from "effect-test/persistence/BackingPersistenceTest"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
@@ -470,3 +470,78 @@ const closedPort = Effect.promise(
       })
     })
 )
+
+import * as CircuitBreakerTest from "effect-test/persistence/CircuitBreakerTest"
+import * as CircuitBreaker from "effect/persistence/CircuitBreaker"
+
+CircuitBreakerTest.suite(
+  "NodeRedis",
+  CircuitBreaker.layerStoreRedis({ probeLease: "1 second" }).pipe(Layer.provide(RedisLayer))
+)
+
+it.layer(CircuitBreaker.layerStoreRedis({ probeLease: "1 second" }).pipe(Layer.provide(RedisLayer)), {
+  timeout: "30 seconds",
+  concurrent: false
+})("CircuitBreaker probe leases (NodeRedis)", (it) => {
+  it.effect("keeps a running probe alive beyond its lease", () =>
+    Effect.gen(function*() {
+      const breaker = yield* CircuitBreaker.make({
+        key: `circuit-breaker:keep-alive:${crypto.randomUUID()}`,
+        policy: CircuitBreaker.consecutiveFailures(1),
+        openFor: "10 millis"
+      })
+      yield* Effect.flip(breaker.execute(Effect.fail("open")))
+      yield* Effect.sleep("20 millis")
+      const started = yield* Deferred.make<void>()
+      const probe = yield* breaker.execute(
+        Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Effect.sleep("3 seconds"))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(started)
+      yield* Effect.sleep("2 seconds")
+      const store = yield* CircuitBreaker.CircuitBreakerStore
+      assert.deepStrictEqual(yield* store.acquire({ key: breaker.key, halfOpenPermits: 1 }), {
+        _tag: "Rejected",
+        state: "HalfOpen",
+        retryAt: undefined
+      })
+      yield* Fiber.join(probe)
+      assert.strictEqual((yield* breaker.state)._tag, "Closed")
+    }).pipe(TestClock.withLive))
+
+  it.effect("releases a crashed probe slot after its lease expires", () =>
+    Effect.gen(function*() {
+      const store = yield* CircuitBreaker.CircuitBreakerStore
+      const key = `circuit-breaker:lease:${crypto.randomUUID()}`
+      const initial = yield* store.acquire({ key, halfOpenPermits: 1 })
+      if (initial._tag !== "Permitted") return assert.fail("Expected a closed permit")
+      yield* store.record({
+        key,
+        permit: initial.permit,
+        outcome: "failure",
+        policy: CircuitBreaker.consecutiveFailures(1),
+        halfOpenSuccesses: 1,
+        openForMillis: 1_000
+      })
+      yield* TestClock.adjust("1 second")
+      const first = yield* store.acquire({ key, halfOpenPermits: 1 })
+      assert.strictEqual(first._tag, "Permitted")
+      if (first._tag !== "Permitted") return assert.fail("Expected a probe permit")
+      assert.isString(first.permit.probeId)
+      assert.deepStrictEqual(yield* store.acquire({ key, halfOpenPermits: 1 }), {
+        _tag: "Rejected",
+        state: "HalfOpen",
+        retryAt: undefined
+      })
+      yield* TestClock.adjust("1001 millis")
+      const next = yield* store.acquire({ key, halfOpenPermits: 1 })
+      assert.strictEqual(next._tag, "Permitted")
+      if (next._tag !== "Permitted") return assert.fail("Expected a replacement probe permit")
+      assert.notStrictEqual(next.permit.probeId, first.permit.probeId)
+      assert.strictEqual(next.permit.generation, first.permit.generation)
+      const state = yield* store.state(key)
+      assert.strictEqual(state._tag, "HalfOpen")
+      if (state._tag === "HalfOpen") assert.strictEqual(state.inFlight, 1)
+    }))
+})

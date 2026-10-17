@@ -25,6 +25,7 @@ import * as Inspectable from "../Inspectable.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
+import type * as CircuitBreaker from "../persistence/CircuitBreaker.ts"
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1058,6 +1059,82 @@ export const retryTransient: {
 )
 
 /**
+ * Classifies HTTP exits by whether they indicate a transient downstream failure.
+ *
+ * **When to use**
+ *
+ * Use with `CircuitBreaker.make({ classify: HttpClient.classifyTransient })`.
+ * Transient response statuses, transport errors, timeouts and defects count as
+ * failures. Other typed errors are ignored, and other successful exits count as
+ * successes. The breaker ignores interrupted calls before invoking this classifier.
+ *
+ * @stability unstable
+ * @category circuit breaking
+ * @since 4.1.0
+ */
+export const classifyTransient = (exit: Exit.Exit<unknown, unknown>): CircuitBreaker.Outcome => {
+  if (Exit.isSuccess(exit)) return isTransientValue(exit.value) ? "failure" : "success"
+  if (Cause.hasDies(exit.cause)) return "failure"
+  const error = Cause.findErrorOption(exit.cause)
+  return Option.isSome(error) && isTransientError(error.value) ? "failure" : "ignored"
+}
+
+/**
+ * Protects HTTP requests with the supplied circuit breaker. Rejected requests
+ * fail with `CircuitBreakerError` without being sent.
+ *
+ * **Gotchas**
+ *
+ * Put `withCircuitBreaker` after `retryTransient` in the pipe. Otherwise every
+ * retry attempt counts against the circuit and a single logical request can
+ * open it.
+ *
+ * **Example** (Protecting an HTTP client)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpClient, HttpClientResponse } from "effect/http"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     key: "api.example.com",
+ *     policy: CircuitBreaker.consecutiveFailures(5),
+ *     openFor: "10 seconds",
+ *     classify: HttpClient.classifyTransient
+ *   })
+ *   const client = (yield* HttpClient.HttpClient).pipe(HttpClient.withCircuitBreaker(breaker))
+ *   return yield* client.get("https://api.example.com")
+ * })
+ *
+ * const mockClient = HttpClient.make((request) =>
+ *   Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
+ * )
+ * const response = await Effect.runPromise(program.pipe(
+ *   Effect.provideService(HttpClient.HttpClient, mockClient),
+ *   Effect.provide(CircuitBreaker.layerStoreMemory)
+ * ))
+ * response.status // => 200
+ * ```
+ *
+ * @stability unstable
+ * @category circuit breaking
+ * @since 4.1.0
+ */
+export const withCircuitBreaker: {
+  <E>(breaker: CircuitBreaker.CircuitBreaker<E>): <E2 extends E, R>(
+    self: HttpClient.With<E2, R>
+  ) => HttpClient.With<E2 | CircuitBreaker.CircuitBreakerError, R>
+  <E, E2 extends E, R>(
+    self: HttpClient.With<E2, R>,
+    breaker: CircuitBreaker.CircuitBreaker<E>
+  ): HttpClient.With<E2 | CircuitBreaker.CircuitBreakerError, R>
+} = dual(2, <E, E2 extends E, R>(
+  self: HttpClient.With<E2, R>,
+  breaker: CircuitBreaker.CircuitBreaker<E>
+): HttpClient.With<E2 | CircuitBreaker.CircuitBreakerError, R> => transform(self, (effect) => breaker.execute(effect)))
+
+/**
  * Namespace containing configuration types for `withRateLimiter`.
  *
  * @stability unstable
@@ -1975,6 +2052,10 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
  * @since 4.1.0
  */
 export const isTransientError = (error: unknown): boolean => Cause.isTimeoutError(error) || isTransientHttpError(error)
+
+const isTransientValue = (value: unknown): boolean =>
+  Predicate.hasProperty(value, HttpClientResponse.TypeId) &&
+  isTransientResponse(value as HttpClientResponse.HttpClientResponse)
 
 const isTransientHttpError = (error: unknown) =>
   Error.isHttpClientError(error) &&

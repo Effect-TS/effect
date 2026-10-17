@@ -1,8 +1,22 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import {
+  Cause,
+  Clock,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Redacted,
+  Ref,
+  Schedule,
+  Schema,
+  Stream
+} from "effect"
 import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
-import { RateLimiter } from "effect/persistence"
+import { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
 import { inspect } from "node:util"
@@ -606,6 +620,71 @@ Missing key
       ].map(HttpClient.isTransientError),
       [true, true, false, false]
     )
+  })
+
+  describe("classifyTransient", () => {
+    it.each([[503, "failure"], [200, "success"]] as const)(
+      "classifies a successful %s response as %s",
+      (status, outcome) => {
+        const response = HttpClientResponse.fromWeb(
+          HttpClientRequest.get("http://test/"),
+          new Response(null, { status })
+        )
+        strictEqual(HttpClient.classifyTransient(Exit.succeed(response)), outcome)
+      }
+    )
+
+    it.effect("ignores a 404 StatusCodeError", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeStatusClient(404)
+        const exit = yield* HttpClient.filterStatusOk(client).get("http://test/").pipe(Effect.exit)
+        strictEqual(HttpClient.classifyTransient(exit), "ignored")
+      }))
+
+    it("counts transport errors and defects as failures", () => {
+      const error = new HttpClientError.HttpClientError({
+        reason: new HttpClientError.TransportError({ request: HttpClientRequest.get("http://test/") })
+      })
+      strictEqual(HttpClient.classifyTransient(Exit.fail(error)), "failure")
+      strictEqual(HttpClient.classifyTransient(Exit.die("defect")), "failure")
+    })
+  })
+
+  describe("withCircuitBreaker", () => {
+    it.effect("opens after consecutive 503 responses and rejects without sending another request", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          key: "transient",
+          policy: CircuitBreaker.consecutiveFailures(2),
+          openFor: "10 seconds",
+          classify: HttpClient.classifyTransient
+        })
+        const { attempts, client } = yield* makeStatusClient(503)
+        const protectedClient = client.pipe(HttpClient.withCircuitBreaker(breaker))
+        strictEqual((yield* protectedClient.get("http://test/")).status, 503)
+        strictEqual((yield* protectedClient.get("http://test/")).status, 503)
+        const error = yield* protectedClient.get("http://test/").pipe(Effect.flip)
+        assert.isTrue(CircuitBreaker.isCircuitBreakerError(error))
+        strictEqual(yield* Ref.get(attempts), 2)
+      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory)))
+
+    it.effect("never opens for 404 StatusCodeErrors", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          key: "not-found",
+          policy: CircuitBreaker.consecutiveFailures(2),
+          openFor: "10 seconds",
+          classify: HttpClient.classifyTransient
+        })
+        const { attempts, client } = yield* makeStatusClient(404)
+        const protectedClient = HttpClient.withCircuitBreaker(HttpClient.filterStatusOk(client), breaker)
+        for (let i = 0; i < 3; i++) {
+          const error = yield* protectedClient.get("http://test/").pipe(Effect.flip)
+          assert.isTrue(HttpClientError.isHttpClientError(error))
+        }
+        strictEqual((yield* breaker.state)._tag, "Closed")
+        strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory)))
   })
 
   describe("retryTransient", () => {
