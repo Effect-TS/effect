@@ -93,6 +93,27 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
   it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle), { timeout: "30 seconds" })(
     `Unencrypted write ordering (${name})`,
     (it) => {
+      it.effect("returns full at-or-after history when batch is omitted", () =>
+        Effect.gen(function*() {
+          const storage = yield* EventLogServerUnencrypted.Storage
+          const storeId = EventLogMessage.StoreId.make("history-without-batch")
+          const older = yield* makeEntry(1_000, "key")
+          const boundary = yield* makeEntry(2_000, "key")
+          const otherEvent = yield* makeEntry(3_000, "key", "Other")
+          const otherKey = yield* makeEntry(4_000, "unrelated")
+          const newer = yield* makeEntry(5_000, "key")
+          yield* storage.write(storeId, [older, otherKey, boundary, otherEvent, newer])
+
+          const history = yield* storage.entriesAfter(storeId, boundary)
+
+          assert.deepStrictEqual(history.map((entry) => entry.idString), [
+            otherKey.idString,
+            boundary.idString,
+            otherEvent.idString,
+            newer.idString
+          ])
+        }))
+
       it.effect("acknowledges an out-of-order duplicate without invoking its handler", () =>
         Effect.gen(function*() {
           const { write, handled } = yield* makeClient("out-of-order")
