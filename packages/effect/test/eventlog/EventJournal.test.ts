@@ -12,7 +12,59 @@ const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
 
 const idStrings = (entries: ReadonlyArray<EventJournal.Entry>) => entries.map((item) => item.idString)
 
+// Preserve the original UUID formatter as the compatibility oracle.
+const legacyStringify = (bytes: Uint8Array): string =>
+  [
+    bytes.subarray(0, 4),
+    bytes.subarray(4, 6),
+    bytes.subarray(6, 8),
+    bytes.subarray(8, 10),
+    bytes.subarray(10, 16)
+  ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
+
 describe("EventJournal", () => {
+  it("formats random, v4 and v7 ids identically to the original UUID formatter", () => {
+    const ids: Array<Uint8Array> = [new Uint8Array(16), new Uint8Array(16).fill(0xff)]
+    // Exercise every lookup-table value, including bytes that need a leading zero.
+    for (let start = 0; start < 256; start += 16) {
+      ids.push(Uint8Array.from({ length: 16 }, (_, offset) => start + offset))
+    }
+    for (let i = 0; i < 100; i++) {
+      ids.push(
+        crypto.getRandomValues(new Uint8Array(16)),
+        EventJournal.makeRemoteIdUnsafe(),
+        EventJournal.makeEntryIdUnsafe({ msecs: i })
+      )
+    }
+    for (const id of ids) {
+      const item = new EventJournal.Entry({
+        id: id as EventJournal.EntryId,
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array()
+      }, { disableChecks: true })
+      assert.strictEqual(item.idString, legacyStringify(id))
+    }
+  })
+
+  it("memoizes idString per entry instance, not per id buffer", () => {
+    const id = new Uint8Array(16) as EventJournal.EntryId
+    const makeEntry = () =>
+      new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+        disableChecks: true
+      })
+    const first = makeEntry()
+    assert.strictEqual(first.idString, "00000000-0000-0000-0000-000000000000")
+
+    // Changing the public byte buffer must not cause an already-read entry to reformat.
+    id.fill(0xff)
+    const second = makeEntry()
+    assert.strictEqual(second.idString, "ffffffff-ffff-ffff-ffff-ffffffffffff")
+    id.fill(0x11)
+    assert.strictEqual(first.idString, "00000000-0000-0000-0000-000000000000")
+    assert.strictEqual(second.idString, "ffffffff-ffff-ffff-ffff-ffffffffffff")
+  })
+
   it("decodes the 48-bit UUID v7 timestamp from entry ids", () => {
     const cases: ReadonlyArray<readonly [prefix: ReadonlyArray<number>, millis: number]> = [
       [[0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 0],
