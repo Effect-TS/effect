@@ -455,16 +455,6 @@ export const entryFromFields = (fields: typeof EntryFields.Type): Entry => Schem
 const decodeEntryFieldsArray = Schema.decodeUnknownEffect(Schema.Array(SchemaBinary.toCodec(EntryFields)))
 
 /** @internal */
-export const RemoteEntryFields = Schema.Struct({ ...RemoteEntry.fields, entry: EntryFields })
-
-/** @internal */
-export const remoteEntryFromFields = (fields: typeof RemoteEntryFields.Type): RemoteEntry =>
-  Schema.makeClassTrusted(RemoteEntry, {
-    remoteSequence: fields.remoteSequence,
-    entry: entryFromFields(fields.entry)
-  })
-
-/** @internal */
 export const makeEntries = (
   entries: Arr.NonEmptyReadonlyArray<
     { readonly event: string; readonly primaryKey: string; readonly payload: Uint8Array }

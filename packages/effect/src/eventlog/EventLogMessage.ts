@@ -9,7 +9,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Arr from "../Array.ts"
+import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
 import type { Brand } from "../Brand.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
@@ -18,16 +18,9 @@ import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import * as Transferable from "../workers/Transferable.ts"
-import {
-  Entry,
-  EntryFields,
-  entryFromFields,
-  RemoteEntry,
-  RemoteEntryFields,
-  remoteEntryFromFields,
-  RemoteId
-} from "./EventJournal.ts"
+import { Entry, EntryFields, entryFromFields, RemoteEntry, RemoteId } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
 import { EncryptedEntry, EncryptedRemoteEntry } from "./EventLogEncryption.ts"
 
@@ -221,9 +214,9 @@ export class ChunkedMessage
    * @stability unstable
    * @since 4.0.0
    */
-  static split(id: number, data: Uint8Array): Arr.NonEmptyReadonlyArray<ChunkedMessage> {
+  static split(id: number, data: Uint8Array): NonEmptyReadonlyArray<ChunkedMessage> {
     const parts = Math.max(1, Math.ceil(data.byteLength / ChunkedMessage.chunkSize))
-    const result: Arr.NonEmptyArray<ChunkedMessage> = new Array(parts) as any
+    const result: NonEmptyArray<ChunkedMessage> = new Array(parts) as any
     for (let i = 0; i < parts; i++) {
       const start = i * ChunkedMessage.chunkSize
       const end = Math.min((i + 1) * ChunkedMessage.chunkSize, data.byteLength)
@@ -333,13 +326,19 @@ export class WriteEntriesUnencrypted
 {
   static FromSchemaBinary = SchemaBinary.toCodec(WriteEntriesUnencrypted)
   static encode = Schema.encodeEffect(this.FromSchemaBinary)
-  static decode = (data: Uint8Array<ArrayBuffer>): Effect.Effect<WriteEntriesUnencrypted, Schema.SchemaError> =>
-    Effect.map(decodeWriteEntriesUnencryptedFields(data), (fields) =>
-      Schema.makeClassTrusted(WriteEntriesUnencrypted, {
-        publicKey: fields.publicKey,
-        storeId: fields.storeId,
-        entries: fields.entries.map(entryFromFields)
-      }))
+  static decode = (
+    data: Uint8Array<ArrayBuffer>,
+    options?: SchemaAST.ParseOptions
+  ): Effect.Effect<WriteEntriesUnencrypted, Schema.SchemaError> =>
+    Effect.map(
+      decodeWriteEntriesUnencryptedFields(data, options),
+      (fields) =>
+        Schema.makeClassTrusted(WriteEntriesUnencrypted, {
+          publicKey: fields.publicKey,
+          storeId: fields.storeId,
+          entries: fields.entries.map(entryFromFields)
+        })
+    )
   get encoded() {
     return WriteEntriesUnencrypted.encode(this)
   }
@@ -392,13 +391,8 @@ export class ChangesRpc extends Rpc.make("EventLog.Changes", {
   static encodeEncrypted = Schema.encodeEffect(ChangesRpc.EncryptedFromSchemaBinary)
   static decodeEncrypted = Schema.decodeEffect(ChangesRpc.EncryptedFromSchemaBinary)
   static encodeUnencrypted = Schema.encodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)
-  static decodeUnencrypted = (
-    data: Uint8Array<ArrayBuffer>
-  ): Effect.Effect<Arr.NonEmptyReadonlyArray<RemoteEntry>, Schema.SchemaError> =>
-    Effect.map(decodeRemoteEntryFields(data), Arr.map(remoteEntryFromFields))
+  static decodeUnencrypted = Schema.decodeEffect(ChangesRpc.UnencryptedFromSchemaBinary)
 }
-
-const decodeRemoteEntryFields = Schema.decodeEffect(SchemaBinary.toCodec(Schema.NonEmptyArray(RemoteEntryFields)))
 
 /**
  * RPC group containing the event-log remote handshake, authentication, write, and
