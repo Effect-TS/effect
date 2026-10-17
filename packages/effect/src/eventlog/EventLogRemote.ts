@@ -24,9 +24,9 @@ import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import type * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
-import type { Entry, RemoteEntry, RemoteId } from "./EventJournal.ts"
+import { type Entry, type EntryId, type EventJournalError, RemoteEntry, type RemoteId } from "./EventJournal.ts"
 import { type Identity, Registry } from "./EventLog.ts"
-import { EventLogEncryption, layerSubtle } from "./EventLogEncryption.ts"
+import { type EncryptedRemoteEntry, EventLogEncryption, layerSubtle } from "./EventLogEncryption.ts"
 import {
   Authenticate,
   ChangesRpc,
@@ -64,6 +64,14 @@ export class EventLogRemote extends Context.Service<EventLogRemote, {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
     readonly startSequence: number
+    /**
+     * Reads the locally stored entries with the given ids, aligned with `ids`
+     * and `undefined` for unknown ids. The remote can use a stored entry for a
+     * change with the same id instead of decoding it.
+     */
+    readonly knownEntries?:
+      | ((ids: ReadonlyArray<EntryId>) => Effect.Effect<ReadonlyArray<Entry | undefined>, EventJournalError>)
+      | undefined
   }) => Effect.Effect<Queue.Dequeue<RemoteEntry, EventLogRemoteError>, never, Scope.Scope>
   readonly write: (options: {
     readonly identity: Identity["Service"]
@@ -172,8 +180,9 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   }) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
   readonly decodeChanges: (
     identity: Identity["Service"],
-    data: Uint8Array<ArrayBuffer>
-  ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError>
+    data: Uint8Array<ArrayBuffer>,
+    knownEntries?: Parameters<EventLogRemote["Service"]["changes"]>[0]["knownEntries"]
+  ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError | EventJournalError>
 }): Effect.fn.Return<EventLogRemote["Service"], EventLogRemoteError, Scope.Scope | EventLogRemoteClient | Registry> {
   const client = yield* EventLogRemoteClient
   const registry = yield* Registry
@@ -268,12 +277,12 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i]
             if (part._tag === "Single") {
-              yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, part.data))
+              yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, part.data, options.knownEntries))
               continue
             }
             const data = ChunkedMessage.join(chunkedState, part)
             if (!data) continue
-            yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, data))
+            yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, data, options.knownEntries))
           }
         }
       }).pipe(
@@ -324,6 +333,27 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
 > {
   const encryption = yield* EventLogEncryption
 
+  // Changes the journal already has are not decrypted. The stored entry stands
+  // in for them, so the journal still commits their sequence and reports them
+  // as duplicates.
+  const decryptUnknown = Effect.fnUntraced(function*(
+    identity: Identity["Service"],
+    entries: ReadonlyArray<EncryptedRemoteEntry>,
+    knownEntries: (ids: ReadonlyArray<EntryId>) => Effect.Effect<ReadonlyArray<Entry | undefined>, EventJournalError>
+  ) {
+    const stored = yield* knownEntries(entries.map((entry) => entry.entryId))
+    const unknown = entries.filter((_, i) => stored[i] === undefined)
+    if (unknown.length === entries.length) return yield* encryption.decrypt(identity, entries)
+    const decrypted = unknown.length > 0 ? yield* encryption.decrypt(identity, unknown) : []
+    let next = 0
+    return entries.map((encrypted, i) => {
+      const entry = stored[i]
+      return entry === undefined
+        ? decrypted[next++]
+        : new RemoteEntry({ remoteSequence: encrypted.sequence, entry }, { disableChecks: true })
+    })
+  })
+
   return yield* makeWith({
     encodeWrite: (options) =>
       encryption.encrypt(options.identity, options.entries).pipe(
@@ -339,9 +369,13 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
           }).encoded
         )
       ),
-    decodeChanges: (identity, data) =>
+    decodeChanges: (identity, data, knownEntries) =>
       ChangesRpc.decodeEncrypted(data).pipe(
-        Effect.flatMap((entries) => encryption.decrypt(identity, entries))
+        Effect.flatMap((entries) =>
+          knownEntries === undefined
+            ? encryption.decrypt(identity, entries)
+            : decryptUnknown(identity, entries, knownEntries)
+        )
       )
   })
 })

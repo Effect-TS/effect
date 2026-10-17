@@ -237,6 +237,19 @@ export const make = (options?: {
         Effect.map(toOrderedEntries),
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entries" }))
       ),
+      entriesById: (ids) =>
+        ids.length === 0 ? Effect.succeed([]) : sql`SELECT * FROM ${entryTableSql} WHERE ${sql.in("id", ids)}`.pipe(
+          withTracerDisabled,
+          Effect.flatMap(decodeEntryRows),
+          Effect.map((rows) => {
+            const byId = new Map<string, EventJournal.Entry>()
+            for (const row of rows) {
+              byId.set(Uuid.stringify(row.id), toEntry(row))
+            }
+            return ids.map((id) => byId.get(Uuid.stringify(id)))
+          }),
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entriesById" }))
+        ),
       write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
       writeMany,
       writeFromRemote: (options) =>
