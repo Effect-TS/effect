@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Index unencrypted event-log server conflict detection per batch. `EventLogServerUnencrypted.Storage.entriesAfter` now receives the whole sorted batch and only has to return stored entries that share an id with the batch, or share an event and primary key and sort at or after its oldest entry. Previously it returned the full history after the oldest entry. Conflicts reported to handlers are unchanged. Custom `Storage` implementations must update `entriesAfter` to the new signature. Returning the old, wider result set still works. SQL storage adds an `<prefix>_event_key_idx` index on startup.
+Speed up duplicate and conflict detection in the unencrypted event-log server by indexing each incoming batch, instead of rescanning stored history for every entry. `EventLogServerUnencrypted.Storage.entriesAfter` now also receives the batch as an optional third argument, which the built-in storages use to read only matching entries. Custom storages that ignore it keep working unchanged. SQL storage creates a `<prefix>_event_key_idx` index on startup for SQLite, Postgres and MySQL.

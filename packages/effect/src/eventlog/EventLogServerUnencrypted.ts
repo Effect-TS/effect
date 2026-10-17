@@ -129,7 +129,7 @@ export const layerRpcHandlers: Layer.Layer<
     readonly entries: Arr.NonEmptyReadonlyArray<Entry>
   }) {
     const entries = Arr.sort(options.entries, Entry.Order)
-    const index = new HistoryIndex(yield* storage.entriesAfter(options.storeId, entries))
+    const index = new HistoryIndex(yield* storage.entriesAfter(options.storeId, entries[0], entries))
     const persistedEntries = Arr.empty<Entry>()
     for (const entry of entries) {
       if (index.has(entry)) continue
@@ -390,17 +390,18 @@ export class Storage extends Context.Service<Storage, {
     signingPublicKey: Uint8Array<ArrayBuffer>
   ) => Effect.Effect<Uint8Array<ArrayBuffer>>
   /**
-   * Returns the stored entries an incoming batch needs for duplicate and
-   * conflict detection, in remote sequence order.
+   * Returns stored entries whose id is at or after `entry`, in remote sequence
+   * order.
    *
-   * `entries` is sorted by `Entry.Order`. The result must contain every stored
-   * entry with the same id as one of `entries`, and every stored entry with the
-   * same event and primary key as one of `entries` whose id is at or after
-   * `entries[0].id`. It may contain other entries at or after `entries[0].id`.
+   * The server also passes the incoming `batch`, sorted by `Entry.Order` and
+   * starting with `entry`. Implementations may use it to return only the
+   * entries the batch needs: those with the same id as a batch entry, and those
+   * with the same event and primary key as a batch entry.
    */
   readonly entriesAfter: (
     storeId: StoreId,
-    entries: Arr.NonEmptyReadonlyArray<Entry>
+    entry: Entry,
+    batch?: Arr.NonEmptyReadonlyArray<Entry>
   ) => Effect.Effect<Array<Entry>>
   readonly write: (
     storeId: StoreId,
@@ -707,14 +708,18 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         sessionAuthBindings.set(publicKey, signingPublicKey)
         return signingPublicKey
       }),
-    entriesAfter: (storeId, entries) =>
+    entriesAfter: (storeId, oldest, batch) =>
       Effect.sync(() => {
+        if (batch === undefined) {
+          return ensureJournal(storeId)
+            .filter((remoteEntry) => Entry.Order(remoteEntry.entry, oldest) >= 0)
+            .map((remoteEntry) => remoteEntry.entry)
+        }
         const storeKnownIds = ensureKnownIds(storeId)
         const byKey = ensureByKey(storeId)
-        const oldest = entries[0]
         const found = new Map<number, RemoteEntry>()
         const scanned = new Set<ReadonlyArray<RemoteEntry>>()
-        for (const entry of entries) {
+        for (const entry of batch) {
           const known = storeKnownIds.get(entry.idString)
           if (known !== undefined) {
             found.set(known.remoteSequence, known)
