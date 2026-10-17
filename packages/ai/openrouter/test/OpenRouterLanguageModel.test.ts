@@ -2,7 +2,7 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
-import { LanguageModel, Prompt, Tool, Toolkit } from "effect/ai"
+import { LanguageModel, Model, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterLanguageModel", () => {
@@ -75,6 +75,14 @@ describe("OpenRouterLanguageModel", () => {
         assert.notProperty(body, "strictJsonSchema")
       }).pipe(Effect.provide(makeStreamTestLayer([]))))
   })
+
+  it.effect("model provides openrouter provider metadata", () =>
+    Effect.gen(function*() {
+      strictEqual(yield* Model.ProviderName, "openrouter")
+    }).pipe(
+      Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")),
+      Effect.provide(makeTestLayer())
+    ))
 
   describe("generateText", () => {
     describe("message preparation", () => {
