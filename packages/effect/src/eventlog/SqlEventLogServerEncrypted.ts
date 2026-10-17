@@ -173,12 +173,10 @@ export const makeStorage = (options?: {
       idleTimeToLive: "5 minutes"
     })
 
-    // Inserts rows whose entry_id is not stored yet and returns only those rows.
     const insertNewEntries = (tableSql: Statement.Identifier, rows: ReadonlyArray<EntryRow>) =>
       sql.onDialectOrElse({
         mysql: () =>
-          // MySQL has no INSERT RETURNING. Track successful inserts rather
-          // than pre-selecting ids, which can race with concurrent writers.
+          // MySQL lacks INSERT RETURNING; pre-selecting IDs would race with concurrent writers.
           Effect.gen(function*() {
             const insertedIds: Array<Uint8Array> = []
             for (const row of rows) {
@@ -249,7 +247,7 @@ export const makeStorage = (options?: {
           const { pubsub, table } = yield* RcMap.get(resources, scopeKey)
           const tableSql = sql(table)
 
-          // SQL Server's MERGE rejects duplicate source keys, so dedupe up front for every dialect.
+          // SQL Server's MERGE requires unique source entry IDs.
           const rows = new Map<string, EntryRow>()
           for (const entry of entries) {
             const key = entry.entryId.join(",")

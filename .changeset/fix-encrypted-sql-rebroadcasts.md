@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix encrypted SQL event-log storage to publish and return only newly inserted entries when clients re-upload a batch. Existing sequence assignments and the changes backlog are preserved.
+Fix encrypted SQL event-log storage to return and publish only newly inserted entries, avoiding duplicate broadcasts when clients re-upload a batch.
