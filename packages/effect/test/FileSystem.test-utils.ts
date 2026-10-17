@@ -698,7 +698,8 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       exclude: ["node_modules"],
       dot: true,
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
-    }
+    },
+    { pattern: "*", exclude: ["**/src/", "**/README.md/"], expected: ["README.md", "a", "b", "node_modules"] }
   ])("glob $pattern (exclude: $exclude, dot: $dot)", ({ dot, exclude, expected, pattern }) =>
     runPromise(
       Effect.gen(function*() {
