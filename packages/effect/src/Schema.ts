@@ -125,8 +125,8 @@ export type ConstructorDefault = "no-default" | "with-default"
  *
  * **When to use**
  *
- * Use when passing `disableChecks: true` to skip validation when you trust the
- * data. Pass `parseOptions` to control parsing behavior.
+ * Use when passing `disableChecks: true` to skip filters and checks while still
+ * parsing types and structure. Pass `parseOptions` to control parsing behavior.
  *
  * @see {@link BottomWithoutNew.makeEffect}
  * @see {@link BottomWithoutNew.make}
@@ -141,7 +141,8 @@ export interface MakeOptions {
    */
   readonly parseOptions?: SchemaAST.ParseOptions | undefined
   /**
-   * Whether to disable validation for the schema.
+   * Whether to skip filters and checks. Types and structure are still parsed,
+   * and constructor defaults still apply.
    */
   readonly disableChecks?: boolean | undefined
 
@@ -16245,7 +16246,9 @@ function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Stru
  *
  * **Gotchas**
  *
- * Passing `disableChecks` in the options skips constructor validation.
+ * Passing `disableChecks: true` skips filters and checks, not parsing of types
+ * and structure. Wrong types and shapes are still rejected, and constructor
+ * defaults still apply.
  *
  * **Example** (Defining a basic class)
  *

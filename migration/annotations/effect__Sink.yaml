@@ -171,10 +171,10 @@ effect/Sink#race:
   note: "Sink racing (race/raceBoth/raceWith) was removed from v4; broadcast the stream (Stream.broadcast) into two consumers and race the resulting run effects with Effect.race, or write a custom Channel."
 effect/Sink#raceBoth:
   replacement: "none"
-  note: "Removed with the race family; broadcast the stream and use Effect.raceBoth (or Effect.race) on the two Stream.run effects to learn which side won."
+  note: "Removed with the race family; broadcast the stream and tag each Stream.run effect's result before combining them with Effect.race to learn which side succeeded first."
 effect/Sink#raceWith:
   replacement: "none"
-  note: "Removed, along with the MergeDecision type it depended on; the closest is broadcasting the stream and combining the two run effects manually (Effect.raceWith on the run effects)."
+  note: "Removed, along with the MergeDecision type it depended on; broadcast the stream and combine the two run effects manually. Use Effect.race for the first success or Effect.raceFirst for the first completion; custom completion and interruption handling requires explicit fibers."
 effect/Sink#refineOrDie:
   replacement: "Sink.catch"
   note: "Removed; rebuild with the typed-error handler: Sink.catch(self, (e) => Option.match(pf(e), { onSome: Effect.fail, onNone: () => Effect.die(e) })) — note Sink.catch replaces the result on recovery, so refined errors must be re-failed as shown."
