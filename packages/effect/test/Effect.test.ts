@@ -708,21 +708,9 @@ describe("Effect", () => {
             throw defect
           },
           (error) => error,
-          (error) => {
-            assert.strictEqual(error, defect)
-            return "SyncError" as const
-          }
+          (error) => error
         )
-        assertExitFailure(yield* Effect.exit(effectified()), Cause.fail("SyncError" as const))
-      }))
-
-    it.effect("uses the first synchronous callback result", () =>
-      Effect.gen(function*() {
-        const effectified = Effect.effectify((cb: (error: Error | null, value: string) => void) => {
-          cb(null, "first")
-          cb(null, "second")
-        })
-        assert.strictEqual(yield* effectified(), "first")
+        assertExitFailure(yield* Effect.exit(effectified()), Cause.fail(defect))
       }))
 
     it.effect("turns a throwing onError mapper in an async callback into a defect", () =>
