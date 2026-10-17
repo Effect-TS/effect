@@ -915,9 +915,8 @@ const make = Effect.gen(function*() {
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      const startSequence = yield* journal.nextRemoteSequence(remote.id)
-
       yield* Effect.gen(function*() {
+        const startSequence = yield* journal.nextRemoteSequence(remote.id)
         const changes = yield* remote.changes({ identity, startSequence, storeId })
         while (true) {
           const entries = yield* Queue.takeAll(changes)
