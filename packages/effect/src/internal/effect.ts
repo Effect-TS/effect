@@ -172,25 +172,30 @@ export const findErrorOption = Filter.toOption(findError)
 /**
  * Finds the first typed error when the cause contains only `Fail` reasons.
  * Otherwise returns the `Die` and `Interrupt` reasons, so typed-error
- * recovery cannot swallow defects or interruption.
+ * recovery cannot swallow defects or interruption. Typed failures are dropped
+ * unless `unmatched` passes them, in which case its result is kept.
  *
  * @internal
  */
-export const findErrorOnly = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> => {
-  let fail: Cause.Fail<E> | undefined
-  let hasOthers = false
-  for (let i = 0; i < self.reasons.length; i++) {
-    const reason = self.reasons[i]
-    if (reason._tag === "Fail") fail ??= reason
-    else hasOthers = true
+export const findErrorOnly = <E>(
+  self: Cause.Cause<E>,
+  unmatched?: Filter.Filter<E, unknown, unknown>
+): Result.Result<E, Cause.Cause<never>> => {
+  if (self.reasons.every(isFailReason)) return findError(self)
+  if (!hasFails(self)) return Result.fail(self as Cause.Cause<never>)
+  const reasons: Array<Cause.Reason<unknown>> = []
+  for (const reason of self.reasons) {
+    if (reason._tag !== "Fail") {
+      reasons.push(reason)
+      continue
+    }
+    const kept = unmatched?.(reason.error)
+    if (kept && Result.isSuccess(kept)) {
+      reasons.push(kept.success === reason.error ? reason : new Fail(kept.success, reason.annotations))
+    }
   }
-  if (fail === undefined) return Result.fail(self as Cause.Cause<never>)
-  if (!hasOthers) return Result.succeed(fail.error)
-  return Result.fail(causeFromReasons(self.reasons.filter((reason) => reason._tag !== "Fail")) as Cause.Cause<never>)
+  return Result.fail(causeFromReasons(reasons) as Cause.Cause<never>)
 }
-
-const causeFilterFails = <E>(self: Cause.Cause<E>, keep: (error: E) => boolean): Cause.Cause<E> =>
-  causeFromReasons(self.reasons.filter((reason) => reason._tag !== "Fail" || keep(reason.error)))
 
 /** @internal */
 export const causeOrDie = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
@@ -1986,11 +1991,7 @@ export const catchEager: {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return self as Exit.Exit<A>
       const error = findErrorOnly(self.cause)
-      if (Result.isFailure(error)) {
-        return error.failure === self.cause
-          ? self as Exit.Exit<never>
-          : exitFailCause(error.failure)
-      }
+      if (Result.isFailure(error)) return exitFailCause(error.failure)
       return f(error.success)
     }
     return catch_(self, f)
@@ -2946,13 +2947,8 @@ export const catchIf: {
     orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
     catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-      const error = findErrorOnly(cause)
-      if (Result.isFailure(error)) {
-        // Unmatched failures stay in the error channel when there is no orElse
-        return failCause(
-          orElse ? error.failure : causeFilterFails(cause, (e) => !predicate(e)) as any as Cause.Cause<E3>
-        )
-      }
+      const error = findErrorOnly(cause, orElse ? undefined : (e) => predicate(e) ? Result.failVoid : Result.succeed(e))
+      if (Result.isFailure(error)) return failCause(error.failure)
       if (!predicate(error.success)) {
         return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
       }
@@ -2984,13 +2980,11 @@ export const catchFilter: {
     orElse?: ((e: X) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
     catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-      const error = findErrorOnly(cause)
-      if (Result.isFailure(error)) {
-        // Unmatched failures stay in the error channel when there is no orElse
-        return failCause(
-          orElse ? error.failure : causeFilterFails(cause, (e) => Result.isFailure(filter(e))) as any as Cause.Cause<E3>
-        )
-      }
+      const error = findErrorOnly(
+        cause,
+        orElse ? undefined : (e) => Result.isFailure(filter(e)) ? Result.succeed(e) : Result.failVoid
+      )
+      if (Result.isFailure(error)) return failCause(error.failure)
       const result = filter(error.success)
       if (Result.isFailure(result)) {
         return orElse ? orElse(result.failure as any) : failCause(cause as any as Cause.Cause<E3>)
@@ -3781,11 +3775,7 @@ export const matchEager: {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
       const error = findErrorOnly(self.cause)
-      if (Result.isFailure(error)) {
-        return error.failure === self.cause
-          ? self as Exit.Exit<never>
-          : exitFailCause(error.failure)
-      }
+      if (Result.isFailure(error)) return exitFailCause(error.failure)
       return exitSucceed(options.onFailure(error.success))
     }
     return match(self, options)
