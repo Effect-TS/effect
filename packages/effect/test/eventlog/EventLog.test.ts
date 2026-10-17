@@ -1014,7 +1014,12 @@ describe("EventLog", () => {
 
         assert.strictEqual(nextSequence, 2)
         assert.strictEqual(yield* Queue.size(handled), 0)
-        assert.deepStrictEqual(stored.map((entry) => entry.primaryKey), ["known", "new"])
+        assert.deepStrictEqual(
+          stored.map((entry) =>
+            entry.primaryKey
+          ),
+          ["known", "new"]
+        )
         assert.strictEqual(decrypts, 1)
       }).pipe(Effect.provide(layer))
     }))
