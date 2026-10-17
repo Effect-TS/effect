@@ -22,7 +22,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { causeMap, causeOrDie, ClockRef, endSpan, findErrorOnly } from "./internal/effect.ts"
+import { ClockRef, endSpan } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -4800,7 +4800,7 @@ const catch_: {
   InErr & InErr1,
   InDone & InDone1,
   Env | Env1
-> => catchCauseFilter(self, findErrorOnly, (e) => f(e)))
+> => catchCauseFilter(self, Cause.findError, (e) => f(e)))
 
 export {
   /**
@@ -5126,10 +5126,8 @@ export const catchIf: {
   InDone & InDone1 & InDone2,
   Env | Env1 | Env2
 > =>
-  catchCauseFilter(
+  catch_(
     self,
-    (cause) =>
-      findErrorOnly(cause, orElse ? undefined : (err) => predicate(err) ? Result.failVoid : Result.succeed(err)),
     (err): Channel<
       OutElem1 | OutElem2,
       OutErr1 | OutErr2,
@@ -5296,9 +5294,8 @@ export const catchFilter: {
   InDone & InDone1 & InDone2,
   Env | Env1 | Env2
 > =>
-  catchCauseFilter(
+  catch_(
     self,
-    (cause) => findErrorOnly(cause, orElse ? undefined : (err) => Result.flip(filter(err))),
     (err): Channel<
       OutElem1 | OutElem2,
       OutErr1 | OutErr2,
@@ -5662,13 +5659,27 @@ export const catchReason: {
   InDone & InDone1 & InDone2,
   Env | Env1 | Env2
 > =>
-  catchIf(
+  catch_(
     self,
-    (error) =>
-      isTagged(error, errorTag) && hasProperty(error, "reason") &&
-      (orElse !== undefined || isTagged(error.reason, reasonTag)),
-    (error: any): any => isTagged(error.reason, reasonTag) ? f(error.reason, error) : orElse!(error.reason, error)
-  ) as any)
+    (error): Channel<
+      OutElem1 | Exclude<OutElem2, Types.unassigned>,
+      OutErr1 | OutErr2,
+      OutDone1 | OutDone2,
+      InElem1 & InElem2,
+      InErr1 & InErr2,
+      InDone1 & InDone2,
+      Env1 | Env2
+    > => {
+      if (isTagged(error, errorTag) && hasProperty(error, "reason")) {
+        const reason = error.reason as Types.ExcludeReason<Types.ExtractTag<Types.NoInfer<OutErr>, K>, RK>
+        if (isTagged(reason, reasonTag)) {
+          return f(reason as any, error as any)
+        }
+        return orElse ? orElse(reason, error as any) as any : fail(error) as any
+      }
+      return fail(error) as any
+    }
+  ))
 
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
@@ -5829,24 +5840,22 @@ export const catchReasons: {
   >
 } = dual((args) => isChannel(args[0]), (self, errorTag, cases, orElse) => {
   let keys: Set<string>
-  const isTaggedReason = (error: unknown): error is { readonly reason: { readonly _tag: string } } =>
-    isTagged(error, errorTag) &&
-    hasProperty(error, "reason") &&
-    hasProperty(error.reason, "_tag") &&
-    String.isString(error.reason._tag)
-  return catchIf(
-    self,
-    (error) =>
-      isTaggedReason(error) && (orElse !== undefined || (keys ??= new Set(Object.keys(cases))).has(error.reason._tag)),
-    (error: { readonly reason: { readonly _tag: string } }) => {
-      const reason = error.reason
+  return catch_(self, (error) => {
+    if (
+      isTagged(error, errorTag) &&
+      hasProperty(error, "reason") &&
+      hasProperty(error.reason, "_tag") &&
+      String.isString(error.reason._tag)
+    ) {
+      const reason = error.reason as { readonly _tag: string }
       keys ??= new Set(Object.keys(cases))
       if (keys.has(reason._tag)) {
         return (cases as any)[reason._tag](reason as any, error)
       }
-      return orElse!(reason, error) as any
+      return orElse ? orElse(reason, error) as any : fail(error) as any
     }
-  )
+    return fail(error) as any
+  })
 })
 
 /**
@@ -5968,8 +5977,7 @@ export const mapError: {
 } = dual(2, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutErr2>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
   f: (err: OutErr) => OutErr2
-): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> =>
-  catchCause(self, (cause) => failCauseSync(() => causeMap(cause, f))))
+): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> => catch_(self, (err) => fail(f(err))))
 
 /**
  * Converts all errors in the channel to defects (unrecoverable failures).
@@ -6008,8 +6016,7 @@ export const orDie = <
   Env
 >(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
-): Channel<OutElem, never, OutDone, InElem, InErr, InDone, Env> =>
-  catchCause(self, (cause) => failCause(causeOrDie(cause)))
+): Channel<OutElem, never, OutDone, InElem, InErr, InDone, Env> => catch_(self, die)
 
 /**
  * Ignores all errors in the channel, converting them to an empty channel.

@@ -14834,7 +14834,6 @@ export interface TransactionMeta {
 /** @internal */
 export interface TransactionMetaInner {
   retry: boolean
-  readonly retryFibers: Set<number>
   journal: Map<
     TxRef<any>,
     {
@@ -14946,7 +14945,6 @@ export const tx = <A, E, R>(
     const mutable: TransactionMetaInner = {
       journal: new Map(),
       retry: false,
-      retryFibers: new Set(),
       attempt: 1,
       retryReason: undefined,
       start: now,
@@ -14958,19 +14956,12 @@ export const tx = <A, E, R>(
     return uninterruptibleMask((restore) => {
       const run = restore(effect).pipe(
         provideService(Transaction, mutable),
-        catchCause((cause) => {
-          if (!mutable.retry) return failCause(cause)
+        tapCause((cause) => {
+          if (!mutable.retry) return void_
           // txRetry interrupts the body; any other reason in the cause is a real failure.
-          // Roll back now and drop the retry interruptions so the step below fails
-          // with the real failure instead of waiting or rerunning.
-          if (!internal.hasInterruptsOnly(cause)) {
-            return suspend(() => {
-              const failure = removeRetryInterrupts(cause, mutable.retryFibers)
-              clearTransaction(mutable)
-              return failCause(failure)
-            })
-          }
-          return andThen(restore(awaitPendingTransaction(mutable)), failCause(cause))
+          // Roll back now so the step below fails instead of waiting or rerunning.
+          if (!internal.hasInterruptsOnly(cause)) return sync(() => clearTransaction(mutable))
+          return restore(awaitPendingTransaction(mutable))
         }),
         exit
       )
@@ -15060,16 +15051,8 @@ function commitTransaction(fiber: Fiber<unknown, unknown>, state: TransactionMet
   }
 }
 
-const removeRetryInterrupts = <E>(cause: Cause.Cause<E>, fiberIds: ReadonlySet<number>): Cause.Cause<E> =>
-  core.causeFromReasons(
-    cause.reasons.filter((reason) =>
-      !core.isInterruptReason(reason) || reason.fiberId === undefined || !fiberIds.has(reason.fiberId)
-    )
-  )
-
 function clearTransaction(state: TransactionMetaInner) {
   state.retry = false
-  state.retryFibers.clear()
   state.journal.clear()
 }
 
@@ -15112,14 +15095,11 @@ function clearTransaction(state: TransactionMetaInner) {
  */
 export const txRetry: Effect<never, never, Transaction> = flatMap(
   Transaction,
-  (state) =>
-    withFiber((fiber) => {
-      const mutable = state as TransactionMetaInner
-      mutable.retry = true
-      // Record the signalling fiber so a failing cleanup can drop this interruption
-      mutable.retryFibers.add(fiber.id)
-      return interrupt
-    })
+  (state) => {
+    const mutable = state as TransactionMetaInner
+    mutable.retry = true
+    return interrupt
+  }
 )
 /**
  * Type helpers for converting callback-based functions into `Effect` functions.
