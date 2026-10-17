@@ -2,6 +2,7 @@ import { PgClient } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Layer, Option, Redacted } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
@@ -50,19 +51,37 @@ const createLegacyJournal = (
     }
   })
 
-// Waits, for at most two seconds, until `count` backends are waiting on locks
-// or `settled` holds. Timing out only weakens a test, it never fails one.
-const waitForLockWaiters = (count: number, settled: () => boolean = () => false) =>
+const backendPid = Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  const [{ pid }] = yield* sql<{ pid: number }>`SELECT pg_backend_pid() AS pid`
+  return pid
+})
+
+// Waits until `count` backends are blocked by the backend `holder`, directly
+// or behind one that is, and fails if that does not happen within ten
+// seconds. When `fiber` is given, it may finish first instead, but must have
+// succeeded.
+const waitUntilBlockedBy = <A, E>(holder: number, count: number, fiber?: Fiber.Fiber<A, E>) =>
   Effect.gen(function*() {
     const sql = yield* SqlClient.SqlClient
-    for (let i = 0; i < 200 && !settled(); i++) {
-      const [{ waiting }] = yield* sql<{ waiting: number }>`
-        SELECT count(*)::int4 AS waiting FROM pg_stat_activity
-        WHERE datname = current_database() AND wait_event_type = 'Lock'
+    const deadline = Date.now() + 10_000
+    let blocked = 0
+    while (Date.now() < deadline) {
+      const exit = fiber?.pollUnsafe()
+      if (exit !== undefined) return yield* exit
+      ;[{ blocked }] = yield* sql<{ blocked: number }>`
+        SELECT count(*)::int4 AS blocked FROM pg_stat_activity waiter
+        WHERE ${holder} = ANY(pg_blocking_pids(waiter.pid)) OR EXISTS (
+          SELECT 1 FROM pg_stat_activity other
+          WHERE other.pid = ANY(pg_blocking_pids(waiter.pid)) AND ${holder} = ANY(pg_blocking_pids(other.pid))
+        )
       `
-      if (waiting >= count) return
+      if (blocked >= count) return
       yield* realSleep
     }
+    return yield* Effect.die(
+      new Error(`Expected ${count} backends blocked by ${holder} within 10 seconds, saw ${blocked}`)
+    )
   })
 
 // The container is shared with the client, so tests can open more connections.
@@ -157,19 +176,19 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
         remotesTable: "concurrent_remotes"
       })
       const remoteId = EventJournal.makeRemoteIdUnsafe()
-      const written = yield* Deferred.make<EventJournal.Entry>()
+      const written = yield* Deferred.make<number>()
       const release = yield* Deferred.make<void>()
       // The first write stays uncommitted until released.
       const first = yield* journal.write({ ...localEntry("first"), effect: Effect.succeed }).pipe(
-        Effect.tap((entry) => Deferred.succeed(written, entry)),
+        Effect.tap(Effect.flatMap(backendPid, (pid) => Deferred.succeed(written, pid))),
         Effect.tap(Deferred.await(release)),
         sql.withTransaction,
         Effect.forkChild
       )
-      yield* Deferred.await(written)
+      const holder = yield* Deferred.await(written)
       const second = yield* Effect.forkChild(journal.write({ ...localEntry("second"), effect: Effect.succeed }))
-      // Upload once the second write has committed or is waiting on a lock.
-      yield* waitForLockWaiters(1, () => second.pollUnsafe() !== undefined)
+      // Upload once the second write has committed or is waiting on the first.
+      yield* waitUntilBlockedBy(holder, 1, second)
       const beforeCommit = yield* uploadIds(journal, remoteId)
       yield* Deferred.succeed(release, undefined)
       const ids = [(yield* Fiber.join(first)).idString, (yield* Fiber.join(second)).idString]
@@ -258,20 +277,21 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
       const options = { entryTable: "concurrent_open_entries", remotesTable: "concurrent_open_remotes" }
       const legacy = entry(1000, "legacy")
       yield* createLegacyJournal(options, [legacy])
-      const locked = yield* Deferred.make<void>()
+      const locked = yield* Deferred.make<number>()
       const release = yield* Deferred.make<void>()
       // Index creation needs this table, so both opens stall mid-migration.
       const blocker = yield* sql`LOCK TABLE concurrent_open_entries IN ACCESS EXCLUSIVE MODE`.pipe(
-        Effect.andThen(Deferred.succeed(locked, undefined)),
+        Effect.andThen(backendPid),
+        Effect.flatMap((pid) => Deferred.succeed(locked, pid)),
         Effect.andThen(Deferred.await(release)),
         sql.withTransaction,
         Effect.forkChild
       )
-      yield* Deferred.await(locked)
+      const holder = yield* Deferred.await(locked)
       const opens = yield* Effect.forkChild(
         Effect.all([SqlEventJournal.make(options), SqlEventJournal.make(options)], { concurrency: 2 })
       )
-      yield* waitForLockWaiters(2)
+      yield* waitUntilBlockedBy(holder, 2)
       yield* Deferred.succeed(release, undefined)
       yield* Fiber.join(blocker)
       const [, journal] = yield* Fiber.join(opens)
@@ -293,23 +313,67 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
           entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
           effect: () => Effect.void
         })
-      const imported = yield* Deferred.make<void>()
+      const imported = yield* Deferred.make<number>()
       const proceed = yield* Deferred.make<void>()
       const remoteId = EventJournal.makeRemoteIdUnsafe()
       const outer = yield* importEntry(remoteId, a).pipe(
-        Effect.andThen(Deferred.succeed(imported, undefined)),
+        Effect.andThen(backendPid),
+        Effect.flatMap((pid) => Deferred.succeed(imported, pid)),
         Effect.andThen(Deferred.await(proceed)),
         Effect.andThen(importEntry(remoteId, b)),
         sql.withTransaction,
         Effect.forkChild
       )
-      yield* Deferred.await(imported)
+      const holder = yield* Deferred.await(imported)
       const other = yield* Effect.forkChild(importEntry(EventJournal.makeRemoteIdUnsafe(), b))
       // Continue the outer transaction once the other import is waiting on it.
-      yield* waitForLockWaiters(1, () => other.pollUnsafe() !== undefined)
+      yield* waitUntilBlockedBy(holder, 1, other)
       yield* Deferred.succeed(proceed, undefined)
       yield* Fiber.join(outer)
       yield* Fiber.join(other)
       assert.deepStrictEqual((yield* journal.entries).map((entry) => entry.idString), [a.idString, b.idString])
+    }))
+
+  it.effect("a local write and a remote import updating the same projection row both commit", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const journal = yield* SqlEventJournal.make({
+        entryTable: "projection_entries",
+        remotesTable: "projection_remotes"
+      })
+      // EventLog runs handlers inside the journal lock's transaction.
+      const withLock = journal.withLock(EventLogMessage.StoreId.make("store"))
+      yield* sql`CREATE TABLE callback_projection (id TEXT PRIMARY KEY, count INT NOT NULL)`
+      yield* sql`INSERT INTO callback_projection (id, count) VALUES ('p', 0)`
+      const project = Effect.orDie(sql`UPDATE callback_projection SET count = count + 1 WHERE id = 'p'`)
+      const updated = yield* Deferred.make<number>()
+      const proceed = yield* Deferred.make<void>()
+      // The local handler keeps the projection row locked until released.
+      const local = yield* journal.write({
+        ...localEntry("local"),
+        effect: (entry) =>
+          project.pipe(
+            Effect.andThen(backendPid),
+            Effect.flatMap((pid) => Deferred.succeed(updated, pid)),
+            Effect.andThen(Deferred.await(proceed)),
+            Effect.as(entry)
+          )
+      }).pipe(withLock, Effect.forkChild)
+      const holder = yield* Deferred.await(updated)
+      const imported = entry(1000, "imported")
+      const remote = yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: imported })],
+        effect: () => Effect.asVoid(project)
+      }).pipe(withLock, Effect.forkChild)
+      yield* waitUntilBlockedBy(holder, 1, remote)
+      yield* Deferred.succeed(proceed, undefined)
+      const written = yield* Fiber.join(local)
+      yield* Fiber.join(remote)
+      const [{ count }] = yield* sql<{ count: number }>`SELECT count FROM callback_projection WHERE id = 'p'`
+      assert.deepStrictEqual({ count, entries: (yield* journal.entries).map((entry) => entry.idString) }, {
+        count: 2,
+        entries: [imported.idString, written.idString]
+      })
     }))
 })
