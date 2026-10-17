@@ -255,7 +255,7 @@ export const makeStorage = (options?: {
               mssql: () => {
                 const seen = new Set<string>()
                 const uniqueEntries = batch.entries.filter((entry) => {
-                  const id = entry.entry_id.toString()
+                  const id = Array.from(entry.entry_id).join(",")
                   if (seen.has(id)) return false
                   seen.add(id)
                   return true
