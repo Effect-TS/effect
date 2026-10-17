@@ -130,11 +130,10 @@ export const make = (options?: {
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
     const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
     const toEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> => rows.map(toEntry)
+    // Break timestamp ties by id bytes, which dialects do not all collate alike.
+    const toOrderedEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> =>
+      rows.map(toEntry).sort(EventJournal.Entry.Order)
 
-    const insertEntry = SqlSchema.void({
-      Request: EntryRow,
-      execute: (entry) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entry)} ON CONFLICT DO NOTHING`
-    })
     const insertEntries = SqlSchema.void({
       Request: EntryRowArray,
       execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
@@ -217,34 +216,34 @@ export const make = (options?: {
       }
     })
 
-    return EventJournal.EventJournal.of({
-      entries: sql`SELECT * FROM ${entryTableSql} ORDER BY timestamp ASC`.pipe(
-        withTracerDisabled,
-        Effect.flatMap(decodeEntryRows),
-        Effect.map(toEntries),
-        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entries" }))
-      ),
-      write: Effect.fnUntraced(
-        function*({ effect, event, payload, primaryKey }) {
-          const entry = new EventJournal.Entry({
+    const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
+      Effect.uninterruptibleMask((restore) => {
+        const committed = Arr.map(entries, ({ event, payload, primaryKey }) =>
+          new EventJournal.Entry({
             id: EventJournal.makeEntryIdUnsafe(),
             event,
             primaryKey,
             payload
-          }, { disableChecks: true })
-          return yield* Effect.uninterruptibleMask((restore) =>
-            restore(effect(entry)).pipe(
-              Effect.tap(
-                insertEntry(toEntryRow(entry)).pipe(
-                  Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "write" }))
-                )
-              ),
-              Effect.tap(PubSub.publish(pubsub, entry))
+          }, { disableChecks: true }))
+        return restore(effect(committed)).pipe(
+          Effect.tap(
+            insertEntries(committed.map(toEntryRow)).pipe(
+              Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeMany" }))
             )
-          )
-        },
-        withTracerDisabled
+          ),
+          Effect.tap(PubSub.publishAll(pubsub, committed))
+        )
+      }).pipe(withTracerDisabled)
+
+    return EventJournal.EventJournal.of({
+      entries: sql`SELECT * FROM ${entryTableSql} ORDER BY timestamp ASC`.pipe(
+        withTracerDisabled,
+        Effect.flatMap(decodeEntryRows),
+        Effect.map(toOrderedEntries),
+        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "entries" }))
       ),
+      write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
+      writeMany,
       writeFromRemote: (options) =>
         writeFromRemote(options).pipe(
           sql.withTransaction,
@@ -263,7 +262,7 @@ export const make = (options?: {
             ORDER BY timestamp ASC
           `.pipe(
             Effect.flatMap(decodeEntryRows),
-            Effect.map(toEntries),
+            Effect.map(toOrderedEntries),
             Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withRemoteUncommited" }))
           )
           if (!Arr.isReadonlyArrayNonEmpty(entries)) return yield* Effect.succeedNone

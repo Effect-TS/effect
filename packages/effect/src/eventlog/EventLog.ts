@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as FiberMap from "../FiberMap.ts"
@@ -58,6 +59,21 @@ export class EventLog extends Context.Service<EventLog, {
     readonly payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
   }) => Effect.Effect<
     Event.SuccessWithTag<EventGroup.Events<Groups>, Tag>,
+    Event.ErrorWithTag<EventGroup.Events<Groups>, Tag> | EventJournalError
+  >
+  /**
+   * Write several events under one journal lock and one `HandlerTransaction`,
+   * returning each handler's result in input order. If any handler fails,
+   * none of the events are committed.
+   */
+  readonly writeMany: <Groups extends EventGroup.Any, Tag extends Event.Tag<EventGroup.Events<Groups>>>(options: {
+    readonly schema: EventLogSchema<Groups>
+    readonly events: Arr.NonEmptyReadonlyArray<{
+      readonly event: Tag
+      readonly payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
+    }>
+  }) => Effect.Effect<
+    Arr.NonEmptyArray<Event.SuccessWithTag<EventGroup.Events<Groups>, Tag>>,
     Event.ErrorWithTag<EventGroup.Events<Groups>, Tag> | EventJournalError
   >
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
@@ -440,47 +456,51 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
 
 /**
  * Context reference for a transaction that wraps the event handlers of each
- * batch replayed from a remote.
+ * batch replayed from a remote and of each local `write` or `writeMany`.
  *
  * **When to use**
  *
  * Use when handlers project into a store with transactions, such as
  * `sql.withTransaction` or an IndexedDB transaction over the projection
- * tables, so a batch of N replayed events commits once instead of N times.
+ * tables, so a batch of N events commits once instead of N times.
  *
  * **Details**
  *
- * The journal reads every conflict before the transaction starts and commits
- * the batch after it completes, so it performs no I/O while the transaction is
- * open. Defaults to running the handlers without a transaction. Local writes
- * do not use it.
+ * The journal performs no I/O while the transaction is open: it reads replay
+ * conflicts before the transaction starts and commits the batch after it
+ * completes. Defaults to running the handlers without a transaction.
  *
- * If the transaction fails, the journal commits nothing from the batch. The
- * remote is subscribed again after a backoff of up to 10 seconds and the batch
- * is delivered again, so later batches from that remote wait until it
- * succeeds. Local writes and other remotes are not blocked.
+ * If the transaction fails, the journal commits nothing from the batch. For a
+ * replayed batch, the remote is subscribed again after a backoff of up to 10
+ * seconds and the batch is delivered again, so later batches from that remote
+ * wait until it succeeds; local writes and other remotes are not blocked. A
+ * local write fails with the error and is not retried.
  *
  * **Gotchas**
  *
- * - Errors returned by a handler are logged and skipped. They do not fail the
- *   transaction, and the entry is still committed to the journal.
- * - Failures that abort the underlying transaction are different, even when
- *   the handler's error is caught. In IndexedDB, any failed request that is
- *   not prevented aborts the whole transaction, and in PostgreSQL so does a
- *   failed statement outside a savepoint. The batch is then retried as above,
- *   so a failure that repeats on every attempt stops sync from that remote
- *   until it is fixed.
- * - Handlers must tolerate running more than once for the same entry.
+ * - During replay, errors returned by a handler are logged and skipped. They
+ *   do not fail the transaction, and the entry is still committed to the
+ *   journal.
+ * - In a local write, an error returned by a handler fails the transaction
+ *   and the write, and the journal commits none of its events.
+ * - Failures that abort the underlying transaction fail the whole batch, even
+ *   when replay catches the handler's error. In IndexedDB, any failed request
+ *   that is not prevented aborts the whole transaction, and in PostgreSQL so
+ *   does a failed statement outside a savepoint. A replayed batch is then
+ *   retried as above, so a failure that repeats on every attempt stops sync
+ *   from that remote until it is fixed.
+ * - Replay handlers must tolerate running more than once for the same entry.
  * - Unless the transaction and the journal share a database connection, the
- *   transaction commits before the journal does. A crash between the two
- *   replays the batch on restart; the two commits are not atomic.
+ *   transaction commits before the journal does, and the two commits are not
+ *   atomic. A crash between them replays a remote batch on restart, but a
+ *   local write is lost from the journal while its projection changes remain.
  * - An IndexedDB transaction commits once it has no pending requests and
  *   control returns to the event loop. A custom wrapper must stop the fiber
  *   from yielding to the scheduler while it is open, by providing
  *   `References.PreventSchedulerYield` as `withTransaction` from
  *   `@effect/platform-browser` does. Otherwise it can commit partway through a
- *   batch, and the remaining handlers fail with errors that are logged and
- *   skipped, leaving the projection silently out of date.
+ *   batch, and the remaining handlers fail. During replay those errors are
+ *   logged and skipped, leaving the projection silently out of date.
  * - The transaction stays open for the whole batch, so other read-write
  *   transactions on the same tables wait for it.
  * - The transaction must not change the error or success of the wrapped
@@ -981,60 +1001,76 @@ const make = Effect.gen(function*() {
     Effect.orDie
   )
 
-  const writeHandler = Effect.fnUntraced(function*(handler: Handlers.Item<any>, options: {
-    readonly schema: EventLogSchema<any>
-    readonly event: string
-    readonly payload: unknown
-  }) {
-    const payload = yield* Schema.encodeUnknownEffect(handler.event.payloadSchemaBinary)(options.payload).pipe(
-      Effect.orDie
-    )
-    return yield* journal.withLock(storeId)(journal.write({
-      event: options.event,
-      primaryKey: handler.event.primaryKey(options.payload as never),
-      payload,
-      effect: (entry) =>
-        handler.handler({
-          storeId,
-          payload: options.payload,
-          entry,
-          conflicts: []
-        }).pipe(
-          Effect.updateContext((input) => Context.merge(handler.context, input)),
-          Effect.provideService(Identity, identity),
-          Effect.tap(() => {
-            const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-              ? registry.reactivityKeys[entry.event]
-              : undefined
-            if (keys) {
-              for (const key of keys) {
-                reactivity.invalidateUnsafe({
-                  [key]: [entry.primaryKey]
-                })
-              }
-            }
-            return Effect.void
-          })
+  const writeEvents = (
+    events: Arr.NonEmptyReadonlyArray<{ readonly event: string; readonly payload: unknown }>
+  ): Effect.Effect<Arr.NonEmptyArray<unknown>, unknown> => {
+    const handlers: Array<Handlers.Item<any>> = []
+    for (const { event } of events) {
+      const handler = registry.handlers.get(event) as Handlers.Item<any> | undefined
+      if (handler === undefined) {
+        return Effect.die(`Event handler not found for: "${event}"`)
+      }
+      handlers.push(handler)
+    }
+    return Effect.forEach(
+      events,
+      ({ event, payload }, i) =>
+        Schema.encodeUnknownEffect(handlers[i].event.payloadSchemaBinary)(payload).pipe(
+          Effect.orDie,
+          Effect.map((encoded) => ({
+            event,
+            primaryKey: handlers[i].event.primaryKey(payload as never),
+            payload: encoded as Uint8Array
+          }))
         )
-    }))
-  })
+    ).pipe(
+      Effect.flatMap((entries) =>
+        journal.writeMany({
+          entries,
+          effect: (written) =>
+            handlerTransaction(Effect.forEach(written, (entry, i) =>
+              handlers[i].handler({
+                storeId,
+                payload: events[i].payload,
+                entry,
+                conflicts: []
+              }).pipe(
+                Effect.updateContext((input) => Context.merge(handlers[i].context, input)),
+                Effect.provideService(Identity, identity),
+                Effect.tap(() => {
+                  const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
+                    ? registry.reactivityKeys[entry.event]
+                    : undefined
+                  if (keys) {
+                    for (const key of keys) {
+                      reactivity.invalidateUnsafe({
+                        [key]: [entry.primaryKey]
+                      })
+                    }
+                  }
+                  return Effect.void
+                })
+              )))
+        })
+      ),
+      journal.withLock(storeId)
+    ) as Effect.Effect<Arr.NonEmptyArray<unknown>, unknown>
+  }
 
   const eventLogWrite = (options: {
-    readonly schema: EventLogSchema<any>
     readonly event: string
     readonly payload: unknown
-  }) => {
-    const handler = registry.handlers.get(options.event) as Handlers.Item<any> | undefined
-    if (handler === undefined) {
-      return Effect.die(`Event handler not found for: "${options.event}"`)
-    }
-    return writeHandler(handler, options)
-  }
+  }) => Effect.map(writeEvents([options]), (results) => results[0])
+
+  const eventLogWriteMany = (options: {
+    readonly events: Arr.NonEmptyReadonlyArray<{ readonly event: string; readonly payload: unknown }>
+  }) => writeEvents(options.events)
 
   yield* registry.handleRemote(runRemote)
 
   return EventLog.of({
     write: eventLogWrite as EventLog["Service"]["write"],
+    writeMany: eventLogWriteMany as EventLog["Service"]["writeMany"],
     entries: journal.entries,
     destroy: journal.destroy
   })
