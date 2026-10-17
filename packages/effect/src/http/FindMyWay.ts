@@ -65,8 +65,6 @@ export interface Router<A> {
   readonly all: (path: PathInput, handler: A) => void
   readonly find: (method: string, url: string) => FindResult<A> | undefined
   readonly has: (method: string, url: string) => boolean
-  // set when find misses because a parameter was longer than maxParamLength
-  readonly maxParamLengthExceeded: number | undefined
 }
 
 /**

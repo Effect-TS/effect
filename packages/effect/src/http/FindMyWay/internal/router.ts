@@ -49,6 +49,12 @@ export const make = <A>(
   options: Partial<Router.RouterConfig> = {}
 ): Router.Router<A> => new RouterImpl(options)
 
+/** @internal */
+export const getMaxParamLengthExceeded = <A>(router: Router.Router<A>): number | undefined => {
+  const impl = router as RouterImpl<A>
+  return impl.maxParamLengthExceeded ? impl.options.maxParamLength : undefined
+}
+
 class RouterImpl<A> implements Router.Router<A> {
   constructor(options: Partial<Router.RouterConfig> = {}) {
     this.options = {
@@ -61,7 +67,7 @@ class RouterImpl<A> implements Router.Router<A> {
   }
 
   readonly options: Router.RouterConfig
-  maxParamLengthExceeded: number | undefined = undefined
+  maxParamLengthExceeded = false
   routes: Array<Route> = []
   trees: Record<string, StaticNode> = Object.create(null)
   staticRoutes: Record<string, Map<string, Handler>> = Object.create(null)
@@ -310,7 +316,7 @@ class RouterImpl<A> implements Router.Router<A> {
   }
 
   find(method: string, path: string): Router.FindResult<A> | undefined {
-    this.maxParamLengthExceeded = undefined
+    this.maxParamLengthExceeded = false
     let currentNode: Node | undefined = this.trees[method]
     if (currentNode === undefined) return undefined
 
@@ -396,7 +402,7 @@ class RouterImpl<A> implements Router.Router<A> {
             searchParams: QS.parse(querystring)
           } as const
         }
-        this.maxParamLengthExceeded = maxParamLength
+        this.maxParamLengthExceeded = true
       }
     }
 
@@ -486,7 +492,7 @@ class RouterImpl<A> implements Router.Router<A> {
             const matchedParam = matchedParameters[i] ?? ""
             if (matchedParam.length > maxParamLength) {
               maxParamLengthExceeded = true
-              this.maxParamLengthExceeded = maxParamLength
+              this.maxParamLengthExceeded = true
               break
             }
           }
@@ -508,7 +514,7 @@ class RouterImpl<A> implements Router.Router<A> {
           }
         } else {
           if (param.length > maxParamLength) {
-            this.maxParamLengthExceeded = maxParamLength
+            this.maxParamLengthExceeded = true
             if (brothersNodesStack.length === 0) {
               return undefined
             }
