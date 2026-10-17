@@ -261,32 +261,51 @@ export const make = (options?: {
       yield* migrate
     }
 
-    yield* sql.onDialectOrElse({
-      pg: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-            remote_id BYTEA PRIMARY KEY,
-            next_sequence INT NOT NULL
-          )`,
+    const quotedRemoteCursorsTable = sql`${remoteCursorsTableSql}`.compile(true)[0]
+    const remoteCursorsTableExists = sql.onDialectOrElse({
+      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quotedRemoteCursorsTable}) IS NOT NULL`,
       mysql: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-            remote_id BINARY(16) PRIMARY KEY,
-            next_sequence INT NOT NULL
-          )`,
-      mssql: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-            remote_id UNIQUEIDENTIFIER PRIMARY KEY,
-            next_sequence INT NOT NULL
-          )`,
-      orElse: () =>
-        sql`
-          CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-            remote_id BLOB PRIMARY KEY,
-            next_sequence INT NOT NULL
-          )`
-    }).pipe(withTracerDisabled)
+        sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${remoteCursorsTable}`,
+      mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${remoteCursorsTable}, 'U') IS NOT NULL`,
+      orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${remoteCursorsTable}`
+    }).pipe(Effect.map((rows) => rows.length > 0))
+
+    if (!(yield* withTracerDisabled(remoteCursorsTableExists))) {
+      yield* Effect.gen(function*() {
+        yield* sql.onDialectOrElse({
+          pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quotedRemoteCursorsTable}))`,
+          orElse: () => Effect.void
+        })
+        if (yield* remoteCursorsTableExists) return
+
+        yield* sql.onDialectOrElse({
+          pg: () =>
+            sql`
+              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+                remote_id BYTEA PRIMARY KEY,
+                next_sequence INT NOT NULL
+              )`,
+          mysql: () =>
+            sql`
+              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+                remote_id BINARY(16) PRIMARY KEY,
+                next_sequence INT NOT NULL
+              )`,
+          mssql: () =>
+            sql`
+              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+                remote_id UNIQUEIDENTIFIER PRIMARY KEY,
+                next_sequence INT NOT NULL
+              )`,
+          orElse: () =>
+            sql`
+              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+                remote_id BLOB PRIMARY KEY,
+                next_sequence INT NOT NULL
+              )`
+        })
+      }).pipe(sql.withTransaction, withTracerDisabled)
+    }
 
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
     const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
