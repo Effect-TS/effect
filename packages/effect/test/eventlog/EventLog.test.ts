@@ -32,12 +32,22 @@ const UncompactedItemGroup = EventGroup.empty.add({
   primaryKey: (payload) => payload.list,
   payload: ItemPayload
 })
+// Replay handlers also understand older payloads that the compactor cannot decode.
+const CompactableItemGroup = EventGroup.empty.add({
+  tag: "ItemAdded",
+  primaryKey: (payload) => payload.list,
+  payload: Schema.Struct({ ...ItemPayload.fields, compactable: Schema.Literal(true) })
+})
 const replayItems = Effect.fnUntraced(function*(
-  events: ReadonlyArray<"ItemAdded" | "ItemObserved">
+  events: ReadonlyArray<{
+    readonly event: "ItemAdded" | "ItemObserved"
+    readonly list?: string
+    readonly opaque?: boolean
+  }>
 ) {
   const handled = yield* Queue.unbounded<number>()
   const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
-  const entries = yield* Effect.forEach(events, (event, item) =>
+  const entries = yield* Effect.forEach(events, ({ event, list = "list-1", opaque }, item) =>
     Effect.gen(function*() {
       const id = EventJournal.makeEntryIdUnsafe({ msecs: 1000 })
       // Same-millisecond UUIDs sort opposite to remote sequence order.
@@ -50,11 +60,14 @@ const replayItems = Effect.fnUntraced(function*(
         entry: new EventJournal.Entry({
           id,
           event,
-          primaryKey: "list-1",
-          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
-            list: "list-1",
-            item
-          })
+          primaryKey: list,
+          payload: opaque
+            ? yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({ list, item })
+            : yield* Schema.encodeUnknownEffect(CompactableItemGroup.events.ItemAdded.payloadSchemaBinary)({
+              list,
+              item,
+              compactable: true
+            })
         }, { disableChecks: true })
       })
     }))
@@ -75,11 +88,11 @@ const replayItems = Effect.fnUntraced(function*(
       (handlers) => handlers.handle("ItemObserved", ({ payload }) => Queue.offer(handled, payload.item))
     ),
     EventLog.groupCompaction(
-      ItemGroup,
+      CompactableItemGroup,
       ({ events, write }) =>
         Effect.forEach(
           events,
-          (event) => write(event._tag, event.payload),
+          (event) => write(event._tag, { ...event.payload, list: "replacement" }),
           { discard: true }
         )
     )
@@ -149,16 +162,24 @@ const logLayer = (
 describe("EventLog", () => {
   it.effect("replays compacted outputs in compactor write order", () =>
     Effect.gen(function*() {
-      const handled = yield* replayItems(["ItemAdded", "ItemAdded"])
+      const handled = yield* replayItems([{ event: "ItemAdded" }, { event: "ItemAdded" }])
       assert.deepStrictEqual(handled, [0, 1])
     }), { concurrent: false })
 
   it.effect(
-    "preserves remote order for uncompacted entries sharing a millisecond in a mixed batch",
+    "replays a mixed same-millisecond batch at source positions even when replacement keys change",
     () =>
       Effect.gen(function*() {
-        const handled = yield* replayItems(["ItemObserved", "ItemObserved", "ItemAdded"])
-        assert.deepStrictEqual(handled, [0, 1, 2])
+        const handled = yield* replayItems([
+          { event: "ItemAdded", list: "a" },
+          { event: "ItemAdded", list: "b", opaque: true },
+          { event: "ItemObserved" },
+          { event: "ItemObserved" },
+          { event: "ItemAdded", list: "b" }
+        ])
+        // The opaque b entry stays between sources; b replacements belong at
+        // the first decoded b source, not the opaque entry or group start.
+        assert.deepStrictEqual(handled, [0, 1, 2, 3, 4])
       }),
     { concurrent: false }
   )
