@@ -34,6 +34,32 @@ const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
 describe("SqlEventJournal", () => {
+  it.effect("entriesById preserves order, repeated ids and missing entries", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const entries: Array<EventJournal.Entry> = []
+      for (const primaryKey of ["first", "second"]) {
+        entries.push(
+          yield* journal.write({
+            event: "Repro",
+            primaryKey,
+            payload: new Uint8Array([entries.length + 1]),
+            effect: Effect.succeed
+          })
+        )
+      }
+      const [first, second] = entries
+      const missing = EventJournal.makeEntryIdUnsafe()
+      const found = yield* journal.entriesById([
+        second.id.slice() as EventJournal.EntryId,
+        missing,
+        first.id.slice() as EventJournal.EntryId,
+        second.id.slice() as EventJournal.EntryId
+      ])
+      assert.deepStrictEqual(found, [second, undefined, first, second])
+      assert.deepStrictEqual(yield* journal.entriesById([]), [])
+    }))
+
   it.effect("replay invalidation observes committed entries from another connection", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

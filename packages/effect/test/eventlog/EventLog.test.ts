@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  Array,
   Context,
   Effect,
   Layer,
@@ -936,93 +937,105 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(logLayer(handled, journalLayer)))
     }))
 
-  it.effect("does not decrypt encrypted remote entries the journal already has", () =>
-    Effect.gen(function*() {
-      let decrypts = 0
-      const subtle = globalThis.crypto.subtle
-      const crypto = {
-        getRandomValues: (array: Uint8Array) => globalThis.crypto.getRandomValues(array),
-        randomUUID: () => globalThis.crypto.randomUUID(),
-        subtle: {
-          digest: subtle.digest.bind(subtle),
-          importKey: subtle.importKey.bind(subtle),
-          exportKey: subtle.exportKey.bind(subtle),
-          encrypt: subtle.encrypt.bind(subtle),
-          decrypt: (...args: Parameters<SubtleCrypto["decrypt"]>) => {
-            decrypts++
-            return subtle.decrypt(...args)
+  it.effect.each(["single", "chunked"] as const)(
+    "does not decrypt known entries in %s remote replay",
+    (mode) =>
+      Effect.gen(function*() {
+        let decrypts = 0
+        const subtle = globalThis.crypto.subtle
+        const crypto = {
+          getRandomValues: (array: Uint8Array) => globalThis.crypto.getRandomValues(array),
+          randomUUID: () => globalThis.crypto.randomUUID(),
+          subtle: {
+            digest: subtle.digest.bind(subtle),
+            importKey: subtle.importKey.bind(subtle),
+            exportKey: subtle.exportKey.bind(subtle),
+            encrypt: subtle.encrypt.bind(subtle),
+            decrypt: (...args: Parameters<SubtleCrypto["decrypt"]>) => {
+              decrypts++
+              return subtle.decrypt(...args)
+            }
           }
-        }
-      } as unknown as Crypto
-      const encryption = yield* EventLogEncryption.makeEncryptionSubtle(crypto)
-      const identity = yield* encryption.generateIdentity
-      const handled = yield* Queue.unbounded<string>()
-      const remoteId = EventJournal.makeRemoteIdUnsafe()
-      const changes = yield* Queue.unbounded<Uint8Array<ArrayBuffer>>()
-      const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
-        Effect.provide(EventLogMessage.EventLogRemoteRpcs.toLayer({
-          "EventLog.Hello": () =>
-            Effect.succeed(new EventLogMessage.HelloResponse({ remoteId, challenge: new Uint8Array(16) })),
-          "EventLog.Authenticate": () => Effect.void,
-          "EventLog.WriteChunked": () => Effect.void,
-          "EventLog.WriteSingle": () => Effect.void,
-          "EventLog.Changes": () =>
-            Stream.fromQueue(changes).pipe(Stream.map((data) => new EventLogMessage.SingleMessage({ data })))
-        })),
-        Effect.provideService(
-          EventLogMessage.EventLogAuthentication,
-          (effect) => Effect.provideService(effect, EventLog.Identity, identity)
+        } as unknown as Crypto
+        const encryption = yield* EventLogEncryption.makeEncryptionSubtle(crypto)
+        const identity = yield* encryption.generateIdentity
+        const handled = yield* Queue.unbounded<string>()
+        const remoteId = EventJournal.makeRemoteIdUnsafe()
+        const changes = yield* Queue.unbounded<EventLogMessage.SingleMessage | EventLogMessage.ChunkedMessage>()
+        const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
+          Effect.provide(EventLogMessage.EventLogRemoteRpcs.toLayer({
+            "EventLog.Hello": () =>
+              Effect.succeed(new EventLogMessage.HelloResponse({ remoteId, challenge: new Uint8Array(16) })),
+            "EventLog.Authenticate": () => Effect.void,
+            "EventLog.WriteChunked": () => Effect.void,
+            "EventLog.WriteSingle": () => Effect.void,
+            "EventLog.Changes": () => Stream.fromQueue(changes)
+          })),
+          Effect.provideService(
+            EventLogMessage.EventLogAuthentication,
+            (effect) => Effect.provideService(effect, EventLog.Identity, identity)
+          )
         )
-      )
-      const layer = EventLog.layer(
-        schema,
-        EventLog.group(UserGroup, (handlers) =>
-          handlers.handle("UserCreated", ({ payload }) => Queue.offer(handled, payload.id))).pipe(
+        const layer = EventLog.layer(
+          schema,
+          EventLog.group(
+            UserGroup,
+            (handlers) => handlers.handle("UserCreated", ({ payload }) => Queue.offer(handled, payload.id))
+          ).pipe(
             Layer.provide(EventLog.layerRegistry)
           )
-      ).pipe(
-        Layer.provideMerge(EventJournal.layerMemory),
-        Layer.provide(Layer.succeed(EventLog.Identity, identity))
-      )
+        ).pipe(
+          Layer.provideMerge(EventJournal.layerMemory),
+          Layer.provide(Layer.succeed(EventLog.Identity, identity))
+        )
 
-      return yield* Effect.gen(function*() {
-        const log = yield* EventLog.EventLog
-        const journal = yield* EventJournal.EventJournal
-        yield* log.write({ schema, event: "UserCreated", payload: { id: "known" } })
-        assert.strictEqual(yield* Queue.take(handled), "known")
-        const [known] = yield* journal.entries
-        const entries = [yield* makeCompactionEntry({ id: "new" }), known]
-        const encrypted = yield* encryption.encrypt(identity, entries)
+        return yield* Effect.gen(function*() {
+          const log = yield* EventLog.EventLog
+          const journal = yield* EventJournal.EventJournal
+          yield* log.write({ schema, event: "UserCreated", payload: { id: "known" } })
+          assert.strictEqual(yield* Queue.take(handled), "known")
+          const [known] = yield* journal.entries
+          const entries: [EventJournal.Entry, ...Array<EventJournal.Entry>] = [
+            yield* makeCompactionEntry({ id: "new" }),
+            known
+          ]
+          if (mode === "chunked") entries.push(yield* makeCompactionEntry({ id: "new-2" }))
+          const encrypted = yield* encryption.encrypt(identity, entries)
 
-        yield* EventLogRemote.makeEncrypted.pipe(
-          Effect.provideService(EventLogRemote.EventLogRemoteClient, client),
-          Effect.provideService(EventLogEncryption.EventLogEncryption, encryption)
-        )
-        // The known entry comes last, so its sequence must still be committed.
-        yield* Queue.offer(
-          changes,
-          yield* EventLogMessage.ChangesRpc.encodeEncrypted([
-            { sequence: 0, entryId: entries[0].id, ...encrypted[0] },
-            { sequence: 1, entryId: entries[1].id, ...encrypted[1] }
-          ])
-        )
-        assert.strictEqual(yield* Queue.take(handled), "new")
-        const nextSequence = yield* journal.withLock(EventLogMessage.StoreId.make("default"))(
-          journal.nextRemoteSequence(remoteId)
-        )
-        const stored = yield* log.entries
+          yield* EventLogRemote.makeEncrypted.pipe(
+            Effect.provideService(EventLogRemote.EventLogRemoteClient, client),
+            Effect.provideService(EventLogEncryption.EventLogEncryption, encryption)
+          )
+          const data = yield* EventLogMessage.ChangesRpc.encodeEncrypted(
+            Array.map(entries, (entry, sequence) => ({ sequence, entryId: entry.id, ...encrypted[sequence] }))
+          )
+          if (mode === "chunked") {
+            const middle = Math.floor(data.byteLength / 2)
+            yield* Queue.offerAll(changes, [
+              new EventLogMessage.ChunkedMessage({ id: 0, part: [0, 2], data: data.subarray(0, middle) }),
+              new EventLogMessage.ChunkedMessage({ id: 0, part: [1, 2], data: data.subarray(middle) })
+            ])
+          } else {
+            // A trailing known entry must still advance the remote sequence.
+            yield* Queue.offer(changes, new EventLogMessage.SingleMessage({ data }))
+          }
+          assert.strictEqual(yield* Queue.take(handled), "new")
+          if (mode === "chunked") assert.strictEqual(yield* Queue.take(handled), "new-2")
+          const nextSequence = yield* journal.withLock(EventLogMessage.StoreId.make("default"))(
+            journal.nextRemoteSequence(remoteId)
+          )
+          const stored = yield* log.entries
 
-        assert.strictEqual(nextSequence, 2)
-        assert.strictEqual(yield* Queue.size(handled), 0)
-        assert.deepStrictEqual(
-          stored.map((entry) =>
-            entry.primaryKey
-          ),
-          ["known", "new"]
-        )
-        assert.strictEqual(decrypts, 1)
-      }).pipe(Effect.provide(layer))
-    }))
+          assert.strictEqual(nextSequence, mode === "chunked" ? 3 : 2)
+          assert.strictEqual(yield* Queue.size(handled), 0)
+          assert.deepStrictEqual(
+            stored.map((entry) => entry.primaryKey),
+            mode === "chunked" ? ["known", "new", "new-2"] : ["known", "new"]
+          )
+          assert.strictEqual(decrypts, mode === "chunked" ? 2 : 1)
+        }).pipe(Effect.provide(layer))
+      })
+  )
 
   it.effect("encrypts and decrypts entries with a distinct IV per entry", () =>
     Effect.gen(function*() {
