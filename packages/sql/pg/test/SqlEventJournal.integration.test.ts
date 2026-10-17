@@ -15,7 +15,7 @@ const remoteEntry = (primaryKey: string, msecs?: number) =>
   new EventJournal.RemoteEntry({
     remoteSequence: 0,
     entry: new EventJournal.Entry({
-      id: EventJournal.makeEntryIdUnsafe({ msecs }),
+      id: EventJournal.makeEntryIdUnsafe(msecs === undefined ? {} : { msecs }),
       event: "Repro",
       primaryKey,
       payload: new Uint8Array()
