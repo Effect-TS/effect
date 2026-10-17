@@ -20,6 +20,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
+import { ConflictIndex } from "./internal/conflicts.ts"
 
 type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
 
@@ -185,38 +186,21 @@ export const make = (options?: {
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
 
       if (compacted.length > 0) {
-        const events = new Set<string>()
-        let oldestMillis = Infinity
-        for (const entry of compacted) {
-          events.add(entry.event)
-          oldestMillis = Math.min(oldestMillis, entry.createdAtMillis)
-        }
+        const index = new ConflictIndex(compacted)
         const stored = yield* sql`
             SELECT *
             FROM ${entryTableSql}
-            WHERE ${sql.in("event", Array.from(events))} AND
-                  timestamp > ${oldestMillis}
+            WHERE ${sql.in("event", Array.from(index.events))} AND
+                  timestamp > ${index.oldestMillis}
             ORDER BY timestamp ASC
           `.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )
-        const byEventAndKey = new Map<string, Map<string, Array<EventJournal.Entry>>>()
         for (const entry of stored) {
-          let byKey = byEventAndKey.get(entry.event)
-          if (!byKey) {
-            byKey = new Map()
-            byEventAndKey.set(entry.event, byKey)
-          }
-          const entries = byKey.get(entry.primaryKey)
-          if (entries) entries.push(entry)
-          else byKey.set(entry.primaryKey, [entry])
+          index.add(entry)
         }
-        yield* options.effect(compacted.map((entry) => {
-          const millis = entry.createdAtMillis
-          const candidates = byEventAndKey.get(entry.event)?.get(entry.primaryKey) ?? []
-          return { entry, conflicts: candidates.filter((conflict) => conflict.createdAtMillis > millis) }
-        }))
+        yield* options.effect(index.toBatch())
       }
 
       // Keep the incoming batch out of conflict queries and persist only after

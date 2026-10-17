@@ -28,6 +28,7 @@ import * as Schema from "../Schema.ts"
 import type { Scope } from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import type { StoreId } from "./EventLogMessage.ts"
+import { ConflictIndex } from "./internal/conflicts.ts"
 
 /**
  * Context service for storing and replaying event journal entries.
@@ -474,31 +475,20 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         : uncommitted
 
       if (compacted.length > 0) {
-        const batch = compacted.map((originEntry) => {
-          const entryMillis = originEntry.createdAtMillis
-          const conflicts: Array<Entry> = []
-          // Only the newer suffix can conflict, unless local writes left the
-          // journal unordered.
-          let i = journalSorted ? journal.length : 0
-          while (i > 0 && journal[i - 1].createdAtMillis > entryMillis) i--
-          for (; i < journal.length; i++) {
-            const entry = journal[i]
-            if (
-              entry.createdAtMillis > entryMillis &&
-              entry.event === originEntry.event &&
-              entry.primaryKey === originEntry.primaryKey
-            ) {
-              conflicts.push(entry)
-            }
-          }
-          return { entry: originEntry, conflicts }
-        })
-        yield* options.effect(batch)
+        const index = new ConflictIndex(compacted)
+        // Only the newer suffix can conflict, unless local writes left the
+        // journal unordered.
+        let i = journalSorted ? journal.length : 0
+        while (i > 0 && journal[i - 1].createdAtMillis > index.oldestMillis) i--
+        for (; i < journal.length; i++) {
+          index.add(journal[i])
+        }
+        yield* options.effect(index.toBatch())
       }
       for (const remoteEntry of uncommittedRemotes) {
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
       }
-      // Advance past duplicates only once the batch commits.
+      // Sequences advance with the commit, so a failed batch is redelivered.
       for (const remoteEntry of options.entries) {
         if (remoteEntry.remoteSequence >= remote.sequence) {
           remote.sequence = remoteEntry.remoteSequence + 1
@@ -689,28 +679,20 @@ export const makeIndexedDb = (options?: {
           : uncommitted
 
         if (compacted.length > 0) {
-          // Stored entries per event and primary key in the batch, in id order.
-          const candidates = new Map<string, Map<string, Array<Entry>>>()
-          let oldestMillis = Infinity
-          for (const entry of compacted) {
-            let byKey = candidates.get(entry.event)
-            if (!byKey) {
-              byKey = new Map()
-              candidates.set(entry.event, byKey)
-            }
-            byKey.set(entry.primaryKey, [])
-            oldestMillis = Math.min(oldestMillis, entry.createdAtMillis)
-          }
+          const index = new ConflictIndex(compacted)
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
             const cursorRequest = tx.objectStore("entries").openCursor(
-              IDBKeyRange.lowerBound(entryIdLowerBound(oldestMillis + 1) as IDBValidKey)
+              IDBKeyRange.lowerBound(entryIdLowerBound(index.oldestMillis + 1) as IDBValidKey)
             )
             cursorRequest.onsuccess = () => {
               const cursor = cursorRequest.result
               if (!cursor) return
+              // Decode only the entries that can conflict.
               const value = cursor.value as { readonly event: string; readonly primaryKey: string }
-              candidates.get(value.event)?.get(value.primaryKey)?.push(decodeEntryIdb(cursor.value))
+              if (index.wants(value.event, value.primaryKey)) {
+                index.add(decodeEntryIdb(cursor.value))
+              }
               cursor.continue()
             }
             tx.oncomplete = () => resume(Effect.void)
@@ -718,15 +700,7 @@ export const makeIndexedDb = (options?: {
               resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
             return Effect.sync(() => tx.abort())
           })
-          yield* options.effect(compacted.map((entry) => {
-            const millis = entry.createdAtMillis
-            return {
-              entry,
-              conflicts: candidates.get(entry.event)!.get(entry.primaryKey)!.filter((stored) =>
-                stored.createdAtMillis > millis
-              )
-            }
-          }))
+          yield* options.effect(index.toBatch())
         }
 
         yield* Effect.callback<void, EventJournalError>((resume) => {
@@ -736,8 +710,7 @@ export const makeIndexedDb = (options?: {
           for (const remoteEntry of uncommittedRemotes) {
             entries.add(encodeEntryIdb(remoteEntry.entry))
           }
-          // Duplicates are recorded with the batch, so a failed batch leaves
-          // the remote sequence unchanged.
+          // Sequences advance with the commit, so a failed batch is redelivered.
           for (const remoteEntry of options.entries) {
             remotes.put({
               remoteId: options.remoteId,

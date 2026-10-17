@@ -819,16 +819,7 @@ export const makeReplayFromRemote = (options: {
         Effect.asVoid
       ) as any
 
-      const keys = Object.hasOwn(options.reactivityKeys, entry.event)
-        ? options.reactivityKeys[entry.event]
-        : undefined
-      if (keys) {
-        for (const key of keys) {
-          yield* options.reactivity.invalidate({
-            [key]: [entry.primaryKey]
-          })
-        }
-      }
+      yield* invalidateEntry(options.reactivity, options.reactivityKeys, entry)
     },
     Effect.catchCause(Effect.logError),
     (effect, { entry }) =>
@@ -837,6 +828,16 @@ export const makeReplayFromRemote = (options: {
         entryId: entry.idString
       })
   )
+
+const invalidateEntry = (
+  reactivity: Reactivity,
+  reactivityKeys: Record<string, ReadonlyArray<string>>,
+  entry: Entry
+): Effect.Effect<void> => {
+  const keys = Object.hasOwn(reactivityKeys, entry.event) ? reactivityKeys[entry.event] : undefined
+  if (!keys) return Effect.void
+  return Effect.forEach(keys, (key) => reactivity.invalidate({ [key]: [entry.primaryKey] }), { discard: true })
+}
 
 const remoteRetrySchedule = Schedule.min([
   Schedule.exponential(200, 1.5),
@@ -863,21 +864,8 @@ const make = Effect.gen(function*() {
     }
   })
 
-  const invalidateReactivityEntries = Effect.fnUntraced(function*(entries: ReadonlyArray<Entry>) {
-    for (const entry of entries) {
-      const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-        ? registry.reactivityKeys[entry.event]
-        : undefined
-      if (!keys) {
-        continue
-      }
-      for (const key of keys) {
-        yield* reactivity.invalidate({
-          [key]: [entry.primaryKey]
-        })
-      }
-    }
-  })
+  const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
+    Effect.forEach(entries, (entry) => invalidateEntry(reactivity, registry.reactivityKeys, entry), { discard: true })
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
