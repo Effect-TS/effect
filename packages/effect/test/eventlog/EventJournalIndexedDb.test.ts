@@ -1,7 +1,7 @@
 // oxlint-disable-next-line no-unassigned-import
 import "fake-indexeddb/auto"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Exit, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 
 let databaseId = 0
@@ -44,6 +44,34 @@ const countTransactions = (database: string) =>
   ).pipe(Effect.map(({ transactions }) => transactions))
 
 describe("EventJournal.makeIndexedDb", () => {
+  it.effect("writeMany commits and publishes a batch in one transaction only when its callback succeeds", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      const changes = yield* journal.changes
+      const transactions = yield* countTransactions(database)
+      const local = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
+      const entries = [local("a"), local("b"), local("c")] as const
+      const failed = yield* Effect.exit(journal.writeMany({ entries, effect: () => Effect.fail("callback failed") }))
+      const afterFailure = { failed: Exit.isFailure(failed), transactions: transactions.opened }
+      const written = yield* journal.writeMany({ entries, effect: Effect.succeed })
+      const afterCommit = transactions.opened
+      const ids = written.map((entry) => entry.idString)
+      assert.deepStrictEqual({
+        afterFailure,
+        afterCommit,
+        committed: (yield* journal.entries).map((entry) => entry.idString),
+        published: (yield* PubSub.remaining(changes)) === 0
+          ? []
+          : (yield* PubSub.takeAll(changes)).map((entry) => entry.idString)
+      }, {
+        afterFailure: { failed: true, transactions: 0 },
+        afterCommit: 1,
+        committed: ids,
+        published: ids
+      })
+    }))
+
   it.effect("replays a remote batch in one callback without journal transactions while it runs", () =>
     Effect.gen(function*() {
       const journalName = uniqueName("journal")
