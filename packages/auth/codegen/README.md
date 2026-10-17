@@ -103,7 +103,8 @@ include every upstream field.
 
 ## Verification
 
-The expansion was compared with `91a67a57bc5ee446ebd4cd8f99a02b3afd00258a`.
+The schema expansion in `7643dccadb0deb90ac0d53768ee03cf00f174cdb` was compared
+with `91a67a57bc5ee446ebd4cd8f99a02b3afd00258a`.
 An isolated comparison of the shared OpenID profile and nine changed provider
 profiles matched acceptance and decoded values across 10,830 cases, including
 missing fields, nested fields, unknown fields, nullability and string/number

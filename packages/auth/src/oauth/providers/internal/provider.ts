@@ -1,6 +1,7 @@
 import * as Cause from "effect/Cause"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
+import type * as HttpClient from "effect/http/HttpClient"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 
@@ -19,6 +20,12 @@ export const Options = Schema.Struct({
   ...Validation.RequestOptions.fields,
   timeout: Validation.RequestOptions.fields.timeout.pipe(Schema.withDecodingDefaultKey(Effect.succeed(10000)))
 })
+
+/** @internal */
+export const OidcScopes = Schema.Array(Schema.Literals(["openid", "profile", "email"])).check(
+  Schema.isUnique(),
+  Schema.makeFilter((scopes) => scopes.includes("openid"))
+)
 
 /** @internal */
 export const Authorization = Schema.Struct({
@@ -196,8 +203,7 @@ export const makeOAuth = Effect.fnUntraced(function*<Profile>(options: {
   return { oauth, authorizationUrl, exchangeCode }
 })
 
-/** @internal */
-export const makeOidc = Effect.fnUntraced(function*<Profile>(options: {
+interface OidcOptions<Profile> {
   readonly client: OAuth.ClientOptions
   readonly redirectUri: string
   readonly scopes: ReadonlyArray<string>
@@ -220,7 +226,10 @@ export const makeOidc = Effect.fnUntraced(function*<Profile>(options: {
     tokens: OAuth.TokenSet,
     verified: Oidc.Verified
   ) => Effect.Effect<OAuth.JsonObject, ConfigurationError | Rejected | Unavailable>
-}) {
+}
+
+/** @internal */
+export const makeOidc = Effect.fnUntraced(function*<Profile>(options: OidcOptions<Profile>) {
   const configuration = Validation.freeze(yield* Validation.configuration(Configuration, options))
   const oauth = yield* OAuth.make(options.client)
   const verifier = yield* withSecrets(
@@ -327,4 +336,49 @@ export const makeOidc = Effect.fnUntraced(function*<Profile>(options: {
   }, use)
 
   return { oauth, authorizationUrl, exchangeCode }
+})
+
+/** @internal */
+export const makeOidcClient = Effect.fnUntraced(function*<Profile, Metadata extends OAuth.Metadata>(
+  options: typeof Options.Type,
+  configuration: Omit<OidcOptions<Profile>, "client" | "redirectUri" | "subject" | "verifier" | "clientSecret"> & {
+    readonly metadata: Effect.Effect<Metadata, ConfigurationError | Unavailable, HttpClient.HttpClient>
+    readonly authentication: "client_secret_basic" | "client_secret_post"
+    readonly profileRequest?: (metadata: Metadata) => NonNullable<OAuth.ClientOptions["profile"]>
+    readonly subject?: OidcOptions<Profile>["subject"]
+    readonly verifier?:
+      | OidcOptions<Profile>["verifier"]
+      | (
+        (secret: Redacted.Redacted<string>) => NonNullable<OidcOptions<Profile>["verifier"]>
+      )
+  }
+) {
+  const { authentication, metadata: discover, profileRequest, subject, verifier, ...settings } = configuration
+  const scopes = Object.freeze([...settings.scopes])
+  // Capture before discovery yields, and release the temporary copy after the client takes ownership.
+  return yield* Effect.acquireUseRelease(
+    copySecret(options.clientSecret),
+    (clientSecret) =>
+      Effect.gen(function*() {
+        const metadata = yield* discover
+        return yield* makeOidc({
+          ...settings,
+          client: {
+            clientId: options.clientId,
+            authentication: { method: authentication, secret: clientSecret },
+            metadata,
+            timeout: options.timeout,
+            maxResponseBytes: options.maxResponseBytes,
+            ...(profileRequest === undefined ? {} : { profile: profileRequest(metadata) })
+          },
+          redirectUri: options.redirectUri,
+          scopes,
+          subject: subject ?? ((_, verified) => Effect.succeed(verified.subject)),
+          ...(verifier === undefined ? {} : {
+            verifier: typeof verifier === "function" ? verifier(clientSecret) : verifier
+          })
+        })
+      }),
+    (secret) => Effect.sync(() => Redacted.wipeUnsafe(secret))
+  )
 })

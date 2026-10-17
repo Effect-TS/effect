@@ -9,13 +9,11 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
-import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
 import * as Validation from "../../internal/validation.ts"
-import type * as OAuth from "../OAuth.ts"
-import type { ConfigurationError, Rejected, Unavailable } from "../OAuthError.ts"
+import type { ConfigurationError, Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
 import * as Generated from "./internal/generated/figma.ts"
 import * as Provider from "./internal/provider.ts"
@@ -61,22 +59,16 @@ export interface Options extends OAuthProvider.Options {
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: OAuthProvider.AuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: OAuthProvider.ExchangeInput
-  ) => Effect.Effect<OAuthProvider.ExchangeResult<Profile>, ConfigurationError | Rejected | Unavailable>
-}>()("@effect/auth/oauth/providers/Figma/Client") {}
+export class Client
+  extends Context.Service<Client, OAuthProvider.Client<Profile>>()("@effect/auth/oauth/providers/Figma/Client")
+{}
 
 const OptionsSchema = Schema.Struct({
   ...Provider.Options.fields,
   scopes: Schema.optionalKey(
     Schema.Array(Schema.Literals(["current_user:read"])).check(
       Schema.isMaxLength(64),
-      Schema.makeFilter((values) => new Set(values).size === values.length)
+      Schema.isUnique()
     )
   )
 })

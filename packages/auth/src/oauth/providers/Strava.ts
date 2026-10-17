@@ -102,15 +102,9 @@ export interface ExchangeInput extends Omit<OAuthProvider.ExchangeInput, "pkceVe
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: AuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: ExchangeInput
-  ) => Effect.Effect<OAuthProvider.ExchangeResult<Profile>, ConfigurationError | Rejected | Unavailable>
-}>()("@effect/auth/oauth/providers/Strava/Client") {}
+export class Client extends Context.Service<Client, OAuthProvider.Client<Profile, AuthorizationInput, ExchangeInput>>()(
+  "@effect/auth/oauth/providers/Strava/Client"
+) {}
 
 const Scopes = Schema.Array(Schema.Literals([
   "read",
@@ -120,7 +114,7 @@ const Scopes = Schema.Array(Schema.Literals([
   "activity:read",
   "activity:read_all",
   "activity:write"
-])).check(Schema.isMaxLength(7), Schema.makeFilter((scopes) => new Set(scopes).size === scopes.length))
+])).check(Schema.isMaxLength(7), Schema.isUnique())
 const ScopeText = Schema.String.check(Schema.isMaxLength(16447))
 const splitScopes = (scope: string) => scope.split(/[ ,]+/u).filter((item) => item !== "")
 const OptionsSchema = Schema.Struct({

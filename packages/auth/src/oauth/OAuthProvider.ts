@@ -7,9 +7,12 @@
  * @since 4.1.0
  */
 import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
 import type * as Redacted from "effect/Redacted"
 
 import type * as OAuth from "./OAuth.ts"
+import type { ConfigurationError, Rejected, Unavailable } from "./OAuthError.ts"
+import type * as Oidc from "./Oidc.ts"
 import * as Generated from "./providers/internal/generated/openid.ts"
 
 /**
@@ -114,6 +117,45 @@ export interface ExchangeResult<Profile> {
   readonly tokens: OAuth.TokenSet
   readonly identity: Identity<Profile>
 }
+
+/**
+ * Shared provider client operations, parameterized by the profile, authorization and exchange inputs,
+ * and services required during code exchange.
+ *
+ * @see {@link OidcClient}
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.0
+ */
+export interface Client<
+  Profile,
+  Authorization = AuthorizationInput,
+  Exchange = ExchangeInput,
+  Requirements = never
+> {
+  readonly oauth: OAuth.Client
+  readonly authorizationUrl: (
+    input: Authorization
+  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
+  readonly exchangeCode: (
+    input: Exchange
+  ) => Effect.Effect<ExchangeResult<Profile>, ConfigurationError | Rejected | Unavailable, Requirements>
+}
+
+/**
+ * Shared OpenID Connect provider operations with nonce-bearing inputs and the services required
+ * to verify an ID token during code exchange.
+ *
+ * @see {@link Client}
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.0
+ */
+export interface OidcClient<Profile, Authorization = OidcAuthorizationInput, Exchange = OidcExchangeInput>
+  extends Client<Profile, Authorization, Exchange, Oidc.VerificationRequirements>
+{}
 
 /**
  * Schema for standard OpenID Connect profile claims, without protocol claims or credentials.

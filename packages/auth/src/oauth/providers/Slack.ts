@@ -9,13 +9,12 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
-import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
 import * as Validation from "../../internal/validation.ts"
 import type * as OAuth from "../OAuth.ts"
-import { ConfigurationError, type Rejected, type Unavailable } from "../OAuthError.ts"
+import { ConfigurationError, type Unavailable } from "../OAuthError.ts"
 import * as OAuthProvider from "../OAuthProvider.ts"
 import * as Oidc from "../Oidc.ts"
 import * as Generated from "./internal/generated/slack.ts"
@@ -71,27 +70,13 @@ export interface Options extends OAuthProvider.Options {
  * @category services
  * @since 4.1.0
  */
-export class Client extends Context.Service<Client, {
-  readonly oauth: OAuth.Client
-  readonly authorizationUrl: (
-    input: OAuthProvider.OidcAuthorizationInput
-  ) => Effect.Effect<Redacted.Redacted<string>, ConfigurationError | Unavailable>
-  readonly exchangeCode: (
-    input: OAuthProvider.OidcExchangeInput
-  ) => Effect.Effect<
-    OAuthProvider.ExchangeResult<Profile>,
-    ConfigurationError | Rejected | Unavailable,
-    Oidc.VerificationRequirements
-  >
-}>()("@effect/auth/oauth/providers/Slack/Client") {}
+export class Client
+  extends Context.Service<Client, OAuthProvider.OidcClient<Profile>>()("@effect/auth/oauth/providers/Slack/Client")
+{}
 
 const OptionsSchema = Schema.Struct({
   ...Provider.Options.fields,
-  scopes: Schema.optionalKey(
-    Schema.Array(Schema.Literals(["openid", "profile", "email"])).check(
-      Schema.makeFilter((scopes) => scopes.includes("openid") && new Set(scopes).size === scopes.length)
-    )
-  ),
+  scopes: Schema.optionalKey(Provider.OidcScopes),
   team: Schema.optionalKey(Validation.text(256))
 })
 
@@ -130,31 +115,15 @@ export const make = Effect.fnUntraced(function*(
   input: Options
 ): Effect.fn.Return<Client["Service"], ConfigurationError | Unavailable, HttpClient.HttpClient | Scope.Scope> {
   const options = yield* Validation.configuration(OptionsSchema, input)
-  const scopes = Object.freeze(options.scopes ?? ["openid"])
-  return yield* Effect.acquireUseRelease(
-    Provider.copySecret(options.clientSecret),
-    (clientSecret) =>
-      Effect.gen(function*() {
-        const metadata = yield* supplementDiscovery(yield* Oidc.discover(issuer, options))
-        return Client.of(
-          yield* Provider.makeOidc({
-            client: {
-              clientId: options.clientId,
-              authentication: { method: "client_secret_basic", secret: clientSecret },
-              metadata,
-              timeout: options.timeout,
-              maxResponseBytes: options.maxResponseBytes
-            },
-            redirectUri: options.redirectUri,
-            scopes,
-            profile: Profile,
-            verifier: { algorithms: Oidc.defaultIdTokenAlgorithms },
-            subject: (_, verified) => Effect.succeed(verified.subject),
-            authorizationParameters: () => Effect.succeed(options.team === undefined ? {} : { team: options.team })
-          })
-        )
-      }),
-    (secret) => Effect.sync(() => Redacted.wipeUnsafe(secret))
+  return Client.of(
+    yield* Provider.makeOidcClient(options, {
+      metadata: Oidc.discover(issuer, options).pipe(Effect.flatMap(supplementDiscovery)),
+      authentication: "client_secret_basic",
+      scopes: options.scopes ?? ["openid"],
+      profile: Profile,
+      verifier: { algorithms: Oidc.defaultIdTokenAlgorithms },
+      authorizationParameters: () => Effect.succeed(options.team === undefined ? {} : { team: options.team })
+    })
   )
 })
 
