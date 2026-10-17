@@ -92,6 +92,13 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
  * Encoded results are arena-backed views and may share a larger buffer. Use
  * `bytes.slice()` when independent ownership is required.
  *
+ * **Gotchas**
+ *
+ * Bytes carry the layout of the schema that wrote them. In the default mode,
+ * decode them with that schema or a compatible evolution of it; fingerprint
+ * mode requires the same schema. A union codec usually prefixes each value with
+ * a member selector, so it cannot read bytes written by a member's own codec.
+ *
  * **Example** (Deriving a binary codec)
  *
  * ```ts
