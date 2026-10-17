@@ -24,8 +24,11 @@ const ServerIcon = McpSchema.Icon.make({
   sizes: ["48x48", "any"],
   theme: "dark"
 })
+
 const ResourceIcon = McpSchema.Icon.make({ src: "https://example.com/resource.svg" })
+
 const PromptIcon = McpSchema.Icon.make({ src: "https://example.com/prompt.svg" })
+
 const ToolIcon = McpSchema.Icon.make({ src: "https://example.com/tool.svg" })
 
 const SharedTool = Tool.make("shared", {
@@ -187,17 +190,20 @@ const makeFixture = Effect.fnUntraced(function*(
     structuredInvocations: 0,
     capabilityInvocations: 0
   }
+
   const toolkitLayer = McpServer.toolkit(TestToolkit).pipe(
     Layer.provideMerge(TestToolkit.toLayer(TestToolkit.of({
       shared: () =>
         Effect.sync(() => {
           state.sharedInvocations++
+
           return "shared-result"
         }),
       "json-array": () => Effect.succeed(["array", null] as const),
       "structured-only": () =>
         Effect.sync(() => {
           state.structuredInvocations++
+
           return { value: "structured-result" }
         }),
       "union-result": () => Effect.succeed({ _tag: "a" as const, a: 1 }),
@@ -207,6 +213,7 @@ const makeFixture = Effect.fnUntraced(function*(
         McpServer.clientCapabilities.pipe(
           Effect.map((capabilities) => {
             state.capabilityInvocations++
+
             return JSON.stringify(capabilities)
           })
         ),
@@ -216,6 +223,7 @@ const makeFixture = Effect.fnUntraced(function*(
       "capability-gated": () => Effect.succeed("visible")
     })))
   )
+
   const mrtrToolLayer = Layer.effectDiscard(
     Effect.gen(function*() {
       const server = yield* McpServer.McpServer
@@ -231,6 +239,7 @@ const makeFixture = Effect.fnUntraced(function*(
       })
     })
   )
+
   const serverLayer = Layer.mergeAll(
     toolkitLayer,
     mrtrToolLayer,
@@ -262,7 +271,9 @@ const makeFixture = Effect.fnUntraced(function*(
       ]
     }))
   )
+
   const harness = yield* makeHttpHarness(serverLayer)
+
   return { ...harness, state }
 })
 
@@ -284,9 +295,11 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
     argumentObservations: [],
     duplicateInvocations: []
   }
+
   const registrations = Layer.effectDiscard(
     Effect.gen(function*() {
       const server = yield* McpServer.McpServer
+
       const makeTool = (name: string, description: string) =>
         new McpSchema.Tool({
           name,
@@ -342,6 +355,21 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
 
       yield* server.addTool({
         tool: new McpSchema.Tool({
+          name: "boolean-properties",
+          inputSchema: {
+            type: "object",
+            properties: {
+              anything: true,
+              forbidden: false,
+              nested: { type: "object", properties: { unchanged: false } }
+            }
+          }
+        }),
+        annotations: Context.empty(),
+        handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+      })
+      yield* server.addTool({
+        tool: new McpSchema.Tool({
           name: "title-precedence",
           title: "Canonical title",
           icons: [ToolIcon],
@@ -367,6 +395,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: () =>
           Effect.sync(() => {
             state.projectionMismatchInvocations++
+
             return new McpSchema.CallToolResult({
               content: [{
                 type: "audio",
@@ -387,6 +416,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: (payload) =>
           Effect.sync(() => {
             state.argumentObservations.push(payload)
+
             return new McpSchema.CallToolResult({
               content: [{ type: "text", text: "arguments" }]
             })
@@ -398,6 +428,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: () =>
           Effect.sync(() => {
             state.imageInvocations++
+
             return new McpSchema.CallToolResult({
               content: [{
                 type: "image",
@@ -455,6 +486,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: () =>
           Effect.sync(() => {
             state.audioInvocations++
+
             return new McpSchema.CallToolResult({
               content: [{
                 type: "audio",
@@ -548,6 +580,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: () =>
           Effect.sync(() => {
             state.resourceLinkInvocations++
+
             return new McpSchema.CallToolResult({
               content: [{
                 type: "resource_link",
@@ -572,6 +605,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: () =>
           Effect.sync(() => {
             state.duplicateInvocations.push("first")
+
             return new McpSchema.CallToolResult({
               content: [{ type: "text", text: "first" }]
             })
@@ -583,6 +617,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         handle: () =>
           Effect.sync(() => {
             state.duplicateInvocations.push("second")
+
             return new McpSchema.CallToolResult({
               content: [{ type: "text", text: "second" }]
             })
@@ -590,6 +625,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
       })
     })
   )
+
   const serverLayer = registrations.pipe(
     Layer.provide(McpServer.layerHttp({
       name: "LowLevelProtocolAdapterServer",
@@ -607,7 +643,9 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
       ]
     }))
   )
+
   const harness = yield* makeHttpHarness(serverLayer)
+
   return { ...harness, state }
 })
 
@@ -627,6 +665,7 @@ const JsonRpcResponse = Schema.Union([
     })
   })
 ])
+
 type JsonRpcResponse = typeof JsonRpcResponse.Type
 
 const decodeJsonRpcResponse = Schema.decodeUnknownEffect(JsonRpcResponse)
@@ -690,15 +729,19 @@ const initialize = Effect.fnUntraced(function*(
       }
     }
   })
+
   const body = yield* readJsonRpcResponse(response)
+
   if (!("result" in body)) {
     return yield* Effect.die(`Initialization failed: ${body.error.message}`)
   }
+
   const sessionId = response.headers.get("Mcp-Session-Id")
   assert.isNotNull(sessionId)
   assert.strictEqual(body.result.protocolVersion, protocolVersion)
 
   let requestId = 1
+
   const request = Effect.fnUntraced(function*(method: string, params?: unknown) {
     const response = yield* post({
       jsonrpc: "2.0",
@@ -709,6 +752,7 @@ const initialize = Effect.fnUntraced(function*(
       "Mcp-Protocol-Version": protocolVersion,
       "Mcp-Session-Id": sessionId
     })
+
     return yield* readJsonRpcResponse(response)
   })
 
@@ -719,6 +763,7 @@ const resultOf = (message: JsonRpcResponse): Record<string, unknown> => {
   if (!("result" in message)) {
     assert.fail(`Expected result, received error ${message.error.code}: ${message.error.message}`)
   }
+
   return message.result
 }
 
@@ -729,19 +774,23 @@ const errorOf = (message: JsonRpcResponse): {
   if (!("error" in message)) {
     assert.fail("Expected error, received result")
   }
+
   return message.error
 }
 
 const listedTools = (message: JsonRpcResponse): ReadonlyArray<Record<string, unknown>> => {
   const tools = resultOf(message).tools
+
   return Schema.decodeUnknownSync(Schema.Array(Schema.Record(Schema.String, Schema.Unknown)))(tools)
 }
 
 const textResult = (message: JsonRpcResponse): string => {
   const content = resultOf(message).content
+
   const [first] = Schema.decodeUnknownSync(
     Schema.NonEmptyArray(Schema.Record(Schema.String, Schema.Unknown))
   )(content)
+
   assert.strictEqual(first.type, "text")
   return Schema.decodeUnknownSync(Schema.String)(first.text)
 }
@@ -760,6 +809,7 @@ describe("McpServer protocol adapters", () => {
           clientInfo: { name: "legacy-client", version: "1.0.0" }
         }
       })
+
       const message = yield* readJsonRpcResponse(response)
 
       assert.strictEqual(response.status, 200)
@@ -775,10 +825,12 @@ describe("McpServer protocol adapters", () => {
       const body = modernRequest(19, "server/discover")
       const withoutSession = yield* fixture.post(body, modernHeaders("server/discover"))
       const expected = resultOf(yield* readJsonRpcResponse(withoutSession))
+
       const withSession = yield* fixture.post(body, {
         ...modernHeaders("server/discover"),
         "Mcp-Session-Id": legacy.sessionId
       })
+
       const actual = yield* readJsonRpcResponse(withSession)
 
       assert.deepStrictEqual(resultOf(actual), expected)
@@ -789,10 +841,12 @@ describe("McpServer protocol adapters", () => {
   it.effect("should discover the modern server without initialization or a session", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
+
       const response = yield* fixture.post(
         modernRequest(19, "server/discover"),
         modernHeaders("server/discover")
       )
+
       const message = yield* readJsonRpcResponse(response)
       const result = resultOf(message)
 
@@ -810,10 +864,12 @@ describe("McpServer protocol adapters", () => {
   it.effect("should expose continuation input to modern resource and prompt handlers", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
+
       const continuation = {
         inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } },
         requestState: "round-2"
       }
+
       const cases = [
         {
           method: "resources/read",
@@ -839,6 +895,7 @@ describe("McpServer protocol adapters", () => {
               "input-context"
           }
         )
+
         const message = yield* readJsonRpcResponse(response)
         assert.deepStrictEqual(JSON.parse(testCase.read(resultOf(message))), continuation)
       }
@@ -871,6 +928,7 @@ describe("McpServer protocol adapters", () => {
           success: Schema.Struct({ client: Schema.String, hasSession: Schema.Boolean }),
           dependencies: [McpSchema.McpRequestContext]
         }))
+
         const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
           server.addTool({
             tool: new McpSchema.Tool({ name: "register", inputSchema: { type: "object" } }),
@@ -882,6 +940,7 @@ describe("McpServer protocol adapters", () => {
                     Effect.gen(function*() {
                       const request = yield* McpSchema.McpRequestContext
                       const session = yield* Effect.serviceOption(McpSchema.McpServerClient)
+
                       return { client: request.clientInfo!.name, hasSession: Option.isSome(session) }
                     })
                 })),
@@ -890,10 +949,12 @@ describe("McpServer protocol adapters", () => {
               )
           })
         ))
+
         const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(makeServerLayer({
           name: "RegistrationContext",
           protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_06_18]
         }))))
+
         const initialized = yield* harness.post({
           jsonrpc: "2.0",
           id: 1,
@@ -904,12 +965,14 @@ describe("McpServer protocol adapters", () => {
             clientInfo: { name: "Alice", version: "1" }
           }
         })
+
         yield* readMcpHttpResponse(initialized)
         const sessionId = initialized.headers.get("mcp-session-id")
         assert.isNotNull(sessionId)
         const legacyHeaders = { "mcp-session-id": sessionId, "mcp-protocol-version": "2025-06-18" }
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle#initialization
         yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, legacyHeaders)
+
         const registered = yield* harness.post({
           jsonrpc: "2.0",
           id: 2,
@@ -918,7 +981,9 @@ describe("McpServer protocol adapters", () => {
         }, legacyHeaders).pipe(
           Effect.flatMap(readMcpHttpResponse)
         )
+
         assert.deepNestedPropertyVal(registered, "result.content", [])
+
         const invoked = yield* harness.post({
           jsonrpc: "2.0",
           id: 3,
@@ -936,6 +1001,7 @@ describe("McpServer protocol adapters", () => {
           "mcp-method": "tools/call",
           "mcp-name": "session-owner"
         }).pipe(Effect.flatMap(readMcpHttpResponse))
+
         assert.deepNestedPropertyVal(invoked, "result.structuredContent", { client: "Bob", hasSession: false })
       }))
 
@@ -955,6 +1021,7 @@ describe("McpServer protocol adapters", () => {
                   const request = yield* McpSchema.McpRequestContext
                   const http = Option.getOrThrow(yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest))
                   const level = yield* CurrentLogLevel
+
                   return `${request.clientInfo?.name}:${request.requestMetadata?.owner}:${
                     http.headers["x-owner"]
                   }:${level}`
@@ -965,10 +1032,12 @@ describe("McpServer protocol adapters", () => {
               )
           })
         ))
+
         const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(makeServerLayer({
           name: "RegistrationContext",
           protocols: [McpProtocol.v2026_07_28]
         }))))
+
         const request = (name: string, method: string, params: Record<string, unknown>) =>
           harness.post({
             jsonrpc: "2.0",
@@ -990,6 +1059,7 @@ describe("McpServer protocol adapters", () => {
             "mcp-name": method === "tools/call" ? "register" : "file:///http-owner",
             "x-owner": name
           }).pipe(Effect.flatMap(readMcpHttpResponse))
+
         assert.deepNestedPropertyVal(yield* request("Alice", "tools/call", { name: "register" }), "result.content", [])
         assert.deepNestedPropertyVal(
           yield* request("Bob", "resources/read", { uri: "file:///http-owner" }),
@@ -1004,6 +1074,7 @@ describe("McpServer protocol adapters", () => {
   it.effect("should isolate interleaved stateful and stateless request contexts", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
+
       const legacy = yield* initialize(fixture.post, "2025-11-25", {
         capabilities: { roots: {} },
         clientInfo: { name: "legacy-client", version: "1.0.0" }
@@ -1026,6 +1097,7 @@ describe("McpServer protocol adapters", () => {
         ),
         { ...modernHeaders("tools/call"), "Mcp-Name": "capability", "Mcp-Session-Id": "ignored-modern-session" }
       )
+
       const modern = yield* Effect.promise<unknown>(() => modernResponse.json()).pipe(
         Effect.flatMap(decodeJsonRpcResponse)
       )
@@ -1042,6 +1114,7 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const unsupportedVersion = "2099-01-01"
+
       const cases = [
         {
           name: "missing request metadata",
@@ -1106,13 +1179,16 @@ describe("McpServer protocol adapters", () => {
       for (const testCase of cases) {
         const response = yield* fixture.post(testCase.body, testCase.headers)
         const message = yield* readJsonRpcResponse(response)
+
         if (!("error" in message)) {
           assert.fail(`${testCase.name}: expected error, received result`)
         }
+
         const error = message.error
 
         assert.strictEqual(response.status, testCase.status, testCase.name)
         assert.strictEqual(error.code, testCase.code, testCase.name)
+
         if ("supported" in testCase) {
           assert.deepStrictEqual(
             (error.data as { readonly supported?: ReadonlyArray<string> } | undefined)?.supported,
@@ -1167,6 +1243,7 @@ describe("McpServer protocol adapters", () => {
         ]
       ) {
         const metadata = { source: "test" }
+
         const progress = yield* protocol.projectNotification(McpCore.ServerNotification.Progress({
           progressToken: "task-1",
           progress: 1,
@@ -1174,6 +1251,7 @@ describe("McpServer protocol adapters", () => {
           message: "half way",
           metadata
         }))
+
         assert.isDefined(progress)
         assert.strictEqual(progress.tag, "notifications/progress")
         assert.deepStrictEqual(progress.payload, {
@@ -1232,6 +1310,7 @@ describe("McpServer protocol adapters", () => {
         tag: "notifications/elicitation/complete",
         payload: { elicitationId: "elicitation-1" }
       })
+
       for (
         const protocol of [
           McpProtocol.v2024_11_05,
@@ -1257,10 +1336,12 @@ describe("McpServer protocol adapters", () => {
   it.effect("should omit elicitation when the negotiated protocol predates v2025-06-18", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
+
       for (const protocolVersion of ["2024-11-05", "2025-03-26"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion, {
           capabilities: { elicitation: {} }
         })
+
         assert.notProperty(client.initializeResult.capabilities, "elicitation")
         assert.strictEqual(
           textResult(yield* client.request("tools/call", { name: "capability" })),
@@ -1273,6 +1354,7 @@ describe("McpServer protocol adapters", () => {
   it.effect("should expose current request metadata when invoking a handler", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
+
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18"] as const) {
         const response = yield* fixture.post({
           jsonrpc: "2.0",
@@ -1285,8 +1367,10 @@ describe("McpServer protocol adapters", () => {
             _meta: { progressToken: protocolVersion }
           }
         })
+
         const sessionId = response.headers.get("Mcp-Session-Id")
         assert.isNotNull(sessionId)
+
         const toolResponse = yield* fixture.post({
           jsonrpc: "2.0",
           id: 2,
@@ -1299,6 +1383,7 @@ describe("McpServer protocol adapters", () => {
           "Mcp-Protocol-Version": protocolVersion,
           "Mcp-Session-Id": sessionId
         })
+
         const body = yield* readJsonRpcResponse(toolResponse)
         assert.strictEqual(textResult(body), JSON.stringify({ progressToken: `call-${protocolVersion}` }))
       }
@@ -1307,6 +1392,7 @@ describe("McpServer protocol adapters", () => {
   it.effect("should reject elicitation before transport when the protocol predates v2025-06-18", () =>
     Effect.gen(function*() {
       let sends = 0
+
       const reverseProtocol = yield* RpcClient.Protocol.make(() =>
         Effect.succeed({
           send: () =>
@@ -1318,6 +1404,7 @@ describe("McpServer protocol adapters", () => {
           codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })
       )
+
       for (
         const protocol of [
           McpProtocol.v2024_11_05,
@@ -1331,6 +1418,7 @@ describe("McpServer protocol adapters", () => {
         }).pipe(
           Effect.provideService(RpcClient.Protocol, reverseProtocol)
         )
+
         const error = yield* client.elicit({
           message: "test",
           requestedSchema: {
@@ -1338,14 +1426,17 @@ describe("McpServer protocol adapters", () => {
             properties: {}
           }
         }).pipe(Effect.flip)
+
         assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
       }
+
       assert.strictEqual(sends, 0)
     }).pipe(Effect.scoped))
 
   it.effect("should reject direct reverse operations when the selected protocol is stateless", () =>
     Effect.gen(function*() {
       let sends = 0
+
       const reverseProtocol = yield* RpcClient.Protocol.make(() =>
         Effect.succeed({
           send: () =>
@@ -1358,7 +1449,9 @@ describe("McpServer protocol adapters", () => {
           codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
         })
       )
+
       const protocol = McpProtocol.v2026_07_28
+
       const client = yield* protocol.makeReverseClient({
         protocolVersion: protocol.protocolVersion,
         clientCapabilities: {},
@@ -1366,6 +1459,7 @@ describe("McpServer protocol adapters", () => {
       }).pipe(
         Effect.provideService(RpcClient.Protocol, reverseProtocol)
       )
+
       const operations: ReadonlyArray<
         readonly [
           string,
@@ -1398,13 +1492,39 @@ describe("McpServer protocol adapters", () => {
         assert.strictEqual(error.operation, operation)
         assert.strictEqual(error.protocolVersion, protocol.protocolVersion)
       }
+
       assert.strictEqual(sends, 0)
     }).pipe(Effect.scoped))
+
+  // Old wire projections map true to {} and false to { not: {} } without changing nested semantics.
+  // https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2
+  it.effect("should preserve boolean property semantics when projecting old tool descriptors", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+
+      for (const protocolVersion of ["2024-11-05", "2025-03-26"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+
+        const tool = listedTools(yield* client.request("tools/list"))
+          .find((tool) => tool.name === "boolean-properties")
+
+        assert.isDefined(tool)
+        assert.deepStrictEqual(tool.inputSchema, {
+          type: "object",
+          properties: {
+            anything: {},
+            forbidden: { not: {} },
+            nested: { type: "object", properties: { unchanged: false } }
+          }
+        })
+      }
+    }))
 
   it.effect("should omit June fields when projecting a March tool descriptor", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const client = yield* initialize(fixture.post, "2025-03-26")
+
       const shared = listedTools(yield* client.request("tools/list"))
         .find((tool) => tool.name === "shared")
 
@@ -1426,6 +1546,7 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
       const marchClient = yield* initialize(fixture.post, "2025-03-26")
+
       const tool = listedTools(yield* marchClient.request("tools/list"))
         .find((tool) => tool.name === "title-precedence")
 
@@ -1443,6 +1564,7 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
       const client = yield* initialize(fixture.post, "2024-11-05")
+
       const error = errorOf(
         yield* client.request("tools/call", {
           name: "projection-mismatch"
@@ -1462,6 +1584,7 @@ describe("McpServer protocol adapters", () => {
 
       const oldShared = listedTools(yield* oldClient.request("tools/list"))
         .find((tool) => tool.name === "shared")
+
       const currentShared = listedTools(yield* currentClient.request("tools/list"))
         .find((tool) => tool.name === "shared")
 
@@ -1490,15 +1613,18 @@ describe("McpServer protocol adapters", () => {
     it.effect(`should expose the negotiated client profile when serving ${protocolVersion} requests`, () =>
       Effect.gen(function*() {
         const fixture = yield* makeFixture()
+
         const advertisedCapabilities = {
           extensions: { "example/extension": { enabled: true } },
           roots: { listChanged: true },
           sampling: {}
         }
+
         const allowed = yield* initialize(fixture.post, protocolVersion, {
           capabilities: advertisedCapabilities,
           clientInfo: { name: "allowed-client", version: "2.0.0" }
         })
+
         const denied = yield* initialize(fixture.post, protocolVersion, {
           capabilities: {},
           clientInfo: { name: "other-client", version: "1.0.0" }
@@ -1512,6 +1638,7 @@ describe("McpServer protocol adapters", () => {
         const observed = JSON.parse(textResult(
           yield* allowed.request("tools/call", { name: "capability" })
         ))
+
         assert.deepStrictEqual(observed, advertisedCapabilities)
         assert.strictEqual(fixture.state.capabilityInvocations, 1)
       }))
@@ -1533,6 +1660,7 @@ describe("McpServer protocol adapters", () => {
 
       for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
+
         const shared = listedTools(yield* client.request("tools/list"))
           .find((tool) => tool.name === "shared")
 
@@ -1604,6 +1732,7 @@ describe("McpServer protocol adapters", () => {
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const tools = listedTools(yield* client.request("tools/list"))
+
         for (const name of ["shared", "json-array", "union-result"]) {
           const tool = tools.find((tool) => tool.name === name)
           assert.isDefined(tool)
@@ -1614,13 +1743,16 @@ describe("McpServer protocol adapters", () => {
           const result = resultOf(yield* client.request("tools/call", { name }))
           assert.notProperty(result, "structuredContent")
         }
+
         const text = "| package | version |\n| effect | \"4.0\" |"
+
         const stringResult = resultOf(
           yield* client.request("tools/call", {
             name: "validated",
             arguments: { value: text }
           })
         )
+
         assert.deepStrictEqual(stringResult.content, [{ type: "text", text }])
         assert.notProperty(stringResult, "structuredContent")
       }
@@ -1629,11 +1761,13 @@ describe("McpServer protocol adapters", () => {
         modernRequest(42, "tools/list"),
         { ...modernHeaders("tools/list"), "Mcp-Name": "toolkit-output" }
       )
+
       const listResult = listedTools(
         yield* Effect.promise<unknown>(() => listResponse.json()).pipe(
           Effect.flatMap(decodeJsonRpcResponse)
         )
       )
+
       assert.deepStrictEqual(listResult.find((tool) => tool.name === "shared")?.outputSchema, { type: "string" })
       assert.deepStrictEqual(listResult.find((tool) => tool.name === "json-array")?.outputSchema, {
         type: "array",
@@ -1673,11 +1807,13 @@ describe("McpServer protocol adapters", () => {
         modernRequest(43, "tools/call", { name: "shared", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "shared" }
       )
+
       const callResult = resultOf(
         yield* Effect.promise<unknown>(() => callResponse.json()).pipe(
           Effect.flatMap(decodeJsonRpcResponse)
         )
       )
+
       assert.strictEqual(callResult.structuredContent, "shared-result")
       assert.deepStrictEqual(callResult.content, [{ type: "text", text: JSON.stringify("shared-result") }])
 
@@ -1685,17 +1821,20 @@ describe("McpServer protocol adapters", () => {
         modernRequest(44, "tools/call", { name: "json-array", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "json-array" }
       )
+
       const arrayCallResult = resultOf(
         yield* Effect.promise<unknown>(() => arrayCallResponse.json()).pipe(
           Effect.flatMap(decodeJsonRpcResponse)
         )
       )
+
       assert.deepStrictEqual(arrayCallResult.structuredContent, ["array", null])
     }))
 
   it.effect("should encode binary content for every revision that can represent it", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
+
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const image = resultOf(yield* client.request("tools/call", { name: "image" }))
@@ -1708,6 +1847,7 @@ describe("McpServer protocol adapters", () => {
         const embedded = resultOf(
           yield* client.request("tools/call", { name: "binary-resource" })
         )
+
         assert.deepStrictEqual(embedded.content, [{
           type: "resource",
           resource: {
@@ -1732,6 +1872,7 @@ describe("McpServer protocol adapters", () => {
   it.effect("should project structured content according to the negotiated revision", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
+
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const mirror = resultOf(yield* client.request("tools/call", { name: "structured-string-mirror" }))
@@ -1747,26 +1888,33 @@ describe("McpServer protocol adapters", () => {
         assert.notProperty(custom, "structuredContent")
         assert.notProperty(multiple, "structuredContent")
       }
+
       for (const protocolVersion of ["2024-11-05", "2025-03-26"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
+
         const objectResult = resultOf(
           yield* client.request("tools/call", { name: "structured-object" })
         )
+
         const scalarResult = resultOf(
           yield* client.request("tools/call", { name: "structured-scalar" })
         )
+
         assert.notProperty(objectResult, "structuredContent")
         assert.notProperty(scalarResult, "structuredContent")
       }
 
       for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
+
         const objectResult = resultOf(
           yield* client.request("tools/call", { name: "structured-object" })
         )
+
         const scalarResult = resultOf(
           yield* client.request("tools/call", { name: "structured-scalar" })
         )
+
         assert.deepStrictEqual(objectResult.structuredContent, { value: "fixture" })
         assert.notProperty(scalarResult, "structuredContent")
       }
@@ -1775,21 +1923,26 @@ describe("McpServer protocol adapters", () => {
         modernRequest(41, "tools/call", { name: "structured-scalar", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "structured-scalar" }
       )
+
       const modernResult = resultOf(
         yield* Effect.promise<unknown>(() => modernResponse.json()).pipe(
           Effect.flatMap(decodeJsonRpcResponse)
         )
       )
+
       assert.strictEqual(modernResult.structuredContent, "fixture")
+
       const modernMirrorResponse = yield* fixture.post(
         modernRequest(42, "tools/call", { name: "structured-string-mirror", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "structured-string-mirror" }
       )
+
       const modernMirror = resultOf(
         yield* Effect.promise<unknown>(() => modernMirrorResponse.json()).pipe(
           Effect.flatMap(decodeJsonRpcResponse)
         )
       )
+
       assert.strictEqual(modernMirror.structuredContent, "fixture")
       assert.deepStrictEqual(modernMirror.content, [{ type: "text", text: JSON.stringify("fixture") }])
     }))
@@ -1800,16 +1953,21 @@ describe("McpServer protocol adapters", () => {
 
       for (const protocolVersion of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
+
         const result = resultOf(
           yield* client.request("tools/call", { name: "annotated-resource" })
         )
+
         const [content] = Schema.decodeUnknownSync(
           Schema.NonEmptyArray(Schema.Record(Schema.String, Schema.Unknown))
         )(result.content)
+
         assert.deepStrictEqual(result._meta, { result: "fixture" })
+
         const resource = Schema.decodeUnknownSync(
           Schema.Record(Schema.String, Schema.Unknown)
         )(content.resource)
+
         assert.deepStrictEqual(
           content.annotations,
           protocolVersion === "2025-11-25"
@@ -1826,6 +1984,7 @@ describe("McpServer protocol adapters", () => {
         assert.strictEqual(resource.uri, "file:///annotated.txt")
         assert.strictEqual(resource.mimeType, "text/plain")
         assert.strictEqual(resource.text, "annotated")
+
         if (protocolVersion === "2025-11-25" || protocolVersion === "2025-06-18") {
           assert.deepStrictEqual(resource._meta, { source: "fixture" })
           assert.deepStrictEqual(content._meta, { content: "fixture" })
@@ -1839,22 +1998,29 @@ describe("McpServer protocol adapters", () => {
   it.effect("should preserve result metadata while omitting June-only metadata for older revisions", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
+
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const resources = resultOf(yield* client.request("resources/list"))
+
         const resource = (resources.resources as Array<Record<string, unknown>>).find(
           (_) => _.uri === "file:///metadata.txt"
         )!
+
         const read = resultOf(
           yield* client.request("resources/read", { uri: "file:///metadata.txt" })
         )
+
         const prompts = resultOf(yield* client.request("prompts/list"))
+
         const promptDescriptor = (prompts.prompts as Array<Record<string, unknown>>).find(
           (_) => _.name === "metadata-prompt"
         )!
+
         const prompt = resultOf(
           yield* client.request("prompts/get", { name: "metadata-prompt" })
         )
+
         const completion = resultOf(
           yield* client.request("completion/complete", {
             ref: { type: "ref/prompt", name: "metadata-prompt" },
@@ -1866,6 +2032,7 @@ describe("McpServer protocol adapters", () => {
         assert.deepStrictEqual(prompt._meta, { result: "fixture" })
         assert.deepStrictEqual(completion._meta, { result: "fixture" })
         const content = (prompt.messages as Array<Record<string, any>>)[0].content
+
         if (protocolVersion === "2025-06-18") {
           assert.deepStrictEqual(resource._meta, { descriptor: "fixture" })
           assert.deepStrictEqual(promptDescriptor._meta, { descriptor: "fixture" })
@@ -1902,9 +2069,11 @@ describe("McpServer protocol adapters", () => {
       })
 
       const resources = resultOf(yield* november.request("resources/list"))
+
       const resource = (resources.resources as Array<Record<string, unknown>>).find(
         (_) => _.uri === "file:///metadata.txt"
       )
+
       assert.isDefined(resource)
       assert.deepStrictEqual(resource.icons, [{ src: "https://example.com/resource.svg" }])
 
@@ -1934,6 +2103,7 @@ describe("McpServer protocol adapters", () => {
         name: "structured-only",
         arguments: {}
       })
+
       assert.property(oldCall, "error")
       assert.strictEqual(fixture.state.structuredInvocations, 0)
     }))
@@ -1975,6 +2145,7 @@ describe("McpServer protocol adapters", () => {
   it.effect("should report tool execution failures as internal errors on older revisions", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
+
       for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const error = errorOf(yield* client.request("tools/call", { name: "internal-failure" }))
@@ -1986,10 +2157,12 @@ describe("McpServer protocol adapters", () => {
   it.effect("should reject invalid structured content at the protocol serialization boundary", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
+
       const response = yield* fixture.post(
         modernRequest(50, "tools/call", { name: "invalid-structured-content", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "invalid-structured-content" }
       )
+
       const message = yield* readJsonRpcResponse(response)
 
       assert.strictEqual(response.status, 200)
@@ -2015,14 +2188,17 @@ describe("McpServer protocol adapters", () => {
         const duplicates = listedTools(
           yield* client.request("tools/list")
         ).filter((tool) => tool.name === "duplicate")
+
         assert.lengthOf(duplicates, 1)
         assert.strictEqual(duplicates[0]?.description, "second descriptor")
 
         const result = resultOf(
           yield* client.request("tools/call", { name: "duplicate" })
         )
+
         assert.deepStrictEqual(result.content, [{ type: "text", text: "second" }])
       }
+
       assert.deepStrictEqual(fixture.state.duplicateInvocations, ["second", "second"])
     }))
 })

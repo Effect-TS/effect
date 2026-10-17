@@ -19,7 +19,9 @@ export * from "./v2025_03_26.ts"
 export const protocolVersion = "2025-06-18"
 
 const optional = Previous.optional
+
 const JsonObject = Schema.JsonObject
+
 const Meta = optional(JsonObject)
 
 /**
@@ -218,7 +220,7 @@ export class Initialize extends Rpc.make("initialize", {
 const ToolJsonSchema = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, JsonObject)),
+    properties: optional(Schema.Record(Schema.String, Schema.Union([JsonObject, Schema.Boolean]))),
     required: optional(Schema.Array(Schema.String))
   }),
   [Schema.JsonObject]
@@ -457,6 +459,7 @@ const StringSchema = Schema.Struct({
   maxLength: optional(Schema.Int),
   format: optional(Schema.Literals(["email", "uri", "date", "date-time"]))
 })
+
 const NumberSchema = Schema.Struct({
   type: Schema.Literals(["number", "integer"]),
   title: optional(Schema.String),
@@ -464,12 +467,14 @@ const NumberSchema = Schema.Struct({
   minimum: optional(Schema.Finite),
   maximum: optional(Schema.Finite)
 })
+
 const BooleanSchema = Schema.Struct({
   type: Schema.Literal("boolean"),
   title: optional(Schema.String),
   description: optional(Schema.String),
   default: optional(Schema.Boolean)
 })
+
 const EnumSchema = Schema.Struct({
   type: Schema.Literal("string"),
   title: optional(Schema.String),
@@ -477,6 +482,7 @@ const EnumSchema = Schema.Struct({
   enum: Schema.Array(Schema.String),
   enumNames: optional(Schema.Array(Schema.String))
 })
+
 const RequestedSchema = Schema.Struct({
   type: Schema.Literal("object"),
   properties: Schema.Record(
