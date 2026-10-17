@@ -34,6 +34,24 @@ vi.mock("@clickhouse/client", () => ({
 }))
 
 describe("ClickhouseClient", { concurrent: false }, () => {
+  it("infers DateTime parameters without empty parentheses", () => {
+    const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
+    const date = new Date("2024-01-15T14:30:00Z")
+
+    assert.deepStrictEqual(sql`SELECT ${date}`.compile(), ["SELECT {p1: DateTime}", [date]])
+  })
+
+  it.effect("preserves an explicit nullable parameter type and null value", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      const sql = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+      assert.deepStrictEqual(sql`SELECT ${sql.param("Nullable(Int32)", null)}`.compile(), [
+        "SELECT {p1: Nullable(Int32)}",
+        [null]
+      ])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it("preserves fractional JavaScript numbers in inferred parameters", () => {
     const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
     const [query] = sql`SELECT ${1.5}`.compile()
