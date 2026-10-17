@@ -160,18 +160,23 @@ describe("EventLog", () => {
         tag: "UserRenamed",
         primaryKey: (payload) => payload.id,
         payload: UserPayload,
-        success: Schema.String
+        success: Schema.String,
+        error: Schema.String
       })
       const renameSchema = EventLog.schema(RenameGroup)
       const handlers = EventLog.group(
         RenameGroup,
         (handlers) =>
           handlers.handle("UserRenamed", ({ payload }) =>
-            Effect.sync(() => {
+            Effect.gen(function*() {
               timeline.push(`handle ${payload.id}`)
+              if (payload.id === "rejected") return yield* Effect.fail("rejected")
               return payload.id.toUpperCase()
             }))
-      ).pipe(Layer.provide(EventLog.layerRegistry))
+      ).pipe(
+        Layer.merge(EventLog.groupReactivity(RenameGroup, ["users"])),
+        Layer.provide(EventLog.layerRegistry)
+      )
       const journal = Layer.effect(
         EventJournal.EventJournal,
         Effect.map(EventJournal.makeMemory, (journal) =>
@@ -193,10 +198,15 @@ describe("EventLog", () => {
               Effect.andThen(effect),
               Effect.ensuring(Effect.sync(() => timeline.push("commit")))
             ))
-        ])
+        ]),
+        Layer.merge(Reactivity.layer)
       )
       return yield* Effect.gen(function*() {
         const log = yield* EventLog.EventLog
+        const reactivity = yield* Reactivity.Reactivity
+        reactivity.registerUnsafe(["users"], () => {
+          timeline.push("invalidate")
+        })
         const results = yield* log.writeMany({
           schema: renameSchema,
           events: [
@@ -205,14 +215,33 @@ describe("EventLog", () => {
             { event: "UserRenamed", payload: { id: "c" } }
           ]
         })
+        const batch = timeline.splice(0)
+        const single = yield* log.write({ schema: renameSchema, event: "UserRenamed", payload: { id: "d" } })
+        const singleTimeline = timeline.splice(0)
+        const failed = yield* Effect.flip(log.writeMany({
+          schema: renameSchema,
+          events: [
+            { event: "UserRenamed", payload: { id: "e" } },
+            { event: "UserRenamed", payload: { id: "rejected" } }
+          ]
+        }))
+        // Subscribers are notified once per batch, after the handler
+        // transaction commits and the journal lock is released. A failed batch
+        // commits none of its events.
         assert.deepStrictEqual({
           results,
-          timeline,
+          batch,
+          single,
+          singleTimeline,
+          failed,
           committed: (yield* log.entries).map((entry) => entry.primaryKey)
         }, {
           results: ["A", "B", "C"],
-          timeline: ["lock", "begin", "handle a", "handle b", "handle c", "commit", "unlock"],
-          committed: ["a", "b", "c"]
+          batch: ["lock", "begin", "handle a", "handle b", "handle c", "commit", "unlock", "invalidate"],
+          single: "D",
+          singleTimeline: ["lock", "begin", "handle d", "commit", "unlock", "invalidate"],
+          failed: "rejected",
+          committed: ["a", "b", "c", "d"]
         })
       }).pipe(Effect.provide(layer))
     }))

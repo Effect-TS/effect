@@ -235,12 +235,17 @@ describe("SqlEventJournal", () => {
               i === 0 || EventJournal.EntryIdOrder(written[i - 1].id, entry.id) < 0
             ),
             committed: (yield* journal.entries).map((entry) => entry.idString),
+            uncommitted: yield* journal.withRemoteUncommited(
+              EventJournal.makeRemoteIdUnsafe(),
+              (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+            ),
             published: (yield* published).map((entry) => entry.idString)
           }, {
             afterFailure: { failed: true, entries: 0, published: 0 },
             keys: ["a", "b", "c"],
             ascending: true,
             committed: ids,
+            uncommitted: Option.some(ids),
             published: ids
           })
         }))
