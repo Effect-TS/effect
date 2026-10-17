@@ -92,7 +92,7 @@ export const registerProducer = (
         return Effect.succeed(bound)
       } catch (error) {
         // Roll back only the readers bound by this acquisition.
-        return Effect.andThen(shutdownReaders(bound, options), Effect.die(error))
+        return Effect.andThen(Effect.ignoreCause(shutdownReaders(bound, options)), Effect.die(error))
       }
     }),
     (readers) => shutdownReaders(readers, options)
