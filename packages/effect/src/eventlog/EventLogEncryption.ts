@@ -78,17 +78,17 @@ export const EncryptedRemoteBatch = Schema.Struct({
 })
 
 const maxBatchEntries = 100
-const maxBatchBytes = 256 * 1024
+const maxBatchPayloadBytes = 256 * 1024
 
-// Splits entries into batches of at most `maxBatchEntries` entries and roughly
-// `maxBatchBytes` of plaintext. A single larger entry still forms a batch.
+// A batch holds at most `maxBatchEntries` entries or `maxBatchPayloadBytes` of
+// payload, whichever comes first. A single larger entry is a batch on its own.
 const toBatches = (entries: ReadonlyArray<Entry>): Array<NonEmptyArray<Entry>> => {
   const batches: Array<NonEmptyArray<Entry>> = []
   let current: Array<Entry> = []
   let bytes = 0
   for (const entry of entries) {
-    const size = entry.payload.byteLength + entry.event.length + entry.primaryKey.length + 32
-    if (current.length > 0 && (current.length === maxBatchEntries || bytes + size > maxBatchBytes)) {
+    const size = entry.payload.byteLength
+    if (current.length > 0 && (current.length === maxBatchEntries || bytes + size > maxBatchPayloadBytes)) {
       batches.push(current as NonEmptyArray<Entry>)
       current = []
       bytes = 0

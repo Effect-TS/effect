@@ -269,7 +269,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
           const entries = yield* decodeChanges(options.identity, options.storeId, data)
           const first = entries.findIndex((entry) => entry.remoteSequence >= options.startSequence)
           if (first === -1) return
-          yield* Queue.offerAll(outgoing, first === 0 ? entries : entries.slice(first))
+          yield* Queue.offerAll(outgoing, entries.slice(first))
         })
 
         while (true) {

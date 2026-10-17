@@ -224,16 +224,8 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
       const pubsub = yield* RcMap.get(pubsubs, scopeKey)
       const subscription = yield* PubSub.subscribe(pubsub)
       const batches = ensureJournal(scopeKey).batches
-      // Binary search for the first batch whose last sequence is at or after `startSequence`.
-      let low = 0
-      let high = batches.length
-      while (low < high) {
-        const mid = (low + high) >>> 1
-        const batch = batches[mid]
-        if (batch.sequence + batch.entryIds.length <= startSequence) low = mid + 1
-        else high = mid
-      }
-      return Stream.fromArray(batches.slice(low)).pipe(
+      const first = batches.findIndex((batch) => batch.sequence + batch.entryIds.length > startSequence)
+      return Stream.fromArray(first === -1 ? [] : batches.slice(first)).pipe(
         Stream.concat(Stream.fromSubscription(subscription))
       )
     }, Stream.unwrap)

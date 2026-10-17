@@ -11,7 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Arr from "../Array.ts"
+import type { NonEmptyArray } from "../Array.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -51,7 +51,6 @@ import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
 export const makeStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
-  readonly insertBatchSize?: number
 }): Effect.Effect<
   EventLogServerEncrypted.Storage["Service"],
   SqlError.SqlError,
@@ -64,7 +63,6 @@ export const makeStorage = (options?: {
     const tablePrefix = options?.entryTablePrefix ?? "effect_events"
     const remoteIdTable = options?.remoteIdTable ?? "effect_remote_id"
     const sessionAuthBindingsTable = `${tablePrefix}_session_auth_bindings`
-    const insertBatchSize = options?.insertBatchSize ?? 200
 
     const remoteIdTableSql = sql(remoteIdTable)
     const sessionAuthBindingsTableSql = sql(sessionAuthBindingsTable)
@@ -286,15 +284,11 @@ export const makeStorage = (options?: {
             const stored: Array<EventLogEncryption.EncryptedRemoteBatch> = []
             let nextSequence: number | undefined
             for (const batch of batches) {
-              // Inserting the ids decides whether the batch is new; SQL Server's
+              // Inserting the ids decides whether the batch is new. SQL Server's
               // MERGE also requires unique source ids.
               const ids = new Map<string, Uint8Array>()
               for (const id of batch.entryIds) ids.set(id.join(","), id)
-              let inserted = 0
-              for (const chunk of Arr.chunksOf(ids.values(), insertBatchSize)) {
-                inserted += yield* insertNewIds(idsTableSql, chunk)
-              }
-              if (inserted === 0) continue
+              if ((yield* insertNewIds(idsTableSql, Array.from(ids.values()))) === 0) continue
               if (nextSequence === undefined) {
                 const [row] = yield* sql<{ last_sequence: number | string | null }>`
                   SELECT MAX(last_sequence) AS last_sequence FROM ${tableSql}
@@ -386,7 +380,7 @@ const toEncryptedRemoteBatch = (row: EncryptedRemoteBatchSql): EventLogEncryptio
   }
   return {
     sequence: row.sequence,
-    entryIds: entryIds as Arr.NonEmptyArray<EntryId>,
+    entryIds: entryIds as NonEmptyArray<EntryId>,
     iv: row.iv as Uint8Array<ArrayBuffer>,
     encryptedBatch: row.encrypted_batch as Uint8Array<ArrayBuffer>
   }
@@ -411,7 +405,6 @@ const decodeSessionAuthBindings = (
 export const layerStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
-  readonly insertBatchSize?: number
 }): Layer.Layer<
   EventLogServerEncrypted.Storage,
   SqlError.SqlError,
@@ -429,7 +422,6 @@ export const layerStorage = (options?: {
 export const layerStorageSubtle = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
-  readonly insertBatchSize?: number
 }): Layer.Layer<EventLogServerEncrypted.Storage, SqlError.SqlError, SqlClient.SqlClient> =>
   layerStorage(options).pipe(
     Layer.provide(EventLogEncryption.layerSubtle)
