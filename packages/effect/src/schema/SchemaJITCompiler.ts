@@ -82,7 +82,11 @@ export const compiler: Registry.CompileSource = (ast, resolve) => {
  *
  * Enable before first use to optimize every consumer. Functions that already
  * captured an entry keep it. Enable type-side and flipped ASTs separately when
- * they differ from the supplied AST.
+ * they differ from the supplied AST. When a synchronous fast path rejects a
+ * value, building its issues runs its checks once more, even if an enclosing
+ * Union or middleware then recovers. Transformations run once, except the
+ * library's own conversions of primitive values, such as those built by
+ * `Schema.toCodecStringTree`, which run no user code.
  *
  * @stability unstable
  * @category compilation

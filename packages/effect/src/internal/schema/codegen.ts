@@ -1,6 +1,7 @@
 import type { CompiledDecoder } from "../../schema/SchemaCompiler.ts"
 import type { runtime } from "../../schema/SchemaCompiler/runtime.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import { isReplaySafe } from "./replaySafe.ts"
 
 const getEncodingChecks = (ast: SchemaAST.AST): SchemaAST.Checks | undefined =>
   "encodingChecks" in ast ? ast.encodingChecks : undefined
@@ -23,6 +24,7 @@ type Facts = {
   outputFree: boolean
   makeSafe: boolean
   hasOneOf: boolean
+  primitive: boolean
   nodes: number
   height: number
 }
@@ -34,6 +36,7 @@ const unsupportedFacts: Facts = {
   outputFree: false,
   makeSafe: false,
   hasOneOf: false,
+  primitive: false,
   nodes: 1,
   height: 0
 }
@@ -44,16 +47,66 @@ const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
   ast.encoding === undefined &&
   ast.context?.constructorDefault === undefined
 
+const isPrimitiveNode = (ast: SchemaAST.AST): boolean =>
+  ast.encoding === undefined && getEncodingChecks(ast) === undefined &&
+  (ast.checks === undefined || ast.checks.every(isReplaySafe))
+
+// Marked conversions are only pure for primitive inputs: an object input can
+// run user code through coercion hooks.
+const isPrimitiveLeaf = (ast: SchemaAST.AST): boolean => {
+  switch (ast._tag) {
+    case "Null":
+    case "Undefined":
+    case "Void":
+    case "Never":
+    case "String":
+    case "Number":
+    case "Boolean":
+    case "BigInt":
+    case "Symbol":
+    case "Literal":
+    case "UniqueSymbol":
+    case "Enum":
+      return isPrimitiveNode(ast)
+    default:
+      return false
+  }
+}
+
+const isReplaySafeLink = (link: SchemaAST.Link): boolean =>
+  link.transformation._tag === "Transformation" &&
+  (link.transformation.decode._tag === "Passthrough" ||
+    link.transformation.decode._tag === "Transform" && isReplaySafe(link.transformation))
+
+const unsupported = (facts: Facts): false => {
+  facts.supported = false
+  return false
+}
+
+// Every encoding step must be safe to replay after a failed fast-path attempt.
+const addEncoding = (
+  facts: Facts,
+  ast: SchemaAST.AST,
+  depth: number,
+  budget: { remaining: number }
+): boolean => {
+  const links = ast.encoding
+  if (links === undefined) return true
+  if (getEncodingChecks(ast) !== undefined || !links.every(isReplaySafeLink)) return unsupported(facts)
+  facts.outputFree = false
+  return links.every((link) => addChild(facts, link.to, depth, budget, true))
+}
+
+// The child is charged before its encoding is followed, and a source must be
+// primitive, so encoding sources never recurse into further encodings.
 const addChild = (
   facts: Facts,
   child: SchemaAST.AST,
   depth: number,
-  budget: { remaining: number }
+  budget: { remaining: number },
+  source = false
 ): boolean => {
-  if (child.encoding !== undefined || child._tag === "Declaration" || child._tag === "Suspend") {
-    facts.supported = false
-    return false
-  }
+  if (child._tag === "Declaration" || child._tag === "Suspend") return unsupported(facts)
   switch (child._tag) {
     case "TemplateLiteral":
     case "Arrays":
@@ -61,24 +114,26 @@ const addChild = (
     case "Union": {
       const childFacts = getFacts(child, depth, budget)
       if (childFacts === undefined) return false
-      if (!childFacts.supported) {
-        facts.supported = false
-        return false
-      }
+      if (!childFacts.supported || source && !childFacts.primitive) return unsupported(facts)
+      if (!childFacts.primitive) facts.primitive = false
       if (!childFacts.outputFree) facts.outputFree = false
       if (!childFacts.makeSafe) facts.makeSafe = false
       if (childFacts.hasOneOf) facts.hasOneOf = true
       facts.nodes += childFacts.nodes
       if (childFacts.height >= facts.height) facts.height = childFacts.height + 1
-      return true
+      break
     }
-    default:
+    default: {
       if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
+      const primitive = isPrimitiveLeaf(child)
+      if (source && !primitive) return unsupported(facts)
+      if (!primitive) facts.primitive = false
       if (!isMakeSafeNode(child)) facts.makeSafe = false
       facts.nodes++
       if (facts.height === 0) facts.height = 1
-      return true
+    }
   }
+  return addEncoding(facts, child, depth, budget)
 }
 
 const stop = (ast: SchemaAST.AST, facts: Facts): Facts | undefined => {
@@ -103,6 +158,7 @@ const getFacts = (
     outputFree: true,
     makeSafe: true,
     hasOneOf: ast._tag === "Union" && ast.options?.mode === "oneOf",
+    primitive: ast._tag === "Union" && isPrimitiveNode(ast),
     nodes: 1,
     height: 0
   }
@@ -153,12 +209,13 @@ const getFacts = (
 
 /** @internal */
 const getEmission = (ast: SchemaAST.AST, depth = 0, local = false): Emission => {
-  if (!local && ast.encoding !== undefined || ast._tag === "Declaration" || ast._tag === "Suspend") {
-    return "unsupported"
-  }
-  const facts = getFacts(ast, depth)
+  if (ast._tag === "Declaration" || ast._tag === "Suspend") return "unsupported"
+  const budget = { remaining: maxGeneratedNodes }
+  const facts = getFacts(ast, depth, budget)
   if (facts === undefined || !facts.supported) return "unsupported"
-  return facts.outputFree ? "is" : "decode"
+  if (local || ast.encoding === undefined) return facts.outputFree ? "is" : "decode"
+  // Cached facts describe the node without its own encoding.
+  return addEncoding({ ...facts }, ast, depth, budget) ? "decode" : "unsupported"
 }
 
 const isMakeSafe = (ast: SchemaAST.AST): boolean => getFacts(ast)?.makeSafe ?? false
@@ -202,6 +259,7 @@ const constant = (emitter: Emitter, value: unknown, reference: string): string =
 }
 
 const needsPresenceCheck = (ast: SchemaAST.AST): boolean => {
+  if (ast.encoding !== undefined) return true
   switch (ast._tag) {
     case "Undefined":
     case "Void":
@@ -280,8 +338,12 @@ function emit(
   statements: Array<string>,
   emitter: Emitter,
   operation: Operation,
-  path: string
+  path: string,
+  local = false
 ): string {
+  if (!local && ast.encoding !== undefined) {
+    input = emitLinks(ast.encoding, input, statements, emitter, operation, path)
+  }
   const output = emitBase(ast, input, statements, emitter, operation, path)
   const invalid = failureExpression(operation)
   const encodingChecks = getEncodingChecks(ast)
@@ -298,6 +360,35 @@ function emit(
     `if(K(${astConstant},${checked},0,o))return ${invalid}`
   )
   return operation === "decode" ? checked : "true"
+}
+
+// Mirrors the interpreter: each source is decoded before its transformation,
+// and the result is decoded by the next link, or by the node itself.
+const emitLinks = (
+  links: SchemaAST.Encoding,
+  input: string,
+  statements: Array<string>,
+  emitter: Emitter,
+  operation: Operation,
+  path: string
+): string => {
+  let value = input
+  for (let index = links.length - 1; index >= 0; index--) {
+    const linkPath = `${path}.encoding[${index}]`
+    value = emit(links[index].to, value, statements, emitter, operation, `${linkPath}.to`)
+    const transformation = links[index].transformation
+    if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
+      const transform = constant(
+        emitter,
+        transformation.decode.transform,
+        `${linkPath}.transformation.decode.transform`
+      )
+      const output = variable(emitter)
+      statements.push(`const ${output}=(0,${transform})(${value})`)
+      value = output
+    }
+  }
+  return value
 }
 
 const emitDecoderHelper = (ast: SchemaAST.AST, emitter: Emitter, operation: Operation, path: string): string => {
@@ -670,7 +761,7 @@ export interface GeneratedOperation {
   readonly bindings: ReadonlyArray<Binding>
 }
 
-const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): GeneratedOperation => {
+const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast", local = false): GeneratedOperation => {
   const emitter: Emitter = {
     statements: [],
     helpers: [],
@@ -681,7 +772,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): 
     constantIndexes: new Map(),
     next: 0
   }
-  const output = emit(ast, "i", emitter.statements, emitter, operation, path)
+  const output = emit(ast, "i", emitter.statements, emitter, operation, path, local)
   const bindings = {
     K: "getCheckIssues",
     T: "matchesTemplateLiteral",
@@ -736,10 +827,12 @@ export function generate(ast: SchemaAST.AST, operation: DecoderOperation): strin
     ? emitArray()
     : "undefined"
   if (operation === "makeEffect") return `return R.make(ast,resolve,${object},${array})`
-  const checkpoint = ast.encoding !== undefined && getEmission(ast, 0, true) !== "unsupported"
-    ? `()=>${renderOperation(emitOperation(ast, "decode"))}`
+  const detailed = getEmission(ast) !== "unsupported"
+  // After a failed `decode`, a checkpoint would run the same checks a third time.
+  const checkpoint = !detailed && ast.encoding !== undefined && getEmission(ast, 0, true) !== "unsupported"
+    ? `()=>${renderOperation(emitOperation(ast, "decode", "ast", true))}`
     : "undefined"
-  return `return R.decode(ast,resolve,${object},${getEmission(ast) !== "unsupported"},${checkpoint},${array})`
+  return `return R.decode(ast,resolve,${object},${detailed},${checkpoint},${array})`
 }
 
 const emitArray = (): string =>
