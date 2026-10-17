@@ -692,7 +692,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
     { pattern: "*/", expected: ["a", "b", "node_modules", "src"] },
     { pattern: "{a,b}/*.ts", expected: ["a/x.ts", "b/y.ts"] },
     { pattern: "src/index.ts", expected: ["src/index.ts"] },
-    { pattern: "readme.md", expected: [] },
+    { pattern: "readme.*", expected: [] },
     { pattern: "**/.", expected: [] },
     { pattern: "src/index.ts/.", expected: [] },
     { pattern: "src/.", expected: ["src"] },
@@ -738,6 +738,17 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         const fs = yield* Fs.FileSystem
         const root = yield* fs.makeTempDirectoryScoped()
         expect(yield* fs.glob("**", { root: `${root}/missing` })).toEqual([])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob includes a dangling symlink named by a literal or wildcard", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped()
+        yield* fs.symlink(`${root}/missing`, `${root}/dangling`)
+        assert.deepStrictEqual(yield* fs.glob("dangling", { root }), ["dangling"])
+        assert.deepStrictEqual(yield* fs.glob("dang*", { root }), ["dangling"])
       }).pipe(Effect.scoped)
     ))
 

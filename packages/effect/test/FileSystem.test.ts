@@ -117,6 +117,24 @@ describe("FileSystem", () => {
         })
     )
 
+    it.effect("fails when stat denies access to a leading literal", () =>
+      Effect.gen(function*() {
+        const error = failure("PermissionDenied", "stat", "a")
+        const fs = makeFileSystem({
+          stat: (path) => path === "a" ? Effect.fail(error) : undefined
+        })
+        assert.deepStrictEqual(yield* Effect.exit(fs.glob("a/*.ts")), Exit.fail(error))
+      }))
+
+    it.effect("returns an empty array when the root is a file", () =>
+      Effect.gen(function*() {
+        const fs = makeFileSystem({
+          readDirectory: (path) =>
+            path === "a/x.ts" ? Effect.fail(failure("BadResource", "readDirectory", path)) : undefined
+        })
+        assert.deepStrictEqual(yield* fs.glob("**", { root: "a/x.ts" }), [])
+      }))
+
     it.effect("reads a literal prefix whose parent cannot be listed", () =>
       Effect.gen(function*() {
         const fs = makeFileSystem({
