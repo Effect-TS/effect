@@ -83,6 +83,27 @@ describe("Struct", () => {
     })
   })
 
+  describe("modifyFields", () => {
+    it("partial required fields", () => {
+      const s = { a: "a", b: 1 }
+      deepStrictEqual(pipe(s, Struct.modifyFields({ a: (s) => s.toUpperCase() })), { a: "A", b: 1 })
+      deepStrictEqual(Struct.modifyFields(s, { a: (s) => s.toUpperCase() }), { a: "A", b: 1 })
+    })
+
+    it("all required fields", () => {
+      const s = { a: "a", b: 1 }
+      deepStrictEqual(pipe(s, Struct.modifyFields({ a: (s) => s.toUpperCase(), b: (b) => b + 1 })), { a: "A", b: 2 })
+      deepStrictEqual(Struct.modifyFields(s, { a: (s) => s.toUpperCase(), b: (b) => b + 1 }), { a: "A", b: 2 })
+    })
+
+    it("does not mutate the input", () => {
+      const s = { a: "a", b: 1 }
+      const result = Struct.modifyFields(s, { a: (s) => s.toUpperCase() })
+      deepStrictEqual(s, { a: "a", b: 1 })
+      deepStrictEqual(result, { a: "A", b: 1 })
+    })
+  })
+
   it("evolveKeys", () => {
     deepStrictEqual(pipe({ a: "a", b: 2 }, Struct.evolveKeys({ a: (k) => Str.toUpperCase(k) })), { A: "a", b: 2 })
     deepStrictEqual(Struct.evolveKeys({ a: "a", b: 2 }, { a: (k) => Str.toUpperCase(k) }), { A: "a", b: 2 })
