@@ -6157,6 +6157,14 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.succeed(`{"a":"1"}`, { a: 1 })
     })
 
+    it("constructs content schemas without a canonical JSON codec", async () => {
+      const schema = Schema.fromJsonString(
+        Schema.Struct({ [Symbol.for("metadata")]: Schema.optionalKey(Schema.String) })
+      )
+
+      await new TestSchema.Asserts(schema).decoding().succeed(`{}`, {})
+    })
+
     it("replacer and space options", async () => {
       const schema = Schema.fromJsonString(Schema.Struct({ a: Schema.Number, b: Schema.Number }), {
         replacer: (key, value) => key === "b" ? undefined : value,

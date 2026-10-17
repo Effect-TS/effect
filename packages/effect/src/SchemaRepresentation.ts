@@ -1532,6 +1532,26 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
+ * Reviver for persisted `isJsonContent` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain the encoded side of
+ * {@link Schema.fromJsonString}, or checks created by {@link Schema.isJsonContent}.
+ *
+ * @see {@link Schema.isJsonContent} for creating the corresponding check
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.6
+ */
+export const isJsonContentReviver: FilterReviver<null> = makeReviverFilter(
+  "effect/schema/isJsonContent",
+  Schema.Null,
+  ({ annotations, schemas }) => Schema.isJsonContent(schemas[0], annotations)
+)
+
+/**
  * Reviver for persisted `isUnique` checks.
  *
  * **When to use**

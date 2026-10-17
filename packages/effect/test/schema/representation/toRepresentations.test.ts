@@ -46,23 +46,11 @@ describe("SchemaRepresentation.toRepresentations", () => {
       const document = SchemaRepresentation.toRepresentations([first.ast, second.ast])
 
       assert.notStrictEqual(first.ast, second.ast)
-      assert.deepStrictEqual(document, {
-        representations: [
-          { _tag: "Reference", $ref: "Tool.ContentEncoded" },
-          { _tag: "Reference", $ref: "Tool.ContentEncoded" }
-        ],
-        references: {
-          "Tool.ContentEncoded": {
-            _tag: "String",
-            annotations: {
-              expected: "a string that will be decoded as JSON",
-              contentMediaType: "application/json",
-              "~identifier": "Tool.Content"
-            },
-            checks: []
-          }
-        }
-      })
+      assert.deepStrictEqual(document.representations, [
+        { _tag: "Reference", $ref: "Tool.ContentEncoded" },
+        { _tag: "Reference", $ref: "Tool.ContentEncoded" }
+      ])
+      assert.deepStrictEqual(Object.keys(document.references).sort(), ["Tool.Content", "Tool.ContentEncoded"])
     })
 
     it("shares copies of the same AST with the same Context", () => {

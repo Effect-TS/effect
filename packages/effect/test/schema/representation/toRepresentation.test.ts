@@ -476,18 +476,14 @@ describe("SchemaRepresentation.toRepresentation", () => {
   describe("contextual annotations", () => {
     it("preserves fromJsonString annotations", () => {
       const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
-      const document = SchemaRepresentation.toRepresentation(schema)
+      const { references, representation } = SchemaRepresentation.toRepresentation(schema)
 
-      assert.deepStrictEqual(document, {
-        representation: {
-          _tag: "String",
-          annotations: {
-            contentMediaType: "application/json",
-            expected: "a string that will be decoded as JSON"
-          },
-          checks: []
-        },
-        references: {}
+      assert.deepStrictEqual(references, {})
+      assert.strictEqual(representation._tag, "String")
+      if (representation._tag !== "String") return
+      assert.deepStrictEqual(representation.annotations, {
+        contentMediaType: "application/json",
+        expected: "a string that will be decoded as JSON"
       })
     })
 

@@ -30,7 +30,7 @@ import type * as Equivalence from "./Equivalence.ts"
 import * as Exit_ from "./Exit.ts"
 import type { Formatter } from "./Formatter.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
-import { identity } from "./Function.ts"
+import { constTrue, identity } from "./Function.ts"
 import type * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
@@ -9799,6 +9799,84 @@ const JsonString = String.annotate({
   contentMediaType: "application/json"
 })
 /**
+ * Declares the schema of the JSON value contained in a string.
+ *
+ * **Details**
+ *
+ * The check always succeeds. It records the content schema so that consumers
+ * of the encoded representation, such as JSON Schema, OpenAPI, and code
+ * generation, can describe and reference it. {@link fromJsonString} adds this
+ * check automatically; use it directly only when building such a string schema
+ * by hand.
+ *
+ * The recorded schema is the canonical JSON codec of the encoded side of
+ * `schema`, which describes the parsed JSON value. It is derived when a
+ * consumer first reads it, so constructing the check never fails; generating
+ * documentation fails if the content has no JSON form, such as an object with
+ * symbol keys.
+ *
+ * JSON Schema:
+ * This check corresponds to `contentSchema` in JSON Schema. Like that keyword,
+ * it is an annotation and does not validate the string.
+ *
+ * **Example** (Documenting JSON string content)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.String.check(Schema.isJsonContent(Schema.Finite))
+ *
+ * Schema.toJsonSchemaDocument(schema).schema.contentSchema // => { type: "number" }
+ * ```
+ *
+ * @see {@link fromJsonString} for decoding the content
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.6
+ */
+export function isJsonContent(schema: Constraint, annotations?: Annotations.Filter) {
+  return makeFilter<string>(constTrue, {
+    representation: new JsonContentRepresentation(schema.ast),
+    toJsonSchema: jsonContentToJsonSchema,
+    toCode: jsonContentToCode,
+    ...annotations
+  })
+}
+
+// Projects the content on first use, so content without a JSON form fails only when documentation is requested.
+class JsonContentRepresentation {
+  readonly id = "effect/schema/isJsonContent"
+  readonly payload = null
+  #ast: SchemaAST.AST
+  #schemas: ReadonlyArray<SchemaAST.AST> | undefined
+  constructor(ast: SchemaAST.AST) {
+    this.#ast = ast
+  }
+  get schemas(): ReadonlyArray<SchemaAST.AST> {
+    return this.#schemas ??= [SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(SchemaAST.toEncoded(this.#ast)))]
+  }
+}
+
+const jsonContentToJsonSchema: SchemaRepresentation.ToJsonSchema.Check = ({ schemas, type }) =>
+  type === "string" ? { contentSchema: schemas[0] } : [{ contentSchema: schemas[0] }, true]
+
+const jsonContentToCode: SchemaRepresentation.Generation.Check = ({ schemas }) => ({
+  runtime: `Schema.isJsonContent(${schemas[0].runtime})`
+})
+
+// Repeated `fromJsonString` calls with the same schema share one encoded AST, so representations deduplicate it.
+const jsonContentStrings = new WeakMap<SchemaAST.AST, String>()
+
+function jsonContentString(schema: Constraint): String {
+  let out = jsonContentStrings.get(schema.ast)
+  if (out === undefined) {
+    out = JsonString.check(isJsonContent(schema))
+    jsonContentStrings.set(schema.ast, out)
+  }
+  return out
+}
+/**
  * Returns a schema that decodes a JSON string and then decodes the parsed value
  * using the given schema.
  *
@@ -9812,6 +9890,10 @@ const JsonString = String.annotate({
  * parsed result. During encoding, it first encodes with the provided schema and
  * then passes the result to `JSON.stringify` with the optional `replacer` and
  * `space`.
+ *
+ * JSON Schema:
+ * The encoded string has `contentMediaType: "application/json"` and a
+ * `contentSchema` describing the JSON value (see {@link isJsonContent}).
  *
  * **Example** (Formatting encoded JSON)
  *
@@ -9836,7 +9918,7 @@ export function fromJsonString<S extends Constraint>(
     readonly space?: Parameters<typeof JSON.stringify>[2] | undefined
   }
 ): fromJsonString<S> {
-  return JsonString.pipe(decodeTo(schema, SchemaTransformation.fromJsonString(options)))
+  return jsonContentString(schema).pipe(decodeTo(schema, SchemaTransformation.fromJsonString(options)))
 }
 /** @internal */
 export const UnknownFromJsonString: fromJsonString<Unknown> = fromJsonString(Unknown)

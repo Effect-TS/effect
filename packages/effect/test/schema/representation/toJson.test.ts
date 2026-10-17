@@ -589,7 +589,7 @@ describe("SchemaRepresentation.toJson", () => {
   })
 
   it("encodes fromJsonString annotations", () => {
-    const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
+    const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.String })).ast)
     const document = SchemaRepresentation.toRepresentation(schema)
 
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
@@ -599,7 +599,25 @@ describe("SchemaRepresentation.toJson", () => {
           contentMediaType: "application/json",
           expected: "a string that will be decoded as JSON"
         },
-        checks: []
+        checks: [{
+          _tag: "Filter",
+          aborted: false,
+          representation: {
+            id: "effect/schema/isJsonContent",
+            payload: null,
+            schemas: [{
+              _tag: "Objects",
+              propertySignatures: [{
+                name: { type: "string", value: "value" },
+                type: { _tag: "String", checks: [] },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: [],
+              checks: []
+            }]
+          }
+        }]
       },
       references: {}
     })

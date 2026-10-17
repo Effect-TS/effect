@@ -776,6 +776,18 @@ describe("SchemaRepresentation built-in object revivers", () => {
     })
   })
 
+  it("revives the JSON content schema of fromJsonString", () => {
+    const MyEvent = Schema.Struct({ value: Schema.String }).annotate({ identifier: "MyEvent" })
+    const schema = Schema.fromJsonString(MyEvent)
+    const json = SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.toEncoded(schema).ast))
+    const revived = SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
+      revivers: [SchemaRepresentation.isJsonContentReviver]
+    })
+
+    assert.deepStrictEqual(SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(revived.ast)), json)
+    assert.deepStrictEqual(Schema.toJsonSchemaDocument(revived), Schema.toJsonSchemaDocument(Schema.toEncoded(schema)))
+  })
+
   it("persists the encoded key schema for isPropertyNames", () => {
     const names = Schema.String.check(Schema.isPattern(/^[A-Z]/))
     const check = Schema.isPropertyNames(names)

@@ -355,6 +355,28 @@ describe("toCodeDocument", () => {
       )
     })
 
+    it("String & JSON content", () => {
+      const MyEvent = Schema.Struct({ value: Schema.String }).annotate({ identifier: "MyEvent" })
+      assertSchema(
+        { schema: Schema.toEncoded(Schema.fromJsonString(MyEvent)) },
+        {
+          codes: makeCode(
+            `Schema.String.annotate({ "contentMediaType": "application/json" }).check(Schema.isJsonContent(MyEvent))`,
+            "string"
+          ),
+          references: {
+            nonRecursives: [{
+              $ref: "MyEvent",
+              code: makeCode(
+                `Schema.Struct({ "value": Schema.String }).annotate({ "identifier": "MyEvent" })`,
+                `{ readonly "value": string }`
+              )
+            }]
+          }
+        }
+      )
+    })
+
     it("String & check", () => {
       assertSchema(
         { schema: Schema.String.check(Schema.isMinLength(1)) },

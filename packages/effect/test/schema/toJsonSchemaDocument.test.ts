@@ -3945,13 +3945,14 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "contentMediaType": "application/json"
+            "contentMediaType": "application/json",
+            "contentSchema": { "type": "string" }
           }
         }
       )
     })
 
-    it("preserves the content schema identifier as a canonical reference", () => {
+    it("references the identified content schema through contentSchema", () => {
       const MyEvent = Schema.Struct({
         value: Schema.String
       }).annotate({ identifier: "MyEvent" })
@@ -3963,9 +3964,18 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyEventEncoded"
           },
           definitions: {
+            "MyEvent": {
+              "type": "object",
+              "properties": {
+                "value": { "type": "string" }
+              },
+              "required": ["value"],
+              "additionalProperties": false
+            },
             "MyEventEncoded": {
               "type": "string",
-              "contentMediaType": "application/json"
+              "contentMediaType": "application/json",
+              "contentSchema": { "$ref": "#/$defs/MyEvent" }
             }
           }
         }
@@ -3987,9 +3997,18 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyWireEvent"
           },
           definitions: {
+            "MyEvent": {
+              "type": "object",
+              "properties": {
+                "value": { "type": "string" }
+              },
+              "required": ["value"],
+              "additionalProperties": false
+            },
             "MyWireEvent": {
               "type": "string",
-              "contentMediaType": "application/json"
+              "contentMediaType": "application/json",
+              "contentSchema": { "$ref": "#/$defs/MyEvent" }
             }
           }
         }

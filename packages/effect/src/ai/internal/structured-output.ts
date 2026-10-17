@@ -316,21 +316,36 @@ function optionalToNullable(type: SchemaAST.AST): SchemaAST.AST {
 }
 
 function prepareChecks(checks: SchemaAST.Checks | undefined): SchemaAST.Checks | undefined {
-  if (checks === undefined) return undefined
-  const out = SchemaAST.mapOrSame(checks, prepareCheck)
-  return out as SchemaAST.Checks
+  return checks === undefined ? undefined : prepareCheckList(checks)
 }
 
-function prepareCheck(check: SchemaAST.Check<any>): SchemaAST.Check<any> {
+// Returns the input array when nothing changes, so unchanged ASTs keep their identity.
+function prepareCheckList(checks: SchemaAST.Checks): SchemaAST.Checks | undefined {
+  let out: Array<SchemaAST.Check<any>> | undefined
+  for (let index = 0; index < checks.length; index++) {
+    const check = checks[index]
+    const prepared = prepareCheck(check)
+    if (out === undefined && prepared !== check) out = checks.slice(0, index)
+    if (out !== undefined && prepared !== undefined) out.push(prepared)
+  }
+  if (out === undefined) return checks
+  return Arr.isArrayNonEmpty(out) ? out : undefined
+}
+
+function prepareCheck(check: SchemaAST.Check<any>): SchemaAST.Check<any> | undefined {
   switch (check._tag) {
     case "Filter": {
       const id = check.annotations?.representation?.id
+      // Providers drop `contentSchema`, so drop the check that would emit its dependency as an unreachable definition.
+      if (id === "effect/schema/isJsonContent") return undefined
       return id === "effect/schema/isFinite" || id === "effect/schema/isInt"
         ? check.annotate({ expected: undefined })
         : check
     }
     case "FilterGroup": {
-      const checks = SchemaAST.mapOrSame(check.checks, prepareCheck)
+      // A group emptied by the removal above is dropped with its annotations.
+      const checks = prepareCheckList(check.checks)
+      if (checks === undefined) return undefined
       return checks === check.checks
         ? check
         : new SchemaAST.FilterGroup(checks, check.annotations)
