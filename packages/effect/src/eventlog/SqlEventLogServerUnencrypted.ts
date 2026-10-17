@@ -58,6 +58,8 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   const entriesTable = options?.entryTablePrefix ?? "effect_events"
   const remoteIdTable = options?.remoteIdTable ?? "effect_remote_id"
   const insertBatchSize = options?.insertBatchSize ?? 200
+  // Keeps each lookup under the 2100 parameter limit of MSSQL.
+  const lookupBatchSize = 200
   const storesTable = `${entriesTable}_stores`
   const sessionAuthBindingsTable = `${entriesTable}_session_auth_bindings`
 
@@ -142,6 +144,43 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             PRIMARY KEY (store_id, sequence),
             UNIQUE (store_id, entry_id)
           )`
+  })
+
+  // Serves the per-batch duplicate and conflict lookup in `entriesAfter`.
+  // MSSQL cannot index NVARCHAR(MAX) key columns, so it covers the id range scan
+  // instead.
+  const eventKeyIndex = `${entriesTable}_event_key_idx`
+  yield* sql.onDialectOrElse({
+    mysql: () => {
+      const indexExists = sql<{ readonly count: number }>`
+          SELECT COUNT(*) AS count FROM information_schema.statistics
+          WHERE table_schema = DATABASE()
+            AND table_name = ${entriesTable}
+            AND index_name = ${eventKeyIndex}
+        `.pipe(
+        Effect.map((rows) => Number(rows[0].count) > 0)
+      )
+      return sql`
+          CREATE INDEX ${sql(eventKeyIndex)}
+          ON ${entriesTableSql} (store_id, event(191), primary_key(191), entry_id)
+        `.pipe(
+        Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
+      )
+    },
+    mssql: () =>
+      sql`
+          IF NOT EXISTS (
+            SELECT * FROM sys.indexes
+            WHERE name = ${eventKeyIndex} AND object_id = OBJECT_ID(${entriesTable})
+          )
+          CREATE INDEX ${sql(eventKeyIndex)}
+          ON ${entriesTableSql} (store_id, entry_id) INCLUDE (event, primary_key)
+        `,
+    orElse: () =>
+      sql`
+          CREATE INDEX IF NOT EXISTS ${sql(eventKeyIndex)}
+          ON ${entriesTableSql} (store_id, event, primary_key, entry_id)
+        `
   })
 
   yield* sql.onDialectOrElse({
@@ -362,6 +401,38 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       Effect.flatMap(decodeRemoteEntries)
     )
 
+  // One SELECT per index lookup, joined with UNION ALL: MySQL scans the whole
+  // store for the equivalent OR. Rows can repeat and are unordered.
+  const selectBatchHistory = (storeId: string, oldest: Entry, entries: ReadonlyArray<Entry>) => {
+    const primaryKeysByEvent = new Map<string, Set<string>>()
+    for (const entry of entries) {
+      const primaryKeys = primaryKeysByEvent.get(entry.event)
+      if (primaryKeys === undefined) {
+        primaryKeysByEvent.set(entry.event, new Set([entry.primaryKey]))
+      } else {
+        primaryKeys.add(entry.primaryKey)
+      }
+    }
+    let statement = sql`
+        SELECT sequence, entry_id, event, primary_key, payload
+        FROM ${entriesTableSql}
+        WHERE store_id = ${storeId} AND ${sql.in("entry_id", entries.map((entry) => entry.id))}
+      `
+    for (const [event, primaryKeys] of primaryKeysByEvent) {
+      statement = sql`
+          ${statement}
+          UNION ALL
+          SELECT sequence, entry_id, event, primary_key, payload
+          FROM ${entriesTableSql}
+          WHERE store_id = ${storeId}
+            AND event = ${event}
+            AND ${sql.in("primary_key", Array.from(primaryKeys))}
+            AND entry_id >= ${oldest.id}
+        `
+    }
+    return Effect.flatMap(statement, decodeRemoteEntries)
+  }
+
   const getSessionAuthBinding = (publicKey: string) =>
     sql`
         SELECT public_key, signing_public_key
@@ -395,15 +466,22 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       Effect.orDie,
       withTracerDisabled
     ),
-    entriesAfter: (storeId, entry) =>
-      sql`
-          SELECT sequence, entry_id, event, primary_key, payload
-          FROM ${entriesTableSql}
-          WHERE store_id = ${storeId} AND entry_id >= ${entry.id}
-          ORDER BY sequence ASC
-        `.pipe(
-        Effect.flatMap(decodeRemoteEntries),
-        Effect.map(Arr.map((r) => r.entry)),
+    entriesAfter: (storeId, entries) =>
+      Effect.forEach(
+        Arr.chunksOf(entries, lookupBatchSize),
+        (chunk) => selectBatchHistory(storeId, entries[0], chunk)
+      ).pipe(
+        Effect.map((chunks) => {
+          const bySequence = new Map<number, RemoteEntry>()
+          for (const chunk of chunks) {
+            for (const remoteEntry of chunk) {
+              bySequence.set(remoteEntry.remoteSequence, remoteEntry)
+            }
+          }
+          return Array.from(bySequence.values())
+            .sort((a, b) => a.remoteSequence - b.remoteSequence)
+            .map((r) => r.entry)
+        }),
         Effect.orDie,
         withTracerDisabled
       ),

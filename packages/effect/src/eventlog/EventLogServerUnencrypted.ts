@@ -129,12 +129,11 @@ export const layerRpcHandlers: Layer.Layer<
     readonly entries: Arr.NonEmptyReadonlyArray<Entry>
   }) {
     const entries = Arr.sort(options.entries, Entry.Order)
-    let history = yield* storage.entriesAfter(options.storeId, entries[0])
+    const index = new HistoryIndex(yield* storage.entriesAfter(options.storeId, entries))
     const persistedEntries = Arr.empty<Entry>()
     for (const entry of entries) {
-      const [duplicate, conflicts, newHistory] = toConflicts(history, entry)
-      if (duplicate) continue
-      history = newHistory
+      if (index.has(entry)) continue
+      const conflicts = index.conflicts(entry)
       yield* handler({
         publicKey: options.publicKey,
         storeId: options.storeId,
@@ -390,7 +389,19 @@ export class Storage extends Context.Service<Storage, {
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
   ) => Effect.Effect<Uint8Array<ArrayBuffer>>
-  readonly entriesAfter: (storeId: StoreId, entry: Entry) => Effect.Effect<Array<Entry>>
+  /**
+   * Returns the stored entries an incoming batch needs for duplicate and
+   * conflict detection, in remote sequence order.
+   *
+   * `entries` is sorted by `Entry.Order`. The result must contain every stored
+   * entry with the same id as one of `entries`, and every stored entry with the
+   * same event and primary key as one of `entries` whose id is at or after
+   * `entries[0].id`. It may contain other entries at or after `entries[0].id`.
+   */
+  readonly entriesAfter: (
+    storeId: StoreId,
+    entries: Arr.NonEmptyReadonlyArray<Entry>
+  ) => Effect.Effect<Array<Entry>>
   readonly write: (
     storeId: StoreId,
     entries: ReadonlyArray<Entry>
@@ -414,31 +425,45 @@ const makeServerWriteIdentityPublicKey = (storeId: StoreId): string => `effect-e
 const entriesAfter = (journal: Array<RemoteEntry>, startSequence: number): ReadonlyArray<RemoteEntry> =>
   journal.filter((entry) => entry.remoteSequence >= startSequence)
 
-const toConflicts = (
-  history: ReadonlyArray<Entry>,
-  originEntry: Entry
-): [duplicate: boolean, conflicts: Array<Entry>, newHistory: Array<Entry>] => {
-  const newHistory: Array<Entry> = []
-  const conflicts: Array<Entry> = []
+/**
+ * Indexes the history returned by `Storage.entriesAfter` for one batch.
+ *
+ * Entries of the batch itself are never added, so entries in the same batch do
+ * not conflict with each other.
+ */
+class HistoryIndex {
+  private readonly ids = new Set<string>()
+  private readonly byKey = new Map<string, Map<string, Array<Entry>>>()
 
-  // Storage returns sequence order, which need not match entry timestamps.
-  // Scan all relevant history, including entries sharing the same timestamp.
-  for (let i = 0; i < history.length; i++) {
-    const entry = history[i]
-    if (entry.idString === originEntry.idString) {
-      return [true, [], []]
-    }
-    if (entry.createdAtMillis < originEntry.createdAtMillis) {
-      continue
-    }
-
-    newHistory.push(entry)
-    if (entry.event === originEntry.event && entry.primaryKey === originEntry.primaryKey) {
-      conflicts.push(entry)
+  constructor(history: ReadonlyArray<Entry>) {
+    for (const entry of history) {
+      this.ids.add(entry.idString)
+      let byKey = this.byKey.get(entry.event)
+      if (byKey === undefined) {
+        byKey = new Map()
+        this.byKey.set(entry.event, byKey)
+      }
+      const stored = byKey.get(entry.primaryKey)
+      if (stored === undefined) {
+        byKey.set(entry.primaryKey, [entry])
+      } else {
+        stored.push(entry)
+      }
     }
   }
 
-  return [false, conflicts, newHistory]
+  has(entry: Entry): boolean {
+    return this.ids.has(entry.idString)
+  }
+
+  // History is in sequence order, which need not match entry timestamps, so
+  // filter every stored entry, including those sharing the same timestamp.
+  conflicts(entry: Entry): Array<Entry> {
+    const stored = this.byKey.get(entry.event)?.get(entry.primaryKey)
+    if (stored === undefined) return []
+    const millis = entry.createdAtMillis
+    return stored.filter((stored) => stored.createdAtMillis >= millis)
+  }
 }
 
 type RegisteredCompactor = {
@@ -589,17 +614,26 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
  * @since 4.0.0
  */
 export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
-  const knownIds = new Map<string, Map<string, number>>()
+  const knownIds = new Map<string, Map<string, RemoteEntry>>()
+  const byKeys = new Map<string, Map<string, Map<string, Array<RemoteEntry>>>>()
   const journals = new Map<string, Array<RemoteEntry>>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
   const remoteId = makeRemoteIdUnsafe()
 
-  const ensureKnownIds = (storeId: StoreId): Map<string, number> => {
+  const ensureKnownIds = (storeId: StoreId): Map<string, RemoteEntry> => {
     let storeKnownIds = knownIds.get(storeId)
     if (storeKnownIds) return storeKnownIds
     storeKnownIds = new Map()
     knownIds.set(storeId, storeKnownIds)
     return storeKnownIds
+  }
+
+  const ensureByKey = (storeId: StoreId): Map<string, Map<string, Array<RemoteEntry>>> => {
+    let byKey = byKeys.get(storeId)
+    if (byKey) return byKey
+    byKey = new Map()
+    byKeys.set(storeId, byKey)
+    return byKey
   }
 
   const ensureJournal = (storeId: StoreId): Array<RemoteEntry> => {
@@ -623,6 +657,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
     const sequenceNumbers: Array<number> = []
     const committed: Array<RemoteEntry> = []
     const storeKnownIds = ensureKnownIds(storeId)
+    const byKey = ensureByKey(storeId)
     const journal = ensureJournal(storeId)
     let lastSequenceNumber = Arr.last(journal).pipe(
       Option.map((entry) => entry.remoteSequence),
@@ -641,7 +676,18 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
       sequenceNumbers.push(remoteEntry.remoteSequence)
       committed.push(remoteEntry)
       journal.push(remoteEntry)
-      storeKnownIds.set(entry.idString, remoteEntry.remoteSequence)
+      storeKnownIds.set(entry.idString, remoteEntry)
+      let byPrimaryKey = byKey.get(entry.event)
+      if (byPrimaryKey === undefined) {
+        byPrimaryKey = new Map()
+        byKey.set(entry.event, byPrimaryKey)
+      }
+      const sameKey = byPrimaryKey.get(entry.primaryKey)
+      if (sameKey === undefined) {
+        byPrimaryKey.set(entry.primaryKey, [remoteEntry])
+      } else {
+        sameKey.push(remoteEntry)
+      }
     }
 
     const pubsub = yield* RcMap.get(pubsubs, storeId)
@@ -661,10 +707,30 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         sessionAuthBindings.set(publicKey, signingPublicKey)
         return signingPublicKey
       }),
-    entriesAfter: (storeId, entry) =>
+    entriesAfter: (storeId, entries) =>
       Effect.sync(() => {
-        const journal = ensureJournal(storeId)
-        return journal.filter((e) => Entry.Order(e.entry, entry) >= 0).map((e) => e.entry)
+        const storeKnownIds = ensureKnownIds(storeId)
+        const byKey = ensureByKey(storeId)
+        const oldest = entries[0]
+        const found = new Map<number, RemoteEntry>()
+        const scanned = new Set<ReadonlyArray<RemoteEntry>>()
+        for (const entry of entries) {
+          const known = storeKnownIds.get(entry.idString)
+          if (known !== undefined) {
+            found.set(known.remoteSequence, known)
+          }
+          const sameKey = byKey.get(entry.event)?.get(entry.primaryKey)
+          if (sameKey === undefined || scanned.has(sameKey)) continue
+          scanned.add(sameKey)
+          for (const remoteEntry of sameKey) {
+            if (Entry.Order(remoteEntry.entry, oldest) >= 0) {
+              found.set(remoteEntry.remoteSequence, remoteEntry)
+            }
+          }
+        }
+        return Array.from(found.values())
+          .sort((a, b) => a.remoteSequence - b.remoteSequence)
+          .map((remoteEntry) => remoteEntry.entry)
       }),
     write,
     changes: Effect.fnUntraced(function*({ storeId, startSequence, compactors }) {
