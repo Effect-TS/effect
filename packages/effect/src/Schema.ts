@@ -16152,16 +16152,19 @@ function makeClass<
   return out
 }
 
+/**
+ * Constructs a class instance from fields that were already validated against
+ * the class struct, without running the constructor's schema pass.
+ *
+ * @internal
+ */
+export function makeClassTrusted<Self>(self: new(input: any, options?: MakeOptions) => Self, fields: object): Self {
+  return new self(fields, { "~payload": { token: payloadToken, value: fields } })
+}
+
 function getClassTransformation(self: new(...args: ReadonlyArray<any>) => any) {
   return new SchemaTransformation.Transformation<any, any, never, never>(
-    SchemaGetter.transform((input) =>
-      new self(input, {
-        "~payload": {
-          token: payloadToken,
-          value: input
-        }
-      })
-    ),
+    SchemaGetter.transform((input) => makeClassTrusted(self, input)),
     SchemaGetter.passthrough()
   )
 }

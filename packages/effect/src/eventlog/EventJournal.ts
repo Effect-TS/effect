@@ -26,6 +26,7 @@ import type { Option } from "../Option.ts"
 import * as Order from "../Order.ts"
 import * as PubSub from "../PubSub.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import type { Scope } from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import type { StoreId } from "./EventLogMessage.ts"
@@ -380,7 +381,11 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
    * @stability unstable
    * @since 4.0.0
    */
-  static decodeArray = Schema.decodeUnknownEffect(Entry.arraySchemaBinary)
+  static decodeArray = (
+    input: unknown,
+    options?: SchemaAST.ParseOptions
+  ): Effect.Effect<Array<Entry>, Schema.SchemaError> =>
+    Effect.map(decodeEntryFieldsArray(input, options), Arr.map(entryFromFields))
 
   /**
    * Ordering for committed entries by their event journal entry id.
@@ -436,6 +441,28 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
   remoteSequence: Schema.Natural,
   entry: Entry
 }) {}
+
+// Decoding frames into the plain field structs and then constructing the
+// classes from the already validated fields skips the per-instance class
+// decode, which costs more than reading the frame. The wire format is the same.
+
+/** @internal */
+export const EntryFields = Schema.Struct(Entry.fields)
+
+/** @internal */
+export const entryFromFields = (fields: typeof EntryFields.Type): Entry => Schema.makeClassTrusted(Entry, fields)
+
+const decodeEntryFieldsArray = Schema.decodeUnknownEffect(Schema.Array(SchemaBinary.toCodec(EntryFields)))
+
+/** @internal */
+export const RemoteEntryFields = Schema.Struct({ ...RemoteEntry.fields, entry: EntryFields })
+
+/** @internal */
+export const remoteEntryFromFields = (fields: typeof RemoteEntryFields.Type): RemoteEntry =>
+  Schema.makeClassTrusted(RemoteEntry, {
+    remoteSequence: fields.remoteSequence,
+    entry: entryFromFields(fields.entry)
+  })
 
 /** @internal */
 export const makeEntries = (
