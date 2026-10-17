@@ -15,6 +15,52 @@ import * as Tar from "tar"
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 
 describe("Sink", () => {
+  it.effect.each(
+    [
+      { mode: "failure", endOnDone: undefined },
+      { mode: "interrupt", endOnDone: undefined },
+      { mode: "failure", endOnDone: false },
+      { mode: "interrupt", endOnDone: false }
+    ] as const
+  )("releases owned writables on $mode (endOnDone: $endOnDone)", ({ mode, endOnDone }) =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const failure = new Error("upstream failed")
+      const items: Array<string> = []
+      const writable = new Writable({
+        write(chunk, _encoding, callback) {
+          items.push(chunk.toString())
+          callback()
+        }
+      })
+      yield* Effect.addFinalizer(() => Effect.sync(() => writable.destroy()))
+      const fiber = yield* Stream.make("a").pipe(
+        Stream.concat(Stream.fromEffect(Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          return yield* (mode === "failure" ? Effect.fail(failure) : Effect.never)
+        }))),
+        Stream.run(NodeSink.fromWritable({
+          evaluate: () => writable,
+          onError: (error) => error,
+          endOnDone
+        })),
+        Effect.forkScoped
+      )
+      yield* Deferred.await(started)
+      if (mode === "interrupt") {
+        yield* Fiber.interrupt(fiber)
+      }
+      const exit = yield* Fiber.await(fiber)
+      if (mode === "failure") {
+        assert.deepEqual(exit, Exit.fail(failure))
+      } else {
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }
+      assert.deepEqual(items, ["a"])
+      // Assert before test-scope cleanup can release the writable for the sink.
+      assert.strictEqual(writable.writableEnded || writable.destroyed, endOnDone !== false)
+    }))
+
   it.effect("maps write errors after the writable has finished", () =>
     Effect.gen(function*() {
       const finished = yield* Deferred.make<void>()
