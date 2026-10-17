@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
+import { Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -153,78 +153,83 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(logLayer(handled)))
     }))
 
-  it.effect("invalidates group reactivity keys once per replayed remote batch", () =>
+  it.effect("replays each remote batch inside one handler transaction and invalidates once per batch", () =>
     Effect.gen(function*() {
-      let notifications = 0
-      const seen: Array<readonly [id: string, notifications: number]> = []
-      const firstBatchHandled = yield* Deferred.make<void>()
-      const secondBatchHandled = yield* Deferred.make<void>()
-      const lastInBatch = new Map([["user-3", firstBatchHandled], ["user-5", secondBatchHandled]])
-      const handlers = EventLog.group(UserGroup, (handlers) =>
-        handlers.handle("UserCreated", ({ payload }) =>
-          Effect.gen(function*() {
-            seen.push([payload.id, notifications])
-            const batchHandled = lastInBatch.get(payload.id)
-            if (batchHandled) {
-              yield* Deferred.succeed(batchHandled, undefined)
-            }
-          }))).pipe(
-          Layer.merge(EventLog.groupReactivity(UserGroup, ["users"])),
-          Layer.provide(EventLog.layerRegistry)
-        )
+      const timeline: Array<string> = []
+      const invalidated = yield* Queue.unbounded<void>()
+      const handlers = EventLog.group(
+        UserGroup,
+        (handlers) =>
+          handlers.handle("UserCreated", ({ payload }) =>
+            Effect.gen(function*() {
+              timeline.push(`handle ${payload.id}`)
+              if (payload.id === "user-1") return yield* Effect.die("handler failed")
+            }))
+      ).pipe(
+        Layer.merge(EventLog.groupReactivity(UserGroup, ["users"])),
+        Layer.provide(EventLog.layerRegistry)
+      )
       const layer = EventLog.layer(schema, handlers).pipe(
-        Layer.provide(EventJournal.layerMemory),
-        Layer.provide(
-          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(
-            Layer.provide(EventLogEncryption.layerSubtle)
-          )
-        ),
+        Layer.provide([
+          EventJournal.layerMemory,
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
+            Effect.sync(() => timeline.push("begin")).pipe(
+              Effect.andThen(effect),
+              Effect.ensuring(Effect.sync(() => timeline.push("commit")))
+            ))
+        ]),
         Layer.merge(Reactivity.layer)
       )
       return yield* Effect.gen(function*() {
+        const log = yield* EventLog.EventLog
         const reactivity = yield* Reactivity.Reactivity
         const registry = yield* EventLog.Registry
         reactivity.registerUnsafe(["users"], () => {
-          notifications++
+          timeline.push("invalidate")
+          Queue.offerUnsafe(invalidated, undefined)
         })
         const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
-        const remote = EventLogRemote.EventLogRemote.of({
-          id: EventJournal.makeRemoteIdUnsafe(),
-          changes: () =>
-            Effect.succeed(changes),
-          write: () =>
-            Effect.void,
-          whenAuthenticated: (effect) => effect
-        })
         let remoteSequence = 0
-        const offerBatch = Effect.fnUntraced(function*(ids: ReadonlyArray<string>) {
-          const entries: Array<EventJournal.RemoteEntry> = []
-          for (const id of ids) {
-            entries.push(
-              new EventJournal.RemoteEntry({
-                remoteSequence: remoteSequence++,
-                entry: yield* makeCompactionEntry({ id })
-              })
-            )
-          }
-          yield* Queue.offerAll(changes, entries)
-        })
+        const offer = (entries: ReadonlyArray<EventJournal.Entry>) =>
+          Queue.offerAll(
+            changes,
+            entries.map((entry) => new EventJournal.RemoteEntry({ remoteSequence: remoteSequence++, entry }))
+          )
+        const users = yield* Effect.forEach(
+          ["user-1", "user-2", "user-3"],
+          (id) => makeCompactionEntry({ id })
+        )
 
-        yield* offerBatch(["user-1", "user-2", "user-3"])
-        yield* registry.registerRemote(remote)
-        yield* Deferred.await(firstBatchHandled)
-        yield* offerBatch(["user-4", "user-5"])
-        yield* Deferred.await(secondBatchHandled)
+        yield* offer(users.slice(0, 2))
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        yield* Queue.take(invalidated)
+        // The remote echoes the first batch back alongside a new entry.
+        yield* offer(users)
+        yield* Queue.take(invalidated)
 
-        // No invalidation fires while a batch replays; the first batch's
-        // invalidations are delivered before the second batch starts.
-        assert.deepStrictEqual(seen, [
-          ["user-1", 0],
-          ["user-2", 0],
-          ["user-3", 0],
-          ["user-4", 1],
-          ["user-5", 1]
+        // A failed handler is logged and its batch still commits; duplicates
+        // invalidate with their batch rather than once per entry.
+        assert.deepStrictEqual(timeline, [
+          "begin",
+          "handle user-1",
+          "handle user-2",
+          "commit",
+          "invalidate",
+          "begin",
+          "handle user-3",
+          "commit",
+          "invalidate"
         ])
+        assert.deepStrictEqual(
+          (yield* log.entries).map((entry) => entry.primaryKey),
+          ["user-1", "user-2", "user-3"]
+        )
       }).pipe(Effect.provide(layer))
     }))
 

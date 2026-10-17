@@ -20,6 +20,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
+import { ConflictIndex } from "./internal/conflicts.ts"
 
 type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
 
@@ -184,19 +185,22 @@ export const make = (options?: {
         ? yield* options.compact(uncommitted)
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
 
-      for (const entry of compacted) {
-        const conflicts = yield* sql`
+      if (compacted.length > 0) {
+        const index = new ConflictIndex(compacted)
+        const stored = yield* sql`
             SELECT *
             FROM ${entryTableSql}
-            WHERE event = ${entry.event} AND
-                  primary_key = ${entry.primaryKey} AND
-                  timestamp > ${entry.createdAtMillis}
+            WHERE ${sql.in("event", index.events)} AND
+                  timestamp > ${index.oldestMillis}
             ORDER BY timestamp ASC
           `.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )
-        yield* options.effect({ entry, conflicts })
+        for (const entry of stored) {
+          index.add(entry)
+        }
+        yield* options.effect(index.toBatch())
       }
 
       // Keep the incoming batch out of conflict queries and persist only after

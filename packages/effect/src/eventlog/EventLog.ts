@@ -438,6 +438,64 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
   defaultValue: constant(StoreId.make("default"))
 }) {}
 
+/**
+ * Context reference for a transaction that wraps the event handlers of each
+ * batch replayed from a remote.
+ *
+ * **When to use**
+ *
+ * Use when handlers project into a store with transactions, such as
+ * `sql.withTransaction` or an IndexedDB transaction over the projection
+ * tables, so a batch of N replayed events commits once instead of N times.
+ *
+ * **Details**
+ *
+ * The journal reads every conflict before the transaction starts and commits
+ * the batch after it completes, so it performs no I/O while the transaction is
+ * open. Defaults to running the handlers without a transaction. Local writes
+ * do not use it.
+ *
+ * If the transaction fails, the journal commits nothing from the batch. The
+ * remote is subscribed again after a backoff of up to 10 seconds and the batch
+ * is delivered again, so later batches from that remote wait until it
+ * succeeds. Local writes and other remotes are not blocked.
+ *
+ * **Gotchas**
+ *
+ * - Errors returned by a handler are logged and skipped. They do not fail the
+ *   transaction, and the entry is still committed to the journal.
+ * - Failures that abort the underlying transaction are different, even when
+ *   the handler's error is caught. In IndexedDB, any failed request that is
+ *   not prevented aborts the whole transaction, and in PostgreSQL so does a
+ *   failed statement outside a savepoint. The batch is then retried as above,
+ *   so a failure that repeats on every attempt stops sync from that remote
+ *   until it is fixed.
+ * - Handlers must tolerate running more than once for the same entry.
+ * - Unless the transaction and the journal share a database connection, the
+ *   transaction commits before the journal does. A crash between the two
+ *   replays the batch on restart; the two commits are not atomic.
+ * - An IndexedDB transaction commits once it has no pending requests and
+ *   control returns to the event loop. A custom wrapper must stop the fiber
+ *   from yielding to the scheduler while it is open, by providing
+ *   `References.PreventSchedulerYield` as `withTransaction` from
+ *   `@effect/platform-browser` does. Otherwise it can commit partway through a
+ *   batch, and the remaining handlers fail with errors that are logged and
+ *   skipped, leaving the projection silently out of date.
+ * - The transaction stays open for the whole batch, so other read-write
+ *   transactions on the same tables wait for it.
+ * - The transaction must not change the error or success of the wrapped
+ *   effect. Convert its own failures into defects.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.6
+ */
+export class HandlerTransaction extends Context.Reference<
+  <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+>("effect/eventlog/EventLog/HandlerTransaction", {
+  defaultValue: constant(identity)
+}) {}
+
 const RedactedUint8Array = Schema.Uint8ArrayFromBase64.pipe(
   Schema.decodeTo(Schema.Redacted(Schema.Uint8Array), {
     decode: SchemaGetter.transform((value) => Redacted.make(value)),
@@ -779,16 +837,7 @@ export const makeReplayFromRemote = (options: {
         Effect.asVoid
       ) as any
 
-      const keys = Object.hasOwn(options.reactivityKeys, entry.event)
-        ? options.reactivityKeys[entry.event]
-        : undefined
-      if (keys) {
-        for (const key of keys) {
-          yield* options.reactivity.invalidate({
-            [key]: [entry.primaryKey]
-          })
-        }
-      }
+      yield* invalidateEntry(options.reactivity, options.reactivityKeys, entry)
     },
     Effect.catchCause(Effect.logError),
     (effect, { entry }) =>
@@ -797,6 +846,16 @@ export const makeReplayFromRemote = (options: {
         entryId: entry.idString
       })
   )
+
+const invalidateEntry = (
+  reactivity: Reactivity,
+  reactivityKeys: Record<string, ReadonlyArray<string>>,
+  entry: Entry
+): Effect.Effect<void> => {
+  const keys = Object.hasOwn(reactivityKeys, entry.event) ? reactivityKeys[entry.event] : undefined
+  if (!keys) return Effect.void
+  return Effect.forEach(keys, (key) => reactivity.invalidate({ [key]: [entry.primaryKey] }), { discard: true })
+}
 
 const remoteRetrySchedule = Schedule.min([
   Schedule.exponential(200, 1.5),
@@ -810,6 +869,7 @@ const make = Effect.gen(function*() {
   const registry = yield* Registry
 
   const reactivity = yield* Reactivity
+  const handlerTransaction = yield* HandlerTransaction
   const replayFromRemote = makeReplayFromRemote({
     handlers: registry.handlers,
     storeId,
@@ -823,21 +883,7 @@ const make = Effect.gen(function*() {
   })
 
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
-    Effect.sync(() => {
-      for (const entry of entries) {
-        const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-          ? registry.reactivityKeys[entry.event]
-          : undefined
-        if (!keys) {
-          continue
-        }
-        for (const key of keys) {
-          reactivity.invalidateUnsafe({
-            [key]: [entry.primaryKey]
-          })
-        }
-      }
-    })
+    Effect.forEach(entries, (entry) => invalidateEntry(reactivity, registry.reactivityKeys, entry), { discard: true })
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
@@ -891,7 +937,7 @@ const make = Effect.gen(function*() {
                 return finalEntries.sort(Entry.Order)
               })
               : undefined,
-            effect: replayFromRemote
+            effect: (batch) => handlerTransaction(Effect.forEach(batch, replayFromRemote, { discard: true }))
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),
