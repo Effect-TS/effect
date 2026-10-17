@@ -11,6 +11,7 @@ import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as SqlError from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 
 const makeJournal = Effect.gen(function*() {
@@ -646,5 +647,28 @@ describe("SqlEventJournal", () => {
       const otherRemoteId = EventJournal.makeRemoteIdUnsafe()
       yield* journal.writeRemoteAcks({ remoteId: otherRemoteId, acks: [ack(2), ack(1)], firstSequence: 1 })
       assert.strictEqual(yield* journal.nextRemoteSequence(otherRemoteId), 3)
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("does not resume past unseen entries when the first acknowledgement commits during the read", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      // Sequences 0 to 4, written by another replica, have not been downloaded.
+      const ack = journal.writeRemoteAcks({
+        remoteId,
+        acks: [{ entryId: EventJournal.makeEntryIdUnsafe(), sequence: 5 }]
+      })
+      let interleaved = false
+      // Commits the acknowledgement just before the fallback to the remotes table.
+      const transformer: Statement.Transformer = (statement) => {
+        if (interleaved || !statement.compile()[0].includes("MAX(sequence)")) return Effect.succeed(statement)
+        interleaved = true
+        return ack.pipe(Effect.orDie, Effect.as(statement))
+      }
+      const next = yield* journal.nextRemoteSequence(remoteId).pipe(
+        Effect.provideService(Statement.CurrentTransformer, transformer)
+      )
+      assert.deepStrictEqual({ interleaved, next }, { interleaved: true, next: 0 })
     }).pipe(Effect.provide(Reactivity.layer)))
 })

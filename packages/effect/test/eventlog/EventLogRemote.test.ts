@@ -314,6 +314,8 @@ const makeServer = Effect.fnUntraced(function*(serverCase: ServerCase) {
         const parts = EventLogMessage.ChunkedMessage.split(clientId, data)
         assert.isAbove(parts.length, 1)
         const responses = yield* Effect.forEach(parts, (part) => client["EventLog.WriteChunked"](part))
+        // Earlier parts acknowledge nothing.
+        assert.deepStrictEqual(responses.slice(0, -1), parts.slice(1).map(() => []))
         return responses[responses.length - 1]
       })
     }
