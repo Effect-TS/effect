@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import type { NonEmptyArray } from "../Array.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
@@ -288,7 +289,11 @@ export const makeStorage = (options?: {
               // MERGE also requires unique source ids.
               const ids = new Map<string, Uint8Array>()
               for (const id of batch.entryIds) ids.set(id.join(","), id)
-              if ((yield* insertNewIds(idsTableSql, Array.from(ids.values()))) === 0) continue
+              let inserted = 0
+              for (const chunk of Arr.chunksOf(ids.values(), 200)) {
+                inserted += yield* insertNewIds(idsTableSql, chunk)
+              }
+              if (inserted === 0) continue
               if (nextSequence === undefined) {
                 const [row] = yield* sql<{ last_sequence: number | string | null }>`
                   SELECT MAX(last_sequence) AS last_sequence FROM ${tableSql}
