@@ -56,11 +56,12 @@ import type * as Record from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Http from "node:http"
+import type * as Http from "node:http"
 import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import { http } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
 import * as NodeMultipart from "./NodeMultipart.ts"
@@ -265,7 +266,7 @@ export const makeUpgradeHandler = <
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
         if (nodeResponse_ === undefined) {
-          nodeResponse_ = new Http.ServerResponse(nodeRequest)
+          nodeResponse_ = new http.ServerResponse(nodeRequest)
           if (request.upgraded || socket.destroyed) {
             // End without assigning the socket so handleResponse skips HTTP writes.
             nodeResponse_.end()
@@ -534,7 +535,7 @@ export const layerTest: Layer.Layer<
       Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
     )
   ),
-  Layer.provideMerge(layer(Http.createServer, { port: 0 }))
+  Layer.provideMerge(layer(http.createServer, { port: 0 }))
 )
 
 // -----------------------------------------------------------------------------
