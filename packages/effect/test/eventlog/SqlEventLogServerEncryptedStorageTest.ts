@@ -82,7 +82,36 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
   it.layer(
     Layer.mergeAll(Reactivity.layer, EventLogEncryption.layerSubtle, layer),
     { timeout: "60 seconds", excludeTestServices: true }
-  )(`SqlEventLogServerEncrypted competing writers (${name})`, (it) => {
+  )(`SqlEventLogServerEncrypted storage (${name})`, (it) => {
+    it.effect("stores a batch with more ids than one statement can bind", () =>
+      Effect.gen(function*() {
+        const publicKey = crypto.randomUUID()
+        const namespace = `oversized_${++nextNamespace}`
+        const storage = yield* SqlEventLogServerEncrypted.makeStorage({
+          entryTablePrefix: `${namespace}_events`,
+          remoteIdTable: `${namespace}_remote_id`
+        })
+        // Above the bind parameter limits: 2100 on SQL Server, 32767 for the
+        // PostgreSQL client and 65535 on MySQL.
+        const batch: EventLogEncryption.EncryptedBatch = {
+          entryIds: Array.from({ length: 65_536 }, () => EventJournal.makeEntryIdUnsafe()) as [
+            EventJournal.EntryId,
+            ...Array<EventJournal.EntryId>
+          ],
+          iv: new Uint8Array(12),
+          encryptedBatch: Uint8Array.of(1)
+        }
+
+        const stored = yield* storage.write(publicKey, storeId, [batch])
+        const retried = yield* storage.write(publicKey, storeId, [batch])
+        const persisted = yield* storage.changes(publicKey, storeId, 0).pipe(Stream.take(1), Stream.runCollect)
+
+        assert.deepStrictEqual(ids(stored), ids([batch]))
+        assert.deepStrictEqual(retried, [])
+        assert.deepStrictEqual(ids(persisted), ids([batch]))
+        assert.strictEqual(persisted[0].sequence, stored[0].sequence)
+      }), { timeout: 60_000 })
+
     it.effect("stores a competing write after its writer retries", () =>
       Effect.gen(function*() {
         const [a, b] = [EventJournal.makeEntryIdUnsafe(), EventJournal.makeEntryIdUnsafe()]
