@@ -271,6 +271,7 @@ const RuntimeProto = {
       const previous = get.self<AsyncResult.AsyncResult<any, any>>()
       const runtimeResult = get(this)
       if (runtimeResult._tag !== "Success") {
+        Registry.pendingHydrationRuntime(get, this)
         return AsyncResult.replacePrevious(runtimeResult, previous)
       }
       return read(get, runtimeResult.value)
@@ -297,6 +298,7 @@ const RuntimeProto = {
       const previous = get.self<AsyncResult.AsyncResult<any, any>>()
       const runtimeResult = get(this)
       if (runtimeResult._tag !== "Success") {
+        Registry.pendingHydrationRuntime(get, this)
         return AsyncResult.replacePrevious(runtimeResult, previous)
       }
       return makeEffect(
@@ -315,6 +317,7 @@ const RuntimeProto = {
         const previous = get.self<AsyncResult.AsyncResult<any, any>>()
         const runtimeResult = get(this)
         if (runtimeResult._tag !== "Success") {
+          Registry.pendingHydrationRuntime(get, this)
           return AsyncResult.replacePrevious(runtimeResult, previous)
         }
         const value = typeof ref === "function" ? ref(get) : ref
@@ -359,6 +362,7 @@ const makeFnRuntime = (
     const previous = get.self<AsyncResult.AsyncResult<any, any>>()
     const runtimeResult = get.get(self)
     if (runtimeResult._tag !== "Success") {
+      Registry.pendingHydrationRuntime(get, self)
       return AsyncResult.replacePrevious(runtimeResult, previous)
     }
     return read(get, runtimeResult.value)
@@ -564,6 +568,9 @@ function makeEffect<A, E>(
 ): AsyncResult.AsyncResult<A, E> {
   const getServices = typeof services === "function" ? services : constant(services)
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
+  if (previous._tag === "Some" && Registry.consumeHydration(ctx)) {
+    return previous.value
+  }
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
     Effect.runForkWith(getServices())(closeScope(scope))
@@ -913,6 +920,9 @@ function makeStream<A, E>(
   services = Context.empty()
 ): AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
+  if (previous._tag === "Some" && Registry.consumeHydration(ctx)) {
+    return previous.value
+  }
   services = Context.add(services, AtomRegistry, ctx.registry)
 
   const run = Effect.scopedWith((scope) =>
