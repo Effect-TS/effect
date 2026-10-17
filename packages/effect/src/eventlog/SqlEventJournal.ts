@@ -64,29 +64,34 @@ export const make = (options?: {
     const sequenceTableSql = sql(sequenceTable)
     const checkpointsTableSql = sql(checkpointsTable)
 
+    // Match query quoting: to_regclass folds unquoted names to lowercase.
+    const quotedSequenceTable = sql`${sequenceTableSql}`.compile(true)[0]
+
     // The sequence table is the newest part of the schema, so when it exists
     // every table and index does and opening the journal issues no writes.
     // Read-only connections can then open a migrated database.
-    const sequenceTableExists = yield* sql.onDialectOrElse({
-      pg: () => {
-        // Match query quoting: to_regclass folds unquoted names to lowercase.
-        const quoted = sql`${sequenceTableSql}`.compile(true)[0]
-        return sql`SELECT 1 AS found WHERE to_regclass(${quoted}) IS NOT NULL`
-      },
+    const sequenceTableExists = sql.onDialectOrElse({
+      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quotedSequenceTable}) IS NOT NULL`,
       mysql: () =>
         sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${sequenceTable}`,
       mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${sequenceTable}, 'U') IS NOT NULL`,
       orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${sequenceTable}`
-    }).pipe(
-      Effect.map((rows) => rows.length > 0),
-      withTracerDisabled
-    )
-    if (!sequenceTableExists) {
-      yield* migrate(sql, {
-        entryTable,
-        remotesTable,
-        sequenceTable,
-        checkpointsTable
+    }).pipe(Effect.map((rows) => rows.length > 0))
+    if (!(yield* withTracerDisabled(sequenceTableExists))) {
+      yield* Effect.gen(function*() {
+        // PostgreSQL does not make concurrent CREATE ... IF NOT EXISTS safe, so
+        // migrations take a transaction-scoped lock and recheck under it.
+        yield* sql.onDialectOrElse({
+          pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quotedSequenceTable}))`,
+          orElse: () => Effect.void
+        })
+        if (yield* sequenceTableExists) return
+        yield* migrate(sql, {
+          entryTable,
+          remotesTable,
+          sequenceTable,
+          checkpointsTable
+        })
       }).pipe(sql.withTransaction, withTracerDisabled)
     }
 
@@ -106,20 +111,20 @@ export const make = (options?: {
       Request: RemoteRowArray,
       execute: (entries) => sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
-    // Must run in the transaction that inserts the entries. PostgreSQL hands out
-    // sequence values before commit, so concurrent writers could commit them out
-    // of order and an upload checkpoint would skip the later commit. The lock
-    // serializes writers until commit without blocking readers.
-    const insertSequence = (entries: ReadonlyArray<EventJournal.Entry>): Effect.Effect<void, SqlError.SqlError> =>
-      Effect.gen(function*() {
-        yield* sql.onDialectOrElse({
-          pg: () => sql`LOCK TABLE ${sequenceTableSql} IN SHARE ROW EXCLUSIVE MODE`,
-          orElse: () => Effect.void
-        })
-        yield* sql`INSERT INTO ${sequenceTableSql} ${
-          sql.insert(entries.map((entry) => ({ entry_id: entry.id })))
-        } ON CONFLICT DO NOTHING`
-      })
+    // Writers take this lock first in their transaction, before reading or
+    // inserting entries. PostgreSQL hands out sequence values before commit, so
+    // concurrent writers could commit them out of order and an upload checkpoint
+    // would skip the later commit. Taking it before any entry row also keeps
+    // writers from waiting on each other's uncommitted entries. It serializes
+    // writers until commit without blocking readers.
+    const lockWriters: Effect.Effect<void, SqlError.SqlError> = sql.onDialectOrElse({
+      pg: () => Effect.asVoid(sql`LOCK TABLE ${sequenceTableSql} IN SHARE ROW EXCLUSIVE MODE`),
+      orElse: () => Effect.void
+    })
+    const insertSequence = (entries: ReadonlyArray<EventJournal.Entry>) =>
+      sql`INSERT INTO ${sequenceTableSql} ${
+        sql.insert(entries.map((entry) => ({ entry_id: entry.id })))
+      } ON CONFLICT DO NOTHING`
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
 
@@ -135,6 +140,8 @@ export const make = (options?: {
         entry_id: remoteEntry.entry.id,
         sequence: remoteEntry.remoteSequence
       }))
+
+      yield* lockWriters
 
       const existingIds = new Set<string>()
       if (entries.length > 0) {
@@ -213,7 +220,8 @@ export const make = (options?: {
         const committed = EventJournal.makeEntries(entries)
         return restore(effect(committed)).pipe(
           Effect.tap(
-            insertEntries(committed.map(toEntryRow)).pipe(
+            lockWriters.pipe(
+              Effect.andThen(insertEntries(committed.map(toEntryRow))),
               Effect.andThen(insertSequence(committed)),
               sql.withTransaction,
               Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeMany" }))
