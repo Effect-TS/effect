@@ -689,30 +689,6 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(logLayer(handled, journalLayer)))
     }))
 
-  it.effect("encrypts and decrypts entries with a distinct IV per entry", () =>
-    Effect.gen(function*() {
-      const encryption = yield* EventLogEncryption.EventLogEncryption
-      const identity = yield* encryption.generateIdentity
-      const entries = ["user-1", "user-2"].map((primaryKey, index) =>
-        new EventJournal.Entry({
-          id: EventJournal.makeEntryIdUnsafe(),
-          event: "UserCreated",
-          primaryKey,
-          payload: new Uint8Array([index])
-        }, { disableChecks: true })
-      )
-      const encrypted = yield* encryption.encrypt(identity, entries)
-      assert.notDeepEqual(encrypted[0].iv, encrypted[1].iv)
-      const decrypted = yield* encryption.decrypt(
-        identity,
-        encrypted.map((entry, index) => ({ ...entry, sequence: index, entryId: entries[index].id }))
-      )
-      assert.deepStrictEqual(
-        decrypted.map((remote) => remote.entry.idString),
-        entries.map((entry) => entry.idString)
-      )
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
-
   it.effect("publishes local journal changes through a scoped subscription", () =>
     Effect.gen(function*() {
       const remoteId = EventJournal.makeRemoteIdUnsafe()

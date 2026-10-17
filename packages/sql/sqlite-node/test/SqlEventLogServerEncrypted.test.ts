@@ -1,6 +1,7 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Queue, Redacted, Stream } from "effect"
+import * as EncryptedTest from "effect-test/eventlog/EventLogServerEncryptedTest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -13,6 +14,15 @@ import * as SqlEventLogServer from "effect/eventlog/SqlEventLogServerEncrypted"
 import { Reactivity } from "effect/reactivity"
 import * as RpcTest from "effect/rpc/RpcTest"
 import * as SqlClient from "effect/sql/SqlClient"
+
+EncryptedTest.suite(
+  "SQLite",
+  SqlEventLogServer.layerStorage().pipe(
+    Layer.provide(SqliteClient.layer({ filename: ":memory:" })),
+    Layer.provide(Reactivity.layer),
+    Layer.provide(EventLogEncryption.layerSubtle)
+  )
+)
 
 const storeIdA = "store-a" as StoreId
 const storeIdB = "store-b" as StoreId
