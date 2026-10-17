@@ -829,26 +829,57 @@ export const makeReplayFromRemote = (options: {
     readonly service: string
     readonly effect: string
   }
-}) =>
+}) => {
+  const replayEntry = makeReplayEntryFromRemote(options)
+  return (input: ReplayInput) => replayEntry(input, undefined)
+}
+
+type ReplayInput = {
+  readonly entry: Entry
+  readonly conflicts: ReadonlyArray<Entry>
+}
+
+type DecodedConflict = { entry: Entry; payload: unknown }
+
+/**
+ * Replays a batch, decoding each conflict entry shared by several entries once.
+ * The cache is created per execution, so transaction retries start fresh.
+ */
+const makeReplayBatchFromRemote = (options: Parameters<typeof makeReplayFromRemote>[0]) => {
+  const replayEntry = makeReplayEntryFromRemote(options)
+  return (batch: ReadonlyArray<ReplayInput>) =>
+    Effect.suspend(() => {
+      const decodedConflicts = new Map<Entry, DecodedConflict>()
+      return Effect.forEach(batch, (input) => replayEntry(input, decodedConflicts), { discard: true })
+    })
+}
+
+const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemote>[0]) =>
   Effect.fnUntraced(
-    function*({ conflicts, entry }: {
-      readonly entry: Entry
-      readonly conflicts: ReadonlyArray<Entry>
-    }): Effect.fn.Return<void, Schema.SchemaError> {
+    function*(
+      { conflicts, entry }: ReplayInput,
+      decodedConflicts: Map<Entry, DecodedConflict> | undefined
+    ): Effect.fn.Return<void, Schema.SchemaError> {
       const handler = options.handlers.get(entry.event) as Handlers.Item<any> | undefined
       if (!handler) {
         return yield* Effect.logDebug(`Event handler not found for: "${entry.event}"`)
       }
 
       const decodePayload = Schema.decodeUnknownEffect(handler.event.payloadSchemaBinary)
-      const decodedConflicts: Array<{ entry: Entry; payload: unknown }> = new Array(conflicts.length)
+      const conflictPayloads: Array<DecodedConflict> = new Array(conflicts.length)
       for (let i = 0; i < conflicts.length; i++) {
-        decodedConflicts[i] = {
-          entry: conflicts[i],
-          payload: yield* decodePayload(conflicts[i].payload).pipe(
-            Effect.updateContext((input) => Context.merge(handler.context, input))
-          ) as any
+        const conflict = conflicts[i]
+        let decoded = decodedConflicts?.get(conflict)
+        if (!decoded) {
+          decoded = {
+            entry: conflict,
+            payload: yield* decodePayload(conflict.payload).pipe(
+              Effect.updateContext((input) => Context.merge(handler.context, input))
+            ) as any
+          }
+          decodedConflicts?.set(conflict, decoded)
         }
+        conflictPayloads[i] = decoded
       }
 
       yield* decodePayload(entry.payload).pipe(
@@ -857,7 +888,7 @@ export const makeReplayFromRemote = (options: {
             storeId: options.storeId,
             payload,
             entry,
-            conflicts: decodedConflicts
+            conflicts: conflictPayloads
           })
         ),
         Effect.provideService(Identity, options.identity),
@@ -898,7 +929,7 @@ const make = Effect.gen(function*() {
 
   const reactivity = yield* Reactivity
   const handlerTransaction = yield* HandlerTransaction
-  const replayFromRemote = makeReplayFromRemote({
+  const replayFromRemote = makeReplayBatchFromRemote({
     handlers: registry.handlers,
     storeId,
     identity,
@@ -969,7 +1000,7 @@ const make = Effect.gen(function*() {
                 return finalEntries.flat()
               })
               : undefined,
-            effect: (batch) => handlerTransaction(Effect.forEach(batch, replayFromRemote, { discard: true }))
+            effect: (batch) => handlerTransaction(replayFromRemote(batch))
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),
