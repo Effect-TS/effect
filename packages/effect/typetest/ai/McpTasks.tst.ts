@@ -105,32 +105,47 @@ it("should retain owner services when ownership is resolved from the request", (
   expect(registered).type.toBe<Layer.Layer<never, Schema.SchemaError, RuntimeServices | Principal>>()
 })
 
-it("should reject missing or incompatible handlers when registering a task", () => {
+it("should reject registration when a tool handler is missing", () => {
   expect(McpTasks.layerWorkflow).type.not.toBeCallableWith(reports, {}, options)
+})
+
+it("should reject a handler when its success type differs from the tool schema", () => {
   expect(McpTasks.layerWorkflow).type.not.toBeCallableWith(reports, {
     report: () => Effect.succeed(123)
   }, options)
+})
+
+it("should reject a handler when its error type differs from the tool schema", () => {
   expect(McpTasks.layerWorkflow).type.not.toBeCallableWith(reports, {
     report: () => Effect.fail("wrong failure")
   }, options)
+})
+
+it("should reject a handler when its parameters use encoded instead of decoded values", () => {
   expect(McpTasks.layerWorkflow).type.not.toBeCallableWith(reports, {
     report: ({ rows }: { readonly rows: string }) => Effect.succeed(rows)
   }, options)
+})
+
+it("should accept a handler when its failure matches the declared schema", () => {
   expect(McpTasks.layerWorkflow).type.toBeCallableWith(reports, {
     report: () => Effect.fail(Failure.make({ message: "unavailable" }))
   }, options)
 })
 
-it("should require only Execution and McpServer for protocol registration", () => {
+it("should require Execution and McpServer when registering without a callback", () => {
   expect(McpTasks.toolkit(reports, { owner: "shared" })).type.toBe<
     Layer.Layer<never, never, McpServer.McpServer | McpTasks.Execution>
   >()
+})
+
+it("should provide Execution without Workflow when using memory execution", () => {
   expect(McpTasks.layerMemory(reports, { report: ({ rows }) => Effect.succeed(String(rows)) })).type.toBe<
     Layer.Layer<McpTasks.Execution>
   >()
 })
 
-it("should infer callback tools and handler parameters without a Workflow requirement for memory", () => {
+it("should infer tools and decoded parameters when a callback provides memory execution", () => {
   const registered = McpTasks.toolkit(reports, { owner: "shared" }, (tools) => {
     expect(tools).type.toBe<typeof reports>()
     return McpTasks.layerMemory(tools, {
@@ -144,7 +159,7 @@ it("should infer callback tools and handler parameters without a Workflow requir
   expect(registered).type.toBe<Layer.Layer<never, never, McpServer.McpServer>>()
 })
 
-it("should retain Workflow, handler, and owner requirements from the callback", () => {
+it("should retain Workflow, handler, and owner requirements when a callback provides Workflow execution", () => {
   const registered = McpTasks.toolkit(reports, { owner: Principal }, (tools) =>
     McpTasks.layerWorkflow(tools, {
       report: () =>
@@ -159,7 +174,7 @@ it("should retain Workflow, handler, and owner requirements from the callback", 
   >()
 })
 
-it("should retain callback layer errors and construction requirements", () => {
+it("should retain errors and construction requirements when a callback builds an execution layer", () => {
   const registered = McpTasks.toolkit(
     reports,
     { owner: "shared" },
@@ -177,7 +192,7 @@ it("should retain callback layer errors and construction requirements", () => {
   >()
 })
 
-it("should reject a callback that does not provide Execution", () => {
+it("should reject a callback when its layer does not provide Execution", () => {
   expect(McpTasks.toolkit).type.not.toBeCallableWith(
     reports,
     { owner: "shared" },
