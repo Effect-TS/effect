@@ -322,23 +322,25 @@ export const make = (options?: {
       } ON CONFLICT DO NOTHING`
 
     const decodeCursorRows = Schema.decodeUnknownEffect(CursorRowArray)
+    const decodeMaxSequenceRows = Schema.decodeUnknownEffect(MaxSequenceRowArray)
 
-    // A single statement reads one snapshot, so an acknowledgement that commits
-    // concurrently is either seen with its cursor or not at all.
-    const readCursor = (remoteId: EventJournal.RemoteId) =>
-      sql`
-        SELECT
-          (SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}) AS next_sequence,
-          (SELECT MAX(sequence) FROM ${remotesTableSql} WHERE remote_id = ${remoteId}) AS max_sequence
-      `.pipe(
-        Effect.flatMap(decodeCursorRows),
-        Effect.map(([row]) =>
-          row.next_sequence !== null
-            ? { next: row.next_sequence, stored: true }
-            // Before the cursors table, every remote row came from a download.
-            : { next: row.max_sequence === null ? 0 : row.max_sequence + 1, stored: false }
-        )
+    const readCursor = Effect.fnUntraced(function*(remoteId: EventJournal.RemoteId) {
+      const rows = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
+        Effect.flatMap(decodeCursorRows)
       )
+      if (rows.length > 0) return { next: rows[0].next_sequence, stored: true }
+      // Before the cursors table, every remote row came from a download.
+      const max = yield* sql`SELECT MAX(sequence) AS max FROM ${remotesTableSql} WHERE remote_id = ${remoteId}`.pipe(
+        Effect.flatMap(decodeMaxSequenceRows)
+      )
+      // An acknowledgement may have committed with its cursor during the fallback read.
+      const current = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
+        Effect.flatMap(decodeCursorRows)
+      )
+      if (current.length > 0) return { next: current[0].next_sequence, stored: true }
+      const value = max[0]?.max
+      return { next: value === null || value === undefined ? 0 : value + 1, stored: false }
+    })
 
     const writeCursor = (remoteId: EventJournal.RemoteId, next: number, stored: boolean) =>
       stored
@@ -678,10 +680,8 @@ const RemoteRow = Schema.Struct({
 
 const RemoteRowArray = Schema.Array(RemoteRow)
 
-const CursorRowArray = Schema.Array(Schema.Struct({
-  next_sequence: Schema.NullOr(SqlNatural),
-  max_sequence: Schema.NullOr(SqlNatural)
-}))
+const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural }))
+const MaxSequenceRowArray = Schema.Array(Schema.Struct({ max: Schema.NullOr(SqlNatural) }))
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
