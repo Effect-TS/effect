@@ -416,11 +416,15 @@ export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> 
  *
  * **Gotchas**
  *
- * OpenAPI 3.0 `nullable` is applied only when the same Schema Object has an
- * explicit string `type`; other constraints such as `enum` are left
- * unchanged. As an exception, `{ nullable: true, allOf: [schema] }` without a
- * `type` becomes `{ anyOf: [schema, { type: "null" }] }`, because OpenAPI 3.0
- * has no other way to express a nullable `$ref`. Unknown keywords, vendor extensions, and annotation values are
+ * OpenAPI 3.0 specifies that `nullable` applies only when the same Schema
+ * Object has an explicit string `type`. For compatibility with tooling that
+ * uses a single-member `allOf` for nullable references, this converter also
+ * rewrites `{ nullable: true, allOf: [schema] }` to
+ * `{ anyOf: [schema, { type: "null" }] }` when there is no string `type` or
+ * existing `anyOf`. Sibling constraints such as `enum` remain unchanged and
+ * may still reject null.
+ *
+ * Unknown keywords, vendor extensions, and annotation values are
  * copied opaquely unless their name would become active in Draft 2020-12 and
  * change meaning, in which case conversion throws. Siblings of a valid
  * OpenAPI 3.0 `$ref` are ignored.
@@ -1338,7 +1342,6 @@ function convertOpenApi30(root: JsonSchema): JsonSchema {
     for (const key of Object.keys(source)) {
       const value = source[key]
       if (nullableAllOf && key === "allOf") {
-        // `{ nullable: true, allOf: [schema] }` is the common OpenAPI 3.0 form of a nullable $ref
         InternalRecord.assignProperty(out, "anyOf", [
           context.schemaAt(source.allOf[0], ["allOf", "0"], ["anyOf", "0"]),
           { type: "null" }

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-`JsonSchema.fromSchemaOpenApi3_0` now reads `{ nullable: true, allOf: [schema] }` as nullable, the usual OpenAPI 3.0 way to write a nullable `$ref`.
+Support the nullable single-member `allOf` tooling convention in `JsonSchema.fromSchemaOpenApi3_0` when no string `type` or `anyOf` is present. Sibling constraints are preserved and may still reject null.
