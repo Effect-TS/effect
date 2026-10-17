@@ -210,23 +210,21 @@ export const makeStorage = (options?: {
           const scopeKey = makeEncryptedScopeKey(publicKey, storeId)
           const { pubsub, table } = yield* RcMap.get(resources, scopeKey)
           const forInsert: Array<{
-            readonly ids: Array<EntryId>
             readonly entries: Array<{
               iv: Uint8Array
               entry_id: Uint8Array
               encrypted_entry: Uint8Array
             }>
-          }> = [{ ids: [], entries: [] }]
+          }> = [{ entries: [] }]
           let currentBatch = forInsert[0]
           for (const entry of entries) {
-            currentBatch.ids.push(entry.entryId)
             currentBatch.entries.push({
               iv: entry.iv,
               entry_id: entry.entryId,
               encrypted_entry: entry.encryptedEntry
             })
             if (currentBatch.entries.length === insertBatchSize) {
-              currentBatch = { ids: [], entries: [] }
+              currentBatch = { entries: [] }
               forInsert.push(currentBatch)
             }
           }
@@ -234,13 +232,56 @@ export const makeStorage = (options?: {
           const allEntries: Array<EventLogEncryption.EncryptedRemoteEntry> = []
           for (const batch of forInsert) {
             if (batch.entries.length === 0) continue
-            const encryptedEntries = yield* sql`
-              INSERT INTO ${sql(table)} ${sql.insert(batch.entries)} ON CONFLICT DO NOTHING
-            `.pipe(
-              Effect.andThen(
-                sql`SELECT * FROM ${sql(table)} WHERE ${sql.in("entry_id", batch.ids)} ORDER BY sequence ASC`
-              ),
-              Effect.flatMap(decodeEntries)
+            const encryptedEntries = yield* sql.onDialectOrElse({
+              mysql: () =>
+                Effect.gen(function*() {
+                  // MySQL has no INSERT RETURNING. Track successful inserts rather
+                  // than pre-selecting ids, which can race with concurrent writers.
+                  const insertedIds: Array<Uint8Array> = []
+                  for (const entry of batch.entries) {
+                    const result = yield* sql`
+                      INSERT IGNORE INTO ${sql(table)} ${sql.insert(entry)}
+                    `.raw
+                    if ((result as { affectedRows: number }).affectedRows > 0) {
+                      insertedIds.push(entry.entry_id)
+                    }
+                  }
+                  if (insertedIds.length === 0) return []
+                  return yield* sql`
+                    SELECT * FROM ${sql(table)}
+                    WHERE ${sql.in("entry_id", insertedIds)} ORDER BY sequence ASC
+                  `
+                }).pipe(sql.withTransaction),
+              mssql: () => {
+                const seen = new Set<string>()
+                const uniqueEntries = batch.entries.filter((entry) => {
+                  const id = entry.entry_id.toString()
+                  if (seen.has(id)) return false
+                  seen.add(id)
+                  return true
+                })
+                return sql`
+                  MERGE ${sql(table)} WITH (HOLDLOCK) AS target
+                  USING (VALUES ${
+                  sql.join(",")(
+                    uniqueEntries.map((entry) => sql`(${entry.iv}, ${entry.entry_id}, ${entry.encrypted_entry})`)
+                  )
+                }) AS source (iv, entry_id, encrypted_entry)
+                  ON target.entry_id = source.entry_id
+                  WHEN NOT MATCHED THEN
+                    INSERT (iv, entry_id, encrypted_entry)
+                    VALUES (source.iv, source.entry_id, source.encrypted_entry)
+                  OUTPUT inserted.*;
+                `
+              },
+              orElse: () =>
+                sql`
+                  INSERT INTO ${sql(table)} ${sql.insert(batch.entries)}
+                  ON CONFLICT DO NOTHING RETURNING *
+                `
+            }).pipe(
+              Effect.flatMap(decodeEntries),
+              Effect.map((entries) => [...entries].sort((a, b) => a.sequence - b.sequence))
             )
             yield* PubSub.publishAll(pubsub, encryptedEntries)
             allEntries.push(...encryptedEntries)
