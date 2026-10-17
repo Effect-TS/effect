@@ -7,14 +7,19 @@ import * as McpTasks from "effect/ai/McpTasks"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Context from "effect/Context"
+import * as DateTime from "effect/DateTime"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Base64Url from "effect/encoding/Base64Url"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
+import * as Scope from "effect/Scope"
 import * as Activity from "effect/workflow/Activity"
 import * as DurableDeferred from "effect/workflow/DurableDeferred"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
+import { externalReports, type ReportJob, ReportJobs } from "./TestUtils/McpExternalJobs.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
@@ -29,7 +34,13 @@ const headers = (method: string, name?: string): HeadersInit => ({
   "Mcp-Method": method,
   ...(name === undefined ? {} : { "Mcp-Name": name })
 })
-const request = (method: string, params: Record<string, unknown>, client = "TaskClient", tasks = true) => ({
+const request = (
+  method: string,
+  params: Record<string, unknown>,
+  client = "TaskClient",
+  tasks = true,
+  clientCapabilities?: McpSchema.ClientCapabilities
+) => ({
   jsonrpc: "2.0",
   id: 1,
   method,
@@ -39,13 +50,25 @@ const request = (method: string, params: Record<string, unknown>, client = "Task
       ...metadata,
       tenant: method === "tools/call" ? "acme" : "polling-client",
       "io.modelcontextprotocol/clientInfo": { name: client, version: "1" },
-      "io.modelcontextprotocol/clientCapabilities": tasks ? metadata["io.modelcontextprotocol/clientCapabilities"] : {}
+      "io.modelcontextprotocol/clientCapabilities": tasks
+        ? clientCapabilities ?? metadata["io.modelcontextprotocol/clientCapabilities"]
+        : {}
     }
   }
 })
 type Harness = Effect.Success<ReturnType<typeof makeHttpHarness>>
-const post = (harness: Harness, method: string, params: Record<string, unknown>, client?: string, tasks?: boolean) =>
-  harness.post(request(method, params, client, tasks), headers(method, String(params.taskId ?? params.name ?? "")))
+const post = (
+  harness: Harness,
+  method: string,
+  params: Record<string, unknown>,
+  client?: string,
+  tasks?: boolean,
+  capabilities?: McpSchema.ClientCapabilities
+) =>
+  harness.post(
+    request(method, params, client, tasks, capabilities),
+    headers(method, String(params.taskId ?? params.name ?? ""))
+  )
     .pipe(
       Effect.flatMap(readMcpHttpResponse)
     )
@@ -54,8 +77,8 @@ const create = (harness: Harness, name = "report", args = {}, client?: string) =
     Effect.flatMap(Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CreateTaskResult }))),
     Effect.map(({ result }) => result)
   )
-const get = (harness: Harness, taskId: string) =>
-  post(harness, "tasks/get", { taskId }).pipe(
+const get = (harness: Harness, taskId: string, capabilities?: McpSchema.ClientCapabilities) =>
+  post(harness, "tasks/get", { taskId }, undefined, undefined, capabilities).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.GetTaskResult }))),
     Effect.map(({ result }) => result)
   )
@@ -78,10 +101,9 @@ const serverLayer = makeServerLayer({
   ]
 })
 const Reports = Toolkit.make(Tool.make("report", { parameters: Tool.EmptyParams, success: Schema.String }))
-const server = McpTasks.toolkit(Reports, { report: () => Effect.succeed("finished") }, {
-  name: "reports",
-  owner: "shared"
-}).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+const server = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+  Layer.provide(McpTasks.layerWorkflow(Reports, { report: () => Effect.succeed("finished") }, { name: "reports" }))
+).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
 const decodeError = Schema.decodeUnknownEffect(Schema.Struct({ error: McpSchema.McpError }))
 
 it.effect("should advertise Tasks support when a task toolkit is registered", () =>
@@ -128,16 +150,13 @@ for (
 it.effect("should reject missing capability before starting work when the client does not support Tasks", () =>
   Effect.gen(function*() {
     let runs = 0
-    const layer = McpTasks.toolkit(Reports, {
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(Reports, {
       report: () =>
         Effect.sync(() => {
           runs++
           return "done"
         })
-    }, {
-      name: "capability",
-      owner: "shared"
-    }).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+    }, { name: "capability" }))).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
     const harness = yield* makeHttpHarness(layer)
     const { error } = yield* decodeError(
       yield* post(harness, "tools/call", { name: "report", arguments: {} }, undefined, false)
@@ -150,12 +169,9 @@ for (const defect of [false, true]) {
   it.effect(`should ${defect ? "sanitize the failure" : "return a completed tool error"} when a handler ${defect ? "dies" : "returns its declared failure"}`, () =>
     Effect.gen(function*() {
       const tools = Toolkit.make(Tool.make("report", { success: Schema.String, failure: Schema.String }))
-      const layer = McpTasks.toolkit(tools, {
+      const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, {
         report: () => defect ? Effect.die("secret-token") : Effect.fail("declined")
-      }, {
-        name: "errors",
-        owner: "shared"
-      }).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+      }, { name: "errors" }))).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
       const harness = yield* makeHttpHarness(layer)
       const task = yield* terminal(harness, (yield* create(harness)).taskId)
       if (defect) {
@@ -181,16 +197,13 @@ it.effect("should reject excess parameters when the tool declares strict input",
         true
       )
     )
-    const layer = McpTasks.toolkit(tools, {
+    const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, {
       report: ({ value }) =>
         Effect.sync(() => {
           runs++
           return value
         })
-    }, {
-      name: "strict",
-      owner: "shared"
-    }).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+    }, { name: "strict" }))).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
     const harness = yield* makeHttpHarness(layer)
     const task = yield* terminal(harness, (yield* create(harness, "report", { value: "ok", extra: true })).taskId)
     assert.strictEqual(task.status, "failed")
@@ -219,13 +232,13 @@ it.effect("should decode transformed parameters and provide handler services whe
         success: Schema.String
       })
     )
-    const layer = McpTasks.toolkit(tools, {
+    const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, {
       report: Effect.fnUntraced(function*({ value }) {
         const prefix = yield* Prefix
         const context = yield* McpSchema.McpRequestContext
         return `${prefix}:${context.clientInfo?.name}:${value + 1}`
       })
-    }, { name: "transformed", owner: "shared" }).pipe(
+    }, { name: "transformed" }))).pipe(
       Layer.provide(Layer.succeed(Prefix, "captured")),
       Layer.provide(WorkflowEngine.layerMemory),
       Layer.provideMerge(serverLayer)
@@ -244,10 +257,11 @@ it.effect("should keep ordinary tools inline when task and ordinary toolkits sha
     )
     const layer = Layer.mergeAll(
       inlineLayer,
-      McpTasks.toolkit(Reports, { report: () => Effect.succeed("task-result") }, {
-        name: "coexistence",
-        owner: "shared"
-      }).pipe(Layer.provide(WorkflowEngine.layerMemory))
+      McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+        Layer.provide(McpTasks.layerWorkflow(Reports, {
+          report: () => Effect.succeed("task-result")
+        }, { name: "coexistence" }))
+      ).pipe(Layer.provide(WorkflowEngine.layerMemory))
     ).pipe(Layer.provideMerge(serverLayer))
     const harness = yield* makeHttpHarness(layer)
     const body = yield* post(harness, "tools/call", { name: "inline", arguments: {} }, undefined, false)
@@ -259,18 +273,28 @@ it.effect("should keep ordinary tools inline when task and ordinary toolkits sha
 
 it.effect("should conceal other owners and malformed handles when task methods are called", () =>
   Effect.gen(function*() {
-    const layer = McpTasks.toolkit(Reports, { report: () => Effect.succeed("private") }, {
-      name: "private",
+    const layer = McpTasks.toolkit(Reports, {
       owner: McpSchema.McpRequestContext.useSync((context) => context.clientInfo?.name ?? "anonymous")
-    }).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+    }).pipe(
+      Layer.provide(McpTasks.layerWorkflow(Reports, { report: () => Effect.succeed("private") }, { name: "private" }))
+    ).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
     const harness = yield* makeHttpHarness(layer)
     const task = yield* create(harness)
-    const parsed = DurableDeferred.TokenParsed.fromString(task.taskId)
+    const parsed = DurableDeferred.TokenParsed.fromString(
+      JSON.parse(Schema.decodeUnknownSync(Schema.StringFromBase64Url)(task.taskId))[1]
+    )
     const unknownIds = [
       "malformed",
-      new DurableDeferred.TokenParsed({ ...parsed, workflowName: "unknown" }).asToken,
-      new DurableDeferred.TokenParsed({ ...parsed, executionId: "unknown" }).asToken,
-      new DurableDeferred.TokenParsed({ ...parsed, deferredName: "mcp/task/finishedAt" }).asToken
+      Base64Url.encode(
+        JSON.stringify(["report", new DurableDeferred.TokenParsed({ ...parsed, workflowName: "unknown" }).asToken])
+      ),
+      Base64Url.encode(
+        JSON.stringify(["report", new DurableDeferred.TokenParsed({ ...parsed, executionId: "unknown" }).asToken])
+      ),
+      JSON.stringify([
+        "report",
+        new DurableDeferred.TokenParsed({ ...parsed, deferredName: "mcp/task/finishedAt" }).asToken
+      ])
     ]
     for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
       for (const [taskId, client] of [[task.taskId, "OtherClient"], ...unknownIds.map((id) => [id, "TaskClient"])]) {
@@ -301,12 +325,9 @@ it.effect("should ignore nonoutstanding responses when a known task is updated",
 it.effect("should acknowledge cancellation when an active task receives cancellation intent", () =>
   Effect.gen(function*() {
     const started = yield* Deferred.make<void>()
-    const layer = McpTasks.toolkit(Reports, {
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(Reports, {
       report: () => Deferred.succeed(started, undefined).pipe(Effect.andThen(Effect.never))
-    }, {
-      name: "cancel",
-      owner: "shared"
-    }).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
+    }, { name: "cancel" }))).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
     const harness = yield* makeHttpHarness(layer)
     const task = yield* create(harness)
     yield* Deferred.await(started)
@@ -316,9 +337,9 @@ it.effect("should acknowledge cancellation when an active task receives cancella
 
 it.effect("should execute Activities with the Workflow context when a task handler checkpoints work", () =>
   Effect.gen(function*() {
-    const layer = McpTasks.toolkit(Reports, {
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(Reports, {
       report: () => Activity.make({ name: "draft", success: Schema.String, execute: Effect.succeed("checkpointed") })
-    }, { name: "activities", owner: "shared" }).pipe(
+    }, { name: "activities" }))).pipe(
       Layer.provide(WorkflowEngine.layerMemory),
       Layer.provideMerge(serverLayer)
     )
@@ -358,16 +379,13 @@ it.effect("should return an error without starting work when Workflow rejects ta
         return { ...engine, execute: () => Effect.die("unavailable-engine") }
       })
     ).pipe(Layer.provide(WorkflowEngine.layerMemory))
-    const layer = McpTasks.toolkit(Reports, {
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(Reports, {
       report: () =>
         Effect.sync(() => {
           runs++
           return "unexpected"
         })
-    }, {
-      name: "rejected",
-      owner: "shared"
-    }).pipe(Layer.provide(rejectingEngine), Layer.provideMerge(serverLayer))
+    }, { name: "rejected" }))).pipe(Layer.provide(rejectingEngine), Layer.provideMerge(serverLayer))
     const harness = yield* makeHttpHarness(layer)
     const { error } = yield* decodeError(yield* post(harness, "tools/call", { name: "report", arguments: {} }))
     assert.strictEqual(error.code, -32603)
@@ -400,7 +418,7 @@ for (const checkpoints of [0, 100]) {
           } satisfies WorkflowEngine.WorkflowEngine["Service"]
         })
       ).pipe(Layer.provide(WorkflowEngine.layerMemory))
-      const layer = McpTasks.toolkit(Reports, {
+      const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(Reports, {
         report: Effect.fnUntraced(function*() {
           for (let index = 0; index < checkpoints; index++) {
             yield* Activity.make({ name: `checkpoint-${index}`, success: Schema.Void, execute: Effect.void })
@@ -409,7 +427,7 @@ for (const checkpoints of [0, 100]) {
           yield* Deferred.await(finish)
           return "finished"
         })
-      }, { name: "polling", owner: "shared" }).pipe(Layer.provide(countedEngine), Layer.provideMerge(serverLayer))
+      }, { name: "polling" }))).pipe(Layer.provide(countedEngine), Layer.provideMerge(serverLayer))
       const harness = yield* makeHttpHarness(layer)
       const task = yield* create(harness)
       yield* Deferred.await(ready)
@@ -437,10 +455,10 @@ it.effect("should preserve original request metadata for schemas and handlers wh
       }),
       success: Schema.String
     }))
-    const layer = McpTasks.toolkit(tools, {
+    const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, {
       report: ({ value }) =>
         McpSchema.McpRequestContext.useSync((context) => `${value}:${context.requestMetadata?.tenant}`)
-    }, { name: "request-metadata", owner: "shared" }).pipe(
+    }, { name: "request-metadata" }))).pipe(
       Layer.provide(WorkflowEngine.layerMemory),
       Layer.provideMerge(serverLayer)
     )
@@ -449,3 +467,317 @@ it.effect("should preserve original request metadata for schemas and handlers wh
     assert.strictEqual(completed.status, "completed")
     if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "acme:report:acme")
   }))
+
+it.effect("should complete an external job input round trip without a Workflow engine", () =>
+  Effect.gen(function*() {
+    const now = "2026-10-17T10:00:00.000Z"
+    const jobsById = new Map<string, ReportJob>()
+    const owned = (id: string, owner: string) =>
+      Effect.suspend(() => {
+        const job = jobsById.get(id)
+        return job && owner === "TaskClient"
+          ? Effect.succeed(job)
+          : Effect.fail(new McpTasks.TaskError({ code: -32602, message: "Unknown taskId" }))
+      })
+    const jobs = Layer.succeed(ReportJobs, {
+      submit: () =>
+        Effect.sync(() => {
+          const job: ReportJob = { id: crypto.randomUUID(), createdAt: now, updatedAt: now, state: "awaiting_roots" }
+          jobsById.set(job.id, job)
+          return job
+        }),
+      getOwned: owned,
+      provideRoots: (id, owner, roots) =>
+        owned(id, owner).pipe(Effect.andThen(Effect.sync(() => {
+          const job = jobsById.get(id)!
+          jobsById.set(id, { ...job, state: "done", report: `Report covers ${roots.length} roots` })
+        }))),
+      cancelOwned: (id, owner) =>
+        owned(id, owner).pipe(Effect.andThen(Effect.sync(() => {
+          const job = jobsById.get(id)!
+          if (job.state === "awaiting_roots" || job.state === "queued") jobsById.set(id, { ...job, state: "cancelled" })
+        })))
+    })
+    const layer = McpTasks.toolkit(Reports, {
+      owner: McpSchema.McpRequestContext.useSync((context) => context.clientInfo?.name ?? "anonymous")
+    }).pipe(Layer.provide(externalReports.pipe(Layer.provide(jobs))), Layer.provideMerge(serverLayer))
+    const harness = yield* makeHttpHarness(layer)
+    const capabilities = { ...metadata["io.modelcontextprotocol/clientCapabilities"], roots: {} }
+    const created = yield* create(harness)
+    assert.strictEqual(created.ttlMs, 60_000)
+    assert.strictEqual(created.pollIntervalMs, 1000)
+    const waiting = yield* get(harness, created.taskId, capabilities)
+    assert.strictEqual(waiting.status, "input_required")
+    if (waiting.status === "input_required") {
+      assert.deepStrictEqual(waiting.inputRequests, { roots: { method: "roots/list" } })
+    }
+    for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
+      const body = yield* post(harness, method, {
+        taskId: created.taskId,
+        ...(method === "tasks/update" ? { inputResponses: {} } : {})
+      }, "OtherClient")
+      assert.strictEqual((yield* decodeError(body)).error.code, -32602)
+    }
+    yield* post(harness, "tasks/update", { taskId: created.taskId, inputResponses: { unknown: { roots: [] } } })
+    assert.strictEqual((yield* get(harness, created.taskId, capabilities)).status, "input_required")
+    yield* post(harness, "tasks/update", {
+      taskId: created.taskId,
+      inputResponses: { roots: { roots: [{ uri: "file:///workspace" }] } }
+    })
+    const completed = yield* get(harness, created.taskId, capabilities)
+    assert.strictEqual(completed.status, "completed")
+    if (completed.status === "completed") {
+      assert.deepStrictEqual(completed.result.content, [{ type: "text", text: "Report covers 1 roots" }])
+    }
+    yield* post(harness, "tasks/update", { taskId: created.taskId, inputResponses: { roots: { roots: [] } } })
+    assert.deepStrictEqual(yield* get(harness, created.taskId, capabilities), completed)
+    yield* post(harness, "tasks/cancel", { taskId: created.taskId })
+    assert.deepStrictEqual(yield* get(harness, created.taskId, capabilities), completed)
+    const second = yield* create(harness)
+    yield* post(harness, "tasks/cancel", { taskId: second.taskId })
+    assert.strictEqual((yield* get(harness, second.taskId, capabilities)).status, "cancelled")
+  }))
+
+it.effect("should run and cancel memory tasks using scoped fibers without a Workflow engine", () =>
+  Effect.gen(function*() {
+    const started = yield* Deferred.make<void>()
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+      Layer.provide(McpTasks.layerMemory(Reports, {
+        report: () => Deferred.succeed(started, undefined).pipe(Effect.andThen(Effect.never))
+      })),
+      Layer.provideMerge(serverLayer)
+    )
+    const harness = yield* makeHttpHarness(layer)
+    const created = yield* create(harness)
+    yield* Deferred.await(started)
+    assert.strictEqual((yield* get(harness, created.taskId)).status, "working")
+    yield* post(harness, "tasks/cancel", { taskId: created.taskId })
+    assert.strictEqual((yield* terminal(harness, created.taskId)).status, "cancelled")
+  }))
+
+it.effect("should decode and encode memory task handlers with original request metadata", () =>
+  Effect.gen(function*() {
+    const tools = Toolkit.make(Tool.make("report", {
+      parameters: Schema.Struct({ rows: Schema.NumberFromString }),
+      success: Schema.String
+    }))
+    const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(
+      Layer.provide(McpTasks.layerMemory(tools, {
+        report: ({ rows }) =>
+          McpSchema.McpRequestContext.useSync((request) => `${request.requestMetadata?.tenant}:${rows + 1}`)
+      })),
+      Layer.provideMerge(serverLayer)
+    )
+    const harness = yield* makeHttpHarness(layer)
+    const completed = yield* terminal(harness, (yield* create(harness, "report", { rows: "2" })).taskId)
+    assert.strictEqual(completed.status, "completed")
+    if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "acme:3")
+  }))
+
+it.effect("should interrupt memory handlers and discard records when the execution layer closes", () =>
+  Effect.gen(function*() {
+    const scope = yield* Scope.make()
+    const started = yield* Deferred.make<void>()
+    const stopped = yield* Deferred.make<void>()
+    const layer = McpTasks.layerMemory(Reports, {
+      report: () =>
+        Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Effect.never),
+          Effect.ensuring(Deferred.succeed(stopped, undefined))
+        )
+    })
+    const context = yield* Layer.build(layer).pipe(Scope.provide(scope))
+    const execution = Context.get(context, McpTasks.Execution)
+    const created = yield* execution.create({
+      toolName: "report",
+      arguments: {},
+      ownerId: "owner",
+      requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
+    })
+    yield* Deferred.await(started)
+    const wrongOwner = yield* execution.get({ taskId: created.taskId, ownerId: "other" }).pipe(Effect.exit)
+    assert.isTrue(Exit.isFailure(wrongOwner))
+    yield* Scope.close(scope, Exit.void)
+    yield* Deferred.await(stopped)
+    const missing = yield* execution.get({ taskId: created.taskId, ownerId: "owner" }).pipe(Effect.exit)
+    assert.isTrue(Exit.isFailure(missing))
+  }))
+
+it.effect("should route multiple toolkits to their independently provided execution layers", () =>
+  Effect.gen(function*() {
+    const Other = Toolkit.make(Tool.make("other", { parameters: Tool.EmptyParams, success: Schema.String }))
+    const layer = Layer.mergeAll(
+      McpTasks.toolkit(Reports, { owner: "shared" }).pipe(Layer.provide(McpTasks.layerMemory(Reports, {
+        report: () => Effect.succeed("memory")
+      }))),
+      McpTasks.toolkit(Other, { owner: "shared" }).pipe(Layer.provide(
+        McpTasks.layerWorkflow(Other, {
+          other: () => Effect.succeed("workflow")
+        }, { name: "other-workflow" }).pipe(Layer.provide(WorkflowEngine.layerMemory))
+      ))
+    ).pipe(Layer.provideMerge(serverLayer))
+    const harness = yield* makeHttpHarness(layer)
+    for (const [name, expected] of [["report", "memory"], ["other", "workflow"]]) {
+      const task = yield* terminal(harness, (yield* create(harness, name)).taskId)
+      assert.strictEqual(task.status, "completed")
+      if (task.status === "completed") assert.strictEqual(task.result.structuredContent, expected)
+    }
+  }))
+
+it.effect("should create a Workflow task when optional client information is absent", () =>
+  Effect.gen(function*() {
+    const harness = yield* makeHttpHarness(server)
+    const body = yield* harness.post({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "report",
+        arguments: {},
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+          "io.modelcontextprotocol/clientCapabilities": {
+            extensions: { "io.modelcontextprotocol/tasks": {} }
+          }
+        }
+      }
+    }, headers("tools/call", "report")).pipe(Effect.flatMap(readMcpHttpResponse))
+    const { result } = yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CreateTaskResult }))(body)
+    assert.strictEqual((yield* terminal(harness, result.taskId)).status, "completed")
+  }))
+
+it.effect("should construct the callback once and scope its execution layer across task calls", () =>
+  Effect.gen(function*() {
+    let callbacks = 0
+    let acquired = 0
+    let released = 0
+    const scope = yield* Scope.make()
+    const layer = McpTasks.toolkit(Reports, { owner: "shared" }, (tools) => {
+      callbacks++
+      assert.strictEqual(tools, Reports)
+      return McpTasks.layerMemory(
+        tools,
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            acquired++
+            return { report: () => Effect.succeed("callback report") }
+          }),
+          () =>
+            Effect.sync(() => {
+              released++
+            })
+        )
+      )
+    }).pipe(Layer.provideMerge(serverLayer))
+    assert.strictEqual(callbacks, 1)
+    const harness = yield* makeHttpHarness(layer).pipe(Scope.provide(scope))
+    for (let i = 0; i < 2; i++) {
+      const completed = yield* terminal(harness, (yield* create(harness)).taskId)
+      assert.strictEqual(completed.status, "completed")
+      if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "callback report")
+    }
+    assert.strictEqual(callbacks, 1)
+    assert.strictEqual(acquired, 1)
+    yield* Scope.close(scope, Exit.void)
+    assert.strictEqual(released, 1)
+  }))
+
+it.effect("should call an inline replacement while retaining existing task handles", () =>
+  Effect.gen(function*() {
+    const release = yield* Deferred.make<void>()
+    const registry = yield* Deferred.make<McpServer.McpServer["Service"]>()
+    const layer = Layer.mergeAll(
+      McpTasks.toolkit(Reports, {
+        owner: McpSchema.McpRequestContext.useSync((request) => request.clientInfo?.name ?? "anonymous")
+      }, (tools) =>
+        McpTasks.layerMemory(tools, {
+          report: () => Deferred.await(release).pipe(Effect.as("original task"))
+        })),
+      Layer.effectDiscard(McpServer.McpServer.use((server) => Deferred.succeed(registry, server)))
+    ).pipe(Layer.provideMerge(serverLayer))
+    const harness = yield* makeHttpHarness(layer)
+    const first = yield* create(harness)
+    const second = yield* create(harness)
+    const server = yield* Deferred.await(registry)
+    yield* server.addTool({
+      tool: new McpSchema.Tool({
+        name: "report",
+        description: "inline replacement",
+        inputSchema: { type: "object", properties: {} }
+      }),
+      annotations: Context.empty(),
+      handle: () =>
+        Effect.succeed(new McpSchema.CallToolResult({ content: [], structuredContent: "replacement result" }))
+    })
+    const listed = yield* Schema.decodeUnknownEffect(Schema.Struct({
+      result: Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String, description: Schema.String })) })
+    }))(yield* post(harness, "tools/list", {}))
+    assert.deepStrictEqual(listed.result.tools, [{ name: "report", description: "inline replacement" }])
+    for (const supportsTasks of [true, false]) {
+      const called = yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CallToolResult }))(
+        yield* post(harness, "tools/call", { name: "report", arguments: {} }, undefined, supportsTasks)
+      )
+      assert.strictEqual(called.result.resultType, "complete")
+      assert.strictEqual(called.result.structuredContent, "replacement result")
+    }
+    assert.strictEqual((yield* get(harness, first.taskId)).status, "working")
+    for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
+      const body = yield* post(harness, method, {
+        taskId: first.taskId,
+        ...(method === "tasks/update" ? { inputResponses: {} } : {})
+      }, "OtherClient")
+      assert.strictEqual((yield* decodeError(body)).error.code, -32602)
+    }
+    yield* post(harness, "tasks/update", { taskId: first.taskId, inputResponses: {} })
+    yield* post(harness, "tasks/cancel", { taskId: second.taskId })
+    assert.strictEqual((yield* terminal(harness, second.taskId)).status, "cancelled")
+    yield* Deferred.succeed(release, undefined)
+    const completed = yield* terminal(harness, first.taskId)
+    assert.strictEqual(completed.status, "completed")
+    if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "original task")
+  }))
+
+for (
+  const [capability, input] of [
+    ["roots", { method: "roots/list" }],
+    ["sampling", { method: "sampling/createMessage", params: { messages: [], maxTokens: 1 } }],
+    ["elicitation", {
+      method: "elicitation/create",
+      params: { mode: "form", message: "Approve", requestedSchema: { type: "object", properties: {} } }
+    }]
+  ] satisfies ReadonlyArray<readonly [string, McpSchema.McpInputRequest]>
+) {
+  it.effect(`should reject task input when the polling client omits ${capability} support`, () =>
+    Effect.gen(function*() {
+      const createdAt = yield* DateTime.now
+      const task: McpTasks.Task = {
+        taskId: crypto.randomUUID(),
+        createdAt,
+        lastUpdatedAt: createdAt,
+        ttlMs: null,
+        status: "input_required",
+        inputRequests: { request: input }
+      }
+      const execution = Layer.succeed(McpTasks.Execution, {
+        create: () => Effect.succeed(task),
+        get: () => Effect.succeed(task),
+        update: () => Effect.void,
+        cancel: () => Effect.void
+      })
+      const layer = McpTasks.toolkit(Reports, { owner: "shared" }, () => execution).pipe(
+        Layer.provideMerge(serverLayer)
+      )
+      const harness = yield* makeHttpHarness(layer)
+      const created = yield* create(harness)
+      const supported = yield* get(harness, created.taskId, {
+        ...metadata["io.modelcontextprotocol/clientCapabilities"],
+        [capability]: {}
+      })
+      assert.strictEqual(supported.status, "input_required")
+      const rejected = yield* decodeError(yield* post(harness, "tasks/get", { taskId: created.taskId }))
+      assert.strictEqual(rejected.error.code, -32021)
+      assert.deepStrictEqual(rejected.error.data, {
+        requiredCapabilities: { [capability]: capability === "elicitation" ? { form: {} } : {} }
+      })
+    }))
+}
