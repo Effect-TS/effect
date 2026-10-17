@@ -6,6 +6,7 @@ import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as RcRef from "../RcRef.ts"
+import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
 
 const TypeId = "~effect/RcRef"
@@ -225,7 +226,11 @@ const release = <A, E>(self: RcRefImpl<A, E>, state: State.Acquired<A>): Effect.
     Effect.flatMap(restore(Effect.sleep(idleTimeToLive)), () => {
       if (self.state === state && state.refCount === 0) {
         self.state = stateEmpty
-        return Scope.close(state.scope, Exit.void)
+        return Effect.catchCause(Scope.close(state.scope, Exit.void), (cause) =>
+          Effect.withFiber((fiber) => {
+            const level = fiber.getRef(UnhandledLogLevel)
+            return level ? Effect.logWithLevel(level)("Unhandled error in RcRef finalizer", cause) : Effect.void
+          }))
       }
       return Effect.void
     })

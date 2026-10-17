@@ -832,7 +832,7 @@ export const keys = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.Effe
         keys.push(key)
       } else {
         MutableHashMap.remove(state.map, key)
-        fibers.push(effect.forkUnsafe(fiber, Scope.close(entry.scope, effect.exitVoid), true, true))
+        fibers.push(effect.forkUnsafe(fiber, closeEvicted(entry), true, true))
       }
     }
     return fibers.length === 0 ? effect.succeed(keys) : effect.as(effect.fiberAwaitAll(fibers), keys)
@@ -897,7 +897,7 @@ export const entries = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.E
         }
       } else {
         MutableHashMap.remove(state.map, key)
-        fibers.push(effect.forkUnsafe(fiber, Scope.close(entry.scope, effect.exitVoid), true, true))
+        fibers.push(effect.forkUnsafe(fiber, closeEvicted(entry), true, true))
       }
     }
     return fibers.length === 0
