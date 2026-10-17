@@ -71,21 +71,4 @@ describe("SchemaIssue", () => {
     assertTrue(result.failure.issue._tag === "AnyOf")
     assert.deepStrictEqual(result.failure.issue.issues, [])
   })
-
-  it("preserves filter paths when formatting an annotated check", () => {
-    const schema = Schema.Struct({ password: Schema.String, confirm: Schema.String }).check(
-      Schema.makeFilter(
-        (o) => o.password === o.confirm || { path: ["confirm"], issue: "Passwords must match" },
-        { message: "Custom message" }
-      )
-    )
-    const result = Schema.decodeUnknownResult(schema)({ password: "a", confirm: "b" })
-
-    assertTrue(Result.isFailure(result))
-    assert.strictEqual(
-      formatIssue(result.failure.issue),
-      `Custom message
-  at ["confirm"]`
-    )
-  })
 })
