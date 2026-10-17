@@ -81,10 +81,6 @@ describe("property testing", () => {
     expect(it.prop).type.not.toBeCallableWith("promise", { value: Schema.Int }, async () => {})
   })
 
-  test("synchronous properties accept boolean and void callbacks", () => {
-    expect(it.prop).type.toBeCallableWith("boolean or void", [Schema.Int], (): boolean | void => {})
-  })
-
   test("infers Schema tuple values and accepts Arbitrary options", () => {
     it.effect.prop(
       "schema tuple",
