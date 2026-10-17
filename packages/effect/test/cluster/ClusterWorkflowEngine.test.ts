@@ -1789,7 +1789,13 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
 
         yield* Parent.resume(executionId)
-        yield* settle
+        // resume dispatches the replay; it does not wait for the activity to run.
+        for (let i = 0; i < 2000; i++) {
+          if (failures >= 2) break
+          yield* Effect.yieldNow
+          yield* TestClock.adjust(1)
+          yield* sharding.pollStorage
+        }
         assert.strictEqual(failures, 2)
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
