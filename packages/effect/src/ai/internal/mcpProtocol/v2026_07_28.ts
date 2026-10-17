@@ -132,6 +132,7 @@ const projectTask = (task: TasksBinding.TaskRecord) =>
 const projectDetailedTask = (task: TasksBinding.TaskRecord, result?: unknown) =>
   omitUndefined({
     ...projectTask(task),
+    inputRequests: task.status === "input_required" ? task.inputRequests : undefined,
     result,
     error: task.status === "failed" ? task.error : undefined
   })
