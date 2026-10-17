@@ -4688,23 +4688,18 @@ export const all = <
       ? (forEach as any)(Object.values(arg), result, options)
       : (forEach as any)(Object.values(arg), identity, options)
   }
-  return suspend(() => {
-    const out: Record<string, unknown> = {}
-    return as(
+  return suspend(() =>
+    map(
       forEach(
         Object.entries(arg),
-        ([key, effect]) =>
-          map(options?.mode === "result" ? result(effect) : effect, (value) => {
-            InternalRecord.assignProperty(out, key, value)
-          }),
+        ([key, effect]) => map(options?.mode === "result" ? result(effect) : effect, (value) => [key, value] as const),
         {
-          discard: true,
           concurrency: options?.concurrency
         }
       ),
-      out
+      Object.fromEntries
     )
-  }) as any
+  ) as any
 }
 
 /** @internal */
@@ -5337,31 +5332,20 @@ export const filter: {
       | ((a: A, i: number) => Effect.Effect<boolean, E, R>),
     options?: { readonly concurrency?: Concurrency | undefined }
   ): Effect.Effect<Array<A>, E, R> =>
-    suspend(() => {
-      const out: Array<A> = []
-      return as(
-        forEach(
-          elements,
-          (a, i) => {
-            const result = (predicate as Function)(a, i)
-            if (typeof result === "boolean") {
-              if (result) out.push(a)
-              return void_ as any
-            }
-            return map(result, (keep) => {
-              if (keep) {
-                out.push(a)
-              }
-            })
-          },
-          {
-            discard: true,
-            concurrency: options?.concurrency
+    map(
+      forEach(
+        elements,
+        (a, i) => {
+          const result = (predicate as Function)(a, i)
+          if (typeof result === "boolean") {
+            return succeed(result ? Option.some(a) : Option.none())
           }
-        ),
-        out
-      )
-    })
+          return map(result, (keep) => keep ? Option.some(a) : Option.none())
+        },
+        options
+      ),
+      Arr.getSomes
+    )
 )
 
 /** @internal */

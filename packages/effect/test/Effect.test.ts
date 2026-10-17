@@ -987,6 +987,30 @@ describe("Effect", () => {
   })
 
   describe("all", () => {
+    it.effect("record preserves input key order with concurrency 2", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.all({
+          a: Effect.sleep(20).pipe(Effect.as(1)),
+          b: Effect.succeed(2)
+        }, { concurrency: 2 }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(20)
+        const results = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(Object.keys(results), ["a", "b"])
+        assert.deepStrictEqual(results, { a: 1, b: 2 })
+      }))
+
+    it.effect("record result mode preserves input key order with unbounded concurrency", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.all({
+          a: Effect.sleep(20).pipe(Effect.as(1)),
+          b: Effect.fail("boom")
+        }, { concurrency: "unbounded", mode: "result" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(20)
+        const results = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(Object.keys(results), ["a", "b"])
+        assert.deepStrictEqual(results, { a: Result.succeed(1), b: Result.fail("boom") })
+      }))
+
     it.effect("tuple", () =>
       Effect.gen(function*() {
         const results = (yield* Effect.all([
@@ -1282,6 +1306,17 @@ describe("Effect", () => {
   })
 
   describe("filter", () => {
+    it.effect("preserves input order with concurrency 2", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.filter(
+          [1, 2, 3],
+          (n) => n === 1 ? Effect.sleep(20).pipe(Effect.as(true)) : Effect.succeed(n === 2),
+          { concurrency: 2 }
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(20)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [1, 2])
+      }))
+
     it.live("odd numbers", () =>
       Effect.gen(function*() {
         const results = yield* Effect.filter([1, 2, 3, 4, 5], (value) => Effect.succeed(value % 2 === 1))
