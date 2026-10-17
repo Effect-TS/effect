@@ -617,6 +617,9 @@ const sendBody = (
             })),
           NodeSink.fromWritable({
             evaluate: () => nodeRequest,
+            // The request race owns destruction, so a body failure must reach
+            // it before destroying the request can produce a transport error.
+            endOnDone: false,
             onError: (cause) =>
               new Error.HttpClientError({
                 reason: new Error.TransportError({
@@ -625,7 +628,10 @@ const sendBody = (
                 })
               })
           })
-        )
+        ).pipe(Effect.andThen(() => {
+          nodeRequest.end()
+          return waitForFinish(nodeRequest, request)
+        }))
       }
     }
   })
