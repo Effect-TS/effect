@@ -70,3 +70,9 @@ export * as Toml from "./Toml.ts"
  * @since 4.0.0
  */
 export * as Yaml from "./Yaml.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as Zip from "./Zip.ts"
