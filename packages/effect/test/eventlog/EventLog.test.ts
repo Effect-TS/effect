@@ -967,8 +967,8 @@ describe("EventLog", () => {
             "EventLog.Hello": () =>
               Effect.succeed(new EventLogMessage.HelloResponse({ remoteId, challenge: new Uint8Array(16) })),
             "EventLog.Authenticate": () => Effect.void,
-            "EventLog.WriteChunked": () => Effect.void,
-            "EventLog.WriteSingle": () => Effect.void,
+            "EventLog.WriteChunked": () => Effect.succeed([]),
+            "EventLog.WriteSingle": () => Effect.succeed([]),
             "EventLog.Changes": () => Stream.fromQueue(changes)
           })),
           Effect.provideService(
