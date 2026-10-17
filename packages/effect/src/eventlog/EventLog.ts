@@ -455,16 +455,34 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
  * open. Defaults to running the handlers without a transaction. Local writes
  * do not use it.
  *
+ * If the transaction fails, the journal commits nothing from the batch. The
+ * remote is subscribed again after a backoff of up to 10 seconds and the batch
+ * is delivered again, so later batches from that remote wait until it
+ * succeeds. Local writes and other remotes are not blocked.
+ *
  * **Gotchas**
  *
- * - Handler failures during replay are logged and skipped. They do not fail
- *   the transaction, and the entry is still committed to the journal.
- * - If the transaction itself fails, the journal commits nothing from the
- *   batch and the batch is replayed again, so handlers must tolerate running
- *   twice.
+ * - Errors returned by a handler are logged and skipped. They do not fail the
+ *   transaction, and the entry is still committed to the journal.
+ * - Failures that abort the underlying transaction are different, even when
+ *   the handler's error is caught. In IndexedDB, any failed request that is
+ *   not prevented aborts the whole transaction, and in PostgreSQL so does a
+ *   failed statement outside a savepoint. The batch is then retried as above,
+ *   so a failure that repeats on every attempt stops sync from that remote
+ *   until it is fixed.
+ * - Handlers must tolerate running more than once for the same entry.
  * - Unless the transaction and the journal share a database connection, the
  *   transaction commits before the journal does. A crash between the two
  *   replays the batch on restart; the two commits are not atomic.
+ * - An IndexedDB transaction commits once it has no pending requests and
+ *   control returns to the event loop. A custom wrapper must stop the fiber
+ *   from yielding to the scheduler while it is open, by providing
+ *   `References.PreventSchedulerYield` as `withTransaction` from
+ *   `@effect/platform-browser` does. Otherwise it can commit partway through a
+ *   batch, and the remaining handlers fail with errors that are logged and
+ *   skipped, leaving the projection silently out of date.
+ * - The transaction stays open for the whole batch, so other read-write
+ *   transactions on the same tables wait for it.
  * - The transaction must not change the error or success of the wrapped
  *   effect. Convert its own failures into defects.
  *
