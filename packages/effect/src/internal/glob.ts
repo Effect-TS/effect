@@ -37,8 +37,7 @@ const maxExpansions = 10_000
 const maxExpandedLength = 2 ** 22
 const maxBraceDepth = 64
 
-// A state is a position in one expanded pattern, packed into a number. With at
-// most `maxExpansions` patterns the packed value stays a safe integer.
+// Pack the pattern index and segment position into one safe integer.
 const STRIDE = 2 ** 21
 
 /** @internal */
@@ -53,8 +52,7 @@ export const compile = (pattern: string, dot: boolean): Compiled => {
   return { patterns, dot }
 }
 
-// UNC paths such as `//server/share` are not supported, and must not collapse
-// into the absolute path `/server/share`
+// Reject UNC paths rather than collapsing them into local absolute paths.
 const isUnc = (path: string): boolean => path.startsWith("//") && path[2] !== undefined && path[2] !== "/"
 
 const compilePattern = (pattern: string): CompiledPattern | undefined => {
@@ -62,7 +60,6 @@ const compilePattern = (pattern: string): CompiledPattern | undefined => {
     return undefined
   }
   const raw = splitSegments(pattern)
-  // `.` and `..` after `**` would revisit every ancestor
   const globstar = raw.indexOf("**")
   if (globstar !== -1 && raw.some((segment, i) => i > globstar && (segment === "." || segment === ".."))) {
     return undefined
@@ -103,9 +100,7 @@ const isDrive = (segment: string): boolean => /^[A-Za-z]:$/.test(segment)
 
 const isRoot = (name: string): boolean => name === "" || /^[A-Za-z]:\/$/.test(name)
 
-// Splits off the root of an absolute path (`""`, or a drive such as `C:/`),
-// drops empty and `.` segments, and reports whether a trailing `/` or `/.`
-// marks a directory. A lone `.` is kept so it can name the root itself.
+// Preserve absolute roots and a lone `.`; trailing `/` or `/.` marks a directory.
 const normalize = (raw: ReadonlyArray<string>): {
   readonly segments: Array<string>
   readonly directory: boolean
@@ -192,8 +187,7 @@ const posixClasses: Record<string, ReadonlyArray<number>> = {
   xdigit: [...range("0", "9"), ...range("A", "F"), ...range("a", "f")]
 }
 
-// Parses a POSIX class such as `[:digit:]` at `open`. Names are at most six
-// characters, so the search is bounded.
+// POSIX class names are at most six characters.
 const parsePosixClass = (
   chars: ReadonlyArray<string>,
   open: number
@@ -207,8 +201,7 @@ const parsePosixClass = (
   return undefined
 }
 
-// Parses the bracket class opening at `open`. A class never spans a `/`, so
-// brace expansion and segment compilation agree on where it ends.
+// Share class boundaries between brace expansion and segment compilation.
 const parseClass = (
   chars: ReadonlyArray<string>,
   open: number
@@ -238,7 +231,6 @@ const parseClass = (
     if (char === "\\" && i + 1 < chars.length) {
       char = chars[++i]
     }
-    // a range such as `a-z`; a trailing `-` is literal
     if (chars[i + 1] === "-" && i + 2 < chars.length && chars[i + 2] !== "]") {
       let next = i + 2
       if (chars[next] === "/") {
@@ -273,14 +265,11 @@ const expandBraces = (pattern: string): Array<string> => {
   if (sequence === undefined) {
     return [pattern]
   }
-  // a pattern expanding to too many alternatives keeps its braces literal
   const count = countExpansions(sequence)
   return count > maxExpansions || count * pattern.length > maxExpandedLength ? [pattern] : expandSequence(sequence)
 }
 
-// Matches every brace group in one pass, keyed by the index of its `{`. Only
-// groups with a top-level comma expand; `{a}` and unmatched braces are literal,
-// as are braces and commas inside bracket classes.
+// Index expandable brace groups by opening position, ignoring bracket classes.
 const matchBraceGroups = (chars: ReadonlyArray<string>): Map<number, BraceGroup> => {
   const groups = new Map<number, BraceGroup>()
   const stack: Array<{ readonly open: number; readonly commas: Array<number> }> = []
@@ -409,9 +398,7 @@ const matchToken = (token: Token, char: string): boolean => {
   }
 }
 
-// Wildcards never match `.` or `..`, and only match a leading dot when the
-// segment itself starts with one or `dot` is enabled. Matching backtracks only
-// to the most recent `*`, so it takes at most O(tokens × characters) steps.
+// Backtrack only to the last `*`, bounding retries by tokens × characters.
 const matchWildcard = (segment: Extract<Segment, { _tag: "Wildcard" }>, name: string, dot: boolean): boolean => {
   if (name === "." || name === ".." || (name.startsWith(".") && !dot && !segment.leadingDot)) {
     return false
@@ -568,9 +555,7 @@ const isIgnorable = (error: PlatformError): boolean =>
 // Node and Deno report `readLink` on a path that is not a link as "Unknown"
 const isNotLink = (error: PlatformError): boolean => isIgnorable(error) || error.reason._tag === "Unknown"
 
-// Directories the caller named, the root and those reached only through
-// literal segments, must be readable; elsewhere unreadable directories are
-// skipped. Missing paths and non-directories are always treated as empty.
+// Propagate named-directory failures; skip unreadable wildcard-reached directories.
 const isAbsent = (error: PlatformError, named: boolean): boolean =>
   named ? error.reason._tag === "NotFound" || error.reason._tag === "BadResource" : isIgnorable(error)
 
@@ -617,8 +602,7 @@ export const walk = (
   const isUnlisted = (value: string, relative: string): boolean =>
     value === "." || value === ".." || (relative === "" && isRoot(value))
 
-  // Checks a named entry with `stat`. A missing target may still be a broken
-  // link, which is kept so literal and wildcard segments agree.
+  // Keep broken links so literal probes agree with directory listings.
   const probe = (relative: string, named: boolean): Effect.Effect<FileSystem.File.Type | undefined, PlatformError> =>
     Effect.matchEffect(fs.stat(toFsPath(relative)), {
       onFailure: (error) =>
@@ -633,8 +617,7 @@ export const walk = (
       onSuccess: (info) => Effect.succeed(info.type)
     })
 
-  // Leading literal segments are probed instead of listing their parent, so a
-  // readable prefix is found even when its parent cannot be listed.
+  // Probe leading literals without requiring permission to list their parent.
   const entries = (
     relative: string,
     states: States,
@@ -675,8 +658,7 @@ export const walk = (
     readonly next: States | undefined
   }
 
-  // Entries whose type is known from the listing are visited synchronously;
-  // only those needing `stat` or `readLink` return an Effect.
+  // Avoid Effects for entries whose listing supplies enough type information.
   type Visited = Child | undefined | Effect.Effect<Child | undefined, PlatformError>
 
   const visit = ({ name, type }: FileSystem.DirectoryEntry, parent: string, states: States): Visited => {
@@ -698,8 +680,7 @@ export const walk = (
       if (result.globstar.size === 0) {
         return { relative, accepted, next }
       }
-      // a symlink named by a literal or wildcard segment is followed, but `**`
-      // alone does not traverse it
+      // Follow symlinks only through explicit segments, not `**`.
       const followed = canDescend(compiled, result.explicit) ? result.explicit : undefined
       return type === "Unknown"
         ? Effect.matchEffect(fs.readLink(toFsPath(relative)), {

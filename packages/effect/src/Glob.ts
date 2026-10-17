@@ -1,9 +1,6 @@
 /**
- * Compiles glob patterns into matchers for `/`-separated paths. A `Glob`
- * supports `*`, `?`, bracket classes, `{a,b}` alternatives, `**` across
- * directories, and `\` escapes, and matches without touching a file system.
- * `FileSystem.glob` uses the same matcher, so a pattern means the same thing
- * whether it filters known paths or walks a directory tree.
+ * Matches `/`-separated paths without accessing the file system, using the
+ * same pattern syntax as `FileSystem.glob`.
  *
  * @stability experimental
  * @since 4.0.0
@@ -78,8 +75,8 @@ const GlobProto = {
  * commas inside `[...]` are class members. Extended glob syntax and leading
  * `!` negation are not interpreted, but ordinary wildcards still apply within
  * them (for example, `?(a)` matches `x(a)`). Malformed syntax, such as an
- * unclosed `[`, matches literally, as do braces that
- * would expand to more than 10,000 alternatives.
+ * unclosed `[`, matches literally. Braces also stay literal if expansion would
+ * exceed 10,000 alternatives.
  *
  * **Example** (Matching source files)
  *
