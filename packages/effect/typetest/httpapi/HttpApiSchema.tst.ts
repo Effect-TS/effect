@@ -117,6 +117,36 @@ describe("HttpApiSchema", () => {
     })
   })
 
+  describe("StreamNdjson", () => {
+    it("preserves the value and error schemas", () => {
+      const Progress = Schema.Struct({ status: Schema.String })
+      const Error = Schema.Struct({ reason: Schema.String })
+      const stream = HttpApiSchema.StreamNdjson(Progress, { error: Error })
+
+      expect(stream).type.toBe<HttpApiSchema.StreamNdjson<typeof Progress, typeof Error>>()
+      expect(stream.schema).type.toBe<typeof Progress>()
+      expect(stream.error).type.toBe<typeof Error>()
+      expect(stream.mode).type.toBe<"ndjson">()
+      expect(HttpApiSchema.status(202)(stream)).type.toBe<typeof stream>()
+    })
+
+    it("defaults the stream error schema to Never", () => {
+      const Progress = Schema.Struct({ status: Schema.String })
+
+      expect(HttpApiSchema.StreamNdjson(Progress)).type.toBe<
+        HttpApiSchema.StreamNdjson<typeof Progress, Schema.Never>
+      >()
+      expect(HttpApiSchema.StreamNdjson(Progress, { contentType: "application/json" })).type.toBe<
+        HttpApiSchema.StreamNdjson<typeof Progress, Schema.Never>
+      >()
+    })
+
+    it("requires value and error schemas", () => {
+      expect(HttpApiSchema.StreamNdjson).type.not.toBeCallableWith({})
+      expect(HttpApiSchema.StreamNdjson).type.not.toBeCallableWith(Schema.String, { error: {} })
+    })
+  })
+
   describe("WithHeaders", () => {
     it("preserves the inner schema and headers schema types", () => {
       const Headers = Schema.Struct({ "x-total-count": Schema.FiniteFromString })

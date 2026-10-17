@@ -251,7 +251,7 @@ export function asNoContent<S extends Schema.Constraint>(options: {
   }
 }
 
-type StreamMode = "sse" | "uint8array"
+type StreamMode = "sse" | "ndjson" | "uint8array"
 
 /**
  * Mode describing whether an SSE stream emits full events or raw data values.
@@ -339,6 +339,53 @@ export interface SseEventFromData<Data extends Schema.Constraint> extends
 {}
 
 /**
+ * Schema for a newline-delimited JSON (NDJSON) success response.
+ *
+ * **Details**
+ *
+ * Each value emitted by the stream is encoded with the JSON codec of `schema`,
+ * like a buffered JSON response, and written as one line; clients decode each
+ * line back to a value. `error`
+ * describes typed stream failures, defaulting to `Schema.Never`. Because the
+ * HTTP status is already sent when a stream fails, the server writes the
+ * encoded `Cause` as a final reserved line
+ * `{"_tag":"effect/http-api/stream/failure","cause":...}` and the client fails
+ * the stream with it.
+ *
+ * **Gotchas**
+ *
+ * The client treats a line as a stream failure only when it decodes to the
+ * reserved `_tag` with a `Cause`. Endpoint construction rejects value schemas
+ * that declare the reserved `_tag` statically. Blank lines are skipped by the
+ * client.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface StreamNdjson<S extends Schema.Constraint, Error extends Schema.Constraint> extends
+  Schema.BottomLazy<
+    SchemaAST.Declaration,
+    StreamNdjson<S, Error>
+  >
+{
+  readonly "Type": Stream.Stream<S["Type"], Error["Type"], never>
+  readonly "Encoded": Stream.Stream<S["Type"], Error["Type"], never>
+  readonly "DecodingServices": S["DecodingServices"] | Error["DecodingServices"]
+  readonly "EncodingServices": S["EncodingServices"] | Error["EncodingServices"]
+  readonly "Rebuild": StreamNdjson<S, Error>
+  readonly "~type.make.in": Stream.Stream<S["Type"], Error["Type"], never>
+  readonly "~type.make": Stream.Stream<S["Type"], Error["Type"], never>
+  readonly "Iso": Stream.Stream<S["Type"], Error["Type"], never>
+  readonly [StreamSchemaTypeId]: typeof StreamSchemaTypeId
+  readonly _tag: "StreamNdjson"
+  readonly mode: "ndjson"
+  readonly contentType: string
+  readonly schema: S
+  readonly error: Error
+}
+
+/**
  * Schema for a streaming `Uint8Array` success response.
  *
  * **Details**
@@ -375,7 +422,10 @@ export interface StreamUint8Array extends
  * @category models
  * @since 4.0.0
  */
-export type StreamSchema = StreamSse<Sse.EventCodec, Schema.Top, unknown> | StreamUint8Array
+export type StreamSchema =
+  | StreamSse<Sse.EventCodec, Schema.Top, unknown>
+  | StreamNdjson<Schema.Top, Schema.Top>
+  | StreamUint8Array
 
 const streamSchema = Schema.declare(Stream.isStream)
 
@@ -422,6 +472,48 @@ export const StreamSse: {
 }
 
 /**
+ * Creates a newline-delimited JSON (NDJSON) streaming success response schema.
+ *
+ * **Details**
+ *
+ * The content type defaults to `application/x-ndjson`. Pass `contentType` for
+ * APIs that send NDJSON under another media type, such as `application/json`.
+ *
+ * **Example** (Declaring an NDJSON stream)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApiSchema } from "effect/http-api"
+ *
+ * const Progress = Schema.Struct({ status: Schema.String })
+ * const schema = HttpApiSchema.StreamNdjson(Progress, { contentType: "application/json" })
+ *
+ * schema.schema === Progress // => true
+ * schema.contentType // => "application/json"
+ * HttpApiSchema.StreamNdjson(Progress).contentType // => "application/x-ndjson"
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.6
+ */
+export const StreamNdjson = <S extends Schema.Constraint, Error extends Schema.Constraint = Schema.Never>(
+  schema: S,
+  options?: {
+    readonly contentType?: string | undefined
+    readonly error?: Error | undefined
+  }
+): StreamNdjson<S, Error> =>
+  Schema.make<StreamNdjson<S, Error>>(streamSchema.ast, {
+    [StreamSchemaTypeId]: StreamSchemaTypeId,
+    _tag: "StreamNdjson",
+    mode: "ndjson",
+    contentType: options?.contentType ?? defaultStreamContentType("ndjson"),
+    schema,
+    error: options?.error ?? Schema.Never
+  })
+
+/**
  * Creates a streaming `Uint8Array` success response schema.
  *
  * @stability unstable
@@ -453,6 +545,12 @@ export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.T
 /**
  * @internal
  */
+export const isStreamNdjson = (u: unknown): u is StreamNdjson<Schema.Top, Schema.Top> =>
+  isStreamSchema(u) && u._tag === "StreamNdjson"
+
+/**
+ * @internal
+ */
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
 
@@ -460,6 +558,8 @@ function defaultStreamContentType(mode: StreamMode): string {
   switch (mode) {
     case "sse":
       return "text/event-stream"
+    case "ndjson":
+      return "application/x-ndjson"
     case "uint8array":
       return "application/octet-stream"
   }
@@ -514,7 +614,8 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  * more convenient there because handlers can fail with the domain error value.
  *
  * - `schema` is the inner response schema. Success responses may wrap
- *   `StreamSse` and `StreamUint8Array`; error responses remain non-streaming.
+ *   `StreamSse`, `StreamNdjson` and `StreamUint8Array`; error responses remain
+ *   non-streaming.
  *   Nesting `WithHeaders` is rejected at construction.
  * - `headers` is any schema; endpoint construction applies
  *   `Schema.toCodecStringTree` unless codecs are disabled, so leaves become

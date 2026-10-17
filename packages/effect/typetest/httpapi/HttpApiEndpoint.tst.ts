@@ -472,6 +472,47 @@ describe("HttpApiEndpoint", () => {
       >()
     })
 
+    it("maps StreamNdjson to stream success and handler types", () => {
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.StreamNdjson(Schema.Struct({ status: Schema.String }), {
+          error: Schema.Struct({ reason: Schema.String })
+        })
+      })
+
+      type Success = Stream.Stream<{ readonly status: string }, { readonly reason: string }>
+
+      expect<HttpApiEndpoint.SuccessWithIdentifier<typeof endpoint, "a">>().type.toBe<Success>()
+      expect<ReturnType<HttpApiEndpoint.Handler<typeof endpoint, never, never>>>().type.toBe<
+        Effect.Effect<Success | HttpServerResponse, never>
+      >()
+    })
+
+    it("maps an omitted StreamNdjson error schema to never", () => {
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.StreamNdjson(Schema.Struct({ status: Schema.String }))
+      })
+
+      type Success = Stream.Stream<{ readonly status: string }, never>
+
+      expect<HttpApiEndpoint.SuccessWithIdentifier<typeof endpoint, "a">>().type.toBe<Success>()
+    })
+
+    it("keeps the stream handler type for a wrapped StreamNdjson schema", () => {
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.WithHeaders(
+          HttpApiSchema.StreamNdjson(Schema.Struct({ status: Schema.String })),
+          { "x-count": Schema.Int }
+        )
+      })
+
+      type Success = HttpApiSchema.withHeaders<
+        Stream.Stream<{ readonly status: string }, never>,
+        { readonly "x-count": number }
+      >
+
+      expect<HttpApiEndpoint.SuccessWithIdentifier<typeof endpoint, "a">>().type.toBe<Success>()
+    })
+
     it("preserves StreamUint8Array schemas", () => {
       const stream = HttpApiSchema.StreamUint8Array()
       const endpoint = HttpApiEndpoint.get("a", "/a", {
@@ -577,6 +618,20 @@ describe("HttpApiEndpoint", () => {
 
       expect<HttpApiEndpoint.ServerServices<typeof endpoint>>().type.toBe<"EventsEncoding" | "ErrorEncoding">()
       expect<HttpApiEndpoint.ClientServices<typeof endpoint>>().type.toBe<"EventsDecoding" | "ErrorDecoding">()
+    })
+
+    it("includes StreamNdjson value and error schema services", () => {
+      type Progress = { readonly status: string }
+      type StreamError = { readonly reason: string }
+
+      const Progress = hole<Schema.Codec<Progress, Progress, "ValueDecoding", "ValueEncoding">>()
+      const Error = hole<Schema.Codec<StreamError, StreamError, "ErrorDecoding", "ErrorEncoding">>()
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.StreamNdjson(Progress, { error: Error })
+      })
+
+      expect<HttpApiEndpoint.ServerServices<typeof endpoint>>().type.toBe<"ValueEncoding" | "ErrorEncoding">()
+      expect<HttpApiEndpoint.ClientServices<typeof endpoint>>().type.toBe<"ValueDecoding" | "ErrorDecoding">()
     })
   })
 

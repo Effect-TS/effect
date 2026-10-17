@@ -1,5 +1,6 @@
 /** @effect-diagnostics missingEffectContext:skip-file */
 import { Effect, hole, Schema, type Stream } from "effect"
+import type * as Ndjson from "effect/encoding/Ndjson"
 import type * as Sse from "effect/encoding/Sse"
 import { FetchHttpClient, HttpClient, type HttpClientError, type HttpClientResponse } from "effect/http"
 import {
@@ -871,6 +872,47 @@ describe("HttpApiClient", () => {
           [ClientStream, HttpClientResponse.HttpClientResponse],
           HttpClientError.HttpClientError | Schema.SchemaError
         >
+      >()
+    })
+
+    it("returns decoded streams for StreamNdjson successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: HttpApiSchema.StreamNdjson(Schema.Struct({ status: Schema.String }), {
+                  error: Schema.Struct({ reason: Schema.String })
+                })
+              }),
+              HttpApiEndpoint.get("b", "/b", {
+                success: HttpApiSchema.WithHeaders(
+                  HttpApiSchema.StreamNdjson(Schema.Struct({ status: Schema.String })),
+                  { "x-count": Schema.Int }
+                )
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      type Progress = { readonly status: string }
+      type StreamErrors = HttpClientError.HttpClientError | Schema.SchemaError | Ndjson.NdjsonError
+      type ClientStream = Stream.Stream<Progress, { readonly reason: string } | StreamErrors>
+      type Success = HttpApiSchema.withHeaders<Stream.Stream<Progress, StreamErrors>, { readonly "x-count": number }>
+
+      expect(client.group.a()).type.toBe<
+        Effect.Effect<ClientStream, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+      expect(client.group.a({ responseMode: "decoded-and-response" })).type.toBe<
+        Effect.Effect<
+          [ClientStream, HttpClientResponse.HttpClientResponse],
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+      expect(client.group.b()).type.toBe<
+        Effect.Effect<Success, HttpClientError.HttpClientError | Schema.SchemaError>
       >()
     })
 

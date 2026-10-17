@@ -1611,7 +1611,7 @@ Things to know:
 - Header values are converted to strings at the HTTP boundary, the same way as request headers, params, and query. `Schema.Int` goes out as `"1"` and decodes back to `1` on the client. `undefined` values are omitted from the response.
 - Status and encoding annotations resolve from the wrapper first, then fall through to the inner schema, so `HttpApiSchema.WithHeaders(User.pipe(HttpApiSchema.status(201)), ...)` responds with `201`.
 - Declared headers are applied after the body is encoded and override headers set by the encoding on collision, including `content-type`.
-- Stream success schemas (`HttpApiSchema.StreamSse`, `HttpApiSchema.StreamUint8Array`) can be wrapped too. Headers are encoded before the response starts streaming, and the client resolves to a value whose `body` is the stream.
+- Stream success schemas (`HttpApiSchema.StreamSse`, `HttpApiSchema.StreamNdjson`, `HttpApiSchema.StreamUint8Array`) can be wrapped too. Headers are encoded before the response starts streaming, and the client resolves to a value whose `body` is the stream.
 - `WithHeaders` is also allowed on error schemas, in which case the handler fails with the wrapped value. For errors, `encodeToWithHeaders` (below) is usually more convenient because handlers can fail with the domain error directly.
 
 ### Folding Headers into Domain Types with encodeToWithHeaders
@@ -1846,6 +1846,7 @@ To stream data to the client over time, declare the success schema with one of t
 
 - `HttpApiSchema.StreamUint8Array()` streams raw bytes (default content type: `application/octet-stream`)
 - `HttpApiSchema.StreamSse(options)` streams typed Server-Sent Events (default content type: `text/event-stream`)
+- `HttpApiSchema.StreamNdjson(schema, options)` streams typed newline-delimited JSON values (default content type: `application/x-ndjson`)
 
 With a streaming success schema, the handler returns a `Stream` directly, and the derived client resolves to a typed `Stream` on the consuming side. The stream declaration is also rendered in the OpenAPI documentation.
 
@@ -1963,9 +1964,66 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 
 To control the full event shape instead, pass an `events` schema whose Encoded side matches the SSE wire format: a required `data` string plus optional `id` and `event` fields. The handler then emits whole events.
 
+### Streaming Newline-Delimited JSON
+
+`HttpApiSchema.StreamNdjson` declares a newline-delimited JSON (NDJSON) response. Each stream element is encoded with the schema's JSON codec and written as one line, and the derived client decodes each line back to a value. Lines may arrive split across network chunks, and blank lines are skipped.
+
+**Example** (Implementing an NDJSON Endpoint)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schedule, Schema, Stream } from "effect"
+import { HttpRouter } from "effect/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+import { createServer } from "node:http"
+
+const Progress = Schema.Struct({
+  status: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("pull", "/pull", {
+      // Each stream element is written as one JSON line
+      // (default content type: application/x-ndjson)
+      success: HttpApiSchema.StreamNdjson(Progress)
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers.handle("pull", () =>
+      Effect.succeed(
+        Stream.make({ status: "pulling" }, { status: "extracting" }, { status: "done" }).pipe(
+          Stream.schedule(Schedule.spaced("500 millis"))
+        )
+      ))
+)
+
+const ApiLayer = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLayer),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
+
+// curl 'http://localhost:3000/pull' --no-buffer
+// {"status":"pulling"}
+// {"status":"extracting"}
+// {"status":"done"}
+```
+
+Some APIs send NDJSON under another media type. Pass `contentType` to match it, for example `HttpApiSchema.StreamNdjson(Progress, { contentType: "application/json" })`.
+
+On the client, a line that is not valid JSON fails the stream with an `NdjsonError`, and a line that does not match the schema fails it with a `SchemaError`.
+
 ### Consuming Streams with the Derived Client
 
-For both constructors, calling the endpoint on the derived client resolves to a typed `Stream`:
+For all constructors, calling the endpoint on the derived client resolves to a typed `Stream`:
 
 ```ts
 const events = yield * client.group.getEvents()
@@ -1976,7 +2034,7 @@ yield * Stream.runForEach(events, (message) => Console.log(message.text))
 
 ### Typed Stream Failures
 
-`HttpApiSchema.StreamSse` accepts an `error` schema describing typed stream failures. Since the HTTP status is already sent when the stream fails, the failure cannot travel as a normal error response. Instead, the server encodes the full `Cause` into a reserved `effect/http-api/stream/failure` event, and the derived client decodes that event and fails the stream with the original cause.
+`HttpApiSchema.StreamSse` and `HttpApiSchema.StreamNdjson` accept an `error` schema describing typed stream failures. Since the HTTP status is already sent when the stream fails, the failure cannot travel as a normal error response. Instead, the server encodes the full `Cause` into a reserved `effect/http-api/stream/failure` SSE event, or a final NDJSON line `{"_tag":"effect/http-api/stream/failure","cause":...}`, and the derived client decodes it and fails the stream with the original cause.
 
 **Example** (Declaring a Typed Stream Failure)
 
@@ -2002,6 +2060,7 @@ Things to know:
 - Wrap a stream schema with `HttpApiSchema.WithHeaders` to declare typed response headers (see [Setting Response Headers](#setting-response-headers)). The handler returns `HttpApiSchema.withHeaders({ body, headers })` with the stream as `body`, and the client resolves to the same shape.
 - An endpoint may declare at most one streaming success schema, `HEAD` endpoints cannot declare one, and streaming schemas are not supported in error responses.
 - The `effect/http-api/stream/failure` event name is reserved: `events` schemas may not declare it, and the client treats such an event as a stream failure only when its `data` decodes to a `Cause`.
+- For NDJSON, the same name is reserved as a `_tag`: value schemas may not declare it, and the client treats such a line as a stream failure only when its `cause` decodes to a `Cause`.
 
 # Error Handling
 

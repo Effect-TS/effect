@@ -1050,6 +1050,40 @@ describe("OpenAPI spec", () => {
           )
         })
 
+        it("StreamNdjson", () => {
+          const Api = HttpApi.make("api")
+            .add(
+              HttpApiGroup.make("group")
+                .add(
+                  HttpApiEndpoint.get("a", "/a", {
+                    success: HttpApiSchema.StreamNdjson(Schema.Struct({ read: Schema.Date }), {
+                      error: Schema.Struct({ message: Schema.String })
+                    })
+                  })
+                )
+            )
+          const spec = OpenApi.fromApi(Api)
+          const mediaType = spec.paths["/a"].get?.responses["200"].content?.["application/x-ndjson"]
+          assert.deepStrictEqual(mediaType?.schema, {
+            type: "object",
+            properties: { read: { type: "string" } },
+            required: ["read"],
+            additionalProperties: false
+          })
+          const stream = mediaType?.["x-effect-stream"]
+          if (stream?.encoding !== "ndjson") {
+            assert.fail("expected NDJSON stream metadata")
+          }
+          assert.strictEqual(stream.failureTag, "effect/http-api/stream/failure")
+          assert.strictEqual(typeof stream.causeSchema, "object")
+          assert.deepStrictEqual(stream.errorSchema, {
+            type: "object",
+            properties: { message: { type: "string" } },
+            required: ["message"],
+            additionalProperties: false
+          })
+        })
+
         it("StreamUint8Array", () => {
           const Api = HttpApi.make("api")
             .add(
