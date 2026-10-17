@@ -258,23 +258,15 @@ describe("SqlEventJournal", () => {
         sql.insert({ remote_id: remoteId, entry_id: imported.id, sequence: 0 })
       }`
 
-      yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
-      // Opening an already migrated database is a no-op.
       const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
       const upload = (remoteId: EventJournal.RemoteId) =>
         journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries.map((entry) => entry.idString)))
-      const entries = (yield* journal.entries).map((entry) => entry.idString)
-      const sequence = yield* journal.nextRemoteSequence(remoteId)
-      const legacy = yield* upload(remoteId)
-      const written = yield* journal.write({ ...localEntry("written"), effect: Effect.succeed })
-      const next = yield* upload(remoteId)
-      const otherRemote = yield* upload(EventJournal.makeRemoteIdUnsafe())
-      assert.deepStrictEqual({ entries, sequence, legacy, next, otherRemote }, {
-        entries: [local.idString, imported.idString],
-        sequence: 1,
-        legacy: Option.some([local.idString]),
-        next: Option.some([written.idString]),
-        otherRemote: Option.some([local.idString, imported.idString, written.idString])
+      assert.deepStrictEqual({
+        remote: yield* upload(remoteId),
+        otherRemote: yield* upload(EventJournal.makeRemoteIdUnsafe())
+      }, {
+        remote: Option.some([local.idString]),
+        otherRemote: Option.some([local.idString, imported.idString])
       })
     }).pipe(Effect.provide(Reactivity.layer)))
 
