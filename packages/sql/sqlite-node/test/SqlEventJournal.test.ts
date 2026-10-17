@@ -1,7 +1,12 @@
+import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Option } from "effect"
+import { Effect, Exit, FileSystem, Layer, Option, Queue, Schema } from "effect"
+import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import * as EventLog from "effect/eventlog/EventLog"
+import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
+import * as EventLogRemote from "effect/eventlog/EventLogRemote"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
@@ -14,6 +19,56 @@ const makeJournal = Effect.gen(function*() {
 }).pipe(Effect.provide(Reactivity.layer))
 
 describe("SqlEventJournal", () => {
+  it.effect("replay invalidation observes committed entries from another connection", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const filename = directory + "/journal.db"
+      const writer = yield* SqliteClient.make({ filename })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, writer))
+      const reader = yield* SqliteClient.make({ filename, readonly: true })
+      // A separate connection cannot see the replay transaction's uncommitted rows.
+      const readJournal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, reader))
+      const group = EventGroup.empty.add({
+        tag: "UserCreated",
+        primaryKey: (payload) => payload.id,
+        payload: Schema.Struct({ id: Schema.String })
+      })
+      const handlers = EventLog.group(group, (handlers) => handlers.handle("UserCreated", () => Effect.void)).pipe(
+        Layer.merge(EventLog.groupReactivity(group, ["users"])),
+        Layer.provide(EventLog.layerRegistry)
+      )
+      const layer = EventLog.layer(EventLog.schema(group), handlers).pipe(
+        Layer.provide(Layer.succeed(EventJournal.EventJournal, journal)),
+        Layer.provide(
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(
+            Layer.provide(EventLogEncryption.layerSubtle)
+          )
+        )
+      )
+      const reactivity = yield* Reactivity.Reactivity
+      const results = yield* reactivity.query(["users"], readJournal.entries)
+      assert.deepStrictEqual(yield* Queue.take(results), [])
+      const entry = new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "UserCreated",
+        primaryKey: "user-1",
+        payload: yield* Schema.encodeUnknownEffect(group.events.UserCreated.payloadSchemaBinary)({ id: "user-1" })
+      }, { disableChecks: true })
+      const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+      yield* Queue.offer(changes, new EventJournal.RemoteEntry({ remoteSequence: 0, entry }))
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        assert.deepStrictEqual((yield* Queue.take(results)).map((entry) => entry.idString), [entry.idString])
+      }).pipe(Effect.provide(layer))
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
   for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
     describe(name, () => {
       it.effect("remote conflicts include only previously stored newer entries", () =>
