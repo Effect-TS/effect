@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, PubSub, Queue, Ref, Schema } from "effect"
+import { Effect, Layer, PubSub, Queue, Ref, Schema, SchemaGetter } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -160,6 +160,98 @@ const logLayer = (
   )
 
 describe("EventLog", () => {
+  it.effect("decodes shared conflicts once per remote replay batch", () =>
+    Effect.gen(function*() {
+      const decoded: Array<number> = []
+      const group = EventGroup.empty.add({
+        tag: "ItemAdded",
+        primaryKey: (payload) => payload.list,
+        payload: ItemPayload.pipe(Schema.decode({
+          decode: SchemaGetter.transformEffect((payload) =>
+            Effect.sync(() => {
+              decoded.push(payload.item)
+              return payload
+            })
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+      })
+      const handled = yield* Queue.unbounded<{ readonly item: number; readonly conflicts: ReadonlyArray<number> }>()
+      const handlers = EventLog.group(group, (handlers) =>
+        handlers.handle("ItemAdded", ({ conflicts, payload }) =>
+          Queue.offer(handled, {
+            item: payload.item,
+            conflicts: conflicts.map(({ payload }) =>
+              payload.item
+            )
+          }))).pipe(Layer.provide(EventLog.layerRegistry))
+      const layer = EventLog.layer(EventLog.schema(group), handlers).pipe(
+        Layer.provideMerge(EventJournal.layerMemory),
+        Layer.provide(
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle))
+        )
+      )
+      const makeEntry = Effect.fnUntraced(function*(item: number, msecs: number) {
+        return new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe({ msecs }),
+          event: "ItemAdded",
+          primaryKey: "list-1",
+          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
+            list: "list-1",
+            item
+          })
+        }, { disableChecks: true })
+      })
+
+      yield* Effect.gen(function*() {
+        const journal = yield* EventJournal.EventJournal
+        const registry = yield* EventLog.Registry
+        const remoteId = EventJournal.makeRemoteIdUnsafe()
+        // Both stored entries are newer than every incoming entry.
+        yield* journal.writeFromRemote({
+          remoteId,
+          entries: [
+            new EventJournal.RemoteEntry({ remoteSequence: 0, entry: yield* makeEntry(10, 2000) }),
+            new EventJournal.RemoteEntry({ remoteSequence: 1, entry: yield* makeEntry(11, 3000) })
+          ],
+          effect: () => Effect.void
+        })
+        const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+        // Enqueue before registration so these entries are consumed as one batch.
+        yield* Queue.offerAll(changes, [
+          new EventJournal.RemoteEntry({ remoteSequence: 2, entry: yield* makeEntry(0, 1000) }),
+          new EventJournal.RemoteEntry({ remoteSequence: 3, entry: yield* makeEntry(1, 1001) })
+        ])
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: remoteId,
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        const first = [yield* Queue.take(handled), yield* Queue.take(handled)]
+        const firstDecodes = decoded.splice(0).sort((a, b) => a - b)
+
+        yield* Queue.offer(
+          changes,
+          new EventJournal.RemoteEntry({
+            remoteSequence: 4,
+            entry: yield* makeEntry(2, 1002)
+          })
+        )
+        const second = yield* Queue.take(handled)
+        assert.deepStrictEqual([...first, second], [
+          { item: 0, conflicts: [10, 11] },
+          { item: 1, conflicts: [10, 11] },
+          { item: 2, conflicts: [10, 11] }
+        ])
+        // Reuse within a batch, but decode again in the next batch.
+        assert.deepStrictEqual([firstDecodes, decoded.sort((a, b) => a - b)], [
+          [0, 1, 10, 11],
+          [2, 10, 11]
+        ])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("replays compacted outputs in compactor write order", () =>
     Effect.gen(function*() {
       const handled = yield* replayItems([{ event: "ItemAdded" }, { event: "ItemAdded" }])
