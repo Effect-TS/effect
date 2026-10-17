@@ -66,15 +66,21 @@ export class EventLog extends Context.Service<EventLog, {
    * returning each handler's result in input order. If any handler fails,
    * none of the events are committed.
    */
-  readonly writeMany: <Groups extends EventGroup.Any, Tag extends Event.Tag<EventGroup.Events<Groups>>>(options: {
+  readonly writeMany: <
+    Groups extends EventGroup.Any,
+    // Pairs each event tag with its own payload.
+    Item extends {
+      readonly [Tag in Event.Tag<EventGroup.Events<Groups>>]: {
+        readonly event: Tag
+        readonly payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
+      }
+    }[Event.Tag<EventGroup.Events<Groups>>]
+  >(options: {
     readonly schema: EventLogSchema<Groups>
-    readonly events: Arr.NonEmptyReadonlyArray<{
-      readonly event: Tag
-      readonly payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
-    }>
+    readonly events: Arr.NonEmptyReadonlyArray<Item>
   }) => Effect.Effect<
-    Arr.NonEmptyArray<Event.SuccessWithTag<EventGroup.Events<Groups>, Tag>>,
-    Event.ErrorWithTag<EventGroup.Events<Groups>, Tag> | EventJournalError
+    Arr.NonEmptyArray<Event.SuccessWithTag<EventGroup.Events<Groups>, Item["event"]>>,
+    Event.ErrorWithTag<EventGroup.Events<Groups>, Item["event"]> | EventJournalError
   >
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
@@ -1025,7 +1031,7 @@ const make = Effect.gen(function*() {
         )
     ).pipe(
       Effect.flatMap((entries) =>
-        journal.writeMany({
+        journal.withLock(storeId)(journal.writeMany({
           entries,
           effect: (written) =>
             handlerTransaction(Effect.forEach(written, (entry, i) =>
@@ -1037,23 +1043,13 @@ const make = Effect.gen(function*() {
               }).pipe(
                 Effect.updateContext((input) => Context.merge(handlers[i].context, input)),
                 Effect.provideService(Identity, identity),
-                Effect.tap(() => {
-                  const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-                    ? registry.reactivityKeys[entry.event]
-                    : undefined
-                  if (keys) {
-                    for (const key of keys) {
-                      reactivity.invalidateUnsafe({
-                        [key]: [entry.primaryKey]
-                      })
-                    }
-                  }
-                  return Effect.void
-                })
+                Effect.tap(() => invalidateEntry(reactivity, registry.reactivityKeys, entry))
               )))
-        })
+        }))
       ),
-      journal.withLock(storeId)
+      // Outside the lock, so queries re-run after the handler transaction and
+      // the journal commit.
+      reactivity.withBatch
     ) as Effect.Effect<Arr.NonEmptyArray<unknown>, unknown>
   }
 

@@ -130,7 +130,8 @@ export const make = (options?: {
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
     const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
     const toEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> => rows.map(toEntry)
-    // Break timestamp ties by id bytes, which dialects do not all collate alike.
+    // Sort by id bytes, which dialects do not all collate alike. Rows are
+    // already in timestamp order, so this only reorders timestamp ties.
     const toOrderedEntries = (rows: ReadonlyArray<EntryRow>): ReadonlyArray<EventJournal.Entry> =>
       rows.map(toEntry).sort(EventJournal.Entry.Order)
 
