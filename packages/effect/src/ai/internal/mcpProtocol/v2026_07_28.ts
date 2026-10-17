@@ -126,7 +126,9 @@ const projectTask = (task: TasksBinding.TaskRecord) =>
     status: task.status,
     createdAt: DateTime.formatIso(task.createdAt),
     lastUpdatedAt: DateTime.formatIso(task.lastUpdatedAt),
-    ttlMs: null
+    ttlMs: task.ttlMs,
+    pollIntervalMs: task.pollIntervalMs,
+    statusMessage: task.statusMessage
   })
 
 const projectDetailedTask = (task: TasksBinding.TaskRecord, result?: unknown) =>
@@ -726,6 +728,9 @@ export const makeHandlers = (
       }
       yield* TasksBinding.requireTasks(invocation)
       const task = yield* TasksBinding.get(core).get(request.taskId, invocation)
+      if (task.status === "input_required") {
+        yield* validateInputRequestCapabilities(task, invocation.protocol.clientCapabilities)
+      }
       const result = task.status !== "completed" ? undefined : yield* projectCallToolOutcome(
         McpCore.OperationOutcome.Complete({
           content: task.result.content.map(projectContent),

@@ -73,10 +73,9 @@ const open = Effect.fnUntraced(function*(client: SqlClient.SqlClient, run: Handl
     }
   }
   const sharding = Context.get(context, Sharding.Sharding)
-  const registration = McpTasks.toolkit(tools, { report: () => run }, {
-    name: "sql-reports",
+  const registration = McpTasks.toolkit(tools, {
     owner: McpSchema.McpRequestContext.use((request) => Effect.succeed(request.clientInfo?.name ?? "anonymous"))
-  }).pipe(
+  }).pipe(Layer.provide(McpTasks.layerWorkflow(tools, { report: () => run }, { name: "sql-reports" }))).pipe(
     Layer.provide(Layer.succeed(WorkflowEngine.WorkflowEngine, engine)),
     Layer.provideMerge(makeServerLayer({ name: "SqlTasks", protocols: [McpProtocol.v2026_07_28] }))
   )
@@ -137,7 +136,9 @@ const open = Effect.fnUntraced(function*(client: SqlClient.SqlClient, run: Handl
     return (yield* Schema.decodeUnknownEffect(Schema.Struct({ result: TaskWire.CreateTaskResult }))(response)).result
   })
   const release = (taskId: string) => {
-    const token = DurableDeferred.TokenParsed.fromString(taskId)
+    const token = DurableDeferred.TokenParsed.fromString(
+      JSON.parse(Schema.decodeUnknownSync(Schema.StringFromBase64Url)(taskId))[1]
+    )
     return drive(
       DurableDeferred.succeed(resume, {
         token: new DurableDeferred.TokenParsed({ ...token, deferredName: resume.name }).asToken,
