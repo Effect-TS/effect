@@ -15,9 +15,13 @@ const findMetric = (metrics: any, name: string) =>
 class ShutdownTrackingReader extends MetricReader {
   shutdowns = 0
 
+  constructor(private readonly rejectShutdown = false) {
+    super()
+  }
+
   protected onShutdown(): Promise<void> {
     this.shutdowns++
-    return Promise.resolve()
+    return this.rejectShutdown ? Promise.reject(new Error("shutdown failed")) : Promise.resolve()
   }
 
   protected onForceFlush(): Promise<void> {
@@ -26,23 +30,29 @@ class ShutdownTrackingReader extends MetricReader {
 }
 
 describe("Metrics", () => {
-  it.effect("shuts down bound readers when a later reader fails to bind", () =>
-    Effect.gen(function*() {
-      const services = yield* Effect.context<never>()
-      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
-      const fresh = new ShutdownTrackingReader()
-      const alreadyBound = new ShutdownTrackingReader()
-      alreadyBound.setMetricProducer(producer)
+  it.effect.each([false, true])(
+    "rolls back bound readers and preserves the binding defect (shutdown rejects: %s)",
+    (rejectShutdown) =>
+      Effect.gen(function*() {
+        const services = yield* Effect.context<never>()
+        const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+        const fresh = new ShutdownTrackingReader(rejectShutdown)
+        const alreadyBound = new ShutdownTrackingReader()
+        alreadyBound.setMetricProducer(producer)
 
-      const exit = yield* OtelMetrics.registerProducer(producer, () => [fresh, alreadyBound]).pipe(
-        Effect.scoped,
-        Effect.exit
-      )
+        const exit = yield* OtelMetrics.registerProducer(producer, () => [fresh, alreadyBound]).pipe(
+          Effect.scoped,
+          Effect.exit
+        )
 
-      assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
-      assert.strictEqual(alreadyBound.shutdowns, 0)
-      assert.strictEqual(fresh.shutdowns, 1)
-    }))
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.strictEqual(alreadyBound.shutdowns, 0)
+        assert.strictEqual(fresh.shutdowns, 1)
+        if (Exit.isFailure(exit)) {
+          assert.include(Cause.pretty(exit.cause), "MetricReader can not be bound to a MeterProvider again.")
+        }
+      })
+  )
 
   it.effect("gauge", () =>
     Effect.gen(function*() {
