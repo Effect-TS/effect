@@ -570,11 +570,13 @@ export const loadContext = (client: McpClient.McpClient) =>
   })
 ```
 
-## Workflow-backed tasks
+## Tasks
 
-`McpTasks.toolkit(tools, handlers, options)` registers every tool in a toolkit as a
-Workflow-backed task. It returns a registration layer requiring `McpServer` and an
-existing `WorkflowEngine`. Register ordinary inline tools with `McpServer.toolkit`.
+`McpTasks.toolkit(tools, { owner })` registers task-only tools. Provide an
+`McpTasks.Execution` layer to create, retrieve, update, and cancel tasks. Ordinary
+inline tools use `McpServer.toolkit`.
+
+### Workflow execution
 
 ```ts
 import { Effect, Layer, Schema } from "effect"
@@ -586,92 +588,108 @@ const Reports = Toolkit.make(Tool.make("workspace_report", {
   success: Schema.String
 }))
 
-const ReportsLive = McpTasks.toolkit(Reports, {
-  workspace_report: ({ workspaceId }) =>
-    Activity.make({
-      name: "build-report",
-      success: Schema.String,
-      execute: Effect.succeed(`Report for ${workspaceId}`)
-    })
-}, {
-  name: "workspace-reports-v1",
-  owner: "shared"
-}).pipe(Layer.provide(WorkflowEngine.layerMemory))
+const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }, (tools) =>
+  McpTasks.layerWorkflow(tools, {
+    workspace_report: ({ workspaceId }) =>
+      Activity.make({
+        name: "build-report",
+        success: Schema.String,
+        execute: Effect.succeed(`Report for ${workspaceId}`)
+      })
+  }, { name: "workspace-reports-v1" })).pipe(Layer.provide(WorkflowEngine.layerMemory))
 
 // Provide McpServer when composing ReportsLive with the server layer.
 ```
 
-Use a stable namespace in `name`. Change it when handler changes are incompatible
-with replay of existing executions. The engine determines whether execution
-survives a process restart. Applications can supply the existing SQL-backed
-`ClusterWorkflowEngine` instead of the memory engine. Tasks requires no separate
-Persistence layer.
+The optional callback receives the toolkit and returns a layer providing
+`Execution`. It runs once when constructing the registration layer. The
+execution layer uses ordinary Layer scope and dependency management. The
+two-argument form remains available for separately composed execution layers:
 
-`owner: "shared"` allows every client to access the toolkit's tasks. For isolation,
-supply an Effect resolving a trusted application principal. It can read
-`McpSchema.McpRequestContext`, but client-provided names and metadata are not proof
-of identity. The same resolver authorizes reads, updates, and cancellation.
+```ts
+const ReportsLive = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
+  Layer.provide(ReportsExecution)
+)
+```
 
-### Execution and retrieval
+The example uses Workflow's memory engine for tests. For durable recovery, provide
+an existing SQL-backed `ClusterWorkflowEngine`. Keep the Workflow name stable for
+compatible handlers and change it for replay-incompatible changes. Completed
+Activities reuse their recorded results. Code outside Activities can run again.
 
-The server advertises the Tasks extension when task tools are registered. A July
-client must declare the extension on each request. Earlier clients do not see
-these tools. A supported `tools/call` receives a task handle after the engine
-accepts execution and the task's identity is readable. Parameter decoding uses
-the ordinary MCP toolkit implementation inside Workflow. Invalid parameters can
-therefore produce a handle followed by a failed task, without running user code.
+Workflow owns execution, results, interruption, and history cleanup. The MCP
+implementation stores two immutable facts through `DurableDeferred`: owner and
+creation time, and a finished timestamp recorded by a Workflow finalizer. A normal
+active read uses two engine lookups. A terminal read uses three. Neither scans
+history or starts a background poller. Creation and terminal reads briefly retry
+facts that are not yet visible, then return a retryable error.
 
-The client calls `tasks/get`. Each request checks identity and polls Workflow;
-there is no background polling loop. Workflow supplies the result or error and
-owns Activity replay. Declared tool errors remain completed MCP tool results with
-`isError: true`, following ordinary tool execution behavior.
+### Memory execution
 
-Tasks stores two immutable facts using existing `DurableDeferred` APIs:
+For process-local execution, provide scoped Effect fibers instead:
 
-| Fact               | Contents                                 | Purpose                         |
-| ------------------ | ---------------------------------------- | ------------------------------- |
-| Identity           | Owner and creation timestamp             | Existence and authorization     |
-| Finished timestamp | Time recorded by `Workflow.addFinalizer` | Stable terminal `lastUpdatedAt` |
+```ts
+const ReportsExecution = McpTasks.layerMemory(Reports, {
+  workspace_report: ({ workspaceId }) => Effect.succeed(`Report for ${workspaceId}`)
+})
+```
 
-The task handle uses an existing durable token to identify its Workflow and
-execution. Routing accepts only registered Workflows and the identity deferred.
-It does not grant authorization. While work is active, `lastUpdatedAt` equals
-`createdAt`. Terminal responses use the finished timestamp. Identity and terminal
-timestamps use the engine's clock.
+This layer has no Workflow dependency. It interrupts its fibers and clears task
+records when its scope closes. It does not survive a restart or provide durable
+task creation, so use it for development and tests.
 
-A normal active read uses one fact lookup and one Workflow poll. A normal terminal
-read adds one timestamp lookup. Neither path scans history or reconstructs a live
-view. Creation and terminal reads use a short bounded retry when an accepted fact
-is not yet visible. A remaining visibility delay returns a retryable request error
-rather than inventing a timestamp or waiting indefinitely.
+### External jobs
 
-### MVP boundaries
+Applications can implement `Execution` directly. Its methods accept serializable
+requests and have no Workflow requirements:
 
-All tasks report `ttlMs: null`. Workflow owns physical history cleanup. An engine
-that deletes a task's identity can no longer serve that handle; unlimited protocol
-TTL does not configure engine retention.
+```ts
+const ReportsExecution = Layer.effect(
+  McpTasks.Execution,
+  Effect.gen(function*() {
+    const jobs = yield* ReportJobs
+    return McpTasks.Execution.of({
+      create: (request) => jobs.submit(request).pipe(Effect.map(toTask)),
+      get: (request) => jobs.getOwned(request).pipe(Effect.map(toTask)),
+      update: (request) => jobs.respondOwned(request),
+      cancel: (request) => jobs.cancelOwned(request)
+    })
+  })
+)
+```
 
-`tasks/cancel` authorizes the task, requests `WorkflowEngine.interrupt`, and
-acknowledges. Interruption is cooperative. The task can remain working or complete
-before interruption takes effect. The server reports cancelled only when the
-engine reports an interrupted outcome.
+Here `ReportJobs` is an application service, and `toTask` maps its state to an
+`McpTasks.Task`. The application owns durable creation, unguessable task IDs,
+retention, and authorization on every operation. A completed task contains an MCP
+`CallToolResult`. A failed task contains a JSON-RPC error. Tool failures expressed
+as `isError: true` remain completed results.
 
-`tasks/update` authorizes the task and acknowledges. This implementation issues no
-interactive input requests, so response keys are ignored. Progress, task-specific
-timeouts, expiry interruption, notifications, inline fallback, and interactive
-roots, sampling, or elicitation are outside this MVP.
+The tested example in `test/ai/McpServer/TestUtils/McpExternalJobs.ts` maps a job
+API to MCP, including an input request and a response through `tasks/update`.
+It runs without a Workflow engine.
 
-### Implementation and tests
+### Ownership and protocol behavior
 
-`McpTasks.ts` exposes the registration function and options. `internal/mcpTasks.ts`
-registers Workflows and projects their results using the two immutable facts.
-`internal/mcpTasksBinding.ts` routes protocol calls to registered task tools and
-validates task handles. The July protocol adapter retains its complete protocol
-schemas, including shapes this implementation does not produce.
+`owner: "shared"` allows every client to access tasks. For isolation, supply an
+Effect resolving a trusted application principal. Client-provided names and
+metadata are not proof of identity. The resolver runs for creation, retrieval,
+updates, and cancellation. Execution implementations must enforce the resolved
+owner. The protocol routes opaque handles to the registered tool and backend,
+without interpreting backend-specific identifiers.
 
-`McpTasks.test.ts` covers HTTP behavior, ordinary tool coexistence, schemas,
-services, capabilities, ownership, and cancellation acknowledgement.
-`McpTasksWorkflow.test.ts` reconstructs SQLite-backed runners to verify durable
-results, timestamps, ownership, and Activity replay. Type tests cover handler,
-schema, construction, and owner service requirements. The old metadata storage,
-revision journal, and live-view prototypes are removed.
+The July client must declare the Tasks extension on each request. Earlier clients
+do not see task tools. Creation returns a handle only after the backend accepts
+the task and makes it readable. Repeated tool calls are separate creations, with
+no automatic request deduplication.
+
+The full `Task` union supports `working`, `input_required`, `completed`, `failed`,
+and `cancelled`. Input-required tasks expose `inputRequests`. `tasks/update`
+forwards keyed responses to the execution service. Workflow and memory layers
+issue no input requests, so they authorize updates and ignore response keys.
+
+Cancellation acknowledges intent. It does not guarantee termination, and later
+reads report the actual outcome. Each backend supplies `ttlMs`, optional
+`pollIntervalMs`, and optional `statusMessage`. Workflow and memory layers use
+`ttlMs: null`. Workflow history retention still determines handle availability.
+Notifications, automatic inline fallback, and task-specific deadlines remain
+outside this implementation.
