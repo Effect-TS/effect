@@ -455,7 +455,7 @@ class RegistryImpl implements AtomRegistry {
     if (this.hydratedWithUnknownDependencies.size === 0) return
     const nodes = Array.from(this.hydratedWithUnknownDependencies)
     this.hydratedWithUnknownDependencies.clear()
-    runAll(nodes, (node) => node.invalidate())
+    runAll(nodes, (node) => node.pendingRuntime !== undefined ? node.endHydration() : node.invalidate())
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
@@ -921,8 +921,8 @@ class NodeImpl<A> {
     if (parent === undefined || parent.atom !== this.pendingRuntime) {
       this.preserveInitialValueOnBuild = false
       this.endHydration()
+      this.registry.hydratedWithUnknownDependencies.delete(this)
     }
-    this.registry.hydratedWithUnknownDependencies.delete(this)
     if (this.state === NodeState.valid) {
       this.state = NodeState.stale
       try {
@@ -1057,8 +1057,11 @@ export const consumeHydration = (ctx: Atom.AtomContext): boolean => {
 /** @internal */
 export const pendingHydrationRuntime = (ctx: Atom.AtomContext, runtime: Atom.Atom<any>): void => {
   const node = (ctx as Lifetime<any>).node
-  if (node.hydrating) {
+  if (node.hydrating && node.preserveInitialValueOnBuild && Result.isInitial(ctx(runtime))) {
     node.pendingRuntime = runtime
+    node.registry.hydratedWithUnknownDependencies.add(node)
+  } else {
+    node.endHydration()
   }
 }
 
