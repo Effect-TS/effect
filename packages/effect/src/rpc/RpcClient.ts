@@ -423,6 +423,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           )
           fiber.addObserver((exit) => {
             if (exit._tag === "Failure") {
+              entries.delete(id)
               return resume(exit)
             }
           })
@@ -712,6 +713,10 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
                 payload,
                 headers: Object.entries(message.headers)
               }, collector && collector.readUnsafe())
+            ),
+            // An interrupted request keeps its entry until the interrupt is sent.
+            Effect.onError((cause) =>
+              Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.sync(() => entries.delete(message.id))
             )
           ) as Effect.Effect<void, RpcClientError>
         }
@@ -773,12 +778,17 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         ) as Effect.Effect<void>
       }
       case "Defect": {
+        // Resuming callers can synchronously start new requests.
+        entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
+        // Resuming callers can synchronously start new requests.
+        const requestIds = Array.from(entries.keys())
+        entries.clear()
         return Effect.forEach(
-          Array.from(entries.keys()),
+          requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
         )
       }
@@ -1093,6 +1103,7 @@ export const makeProtocolSocket = (options?: {
       Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
     const broadcastError = (error: RpcClientError) => {
       currentError = error
+      requestClientMap.clear()
       return broadcast({
         _tag: "ClientProtocolError",
         error
