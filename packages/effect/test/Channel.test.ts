@@ -454,6 +454,25 @@ describe("Channel", () => {
         )
         assert.strictEqual(result.flat().join(""), "a🌍b")
       }))
+
+    it.effect("decodeText decodes a truncated character at the end of the input", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromArray([[Uint8Array.of(0xC3)]] as const).pipe(
+          Channel.pipeTo(Channel.decodeText()),
+          Channel.runCollect
+        )
+        assert.strictEqual(result.flat().join(""), "\uFFFD")
+      }))
+
+    it.effect("decodeText dies on a truncated final character with fatal enabled", () =>
+      Effect.gen(function*() {
+        const exit = yield* Channel.fromArray([[Uint8Array.of(0xC3)]] as const).pipe(
+          Channel.pipeTo(Channel.decodeText(undefined, { fatal: true })),
+          Channel.runCollect,
+          Effect.exit
+        )
+        assert.isTrue(Exit.hasDies(exit))
+      }))
   })
 
   describe("merging", () => {

@@ -9815,10 +9815,10 @@ export const decodeText: <
     <E, R>(self: Stream<Uint8Array, E, R>, options?: {
       readonly encoding?: string | undefined
     }): Stream<string, E, R> =>
-      suspend(() => {
-        const decoder = new TextDecoder(options?.encoding)
-        return map(self, (chunk) => decoder.decode(chunk, { stream: true }))
-      })
+      self.channel.pipe(
+        Channel.pipeTo(Channel.decodeText(options?.encoding)),
+        fromChannel
+      )
   )
 
 /**
