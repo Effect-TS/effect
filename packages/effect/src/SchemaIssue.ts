@@ -1339,11 +1339,8 @@ function toDefaultIssues(
   switch (issue._tag) {
     case "Filter": {
       const message = messageOverride ?? checkHook(issue)
-      if (message !== undefined) {
+      if (message !== undefined || issue.issue._tag !== "InvalidValue") {
         return toDefaultIssues(issue.issue, path, leafHook, checkHook, message)
-      }
-      if (issue.issue._tag !== "InvalidValue") {
-        return toDefaultIssues(issue.issue, path, leafHook, checkHook)
       }
       const expected = findExpected(issue.issue)
       return [{
@@ -1438,17 +1435,13 @@ function formatIssue(issue: Issue, path: string, messageOverride?: string): stri
   switch (issue._tag) {
     case "Filter": {
       const annotated = messageOverride ?? defaultCheckHook(issue)
-      if (annotated !== undefined) {
+      if (annotated !== undefined || issue.issue._tag !== "InvalidValue") {
         return formatIssue(issue.issue, path, annotated)
-      } else {
-        if (issue.issue._tag !== "InvalidValue") {
-          return formatIssue(issue.issue, path)
-        }
-        const expected = findExpected(issue.issue)
-        message = expected === undefined
-          ? getExpectedMessage(formatCheck(issue.filter), issue)
-          : getExpectedMessage(expected, issue.issue)
       }
+      const expected = findExpected(issue.issue)
+      message = expected === undefined
+        ? getExpectedMessage(formatCheck(issue.filter), issue)
+        : getExpectedMessage(expected, issue.issue)
       break
     }
     case "Encoding":
@@ -1472,7 +1465,7 @@ function formatIssue(issue: Issue, path: string, messageOverride?: string): stri
 }
 
 function findMessage(issue: Issue): string | undefined {
-  // Composite annotations belong to the checked schema, not its individual failures.
+  // A Composite's ast describes the whole schema, not the failures it groups.
   if (issue._tag === "Pointer" || issue._tag === "Composite") return
   if (issue._tag === "Encoding") return findMessage(issue.issue)
   const annotations = issue._tag === "Filter"
