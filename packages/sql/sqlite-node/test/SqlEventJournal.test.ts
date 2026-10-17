@@ -34,6 +34,72 @@ const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
 describe("SqlEventJournal", () => {
+  it.effect("deduplicates overlapping remote entries within one incoming array", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const a = entry(1_000)
+      const b = entry(2_000)
+      const handled: Array<string> = []
+      // Flattened overlapping batches [A] and [A, B], not separate journal writes.
+      const repeatedA = new EventJournal.Entry({ ...a, id: a.id.slice() as EventJournal.EntryId })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [a, repeatedA, b].map((entry, remoteSequence) =>
+          new EventJournal.RemoteEntry({ remoteSequence, entry })
+        ),
+        effect: (batch) =>
+          Effect.sync(() => {
+            handled.push(...batch.map(({ entry }) => entry.idString))
+          })
+      })
+
+      assert.deepStrictEqual({
+        handled,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }, {
+        handled: [a.idString, b.idString],
+        stored: [a.idString, b.idString],
+        nextSequence: 3
+      })
+    }))
+
+  it.effect("advances remote progress past a trailing known entry in a partly known batch", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const a = entry(1_000)
+      const b = entry(2_000)
+      const handled: Array<string> = []
+      const effect = (batch: ReadonlyArray<{ readonly entry: EventJournal.Entry }>) =>
+        Effect.sync(() => {
+          handled.push(...batch.map(({ entry }) => entry.idString))
+        })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: a })],
+        effect
+      })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [
+          new EventJournal.RemoteEntry({ remoteSequence: 1, entry: b }),
+          new EventJournal.RemoteEntry({ remoteSequence: 2, entry: a })
+        ],
+        effect
+      })
+
+      assert.deepStrictEqual({
+        handled,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }, {
+        handled: [a.idString, b.idString],
+        stored: [a.idString, b.idString],
+        nextSequence: 3
+      })
+    }))
   it.effect("replay invalidation observes committed entries from another connection", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
