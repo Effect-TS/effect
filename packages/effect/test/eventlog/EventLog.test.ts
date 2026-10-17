@@ -1,5 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, PubSub, Queue, Ref, Schema, SchemaGetter } from "effect"
+import {
+  Context,
+  Effect,
+  Layer,
+  Logger,
+  Option,
+  PubSub,
+  Queue,
+  Redacted,
+  Ref,
+  References,
+  Schema,
+  SchemaGetter
+} from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -158,6 +171,49 @@ const logLayer = (
       )
     )
   )
+
+class ReplayLabel extends Context.Service<ReplayLabel, string>()("test/ReplayLabel") {}
+class ReplayMarker extends Context.Service<ReplayMarker, string>()("test/ReplayMarker") {}
+
+const testIdentity = (publicKey: string) =>
+  EventLog.Identity.of({ publicKey, privateKey: Redacted.make(new Uint8Array(32)) })
+
+// Records the services visible while a replayed payload is decoded or handled.
+const observeReplay = (seen: Array<string>, step: string) =>
+  Effect.all([
+    Effect.serviceOption(ReplayLabel),
+    Effect.serviceOption(ReplayMarker),
+    Effect.serviceOption(EventLog.Identity)
+  ]).pipe(
+    Effect.map(([label, marker, identity]) => {
+      seen.push(
+        `${step} label=${Option.getOrUndefined(label)} marker=${Option.getOrUndefined(marker)} identity=${
+          Option.getOrUndefined(Option.map(identity, (_) => _.publicKey))
+        }`
+      )
+    })
+  )
+
+const makeObservedGroup = <const Tag extends string>(tag: Tag, seen: Array<string>) =>
+  EventGroup.empty.add({
+    tag,
+    primaryKey: (payload) => payload.id,
+    payload: UserPayload.pipe(Schema.decode({
+      decode: SchemaGetter.transformEffect((payload) =>
+        Effect.as(observeReplay(seen, `decode ${tag} ${payload.id}`), payload)
+      ),
+      encode: SchemaGetter.passthrough()
+    }))
+  })
+
+const makeObservedEntry = Effect.fnUntraced(function*(event: string, id: string, msecs: number) {
+  return new EventJournal.Entry({
+    id: EventJournal.makeEntryIdUnsafe({ msecs }),
+    event,
+    primaryKey: "key",
+    payload: yield* Schema.encodeUnknownEffect(UserGroup.events.UserCreated.payloadSchemaBinary)({ id })
+  }, { disableChecks: true })
+})
 
 describe("EventLog", () => {
   it.effect("decodes shared conflicts once per remote replay batch", () =>
@@ -615,6 +671,194 @@ describe("EventLog", () => {
           handled: ["user-1", "user-2"]
         })
       }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("replays remote entries in their handler context, with the batch context and log identity taking precedence", () =>
+    Effect.gen(function*() {
+      const seen: Array<string> = []
+      const done = yield* Queue.unbounded<void>()
+      const First = makeObservedGroup("First", seen)
+      const Second = makeObservedGroup("Second", seen)
+      const handlers = Layer.mergeAll(
+        EventLog.group(
+          First,
+          (handlers) => handlers.handle("First", ({ payload }) => observeReplay(seen, `handle First ${payload.id}`))
+        ).pipe(Layer.provide([
+          Layer.succeed(ReplayLabel, "first"),
+          Layer.succeed(ReplayMarker, "handler"),
+          Layer.succeed(EventLog.Identity, testIdentity("handler"))
+        ])),
+        EventLog.group(
+          Second,
+          (handlers) => handlers.handle("Second", ({ payload }) => observeReplay(seen, `handle Second ${payload.id}`))
+        ).pipe(Layer.provide(Layer.succeed(ReplayLabel, "second")))
+      ).pipe(Layer.provide(EventLog.layerRegistry))
+      const layer = EventLog.layer(EventLog.schema(First, Second), handlers).pipe(
+        Layer.provideMerge(EventJournal.layerMemory),
+        Layer.provide([
+          Layer.succeed(EventLog.Identity, testIdentity("log")),
+          // Stands in for a transaction that exposes its connection to handlers.
+          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
+            effect.pipe(
+              Effect.provideService(ReplayMarker, "batch"),
+              Effect.ensuring(Queue.offer(done, undefined))
+            ))
+        ])
+      )
+
+      yield* Effect.gen(function*() {
+        const journal = yield* EventJournal.EventJournal
+        const registry = yield* EventLog.Registry
+        const remoteId = EventJournal.makeRemoteIdUnsafe()
+        // Newer stored entries become conflicts of the incoming ones.
+        yield* journal.writeFromRemote({
+          remoteId,
+          entries: [
+            new EventJournal.RemoteEntry({
+              remoteSequence: 0,
+              entry: yield* makeObservedEntry("First", "stored", 2000)
+            }),
+            new EventJournal.RemoteEntry({
+              remoteSequence: 1,
+              entry: yield* makeObservedEntry("Second", "stored", 2000)
+            })
+          ],
+          effect: () => Effect.void
+        })
+        const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+        // Enqueue before registration so both entries replay as one batch.
+        yield* Queue.offerAll(changes, [
+          new EventJournal.RemoteEntry({
+            remoteSequence: 2,
+            entry: yield* makeObservedEntry("First", "incoming", 1000)
+          }),
+          new EventJournal.RemoteEntry({
+            remoteSequence: 3,
+            entry: yield* makeObservedEntry("Second", "incoming", 1000)
+          })
+        ])
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: remoteId,
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        yield* Queue.take(done)
+
+        assert.deepStrictEqual(seen.sort(), [
+          "decode First incoming label=first marker=batch identity=log",
+          "decode First stored label=first marker=batch identity=log",
+          "decode Second incoming label=second marker=batch identity=log",
+          "decode Second stored label=second marker=batch identity=log",
+          "handle First incoming label=first marker=batch identity=log",
+          "handle Second incoming label=second marker=batch identity=log"
+        ])
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("decodes replay conflicts with the caller identity, and the payload and handler with the log identity", () =>
+    Effect.gen(function*() {
+      const seen: Array<string> = []
+      const First = makeObservedGroup("First", seen)
+      const replay = EventLog.makeReplayFromRemote({
+        handlers: new Map([["First", {
+          event: First.events.First,
+          context: Context.make(ReplayLabel, "first") as Context.Context<any>,
+          handler: ({ payload }) => observeReplay(seen, `handle First ${(payload as { readonly id: string }).id}`)
+        }]]),
+        storeId: yield* EventLog.CurrentStoreId,
+        identity: testIdentity("log"),
+        reactivity: yield* Reactivity.Reactivity,
+        reactivityKeys: {},
+        logAnnotations: { service: "test", effect: "replay" }
+      })
+
+      yield* replay({
+        entry: yield* makeObservedEntry("First", "incoming", 1000),
+        conflicts: [yield* makeObservedEntry("First", "stored", 2000)]
+      }).pipe(Effect.provideService(EventLog.Identity, testIdentity("caller")))
+
+      assert.deepStrictEqual(seen.sort(), [
+        "decode First incoming label=first marker=undefined identity=log",
+        "decode First stored label=first marker=undefined identity=caller",
+        "handle First incoming label=first marker=undefined identity=log"
+      ])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("logs remote replay failures and handler logs with the entry annotations", () =>
+    Effect.gen(function*() {
+      const logs: Array<{ readonly level: string; readonly annotations: Record<string, unknown> }> = []
+      const handled: Array<string> = []
+      const done = yield* Queue.unbounded<void>()
+      const handlers = EventLog.group(UserGroup, (handlers) =>
+        handlers.handle("UserCreated", ({ payload }) =>
+          Effect.gen(function*() {
+            handled.push(payload.id)
+            if (payload.id === "user-1") {
+              yield* Effect.log("handled")
+            }
+            if (payload.id === "user-2") {
+              return yield* Effect.die("handler failed")
+            }
+          }))).pipe(Layer.provide(EventLog.layerRegistry))
+      const layer = EventLog.layer(schema, handlers).pipe(
+        Layer.provide([
+          EventJournal.layerMemory,
+          Layer.succeed(EventLog.Identity, testIdentity("log")),
+          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
+            Effect.ensuring(effect, Queue.offer(done, undefined)))
+        ])
+      )
+      const user1 = yield* makeCompactionEntry({ id: "user-1" })
+      const user2 = yield* makeCompactionEntry({ id: "user-2" })
+      const undecodable = new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "UserCreated",
+        primaryKey: "user-3",
+        payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
+          list: "list-1",
+          item: 1
+        })
+      }, { disableChecks: true })
+      const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+      yield* Queue.offerAll(
+        changes,
+        [user1, user2, undecodable].map((entry, remoteSequence) =>
+          new EventJournal.RemoteEntry({ remoteSequence, entry })
+        )
+      )
+
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () =>
+            Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        yield* Queue.take(done)
+      }).pipe(
+        Effect.provide(layer),
+        Effect.provide(Logger.layer([Logger.make((options) => {
+          logs.push({
+            level: options.logLevel,
+            annotations: { ...options.fiber.getRef(References.CurrentLogAnnotations) }
+          })
+        })]))
+      )
+
+      const annotations = (entry: EventJournal.Entry) => ({
+        service: "EventLog",
+        effect: "writeFromRemote",
+        entryId: entry.idString
+      })
+      assert.deepStrictEqual(handled, ["user-1", "user-2"])
+      assert.deepStrictEqual(logs, [
+        { level: "Info", annotations: annotations(user1) },
+        { level: "Error", annotations: annotations(user2) },
+        { level: "Error", annotations: annotations(undecodable) }
+      ])
     }))
 
   it.effect("retries a failed remote write and flushes changes made during the retry", () =>
