@@ -17,6 +17,7 @@ import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import { pipe } from "./Function.ts"
+import * as Glob from "./internal/glob.ts"
 import * as Layer from "./Layer.ts"
 import * as Option from "./Option.ts"
 import { badArgument, type PlatformError, systemError } from "./PlatformError.ts"
@@ -130,13 +131,36 @@ export interface FileSystem {
     gid: number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Glob a directory.
+   * Finds paths under `root` that match a glob pattern.
+   *
+   * **Details**
+   *
+   * Patterns follow `Glob.make`: wildcards skip names that start with `.`
+   * unless the pattern segment starts with `.` or `dot` is `true`, and
+   * `dir/**` includes `dir` itself. Results are `/`-separated paths relative
+   * to `root` (or absolute for an absolute pattern), visited depth-first with
+   * each directory's entries sorted by name. `**` does not traverse symbolic
+   * links to directories, but a link named by another segment is followed.
+   * Paths that match an `exclude` pattern are dropped, and excluded
+   * directories are not read. Entries whose type cannot be determined, such
+   * as broken links, are treated as files.
+   *
+   * Read failures at the root or a leading literal directory propagate. Missing
+   * paths return an empty result; unreadable wildcard-reached directories are
+   * skipped.
+   *
+   * **Gotchas**
+   *
+   * Wildcard matching is case-sensitive. Leading literal segments use `stat`,
+   * so their case sensitivity follows the file system and results retain the
+   * pattern's spelling.
    */
   readonly glob: (
     pattern: string,
     options?: {
       readonly root?: string | undefined
       readonly exclude?: ReadonlyArray<string> | undefined
+      readonly dot?: boolean | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
@@ -247,6 +271,21 @@ export interface FileSystem {
       readonly recursive?: boolean | undefined
     }
   ) => Effect.Effect<Array<string>, PlatformError>
+  /**
+   * Lists a directory with the type of each entry.
+   *
+   * **Details**
+   *
+   * Returns the same bare names as `readDirectory(path)`, excluding `.` and
+   * `..`, in no particular order. Types describe entries, not symlink targets.
+   * `"Unknown"` is allowed when the listing cannot determine the type.
+   *
+   * **Gotchas**
+   *
+   * Wrappers that change `readDirectory`, such as by prefixing paths, must
+   * apply the same change here for `glob` to list the correct directory.
+   */
+  readonly readDirectoryEntries: (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>
   /**
    * Read the contents of a file.
    */
@@ -479,6 +518,21 @@ export type OpenFlag =
 export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Service("effect/FileSystem")
 
 /**
+ * A directory entry with its type, independent of any symlink target.
+ * `"Unknown"` means the listing could not determine the type.
+ *
+ * @see {@link FileSystem} `readDirectoryEntries`, which returns these entries
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface DirectoryEntry {
+  readonly name: string
+  readonly type: File.Type
+}
+
+/**
  * Creates a FileSystem implementation from a partial implementation.
  *
  * **When to use**
@@ -491,7 +545,10 @@ export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Servi
  *
  * This function takes a partial FileSystem implementation and automatically provides
  * default implementations for `exists`, `readFileString`, `stream`, `sink`, and
- * `writeFileString` methods based on the provided core methods.
+ * `writeFileString` methods based on the provided core methods. When
+ * `readDirectoryEntries` is omitted, it lists with `readDirectory` and reports
+ * every entry as `"Unknown"`. When `glob` is omitted, it derives a tree walk
+ * from `readDirectoryEntries`, `stat`, and `readLink`.
  *
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
@@ -501,11 +558,36 @@ export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Servi
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<FileSystem, typeof TypeId | "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
-): FileSystem =>
-  FileSystem.of({
+  impl:
+    & Omit<
+      FileSystem,
+      | typeof TypeId
+      | "exists"
+      | "glob"
+      | "readDirectoryEntries"
+      | "readFileString"
+      | "stream"
+      | "sink"
+      | "writeFileString"
+    >
+    & {
+      readonly glob?: FileSystem["glob"] | undefined
+      readonly readDirectoryEntries?: FileSystem["readDirectoryEntries"] | undefined
+    }
+): FileSystem => {
+  const readDirectoryEntries = impl.readDirectoryEntries ??
+    ((path: string) =>
+      Effect.map(
+        impl.readDirectory(path),
+        (names) => names.map((name): DirectoryEntry => ({ name, type: "Unknown" }))
+      ))
+  const walker = { readDirectoryEntries, stat: impl.stat, readLink: impl.readLink }
+  return FileSystem.of({
     ...impl,
     [TypeId]: TypeId,
+    readDirectoryEntries,
+    glob: impl.glob ??
+      ((pattern, options) => Glob.walk(walker, Glob.compile([pattern], options?.dot ?? false), options)),
     exists: (path) =>
       pipe(
         impl.access(path),
@@ -581,6 +663,7 @@ export const make = (
         (_) => impl.writeFile(path, _, options)
       )
   })
+}
 
 const notFound = (method: string, path: string) =>
   systemError({
@@ -691,6 +774,9 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
     },
     readDirectory(path) {
       return Effect.fail(notFound("readDirectory", path))
+    },
+    readDirectoryEntries(path) {
+      return Effect.fail(notFound("readDirectoryEntries", path))
     },
     readFile(path) {
       return Effect.fail(notFound("readFile", path))
