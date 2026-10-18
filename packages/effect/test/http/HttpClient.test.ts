@@ -464,6 +464,29 @@ Missing key
   })
 
   describe("followRedirects", () => {
+    it.effect("sends cookies from redirect responses with withCookiesRef", () =>
+      Effect.gen(function*() {
+        const cookies = yield* Ref.make(Cookies.empty)
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(
+            request,
+            request.url === "https://origin.test/start"
+              ? new Response(null, {
+                status: 302,
+                headers: { location: "/destination", "set-cookie": "session=secret" }
+              })
+              : new Response(request.headers.cookie ?? "")
+          ))
+        ).pipe(
+          HttpClient.withCookiesRef(cookies),
+          HttpClient.followRedirects()
+        )
+
+        const response = yield* client.get("https://origin.test/start")
+
+        assert.strictEqual(yield* response.text, "session=secret")
+      }))
+
     it.effect("preserves preprocessing error recovery", () =>
       Effect.gen(function*() {
         const request = HttpClientRequest.get("https://origin.test/")
