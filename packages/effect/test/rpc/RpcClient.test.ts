@@ -188,24 +188,42 @@ describe("RpcClient", () => {
   it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
+      const delivery = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
       const error = new RpcClientError({
         reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
       })
       const caller = yield* client.Unary().pipe(
-        Effect.catch((received) => {
+        Effect.catch(Effect.fnUntraced(function*(received) {
           assert.strictEqual(received, error)
-          return client.Unary()
-        }),
+          const receiver = yield* Deferred.await(delivery)
+          yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+          return yield* client.Unary()
+        })),
         Effect.exit,
         Effect.forkChild
       )
       takeRequestId(yield* Queue.take(sent))
-      // Let the first call suspend before delivering the error.
+      // Queue completion introduces an interruption boundary between unary deliveries.
+      yield* client.Good(undefined, { asQueue: true })
+      takeRequestId(yield* Queue.take(sent))
+      const last = yield* client.Unary().pipe(Effect.forkChild)
+      takeRequestId(yield* Queue.take(sent))
       yield* Effect.yieldNow
-      yield* handle({ _tag: "ClientProtocolError", error })
+      const receiver = yield* Effect.withFiber((fiber) =>
+        Deferred.succeed(delivery, fiber).pipe(
+          Effect.andThen(handle({ _tag: "ClientProtocolError", error }))
+        )
+      ).pipe(Effect.forkChild)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      const lastExit = last.pollUnsafe()
+      assert(lastExit !== undefined, "all original callers must finish before client shutdown")
+      assert(Exit.isFailure(lastExit))
+      assert.strictEqual(Cause.squash(lastExit.cause), error)
 
       const retryRequestId = takeRequestId(yield* Queue.take(sent))
       yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert(caller.pollUnsafe() !== undefined, "the retry must remain reachable after error delivery")
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
     }))
 
