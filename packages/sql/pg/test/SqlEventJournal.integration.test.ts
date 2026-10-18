@@ -147,6 +147,37 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
           payload BYTEA NOT NULL,
           timestamp BIGINT NOT NULL
         )`
+      const remoteA = EventJournal.makeRemoteIdUnsafe()
+      const remoteB = EventJournal.makeRemoteIdUnsafe()
+      const entries = [remoteEntry("pending").entry, remoteEntry("fromA").entry, remoteEntry("fromB").entry]
+      yield* sql`INSERT INTO concurrent_open_entries ${
+        sql.insert(entries.map((entry) => ({
+          id: entry.id,
+          event: entry.event,
+          primary_key: entry.primaryKey,
+          payload: entry.payload,
+          timestamp: entry.createdAtMillis
+        })))
+      }`
+      yield* sql`
+        CREATE TABLE concurrent_open_remotes (
+          remote_id BYTEA NOT NULL,
+          entry_id BYTEA NOT NULL,
+          sequence INT NOT NULL,
+          PRIMARY KEY (remote_id, entry_id)
+        )`
+      yield* sql`INSERT INTO concurrent_open_remotes ${
+        sql.insert([
+          { remote_id: remoteA, entry_id: entries[1].id, sequence: 1 },
+          { remote_id: remoteB, entry_id: entries[2].id, sequence: 7 }
+        ])
+      }`
+      yield* sql`
+        CREATE TABLE concurrent_open_remotes_cursors (
+          remote_id BYTEA PRIMARY KEY,
+          next_sequence INT NOT NULL
+        )`
+      yield* sql`INSERT INTO concurrent_open_remotes_cursors ${sql.insert({ remote_id: remoteA, next_sequence: 9 })}`
       const locked = yield* Deferred.make<number>()
       const release = yield* Deferred.make<void>()
       // Index creation needs this table, so both opens stall mid-migration.
@@ -163,7 +194,24 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
       )
       yield* waitUntilBlockedBy(holder, 2)
       yield* Deferred.succeed(release, undefined)
-      yield* Fiber.join(opens)
+      const journals = yield* Fiber.join(opens)
+      for (const journal of journals) {
+        assert.strictEqual(yield* journal.nextRemoteSequence(remoteA), 9)
+        assert.strictEqual(yield* journal.nextRemoteSequence(remoteB), 8)
+        assert.deepStrictEqual(
+          (yield* journal.entries).map((entry) => entry.idString).sort(),
+          entries.map((entry) => entry.idString).sort()
+        )
+      }
+      const upload = (remoteId: EventJournal.RemoteId) =>
+        journals[0].withRemoteUncommited(remoteId, (entries) =>
+          Effect.succeed(entries.map((entry) => entry.primaryKey).sort()))
+      assert.deepStrictEqual(yield* upload(remoteA), Option.some(["fromB", "pending"]))
+      assert.deepStrictEqual(yield* upload(remoteB), Option.some(["fromA", "pending"]))
+      const [{ legacy }] = yield* sql<{ legacy: string | null }>`
+        SELECT to_regclass('concurrent_open_remotes')::text AS legacy
+      `
+      assert.isNull(legacy)
     }))
 
   it.effect("withRemoteUncommited uploads entries whose commits finish out of order", () =>
