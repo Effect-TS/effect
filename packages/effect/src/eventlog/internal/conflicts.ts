@@ -1,40 +1,41 @@
+import type * as Order from "../../Order.ts"
 import type { Entry } from "../EventJournal.ts"
 
 /**
  * Pairs a batch of incoming entries with the stored entries that conflict with
- * them: same event and primary key, strictly newer.
+ * them: same event and primary key, strictly greater id.
  *
- * Add the stored entries that may conflict, in the order conflicts should be
- * reported, then call `toBatch`.
+ * The batch is sorted by `order` (`Entry.Order`), so it is applied in the same
+ * order on every replica. Add the stored entries that may conflict, in id
+ * order, then call `toBatch`.
  */
 export class ConflictIndex {
+  /** The incoming entries in id order. */
   readonly batch: ReadonlyArray<Entry>
+  /** Creation time of the oldest incoming entry, for coarse filters. */
   readonly oldestMillis: number
+  private readonly order: Order.Order<Entry>
   private readonly stored = new Map<string, Map<string, ConflictGroup>>()
 
-  constructor(batch: ReadonlyArray<Entry>) {
-    this.batch = batch
-    let oldestMillis = Infinity
-    for (const entry of batch) {
+  constructor(batch: ReadonlyArray<Entry>, order: Order.Order<Entry>) {
+    this.batch = batch.slice().sort(order)
+    this.order = order
+    this.oldestMillis = this.batch.length > 0 ? this.batch[0].createdAtMillis : Infinity
+    for (const entry of this.batch) {
       let byKey = this.stored.get(entry.event)
       if (byKey === undefined) {
         byKey = new Map()
         this.stored.set(entry.event, byKey)
       }
-      const group = byKey.get(entry.primaryKey)
-      if (group === undefined) {
+      if (!byKey.has(entry.primaryKey)) {
         byKey.set(entry.primaryKey, {
           event: entry.event,
           primaryKey: entry.primaryKey,
-          oldestMillis: entry.createdAtMillis,
+          oldest: entry,
           entries: []
         })
-      } else {
-        group.oldestMillis = Math.min(group.oldestMillis, entry.createdAtMillis)
       }
-      oldestMillis = Math.min(oldestMillis, entry.createdAtMillis)
     }
-    this.oldestMillis = oldestMillis
   }
 
   get events(): Array<string> {
@@ -53,15 +54,12 @@ export class ConflictIndex {
   }
 
   toBatch(): Array<{ readonly entry: Entry; readonly conflicts: ReadonlyArray<Entry> }> {
-    return this.batch.map((entry) => {
-      const millis = entry.createdAtMillis
-      return {
-        entry,
-        conflicts: this.stored.get(entry.event)!.get(entry.primaryKey)!.entries.filter((stored) =>
-          stored.createdAtMillis > millis
-        )
-      }
-    })
+    return this.batch.map((entry) => ({
+      entry,
+      conflicts: this.stored.get(entry.event)!.get(entry.primaryKey)!.entries.filter((stored) =>
+        this.order(stored, entry) > 0
+      )
+    }))
   }
 }
 
@@ -69,7 +67,7 @@ export class ConflictIndex {
 export interface ConflictGroup {
   readonly event: string
   readonly primaryKey: string
-  /** Creation time of the oldest incoming entry. Only stored entries created later can conflict. */
-  oldestMillis: number
+  /** The incoming entry with the lowest id. Only stored entries with a greater id can conflict. */
+  readonly oldest: Entry
   readonly entries: Array<Entry>
 }

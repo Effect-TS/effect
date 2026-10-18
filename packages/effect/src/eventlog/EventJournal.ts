@@ -96,12 +96,16 @@ export class EventJournal extends Context.Service<EventJournal, {
    *
    * **Details**
    *
-   * `effect` runs once with every new entry in compaction order, each paired
-   * with the stored entries for the same event and primary key that are
-   * strictly newer than it. All conflicts are read before `effect` runs and
-   * the batch is committed after it succeeds, with no journal I/O while it
-   * runs. It is not called when the batch has no new entries. If `effect`
-   * fails, no entry from the batch is committed.
+   * `effect` runs once with every new entry after compaction, sorted by
+   * `Entry.Order`. Each entry is paired with the stored entries for the same
+   * event and primary key whose id is strictly greater, in id order. Entries
+   * in the batch never conflict with each other: applying them in id order
+   * gives the same result as delivering them one at a time.
+   *
+   * All conflicts are read before `effect` runs and the batch is committed
+   * after it succeeds, with no journal I/O while it runs. It is not called
+   * when the batch has no new entries. If `effect` fails, no entry from the
+   * batch is committed.
    */
   readonly writeFromRemote: (
     options: {
@@ -525,9 +529,10 @@ export const makeEntries = (
  */
 export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(function*() {
   const journal: Array<Entry> = []
-  // Local writes append in commit order, so an import with a future timestamp
-  // leaves the journal unordered until the next import re-sorts it. Remote
-  // backlogs are subsequences of the journal, so one flag covers them too.
+  // Kept in id order. Local writes append in commit order, so a local write
+  // after an import with a greater id leaves the journal unordered until the
+  // next import re-sorts it. Remote backlogs are subsequences of the journal,
+  // so one flag covers them too.
   let journalSorted = true
   const byId = new Map<string, Entry>()
   const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
@@ -560,7 +565,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           if (exit._tag === "Failure") return Effect.void
           for (const entry of entries) {
             const last = journal[journal.length - 1]
-            if (last !== undefined && last.createdAtMillis > entry.createdAtMillis) {
+            if (last !== undefined && Entry.Order(last, entry) > 0) {
               journalSorted = false
             }
             journal.push(entry)
@@ -598,11 +603,12 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
       if (compacted.length > 0) {
-        const index = new ConflictIndex(compacted)
-        // Only the newer suffix can conflict, unless local writes left the
-        // journal unordered.
+        const index = new ConflictIndex(compacted, Entry.Order)
+        const oldest = index.batch[0]
+        // Only the suffix with greater ids can conflict, unless local writes
+        // left the journal unordered.
         let i = journalSorted ? journal.length : 0
-        while (i > 0 && journal[i - 1].createdAtMillis > index.oldestMillis) i--
+        while (i > 0 && Entry.Order(journal[i - 1], oldest) > 0) i--
         for (; i < journal.length; i++) {
           index.add(journal[i])
         }
@@ -613,13 +619,13 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       }
       // Sequences advance with the commit, so a failed batch is redelivered.
       remote.sequence = nextSequenceAfter(options.entries, remote.sequence)
-      const imported = uncommittedRemotes.map((remoteEntry) => remoteEntry.entry).sort(byCreatedAt)
+      const imported = uncommittedRemotes.map((remoteEntry) => remoteEntry.entry).sort(Entry.Order)
       insertOrdered(journal, journalSorted, imported)
       remotes.forEach((target) => {
         if (target !== remote) {
           insertOrdered(target.missing, journalSorted, imported)
         } else if (!journalSorted) {
-          target.missing.sort(byCreatedAt)
+          target.missing.sort(Entry.Order)
         }
       })
       journalSorted = true
@@ -663,24 +669,21 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
   })
 })
 
-const byCreatedAt = (a: Entry, b: Entry) => a.createdAtMillis - b.createdAtMillis
-
-// Same result as appending `additions` and stable-sorting by creation time:
-// existing entries stay ahead of additions that share their timestamp.
+// Same result as appending `additions` and sorting by id.
 const insertOrdered = (entries: Array<Entry>, sorted: boolean, additions: ReadonlyArray<Entry>): void => {
   let i = entries.length - 1
   for (let n = 0; n < additions.length; n++) {
     entries.push(additions[n])
   }
   if (!sorted) {
-    entries.sort(byCreatedAt)
+    entries.sort(Entry.Order)
     return
   }
-  // Merge from the back, so additions newer than the whole array cost O(additions).
+  // Merge from the back, so additions sorting after the whole array cost O(additions).
   let j = additions.length - 1
   let k = entries.length - 1
   while (j >= 0) {
-    if (i >= 0 && entries[i].createdAtMillis > additions[j].createdAtMillis) {
+    if (i >= 0 && Entry.Order(entries[i], additions[j]) > 0) {
       entries[k--] = entries[i--]
     } else {
       entries[k--] = additions[j--]
@@ -851,15 +854,17 @@ export const makeIndexedDb = (options?: {
           : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
         if (compacted.length > 0) {
-          const index = new ConflictIndex(compacted)
+          const index = new ConflictIndex(compacted, Entry.Order)
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
             const conflicts = tx.objectStore("entries").index("conflict")
-            // One read per group of the entries newer than its oldest, in id order.
+            // One read per group of the entries with a greater id than its
+            // oldest, in id order.
             for (const group of index.groups()) {
               const request = conflicts.getAll(IDBKeyRange.bound(
-                [group.event, group.primaryKey, entryIdLowerBound(group.oldestMillis + 1)],
-                [group.event, group.primaryKey, entryIdUpperBound]
+                [group.event, group.primaryKey, group.oldest.id as IDBValidKey],
+                [group.event, group.primaryKey, entryIdUpperBound],
+                true
               ))
               request.onsuccess = () => {
                 for (const row of request.result) index.add(entryFromIdb(row))
@@ -1055,16 +1060,6 @@ const advanceProgress = (
 }
 
 const byEntryId = (a: Entry, b: Entry) => indexedDB.cmp(a.id as IDBValidKey, b.id as IDBValidKey)
-
-// The smallest entry id created in the given millisecond.
-const entryIdLowerBound = (millis: number): Uint8Array => {
-  const bytes = new Uint8Array(16)
-  for (let i = 5; i >= 0; i--) {
-    bytes[i] = millis % 256
-    millis = Math.floor(millis / 256)
-  }
-  return bytes
-}
 
 // Greater than or equal to every entry id.
 const entryIdUpperBound = new Uint8Array(16).fill(0xff)
