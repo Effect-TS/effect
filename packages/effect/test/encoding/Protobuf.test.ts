@@ -505,6 +505,38 @@ describe("Protobuf", () => {
     }
   })
 
+  // An assignment to `__proto__` replaces the prototype, so these keys must be
+  // defined as own properties. `JSON.parse` builds the expected values for the
+  // same reason.
+  describe("keeps __proto__ keys as own properties", () => {
+    const Guarded = Schema.Struct({
+      ["__proto__"]: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)).pipe(Protobuf.field(1))
+    })
+    const cases: ReadonlyArray<readonly [string, Schema.Codec<any, any>, unknown, string]> = [
+      [
+        "a map key",
+        Shapes,
+        { ...emptyShapes, namedPoints: JSON.parse(`{"__proto__":{"x":1,"y":0}}`) },
+        "3a0f 0a095f5f70726f746f5f5f 12020801"
+      ],
+      [
+        "a Struct key",
+        WellKnown,
+        { attributes: JSON.parse(`{"__proto__":1}`) },
+        "3218 0a16 0a095f5f70726f746f5f5f 1209 11000000000000f03f"
+      ],
+      ["a property", Guarded, JSON.parse(`{"__proto__":{"polluted":"yes"}}`), "0a0f 0a08706f6c6c75746564 1203796573"],
+      ["an absent property", Guarded, {}, ""]
+    ]
+    for (const [name, schema, value, hex] of cases) {
+      it(name, () => {
+        assert.strictEqual(encode(schema, value), hex.replaceAll(" ", ""))
+        assert.deepStrictEqual(decode(schema, hex), value)
+        assert.isUndefined(({} as Record<string, unknown>).polluted)
+      })
+    }
+  })
+
   describe("presence", () => {
     const Profile = Schema.Struct({
       kind: Schema.Literal("profile"),
