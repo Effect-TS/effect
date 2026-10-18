@@ -46,13 +46,27 @@ const legacyStringify = (bytes: Uint8Array): string =>
     bytes.subarray(10, 16)
   ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
 
-// Importing the maximum timestamp exhausts the entry id clock of its module, so
-// that test uses its own module instance. It loads before any test runs, so
-// loading it cannot stall running tests.
-vi.resetModules()
-const Isolated = await Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
-  [Effect, EventJournal]
-) => ({ Effect, EventJournal }))
+// Importing the maximum timestamp can exhaust the entry id clock of its module,
+// so those tests use their own module instances. They load before any test
+// runs, so loading them cannot stall running tests.
+const isolate = () => {
+  vi.resetModules()
+  return Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
+    [Effect, EventJournal]
+  ) => ({ Effect, EventJournal }))
+}
+const Isolated = await isolate()
+const IsolatedFailedImport = await isolate()
+
+// Saturated `rand_a` bits at the maximum timestamp leave no later local id.
+const maximumEntry = ({ EventJournal }: typeof Isolated) => {
+  const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+  id[6] = 0x7f
+  id[7] = 0xff
+  return new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+}
 
 describe("EventJournal", () => {
   ConflictsTest.suite(EventJournal.makeMemory)
@@ -305,12 +319,7 @@ describe("EventJournal", () => {
   it("never commits a local id below an imported id at the maximum timestamp", () => {
     const { Effect, EventJournal } = Isolated
     const journal = Effect.runSync(EventJournal.makeMemory)
-    const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
-    id[6] = 0x7f
-    id[7] = 0xff
-    const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
-      disableChecks: true
-    })
+    const remote = maximumEntry(Isolated)
     Effect.runSync(journal.writeFromRemote({
       remoteId: EventJournal.makeRemoteIdUnsafe(),
       entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
@@ -328,6 +337,25 @@ describe("EventJournal", () => {
       EventJournal.EntryIdOrder(entry.id, remote.id) === -1
     )
     assert.deepStrictEqual(idStrings(below), [])
+  })
+
+  it("keeps local writes working after a failed import of an id at the maximum timestamp", () => {
+    const { Effect, EventJournal } = IsolatedFailedImport
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const failed = Effect.runSyncExit(journal.writeFromRemote({
+      remoteId: EventJournal.makeRemoteIdUnsafe(),
+      entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: maximumEntry(IsolatedFailedImport) })],
+      effect: () => Effect.fail(new EventJournal.EventJournalError({ method: "test", cause: "rejected" }))
+    }))
+    const written = Effect.runSyncExit(journal.write({
+      event: "Repro",
+      primaryKey: "key",
+      payload: new Uint8Array(),
+      effect: Effect.succeed
+    }))
+    assert.strictEqual(failed._tag, "Failure")
+    if (written._tag === "Failure") return assert.fail("the local write failed after the import was rejected")
+    assert.deepStrictEqual(idStrings(Effect.runSync(journal.entries)), [written.value.idString])
   })
 
   it.effect("logs skew warnings relative to the supplied Clock service", () =>

@@ -40,24 +40,30 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
-// Fresh module instances keep their own entry id clock, like another process.
-// They load before any test runs, so loading them cannot stall running tests.
-vi.resetModules()
-const OtherProcess = await Promise.all([
-  import("effect/Effect"),
-  import("effect/eventlog/EventJournal"),
-  import("effect/eventlog/SqlEventJournal"),
-  import("effect/sql/SqlClient"),
-  import("@effect/sql-sqlite-node/SqliteClient"),
-  import("effect/reactivity/Reactivity")
-]).then(([Effect, EventJournal, SqlEventJournal, SqlClient, SqliteClient, Reactivity]) => ({
-  Effect,
-  EventJournal,
-  SqlEventJournal,
-  SqlClient,
-  SqliteClient,
-  Reactivity
-}))
+// Fresh module instances keep their own entry id clock. They load before any
+// test runs, so loading them cannot stall running tests.
+const isolate = () => {
+  vi.resetModules()
+  return Promise.all([
+    import("effect/Effect"),
+    import("effect/eventlog/EventJournal"),
+    import("effect/eventlog/SqlEventJournal"),
+    import("effect/sql/SqlClient"),
+    import("@effect/sql-sqlite-node/SqliteClient"),
+    import("effect/reactivity/Reactivity")
+  ]).then(([Effect, EventJournal, SqlEventJournal, SqlClient, SqliteClient, Reactivity]) => ({
+    Effect,
+    EventJournal,
+    SqlEventJournal,
+    SqlClient,
+    SqliteClient,
+    Reactivity
+  }))
+}
+// Stands in for another process.
+const OtherProcess = await isolate()
+// Importing the maximum timestamp can exhaust the entry id clock of its module.
+const IsolatedRolledBackImport = await isolate()
 
 // Saturated `rand_a` bits sort the imported entry above every local id counter
 // in the same millisecond.
@@ -241,6 +247,33 @@ describe("SqlEventJournal", () => {
       const [local] = yield* journal.writeMany({ entries: [localEntry("key")], effect: Effect.succeed })
       assert.strictEqual(EventJournal.EntryIdOrder(imported, local.id), -1)
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it("keeps local writes working after an enclosing transaction rolls back an import at the maximum timestamp", async () => {
+    const { Effect, EventJournal, Reactivity, SqlClient, SqlEventJournal, SqliteClient } = IsolatedRolledBackImport
+    const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+    id[6] = 0x7f
+    id[7] = 0xff
+    const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+      disableChecks: true
+    })
+    const { entries, rolledBack, written } = await Effect.runPromise(
+      Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename: ":memory:" })
+        const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+        // The import itself succeeds; the transaction around it then fails.
+        const rolledBack = yield* journal.writeFromRemote({
+          remoteId: EventJournal.makeRemoteIdUnsafe(),
+          entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+          effect: () => Effect.void
+        }).pipe(Effect.andThen(Effect.fail("rolled back")), sql.withTransaction, Effect.exit)
+        const written = yield* Effect.exit(journal.write({ ...localEntry("key"), effect: Effect.succeed }))
+        return { rolledBack, written, entries: (yield* journal.entries).map((entry) => entry.idString) }
+      }).pipe(Effect.scoped, Effect.provide(Reactivity.layer))
+    )
+    assert.strictEqual(rolledBack._tag, "Failure")
+    if (written._tag === "Failure") return assert.fail("the local write failed after the import was rolled back")
+    assert.deepStrictEqual(entries, [written.value.idString])
+  })
 
   it.effect("rolls back a failed same-client handler transaction with the journal and redelivers the batch", () =>
     Effect.gen(function*() {

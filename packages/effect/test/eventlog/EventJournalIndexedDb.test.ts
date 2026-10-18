@@ -137,12 +137,18 @@ const countTransactions = (database: string, transactionMode?: IDBTransactionMod
       })
   ).pipe(Effect.map(({ transactions }) => transactions))
 
-// A fresh module instance keeps its own entry id clock, like another tab. It
-// loads before any test runs, so loading it cannot stall running tests.
-vi.resetModules()
-const OtherTab = await Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
-  [Effect, EventJournal]
-) => ({ Effect, EventJournal }))
+// Fresh module instances keep their own entry id clock. They load before any
+// test runs, so loading them cannot stall running tests.
+const isolate = () => {
+  vi.resetModules()
+  return Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
+    [Effect, EventJournal]
+  ) => ({ Effect, EventJournal }))
+}
+// Stands in for another tab.
+const OtherTab = await isolate()
+// Importing the maximum timestamp can exhaust the entry id clock of its module.
+const IsolatedFailedImport = await isolate()
 
 // Saturated `rand_a` bits sort the imported entry above every local id counter
 // in the same millisecond.
@@ -354,6 +360,34 @@ describe("EventJournal.makeIndexedDb", () => {
       })
       assert.strictEqual(EventJournal.EntryIdOrder(imported, local.id), -1)
     }))
+
+  it("keeps local writes working after a failed import of an id at the maximum timestamp", async () => {
+    const { Effect, EventJournal } = IsolatedFailedImport
+    const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+    id[6] = 0x7f
+    id[7] = 0xff
+    const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+      disableChecks: true
+    })
+    const { entries, failed, written } = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
+      const failed = yield* Effect.exit(journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+        effect: () => Effect.fail(new EventJournal.EventJournalError({ method: "test", cause: "rejected" }))
+      }))
+      const written = yield* Effect.exit(journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      }))
+      return { failed, written, entries: (yield* journal.entries).map((entry) => entry.idString) }
+    })))
+    assert.strictEqual(failed._tag, "Failure")
+    if (written._tag === "Failure") return assert.fail("the local write failed after the import was rejected")
+    assert.deepStrictEqual(entries, [written.value.idString])
+  })
 
   it.live("writeMany fails when its transaction aborts after the puts succeed", () =>
     Effect.gen(function*() {
