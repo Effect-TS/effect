@@ -560,7 +560,6 @@ const handleResponse = (
   }
 
   let headers: Record<string, string | Array<string>> = response.headers
-  // 204 and 205 have no content, so `content-length` could only describe the omitted body
   if (response.status === 204 || response.status === 205) {
     const { "content-length": _, ...rest } = headers
     headers = rest
@@ -610,7 +609,6 @@ const writeResponse = (
     nodeResponse.end()
     return cancelResponseBody(response.body)
   }
-  // Throw on a body that doesn't match `content-length` instead of desyncing the connection
   nodeResponse.strictContentLength = true
   const body = response.body
   switch (body._tag) {
@@ -705,7 +703,6 @@ const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<voi
   return Effect.void
 }
 
-// With `strictContentLength`, `end` throws when the body doesn't match `content-length`
 const end = (
   nodeResponse: Http.ServerResponse,
   response: HttpServerResponse,
@@ -719,8 +716,7 @@ const end = (
   }
 }
 
-// Fails the pipeline on a length mismatch before Node sees the bytes, because a
-// `strictContentLength` error thrown inside `pipeline` would be uncaught
+// Check lengths before writing: Node's strictContentLength throws uncaught inside pipeline.
 const pipeTo = (
   readable: Readable,
   nodeResponse: Http.ServerResponse,

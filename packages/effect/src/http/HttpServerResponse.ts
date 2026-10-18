@@ -1031,9 +1031,7 @@ export const setStatus: {
 export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
   withoutBody || response.status === 204 || response.status === 205 || response.status === 304
 
-// 204 and 205 have no content, so `content-length` could only describe a body
-// that isn't sent (HTTP/2 clients reset the stream). 304 and HEAD keep it
-// because there it describes the representation.
+// HEAD and 304 retain the representation length; 204 and 205 omit it.
 const omitsContentLength = (status: number): boolean => status === 204 || status === 205
 
 const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): globalThis.Headers => {
@@ -1060,12 +1058,11 @@ const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): 
  * `content-length`. Omitted raw `ReadableStream` bodies are cancelled without
  * awaiting completion, and cancellation errors are ignored.
  *
- * A raw `Response` is returned as-is when there are no outer headers or cookies
- * to merge and no `content-length` to remove. Otherwise, a copy is returned and
- * the raw response is left unmodified: outer headers replace native ones, and
- * cookies are appended. When its body is omitted, the bodyless `Response` keeps
- * those merged headers and uses the outer status for 204, 205 and 304, or the
- * raw `Response` status otherwise.
+ * A raw `Response` is returned as-is unless its body or `content-length` must
+ * be omitted, or outer headers or cookies must be merged. Copies leave the
+ * original unchanged: outer headers replace native ones, and cookies append.
+ * Bodyless copies use the outer status for 204, 205 and 304; otherwise they keep
+ * the raw status.
  *
  * @stability unstable
  * @category converting
@@ -1091,8 +1088,7 @@ export const toWeb = (
   const withoutBody = outerOmitsBody || options?.withoutBody === true
   if (body._tag === "Raw" && body.body instanceof Response) {
     const raw = body.body
-    // A bodyless outer status is what the caller chose to send; otherwise the
-    // raw Response describes the resource and its body is only omitted for HEAD.
+    // HEAD preserves the raw status; an explicit bodyless status overrides it.
     const source = outerOmitsBody ? response : raw
     const omitContentLength = omitsContentLength(source.status)
     if (!withoutBody && headers.keys().next().done && !(omitContentLength && raw.headers.has("content-length"))) {
@@ -1499,10 +1495,9 @@ const makeResponse = (options: {
  *
  * **Gotchas**
  *
- * The `content-length` header is kept, so it must match the body. `fetch`
- * decodes compressed bodies but keeps the upstream `content-length`, so remove
- * it from a copy (`new Response(response.body, response)`) before converting a
- * proxied response.
+ * Preserves `content-length`, which must match the body. When proxying a
+ * compressed response decoded by `fetch`, remove the stale length from a copy
+ * (`new Response(response.body, response)`) before converting it.
  *
  * @stability unstable
  * @category converting
