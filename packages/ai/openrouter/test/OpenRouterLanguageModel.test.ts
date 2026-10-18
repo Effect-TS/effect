@@ -284,6 +284,29 @@ describe("OpenRouterLanguageModel", () => {
         const cached = { openrouter: { cacheControl: ephemeral } }
         const partCached = { openrouter: { cacheControl: oneHour } }
 
+        it.effect("sends cached void tool results without throwing", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "call_void",
+                  name: "void_tool",
+                  result: undefined,
+                  isFailure: false,
+                  providerExecuted: false
+                })],
+                options: cached
+              }]),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolResult = body.messages.find((message: any) => message.role === "tool")
+            strictEqual(toolResult.tool_call_id, "call_void")
+          }).pipe(Effect.provide(makeTestLayer())))
+
         for (const partLevel of [false, true]) {
           it.effect(
             partLevel
