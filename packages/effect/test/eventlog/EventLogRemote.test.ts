@@ -300,6 +300,12 @@ const makeServer = Effect.fnUntraced(function*(serverCase: ServerCase) {
     yield* remote.whenAuthenticated(Effect.void).pipe(Effect.provideService(EventLog.Identity, identity))
     return {
       remote,
+      writeBatches: (batches: ReadonlyArray<EventLogEncryption.EncryptedBatch>) =>
+        new EventLogMessage.WriteEntries({
+          publicKey: identity.publicKey,
+          storeId: defaultStoreId,
+          batches
+        }).encoded.pipe(Effect.flatMap((data) => client["EventLog.WriteSingle"]({ data }))),
       writeSingle: (entries: ReadonlyArray<EventJournal.Entry>) =>
         serverCase.encodeWrite(identity, entries).pipe(
           Effect.flatMap((data) => client["EventLog.WriteSingle"]({ data }))
@@ -412,12 +418,44 @@ describe("EventLogRemote write acknowledgements", () => {
         const delivered = yield* Queue.takeN(readerChanges, 3)
         // Re-store a batch containing both a known entry and a new one.
         const partial = makeEntry()
-        yield* writer.writeSingle([sibling, partial])
+        const partialResponse = yield* writer.writeSingle([sibling, partial])
         const partialDelivery = yield* Queue.takeN(readerChanges, serverCase.name === "encrypted" ? 2 : 1)
         assert.deepStrictEqual(
           partialDelivery.map(({ entry }) => entry.idString),
           serverCase.name === "encrypted" ? [sibling.idString, partial.idString] : [partial.idString]
         )
+        assert.deepStrictEqual(partialResponse, [
+          {
+            entryId: sibling.id,
+            sequence: serverCase.name === "encrypted"
+              ? partialDelivery[0].remoteSequence
+              : delivered[1].remoteSequence
+          },
+          { entryId: partial.id, sequence: partialDelivery[partialDelivery.length - 1].remoteSequence }
+        ])
+
+        let overlappingResponse: ReadonlyArray<EventLogMessage.WriteAck> = []
+        let expectedOverlappingResponse: ReadonlyArray<EventLogMessage.WriteAck> = []
+        if (serverCase.name === "encrypted") {
+          const encryption = yield* EventLogEncryption.EventLogEncryption
+          const a = makeEntry()
+          const b = makeEntry()
+          // Both copies of A must be acknowledged and suppressed independently.
+          overlappingResponse = yield* writer.writeBatches([
+            ...yield* encryption.encrypt(identity, defaultStoreId, [a]),
+            ...yield* encryption.encrypt(identity, defaultStoreId, [a, b])
+          ])
+          const overlappingDelivery = yield* Queue.takeN(readerChanges, 3)
+          assert.deepStrictEqual(overlappingDelivery.map(({ entry }) => entry.idString), [
+            a.idString,
+            a.idString,
+            b.idString
+          ])
+          expectedOverlappingResponse = overlappingDelivery.map(({ entry, remoteSequence }) => ({
+            entryId: entry.id,
+            sequence: remoteSequence
+          }))
+        }
         const fromReader = makeEntry()
         yield* reader.writeSingle([fromReader])
         const nextForWriter = yield* Queue.take(writerChanges)
@@ -432,6 +470,7 @@ describe("EventLogRemote write acknowledgements", () => {
           delivered: delivered.map(({ entry }) => entry.idString),
           firstResponse,
           secondResponse,
+          overlappingResponse,
           nextForWriter: nextForWriter.entry.idString,
           replay: (yield* Queue.takeN(replay, 4)).map(({ entry }) => entry.idString)
         }, {
@@ -445,6 +484,7 @@ describe("EventLogRemote write acknowledgements", () => {
             { entryId: sibling.id, sequence: delivered[1].remoteSequence },
             { entryId: second.id, sequence: delivered[2].remoteSequence }
           ],
+          overlappingResponse: expectedOverlappingResponse,
           nextForWriter: fromReader.idString,
           replay: [seed.idString, first.idString, sibling.idString, second.idString]
         })
