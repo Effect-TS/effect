@@ -55,10 +55,9 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * It can write local entries to the remote, stream remote changes from a sequence
  * number, and run effects only after the supplied identity has authenticated.
  *
- * `write` returns acknowledgements with each entry's assigned sequence. Custom
- * remotes may return `void` to confirm uploads through `changes` instead.
- * Remotes built by this module acknowledge writes and suppress their echoes
- * on the same connection.
+ * Built-in remotes acknowledge writes instead of echoing them through `changes`.
+ * Custom remotes may return `void` from `write` to confirm uploads through
+ * `changes` instead.
  *
  * @stability unstable
  * @category services

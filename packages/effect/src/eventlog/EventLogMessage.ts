@@ -6,11 +6,9 @@
  * hello/authenticate session handshake, remote calls for writes and changes,
  * and message formats for encrypted or plaintext journal entries.
  *
- * **Compatibility**
+ * **Gotchas**
  *
- * Write acknowledgements replace a connection's own change-stream echoes.
- * Upgrade event log clients and servers together: the protocol has no version
- * negotiation, and mixed old and new versions are not supported.
+ * Upgrade clients and servers together; mixed protocol versions are unsupported.
  *
  * @stability unstable
  * @since 4.0.0
@@ -117,10 +115,8 @@ export class EventLogAuthentication extends RpcMiddleware.Service<EventLogAuthen
  *
  * **Details**
  *
- * It contains the server remote id, a challenge that must be signed by the
- * client, and the lowest sequence the server assigns to entries. Clients use
- * that sequence to record write acknowledgements before any entry has been
- * downloaded. When it is absent, clients assume 0.
+ * Contains the remote id, a challenge for the client to sign, and the lowest
+ * assigned sequence (default 0) for initializing acknowledgement cursors.
  *
  * @stability unstable
  * @category protocols
@@ -283,12 +279,8 @@ export class ChunkedMessage
 }
 
 /**
- * Schema for a written entry's id and server-assigned sequence.
- *
- * **Details**
- *
- * Entries that the store already held are acknowledged with their original
- * sequence.
+ * Schema for a written entry's id and server-assigned sequence. Duplicate
+ * entries retain their original sequence.
  *
  * @stability unstable
  * @category protocols
@@ -313,8 +305,8 @@ export type WriteAck = typeof WriteAck.Type
  *
  * **Details**
  *
- * The response to the part that completes the payload acknowledges every
- * written entry, in request order. Earlier parts return no acknowledgements.
+ * The completing chunk returns acknowledgements in request order; earlier
+ * chunks return an empty array.
  *
  * @stability unstable
  * @category protocols
@@ -412,8 +404,7 @@ export class WriteSingleRpc extends Rpc.make("EventLog.WriteSingle", {
  * **Details**
  *
  * Responses are encoded as either `SingleMessage` values or `ChunkedMessage`
- * parts. Entries written on the same connection are not sent back, because
- * their writer already received them as write acknowledgements.
+ * parts. Entries written on this connection are acknowledged, not echoed.
  *
  * @stability unstable
  * @category protocols

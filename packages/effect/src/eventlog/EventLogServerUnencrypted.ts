@@ -105,10 +105,9 @@ export const makeWrite = <Groups extends EventGroup.Any>(
  * **Details**
  *
  * Incoming plaintext entries are authorized, mapped to a server store, checked
- * for conflicts, run through registered handlers, and persisted. Each written
- * entry is acknowledged with its stored sequence, including duplicates of
- * stored entries. Change streams include compacted backlog entries when
- * compactors are registered, and skip entries written on the same connection.
+ * for conflicts, run through registered handlers, and persisted. Acknowledgements
+ * include duplicates with their original sequences. Change streams apply registered
+ * compactors to backlog entries and exclude this connection's writes.
  *
  * @stability unstable
  * @category layers
@@ -148,7 +147,6 @@ export const layerRpcHandlers: Layer.Layer<
     }
     const committed = yield* storage.write(options.storeId, persistedEntries)
 
-    // Acknowledge in request order. Duplicates keep their stored sequence.
     const sequences = new Map<string, number>()
     for (const remoteEntry of stored) {
       sequences.set(remoteEntry.entry.idString, remoteEntry.remoteSequence)
@@ -421,8 +419,7 @@ export const layerStoreMappingStatic = (options: {
 export class Storage extends Context.Service<Storage, {
   readonly getId: Effect.Effect<RemoteId>
   /**
-   * The lowest sequence `write` assigns, or 0 when omitted. A value above the
-   * real lowest sequence makes clients skip entries, so omit it when unsure.
+   * Lowest assigned sequence (default 0). Overestimating skips entries.
    */
   readonly firstSequence?: number | undefined
   readonly getOrCreateSessionAuthBinding: (

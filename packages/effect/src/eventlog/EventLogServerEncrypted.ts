@@ -38,10 +38,9 @@ import * as EventLogServer from "./EventLogServer.ts"
  *
  * **Details**
  *
- * Incoming encrypted batches are decoded and persisted through `Storage`, and
- * each written entry is acknowledged with its stored sequence. Change streams
- * read encrypted batches from storage, skip batches written on the same
- * connection, and encode the rest for the remote protocol.
+ * Decodes and persists writes through `Storage`, acknowledging their stored
+ * sequences. Change streams encode stored batches, excluding this connection's
+ * writes.
  *
  * @stability unstable
  * @category layers
@@ -107,8 +106,7 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
   })
 }))
 
-// Acknowledges written entries in request order. Entries of skipped batches
-// were stored earlier and keep their stored sequences.
+// Entries of skipped batches keep the sequences they were first stored at.
 const toWriteAcks = Effect.fnUntraced(function*(
   storage: Storage["Service"],
   publicKey: string,
@@ -181,10 +179,10 @@ export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Rp
  * A batch owns one remote sequence per entry, starting at its `sequence`.
  * `write` stores a batch unless every one of its entry ids is already stored,
  * which makes retried writes idempotent, and returns the batches it stored.
- * `entrySequences` returns the sequence an entry was first stored at, so
- * entries of skipped batches can still be acknowledged. `changes` streams every
- * batch whose last sequence is at or after `startSequence`, followed by newly
- * stored batches.
+ * `entrySequences` returns the sequence each entry was first stored at, so
+ * skipped batches can still be acknowledged. `changes` streams every batch
+ * whose last sequence is at or after `startSequence`, followed by newly stored
+ * batches.
  *
  * @stability unstable
  * @category services
@@ -193,8 +191,7 @@ export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Rp
 export class Storage extends Context.Service<Storage, {
   readonly getId: Effect.Effect<RemoteId>
   /**
-   * The lowest sequence `write` assigns, or 0 when omitted. A value above the
-   * real lowest sequence makes clients skip entries, so omit it when unsure.
+   * Lowest assigned sequence (default 0). Overestimating skips entries.
    */
   readonly firstSequence?: number | undefined
   readonly getOrCreateSessionAuthBinding: (

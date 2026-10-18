@@ -131,11 +131,8 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<Option<A>, EventJournalError | E, R>
 
   /**
-   * Records the sequences a remote assigned to uploaded entries.
-   *
-   * Advances `nextRemoteSequence` only across contiguous acknowledgements,
-   * starting at the current cursor or `firstSequence`, so reconnects still
-   * download unseen entries from other replicas.
+   * Records upload acknowledgements, advancing `nextRemoteSequence` only across
+   * contiguous sequences from the current cursor or `firstSequence`.
    */
   readonly writeRemoteAcks: (options: {
     readonly remoteId: RemoteId
@@ -450,7 +447,7 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
 }
 
 /**
- * Acknowledgement of a local entry stored by a remote with its assigned sequence.
+ * A local entry's remote-assigned sequence.
  *
  * @stability unstable
  * @category models

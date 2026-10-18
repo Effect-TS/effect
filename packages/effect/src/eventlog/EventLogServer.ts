@@ -280,8 +280,7 @@ export class ChunkedMessageState extends Context.Reference<
  *
  * **Details**
  *
- * Tracks entries only while this connection has a change stream open for their
- * store. Write acknowledgements provide their sequences instead.
+ * Only tracks entries for stores with an open change stream.
  *
  * @stability unstable
  * @category models
@@ -291,8 +290,7 @@ export class ConnectionWrites {
   private readonly streams = new Map<string, Set<ConnectionStream>>()
 
   /**
-   * Runs a storage write for the given entries, so that change streams on this
-   * connection skip them.
+   * Runs a storage write while suppressing its entries on this connection's streams.
    *
    * @stability unstable
    * @since 4.0.6
@@ -320,8 +318,7 @@ export class ConnectionWrites {
             for (const id of ids) stream.ids.delete(id)
             continue
           }
-          // Entries at or before the stream position, such as duplicates of
-          // stored entries, will not be published again.
+          // Entries already passed by the stream will not be published again.
           for (const ack of exit.value) {
             if (ack.sequence <= stream.position) stream.ids.delete(Uuid.stringify(ack.entryId))
           }
@@ -330,9 +327,8 @@ export class ConnectionWrites {
   }
 
   /**
-   * Removes items written on this connection from a change stream for the
-   * given store. An item can hold several entries, and `sequence` returns its
-   * highest one.
+   * Filters this connection's writes from a store's change stream. An item can
+   * hold several entries; `sequence` returns its highest one.
    *
    * @stability unstable
    * @since 4.0.6

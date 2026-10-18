@@ -32,11 +32,9 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  * Creating or migrating the schema requires a writable connection. Migrated
  * databases can be reopened read-only.
  *
- * The remotes table records which entries each remote holds, whether they were
- * downloaded or acknowledged after an upload. The remote cursors table records
- * the next sequence to download from each remote, and defaults to the remotes
- * table name followed by `_cursors`. Databases created before the cursors table
- * existed start from the highest sequence in the remotes table.
+ * Upload acknowledgements do not advance past unseen entries. Download cursors
+ * live in `remoteCursorsTable` (default `<remotesTable>_cursors`); legacy databases
+ * resume after the highest sequence in the remotes table.
  *
  * @stability unstable
  * @category constructors
@@ -348,12 +346,10 @@ export const make = (options?: {
         Effect.flatMap(decodeCursorRows)
       )
       if (rows.length > 0) return { next: rows[0].next_sequence, stored: true }
-      // Before the cursors table, every remote row came from a download.
       const max = yield* sql`SELECT MAX(sequence) AS max FROM ${remotesTableSql} WHERE remote_id = ${remoteId}`.pipe(
         Effect.flatMap(decodeMaxSequenceRows)
       )
-      // A concurrent ack can raise MAX past unseen entries. Its cursor commits
-      // with it, so recheck that cursor before trusting the legacy maximum.
+      // A concurrent ack can raise MAX past unseen entries; recheck its committed cursor.
       const current = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
         Effect.flatMap(decodeCursorRows)
       )
