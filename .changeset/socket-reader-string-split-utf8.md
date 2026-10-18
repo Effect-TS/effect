@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Socket.readerString` and `Socket.toChannelString` corrupting multi-byte characters split across binary frames. Decode in streaming mode and flush incomplete trailing characters as U+FFFD on a normal close.
+Fix `Socket.readerString` and `Socket.toChannelString` corrupting characters split across binary frames. Incomplete characters are emitted as U+FFFD before string frames or on close code 1000.

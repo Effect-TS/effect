@@ -245,18 +245,16 @@ export const readerBytes = (
  *
  * **Details**
  *
- * The `TextDecoder` is created once per acquisition and decodes in streaming
- * mode, so multi-byte characters may span binary frames and pulls. Each frame
- * produces one string, possibly empty while a character is incomplete. A string
- * frame flushes pending bytes as replacement characters, prefixed to that frame.
- * On a normal close (code 1000), any remaining text is emitted once before
- * subsequent pulls fail with the close error. Other failures do not flush.
+ * Each acquisition has its own streaming decoder. Characters may span binary
+ * frames and pulls; each frame produces one string, possibly empty. A string
+ * frame flushes incomplete characters as U+FFFD before its text. Close code 1000
+ * flushes remaining text once before propagating the close error; other failures
+ * do not flush.
  *
  * **Gotchas**
  *
- * Binary WebSocket messages share decoder state rather than being decoded
- * independently: incomplete characters carry into the next binary frame, and
- * BOM handling resets only after a flush, including before a string frame. Use
+ * Binary WebSocket messages share decoder state: incomplete characters carry
+ * into the next binary frame, and BOM handling resets only after a flush. Use
  * `readerBytes` and decode each frame separately for per-message decoding.
  *
  * @stability unstable
@@ -673,9 +671,7 @@ export const toChannel = <IE = never>(
  *
  * **Details**
  *
- * Uses `readerString`: binary frames share streaming decoder state, string
- * frames flush pending bytes before their text, and a normal close (code 1000)
- * emits any remaining text before failing with the close error.
+ * Uses `readerString` for decoding and close handling.
  *
  * @stability unstable
  * @category combinators
