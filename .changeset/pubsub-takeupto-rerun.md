@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix a reused `PubSub.takeUpTo` effect taking fewer messages on later runs after it first drained replayed messages.
+Fix reused `PubSub.takeUpTo` effects returning fewer messages after consuming replayed messages.
