@@ -246,8 +246,18 @@ export const readerBytes = (
  * **Details**
  *
  * The `TextDecoder` is created once per acquisition and decodes in streaming
- * mode, so multi-byte characters may span binary frames. On a normal close
- * (code 1000), incomplete trailing characters become U+FFFD.
+ * mode, so multi-byte characters may span binary frames and pulls. Each frame
+ * produces one string, possibly empty while a character is incomplete. A string
+ * frame flushes pending bytes as replacement characters, prefixed to that frame.
+ * On a normal close (code 1000), any remaining text is emitted once before
+ * subsequent pulls fail with the close error. Other failures do not flush.
+ *
+ * **Gotchas**
+ *
+ * Binary WebSocket messages share decoder state rather than being decoded
+ * independently: incomplete characters carry into the next binary frame, and
+ * BOM handling resets only after a flush, including before a string frame. Use
+ * `readerBytes` and decode each frame separately for per-message decoding.
  *
  * @stability unstable
  * @category combinators
@@ -264,11 +274,18 @@ export const readerString = (
   Effect.map(self.reader, ({ pull }) => {
     const decoder = new TextDecoder(encoding)
     const streamOptions = { stream: true }
+    let needsFlush = false
     let pullString: Effect.Effect<NonEmptyReadonlyArray<string>, SocketError> = Effect.map(pull, (chunk) => {
       const out = new Array<string>(chunk.length)
       for (let i = 0; i < chunk.length; i++) {
         const item = chunk[i]
-        out[i] = typeof item === "string" ? item : decoder.decode(item, streamOptions)
+        if (typeof item === "string") {
+          out[i] = needsFlush ? decoder.decode() + item : item
+          needsFlush = false
+        } else {
+          out[i] = decoder.decode(item, streamOptions)
+          needsFlush = true
+        }
       }
       return out as unknown as NonEmptyReadonlyArray<string>
     }).pipe(
@@ -654,6 +671,12 @@ export const toChannel = <IE = never>(
 /**
  * Converts a `Socket` into a bidirectional string `Channel`, decoding binary
  * frames with the optional text encoding.
+ *
+ * **Details**
+ *
+ * Uses `readerString`: binary frames share streaming decoder state, string
+ * frames flush pending bytes before their text, and a normal close (code 1000)
+ * emits any remaining text before failing with the close error.
  *
  * @stability unstable
  * @category combinators
