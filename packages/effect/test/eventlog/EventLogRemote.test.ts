@@ -84,11 +84,11 @@ describe("EventLogRemote", () => {
       assert.deepStrictEqual(yield* Fiber.join(writeFiber), acks)
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
-  it.effect("pipelines chunks and retains completion acks before a later empty response", () =>
+  it.effect("pipelines at most four chunks and retains completion acks before a later empty response", () =>
     Effect.gen(function*() {
       const harness = yield* makeHarness(EventLogRemote.makeUnencrypted)
       const identity = yield* EventLog.makeIdentity
-      const entry = makeEntry({ payloadSize: EventLogMessage.ChunkedMessage.chunkSize * 2 })
+      const entry = makeEntry({ payloadSize: EventLogMessage.ChunkedMessage.chunkSize * 4 })
       const write = yield* harness.remote.write({
         identity,
         storeId: defaultStoreId,
@@ -109,20 +109,27 @@ describe("EventLogRemote", () => {
         return result.value
       })
       const second = yield* takeChunk
-      second.resume(Effect.succeed([]))
       const third = yield* takeChunk
-      const parts = [first, second, third].map((request) =>
+      const fourth = yield* takeChunk
+      const pendingFifth = yield* harness.take.pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(Option.isNone(yield* Fiber.join(pendingFifth)), "expected the fifth chunk to wait for a response")
+
+      second.resume(Effect.succeed([]))
+      const fifth = yield* takeChunk
+      const parts = [first, second, third, fourth, fifth].map((request) =>
         request.request as Rpc.Payload<typeof EventLogMessage.WriteChunkedRpc>
       )
-      assert.deepStrictEqual(parts.map((part) => part.part), [[0, 3], [1, 3], [2, 3]])
+      assert.deepStrictEqual(parts.map((part) => part.part), [[0, 5], [1, 5], [2, 5], [3, 5], [4, 5]])
       assert.isTrue(parts.every((part) => part.id === parts[0].id))
 
-      // Arrival at the server can be 1, 2, 0: part 0 completes the message.
-      // Its acknowledgement must survive the delayed empty reply for part 2.
+      // Part 0 completes the message; part 4 has a delayed empty reply.
+      third.resume(Effect.succeed([]))
+      fourth.resume(Effect.succeed([]))
       const acks = [{ entryId: entry.id, sequence: 5 }]
       first.resume(Effect.succeed(acks))
       yield* TestClock.adjust("1 second")
-      third.resume(Effect.succeed([]))
+      fifth.resume(Effect.succeed([]))
       assert.deepStrictEqual(yield* Fiber.join(write), acks)
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
