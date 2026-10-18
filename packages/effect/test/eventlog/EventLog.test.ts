@@ -142,6 +142,16 @@ const CurrentUserGroup = EventGroup.empty.add({
   payload: Schema.Struct({ id: Schema.String, name: Schema.String })
 })
 
+const MenuGroup = EventGroup.empty.add({
+  tag: "MenuItemAdded",
+  primaryKey: (payload) => payload.item,
+  payload: Schema.Struct({ menu: Schema.String, item: Schema.String })
+}).add({
+  tag: "MenuRemoved",
+  primaryKey: (payload) => payload.menu,
+  payload: Schema.Struct({ menu: Schema.String })
+})
+
 const makeCompactionEntry = Effect.fnUntraced(function*(payload: { readonly id: string; readonly name?: string }) {
   const payloadSchema = payload.name === undefined
     ? UserGroup.events.UserCreated.payloadSchemaBinary
@@ -407,6 +417,118 @@ describe("EventLog", () => {
           assert.strictEqual(output[i], entries[i])
           assert.deepStrictEqual(output[i].payload, entries[i].payload)
         }
+      }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+    }))
+
+  it.effect("replays forwarded entries unchanged in batch order when old entries arrive after new ones", () =>
+    Effect.gen(function*() {
+      const makeEntry = Effect.fnUntraced(function*(list: string, item: number, msecs: number) {
+        return new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe({ msecs }),
+          event: "ItemAdded",
+          primaryKey: list,
+          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({ list, item })
+        }, { disableChecks: true })
+      })
+      // An offline device uploads an older entry between newer ones.
+      const entries = [yield* makeEntry("a", 0, 2000), yield* makeEntry("b", 1, 1000), yield* makeEntry("a", 2, 3000)]
+      const handled = yield* Queue.unbounded<EventJournal.Entry>()
+      const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+      yield* Queue.offerAll(
+        changes,
+        entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
+      )
+      const handlers = Layer.mergeAll(
+        EventLog.group(
+          ItemGroup,
+          (handlers) => handlers.handle("ItemAdded", ({ entry }) => Queue.offer(handled, entry))
+        ),
+        EventLog.groupCompaction(
+          ItemGroup,
+          ({ entries, forward }) => Effect.forEach(entries, forward, { discard: true })
+        )
+      ).pipe(Layer.provide(EventLog.layerRegistry))
+      const layer = EventLog.layer(EventLog.schema(ItemGroup), handlers).pipe(
+        Layer.provide(EventJournal.layerMemory),
+        Layer.provide(
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle))
+        )
+      )
+
+      const replayed = yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        return yield* Effect.forEach(entries, () => Queue.take(handled))
+      }).pipe(Effect.provide(layer))
+
+      const fields = (entry: EventJournal.Entry) => [entry.idString, entry.primaryKey, entry.payload] as const
+      assert.deepStrictEqual(replayed.map(fields), entries.map(fields))
+    }))
+
+  it.effect("passes every group entry to the batch compactor in order and drops unforwarded opaque entries", () =>
+    Effect.gen(function*() {
+      const encode = Effect.fnUntraced(function*(
+        event: "MenuItemAdded" | "MenuRemoved",
+        primaryKey: string,
+        payload: unknown,
+        schema: Schema.Codec<any, Uint8Array<ArrayBuffer>>
+      ) {
+        return new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe(),
+          event,
+          primaryKey,
+          payload: yield* Schema.encodeUnknownEffect(schema)(payload)
+        }, { disableChecks: true })
+      })
+      const { MenuItemAdded, MenuRemoved } = MenuGroup.events
+      const added = yield* encode(
+        "MenuItemAdded",
+        "item-1",
+        { menu: "menu-1", item: "item-1" },
+        MenuItemAdded.payloadSchemaBinary
+      )
+      // Lacks `item`, so it cannot be decoded as a MenuItemAdded payload.
+      const opaque = yield* encode("MenuItemAdded", "item-2", { menu: "menu-1" }, MenuRemoved.payloadSchemaBinary)
+      const removed = yield* encode("MenuRemoved", "menu-1", { menu: "menu-1" }, MenuRemoved.payloadSchemaBinary)
+      const seen: Array<unknown> = []
+      const compaction = EventLog.groupBatchCompaction(MenuGroup, ({ entries, forward }) =>
+        Effect.gen(function*() {
+          seen.push(...entries)
+          // A removal under another primary key drops the menu's earlier items.
+          const removedMenus = new Set(
+            entries.flatMap(({ event }) => event?._tag === "MenuRemoved" ? [event.payload.menu] : [])
+          )
+          for (const { entry, event } of entries) {
+            if (event === undefined) continue
+            if (event._tag === "MenuItemAdded" && removedMenus.has(event.payload.menu)) continue
+            yield* forward(entry)
+          }
+        }))
+
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        const output: Array<readonly [EventJournal.Entry, EventJournal.Entry | undefined]> = []
+        yield* registry.compactors.get("MenuItemAdded")!.effect({
+          entries: [added, opaque, removed],
+          write: (entry, source) =>
+            Effect.sync(() => {
+              output.push([entry, source])
+            })
+        })
+
+        assert.deepStrictEqual(seen, [
+          { entry: added, event: { _tag: "MenuItemAdded", payload: { menu: "menu-1", item: "item-1" } } },
+          { entry: opaque, event: undefined },
+          { entry: removed, event: { _tag: "MenuRemoved", payload: { menu: "menu-1" } } }
+        ])
+        // Forwarded entries keep their identity and replay at their own position.
+        assert.deepStrictEqual(output, [[removed, undefined]])
+        assert.strictEqual(output[0][0], removed)
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
