@@ -176,7 +176,7 @@ describe("AnthropicClient", () => {
       }
     }))))
 
-  it.effect("maps a malformed successful message envelope to a non-retryable InvalidOutputError", () =>
+  it.effect("maps a malformed successful message envelope to a non-retryable InvalidResponseError", () =>
     Effect.gen(function*() {
       const client = yield* AnthropicClient.AnthropicClient
       const error = yield* client.createMessage({
@@ -188,14 +188,14 @@ describe("AnthropicClient", () => {
       }).pipe(Effect.flip)
 
       assert.strictEqual(error.method, "createMessage")
-      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.reason._tag, "InvalidResponseError")
       assert.isFalse(error.isRetryable)
     }).pipe(Effect.provide(makeTestLayer({
       _tag: "Json",
       body: { id: "msg_123", type: "message", role: "assistant", content: "not an array" }
     }))))
 
-  it.effect("maps a malformed stream event to a non-retryable InvalidOutputError", () =>
+  it.effect("maps a malformed stream event to a non-retryable InvalidResponseError", () =>
     Effect.gen(function*() {
       const client = yield* AnthropicClient.AnthropicClient
       const error = yield* client.createMessageStream({
@@ -210,7 +210,7 @@ describe("AnthropicClient", () => {
       )
 
       assert.strictEqual(error.method, "createMessageStream")
-      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.reason._tag, "InvalidResponseError")
       assert.isFalse(error.isRetryable)
     }).pipe(Effect.provide(makeTestLayer({
       _tag: "Sse",

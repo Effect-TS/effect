@@ -458,14 +458,14 @@ describe("OpenAiClient", () => {
         body: { error: { message: "Internal server error" } }
       }))))
 
-    it.effect("maps schema error to InvalidOutputError reason", () =>
+    it.effect("maps a malformed successful response envelope to a non-retryable InvalidResponseError reason", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
         const result = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(Effect.flip)
 
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "createResponse")
-        assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
         assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
@@ -962,7 +962,7 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
-    it.effect("maps a malformed stream event to a non-retryable InvalidOutputError", () =>
+    it.effect("maps a malformed stream event to a non-retryable InvalidResponseError", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
         const result = yield* client.createResponseStream({
@@ -975,7 +975,7 @@ describe("OpenAiClient", () => {
 
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "createResponseStream")
-        assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
         assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Sse",

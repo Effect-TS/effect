@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Redacted, Schema } from "effect"
+import { Duration, Effect, Equal, Redacted, Schema } from "effect"
 import { AiError } from "effect/ai"
 import { HttpClientError, HttpClientRequest } from "effect/http"
 
@@ -187,25 +187,6 @@ describe("AiError", () => {
         assert.isTrue(error.isRetryable)
       })
 
-      it("should not be retryable when marked as a deterministic provider response failure", () => {
-        const error = new AiError.InvalidOutputError({
-          description: "Unexpected response envelope",
-          retryable: false
-        })
-        assert.isFalse(error.isRetryable)
-        assert.isFalse(AiError.make({ module: "Test", method: "test", reason: error }).isRetryable)
-      })
-
-      it("should preserve non-retryable classification through schema round trip", () => {
-        const error = new AiError.InvalidOutputError({
-          description: "Unexpected response envelope",
-          retryable: false
-        })
-        const encoded = Schema.encodeUnknownSync(AiError.InvalidOutputError)(error)
-        const decoded = Schema.decodeUnknownSync(AiError.InvalidOutputError)(encoded)
-        assert.isFalse(decoded.isRetryable)
-      })
-
       it("should format message with description", () => {
         const error = new AiError.InvalidOutputError({
           description: "Expected string but got number"
@@ -228,6 +209,9 @@ describe("AiError", () => {
               assert.strictEqual(parseError._tag, "InvalidOutputError")
               assert.isString(parseError.description)
               assert.isTrue(parseError.isRetryable)
+              assert.isTrue(
+                Equal.equals(parseError, new AiError.InvalidOutputError({ description: cause.error.message }))
+              )
             }
           }
         }))
@@ -237,6 +221,76 @@ describe("AiError", () => {
           description: "Test error"
         })
         assert.strictEqual(error._tag, "InvalidOutputError")
+      })
+    })
+
+    describe("InvalidResponseError", () => {
+      const http = {
+        request: {
+          method: "POST" as const,
+          url: "https://api.example.com/v1/chat",
+          urlParams: [],
+          hash: undefined,
+          headers: {}
+        },
+        response: { status: 200, headers: { "x-request-id": "req_123" } },
+        body: "{\"choices\":\"none\"}"
+      }
+
+      it("should not be retryable", () => {
+        const error = new AiError.InvalidResponseError({
+          description: "Unexpected response envelope"
+        })
+        assert.isFalse(error.isRetryable)
+        assert.isFalse(AiError.make({ module: "Test", method: "test", reason: error }).isRetryable)
+      })
+
+      it("should format message with description", () => {
+        const error = new AiError.InvalidResponseError({
+          description: "Expected array but got string"
+        })
+        assert.match(error.message, /Invalid response/)
+        assert.match(error.message, /Expected array but got string/)
+      })
+
+      it("should have _tag set correctly and be an AiErrorReason", () => {
+        const error = new AiError.InvalidResponseError({
+          description: "Test error"
+        })
+        assert.strictEqual(error._tag, "InvalidResponseError")
+        assert.isTrue(AiError.isAiErrorReason(error))
+      })
+
+      it.effect("should create from SchemaError", () =>
+        Effect.gen(function*() {
+          const TestSchema = Schema.Struct({ choices: Schema.Array(Schema.String) })
+          const schemaError = yield* Schema.decodeUnknownEffect(TestSchema)({ choices: "none" }).pipe(Effect.flip)
+          const error = AiError.InvalidResponseError.fromSchemaError(schemaError)
+          assert.strictEqual(error._tag, "InvalidResponseError")
+          assert.strictEqual(error.description, schemaError.message)
+          assert.isFalse(error.isRetryable)
+          assert.isUndefined(error.http)
+        }))
+
+      it("should carry optional HTTP context", () => {
+        const error = new AiError.InvalidResponseError({
+          description: "Unexpected response envelope",
+          http
+        })
+        assert.strictEqual(error.http?.response?.status, 200)
+        assert.strictEqual(error.http?.body, "{\"choices\":\"none\"}")
+      })
+
+      it("should preserve classification and HTTP context through schema round trip", () => {
+        const error = new AiError.InvalidResponseError({
+          description: "Unexpected response envelope",
+          http
+        })
+        const encoded = Schema.encodeUnknownSync(AiError.InvalidResponseError)(error)
+        const decoded = Schema.decodeUnknownSync(AiError.InvalidResponseError)(encoded)
+        assert.strictEqual(decoded._tag, "InvalidResponseError")
+        assert.isFalse(decoded.isRetryable)
+        assert.deepStrictEqual(decoded.http, http)
       })
     })
 

@@ -141,7 +141,7 @@ describe("OpenRouterClient", () => {
       }
     }))))
 
-  it.effect("maps a malformed successful chat completion envelope to a non-retryable InvalidOutputError", () =>
+  it.effect("maps a malformed successful chat completion envelope to a non-retryable InvalidResponseError", () =>
     Effect.gen(function*() {
       const client = yield* OpenRouterClient.OpenRouterClient
       const error = yield* client.createChatCompletion({
@@ -150,14 +150,14 @@ describe("OpenRouterClient", () => {
       }).pipe(Effect.flip)
 
       assert.strictEqual(error.method, "createChatCompletion")
-      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.reason._tag, "InvalidResponseError")
       assert.isFalse(error.isRetryable)
     }).pipe(Effect.provide(makeTestLayer({
       _tag: "Json",
       body: { id: "gen-123", object: "chat.completion", created: 1, model: "openai/gpt-4o-mini", choices: "none" }
     }))))
 
-  it.effect("maps a malformed stream chunk to a non-retryable InvalidOutputError", () =>
+  it.effect("maps a malformed stream chunk to a non-retryable InvalidResponseError", () =>
     Effect.gen(function*() {
       const client = yield* OpenRouterClient.OpenRouterClient
       const error = yield* client.createChatCompletionStream({
@@ -169,7 +169,7 @@ describe("OpenRouterClient", () => {
       )
 
       assert.strictEqual(error.method, "createChatCompletionStream")
-      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.reason._tag, "InvalidResponseError")
       assert.isFalse(error.isRetryable)
     }).pipe(Effect.provide(makeTestLayer({
       _tag: "Sse",

@@ -477,7 +477,7 @@ describe("OpenAiClient", () => {
         }
       }))))
 
-    it.effect("maps a malformed successful chat completion envelope to a non-retryable InvalidOutputError", () =>
+    it.effect("maps a malformed successful chat completion envelope to a non-retryable InvalidResponseError", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
 
@@ -487,14 +487,14 @@ describe("OpenAiClient", () => {
         }).pipe(Effect.flip)
 
         assert.strictEqual(error.method, "createResponse")
-        assert.strictEqual(error.reason._tag, "InvalidOutputError")
+        assert.strictEqual(error.reason._tag, "InvalidResponseError")
         assert.isFalse(error.isRetryable)
       }).pipe(Effect.provide(makeTestLayer({
         _tag: "Json",
         body: makeCreateResponse({ choices: "none" as any })
       }))))
 
-    it.effect("maps a malformed successful embedding envelope to a non-retryable InvalidOutputError", () =>
+    it.effect("maps a malformed successful embedding envelope to a non-retryable InvalidResponseError", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
 
@@ -504,20 +504,20 @@ describe("OpenAiClient", () => {
         }).pipe(Effect.flip)
 
         assert.strictEqual(error.method, "createEmbedding")
-        assert.strictEqual(error.reason._tag, "InvalidOutputError")
+        assert.strictEqual(error.reason._tag, "InvalidResponseError")
         assert.isFalse(error.isRetryable)
       }).pipe(Effect.provide(makeTestLayer({
         _tag: "Json",
         body: { object: "list", data: "none", model: "text-embedding-3-small" }
       }))))
 
-    it("maps SSE decoding failures to a non-retryable InvalidOutputError", () => {
+    it("maps SSE decoding failures to a non-retryable InvalidResponseError", () => {
       const error = Errors.mapSseError(
         new Sse.SseError({ reason: new Sse.EventTooLarge({ maxEventSize: 1 }) }),
         "createResponseStream"
       )
 
-      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.reason._tag, "InvalidResponseError")
       assert.isFalse(error.isRetryable)
     })
   })

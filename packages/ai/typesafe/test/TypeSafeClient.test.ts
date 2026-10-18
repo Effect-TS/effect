@@ -435,14 +435,14 @@ describe("TypeSafeClient", () => {
         body: { message: "Internal error" }
       }))))
 
-    it.effect("maps a malformed success body to a non-retryable InvalidOutputError reason", () =>
+    it.effect("maps a malformed success body to a non-retryable InvalidResponseError reason", () =>
       Effect.gen(function*() {
         const client = yield* TypeSafeClient.TypeSafeClient
         const result = yield* client.systemOne(systemOneRequest).pipe(Effect.flip)
 
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "systemOne")
-        assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
         assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         status: 200,
