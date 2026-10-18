@@ -359,7 +359,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
       )
 
       type UpsertFn = (
-        entries: Array<{ id: string; value: string; expires: number | null }>
+        entries: Arr.NonEmptyReadonlyArray<{ id: string; value: string; expires: number | null }>
       ) => Effect.Effect<unknown, SqlError>
 
       const upsert = sql.onDialectOrElse({
@@ -474,7 +474,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
         setMany: (entries) =>
           Effect.suspend(() => {
             try {
-              const encoded = entries.map(([key, value, ttl]) => ({
+              const encoded = Arr.map(entries, ([key, value, ttl]) => ({
                 id: key,
                 value: JSON.stringify(value),
                 expires: unsafeTtlToExpires(clock, ttl)
@@ -700,7 +700,7 @@ export const layerBackingSql: Layer.Layer<
   )
 
   type UpsertFn = (
-    entries: Array<{ store_id: string; id: string; value: string; expires: number | null }>
+    entries: Arr.NonEmptyReadonlyArray<{ store_id: string; id: string; value: string; expires: number | null }>
   ) => Effect.Effect<unknown, SqlError>
 
   const upsert = sql.onDialectOrElse({
@@ -825,7 +825,7 @@ export const layerBackingSql: Layer.Layer<
         setMany: (entries) =>
           Effect.suspend(() => {
             try {
-              const encoded = entries.map(([key, value, ttl]) => ({
+              const encoded = Arr.map(entries, ([key, value, ttl]) => ({
                 store_id: storeId,
                 id: key,
                 value: JSON.stringify(value),

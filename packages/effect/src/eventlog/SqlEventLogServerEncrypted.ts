@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -233,7 +234,7 @@ export const makeStorage = (options?: {
 
           const allEntries: Array<EventLogEncryption.EncryptedRemoteEntry> = []
           for (const batch of forInsert) {
-            if (batch.entries.length === 0) continue
+            if (!Arr.isArrayNonEmpty(batch.entries)) continue
             const encryptedEntries = yield* sql`
               INSERT INTO ${sql(table)} ${sql.insert(batch.entries)} ON CONFLICT DO NOTHING
             `.pipe(
