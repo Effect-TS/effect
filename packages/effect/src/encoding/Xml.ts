@@ -116,9 +116,14 @@ export interface Doctype {
  *
  * **Details**
  *
+ * `name` is the qualified name as written and is the only element-name field
+ * the encoder reads.
+ *
  * Attribute values have their references replaced and whitespace normalized as
  * XML requires. Decoded attributes are objects without a prototype, so only
- * the attributes of the tag are present. A self-closing tag such as `<br/>` is
+ * the attributes of the tag are present. Insertion order is document order,
+ * since XML names cannot be integer-like keys; `structuredClone` restores
+ * `Object.prototype` on the copy. A self-closing tag such as `<br/>` is
  * decoded as a `StartElement` followed by an `EndElement`.
  *
  * @stability unstable
@@ -238,10 +243,8 @@ export interface Element {
  * - `maxDepth`: the maximum number of nested elements. Defaults to 1024;
  *   `Infinity` disables the limit.
  *
- * The names of open elements are kept until their end tags, so they can take
- * up to `maxDepth` times `maxTokenSize` of memory. Lower both for untrusted
- * input that is not otherwise bounded. Invalid options throw when the channel
- * is created.
+ * Memory per token and for open element names is bounded by `maxTokenSize`.
+ * Invalid options throw when the channel is created.
  *
  * @stability unstable
  * @category configuration
@@ -285,6 +288,8 @@ export interface ElementsOptions {
  *
  * **Gotchas**
  *
+ * - End of input inside the root fails with a `Syntax` error ("unclosed
+ *   element"); interruption ends the stream without this check.
  * - A DOCTYPE is reported as a `Doctype` event, and its internal subset is
  *   skipped without checking its declarations. They are not applied, so
  *   default attribute values are not added, and parameter entities are not
@@ -295,9 +300,10 @@ export interface ElementsOptions {
  *   such as `&#233;` are always decoded.
  * - Names are reported as written, including namespace prefixes, and `xmlns`
  *   declarations are ordinary attributes.
- * - Tokens longer than `maxTokenSize` and elements nested deeper than
- *   `maxDepth` fail with a `Limit` `XmlError`. A long token can instead fail
- *   with an error found in its first `maxTokenSize + 1` characters.
+ * - Tokens or aggregate open element names longer than `maxTokenSize`, and
+ *   elements nested deeper than `maxDepth`, fail with a `Limit` `XmlError`. A
+ *   long token can instead fail with an error found in its first
+ *   `maxTokenSize + 1` characters.
  * - Strings in events can share memory with their input chunk, so keeping a
  *   short string, such as an id from each record, can keep the whole chunk in
  *   memory. Copy strings that are kept long, for example with
@@ -462,8 +468,8 @@ export const elements = <IE = never, Done = unknown>(
  * - Text escapes `&`, `<` and `>`. Attribute values are double-quoted and
  *   escape `&`, `<`, `"`, tabs and line breaks. Carriage returns are written
  *   as `&#13;` so that they survive decoding.
- * - A `StartElement` immediately followed by its `EndElement` is written as a
- *   self-closing tag.
+ * - Start tags are written completely on their event. Empty elements use
+ *   explicit closing tags, such as `<br></br>`, never self-closing tags.
  * - Nothing is added between events, so whitespace comes only from `Text`
  *   events.
  *
@@ -933,6 +939,7 @@ class Parser {
 
   private state = PROLOG
   private readonly stack: Array<string> = []
+  private openNameSize = 0
   private doctype = false
   private literalEnd = 0
   // Character data that has not been emitted yet, and its size in the input
@@ -1284,6 +1291,9 @@ class Parser {
     if (this.stack.length >= this.maxDepth) {
       throw this.error("Limit", `element nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
     }
+    if (!selfClosing && this.openNameSize + name.length > this.maxTokenSize) {
+      throw this.error("Limit", `open element names exceed maxTokenSize of ${this.maxTokenSize}`, this.base + i)
+    }
     this.flushText()
     this.out.push({ _tag: "StartElement", name, attributes: attributes ?? emptyAttributes })
     if (selfClosing) {
@@ -1291,6 +1301,7 @@ class Parser {
       if (this.stack.length === 0) this.state = EPILOG
     } else {
       this.stack.push(name)
+      this.openNameSize += name.length
       this.state = CONTENT
     }
     return j
@@ -1324,6 +1335,7 @@ class Parser {
     this.checkSize(i, k + 1)
     this.flushText()
     this.stack.pop()
+    this.openNameSize -= open.length
     this.out.push({ _tag: "EndElement", name: open })
     if (this.stack.length === 0) this.state = EPILOG
     return k + 1
@@ -1721,8 +1733,6 @@ class Writer implements Machine<Event, string> {
   private readonly stack: Array<string> = []
   private state = NOTHING_WRITTEN
   private doctype = false
-  // Whether the last start tag still lacks its closing ">"
-  private open = false
   private readonly bytes: boolean
 
   constructor(bytes: boolean) {
@@ -1757,19 +1767,13 @@ class Writer implements Machine<Event, string> {
       }
       this.stack.pop()
       if (this.stack.length === 0) this.state = EPILOG
-      if (this.open) {
-        this.open = false
-        return "/>"
-      }
       return `</${open}>`
     }
-    const prefix = this.open ? ">" : ""
-    this.open = false
     switch (event._tag) {
       case "StartElement": {
         checkName("element name", event.name)
         if (this.state === EPILOG) throw invalidEvent(`second root element <${event.name}>`)
-        let tag = prefix + "<" + event.name
+        let tag = "<" + event.name
         for (const name in event.attributes) {
           if (!Object.hasOwn(event.attributes, name)) continue
           const value = event.attributes[name]
@@ -1780,17 +1784,16 @@ class Writer implements Machine<Event, string> {
         }
         this.stack.push(event.name)
         this.state = CONTENT
-        this.open = true
-        return tag
+        return tag + ">"
       }
       case "Text": {
         checkChars("text", event.text)
         if (this.state !== CONTENT) {
           if (!isWhitespace(event.text)) throw invalidEvent("text outside the root element must be whitespace")
           if (this.state === NOTHING_WRITTEN && event.text.length > 0) this.state = PROLOG
-          return prefix + event.text
+          return event.text
         }
-        return prefix + escapeText(event.text)
+        return escapeText(event.text)
       }
       case "Comment": {
         checkChars("comment", event.text)
@@ -1798,7 +1801,7 @@ class Writer implements Machine<Event, string> {
           throw invalidEvent("comments cannot contain \"--\" or end with \"-\"")
         }
         if (this.state === NOTHING_WRITTEN) this.state = PROLOG
-        return `${prefix}<!--${event.text}-->`
+        return `<!--${event.text}-->`
       }
       case "ProcessingInstruction": {
         checkName("processing instruction target", event.target)
@@ -1808,7 +1811,7 @@ class Writer implements Machine<Event, string> {
         checkChars("processing instruction", event.data)
         if (event.data.includes("?>")) throw invalidEvent("processing instruction data cannot contain \"?>\"")
         if (this.state === NOTHING_WRITTEN) this.state = PROLOG
-        return `${prefix}<?${event.target}${event.data === "" ? "" : " " + event.data}?>`
+        return `<?${event.target}${event.data === "" ? "" : " " + event.data}?>`
       }
       case "Declaration": {
         if (this.state !== NOTHING_WRITTEN) throw invalidEvent("the XML declaration must be the first event")
