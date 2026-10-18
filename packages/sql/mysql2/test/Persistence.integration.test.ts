@@ -4,6 +4,7 @@ import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
+import * as Arr from "effect/Array"
 import { PersistedQueue, Persistence } from "effect/persistence"
 import { SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
@@ -63,6 +64,7 @@ it.layer(MysqlContainer.layerClient, { timeout: "90 seconds" })("Persistence", (
           value: "{}",
           expires: SqlCleanupTest.expiredAtEpoch
         }))
+        assert(Arr.isArrayNonEmpty(entries))
         yield* sql`INSERT INTO ${table} ${sql.insert(entries)}`.unprepared
         yield* sql`
           INSERT INTO ${table} (store_id, id, value, expires)
