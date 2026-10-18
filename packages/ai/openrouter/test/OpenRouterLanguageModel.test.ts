@@ -280,124 +280,86 @@ describe("OpenRouterLanguageModel", () => {
 
       describe("cache control", () => {
         const ephemeral = { type: "ephemeral" } as const
+        const oneHour = { type: "ephemeral", ttl: "1h" } as const
         const cached = { openrouter: { cacheControl: ephemeral } }
+        const partCached = { openrouter: { cacheControl: oneHour } }
 
-        const toolCall = (id: string) =>
-          Prompt.toolCallPart({ id, name: "lookup", params: {}, providerExecuted: false })
-        const toolResult = (id: string, options?: Prompt.ToolResultPartOptions) =>
-          Prompt.toolResultPart({
-            id,
-            name: "lookup",
-            result: `result ${id}`,
-            isFailure: false,
-            providerExecuted: false,
-            ...(options === undefined ? undefined : { options })
-          })
+        for (const partLevel of [false, true]) {
+          it.effect(
+            partLevel
+              ? "preserves part breakpoints and prefers them to message breakpoints"
+              : "puts message breakpoints on the last assistant text and tool result",
+            () =>
+              Effect.gen(function*() {
+                yield* LanguageModel.generateText({
+                  prompt: Prompt.make([
+                    { role: "user", content: "Look up both" },
+                    {
+                      role: "assistant",
+                      content: [
+                        Prompt.reasoningPart({ text: "Thinking" }),
+                        Prompt.textPart({ text: "First", options: partLevel ? partCached : undefined }),
+                        Prompt.textPart({ text: "Second" }),
+                        Prompt.textPart({ text: "Last", options: partLevel ? partCached : undefined }),
+                        ...["a", "b", "c"].map((id) =>
+                          Prompt.toolCallPart({ id, name: "lookup", params: {}, providerExecuted: false })
+                        )
+                      ],
+                      options: cached
+                    },
+                    {
+                      role: "tool",
+                      content: [
+                        ...["a", "b", "c"].map((id) =>
+                          Prompt.toolResultPart({
+                            id,
+                            name: "lookup",
+                            result: id === "c" ? { value: 42 } : id,
+                            isFailure: false,
+                            providerExecuted: false,
+                            options: partLevel && id !== "b" ? partCached : undefined
+                          })
+                        ),
+                        Prompt.toolApprovalResponsePart({ approvalId: "approval", approved: true })
+                      ],
+                      options: cached
+                    }
+                  ]),
+                  disableToolCallResolution: true
+                }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
 
-        const getMessages = (prompt: Prompt.RawInput) =>
-          Effect.gen(function*() {
-            yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
-              Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5"))
-            )
-            const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
-            return body.messages as Array<any>
-          })
-
-        it.effect("puts a message breakpoint on the last of several tool results", () =>
-          Effect.gen(function*() {
-            const messages = yield* getMessages(Prompt.make([
-              { role: "user", content: "Look up both" },
-              { role: "assistant", content: [toolCall("call_a"), toolCall("call_b")] },
-              { role: "tool", content: [toolResult("call_a"), toolResult("call_b")], options: cached }
-            ]))
-
-            deepStrictEqual(messages.filter((message) => message.role === "tool").map((message) => message.content), [
-              "result call_a",
-              [{ type: "text", text: "result call_b", cache_control: ephemeral }]
-            ])
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("puts a part breakpoint on that tool result", () =>
-          Effect.gen(function*() {
-            const messages = yield* getMessages(Prompt.make([
-              { role: "user", content: "Look up both" },
-              { role: "assistant", content: [toolCall("call_a"), toolCall("call_b")] },
-              { role: "tool", content: [toolResult("call_a", cached), toolResult("call_b")] }
-            ]))
-
-            deepStrictEqual(messages.filter((message) => message.role === "tool").map((message) => message.content), [
-              [{ type: "text", text: "result call_a", cache_control: ephemeral }],
-              "result call_b"
-            ])
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("puts a message breakpoint on the assistant's last text part", () =>
-          Effect.gen(function*() {
-            const messages = yield* getMessages(Prompt.make([
-              { role: "user", content: "Question" },
-              {
-                role: "assistant",
-                content: [
-                  Prompt.makePart("text", { text: "First" }),
-                  Prompt.makePart("text", { text: "Second" }),
-                  toolCall("call_a")
-                ],
-                options: cached
-              },
-              { role: "tool", content: [toolResult("call_a")] }
-            ]))
-
-            const assistant = messages.find((message) => message.role === "assistant")
-            deepStrictEqual(assistant.content, [
-              { type: "text", text: "First" },
-              { type: "text", text: "Second", cache_control: ephemeral }
-            ])
-            strictEqual(assistant.tool_calls.length, 1)
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("puts a part breakpoint on that assistant text part", () =>
-          Effect.gen(function*() {
-            const messages = yield* getMessages(Prompt.make([
-              { role: "user", content: "Question" },
-              {
-                role: "assistant",
-                content: [
-                  Prompt.makePart("text", { text: "First", options: cached }),
-                  Prompt.makePart("text", { text: "Second" })
-                ]
-              },
-              { role: "user", content: "Thanks" }
-            ]))
-
-            deepStrictEqual(messages.find((message) => message.role === "assistant").content, [
-              { type: "text", text: "First", cache_control: ephemeral },
-              { type: "text", text: "Second" }
-            ])
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("drops a breakpoint on an assistant turn with no text", () =>
-          Effect.gen(function*() {
-            const messages = yield* getMessages(Prompt.make([
-              { role: "user", content: "Look it up" },
-              { role: "assistant", content: [toolCall("call_a")], options: cached },
-              { role: "tool", content: [toolResult("call_a")] }
-            ]))
-
-            strictEqual(messages.find((message) => message.role === "assistant").content, "")
-          }).pipe(Effect.provide(makeTestLayer())))
-
-        it.effect("sends plain strings when nothing is marked", () =>
-          Effect.gen(function*() {
-            const messages = yield* getMessages(Prompt.make([
-              { role: "user", content: "Look it up" },
-              { role: "assistant", content: [Prompt.makePart("text", { text: "Sure" }), toolCall("call_a")] },
-              { role: "tool", content: [toolResult("call_a")] }
-            ]))
-
-            strictEqual(messages.find((message) => message.role === "assistant").content, "Sure")
-            strictEqual(messages.find((message) => message.role === "tool").content, "result call_a")
-          }).pipe(Effect.provide(makeTestLayer())))
+                const requests = yield* MockHttpClient.requests
+                const body = yield* getRequestBody(requests[0])
+                const assistant = body.messages.find((message: any) => message.role === "assistant")
+                deepStrictEqual(assistant.content, [
+                  partLevel
+                    ? { type: "text", text: "First", cache_control: oneHour }
+                    : { type: "text", text: "First" },
+                  { type: "text", text: "Second" },
+                  { type: "text", text: "Last", cache_control: partLevel ? oneHour : ephemeral }
+                ])
+                strictEqual(assistant.reasoning, "Thinking")
+                deepStrictEqual(assistant.tool_calls, [
+                  { id: "a", type: "function", function: { name: "lookup", arguments: "{}" } },
+                  { id: "b", type: "function", function: { name: "lookup", arguments: "{}" } },
+                  { id: "c", type: "function", function: { name: "lookup", arguments: "{}" } }
+                ])
+                deepStrictEqual(body.messages.filter((message: any) => message.role === "tool"), [
+                  {
+                    role: "tool",
+                    tool_call_id: "a",
+                    content: partLevel ? [{ type: "text", text: "a", cache_control: oneHour }] : "a"
+                  },
+                  { role: "tool", tool_call_id: "b", content: "b" },
+                  {
+                    role: "tool",
+                    tool_call_id: "c",
+                    content: [{ type: "text", text: "{\"value\":42}", cache_control: partLevel ? oneHour : ephemeral }]
+                  }
+                ])
+              }).pipe(Effect.provide(makeTestLayer()))
+          )
+        }
       })
     })
 
