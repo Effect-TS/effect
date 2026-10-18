@@ -1145,8 +1145,8 @@ describe("Stream", () => {
         return { capturedLogs, testLogger }
       }
 
-      const runIgnore = (options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") =>
-        Effect.gen(function*() {
+      const runIgnore = Effect.fnUntraced(
+        function*(options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") {
           const { capturedLogs, testLogger } = makeTestLogger()
           const program = options === undefined
             ? Stream.fail("boom").pipe(Stream.ignore, Stream.runDrain)
@@ -1157,7 +1157,8 @@ describe("Stream", () => {
             Effect.provideService(References.CurrentLogLevel, currentLogLevel)
           )
           return capturedLogs
-        })
+        }
+      )
 
       it.effect("does not log when log is omitted", () =>
         Effect.gen(function*() {
@@ -1356,24 +1357,23 @@ describe("Stream", () => {
         return { capturedLogs, testLogger }
       }
 
-      const runIgnoreCause = (
+      const runIgnoreCause = Effect.fnUntraced(function*(
         options?: IgnoreCauseOptions,
         currentLogLevel: LogLevel.Severity = "Info"
-      ) =>
-        Effect.gen(function*() {
-          const stream: Stream.Stream<never, string, never> = Stream.fail("boom")
-          const program: Effect.Effect<Array<never>, never, never> = options === undefined
-            ? stream.pipe(Stream.ignoreCause, Stream.runCollect)
-            : stream.pipe(Stream.ignoreCause(options), Stream.runCollect)
-          yield* Effect.scope
-          const { capturedLogs, testLogger } = makeTestLogger()
-          yield* program.pipe(
-            Effect.withLogger(testLogger),
-            Effect.provideService(References.MinimumLogLevel, "Trace"),
-            Effect.provideService(References.CurrentLogLevel, currentLogLevel)
-          )
-          return capturedLogs
-        })
+      ) {
+        const stream: Stream.Stream<never, string, never> = Stream.fail("boom")
+        const program: Effect.Effect<Array<never>, never, never> = options === undefined
+          ? stream.pipe(Stream.ignoreCause, Stream.runCollect)
+          : stream.pipe(Stream.ignoreCause(options), Stream.runCollect)
+        yield* Effect.scope
+        const { capturedLogs, testLogger } = makeTestLogger()
+        yield* program.pipe(
+          Effect.withLogger(testLogger),
+          Effect.provideService(References.MinimumLogLevel, "Trace"),
+          Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+        )
+        return capturedLogs
+      })
 
       it.effect("does not log when log is omitted", () =>
         Effect.gen(function*() {
@@ -1589,42 +1589,41 @@ describe("Stream", () => {
       }))
   })
 
-  const testOuterFailure = (
+  const testOuterFailure = Effect.fnUntraced(function*(
     combinator: "flatMap" | "switchMap",
     inner: "never" | "slow"
-  ) =>
-    Effect.gen(function*() {
-      const started = yield* Latch.make(false)
-      const failing = yield* Deferred.make<void>()
-      const finalized = yield* Ref.make(0)
-      const outer = Stream.concat(
-        Stream.make(1),
-        Stream.fromEffect(
-          started.await.pipe(
-            Effect.andThen(Deferred.succeed(failing, void 0)),
-            Effect.andThen(Effect.fail("boom"))
-          )
+  ) {
+    const started = yield* Latch.make(false)
+    const failing = yield* Deferred.make<void>()
+    const finalized = yield* Ref.make(0)
+    const outer = Stream.concat(
+      Stream.make(1),
+      Stream.fromEffect(
+        started.await.pipe(
+          Effect.andThen(Deferred.succeed(failing, void 0)),
+          Effect.andThen(Effect.fail("boom"))
         )
       )
-      const makeInner = () => {
-        started.openUnsafe()
-        return (inner === "never" ? Stream.never : Stream.fromEffect(Effect.sleep(Duration.hours(1)))).pipe(
-          Stream.ensuring(Ref.update(finalized, (n) => n + 1))
-        )
-      }
-      const stream = combinator === "flatMap"
-        ? Stream.flatMap(outer, makeInner, { concurrency: 2 })
-        : Stream.switchMap(outer, makeInner)
-      const fiber = yield* stream.pipe(
-        Stream.runDrain,
-        Effect.forkChild
+    )
+    const makeInner = () => {
+      started.openUnsafe()
+      return (inner === "never" ? Stream.never : Stream.fromEffect(Effect.sleep(Duration.hours(1)))).pipe(
+        Stream.ensuring(Ref.update(finalized, (n) => n + 1))
       )
-      yield* Deferred.await(failing)
+    }
+    const stream = combinator === "flatMap"
+      ? Stream.flatMap(outer, makeInner, { concurrency: 2 })
+      : Stream.switchMap(outer, makeInner)
+    const fiber = yield* stream.pipe(
+      Stream.runDrain,
+      Effect.forkChild
+    )
+    yield* Deferred.await(failing)
 
-      const result = yield* Fiber.await(fiber)
-      assert.deepStrictEqual(result, Exit.fail("boom"))
-      assert.strictEqual(yield* Ref.get(finalized), 1)
-    })
+    const result = yield* Fiber.await(fiber)
+    assert.deepStrictEqual(result, Exit.fail("boom"))
+    assert.strictEqual(yield* Ref.get(finalized), 1)
+  })
 
   describe("flatMap", () => {
     it.effect("releases each inner stream before starting the next", () =>

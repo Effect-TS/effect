@@ -286,37 +286,36 @@ describe("Tracer", () => {
   })
 
   describe("interruption as a traced region starts", () => {
-    const interruptAtEveryStep = (
+    const interruptAtEveryStep = Effect.fnUntraced(function*(
       make: () => Effect.Effect<unknown>,
       check: (spans: ReadonlyArray<Tracer.NativeSpan>, label: string) => void
-    ) =>
-      Effect.gen(function*() {
-        let started = 0
-        for (let ops = 3; ops <= 6; ops++) {
-          for (let prefix = 0; prefix < 4; prefix++) {
-            for (let yields = 0; yields < 6; yields++) {
-              const spans: Array<Tracer.NativeSpan> = []
-              const tracer = Tracer.make({
-                span(options) {
-                  const span = new Tracer.NativeSpan(options)
-                  spans.push(span)
-                  return span
-                }
-              })
-              let effect = make()
-              for (let i = 0; i < prefix; i++) effect = Effect.andThen(Effect.void, effect)
-              yield* Effect.gen(function*() {
-                const fiber = yield* Effect.forkChild(effect)
-                for (let i = 0; i < yields; i++) yield* Effect.yieldNow
-                yield* Fiber.interrupt(fiber)
-              }).pipe(Effect.withTracer(tracer), Effect.provideService(Scheduler.MaxOpsBeforeYield, ops))
-              started += spans.length
-              check(spans, `ops ${ops}, prefix ${prefix}, yields ${yields}`)
-            }
+    ) {
+      let started = 0
+      for (let ops = 3; ops <= 6; ops++) {
+        for (let prefix = 0; prefix < 4; prefix++) {
+          for (let yields = 0; yields < 6; yields++) {
+            const spans: Array<Tracer.NativeSpan> = []
+            const tracer = Tracer.make({
+              span(options) {
+                const span = new Tracer.NativeSpan(options)
+                spans.push(span)
+                return span
+              }
+            })
+            let effect = make()
+            for (let i = 0; i < prefix; i++) effect = Effect.andThen(Effect.void, effect)
+            yield* Effect.gen(function*() {
+              const fiber = yield* Effect.forkChild(effect)
+              for (let i = 0; i < yields; i++) yield* Effect.yieldNow
+              yield* Fiber.interrupt(fiber)
+            }).pipe(Effect.withTracer(tracer), Effect.provideService(Scheduler.MaxOpsBeforeYield, ops))
+            started += spans.length
+            check(spans, `ops ${ops}, prefix ${prefix}, yields ${yields}`)
           }
         }
-        assert.isAbove(started, 0, "the child never started a span")
-      })
+      }
+      assert.isAbove(started, 0, "the child never started a span")
+    })
 
     it.effect("ends interrupted spans and restores the parent for outer finalizers", () => {
       let seen: string | undefined

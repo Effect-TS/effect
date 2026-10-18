@@ -77,22 +77,21 @@ const AuthLive = Layer.succeed(
 const repo = (nameWithOwner: string) => ({ __typename: "Repository" as const, nameWithOwner })
 
 /** Answers each request with `respond(variables)` and records the requests. */
-const makeClient = (respond: (variables: any) => unknown, headers?: Headers.Headers) =>
-  Effect.gen(function*() {
-    const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
-    const layer = protocolLayer({
-      execute: (request) =>
-        Effect.as(Ref.update(requests, (all) => [...all, request]), {
-          body: respond(request.variables),
-          status: 200,
-          headers
-        })
-    })
-    const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos, PullRequest, RepoIssues)).pipe(
-      Effect.provide(layer)
-    )
-    return { client, requests }
+const makeClient = Effect.fnUntraced(function*(respond: (variables: any) => unknown, headers?: Headers.Headers) {
+  const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
+  const layer = protocolLayer({
+    execute: (request) =>
+      Effect.as(Ref.update(requests, (all) => [...all, request]), {
+        body: respond(request.variables),
+        status: 200,
+        headers
+      })
   })
+  const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos, PullRequest, RepoIssues)).pipe(
+    Effect.provide(layer)
+  )
+  return { client, requests }
+})
 
 /** Requests every key concurrently and returns each entry's success or failure. */
 const resolveAll = <K, A, E>(keys: ReadonlyArray<K>, get: (key: K) => Effect.Effect<A, E>) =>
@@ -365,8 +364,8 @@ describe("GraphQLResolver", () => {
     const GitHubHost = Context.Reference<string>("test/GitHubHost", { defaultValue: () => "api.github.com" })
 
     /** Alternates four lookups between two hosts, returning what each request sent. */
-    const lookUpOnTwoHosts = (url: Parameters<typeof GraphQLProtocol.layerHttp>[0]["url"], limit?: number) =>
-      Effect.gen(function*() {
+    const lookUpOnTwoHosts = Effect.fnUntraced(
+      function*(url: Parameters<typeof GraphQLProtocol.layerHttp>[0]["url"], limit?: number) {
         const sent: Array<string> = []
         const layer = GraphQLProtocol.layerHttp({ url }).pipe(
           Layer.provide(httpClientLayer((_, bodyText, url) => {
@@ -393,7 +392,8 @@ describe("GraphQLResolver", () => {
 
         assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3"), repo("R_4")])
         return sent.sort()
-      })
+      }
+    )
 
     const urls = [
       [

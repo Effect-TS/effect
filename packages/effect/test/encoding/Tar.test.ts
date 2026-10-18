@@ -8,13 +8,12 @@ const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
 // Fixtures were written by GNU tar 1.35; see fixtures/tar/README.md
-const fixture = (name: string) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const path = yield* Path.Path
-    const file = yield* path.fromFileUrl(new URL(`../fixtures/tar/${name}.tar.gz`, import.meta.url))
-    return gunzipSync(yield* fs.readFile(file))
-  }).pipe(Effect.provide(NodeServices.layer))
+const fixture = Effect.fnUntraced(function*(name: string) {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const file = yield* path.fromFileUrl(new URL(`../fixtures/tar/${name}.tar.gz`, import.meta.url))
+  return gunzipSync(yield* fs.readFile(file))
+}, Effect.provide(NodeServices.layer))
 
 const text = (bytes: Uint8Array) => textDecoder.decode(bytes)
 

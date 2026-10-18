@@ -30,25 +30,24 @@ const backendPid = Effect.gen(function*() {
 
 // Fails unless, within ten seconds, `count` backends are blocked by `holder`
 // directly or behind one that is, or `fiber` succeeds.
-const waitUntilBlockedBy = <A, E>(holder: number, count: number, fiber?: Fiber.Fiber<A, E>) =>
-  Effect.gen(function*() {
-    const sql = yield* SqlClient.SqlClient
-    const deadline = Date.now() + 10_000
-    while (Date.now() < deadline) {
-      const exit = fiber?.pollUnsafe()
-      if (exit !== undefined) return yield* exit
-      const [{ blocked }] = yield* sql<{ blocked: number }>`
+const waitUntilBlockedBy = Effect.fnUntraced(function*<A, E>(holder: number, count: number, fiber?: Fiber.Fiber<A, E>) {
+  const sql = yield* SqlClient.SqlClient
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    const exit = fiber?.pollUnsafe()
+    if (exit !== undefined) return yield* exit
+    const [{ blocked }] = yield* sql<{ blocked: number }>`
         SELECT count(*)::int4 AS blocked FROM pg_stat_activity waiter
         WHERE ${holder} = ANY(pg_blocking_pids(waiter.pid)) OR EXISTS (
           SELECT 1 FROM pg_stat_activity other
           WHERE other.pid = ANY(pg_blocking_pids(waiter.pid)) AND ${holder} = ANY(pg_blocking_pids(other.pid))
         )
       `
-      if (blocked >= count) return
-      yield* realSleep
-    }
-    return yield* Effect.die(new Error(`Expected ${count} backends blocked by ${holder} within 10 seconds`))
-  })
+    if (blocked >= count) return
+    yield* realSleep
+  }
+  return yield* Effect.die(new Error(`Expected ${count} backends blocked by ${holder} within 10 seconds`))
+})
 
 // Exposes the container so tests can open a read-only client.
 const TestLayer = Layer.merge(PgContainer.layerClient, PgContainer.layer)
