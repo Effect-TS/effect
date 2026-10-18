@@ -285,6 +285,113 @@ describe("OpenRouterLanguageModel", () => {
           assert.isDefined(toolResult)
           strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
         }).pipe(Effect.provide(makeTestLayer())))
+
+      describe("cache control", () => {
+        const ephemeral = { type: "ephemeral" } as const
+        const oneHour = { type: "ephemeral", ttl: "1h" } as const
+        const cached = { openrouter: { cacheControl: ephemeral } }
+        const partCached = { openrouter: { cacheControl: oneHour } }
+
+        it.effect("sends cached void tool results without throwing", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "call_void",
+                  name: "void_tool",
+                  result: undefined,
+                  isFailure: false,
+                  providerExecuted: false
+                })],
+                options: cached
+              }]),
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolResult = body.messages.find((message: any) => message.role === "tool")
+            strictEqual(toolResult.tool_call_id, "call_void")
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        for (const partLevel of [false, true]) {
+          it.effect(
+            partLevel
+              ? "preserves part breakpoints and prefers them to message breakpoints"
+              : "puts message breakpoints on the last assistant text and tool result",
+            () =>
+              Effect.gen(function*() {
+                yield* LanguageModel.generateText({
+                  prompt: Prompt.make([
+                    { role: "user", content: "Look up both" },
+                    {
+                      role: "assistant",
+                      content: [
+                        Prompt.reasoningPart({ text: "Thinking" }),
+                        Prompt.textPart({ text: "First", options: partLevel ? partCached : undefined }),
+                        Prompt.textPart({ text: "Second" }),
+                        Prompt.textPart({ text: "Last", options: partLevel ? partCached : undefined }),
+                        ...["a", "b", "c"].map((id) =>
+                          Prompt.toolCallPart({ id, name: "lookup", params: {}, providerExecuted: false })
+                        )
+                      ],
+                      options: cached
+                    },
+                    {
+                      role: "tool",
+                      content: [
+                        ...["a", "b", "c"].map((id) =>
+                          Prompt.toolResultPart({
+                            id,
+                            name: "lookup",
+                            result: id === "c" ? { value: 42 } : id,
+                            isFailure: false,
+                            providerExecuted: false,
+                            options: partLevel && id !== "b" ? partCached : undefined
+                          })
+                        ),
+                        Prompt.toolApprovalResponsePart({ approvalId: "approval", approved: true })
+                      ],
+                      options: cached
+                    }
+                  ]),
+                  disableToolCallResolution: true
+                }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
+
+                const requests = yield* MockHttpClient.requests
+                const body = yield* getRequestBody(requests[0])
+                const assistant = body.messages.find((message: any) => message.role === "assistant")
+                deepStrictEqual(assistant.content, [
+                  partLevel
+                    ? { type: "text", text: "First", cache_control: oneHour }
+                    : { type: "text", text: "First" },
+                  { type: "text", text: "Second" },
+                  { type: "text", text: "Last", cache_control: partLevel ? oneHour : ephemeral }
+                ])
+                strictEqual(assistant.reasoning, "Thinking")
+                deepStrictEqual(assistant.tool_calls, [
+                  { id: "a", type: "function", function: { name: "lookup", arguments: "{}" } },
+                  { id: "b", type: "function", function: { name: "lookup", arguments: "{}" } },
+                  { id: "c", type: "function", function: { name: "lookup", arguments: "{}" } }
+                ])
+                deepStrictEqual(body.messages.filter((message: any) => message.role === "tool"), [
+                  {
+                    role: "tool",
+                    tool_call_id: "a",
+                    content: partLevel ? [{ type: "text", text: "a", cache_control: oneHour }] : "a"
+                  },
+                  { role: "tool", tool_call_id: "b", content: "b" },
+                  {
+                    role: "tool",
+                    tool_call_id: "c",
+                    content: [{ type: "text", text: "{\"value\":42}", cache_control: partLevel ? oneHour : ephemeral }]
+                  }
+                ])
+              }).pipe(Effect.provide(makeTestLayer()))
+          )
+        }
+      })
     })
 
     describe("tool preparation", () => {
