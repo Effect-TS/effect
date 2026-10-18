@@ -14,13 +14,8 @@ export function assignProperty(self: object, key: PropertyKey, value: unknown): 
 
 /** @internal */
 export function assignProperties(self: object, source: object): void {
-  // Same own+enumerable keys, order, and [[Get]]/[[Set]] as the loop below, except an own
-  // "__proto__" key, which needs the `defineProperty` path to avoid firing the prototype setter.
-  //
-  // Known limitation (pinned by the "KNOWN LIMITATION" test in test/Data.test.ts): a Proxy
-  // source whose getOwnPropertyDescriptor trap answers this check and Object.assign's own
-  // internal check differently can still pollute self's prototype. No real call site in this
-  // codebase can trigger it; see the PR description for why it isn't closed.
+  // Object.assign would fire the inherited __proto__ setter for an own __proto__ key,
+  // so use the safe per-property loop in that case.
   if (!Object.hasOwn(source, "__proto__")) {
     Object.assign(self, source)
     return
