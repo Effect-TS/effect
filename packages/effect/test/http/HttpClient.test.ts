@@ -464,9 +464,10 @@ Missing key
   })
 
   describe("followRedirects", () => {
-    it.effect("sends cookies from redirect responses with withCookiesRef", () =>
+    it.effect("sends cookies from redirect responses without repeating preprocessing", () =>
       Effect.gen(function*() {
         const cookies = yield* Ref.make(Cookies.empty)
+        const preprocessCount = yield* Ref.make(0)
         const client = HttpClient.make((request) =>
           Effect.succeed(HttpClientResponse.fromWeb(
             request,
@@ -478,6 +479,7 @@ Missing key
               : new Response(request.headers.cookie ?? "")
           ))
         ).pipe(
+          HttpClient.mapRequestEffect((request) => Effect.as(Ref.update(preprocessCount, (n) => n + 1), request)),
           HttpClient.withCookiesRef(cookies),
           HttpClient.followRedirects()
         )
@@ -485,6 +487,51 @@ Missing key
         const response = yield* client.get("https://origin.test/start")
 
         assert.strictEqual(yield* response.text, "session=secret")
+        assert.strictEqual(yield* Ref.get(preprocessCount), 1)
+      }))
+
+    it.effect("does not reattach cookie-ref cookies after a cross-origin redirect", () =>
+      Effect.gen(function*() {
+        const cookies = yield* Ref.make(Cookies.fromSetCookie("session=secret"))
+        const requests = yield* Ref.make<Array<HttpClientRequest.HttpClientRequest>>([])
+        const locations = [
+          "https://redirect.test/start",
+          "https://redirect.test/next",
+          "https://origin.test/end"
+        ]
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(requests, (requests) => [...requests, request]),
+            (requests) =>
+              HttpClientResponse.fromWeb(
+                request,
+                requests.length <= locations.length
+                  ? new Response(null, {
+                    status: 302,
+                    headers: {
+                      location: locations[requests.length - 1],
+                      "set-cookie": "session=updated"
+                    }
+                  })
+                  : new Response(null)
+              )
+          )
+        ).pipe(
+          HttpClient.withCookiesRef(cookies),
+          HttpClient.followRedirects()
+        )
+
+        yield* client.get("https://origin.test/start")
+
+        assert.deepStrictEqual(
+          (yield* Ref.get(requests)).map((request) => [request.url, request.headers.cookie]),
+          [
+            ["https://origin.test/start", "session=secret"],
+            ["https://redirect.test/start", undefined],
+            ["https://redirect.test/next", undefined],
+            ["https://origin.test/end", undefined]
+          ]
+        )
       }))
 
     it.effect("preserves preprocessing error recovery", () =>
