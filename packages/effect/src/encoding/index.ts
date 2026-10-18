@@ -72,7 +72,7 @@ export * as Toml from "./Toml.ts"
 export * as Yaml from "./Yaml.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.0.6
  */
 export * as Zip from "./Zip.ts"

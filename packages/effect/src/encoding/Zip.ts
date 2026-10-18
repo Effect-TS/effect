@@ -14,7 +14,10 @@
  * Encryption, other compression methods and archives split across files are
  * not supported.
  *
- * @stability unstable
+ * This module is experimental and may receive breaking changes in patch
+ * releases.
+ *
+ * @stability experimental
  * @since 4.0.6
  */
 import * as Arr from "../Array.ts"
@@ -51,7 +54,7 @@ const ZipErrorTypeId = "~effect/encoding/Zip/ZipError"
  *   as encryption or a compression method other than store and deflate.
  * - `BodyConsumed`: an entry body was read after the decoder had moved past it.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.6
  */
@@ -69,7 +72,7 @@ export class ZipError extends Data.TaggedError("ZipError")<{
   /**
    * Marks this value as a zip error for runtime guards.
    *
-   * @stability unstable
+   * @stability experimental
    * @since 4.0.6
    */
   readonly [ZipErrorTypeId] = ZipErrorTypeId
@@ -78,7 +81,7 @@ export class ZipError extends Data.TaggedError("ZipError")<{
 /**
  * Checks whether a value is a `ZipError`.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.6
  */
@@ -87,7 +90,7 @@ export const isZipError = (u: unknown): u is ZipError => Predicate.hasProperty(u
 /**
  * Kind of object described by a zip entry.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -96,7 +99,7 @@ export type EntryType = "File" | "Directory"
 /**
  * Compression method of a zip entry.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -115,7 +118,7 @@ export type Method = "Store" | "Deflate"
  * one second when the archive has an extended timestamp and two seconds
  * otherwise.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -138,7 +141,7 @@ export interface Header {
  *
  * @see {@link ContentEntry} for entries whose content is held in memory
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -161,7 +164,7 @@ export interface Entry<E = never, R = never> {
  *
  * @see {@link Entry} for entries whose content is streamed
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -180,7 +183,7 @@ export interface ContentEntry {
  * a zip header can hold, and mode `0o644` (`0o755` for directories). The
  * defaults make archives reproducible.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -197,7 +200,7 @@ export interface EntryOptions {
  * `method` defaults to `"Deflate"`. Use `"Store"` for content that is already
  * compressed, such as images or archives.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -214,7 +217,7 @@ export interface FileOptions extends EntryOptions {
  * because streaming readers can only find the end of stored data from its
  * size, and optional for `Deflate`, where it is checked against the body.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -254,7 +257,7 @@ const makeHeader = (
  * @see {@link fileStream} for content that is streamed instead of held in memory
  * @see {@link encode} for writing entries to an archive
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -291,7 +294,7 @@ export const file = (path: string, content: string | Uint8Array, options?: FileO
  * @see {@link file} for in-memory content
  * @see {@link encode} for writing entries to an archive
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -312,7 +315,7 @@ export const fileStream = <E = never, R = never>(
  * A trailing `/` is added to a non-empty `path` when missing, as zip tools
  * expect for directories.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -383,7 +386,7 @@ export const directory = (path: string, options?: EntryOptions): ContentEntry =>
  *
  * @see {@link encode} for the inverse operation
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.6
  */
@@ -512,7 +515,7 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * @see {@link file} for building entries from in-memory content
  * @see {@link fileStream} for building entries from streamed content
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.0.6
  */
