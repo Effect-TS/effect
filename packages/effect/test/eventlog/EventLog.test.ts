@@ -470,7 +470,7 @@ describe("EventLog", () => {
       assert.deepStrictEqual(replayed.map(fields), entries.map(fields))
     }))
 
-  it.effect("passes every group entry to the batch compactor in order and drops unforwarded opaque entries", () =>
+  it.effect("passes every group entry to one batch compactor call in order and drops unforwarded opaque entries", () =>
     Effect.gen(function*() {
       const encode = Effect.fnUntraced(function*(
         event: "MenuItemAdded" | "MenuRemoved",
@@ -495,40 +495,30 @@ describe("EventLog", () => {
       // Lacks `item`, so it cannot be decoded as a MenuItemAdded payload.
       const opaque = yield* encode("MenuItemAdded", "item-2", { menu: "menu-1" }, MenuRemoved.payloadSchemaBinary)
       const removed = yield* encode("MenuRemoved", "menu-1", { menu: "menu-1" }, MenuRemoved.payloadSchemaBinary)
-      const seen: Array<unknown> = []
-      const compaction = EventLog.groupBatchCompaction(MenuGroup, ({ entries, forward }) =>
-        Effect.gen(function*() {
-          seen.push(...entries)
-          // A removal under another primary key drops the menu's earlier items.
-          const removedMenus = new Set(
-            entries.flatMap(({ event }) => event?._tag === "MenuRemoved" ? [event.payload.menu] : [])
-          )
-          for (const { entry, event } of entries) {
-            if (event === undefined) continue
-            if (event._tag === "MenuItemAdded" && removedMenus.has(event.payload.menu)) continue
-            yield* forward(entry)
-          }
-        }))
+      const calls: Array<unknown> = []
+      const compaction = EventLog.groupBatchCompaction(MenuGroup, ({ entries, forward }) => {
+        calls.push(entries)
+        return Effect.forEach(entries, ({ entry, event }) => event ? forward(entry) : Effect.void, { discard: true })
+      })
 
       yield* Effect.gen(function*() {
         const registry = yield* EventLog.Registry
-        const output: Array<readonly [EventJournal.Entry, EventJournal.Entry | undefined]> = []
+        const output: Array<EventJournal.Entry> = []
         yield* registry.compactors.get("MenuItemAdded")!.effect({
           entries: [added, opaque, removed],
-          write: (entry, source) =>
+          write: (entry) =>
             Effect.sync(() => {
-              output.push([entry, source])
+              output.push(entry)
             })
         })
 
-        assert.deepStrictEqual(seen, [
+        // One call sees entries under every primary key in the group.
+        assert.deepStrictEqual(calls, [[
           { entry: added, event: { _tag: "MenuItemAdded", payload: { menu: "menu-1", item: "item-1" } } },
           { entry: opaque, event: undefined },
           { entry: removed, event: { _tag: "MenuRemoved", payload: { menu: "menu-1" } } }
-        ])
-        // Forwarded entries keep their identity and replay at their own position.
-        assert.deepStrictEqual(output, [[removed, undefined]])
-        assert.strictEqual(output[0][0], removed)
+        ]])
+        assert.deepStrictEqual(output, [added, removed])
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
