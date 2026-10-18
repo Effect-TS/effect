@@ -47,7 +47,7 @@ import * as InternalUtilities from "./internal/utilities.ts"
  * @category models
  * @since 4.0.0
  */
-export type Model = (typeof Generated.Model)["members"][1]["Encoded"]
+export type Model = Extract<(typeof Generated.Model)["members"][number], { readonly literal: string }>["literal"]
 
 // =============================================================================
 // Configuration
@@ -2990,7 +2990,8 @@ const getCacheControl = (
     | Prompt.ToolMessagePart
 ): typeof Generated.CacheControlEphemeral.Encoded | null => part.options.anthropic?.cacheControl ?? null
 
-// Skip thinking blocks without crossing the part/message boundary.
+// Skip blocks that cannot carry cache_control (thinking, MCP tool listing and
+// fallback blocks) without crossing the part/message boundary.
 // Preserve existing part-level breakpoints over message-level ones.
 const setLastCacheControl = (
   content: Array<typeof Generated.BetaInputContentBlock.Encoded>,
@@ -3002,7 +3003,10 @@ const setLastCacheControl = (
   }
   for (let i = content.length - 1; i >= start; i--) {
     const block = content[i]
-    if (block.type === "thinking" || block.type === "redacted_thinking") {
+    if (
+      block.type === "thinking" || block.type === "redacted_thinking" || block.type === "mcp_tool_listing" ||
+      block.type === "fallback"
+    ) {
       continue
     }
     if (Predicate.isNullish(block.cache_control)) {
