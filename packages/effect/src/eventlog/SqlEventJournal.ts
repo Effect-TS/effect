@@ -315,12 +315,17 @@ export const make = (options?: {
 
     const insertEntries = SqlSchema.void({
       Request: EntryRowArray,
-      execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+      execute: (entries) =>
+        Arr.isReadonlyArrayNonEmpty(entries)
+          ? sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+          : Effect.void
     })
     const insertSources = (entries: ReadonlyArray<EventJournal.Entry>, remoteId: EventJournal.RemoteId) =>
-      sql`INSERT INTO ${sourcesTableSql} ${
-        sql.insert(entries.map((entry) => ({ entry_id: entry.id, remote_id: remoteId })))
-      } ON CONFLICT DO NOTHING`
+      Arr.isReadonlyArrayNonEmpty(entries)
+        ? sql`INSERT INTO ${sourcesTableSql} ${
+          sql.insert(Arr.map(entries, (entry) => ({ entry_id: entry.id, remote_id: remoteId })))
+        } ON CONFLICT DO NOTHING`
+        : Effect.void
     // Serialize writers so checkpoints cannot skip out-of-order commits.
     // Lock before callbacks in both paths to avoid projection-row deadlocks.
     const lockWriters = sql.onDialectOrElse({
@@ -328,9 +333,11 @@ export const make = (options?: {
       orElse: () => Effect.void
     })
     const insertSequence = (entries: ReadonlyArray<EventJournal.Entry>) =>
-      sql`INSERT INTO ${sequenceTableSql} ${
-        sql.insert(entries.map((entry) => ({ entry_id: entry.id })))
-      } ON CONFLICT DO NOTHING`
+      Arr.isReadonlyArrayNonEmpty(entries)
+        ? sql`INSERT INTO ${sequenceTableSql} ${
+          sql.insert(Arr.map(entries, (entry) => ({ entry_id: entry.id })))
+        } ON CONFLICT DO NOTHING`
+        : Effect.void
 
     const decodeCursorRows = Schema.decodeUnknownEffect(CursorRowArray)
 

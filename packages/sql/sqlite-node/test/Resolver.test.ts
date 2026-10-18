@@ -2,6 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, FileSystem, Iterable, Schema } from "effect"
+import * as Arr from "effect/Array"
 import { Reactivity } from "effect/reactivity"
 import { SqlError, SqlResolver } from "effect/sql"
 
@@ -17,6 +18,7 @@ const seededClient = Effect.gen(function*() {
   const sql = yield* makeClient
   yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
   const rows = Array.from(Iterable.range(1, 100), (id) => ({ id, name: `name${id}` }))
+  assert(Arr.isArrayNonEmpty(rows))
   yield* sql`INSERT INTO test ${sql.insert(rows)}`
   return sql
 })
@@ -32,7 +34,7 @@ describe("Resolver", () => {
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           execute: (names) => {
             batches.push(names)
-            return sql`INSERT INTO test ${sql.insert(names.map((name) => ({ name })))} RETURNING *`
+            return sql`INSERT INTO test ${sql.insert(Arr.map(names, (name) => ({ name })))} RETURNING *`
           }
         })
         const execute = SqlResolver.request(Insert)
