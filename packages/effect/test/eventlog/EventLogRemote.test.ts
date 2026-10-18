@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Fiber, Layer, Queue, type Scope, Stream } from "effect"
+import { Array, Context, Deferred, Effect, Fiber, Layer, Option, Queue, type Scope, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -16,6 +16,7 @@ import type * as RpcGroup from "effect/rpc/RpcGroup"
 import type { FromServer } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
 import * as RpcTest from "effect/rpc/RpcTest"
+import { TestClock } from "effect/testing"
 
 describe("EventLogRemote", () => {
   it.effect("retries wrapped Forbidden authentication errors", () =>
@@ -81,6 +82,48 @@ describe("EventLogRemote", () => {
       const acks = [{ entryId: entry.id, sequence: 5 }]
       request.resume(Effect.succeed(acks))
       assert.deepStrictEqual(yield* Fiber.join(writeFiber), acks)
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("pipelines chunks and retains completion acks before a later empty response", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHarness(EventLogRemote.makeUnencrypted)
+      const identity = yield* EventLog.makeIdentity
+      const entry = makeEntry({ payloadSize: EventLogMessage.ChunkedMessage.chunkSize * 2 })
+      const write = yield* harness.remote.write({
+        identity,
+        storeId: defaultStoreId,
+        entries: [entry]
+      }).pipe(Effect.forkChild)
+      yield* authenticate({ harness, identity })
+
+      const first = yield* harness.take
+      assert(first._tag === "EventLog.WriteChunked")
+      // A virtual deadline turns a sequential sender into an assertion failure,
+      // rather than hanging the test while the first response is withheld.
+      const takeChunk = Effect.gen(function*() {
+        const pending = yield* harness.take.pipe(Effect.timeoutOption("1 second"), Effect.forkChild)
+        yield* TestClock.adjust("1 second")
+        const result = yield* Fiber.join(pending)
+        assert(Option.isSome(result), "expected another chunk before acknowledging the first")
+        assert(result.value._tag === "EventLog.WriteChunked")
+        return result.value
+      })
+      const second = yield* takeChunk
+      second.resume(Effect.succeed([]))
+      const third = yield* takeChunk
+      const parts = [first, second, third].map((request) =>
+        request.request as Rpc.Payload<typeof EventLogMessage.WriteChunkedRpc>
+      )
+      assert.deepStrictEqual(parts.map((part) => part.part), [[0, 3], [1, 3], [2, 3]])
+      assert.isTrue(parts.every((part) => part.id === parts[0].id))
+
+      // Arrival at the server can be 1, 2, 0: part 0 completes the message.
+      // Its acknowledgement must survive the delayed empty reply for part 2.
+      const acks = [{ entryId: entry.id, sequence: 5 }]
+      first.resume(Effect.succeed(acks))
+      yield* TestClock.adjust("1 second")
+      third.resume(Effect.succeed([]))
+      assert.deepStrictEqual(yield* Fiber.join(write), acks)
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
   it.effect("makeEncrypted authenticates before writing encrypted entries", () =>
@@ -277,10 +320,10 @@ const makeServer = Effect.fnUntraced(function*(encrypted: boolean) {
         encodeWrite(entries).pipe(
           Effect.flatMap((data) => client["EventLog.WriteSingle"]({ data }))
         ),
-      // Returns the response to the final part, which completes the write.
+      // Reverse arrival order: index 0, not the highest index, completes the write.
       writeChunked: Effect.fnUntraced(function*(entries: ReadonlyArray<EventJournal.Entry>) {
         const data = yield* encodeWrite(entries)
-        const parts = EventLogMessage.ChunkedMessage.split(clientId, data)
+        const parts = Array.reverse(EventLogMessage.ChunkedMessage.split(clientId, data))
         assert.isAbove(parts.length, 1)
         const responses = yield* Effect.forEach(parts, (part) => client["EventLog.WriteChunked"](part))
         // Earlier parts acknowledge nothing.
@@ -349,7 +392,7 @@ describe("EventLogRemote write acknowledgements", () => {
     }))
 
   for (const encrypted of [true, false]) {
-    it.effect(`${encrypted ? "encrypted" : "unencrypted"}: ordered duplicate acks, chunk completion and connection-scoped echoes`, () =>
+    it.effect(`${encrypted ? "encrypted" : "unencrypted"}: ordered duplicate acks, out-of-order chunk reassembly and connection-scoped echoes`, () =>
       Effect.gen(function*() {
         const server = yield* makeServer(encrypted)
         const identity = yield* EventLog.makeIdentity
