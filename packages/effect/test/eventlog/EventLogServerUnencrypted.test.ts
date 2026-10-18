@@ -157,7 +157,7 @@ it.effect.each(["groupCompaction", "groupBatchCompaction"] as const)(
         : EventLog.groupBatchCompaction(
           ReproGroup,
           ({ entries, forward }) =>
-            Effect.forEach(entries.toReversed(), ({ entry }) => forward(entry), { discard: true })
+            Effect.forEach([...entries].reverse(), ({ entry }) => forward(entry), { discard: true })
         )
 
       const compacted = yield* Effect.gen(function*() {
