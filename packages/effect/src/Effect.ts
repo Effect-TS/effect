@@ -2786,10 +2786,9 @@ export {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling a tagged error)
  *
@@ -2895,10 +2894,9 @@ export const catchTag: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling multiple tagged errors)
  *
@@ -3011,10 +3009,9 @@ export const catchTags: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling an error reason)
  *
@@ -3116,10 +3113,9 @@ export const catchReason: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling multiple error reasons)
  *
@@ -3452,10 +3448,9 @@ export const catchDefect: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Recovering when a predicate matches)
  *
@@ -3536,10 +3531,9 @@ export const catchIf: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @see {@link catchIf} for predicate-based recovery from typed errors
  * @see {@link catchTag} for recovering from a single tagged error
@@ -3709,6 +3703,9 @@ export const catchCauseFilter: {
  * Only the failure channel is transformed. The success channel and requirements
  * are preserved.
  *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Transforming the error channel)
  *
  * ```ts import.meta.vitest
@@ -3755,6 +3752,9 @@ export const mapError: {
  * and one for the success channel. You can use it when you want to modify both
  * the error and the success values without altering the overall success or
  * failure status of the effect.
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * **Example** (Transforming success and failure channels)
  *
@@ -4283,6 +4283,7 @@ export const retry: {
  * defect is not retried and is propagated with every typed error converted to a
  * defect. A typed error alongside an interruption is retried. When the cause
  * contains a defect, `orElse` does not run.
+ * This applies to source failures only; policy failures propagate unchanged.
  *
  * **Example** (Falling back after retries are exhausted)
  *
@@ -4613,10 +4614,9 @@ export const withErrorReporting: <
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Replacing failures with a value)
  *
@@ -5503,10 +5503,9 @@ export const when: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Matching success and failure values)
  *
@@ -5575,10 +5574,9 @@ export const match: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Pattern matching eagerly when possible)
  *
@@ -5837,10 +5835,9 @@ export const matchCauseEffect: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Matching success and failure with effectful handlers)
  *
@@ -7889,8 +7886,9 @@ export const forever: <
  * The source effect is always evaluated once before the schedule is stepped.
  * The schedule controls additional repetitions, not the initial execution.
  *
- * If the effect fails with a cause that contains a defect, the failure is
- * propagated with every typed error converted to a defect.
+ * If the effect or policy fails with a cause that contains a defect, the
+ * failure is propagated with every typed error converted to a defect.
+ * An interruption alongside a typed error does not block the typed error path.
  *
  * **Example** (Repeating successful effects with a schedule)
  *
@@ -7983,9 +7981,10 @@ export const repeat: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the effect fails with a cause
- * that contains a defect, `orElse` does not run and the failure is propagated
- * with every typed error converted to a defect.
+ * Defects take precedence over typed errors from either the effect or policy.
+ * If the cause contains a defect, `orElse` does not run and every typed error
+ * is converted to a defect. An interruption alongside a typed error does not
+ * prevent `orElse` from running.
  *
  * **Example** (Recovering after repetition stops)
  *
@@ -15708,6 +15707,9 @@ export const mapEager: {
  * transform. Failure effects apply the mapping function immediately, and
  * pending effects fall back to regular `mapError` behavior.
  *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Mapping errors eagerly when possible)
  *
  * ```ts import.meta.vitest
@@ -15754,6 +15756,9 @@ export const mapErrorEager: {
  * Success effects apply `onSuccess` immediately, and failure effects apply
  * `onFailure` immediately. Pending effects fall back to regular `mapBoth`
  * behavior.
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * **Example** (Mapping both channels eagerly when possible)
  *
@@ -15851,10 +15856,9 @@ export const flatMapEager: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching failures eagerly when possible)
  *

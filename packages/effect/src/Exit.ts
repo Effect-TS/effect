@@ -835,8 +835,10 @@ export const map: {
  *
  * **Gotchas**
  *
- * Only transforms typed errors (Fail reasons). If the Cause contains only
- * defects or interruptions, the failure passes through unchanged.
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
+ * If the Cause contains only defects or interruptions, no mapper is called.
  *
  * **Example** (Mapping over an error)
  *
@@ -868,10 +870,13 @@ export const mapError: {
  * **Details**
  *
  * `onSuccess` transforms the value if the Exit is a Success. `onFailure`
- * transforms the typed error if the Exit is a Failure with a Fail reason.
+ * transforms each typed error if the Exit is a Failure with Fail reasons.
  * Allocates a new Exit.
  *
  * **Gotchas**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * If the Cause contains only defects or interruptions, the failure passes
  * through unchanged.

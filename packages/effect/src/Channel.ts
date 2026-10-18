@@ -4936,10 +4936,9 @@ export const tapError: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @see {@link catch_ catch} for recovering from every typed channel error
  * @see {@link catchFilter} for selecting typed errors with a `Filter`
@@ -5188,10 +5187,9 @@ export const catchIf: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @see {@link catchIf} for selecting typed errors with a predicate
  * @see {@link catchTag} for selecting tagged typed errors
@@ -5359,10 +5357,9 @@ export const catchFilter: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @stability stable
  * @category error handling
@@ -5517,10 +5514,9 @@ export const catchTag: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Recovering from nested reasons)
  *
@@ -5734,10 +5730,9 @@ export const catchReason: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @stability stable
  * @category error handling
@@ -6011,9 +6006,12 @@ export const unwrapReason: {
   ) as any)
 
 /**
- * Returns a new channel, which is the same as this one, except the failure
- * value of the returned channel is created by applying the specified function
- * to the failure value of this channel.
+ * Transforms the typed errors of a channel using the specified function.
+ *
+ * **Details**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * @stability stable
  * @category error handling

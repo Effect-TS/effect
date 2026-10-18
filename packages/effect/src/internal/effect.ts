@@ -190,11 +190,8 @@ export const causeElectDefects = <E>(self: Cause.Cause<E>): Cause.Cause<E> =>
     : self
 
 /**
- * Selects the typed error that recovery operators hand to their handlers.
- *
- * Defects take precedence: when the cause contains a `Die`, no error is
- * selected and every `Fail` is converted to a `Die` in the remaining cause.
- * Interrupts beside a `Fail` do not block recovery.
+ * Selects the first typed error unless a defect is present, in which case
+ * every `Fail` is elected to `Die`. Interrupts do not block typed recovery.
  *
  * @internal
  */

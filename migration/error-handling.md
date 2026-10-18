@@ -94,7 +94,7 @@ const program = Effect.fail(42).pipe(
 )
 ```
 
-## Defects Take Precedence in Mixed Causes
+## Defects take precedence in mixed causes
 
 A failure cause can hold a typed error and a defect at the same time, for
 example when a finalizer dies after the effect has already failed. In v4,
@@ -113,11 +113,12 @@ defect. In v4 the rule is the same for all of them:
   `matchEager`, `orElseSucceed`, `ignore`, `option`, `result`, `orDie`,
   `eventually`, `firstSuccessOf`, `retry`, `retryOrElse`, `repeat` and
   `repeatOrElse`
-- `Stream` and `Channel`: `catch`, `catchTag`, `catchTags`, `catchIf`,
-  `catchFilter`, `catchReason`, `catchReasons`, `orElseSucceed`, `ignore`,
-  `result`, `orDie` and `retry`
+- `Stream` and `Channel`: their typed recovery operators, including `catch`,
+  `catchTag`, `catchIf`, `catchFilter`, `catchReason`, `catchReasons`,
+  `ignore`, `orDie` and `retry`
 
-An interruption alongside a typed error does not prevent recovery.
+An interruption alongside a typed error does not prevent recovery. The first
+typed error is handled; other typed errors and interrupts can be discarded.
 
 ```ts
 import { Effect } from "effect"
@@ -132,6 +133,33 @@ const program = Effect.fail("error").pipe(
 
 Use `Effect.catchDefect` or `Effect.catchCause` to recover from causes that
 contain defects.
+
+### Retry and repeat error paths
+
+`Effect.retry`, `retryOrElse`, `repeat` and `repeatOrElse` apply this rule to
+source failures. `Fail(e) + Interrupt` now enters the typed error path instead
+of propagating unchanged. `retry` retries it; when retries run out, or `repeat`
+re-raises it, the final cause is `Fail(e)` without the interrupt. The `orElse`
+handlers can now receive `e` from these causes.
+
+`repeat` and `repeatOrElse` also apply the rule to policy failures. A policy
+failure containing `Fail(e) + Die(d)` propagates as `Die(e) + Die(d)` without
+running `orElse`. In contrast, `retry` and `retryOrElse` do not recover policy
+errors, so policy failures keep their original cause.
+
+## Error mapping preserves the whole cause
+
+Error mapping is not recovery. `Effect.mapError`, `mapErrorEager`, `mapBoth`
+and `mapBothEager`, `Exit.mapError` and `mapBoth`, `Stream.mapError` and
+`mapBoth`, and `Channel.mapError` now map every typed error in place while
+preserving defects, interrupts and reason order. Eager and suspended inputs
+follow the same rule. For example, `Fail(e) + Interrupt + Die(d)` becomes
+`Fail(f(e)) + Interrupt + Die(d)`, not an elected defect cause.
+
+Previously these operators mapped only the first typed error and discarded
+the remaining reasons. If a cause contains several typed errors, the mapper
+now runs for each one. Unlike typed recovery, mapping neither skips errors
+beside defects nor converts them to defects.
 
 ## New in v4
 

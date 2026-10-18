@@ -2,6 +2,9 @@
 "effect": patch
 ---
 
-Make defects take precedence over typed errors in every typed recovery operator.
+Preserve defects in mixed failure causes across Effect, Stream and Channel.
 
-When a failure cause contains both a typed error and a defect, typed recovery no longer runs and the defect is no longer dropped. The failure is propagated with every typed error converted to a defect, so `Fail(e) + Die(d)` becomes `Die(e) + Die(d)`. An interruption alongside a typed error does not prevent recovery.
+- Typed recovery skips causes containing a defect and converts every typed error to a defect: `Fail(e) + Die(d)` becomes `Die(e) + Die(d)`, preserving reason order and interrupts. Use `catchCause` or `catchDefect` to recover from these causes.
+- An interrupt alongside a typed error does not block recovery, including Effect retry and repeat error paths. Retrying or re-raising only the typed error can discard that interrupt.
+- The same rule applies to failing `repeat` / `repeatOrElse` policies. Retry-policy failures still propagate unchanged.
+- Error mapping in Effect (including eager variants), Exit, Stream and Channel now maps every typed error in place, preserving defects, interrupts and reason order instead of keeping only the first mapped failure. Mapping does not convert typed errors to defects.

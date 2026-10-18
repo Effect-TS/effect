@@ -1806,6 +1806,11 @@ export const as: {
 /**
  * Maps both the failure and success channels of a stream.
  *
+ * **Details**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Mapping both the failure and success channels of a stream)
  *
  * ```ts import.meta.vitest
@@ -5231,10 +5236,9 @@ export const tapDefect: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching matching failures)
  *
@@ -5329,10 +5333,9 @@ export const catchIf: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @see {@link catchIf} for predicate or refinement based recovery
  * @see {@link catchTag} for `_tag` based recovery from one tagged error
@@ -5395,10 +5398,9 @@ export const catchFilter: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching tagged failures)
  *
@@ -5510,10 +5512,9 @@ export const catchTag: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching tagged failures with handlers)
  *
@@ -5639,10 +5640,9 @@ export const catchTags: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching a tagged error reason)
  *
@@ -5781,10 +5781,9 @@ export const catchReason: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching tagged error reasons)
  *
@@ -6014,6 +6013,11 @@ export const unwrapReason: {
 /**
  * Transforms the errors emitted by this stream using `f`.
  *
+ * **Details**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Mapping stream errors)
  *
  * ```ts import.meta.vitest
@@ -6190,10 +6194,9 @@ export const orElseIfEmpty: {
  *
  * **Gotchas**
  *
- * Defects take precedence over typed errors. If the cause also contains a
- * defect, the handler does not run and the failure is propagated with every
- * typed error converted to a defect. An interruption alongside a typed error
- * does not prevent recovery.
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Recovering with a fallback value)
  *
