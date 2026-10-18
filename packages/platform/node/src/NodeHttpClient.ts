@@ -264,11 +264,7 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
 const convertFormData = (formData: FormData, undici: typeof Undici): Undici.FormData => {
   const converted = new undici.FormData()
   for (const [key, value] of formData) {
-    if (typeof value === "string") {
-      converted.append(key, value)
-    } else {
-      converted.append(key, value, value.name)
-    }
+    converted.append(key, value)
   }
   return converted
 }
