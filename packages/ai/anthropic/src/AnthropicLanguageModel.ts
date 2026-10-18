@@ -1285,8 +1285,6 @@ const prepareMessages = Effect.fnUntraced(
               setLastCacheControl(content, partStart, getCacheControl(part))
             }
 
-            // A message-level breakpoint applies to the message's last block
-            // unless a part-level breakpoint already marks it.
             setLastCacheControl(content, messageStart, getCacheControl(message))
           }
 
@@ -2992,9 +2990,8 @@ const getCacheControl = (
     | Prompt.ToolMessagePart
 ): typeof Generated.CacheControlEphemeral.Encoded | null => part.options.anthropic?.cacheControl ?? null
 
-// Thinking blocks cannot carry a cache breakpoint, so the breakpoint goes on
-// the last block at or after `start` that can. A block that already has one
-// keeps it.
+// Skip thinking blocks without crossing the part/message boundary.
+// Preserve existing part-level breakpoints over message-level ones.
 const setLastCacheControl = (
   content: Array<typeof Generated.BetaInputContentBlock.Encoded>,
   start: number,
