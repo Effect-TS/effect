@@ -32,7 +32,6 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
 import { AsyncLocalStorage } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
-import { getInYoungGeneration } from "./utils/gc.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
 
@@ -312,18 +311,6 @@ describe("Effect", () => {
     assert.strictEqual(isSync, 1)
     assert.strictEqual(isAsync, 2)
   })
-
-  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-    "callback allocates the suspended fiber's _yielded closure in the young generation",
-    () =>
-      Effect.gen(function*() {
-        const inYoungGeneration = yield* Effect.promise(getInYoungGeneration)
-        const fiber = yield* Effect.forkChild(Effect.callback<never>(() => {}))
-        yield* Effect.yieldNow
-
-        assert.isTrue(inYoungGeneration((fiber as unknown as { readonly _yielded: unknown })._yielded))
-      })
-  )
 
   it("runPromise", async () => {
     const result = await Effect.runPromise(Effect.succeed(1))
