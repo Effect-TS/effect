@@ -32,7 +32,7 @@ const makeCountingCrypto = () => {
   const subtle = globalThis.crypto.subtle
   const counts = { encrypts: 0, decrypts: 0, ivs: new Set<string>() }
   const crypto = {
-    getRandomValues: <T extends ArrayBufferView | null>(array: T) => globalThis.crypto.getRandomValues(array),
+    getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
     randomUUID: () => globalThis.crypto.randomUUID(),
     subtle: new Proxy(subtle, {
       get(target, key) {
