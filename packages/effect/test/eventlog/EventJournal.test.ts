@@ -228,8 +228,8 @@ describe("EventJournal", () => {
   })
 
   it("generates strictly ascending entry ids when the clock stalls or moves backwards", () => {
-    // Later than any clock-based id generated so far in this process.
-    const start = Date.now() + 1_000_000
+    // Later than any id generated or observed so far in this process.
+    const start = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1_000_000
     const now = vi.spyOn(Date, "now").mockReturnValue(start)
     try {
       const ids = Array.from({ length: 10_000 }, () => EventJournal.makeEntryIdUnsafe())
@@ -340,7 +340,7 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(missing, Option.some(expected))
     }))
 
-  it.effect("orders the journal and remote backlogs after a local write following a future import", () =>
+  it.effect("orders a local write after a future import and reports it as a conflict for older imports", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
       const peer = EventJournal.makeRemoteIdUnsafe()
@@ -348,7 +348,9 @@ describe("EventJournal", () => {
       yield* journal.nextRemoteSequence(peer)
       yield* journal.nextRemoteSequence(source)
 
-      const future = entry(281_474_976_710_655)
+      // Ahead of the clock and of any id generated or observed so far in this process.
+      const futureMillis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const future = entry(futureMillis)
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
@@ -360,7 +362,7 @@ describe("EventJournal", () => {
         payload: new Uint8Array(),
         effect: Effect.succeed
       })
-      const imported = entry(281_474_976_710_654)
+      const imported = entry(futureMillis - 1)
       let conflicts: Array<string> = []
       yield* journal.writeFromRemote({
         remoteId: source,
@@ -371,14 +373,13 @@ describe("EventJournal", () => {
           })
       })
 
-      // The unordered journal still reports the newer future entry.
-      assert.deepStrictEqual(conflicts, idStrings([future]))
-      const expected = idStrings([local, imported, future])
+      assert.deepStrictEqual(conflicts, idStrings([future, local]))
+      const expected = idStrings([imported, future, local])
       assert.deepStrictEqual(idStrings(yield* journal.entries), expected)
       const missing = yield* journal.withRemoteUncommited(peer, (entries) => Effect.succeed(idStrings(entries)))
       assert.deepStrictEqual(missing, Option.some(expected))
       const sourceMissing = yield* journal.withRemoteUncommited(source, (entries) => Effect.succeed(idStrings(entries)))
-      assert.deepStrictEqual(sourceMissing, Option.some(idStrings([local, future])))
+      assert.deepStrictEqual(sourceMissing, Option.some(idStrings([future, local])))
     }))
 
   it.effect("reports conflicts in id order after a local write following a future import", () =>
