@@ -15,7 +15,7 @@ import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import { identity, type LazyArg } from "effect/Function"
+import { constVoid, identity, type LazyArg } from "effect/Function"
 import * as Pull from "effect/Pull"
 import * as Sink from "effect/Sink"
 import { finished, type Writable } from "node:stream"
@@ -23,8 +23,9 @@ import { destroyStream } from "./internal/stream.ts"
 
 /**
  * Creates a `Sink` that writes chunks to a Node writable stream, respecting
- * backpressure, mapping writable errors with `onError`, and ending the stream
- * on completion unless `endOnDone` is `false`.
+ * backpressure and mapping writable errors with `onError`. Unless `endOnDone`
+ * is `false`, the writable is ended on completion and destroyed on upstream
+ * failure or interruption.
  *
  * @stability unstable
  * @category constructors
@@ -42,8 +43,9 @@ export const fromWritable = <E, A = Uint8Array | string>(
 
 /**
  * Creates a `Channel` that pulls chunks from upstream and writes them to a
- * Node writable stream, respecting backpressure and optionally ending the
- * writable when upstream is done.
+ * Node writable stream, respecting backpressure. Unless `endOnDone` is
+ * `false`, the writable is ended when upstream is done and destroyed on
+ * upstream failure or interruption.
  *
  * @stability unstable
  * @category constructors
@@ -59,28 +61,28 @@ export const fromWritableChannel = <IE, E, A = Uint8Array | string>(
 ): Channel.Channel<never, IE | E, void, NonEmptyReadonlyArray<A>, IE> =>
   Channel.fromTransform((pull: Pull.Pull<NonEmptyReadonlyArray<A>, IE, unknown>) => {
     const writable = options.evaluate() as Writable
+    const write = pullIntoWritable({ ...options, writable, pull })
     return Effect.succeed(
-      pullIntoWritable({ ...options, writable, pull }).pipe(
-        Effect.onExit((exit) => {
-          if (
-            options.endOnDone === false || (exit._tag === "Failure" && Pull.isDoneCause(exit.cause))
-          ) {
-            return Effect.void
-          }
-          return Effect.callback<void>((resume) => {
-            if (writable.closed) {
-              // Destruction may be complete with its error still queued.
-              const cleanup = finished(writable, { readable: false }, () => {
-                cleanup()
-                resume(Effect.void)
-              })
-              return
-            }
-            destroyStream(writable, () => {}, () => resume(Effect.void))
-          })
-        })
-      )
+      options.endOnDone === false
+        ? write
+        : Effect.onError(write, (cause) => Pull.isDoneCause(cause) ? Effect.void : releaseWritable(writable))
     )
+  })
+
+// Destroy the writable and wait for destruction to settle, keeping any
+// destruction error handled.
+const releaseWritable = (writable: Writable): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => {
+    const onDestroyed = () => resume(Effect.void)
+    if (writable.closed) {
+      // Destruction may be complete with its error still queued.
+      const cleanup = finished(writable, { readable: false }, () => {
+        cleanup()
+        onDestroyed()
+      })
+    } else {
+      destroyStream(writable, constVoid, onDestroyed)
+    }
   })
 
 /**
