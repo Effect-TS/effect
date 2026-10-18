@@ -40,6 +40,9 @@ import { ConflictIndex } from "./internal/conflicts.ts"
  * The service writes local entries, imports entries from remote journals, exposes
  * a stream of local changes, and provides per-store locking.
  *
+ * Entries written by `EventLog` carry payloads encoded with their event's
+ * `payloadSchemaBinary`; see {@link Entry} for how to decode them.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -366,6 +369,14 @@ export const entryIdMillis = (entryId: EntryId): number =>
  *
  * An entry records its ID, event tag, primary key, and SchemaBinary-encoded
  * payload, with helpers for array SchemaBinary encoding and creation timestamps.
+ *
+ * **Gotchas**
+ *
+ * `EventLog` encodes `payload` with the `payloadSchemaBinary` of the event whose
+ * tag is `entry.event`, so decode it with that event's codec. A codec with an
+ * incompatible wire layout, such as a union of a group's tagged payload schemas,
+ * cannot read it. Entries from remote journals can carry tags the local schema
+ * does not define.
  *
  * @stability unstable
  * @category schemas
