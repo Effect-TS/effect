@@ -76,6 +76,51 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assert.deepStrictEqual(idA, idB)
       }))
 
+    it.effect("starts over existing entries with long primary keys", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const options = makeOptions("long_keys")
+        const table = sql(options.entryTablePrefix)
+        // The entries table as created before any secondary index existed.
+        yield* sql.onDialectOrElse({
+          pg: () =>
+            sql`CREATE TABLE ${table} (
+              store_id TEXT NOT NULL, sequence BIGINT NOT NULL, entry_id BYTEA NOT NULL, event TEXT NOT NULL,
+              primary_key TEXT NOT NULL, payload BYTEA NOT NULL,
+              PRIMARY KEY (store_id, sequence), UNIQUE (store_id, entry_id)
+            )`,
+          mysql: () =>
+            sql`CREATE TABLE ${table} (
+              store_id VARCHAR(191) NOT NULL, sequence BIGINT NOT NULL, entry_id BINARY(16) NOT NULL,
+              event TEXT NOT NULL, primary_key TEXT NOT NULL, payload BLOB NOT NULL,
+              PRIMARY KEY (store_id, sequence), UNIQUE (store_id, entry_id)
+            )`,
+          orElse: () =>
+            sql`CREATE TABLE ${table} (
+              store_id TEXT NOT NULL, sequence INTEGER NOT NULL, entry_id BLOB NOT NULL, event TEXT NOT NULL,
+              primary_key TEXT NOT NULL, payload BLOB NOT NULL,
+              PRIMARY KEY (store_id, sequence), UNIQUE (store_id, entry_id)
+            )`
+        })
+        const longKey = () => Array.from({ length: 125 }, () => crypto.randomUUID()).join("")
+        const existing = makeEntry("Ada", { primaryKey: longKey() })
+        yield* sql`INSERT INTO ${table} ${
+          sql.insert({
+            store_id: makeStoreId("long_keys_existing"),
+            sequence: 1,
+            entry_id: existing.id,
+            event: existing.event,
+            primary_key: existing.primaryKey,
+            payload: existing.payload
+          })
+        }`
+
+        const storage = yield* makeStorage(options)
+        const written = yield* storage.write(makeStoreId("long_keys"), [makeEntry("Grace", { primaryKey: longKey() })])
+
+        assert.deepStrictEqual(written.map((entry) => entry.remoteSequence), [1])
+      }))
+
     it.effect("replays backlog and then streams live changes without startup duplication", () =>
       Effect.gen(function*() {
         const storage = yield* makeStorage(makeOptions("changes_backlog_then_live"))

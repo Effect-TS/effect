@@ -80,18 +80,17 @@ export const protocolLayer = (service: {
  * A protocol whose `execute` always answers with the same raw body, and HTTP
  * `status` when given, and records every request it received.
  */
-export const executeLayer = (body: unknown, status?: number) =>
-  Effect.gen(function*() {
-    const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
-    const layer = protocolLayer({
-      execute: (request) =>
-        Effect.as(
-          Ref.update(requests, (all) => [...all, request]),
-          status === undefined ? { body } : { body, status }
-        )
-    })
-    return { layer, requests }
+export const executeLayer = Effect.fnUntraced(function*(body: unknown, status?: number) {
+  const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
+  const layer = protocolLayer({
+    execute: (request) =>
+      Effect.as(
+        Ref.update(requests, (all) => [...all, request]),
+        status === undefined ? { body } : { body, status }
+      )
   })
+  return { layer, requests }
+})
 
 /**
  * An `HttpClient` that answers every request from `handler`, with the request

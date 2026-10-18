@@ -199,6 +199,9 @@ export const make = Effect.fnUntraced(
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
+          if (request.method === "CONNECT") {
+            return Promise.resolve(new Response(null, { status: 501 }))
+          }
           return new Promise<Response>((resolve, _reject) => {
             const context = Context.add(
               services,
@@ -278,10 +281,7 @@ const makeResponse = (
     }
     case "Raw": {
       if (body.body instanceof Response) {
-        for (const [key, value] of fields.headers.entries()) {
-          body.body.headers.set(key, value)
-        }
-        return body.body
+        return ServerResponse.toWeb(response)
       }
       return new Response(body.body as any, fields)
     }

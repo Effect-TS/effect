@@ -318,7 +318,7 @@ export const withSeed: {
 } = dual(2, <A, E, R>(
   self: Effect.Effect<A, E, R>,
   seed: string | number
-) => Effect.provideService(self, Random, ISAAC_CSPRNG(seed)))
+) => Effect.suspend(() => Effect.provideService(self, Random, ISAAC_CSPRNG(seed))))
 
 /*///////////////////////////////////////////////////////////////////////////////////////////////////
 This is a derivative work copyright (c) 2025 Effectful Technologies Inc, under MIT license.

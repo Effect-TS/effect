@@ -14,18 +14,24 @@
 import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
 import * as RcMap from "../RcMap.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
-import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
-import * as Transferable from "../workers/Transferable.ts"
-import { EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.ts"
-import type { EncryptedRemoteEntry } from "./EventLogEncryption.ts"
-import { ChangesRpc, EventLogProtocolError, EventLogRemoteRpcs, type StoreId, WriteEntries } from "./EventLogMessage.ts"
+import { type EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.ts"
+import type { EncryptedBatch, EncryptedRemoteBatch } from "./EventLogEncryption.ts"
+import {
+  ChangesRpc,
+  EventLogProtocolError,
+  EventLogRemoteRpcs,
+  type StoreId,
+  type WriteAck,
+  WriteEntries
+} from "./EventLogMessage.ts"
 import * as EventLogServer from "./EventLogServer.ts"
 
 /**
@@ -33,9 +39,9 @@ import * as EventLogServer from "./EventLogServer.ts"
  *
  * **Details**
  *
- * Incoming encrypted write payloads are decoded and persisted through `Storage`;
- * change streams read encrypted entries from storage and encode them for the
- * remote protocol.
+ * Decodes and persists writes through `Storage`, acknowledging their stored
+ * sequences. Change streams encode stored batches, excluding this connection's
+ * writes.
  *
  * @stability unstable
  * @category layers
@@ -47,9 +53,10 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
 
   return EventLogServer.layerRpcHandlers({
     remoteId,
+    firstSequence: storage.firstSequence,
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
-    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys) {
+    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys, writes) {
       const request = yield* WriteEntries.decode(data).pipe(
         Effect.mapError((_) =>
           new EventLogProtocolError({
@@ -68,15 +75,11 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
           message: "Identity is not authenticated"
         })
       }
-      if (request.encryptedEntries.length === 0) return
-      const entries = request.encryptedEntries.map(({ encryptedEntry, entryId, iv }) =>
-        new PersistedEntry({
-          entryId,
-          iv,
-          encryptedEntry
-        })
-      )
-      return yield* storage.write(request.publicKey, request.storeId, entries).pipe(
+      if (request.batches.length === 0) return []
+      const entryIds = request.batches.flatMap((batch) => batch.entryIds)
+      return yield* storage.write(request.publicKey, request.storeId, request.batches).pipe(
+        Effect.flatMap((stored) => toWriteAcks(storage, request.publicKey, request.storeId, request.batches, stored)),
+        (write) => writes.track({ publicKey: request.publicKey, storeId: request.storeId, entryIds }, write),
         Effect.catchCause((_) =>
           Effect.fail(
             new EventLogProtocolError({
@@ -89,12 +92,52 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
         )
       )
     }),
-    changes: ({ publicKey, storeId, startSequence }) =>
-      storage.changes(publicKey, storeId, startSequence).pipe(
-        Stream.mapArrayEffect((entries) => Effect.map(ChangesRpc.encodeEncrypted(entries), Arr.of))
+    changes: ({ publicKey, startSequence, storeId, writes }) =>
+      writes.filter(
+        {
+          publicKey,
+          storeId,
+          entryIds: (batch) => batch.entryIds,
+          sequence: (batch) => batch.sequence + batch.entryIds.length - 1
+        },
+        storage.changes(publicKey, storeId, startSequence)
+      ).pipe(
+        Stream.mapArrayEffect((batches) => Effect.map(ChangesRpc.encodeEncrypted(batches), Arr.of))
       )
   })
 }))
+
+// Acknowledges each entry occurrence in request order: at its position in the
+// batch this write stored, or, for a skipped batch, where it was first stored.
+const toWriteAcks = Effect.fnUntraced(function*(
+  storage: Storage["Service"],
+  publicKey: string,
+  storeId: StoreId,
+  batches: ReadonlyArray<EncryptedBatch>,
+  stored: ReadonlyArray<EncryptedRemoteBatch>
+) {
+  // Stored batches keep request order, and each batch has its own random iv.
+  let next = 0
+  const storedAt = batches.map((batch) => {
+    if (stored[next] === undefined || !Equal.equals(stored[next].iv, batch.iv)) return undefined
+    return stored[next++].sequence
+  })
+  const skipped = batches.flatMap((batch, i) => storedAt[i] === undefined ? batch.entryIds : [])
+  const firstStored = new Map<string, number>()
+  if (skipped.length > 0) {
+    for (const ack of yield* storage.entrySequences(publicKey, storeId, skipped)) {
+      firstStored.set(Uuid.stringify(ack.entryId), ack.sequence)
+    }
+  }
+  const acks: Array<WriteAck> = []
+  batches.forEach((batch, b) =>
+    batch.entryIds.forEach((entryId, i) => {
+      const sequence = storedAt[b] === undefined ? firstStored.get(Uuid.stringify(entryId)) : storedAt[b] + i
+      if (sequence !== undefined) acks.push({ entryId, sequence })
+    })
+  )
+  return acks
+})
 
 /**
  * Provides an encrypted event-log RPC server using `EventLogRemoteRpcs` and the
@@ -108,7 +151,7 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
  * **Details**
  *
  * This layer installs `EventLogRemoteRpcs` on the provided RPC server protocol
- * and wires those RPCs to `layerRpcHandlers`. Encrypted entries, session
+ * and wires those RPCs to `layerRpcHandlers`. Encrypted batches, session
  * authentication bindings, remote ids, and change streams are delegated to
  * `Storage`.
  *
@@ -125,31 +168,6 @@ export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Rp
 )
 
 /**
- * Schema for encrypted entries persisted by the encrypted event-log server.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export class PersistedEntry extends Schema.Class<PersistedEntry>(
-  "effect/eventlog/EventLogServerEncrypted/PersistedEntry"
-)({
-  entryId: EntryId,
-  iv: Transferable.Uint8Array,
-  encryptedEntry: Transferable.Uint8Array
-}) {
-  /**
-   * String representation of the encrypted entry id.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
-  get entryIdString(): string {
-    return Uuid.stringify(this.entryId)
-  }
-}
-
-/**
  * Defines the backing store service used by the encrypted event-log server.
  *
  * **When to use**
@@ -160,8 +178,16 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
  * **Details**
  *
  * It provides the server remote id, stores session authentication bindings,
- * persists encrypted entries, and streams encrypted changes for a public key and
+ * persists encrypted batches, and streams encrypted changes for a public key and
  * store id.
+ *
+ * A batch owns one remote sequence per entry, starting at its `sequence`.
+ * `write` stores a batch unless every one of its entry ids is already stored,
+ * which makes retried writes idempotent, and returns the batches it stored.
+ * `entrySequences` returns the sequence each entry was first stored at, so
+ * skipped batches can still be acknowledged. `changes` streams every batch
+ * whose last sequence is at or after `startSequence`, followed by newly stored
+ * batches.
  *
  * @stability unstable
  * @category services
@@ -169,6 +195,10 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
  */
 export class Storage extends Context.Service<Storage, {
   readonly getId: Effect.Effect<RemoteId>
+  /**
+   * Lowest assigned sequence (default 0). Overestimating skips entries.
+   */
+  readonly firstSequence?: number | undefined
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
@@ -176,13 +206,18 @@ export class Storage extends Context.Service<Storage, {
   readonly write: (
     publicKey: string,
     storeId: StoreId,
-    entries: ReadonlyArray<PersistedEntry>
-  ) => Effect.Effect<ReadonlyArray<EncryptedRemoteEntry>>
+    batches: ReadonlyArray<EncryptedBatch>
+  ) => Effect.Effect<ReadonlyArray<EncryptedRemoteBatch>>
+  readonly entrySequences: (
+    publicKey: string,
+    storeId: StoreId,
+    entryIds: ReadonlyArray<EntryId>
+  ) => Effect.Effect<ReadonlyArray<WriteAck>>
   readonly changes: (
     publicKey: string,
     storeId: StoreId,
     startSequence: number
-  ) => Stream.Stream<EncryptedRemoteEntry>
+  ) => Stream.Stream<EncryptedRemoteBatch>
 }>()("effect/eventlog/EventLogServer/Storage") {}
 
 /**
@@ -198,28 +233,25 @@ export class Storage extends Context.Service<Storage, {
  * @since 4.0.0
  */
 export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
-  const knownIds = new Map<string, Map<string, number>>()
-  const journals = new Map<string, Array<EncryptedRemoteEntry>>()
+  const journals = new Map<string, {
+    // Entry id to the sequence it was first stored at.
+    readonly knownIds: Map<string, number>
+    readonly batches: Array<EncryptedRemoteBatch>
+    nextSequence: number
+  }>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
   const remoteId = makeRemoteIdUnsafe()
-  const ensureKnownIds = (scopeKey: string): Map<string, number> => {
-    let storeKnownIds = knownIds.get(scopeKey)
-    if (storeKnownIds) return storeKnownIds
-    storeKnownIds = new Map<string, number>()
-    knownIds.set(scopeKey, storeKnownIds)
-    return storeKnownIds
-  }
   const ensureJournal = (scopeKey: string) => {
     let journal = journals.get(scopeKey)
     if (journal) return journal
-    journal = []
+    journal = { knownIds: new Map(), batches: [], nextSequence: 0 }
     journals.set(scopeKey, journal)
     return journal
   }
   const pubsubs = yield* RcMap.make({
     lookup: (_scopeKey: string) =>
       Effect.acquireRelease(
-        PubSub.unbounded<EncryptedRemoteEntry>(),
+        PubSub.unbounded<EncryptedRemoteBatch>(),
         PubSub.shutdown
       ),
     idleTimeToLive: 60000
@@ -234,33 +266,42 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         sessionAuthBindings.set(publicKey, signingPublicKey)
         return signingPublicKey
       }),
-    write: Effect.fnUntraced(function*(publicKey, storeId, entries) {
+    write: Effect.fnUntraced(function*(publicKey, storeId, batches) {
       const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
       const pubsub = yield* RcMap.get(pubsubs, scopeKey)
-      const storeKnownIds = ensureKnownIds(scopeKey)
       const journal = ensureJournal(scopeKey)
-      const encryptedEntries: Array<EncryptedRemoteEntry> = []
-      for (const entry of entries) {
-        const idString = entry.entryIdString
-        if (storeKnownIds.has(idString)) continue
-        const encrypted: EncryptedRemoteEntry = {
-          sequence: journal.length,
-          entryId: entry.entryId,
-          iv: entry.iv,
-          encryptedEntry: entry.encryptedEntry
-        }
-        encryptedEntries.push(encrypted)
-        storeKnownIds.set(idString, encrypted.sequence)
-        journal.push(encrypted)
-        PubSub.publishUnsafe(pubsub, encrypted)
+      const stored: Array<EncryptedRemoteBatch> = []
+      for (const batch of batches) {
+        const ids = batch.entryIds.map(Uuid.stringify)
+        if (ids.every((id) => journal.knownIds.has(id))) continue
+        ids.forEach((id, i) => {
+          if (!journal.knownIds.has(id)) journal.knownIds.set(id, journal.nextSequence + i)
+        })
+        const remoteBatch: EncryptedRemoteBatch = { sequence: journal.nextSequence, ...batch }
+        journal.nextSequence += ids.length
+        journal.batches.push(remoteBatch)
+        stored.push(remoteBatch)
+        PubSub.publishUnsafe(pubsub, remoteBatch)
       }
-      return encryptedEntries
+      return stored
     }, Effect.scoped),
+    entrySequences: (publicKey, storeId, entryIds) =>
+      Effect.sync(() => {
+        const knownIds = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId })).knownIds
+        const acks: Array<WriteAck> = []
+        for (const entryId of entryIds) {
+          const sequence = knownIds.get(Uuid.stringify(entryId))
+          if (sequence !== undefined) acks.push({ entryId, sequence })
+        }
+        return acks
+      }),
     changes: Effect.fnUntraced(function*(publicKey, storeId, startSequence) {
       const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
       const pubsub = yield* RcMap.get(pubsubs, scopeKey)
       const subscription = yield* PubSub.subscribe(pubsub)
-      return Stream.fromArray(ensureJournal(scopeKey).slice(startSequence)).pipe(
+      const batches = ensureJournal(scopeKey).batches
+      const first = batches.findIndex((batch) => batch.sequence + batch.entryIds.length > startSequence)
+      return Stream.fromArray(first === -1 ? [] : batches.slice(first)).pipe(
         Stream.concat(Stream.fromSubscription(subscription))
       )
     }, Stream.unwrap)

@@ -44,6 +44,81 @@ import {
 } from "effect/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  for (const complete of [true, false]) {
+    it.effect(`releases all workflow scopes after multiple suspensions on ${complete ? "completion" : "teardown"}`, () =>
+      Effect.gen(function*() {
+        const gates = [
+          DurableDeferred.make("WorkflowScopeCleanup/First"),
+          DurableDeferred.make("WorkflowScopeCleanup/Second")
+        ]
+        const workflow = Workflow.make("WorkflowScopeCleanup", {
+          payload: {},
+          idempotencyKey: () => "one"
+        })
+        const acquired: Array<number> = []
+        const released: Array<number> = []
+        const finalized: Array<number> = []
+        const layer = workflow.toLayer(() =>
+          Effect.gen(function*() {
+            const run = acquired.length + 1
+            yield* Workflow.addFinalizer(() =>
+              Effect.sync(() => {
+                finalized.push(run)
+              })
+            )
+            yield* Effect.acquireRelease(
+              Effect.sync(() => {
+                acquired.push(run)
+                return run
+              }),
+              (run) =>
+                Effect.sync(() => {
+                  released.push(run)
+                })
+            ).pipe(Workflow.provideScope)
+            for (const gate of gates) yield* DurableDeferred.await(gate)
+          })
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          for (const [index, gate] of gates.entries()) {
+            // The previous Suspended reply can remain visible until replay starts.
+            const sharding = yield* Sharding.Sharding
+            for (let i = 0; i < 2000 && acquired.length <= index; i++) {
+              yield* TestClock.adjust(1)
+              yield* sharding.pollStorage
+            }
+            yield* pollUntil(workflow, executionId, "Suspended")
+            // Suspension retains every attempt's resources and durable finalizers.
+            assert.deepStrictEqual(
+              { acquired, released, finalized },
+              { acquired: index === 0 ? [1] : [1, 2], released: [], finalized: [] }
+            )
+            if (!complete && index === 1) return
+            yield* DurableDeferred.succeed(gate, {
+              token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+              value: undefined
+            })
+          }
+          assert.deepStrictEqual(
+            yield* pollUntil(workflow, executionId, "Complete"),
+            new Workflow.Complete({ exit: Exit.void })
+          )
+          assert.deepStrictEqual(
+            { acquired, released: [...released].sort(), finalized: [...finalized].sort() },
+            { acquired: [1, 2, 3], released: [1, 2, 3], finalized: [1, 2, 3] }
+          )
+        }).pipe(Effect.provide(layer))
+        if (!complete) {
+          assert.deepStrictEqual(
+            { acquired, released: [...released].sort(), finalized },
+            { acquired: [1, 2], released: [1, 2], finalized: [] }
+          )
+        }
+      }))
+  }
+
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("EarlyActivityWake/Gate", { success: Schema.String })
@@ -2435,29 +2510,28 @@ const unansweredActivityStorage = (storage: MessageStorage.MessageStorage["Servi
     saveReply: (reply) => reply.rpc._tag === "activity" ? Effect.never : storage.saveReply(reply)
   })
 
-const sendUnregisteredActivity = (workflowName: string, executionId: string) =>
-  Effect.gen(function*() {
-    const entity = Entity.make(`Workflow/${workflowName}`, [RecoveryActivityRpc])
-    const client = yield* entity.client
-    yield* client(executionId).activity({ name: "loser", attempt: 1, withTransaction: false }, { discard: true })
-    const sharding = yield* Sharding.Sharding
-    const storage = yield* MessageStorage.MessageStorage
-    const entityId = EntityId.make(executionId)
-    const requestId = yield* storage.requestIdForPrimaryKey({
-      address: EntityAddress.make({
-        entityType: EntityType.make(entity.type),
-        entityId,
-        shardId: sharding.getShardId(entityId, "default")
-      }),
-      tag: "activity",
-      id: "loser/1"
-    })
-    assert(Option.isSome(requestId))
-    return requestId.value
+const sendUnregisteredActivity = Effect.fnUntraced(function*(workflowName: string, executionId: string) {
+  const entity = Entity.make(`Workflow/${workflowName}`, [RecoveryActivityRpc])
+  const client = yield* entity.client
+  yield* client(executionId).activity({ name: "loser", attempt: 1, withTransaction: false }, { discard: true })
+  const sharding = yield* Sharding.Sharding
+  const storage = yield* MessageStorage.MessageStorage
+  const entityId = EntityId.make(executionId)
+  const requestId = yield* storage.requestIdForPrimaryKey({
+    address: EntityAddress.make({
+      entityType: EntityType.make(entity.type),
+      entityId,
+      shardId: sharding.getShardId(entityId, "default")
+    }),
+    tag: "activity",
+    id: "loser/1"
   })
+  assert(Option.isSome(requestId))
+  return requestId.value
+})
 
-const activityReply = (storage: MessageStorage.MessageStorage["Service"], requestId: Snowflake.Snowflake) =>
-  Effect.gen(function*() {
+const activityReply = Effect.fnUntraced(
+  function*(storage: MessageStorage.MessageStorage["Service"], requestId: Snowflake.Snowflake) {
     for (let i = 0; i < 200; i++) {
       const replies = yield* storage.repliesForUnfiltered([requestId])
       const reply = replies[replies.length - 1]
@@ -2467,7 +2541,8 @@ const activityReply = (storage: MessageStorage.MessageStorage["Service"], reques
       yield* TestClock.adjust(1)
     }
     assert.fail("unregistered activity must receive a terminal Suspended reply without waiting for registration")
-  })
+  }
+)
 
 const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?: {
   readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
@@ -2500,23 +2575,22 @@ const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?:
     }))
   )
 
-const pollUntil = <A extends Schema.Top, E extends Schema.Top>(
+const pollUntil = Effect.fnUntraced(function*<A extends Schema.Top, E extends Schema.Top>(
   workflow: Workflow.Workflow<any, any, A, E>,
   executionId: string,
   tag: "Suspended" | "Complete"
-) =>
-  Effect.gen(function*() {
-    const sharding = yield* Sharding.Sharding
-    let result = yield* workflow.poll(executionId)
-    for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === tag); i++) {
-      yield* Effect.yieldNow
-      yield* TestClock.adjust(1)
-      yield* sharding.pollStorage
-      result = yield* workflow.poll(executionId)
-    }
-    assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
-    return result.value
-  })
+) {
+  const sharding = yield* Sharding.Sharding
+  let result = yield* workflow.poll(executionId)
+  for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === tag); i++) {
+    yield* Effect.yieldNow
+    yield* TestClock.adjust(1)
+    yield* sharding.pollStorage
+    result = yield* workflow.poll(executionId)
+  }
+  assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
+  return result.value
+})
 
 const nextStepActivity = (runs: Array<string>, label: string) =>
   Activity.make({
@@ -2534,54 +2608,52 @@ const nextStepActivity = (runs: Array<string>, label: string) =>
  * and exactly once. Deferred writes made by `body` are delayed to stand in
  * for a persistence round trip.
  */
-const expectContinuesBesideParkedSibling = (
+const expectContinuesBesideParkedSibling = Effect.fnUntraced(function*(
   name: string,
   body: Effect.Effect<string, never, WorkflowEngine | WorkflowInstance>
-) =>
-  Effect.gen(function*() {
-    const workflow = Workflow.make(name, {
-      payload: {},
-      success: Schema.String,
-      idempotencyKey: () => "one"
-    })
-    const event = DurableDeferred.make(`${name}/Event`)
-    const nextStepRuns: Array<string> = []
-    const context = yield* Layer.build(
-      workflow.toLayer(() =>
-        Effect.gen(function*() {
-          const engine = yield* WorkflowEngine
-          const delayed = Effect.provideService(body, WorkflowEngine, {
-            ...engine,
-            deferredDone: (deferred, done) => Effect.delay(engine.deferredDone(deferred, done), 10)
-          })
-          const [result] = yield* Effect.all([
-            Effect.flatMap(delayed, (value) => nextStepActivity(nextStepRuns, value)),
-            DurableDeferred.await(event)
-          ], { concurrency: "unbounded" })
-          return result
+) {
+  const workflow = Workflow.make(name, {
+    payload: {},
+    success: Schema.String,
+    idempotencyKey: () => "one"
+  })
+  const event = DurableDeferred.make(`${name}/Event`)
+  const nextStepRuns: Array<string> = []
+  const context = yield* Layer.build(
+    workflow.toLayer(() =>
+      Effect.gen(function*() {
+        const engine = yield* WorkflowEngine
+        const delayed = Effect.provideService(body, WorkflowEngine, {
+          ...engine,
+          deferredDone: (deferred, done) => Effect.delay(engine.deferredDone(deferred, done), 10)
         })
-      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
-    )
-    yield* Effect.gen(function*() {
-      const executionId = yield* workflow.execute({}, { discard: true })
-      yield* advanceUntil(() => nextStepRuns.length > 0, "next-step must run before the event", 10, 300)
-      yield* DurableDeferred.succeed(event, {
-        token: DurableDeferred.tokenFromExecutionId(event, { workflow, executionId }),
-        value: undefined
+        const [result] = yield* Effect.all([
+          Effect.flatMap(delayed, (value) => nextStepActivity(nextStepRuns, value)),
+          DurableDeferred.await(event)
+        ], { concurrency: "unbounded" })
+        return result
       })
-      assert.deepStrictEqual(
-        yield* pollUntil(workflow, executionId, "Complete"),
-        new Workflow.Complete({ exit: Exit.succeed("timer:next") })
-      )
-      assert.deepStrictEqual(nextStepRuns, ["timer"])
-    }).pipe(Effect.provide(context))
-  })
+    ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+  )
+  yield* Effect.gen(function*() {
+    const executionId = yield* workflow.execute({}, { discard: true })
+    yield* advanceUntil(() => nextStepRuns.length > 0, "next-step must run before the event", 10, 300)
+    yield* DurableDeferred.succeed(event, {
+      token: DurableDeferred.tokenFromExecutionId(event, { workflow, executionId }),
+      value: undefined
+    })
+    assert.deepStrictEqual(
+      yield* pollUntil(workflow, executionId, "Complete"),
+      new Workflow.Complete({ exit: Exit.succeed("timer:next") })
+    )
+    assert.deepStrictEqual(nextStepRuns, ["timer"])
+  }).pipe(Effect.provide(context))
+})
 
-const advanceUntil = (ready: () => boolean, message: string, step = 1, rounds = 2000) =>
-  Effect.gen(function*() {
-    for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
-    assert(ready(), message)
-  })
+const advanceUntil = Effect.fnUntraced(function*(ready: () => boolean, message: string, step = 1, rounds = 2000) {
+  for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
+  assert(ready(), message)
+})
 
 const TestWorkflowEngine = makeTestWorkflowEngine()
 

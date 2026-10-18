@@ -310,7 +310,7 @@ describe("SqlClient", () => {
 
         const exit = yield* Effect.exit(harness.withTransaction(harness.withTransaction(Effect.fail("boom"))))
 
-        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("boom"), Cause.die(rollbackError))))
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("boom"), Cause.die(rollbackError))))
         assert.deepStrictEqual(harness.calls, [
           "acquireConnection",
           "begin",

@@ -59,6 +59,7 @@ import {
   contA,
   contAll,
   contE,
+  Die,
   evaluate,
   exitDie,
   exitFail,
@@ -69,6 +70,7 @@ import {
   InterruptorStackTrace,
   isCause,
   isDieReason,
+  isDone,
   isEffect,
   isFailReason,
   isInterruptReason,
@@ -170,6 +172,22 @@ export const findErrorOption = Filter.toOption(findError)
 
 /** @internal */
 export const hasDies = <E>(self: Cause.Cause<E>): boolean => self.reasons.some(isDieReason)
+
+/**
+ * Defects take precedence over typed failures when causes are combined: if
+ * the cause contains a `Die`, every `Fail` becomes a `Die`. `Done` signals
+ * stay typed so pulls still complete.
+ *
+ * @internal
+ */
+export const causeElectDefects = <E>(self: Cause.Cause<E>): Cause.Cause<E> =>
+  hasDies(self) && hasFails(self)
+    ? causeFromReasons(
+      self.reasons.map((reason) =>
+        reason._tag === "Fail" && !isDone(reason.error) ? new Die(reason.error, reason.annotations) : reason
+      )
+    )
+    : self
 
 /** @internal */
 export const findDie = <E>(self: Cause.Cause<E>): Result.Result<Cause.Die, Cause.Cause<E>> => {
@@ -1163,9 +1181,10 @@ const callbackOptions: <A, E = never, R = never>(
       }, controller?.signal)
       if (yielded !== false) return yielded
       yielded = true
-      fiber._yielded = () => {
+      // V8 pretenures closures assigned to a property; a method argument avoids that and survives minification
+      fiber.yieldWith(() => {
         resumed = true
-      }
+      })
       if (controller === undefined && onCancel === undefined) {
         return Yield
       }
@@ -1640,7 +1659,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
         if (exit._tag === "Failure") {
           failures.push(...exit.cause.reasons)
           if (doneCount >= len) {
-            resume(failCause(causeFromReasons(failures)))
+            resume(failCause(causeElectDefects(causeFromReasons(failures))))
           }
           return
         }
@@ -3977,7 +3996,9 @@ const combineFinalizerCause = <A, E, XE, XR>(
   exit_: Exit.Exit<A, E>,
   finalizer: Effect.Effect<void, XE, XR>
 ): Effect.Effect<void, E | XE, XR> =>
-  exitIsSuccess(exit_) ? finalizer : catchCause(finalizer, (cause) => failCause(causeCombine(exit_.cause, cause)))
+  exitIsSuccess(exit_)
+    ? finalizer
+    : catchCause(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
@@ -4688,23 +4709,18 @@ export const all = <
       ? (forEach as any)(Object.values(arg), result, options)
       : (forEach as any)(Object.values(arg), identity, options)
   }
-  return suspend(() => {
-    const out: Record<string, unknown> = {}
-    return as(
+  return suspend(() =>
+    map(
       forEach(
         Object.entries(arg),
-        ([key, effect]) =>
-          map(options?.mode === "result" ? result(effect) : effect, (value) => {
-            InternalRecord.assignProperty(out, key, value)
-          }),
+        ([key, effect]) => map(options?.mode === "result" ? result(effect) : effect, (value) => [key, value] as const),
         {
-          discard: true,
           concurrency: options?.concurrency
         }
       ),
-      out
+      Object.fromEntries
     )
-  }) as any
+  ) as any
 }
 
 /** @internal */
@@ -5142,7 +5158,9 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
                   const reasons = exit.cause.reasons.filter((reason) => reason._tag !== "Interrupt")
                   if (reasons.length > 0) {
                     const cause = causeFromReasons(reasons)
-                    terminal = exitFailCause(terminal._tag === "Failure" ? causeCombine(terminal.cause, cause) : cause)
+                    terminal = exitFailCause(
+                      terminal._tag === "Failure" ? causeElectDefects(causeCombine(terminal.cause, cause)) : cause
+                    )
                   }
                 }
               } else {
@@ -5337,31 +5355,20 @@ export const filter: {
       | ((a: A, i: number) => Effect.Effect<boolean, E, R>),
     options?: { readonly concurrency?: Concurrency | undefined }
   ): Effect.Effect<Array<A>, E, R> =>
-    suspend(() => {
-      const out: Array<A> = []
-      return as(
-        forEach(
-          elements,
-          (a, i) => {
-            const result = (predicate as Function)(a, i)
-            if (typeof result === "boolean") {
-              if (result) out.push(a)
-              return void_ as any
-            }
-            return map(result, (keep) => {
-              if (keep) {
-                out.push(a)
-              }
-            })
-          },
-          {
-            discard: true,
-            concurrency: options?.concurrency
+    map(
+      forEach(
+        elements,
+        (a, i) => {
+          const result = (predicate as Function)(a, i)
+          if (typeof result === "boolean") {
+            return succeed(result ? Option.some(a) : Option.none())
           }
-        ),
-        out
-      )
-    })
+          return map(result, (keep) => keep ? Option.some(a) : Option.none())
+        },
+        options
+      ),
+      Arr.getSomes
+    )
 )
 
 /** @internal */
@@ -5630,7 +5637,10 @@ export const forkIn: {
     }
   ): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
     withFiber((parent) => {
-      const fiber = forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
+      // A closed scope gets an unstarted fiber, which is interrupted below
+      const fiber = scope.state._tag === "Closed"
+        ? new FiberImpl<A, E>(parent.context)
+        : forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
           const key = {}

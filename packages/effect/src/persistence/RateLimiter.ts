@@ -109,24 +109,17 @@ export const make: Effect.Effect<
       const refillRate = Duration.divideUnsafe(window, options.limit)
       const refillRateMillis = Duration.toMillis(refillRate)
 
-      if (tokens > options.limit) {
-        return onExceeded === "fail"
-          ? Effect.fail(
-            new RateLimiterError({
-              reason: new RateLimitExceeded({
-                key: options.key,
-                retryAfter: window,
-                limit: options.limit,
-                remaining: 0
-              })
+      if (onExceeded === "fail" && tokens > options.limit) {
+        return Effect.fail(
+          new RateLimiterError({
+            reason: new RateLimitExceeded({
+              key: options.key,
+              retryAfter: window,
+              limit: options.limit,
+              remaining: 0
             })
-          )
-          : Effect.succeed<ConsumeResult>({
-            delay: window,
-            limit: options.limit,
-            remaining: 0,
-            resetAfter: window
           })
+        )
       }
 
       if (algorithm === "fixed-window") {

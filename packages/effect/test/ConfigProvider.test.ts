@@ -859,6 +859,31 @@ ESCAPED=\\$SOURCE/$SOURCE
       await assertSuccess(provider, ["ESCAPED"], ConfigProvider.makeValue("$SOURCE/a$&b$'c$`d"))
     })
 
+    it("expands adjacent braced references", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+A=first
+B=second
+VALUE=\${A}\${B}
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["VALUE"], ConfigProvider.makeValue("firstsecond"))
+    })
+
+    it("preserves escaped references after backslashes and inside defaults", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+SOURCE=value
+BACKSLASH=before/\\\\$SOURCE/$SOURCE
+DEFAULT=\${UNSET:-\\$SOURCE}/$SOURCE
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["BACKSLASH"], ConfigProvider.makeValue("before/\\$SOURCE/value"))
+      await assertSuccess(provider, ["DEFAULT"], ConfigProvider.makeValue("$SOURCE/value"))
+    })
+
     it("expansion defaults are used only for empty or unset variables", async () => {
       const provider = ConfigProvider.fromDotEnvContents(
         `
@@ -1139,11 +1164,10 @@ DB_PASS=$PASSWORD`)
   })
 
   describe("layers", () => {
-    const loadFromContext = (path: ConfigProvider.Path) =>
-      Effect.gen(function*() {
-        const provider = yield* ConfigProvider.ConfigProvider
-        return yield* provider.load(path)
-      })
+    const loadFromContext = Effect.fnUntraced(function*(path: ConfigProvider.Path) {
+      const provider = yield* ConfigProvider.ConfigProvider
+      return yield* provider.load(path)
+    })
 
     it("layer installs a provider", async () => {
       const result = await Effect.runPromise(

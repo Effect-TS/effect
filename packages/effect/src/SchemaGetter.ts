@@ -992,7 +992,8 @@ export function Boolean<E>(): Getter<boolean, E> {
  * **Details**
  *
  * - Delegates to `globalThis.BigInt`.
- * - Throws at runtime if the input cannot be converted (e.g. non-numeric string).
+ * - Fails with `SchemaIssue.InvalidValue` if the input cannot be converted
+ *   (e.g. a non-numeric string or a non-integer number).
  *
  * **Example** (Coercing to a bigint)
  *
@@ -1008,7 +1009,19 @@ export function Boolean<E>(): Getter<boolean, E> {
  * @since 4.0.0
  */
 export function BigInt<E extends string | number | bigint | boolean>(): Getter<bigint, E> {
-  return transform(globalThis.BigInt)
+  return transformEffect((input, options) => {
+    try {
+      return Effect.succeed(globalThis.BigInt(input))
+    } catch {
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a value that can be converted to a bigint" },
+          input,
+          options
+        )
+      )
+    }
+  })
 }
 
 /**

@@ -87,7 +87,10 @@ export const make = Effect.fnUntraced(function*(
   } = options
   const server = Deno.serve(
     serveOptions as Deno.ServeTcpOptions,
-    (request, info) => currentHandler(request, info)
+    (request, info) =>
+      request.method === "CONNECT"
+        ? Promise.resolve(new Response(null, { status: 501 }))
+        : currentHandler(request, info)
   ) as Deno.HttpServer<Deno.NetAddr | Deno.UnixAddr>
 
   const shutdown = yield* Effect.promise(() => server.shutdown()).pipe(Effect.cached)
@@ -160,6 +163,10 @@ const makeResponse = Effect.fnUntraced(function*(
   context: Context.Context<never>,
   scope: Scope.Scope
 ) {
+  if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
+    yield* cancelResponseBody(response.body)
+    return ServerResponse.toWeb(response, { withoutBody: true })
+  }
   const fields: {
     headers: globalThis.Headers
     status?: number
@@ -176,10 +183,6 @@ const makeResponse = Effect.fnUntraced(function*(
   }
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
-  if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
-    yield* cancelResponseBody(response.body)
-    return new Response(undefined, fields)
-  }
   response = HttpEffect.scopeTransferToStream(response)
   const body = response.body
   switch (body._tag) {
@@ -188,8 +191,7 @@ const makeResponse = Effect.fnUntraced(function*(
     case "Uint8Array":
     case "Raw": {
       if (body.body instanceof Response) {
-        for (const [key, value] of fields.headers.entries()) body.body.headers.set(key, value)
-        return body.body
+        return ServerResponse.toWeb(response)
       }
       return new Response(body.body as any, fields)
     }

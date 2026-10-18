@@ -372,6 +372,9 @@ export const toWebHandler: <E>(
  *
  * **Details**
  *
+ * Every call to `dispose` returns the same promise, which resolves once the
+ * layer resources have been released.
+ *
  * The layer is built immediately, so the cost is paid when the handler is
  * created rather than on the first request. A layer that performs asynchronous
  * work while building may still be in progress when the first request arrives,
@@ -409,7 +412,8 @@ export const toWebHandlerLayerWith = <
     ) => Promise<globalThis.Response>
 } => {
   const scope = Scope.makeUnsafe()
-  const dispose = () => Effect.runPromise(Scope.close(scope, Exit.void))
+  let disposing: Promise<void> | undefined
+  const dispose = () => disposing ??= Effect.runPromise(Scope.close(scope, Exit.void))
 
   let handlerCache:
     | ((request: Request, context?: Context.Context<ReqR> | undefined) => Promise<globalThis.Response>)

@@ -236,7 +236,7 @@ describe("Channel", () => {
           Effect.exit
         )
 
-        assertExitFailure(exit, Cause.combine(Cause.fail("downstream failed"), Cause.die(error)))
+        assertExitFailure(exit, Cause.combine(Cause.die("downstream failed"), Cause.die(error)))
         assert.isFalse(readable.locked)
       }))
 
@@ -259,6 +259,21 @@ describe("Channel", () => {
         )
 
         assertExitFailure(exit, Cause.fail(error))
+      }))
+
+    it.effect("fromTransformStream - preserves upstream errors while a read is pending", () =>
+      Effect.gen(function*() {
+        const channel = Channel.fromTransformStream<string, number, number, Error>({
+          evaluate: () => new TransformStream<number, number>(),
+          onError: () => new Error("transform failed")
+        })
+        const exit = yield* Channel.fail("upstream failed").pipe(
+          Channel.pipeTo(channel),
+          Channel.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.fail("upstream failed"))
       }))
 
     it.effect("acquireRelease", () =>
@@ -308,7 +323,7 @@ describe("Channel", () => {
         ).pipe(Channel.runDrain, Effect.exit)
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release failure")))
+          Exit.failCause(Cause.combine(Cause.die("usage failure"), Cause.die("release failure")))
         )
       }))
 
@@ -453,6 +468,25 @@ describe("Channel", () => {
           Channel.runCollect
         )
         assert.strictEqual(result.flat().join(""), "a🌍b")
+      }))
+
+    it.effect("decodeText decodes a truncated character at the end of the input", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromArray([[Uint8Array.of(0xC3)]] as const).pipe(
+          Channel.pipeTo(Channel.decodeText()),
+          Channel.runCollect
+        )
+        assert.strictEqual(result.flat().join(""), "\uFFFD")
+      }))
+
+    it.effect("decodeText dies on a truncated final character with fatal enabled", () =>
+      Effect.gen(function*() {
+        const exit = yield* Channel.fromArray([[Uint8Array.of(0xC3)]] as const).pipe(
+          Channel.pipeTo(Channel.decodeText(undefined, { fatal: true })),
+          Channel.runCollect,
+          Effect.exit
+        )
+        assert.isTrue(Exit.hasDies(exit))
       }))
   })
 

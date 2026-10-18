@@ -14,18 +14,17 @@ const page = (nodes: ReadonlyArray<unknown>, pageInfo: { hasNextPage: boolean; e
 const noRepository = { data: { repository: null } }
 
 /** Scripts one response per `after` cursor; the first page is keyed `start`. */
-const pagedLayer = (pages: Record<string, unknown>) =>
-  Effect.gen(function*() {
-    const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
-    const layer = protocolLayer({
-      execute: (request) =>
-        Effect.as(
-          Ref.update(requests, (all) => [...all, request]),
-          { body: pages[(request.variables as { after?: string | null }).after ?? "start"] }
-        )
-    })
-    return { layer, requests }
+const pagedLayer = Effect.fnUntraced(function*(pages: Record<string, unknown>) {
+  const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
+  const layer = protocolLayer({
+    execute: (request) =>
+      Effect.as(
+        Ref.update(requests, (all) => [...all, request]),
+        { body: pages[(request.variables as { after?: string | null }).after ?? "start"] }
+      )
   })
+  return { layer, requests }
+})
 
 const twoPages = {
   start: page([issue(1), null], { hasNextPage: true, endCursor: "c1" }),

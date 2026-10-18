@@ -94,7 +94,12 @@ export const make = <E, R>(options: {
       const next = DateTime.fromDateUnsafe(Cron.next(options.cron, now))
       const entityId = options.calculateNextRunFromPrevious ? "initial" : DateTime.formatIso(next)
       const client = (yield* CronEntity.client)(entityId)
-      yield* client.run({ dateTime: next }, { discard: true })
+      yield* client.run({ dateTime: next }, { discard: true }).pipe(
+        Effect.tapCause((cause) => Effect.logWarning("Failed to schedule initial run, retrying", cause)),
+        Effect.sandbox,
+        Effect.retry(retryPolicy),
+        Effect.orDie
+      )
     }),
     { shardGroup: options.shardGroup }
   )

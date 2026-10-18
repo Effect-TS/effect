@@ -30,10 +30,11 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as Http from "node:http"
-import * as Https from "node:https"
+import type * as Http from "node:http"
+import type * as Https from "node:https"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import { http, https } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -522,11 +523,11 @@ export interface HttpAgentOptions extends Https.AgentOptions {
 export const makeAgent = (options?: HttpAgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
   Effect.zipWith(
     Effect.acquireRelease(
-      Effect.sync(() => new Http.Agent(options)),
+      Effect.sync(() => new http.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
     Effect.acquireRelease(
-      Effect.sync(() => new Https.Agent(options)),
+      Effect.sync(() => new https.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
     (http, https) => ({ http, https })
@@ -567,13 +568,13 @@ export const makeNodeHttp = Effect.gen(function*() {
   const agent = yield* HttpAgent
   return Client.make((request, url, signal) => {
     const nodeRequest = url.protocol === "https:" ?
-      Https.request(url, {
+      https.request(url, {
         agent: agent.https,
         method: request.method,
         headers: request.headers,
         signal
       }) :
-      Http.request(url, {
+      http.request(url, {
         agent: agent.http,
         method: request.method,
         headers: request.headers,
@@ -633,6 +634,9 @@ const sendBody = (
             })),
           NodeSink.fromWritable({
             evaluate: () => nodeRequest,
+            // The request race owns destruction, so a body failure must reach
+            // it before destroying the request can produce a transport error.
+            endOnDone: false,
             onError: (cause) =>
               new Error.HttpClientError({
                 reason: new Error.TransportError({
@@ -641,7 +645,10 @@ const sendBody = (
                 })
               })
           })
-        )
+        ).pipe(Effect.andThen(() => {
+          nodeRequest.end()
+          return waitForFinish(nodeRequest, request)
+        }))
       }
     }
   })

@@ -84,6 +84,35 @@ describe("DenoHttpServer", () => {
       }
     }
 
+    // Deno strips the header itself over HTTP/1.1, so only HTTP/2 shows it.
+    for (const status of [204, 205]) {
+      for (const raw of [false, true]) {
+        it.live(
+          `drops content-length for ${raw ? "a raw Response with " : ""}status ${status} over HTTP/2`,
+          () =>
+            Effect.gen(function*() {
+              const client = Deno.createHttpClient({ http1: false, http2: true })
+              yield* Effect.addFinalizer(() => Effect.sync(() => client.close()))
+              yield* HttpServer.serveEffect(Effect.sync(() =>
+                raw
+                  ? HttpServerResponse.raw(new Response(null, { status, headers: { "content-length": "4" } }))
+                  : HttpServerResponse.text("body", { status })
+              ))
+              const response = yield* HttpClient.get("/").pipe(
+                Effect.provideService(FetchHttpClient.RequestInit, { client } as RequestInit)
+              )
+              assert.strictEqual(response.status, status)
+              assert.strictEqual(response.headers["content-length"], undefined)
+              assert.strictEqual(yield* response.text, "")
+            }).pipe(
+              Effect.timeout("2 seconds"),
+              Effect.provide(DenoHttpServer.layerTest)
+            ),
+          5000
+        )
+      }
+    }
+
     for (const [method, status] of [["HEAD", 200], ["GET", 204], ["GET", 205], ["GET", 304]] as const) {
       it.live(`cancels raw streams for ${method} status ${status}`, () =>
         Effect.gen(function*() {
@@ -278,6 +307,43 @@ describe("DenoHttpServer", () => {
         yield* HttpClient.get("/child1/", { urlParams: { foo: "bar" } }).pipe(Effect.map((_) => _.status)),
         404
       )
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("answers CONNECT with 501 without running the app", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      yield* HttpRouter.add(
+        "*",
+        "*",
+        Effect.sync(() => {
+          calls++
+          return HttpServerResponse.empty()
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      // fetch cannot send CONNECT.
+      const statusLine = yield* Effect.acquireUseRelease(
+        Effect.promise(() => Deno.connect({ hostname: "127.0.0.1", port })),
+        (conn) =>
+          Effect.promise(async () => {
+            await conn.write(
+              new TextEncoder().encode("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n")
+            )
+            const decoder = new TextDecoder()
+            const buffer = new Uint8Array(1024)
+            let received = ""
+            while (!received.includes("\r\n")) {
+              const read = await conn.read(buffer)
+              if (read === null) break
+              received += decoder.decode(buffer.subarray(0, read), { stream: true })
+            }
+            return received.split("\r\n")[0]
+          }),
+        (conn) => Effect.sync(() => conn.close())
+      )
+      assert.strictEqual(statusLine.split(" ")[1], "501")
+      assert.strictEqual(calls, 0)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("file", () =>
