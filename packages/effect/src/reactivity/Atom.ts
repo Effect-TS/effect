@@ -31,7 +31,6 @@ import * as KeyValueStore from "../persistence/KeyValueStore.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
-import { UnhandledLogLevel } from "../References.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
@@ -607,9 +606,9 @@ const closeScope = (scope: Scope.Closeable): Effect.Effect<void> =>
   Effect.catchCause(
     Scope.close(scope, Exit.void),
     (cause) =>
-      Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.withFiber((fiber) => {
-        const level = fiber.getRef(UnhandledLogLevel)
-        return level ? Effect.logWithLevel(level)("Unhandled error in atom finalizer", cause) : Effect.void
+      Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.ignoreCause(Effect.failCause(cause), {
+        log: "Unhandled",
+        message: "Unhandled error in atom finalizer"
       })
   )
 
