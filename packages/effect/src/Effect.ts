@@ -2756,6 +2756,11 @@ export {
    * `catch` only handles recoverable errors. It will not recover from
    * unrecoverable defects.
    *
+   * Defects take precedence over typed errors. If the cause also contains a
+   * defect, the handler does not run and the failure is propagated with every
+   * typed error converted to a defect. An interruption alongside a typed error
+   * does not prevent recovery.
+   *
    * @see {@link catchCause} for a version that can recover from both recoverable and unrecoverable errors.
    *
    * @stability stable
@@ -2778,6 +2783,13 @@ export {
  *
  * The error type must have a readonly `_tag` field. `catchTag` matches that
  * field and only handles errors with the requested tag.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Handling a tagged error)
  *
@@ -2880,6 +2892,13 @@ export const catchTag: {
  *
  * The error type must have a readonly `_tag` field to use `catchTags`. This
  * field is used to identify and match errors.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Handling multiple tagged errors)
  *
@@ -2990,6 +3009,13 @@ export const catchTags: {
  * Use this to handle nested error causes without removing the parent error
  * from the error channel. The handler receives the unwrapped reason.
  *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
+ *
  * **Example** (Handling an error reason)
  *
  * ```ts import.meta.vitest
@@ -3087,6 +3113,13 @@ export const catchReason: {
 
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Handling multiple error reasons)
  *
@@ -3362,6 +3395,12 @@ export const catchCause: {
  * they often indicate serious issues. In some cases, such as dynamically loaded
  * plugins, controlled recovery may be needed.
  *
+ * **Gotchas**
+ *
+ * `catchDefect` recovers any cause that contains a defect, including causes
+ * that also contain typed errors. Typed error handlers such as `catch` skip
+ * those causes, so defects always take precedence.
+ *
  * **Example** (Recovering from defects)
  *
  * ```ts import.meta.vitest
@@ -3410,6 +3449,13 @@ export const catchDefect: {
  * Use a `Refinement` for type narrowing or a `Predicate` for simple boolean
  * matching. Non-matching errors re-fail with the original cause. Defects and
  * interrupts are not caught.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Recovering when a predicate matches)
  *
@@ -3487,6 +3533,13 @@ export const catchIf: {
  * filter results are passed to `f`; failed filter results are passed to
  * `orElse` when provided. Without `orElse`, the original failure cause is
  * preserved.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * @see {@link catchIf} for predicate-based recovery from typed errors
  * @see {@link catchTag} for recovering from a single tagged error
@@ -4152,7 +4205,9 @@ export declare namespace Retry {
  * applied. For example, `Schedule.recurs(3)` allows up to three retries after
  * the initial attempt.
  *
- * Defects and interruptions are not retried.
+ * Defects take precedence over typed errors. A failure whose cause contains a
+ * defect is not retried and is propagated with every typed error converted to a
+ * defect. A typed error alongside an interruption is retried.
  *
  * **Example** (Retrying with a schedule)
  *
@@ -4221,6 +4276,13 @@ export const retry: {
  *
  * If the retries are exhausted and the effect still fails, it runs a fallback
  * effect instead.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. A failure whose cause contains a
+ * defect is not retried and is propagated with every typed error converted to a
+ * defect. A typed error alongside an interruption is retried. When the cause
+ * contains a defect, `orElse` does not run.
  *
  * **Example** (Falling back after retries are exhausted)
  *
@@ -4317,6 +4379,13 @@ export const sandbox: <A, E, R>(
  *
  * Use the `log` option to emit the full {@link Cause} when the effect fails,
  * and `message` to prepend a custom log message.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the failure is not ignored and is propagated with every typed error
+ * converted to a defect. An interruption alongside a typed error does not
+ * prevent the error from being ignored.
  *
  * **Example** (Discarding success and failure values)
  *
@@ -4541,6 +4610,13 @@ export const withErrorReporting: <
  * effect.
  *
  * Defects and interruptions are not recovered by this operator.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Replacing failures with a value)
  *
@@ -5425,6 +5501,13 @@ export const when: {
  * to process the result if the effect succeeds, or handle the error if the
  * effect fails.
  *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
+ *
  * **Example** (Matching success and failure values)
  *
  * ```ts import.meta.vitest
@@ -5489,6 +5572,13 @@ export const match: {
  * effects (Success or Failure). When the effect is already resolved, it applies
  * the handlers immediately without fiber scheduling. For unresolved effects,
  * it falls back to the regular `match` behavior.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Pattern matching eagerly when possible)
  *
@@ -5744,6 +5834,13 @@ export const matchCauseEffect: {
  * Use `matchEffect` when either branch needs to return an `Effect`, such as
  * performing logging, recovery, notification, or other effectful work. The
  * returned effect succeeds or fails according to the handler that is run.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Matching success and failure with effectful handlers)
  *
@@ -7792,6 +7889,9 @@ export const forever: <
  * The source effect is always evaluated once before the schedule is stepped.
  * The schedule controls additional repetitions, not the initial execution.
  *
+ * If the effect fails with a cause that contains a defect, the failure is
+ * propagated with every typed error converted to a defect.
+ *
  * **Example** (Repeating successful effects with a schedule)
  *
  * ```ts import.meta.vitest
@@ -7880,6 +7980,12 @@ export const repeat: {
  * and the latest schedule metadata when at least one schedule step has run;
  * otherwise it receives `None`. If the schedule completes normally, the
  * returned effect succeeds with the schedule's output.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the effect fails with a cause
+ * that contains a defect, `orElse` does not run and the failure is propagated
+ * with every typed error converted to a defect.
  *
  * **Example** (Recovering after repetition stops)
  *
@@ -15742,6 +15848,13 @@ export const flatMapEager: {
  * Success effects pass through unchanged because there is no error to catch.
  * Failure effects apply the catch function immediately, and pending effects
  * fall back to regular `catch` behavior.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the handler does not run and the failure is propagated with every
+ * typed error converted to a defect. An interruption alongside a typed error
+ * does not prevent recovery.
  *
  * **Example** (Catching failures eagerly when possible)
  *

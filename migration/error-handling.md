@@ -94,6 +94,45 @@ const program = Effect.fail(42).pipe(
 )
 ```
 
+## Defects Take Precedence in Mixed Causes
+
+A failure cause can hold a typed error and a defect at the same time, for
+example when a finalizer dies after the effect has already failed. In v4,
+every operator that recovers from typed errors skips such causes. The handler
+does not run, and the failure is propagated with each typed error converted to
+a defect.
+
+In v3 only some operators behaved this way (`catchAll`, `matchEffect`,
+`match`, `orElse`, `orElseSucceed`, `ignore`, `either`, `option` and
+`Effect.retry`). `catchTag`, `catchTags`, `catchIf`, `catchSome` and the
+`Stream` and `Channel` recovery operators ran the handler and dropped the
+defect. In v4 the rule is the same for all of them:
+
+- `Effect`: `catch`, `catchTag`, `catchTags`, `catchIf`, `catchFilter`,
+  `catchReason`, `catchReasons`, `catchEager`, `matchEffect`, `match`,
+  `matchEager`, `orElseSucceed`, `ignore`, `option`, `result`, `orDie`,
+  `eventually`, `firstSuccessOf`, `retry`, `retryOrElse`, `repeat` and
+  `repeatOrElse`
+- `Stream` and `Channel`: `catch`, `catchTag`, `catchTags`, `catchIf`,
+  `catchFilter`, `catchReason`, `catchReasons`, `orElseSucceed`, `ignore`,
+  `result`, `orDie` and `retry`
+
+An interruption alongside a typed error does not prevent recovery.
+
+```ts
+import { Effect } from "effect"
+
+const program = Effect.fail("error").pipe(
+  Effect.ensuring(Effect.die("finalizer defect")),
+  // The handler does not run: the cause contains a defect
+  Effect.catch(() => Effect.succeed("recovered"))
+)
+// fails with Die("error") + Die("finalizer defect")
+```
+
+Use `Effect.catchDefect` or `Effect.catchCause` to recover from causes that
+contain defects.
+
 ## New in v4
 
 - **`Effect.catchReason(errorTag, reasonTag, handler)`** — catches a specific
