@@ -59,7 +59,7 @@ import * as Stream from "effect/Stream"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
-import { Readable } from "node:stream"
+import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { http } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
@@ -561,6 +561,10 @@ const handleResponse = (
   }
 
   let headers: Record<string, string | Array<string>> = response.headers
+  if (response.status === 204 || response.status === 205) {
+    const { "content-length": _, ...rest } = headers
+    headers = rest
+  }
   if (!Cookies.isEmpty(response.cookies)) {
     headers = { ...headers }
     const toSet = Cookies.toSetCookieHeaders(response.cookies)
@@ -604,12 +608,17 @@ const writeResponse = (
       })
     )
   }
+  if (Response.omitsBody(response)) {
+    writeHead(nodeResponse, response, headers)
+    nodeResponse.end()
+    return cancelResponseBody(response.body)
+  }
+  nodeResponse.strictContentLength = true
   const body = response.body
   switch (body._tag) {
     case "Empty": {
       writeHead(nodeResponse, response, headers)
-      nodeResponse.end()
-      return Effect.void
+      return end(nodeResponse, response)
     }
     case "Raw": {
       writeHead(nodeResponse, response, headers)
@@ -618,7 +627,7 @@ const writeResponse = (
         typeof body.body.pipe === "function"
       ) {
         return Effect.tryPromise({
-          try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
+          try: (signal) => pipeTo(body.body as Readable, nodeResponse, headers, signal),
           catch: (cause) =>
             new HttpServerError({
               reason: new ResponseError({
@@ -635,43 +644,33 @@ const writeResponse = (
       }
       return Effect.callback<void>((resume) => {
         nodeResponse.end(body.body, () => resume(Effect.void))
-      })
+      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "Uint8Array": {
       writeHead(nodeResponse, response, headers)
       // If the body is less than 1MB, we skip the callback
       if (body.contentLength < 1024 * 1024) {
         // Writing text directly lets Node flush headers and body together.
-        nodeResponse.end(body.text ?? body.body)
-        return Effect.void
+        return end(nodeResponse, response, body.text ?? body.body)
       }
       return Effect.callback<void>((resume) => {
         nodeResponse.end(body.text ?? body.body, () => resume(Effect.void))
-      })
+      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "FormData": {
       const r = new globalThis.Response(body.formData)
-      writeHead(nodeResponse, response, {
-        ...headers,
-        ...Object.fromEntries(r.headers)
-      })
-      return Effect.callback<void, HttpServerError>((resume, signal) => {
-        Readable.fromWeb(r.body as any, { signal })
-          .pipe(nodeResponse)
-          .on("error", (cause) => {
-            resume(Effect.fail(
-              new HttpServerError({
-                reason: new ResponseError({
-                  request,
-                  response,
-                  description: "Error writing FormData response",
-                  cause
-                })
-              })
-            ))
-          })
-          .once("finish", () => {
-            resume(Effect.void)
+      const formHeaders = { ...headers, ...Object.fromEntries(r.headers) }
+      writeHead(nodeResponse, response, formHeaders)
+      return Effect.tryPromise({
+        try: (signal) => pipeTo(Readable.fromWeb(r.body as any), nodeResponse, formHeaders, signal),
+        catch: (cause) =>
+          new HttpServerError({
+            reason: new ResponseError({
+              request,
+              response,
+              description: "Error writing FormData response",
+              cause
+            })
           })
       }).pipe(
         Effect.interruptible,
@@ -692,7 +691,7 @@ const writeResponse = (
         }),
         Effect.interruptible,
         Effect.matchCauseEffect({
-          onSuccess: () => Effect.sync(() => nodeResponse.end()),
+          onSuccess: () => end(nodeResponse, response),
           onFailure: handleCause(nodeResponse, response)
         })
       )
@@ -724,6 +723,48 @@ const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<voi
     return Effect.sync(() => stream.destroy())
   }
   return Effect.void
+}
+
+const end = (
+  nodeResponse: Http.ServerResponse,
+  response: HttpServerResponse,
+  chunk?: string | Uint8Array
+): Effect.Effect<void> => {
+  try {
+    nodeResponse.end(chunk)
+    return Effect.void
+  } catch (defect) {
+    return handleCause(nodeResponse, response)(Cause.die(defect))
+  }
+}
+
+// Check lengths before writing: Node's strictContentLength throws uncaught inside pipeline.
+const pipeTo = (
+  readable: Readable,
+  nodeResponse: Http.ServerResponse,
+  headers: Record<string, string | Array<string>>,
+  signal: AbortSignal
+): Promise<void> => {
+  const contentLength = headers["content-length"]
+  if (typeof contentLength !== "string") {
+    return pipeline(readable, nodeResponse, { signal })
+  }
+  let remaining = Number(contentLength)
+  const mismatch = () => new Error(`Response body doesn't match content-length of ${contentLength}`)
+  return pipeline(
+    readable,
+    new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        remaining -= chunk.length
+        callback(remaining < 0 ? mismatch() : null, chunk)
+      },
+      flush(callback) {
+        callback(remaining > 0 ? mismatch() : null)
+      }
+    }),
+    nodeResponse,
+    { signal }
+  )
 }
 
 const handleCause = (
