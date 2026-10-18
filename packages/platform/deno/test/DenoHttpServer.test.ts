@@ -152,96 +152,68 @@ describe("DenoHttpServer", () => {
   })
 
   describe("when the Response can't be built", () => {
-    it.live("answers an invalid HEAD status without waiting for raw body cancellation", () =>
+    const serveAndObserveExit = <E, R>(app: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>) =>
       Effect.gen(function*() {
-        const cancelled = yield* Deferred.make<void>()
         const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-        const body = new ReadableStream<Uint8Array>({
-          cancel() {
-            Deferred.doneUnsafe(cancelled, Exit.void)
-            return new Promise<void>(() => {})
-          }
-        })
-        yield* HttpServer.serveEffect(
-          Effect.succeed(HttpServerResponse.raw(body, { status: 103 })),
-          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-        )
-        const client = yield* HttpClient.head("/")
-        assert.strictEqual(client.status, 500)
-        assert.strictEqual(yield* client.text, "")
-        yield* Deferred.await(cancelled)
-        const exit = yield* Deferred.await(observed)
-        assert.isTrue(
-          Exit.isFailure(exit) &&
-            exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof RangeError)
-        )
-      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
+        yield* HttpServer.serveEffect(app, (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit)))
+        return Deferred.await(observed)
+      })
 
-    for (const cancellation of ["rejects", "never settles"] as const) {
-      it.live(`answers invalid headers and reports the defect when raw body cancellation ${cancellation}`, () =>
-        Effect.gen(function*() {
-          const cancelled = yield* Deferred.make<void>()
-          const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-          const body = new ReadableStream<Uint8Array>({
-            cancel() {
-              Deferred.doneUnsafe(cancelled, Exit.void)
-              return cancellation === "rejects"
-                ? Promise.reject(new Error("cancellation failed"))
-                : new Promise<void>(() => {})
-            }
-          })
-          yield* HttpServer.serveEffect(
-            Effect.succeed(HttpServerResponse.raw(body, { headers: { "x-invalid": "a\nb" } })),
-            (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-          )
-          const response = yield* HttpClient.get("/")
-          assert.strictEqual(response.status, 500)
-          assert.strictEqual(yield* response.text, "")
-          yield* Deferred.await(cancelled)
-          const exit = yield* Deferred.await(observed)
-          assert.isTrue(
-            Exit.isFailure(exit) &&
-              exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof TypeError)
-          )
-        }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
+    const assertSoleDefect = (exit: Exit.Exit<unknown, unknown>, defect: abstract new(...args: any) => unknown) =>
+      assert.isTrue(
+        Exit.isFailure(exit) && exit.cause.reasons.length === 1 && Cause.isDieReason(exit.cause.reasons[0]) &&
+          exit.cause.reasons[0].defect instanceof defect
+      )
+
+    for (
+      const [invalid, method, options, defect] of [
+        ["an invalid HEAD status", "HEAD", { status: 103 }, RangeError],
+        ["invalid headers", "GET", { headers: { "x-invalid": "a\nb" } }, TypeError]
+      ] as const
+    ) {
+      for (const cancellation of ["rejects", "never settles"] as const) {
+        it.live(`answers ${invalid} and reports the defect when raw body cancellation ${cancellation}`, () =>
+          Effect.gen(function*() {
+            let cancelled = false
+            const body = new ReadableStream<Uint8Array>({
+              cancel() {
+                cancelled = true
+                return cancellation === "rejects"
+                  ? Promise.reject(new Error("cancellation failed"))
+                  : new Promise<void>(() => {})
+              }
+            })
+            const observed = yield* serveAndObserveExit(Effect.succeed(HttpServerResponse.raw(body, options)))
+            const response = yield* (method === "HEAD" ? HttpClient.head("/") : HttpClient.get("/"))
+            assert.strictEqual(response.status, 500)
+            assert.strictEqual(yield* response.text, "")
+            assertSoleDefect(yield* observed, defect)
+            assert.isTrue(cancelled)
+          }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
+      }
     }
 
     for (const finalizer of ["blocks", "dies"] as const) {
       it.live(`answers an invalid stream status and reports the defect when its scope finalizer ${finalizer}`, () =>
         Effect.gen(function*() {
-          const finalized = yield* Deferred.make<void>()
-          const release = yield* Deferred.make<void>()
-          const finished = yield* Deferred.make<void>()
-          const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-          yield* HttpServer.serveEffect(
-            Effect.gen(function*() {
-              yield* Effect.addFinalizer(() =>
-                Effect.gen(function*() {
-                  yield* Deferred.succeed(finalized, undefined)
-                  if (finalizer === "blocks") yield* Deferred.await(release)
-                  return yield* Effect.die(new Error("finalization failed"))
-                }).pipe(Effect.ensuring(Deferred.succeed(finished, undefined)))
-              )
-              return HttpServerResponse.stream(Stream.never, { status: 103 })
-            }),
-            (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-          )
-          yield* Effect.gen(function*() {
-            const response = yield* HttpClient.get("/")
-            assert.strictEqual(response.status, 500)
-            assert.strictEqual(yield* response.text, "")
-            yield* Deferred.await(finalized)
-            const exit = yield* Deferred.await(observed)
-            assert.isTrue(
-              Exit.isFailure(exit) &&
-                exit.cause.reasons.length === 1 &&
-                exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof RangeError)
+          const finalized = yield* Latch.make()
+          const release = yield* Latch.make()
+          const observed = yield* serveAndObserveExit(Effect.gen(function*() {
+            yield* Effect.addFinalizer(() =>
+              Effect.gen(function*() {
+                yield* finalized.open
+                if (finalizer === "blocks") yield* release.await
+                return yield* Effect.die(new Error("finalization failed"))
+              })
             )
-          }).pipe(
-            Effect.timeout("2 seconds"),
-            Effect.ensuring(Deferred.succeed(release, undefined))
-          )
-          yield* Deferred.await(finished)
+            return HttpServerResponse.stream(Stream.never, { status: 103 })
+          }))
+          yield* Effect.addFinalizer(() => release.open)
+          const response = yield* HttpClient.get("/")
+          assert.strictEqual(response.status, 500)
+          assert.strictEqual(yield* response.text, "")
+          yield* finalized.await
+          assertSoleDefect(yield* observed, RangeError)
         }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
     }
   })

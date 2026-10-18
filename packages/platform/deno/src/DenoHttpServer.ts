@@ -11,7 +11,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
-import { flow } from "effect/Function"
+import { constVoid, flow } from "effect/Function"
 import * as Cookies from "effect/http/Cookies"
 import * as Etag from "effect/http/Etag"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -124,15 +124,14 @@ export const make = Effect.fnUntraced(function*(
         }
         return Effect.matchCauseEffect(makeResponse(request, response, services, scope), {
           onSuccess: (webResponse) => Effect.sync(() => denoRequest.resolve(webResponse)),
-          // Always answer the request, without waiting for body cleanup
-          onFailure: (cause) =>
-            Effect.suspend(() => {
-              denoRequest.resolve(new Response(undefined, { status: 500 }))
-              if (response.body._tag === "Raw" && response.body.body instanceof ReadableStream) {
-                cancelFailedResponseBody(response.body.body)
-              }
-              return Effect.failCause(cause)
-            })
+          // Answer the request without waiting for body cleanup, which may never settle
+          onFailure: (cause) => {
+            denoRequest.resolve(new Response(undefined, { status: 500 }))
+            if (response.body._tag === "Raw" && response.body.body instanceof ReadableStream) {
+              cancelStreamUnsafe(response.body.body)
+            }
+            return Effect.failCause(cause)
+          }
         })
       }, middleware)
 
@@ -217,7 +216,7 @@ const makeResponse = Effect.fnUntraced(function*(
         return new Response(stream, fields)
       } catch (defect) {
         // The stream owns the request scope, so cancel it to let the scope close
-        cancelFailedResponseBody(stream)
+        cancelStreamUnsafe(stream)
         throw defect
       }
     }
@@ -589,10 +588,8 @@ const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
   return Effect.void
 }
 
-const cancelFailedResponseBody = (stream: ReadableStream): void => {
-  try {
-    void stream.cancel().catch(() => {})
-  } catch {}
+const cancelStreamUnsafe = (stream: ReadableStream): void => {
+  void stream.cancel().catch(constVoid)
 }
 
 const emptyReadableStream = new ReadableStream<Uint8Array>({
