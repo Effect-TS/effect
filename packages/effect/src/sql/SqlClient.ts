@@ -20,7 +20,6 @@ import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
 import { Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
-import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
@@ -481,14 +480,7 @@ interface AfterCommitBuffer {
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
-  Effect.catchCause(effect, (cause) =>
-    Effect.withFiber((fiber) => {
-      const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
-      if (unhandledLogLevel) {
-        return Effect.logWithLevel(unhandledLogLevel)("Unhandled error in SqlClient.afterCommit callback", cause)
-      }
-      return Effect.void
-    }))
+  Effect.ignoreCause(effect, { log: "Unhandled", message: "Unhandled error in SqlClient.afterCommit callback" })
 
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses

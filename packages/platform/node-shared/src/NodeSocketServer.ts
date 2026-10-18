@@ -12,7 +12,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type { Cause } from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -22,7 +21,6 @@ import { pipe } from "effect/Function"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
-import * as References from "effect/References"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as SocketServer from "effect/socket/SocketServer"
@@ -231,7 +229,7 @@ export const makeWebSocket: (
           )
         ),
         Effect.flatMap(handler),
-        Effect.catchCause(reportUnhandledError),
+        Effect.ignoreCause({ log: "Unhandled", message: "Unhandled error in SocketServer" }),
         Effect.runForkWith(context),
         trackFiber
       )
@@ -270,15 +268,6 @@ export const layerWebSocket: (
   SocketServer.SocketServer,
   SocketServer.SocketServerError
 > = Function.flow(makeWebSocket, Layer.effect(SocketServer.SocketServer))
-
-const reportUnhandledError = <E>(cause: Cause<E>) =>
-  Effect.withFiber<void>((fiber) => {
-    const unhandledLogLevel = fiber.getRef(References.UnhandledLogLevel)
-    if (unhandledLogLevel) {
-      return Effect.logWithLevel(unhandledLogLevel)(cause, "Unhandled error in SocketServer")
-    }
-    return Effect.void
-  })
 
 const makeNetServer = Effect.fnUntraced(function*(options: {
   readonly createServer: () => Net.Server
@@ -372,7 +361,7 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
           { tlsServer: true }
         ),
         Effect.flatMap(handler),
-        Effect.catchCause(reportUnhandledError),
+        Effect.ignoreCause({ log: "Unhandled", message: "Unhandled error in SocketServer" }),
         Effect.runForkWith(Context.add(services, NodeSocket.NetSocket, conn)),
         trackFiber
       )
