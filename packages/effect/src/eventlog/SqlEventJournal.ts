@@ -24,17 +24,18 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  *
  * **Details**
  *
- * Maintains `entryTable`, `remotesTable`, `${entryTable}_sequence` and
- * `${remotesTable}_checkpoints` using the configured `SqlClient`.
+ * Maintains `entryTable`, `${entryTable}_sequence`, `${entryTable}_sources`,
+ * `${remotesTable}_checkpoints` and `remoteCursorsTable` (default
+ * `${remotesTable}_cursors`) using the configured `SqlClient`.
  *
  * **Gotchas**
  *
  * Creating or migrating the schema requires a writable connection. Migrated
  * databases can be reopened read-only.
  *
- * Upload acknowledgements do not advance past unseen entries. Download cursors
- * live in `remoteCursorsTable` (default `<remotesTable>_cursors`); legacy databases
- * resume after the highest sequence in the remotes table.
+ * Upload acknowledgements do not advance past unseen entries. Opening a
+ * database with a per-entry `remotesTable` migrates it to entry sources and
+ * drops it.
  *
  * @stability unstable
  * @category constructors
@@ -57,37 +58,50 @@ export const make = (options?: {
     const remoteCursorsTable = options?.remoteCursorsTable ?? `${remotesTable}_cursors`
 
     const sequenceTable = `${entryTable}_sequence`
+    const sourcesTable = `${entryTable}_sources`
     const checkpointsTable = `${remotesTable}_checkpoints`
 
     const entryTableSql = sql(entryTable)
     const remotesTableSql = sql(remotesTable)
     const sequenceTableSql = sql(sequenceTable)
+    const sourcesTableSql = sql(sourcesTable)
     const checkpointsTableSql = sql(checkpointsTable)
     const remoteCursorsTableSql = sql(remoteCursorsTable)
 
     // to_regclass folds unquoted names to lowercase, so pass the quoted identifier.
-    const quotedSequenceTable = sql`${sequenceTableSql}`.compile(true)[0]
+    const quoted = (table: string) => sql`${sql(table)}`.compile(true)[0]
 
-    // The sequence table marks a complete migration; skip DDL for read-only reopen.
-    const sequenceTableExists = sql.onDialectOrElse({
-      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quotedSequenceTable}) IS NOT NULL`,
-      mysql: () =>
-        sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${sequenceTable}`,
-      mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${sequenceTable}, 'U') IS NOT NULL`,
-      orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${sequenceTable}`
-    }).pipe(Effect.map((rows) => rows.length > 0))
+    const tableExists = (table: string) =>
+      sql.onDialectOrElse({
+        pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quoted(table)}) IS NOT NULL`,
+        mysql: () =>
+          sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
+        mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${table}, 'U') IS NOT NULL`,
+        orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
+      }).pipe(Effect.map((rows) => rows.length > 0))
 
-    // PostgreSQL needs a lock and recheck to make concurrent schema creation safe.
-    const migrate = Effect.gen(function*() {
-      yield* sql.onDialectOrElse({
-        pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quotedSequenceTable}))`,
-        orElse: () => Effect.void
-      })
-      if (yield* sequenceTableExists) return
+    // Checks `done` without writing, so migrated databases reopen read-only.
+    // PostgreSQL needs a lock and recheck to make concurrent migrations safe.
+    const migrateUnless = <E, R>(
+      lockTable: string,
+      done: Effect.Effect<boolean, SqlError.SqlError>,
+      migrate: Effect.Effect<void, E, R>
+    ) =>
+      Effect.gen(function*() {
+        if (yield* done) return
+        yield* Effect.gen(function*() {
+          yield* sql.onDialectOrElse({
+            pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quoted(lockTable)}))`,
+            orElse: () => Effect.void
+          })
+          if (yield* done) return
+          yield* migrate
+        }).pipe(sql.withTransaction)
+      }).pipe(withTracerDisabled)
 
+    const createSchema = Effect.gen(function*() {
       const eventIndex = sql(`${entryTable}_event_idx`)
       const timestampIndex = sql(`${entryTable}_timestamp_idx`)
-      const sequenceIndex = sql(`${remotesTable}_sequence_idx`)
 
       yield* sql.onDialectOrElse({
         pg: () =>
@@ -125,41 +139,6 @@ export const make = (options?: {
               primary_key TEXT NOT NULL,
               payload BLOB NOT NULL,
               timestamp INTEGER NOT NULL
-            )`
-      })
-
-      yield* sql.onDialectOrElse({
-        pg: () =>
-          sql`
-            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-              remote_id BYTEA NOT NULL,
-              entry_id BYTEA NOT NULL,
-              sequence INT NOT NULL,
-              PRIMARY KEY (remote_id, entry_id)
-            )`,
-        mysql: () =>
-          sql`
-            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-              remote_id BINARY(16) NOT NULL,
-              entry_id BINARY(16) NOT NULL,
-              sequence INT NOT NULL,
-              PRIMARY KEY (remote_id, entry_id)
-            )`,
-        mssql: () =>
-          sql`
-            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-              remote_id UNIQUEIDENTIFIER NOT NULL,
-              entry_id UNIQUEIDENTIFIER NOT NULL,
-              sequence INT NOT NULL,
-              PRIMARY KEY (remote_id, entry_id)
-            )`,
-        orElse: () =>
-          sql`
-            CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-              remote_id BLOB NOT NULL,
-              entry_id BLOB NOT NULL,
-              sequence INT NOT NULL,
-              PRIMARY KEY (remote_id, entry_id)
             )`
       })
 
@@ -240,11 +219,6 @@ export const make = (options?: {
             sql`CREATE INDEX IF NOT EXISTS ${timestampIndex} ON ${entryTableSql} (timestamp)`
           )
       })
-      yield* sql.onDialectOrElse({
-        mysql: () => sql`CREATE INDEX ${sequenceIndex} ON ${remotesTableSql} (remote_id, sequence)`,
-        mssql: () => sql`CREATE INDEX ${sequenceIndex} ON ${remotesTableSql} (remote_id, sequence)`,
-        orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sequenceIndex} ON ${remotesTableSql} (remote_id, sequence)`
-      })
 
       // Number existing entries in creation order. `WHERE true` keeps SQLite
       // from parsing ON CONFLICT as a join constraint.
@@ -253,57 +227,92 @@ export const make = (options?: {
         SELECT id FROM ${entryTableSql} WHERE true ORDER BY timestamp ASC, id ASC
         ON CONFLICT DO NOTHING
       `
-    }).pipe(sql.withTransaction, withTracerDisabled)
+    })
 
-    if (!(yield* withTracerDisabled(sequenceTableExists))) {
-      yield* migrate
-    }
+    // The sequence table marks a complete initial migration.
+    yield* migrateUnless(sequenceTable, tableExists(sequenceTable), createSchema)
 
-    const quotedRemoteCursorsTable = sql`${remoteCursorsTableSql}`.compile(true)[0]
-    const remoteCursorsTableExists = sql.onDialectOrElse({
-      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quotedRemoteCursorsTable}) IS NOT NULL`,
-      mysql: () =>
-        sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${remoteCursorsTable}`,
-      mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${remoteCursorsTable}, 'U') IS NOT NULL`,
-      orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${remoteCursorsTable}`
-    }).pipe(Effect.map((rows) => rows.length > 0))
+    yield* migrateUnless(
+      remoteCursorsTable,
+      tableExists(remoteCursorsTable),
+      sql.onDialectOrElse({
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+              remote_id BYTEA PRIMARY KEY,
+              next_sequence INT NOT NULL
+            )`,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+              remote_id BINARY(16) PRIMARY KEY,
+              next_sequence INT NOT NULL
+            )`,
+        mssql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+              remote_id UNIQUEIDENTIFIER PRIMARY KEY,
+              next_sequence INT NOT NULL
+            )`,
+        orElse: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
+              remote_id BLOB PRIMARY KEY,
+              next_sequence INT NOT NULL
+            )`
+      }).pipe(Effect.asVoid)
+    )
 
-    if (!(yield* withTracerDisabled(remoteCursorsTableExists))) {
-      yield* Effect.gen(function*() {
-        yield* sql.onDialectOrElse({
-          pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quotedRemoteCursorsTable}))`,
-          orElse: () => Effect.void
-        })
-        if (yield* remoteCursorsTableExists) return
-
+    // Replace per-entry remote rows with one source per imported entry. Dropping
+    // the remotes table last marks the migration complete.
+    yield* migrateUnless(
+      sourcesTable,
+      Effect.zipWith(tableExists(sourcesTable), tableExists(remotesTable), (sources, remotes) => sources && !remotes),
+      Effect.gen(function*() {
         yield* sql.onDialectOrElse({
           pg: () =>
             sql`
-              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-                remote_id BYTEA PRIMARY KEY,
-                next_sequence INT NOT NULL
+              CREATE TABLE IF NOT EXISTS ${sourcesTableSql} (
+                entry_id BYTEA PRIMARY KEY,
+                remote_id BYTEA NOT NULL
               )`,
           mysql: () =>
             sql`
-              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-                remote_id BINARY(16) PRIMARY KEY,
-                next_sequence INT NOT NULL
+              CREATE TABLE IF NOT EXISTS ${sourcesTableSql} (
+                entry_id BINARY(16) PRIMARY KEY,
+                remote_id BINARY(16) NOT NULL
               )`,
           mssql: () =>
             sql`
-              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-                remote_id UNIQUEIDENTIFIER PRIMARY KEY,
-                next_sequence INT NOT NULL
+              CREATE TABLE ${sourcesTableSql} (
+                entry_id UNIQUEIDENTIFIER PRIMARY KEY,
+                remote_id UNIQUEIDENTIFIER NOT NULL
               )`,
           orElse: () =>
             sql`
-              CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
-                remote_id BLOB PRIMARY KEY,
-                next_sequence INT NOT NULL
+              CREATE TABLE IF NOT EXISTS ${sourcesTableSql} (
+                entry_id BLOB PRIMARY KEY,
+                remote_id BLOB NOT NULL
               )`
         })
-      }).pipe(sql.withTransaction, withTracerDisabled)
-    }
+        if (!(yield* tableExists(remotesTable))) return
+        // An entry known to several remotes keeps one of them as its source.
+        // `WHERE true` keeps SQLite from parsing ON CONFLICT as a join constraint.
+        yield* sql`
+          INSERT INTO ${sourcesTableSql} (entry_id, remote_id)
+          SELECT entry_id, MIN(remote_id) FROM ${remotesTableSql} WHERE true GROUP BY entry_id
+          ON CONFLICT DO NOTHING
+        `
+        // Remotes without a cursor resume after their highest downloaded sequence.
+        yield* sql`
+          INSERT INTO ${remoteCursorsTableSql} (remote_id, next_sequence)
+          SELECT remote_id, MAX(sequence) + 1 FROM ${remotesTableSql} r
+          WHERE NOT EXISTS (SELECT 1 FROM ${remoteCursorsTableSql} c WHERE c.remote_id = r.remote_id)
+          GROUP BY remote_id
+        `
+        yield* sql`DROP TABLE ${remotesTableSql}`
+      })
+    )
 
     const decodeEntryRows = Schema.decodeUnknownEffect(EntryRowArray)
     const decodeEntryIdRows = Schema.decodeUnknownEffect(EntryIdRowArray)
@@ -316,16 +325,9 @@ export const make = (options?: {
       Request: EntryRowArray,
       execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
-    // A known entry received again at a later sequence moves its row forward, so
-    // `nextRemoteSequence` passes it.
-    const insertRemotes = SqlSchema.void({
-      Request: RemoteRowArray,
-      execute: (entries) =>
-        sql`
-          INSERT INTO ${remotesTableSql} ${sql.insert(entries)}
-          ON CONFLICT (remote_id, entry_id) DO UPDATE SET sequence = excluded.sequence
-          WHERE excluded.sequence > ${remotesTableSql}.sequence
-        `
+    const insertSources = SqlSchema.void({
+      Request: SourceRowArray,
+      execute: (rows) => sql`INSERT INTO ${sourcesTableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING`
     })
     // Serialize writers so checkpoints cannot skip out-of-order commits.
     // Lock before callbacks in both paths to avoid projection-row deadlocks.
@@ -339,24 +341,14 @@ export const make = (options?: {
       } ON CONFLICT DO NOTHING`
 
     const decodeCursorRows = Schema.decodeUnknownEffect(CursorRowArray)
-    const decodeMaxSequenceRows = Schema.decodeUnknownEffect(MaxSequenceRowArray)
 
-    const readCursor = Effect.fnUntraced(function*(remoteId: EventJournal.RemoteId) {
-      const rows = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
-        Effect.flatMap(decodeCursorRows)
+    const readCursor = (remoteId: EventJournal.RemoteId) =>
+      sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
+        Effect.flatMap(decodeCursorRows),
+        Effect.map((rows) =>
+          rows.length > 0 ? { next: rows[0].next_sequence, stored: true } : { next: 0, stored: false }
+        )
       )
-      if (rows.length > 0) return { next: rows[0].next_sequence, stored: true }
-      const max = yield* sql`SELECT MAX(sequence) AS max FROM ${remotesTableSql} WHERE remote_id = ${remoteId}`.pipe(
-        Effect.flatMap(decodeMaxSequenceRows)
-      )
-      // A concurrent ack can raise MAX past unseen entries; recheck its committed cursor.
-      const current = yield* sql`SELECT next_sequence FROM ${remoteCursorsTableSql} WHERE remote_id = ${remoteId}`.pipe(
-        Effect.flatMap(decodeCursorRows)
-      )
-      if (current.length > 0) return { next: current[0].next_sequence, stored: true }
-      const value = max[0]?.max
-      return { next: value === null || value === undefined ? 0 : value + 1, stored: false }
-    })
 
     const writeCursor = (remoteId: EventJournal.RemoteId, next: number, stored: boolean) =>
       stored
@@ -372,18 +364,6 @@ export const make = (options?: {
       EventJournal.EventJournalError | Schema.SchemaError | SqlError.SqlError
     > {
       const entries = options.entries.map((remoteEntry) => remoteEntry.entry)
-      // One row per entry with its highest sequence: an upsert can't touch a row twice.
-      const remoteRowsById = new Map<string, typeof RemoteRow.Type>()
-      for (const remoteEntry of options.entries) {
-        const existing = remoteRowsById.get(remoteEntry.entry.idString)
-        if (existing !== undefined && existing.sequence >= remoteEntry.remoteSequence) continue
-        remoteRowsById.set(remoteEntry.entry.idString, {
-          remote_id: options.remoteId,
-          entry_id: remoteEntry.entry.id,
-          sequence: remoteEntry.remoteSequence
-        })
-      }
-      const remoteRows = Array.from(remoteRowsById.values())
 
       yield* lockWriters
 
@@ -452,13 +432,16 @@ export const make = (options?: {
       if (uncommitted.length > 0) {
         yield* insertEntries(uncommitted.map((remoteEntry) => toEntryRow(remoteEntry.entry)))
         yield* insertSequence(uncommitted.map((remoteEntry) => remoteEntry.entry))
+        yield* insertSources(uncommitted.map((remoteEntry) => ({
+          entry_id: remoteEntry.entry.id,
+          remote_id: options.remoteId
+        })))
       }
-      if (remoteRows.length > 0) {
-        yield* insertRemotes(remoteRows)
+      if (options.entries.length > 0) {
         // The change stream is ordered, so every earlier sequence is now known.
         let last = 0
-        for (const row of remoteRows) {
-          if (row.sequence > last) last = row.sequence
+        for (const remoteEntry of options.entries) {
+          if (remoteEntry.remoteSequence > last) last = remoteEntry.remoteSequence
         }
         const cursor = yield* readCursor(options.remoteId)
         if (!cursor.stored || last + 1 > cursor.next) {
@@ -540,7 +523,7 @@ export const make = (options?: {
             WHERE s.sequence > ${checkpoint} AND
                   s.sequence <= ${latest} AND
                   NOT EXISTS (
-                    SELECT 1 FROM ${remotesTableSql} r WHERE r.remote_id = ${remoteId} AND r.entry_id = s.entry_id
+                    SELECT 1 FROM ${sourcesTableSql} src WHERE src.entry_id = s.entry_id AND src.remote_id = ${remoteId}
                   )
           `.pipe(
             Effect.flatMap(decodeEntryRows),
@@ -564,13 +547,7 @@ export const make = (options?: {
       writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
         Effect.gen(function*() {
           if (acks.length === 0) return
-          // Read before inserting ack rows, whose maximum may skip unseen entries.
           const cursor = yield* readCursor(remoteId)
-          yield* insertRemotes(acks.map((ack) => ({
-            remote_id: remoteId,
-            entry_id: ack.entryId,
-            sequence: ack.sequence
-          })))
           yield* writeCursor(remoteId, EventJournal.advanceSequence(cursor.next, acks, firstSequence), cursor.stored)
         }).pipe(
           sql.withTransaction,
@@ -586,8 +563,8 @@ export const make = (options?: {
       changes: PubSub.subscribe(pubsub),
       destroy: Effect.gen(function*() {
         yield* sql`DROP TABLE ${entryTableSql}`
-        yield* sql`DROP TABLE ${remotesTableSql}`
         yield* sql`DROP TABLE ${sequenceTableSql}`
+        yield* sql`DROP TABLE ${sourcesTableSql}`
         yield* sql`DROP TABLE ${checkpointsTableSql}`
         yield* sql`DROP TABLE ${remoteCursorsTableSql}`
       }).pipe(
@@ -687,16 +664,12 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
   timestamp: EventJournal.entryIdMillis(entry.id)
 })
 
-const RemoteRow = Schema.Struct({
-  remote_id: EventJournal.RemoteId,
+const SourceRowArray = Schema.Array(Schema.Struct({
   entry_id: EventJournal.EntryId,
-  sequence: Schema.Natural
-})
-
-const RemoteRowArray = Schema.Array(RemoteRow)
+  remote_id: EventJournal.RemoteId
+}))
 
 const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural }))
-const MaxSequenceRowArray = Schema.Array(Schema.Struct({ max: Schema.NullOr(SqlNatural) }))
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
