@@ -1,9 +1,11 @@
 import * as DenoHttpServer from "@effect/platform-deno/DenoHttpServer"
 import { assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
+import * as Cause from "effect/Cause"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as HttpApiError from "effect/http-api/HttpApiError"
 import * as Cookies from "effect/http/Cookies"
@@ -147,6 +149,59 @@ describe("DenoHttpServer", () => {
           Effect.provide(DenoHttpServer.layerTest)
         ), 5000)
     }
+  })
+
+  describe("when the Response can't be built", () => {
+    it.live("answers 500 and preserves the header defect when raw body cancellation rejects", () =>
+      Effect.gen(function*() {
+        let cancelled = false
+        const body = new ReadableStream<Uint8Array>({
+          cancel() {
+            cancelled = true
+            return Promise.reject(new Error("cancellation failed"))
+          }
+        })
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serveEffect(
+          Effect.succeed(HttpServerResponse.raw(body, { headers: { "x-invalid": "a\nb" } })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        )
+        const response = yield* HttpClient.get("/")
+        assert.strictEqual(response.status, 500)
+        assert.strictEqual(yield* response.text, "")
+        assert.isTrue(cancelled)
+        const exit = yield* Deferred.await(observed)
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(exit.cause.reasons.length, 1)
+        const reason = exit.cause.reasons[0]
+        assert(Cause.isDieReason(reason))
+        assert(reason.defect instanceof TypeError)
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
+
+    it.live("answers 500 and reports the status defect before stream scope cleanup completes", () =>
+      Effect.gen(function*() {
+        const finalized = yield* Latch.make()
+        const release = yield* Latch.make()
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serveEffect(
+          Effect.gen(function*() {
+            yield* Effect.addFinalizer(() => finalized.open.pipe(Effect.andThen(release.await)))
+            return HttpServerResponse.stream(Stream.never, { status: 103 })
+          }),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        )
+        yield* Effect.addFinalizer(() => release.open)
+        const response = yield* HttpClient.get("/")
+        assert.strictEqual(response.status, 500)
+        assert.strictEqual(yield* response.text, "")
+        yield* finalized.await
+        const exit = yield* Deferred.await(observed)
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(exit.cause.reasons.length, 1)
+        const reason = exit.cause.reasons[0]
+        assert(Cause.isDieReason(reason))
+        assert(reason.defect instanceof RangeError)
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
   })
 
   it.effect("schema", () =>

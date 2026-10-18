@@ -11,7 +11,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
-import { flow } from "effect/Function"
+import { constVoid, flow } from "effect/Function"
 import * as Cookies from "effect/http/Cookies"
 import * as Etag from "effect/http/Etag"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -122,10 +122,17 @@ export const make = Effect.fnUntraced(function*(
         if (upgradedSources.has(denoRequest.source)) {
           return Effect.as(cancelResponseBody(response.body), upgradedResponse)
         }
-        return Effect.flatMap(
-          makeResponse(request, response, services, scope),
-          (response) => Effect.sync(() => denoRequest.resolve(response))
-        )
+        return Effect.matchCauseEffect(makeResponse(request, response, services, scope), {
+          onSuccess: (webResponse) => Effect.sync(() => denoRequest.resolve(webResponse)),
+          // Answer the request without waiting for body cleanup, which may never settle
+          onFailure: (cause) => {
+            denoRequest.resolve(new Response(undefined, { status: 500 }))
+            if (response.body._tag === "Raw" && response.body.body instanceof ReadableStream) {
+              cancelStreamUnsafe(response.body.body)
+            }
+            return Effect.failCause(cause)
+          }
+        })
       }, middleware)
 
       function handler(
@@ -183,7 +190,6 @@ const makeResponse = Effect.fnUntraced(function*(
   }
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
-  response = HttpEffect.scopeTransferToStream(response)
   const body = response.body
   switch (body._tag) {
     case "Empty":
@@ -197,17 +203,22 @@ const makeResponse = Effect.fnUntraced(function*(
     }
     case "FormData":
       return new Response(body.formData as any, fields)
-    case "Stream":
+    case "Stream": {
+      // Validate the fields before the stream takes over the request scope, as only reading it would close the scope
+      // oxlint-disable-next-line no-new
+      new Response(new ReadableStream(), fields)
+      const stream = (HttpEffect.scopeTransferToStream(response).body as HttpBody.Stream).stream
       return new Response(
         Stream.toReadableStreamWith(
           Stream.unwrap(Effect.withFiber((fiber) => {
             Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
+            return Effect.succeed(stream)
           })),
           context
         ),
         fields
       )
+    }
   }
 })
 
@@ -574,6 +585,10 @@ const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
     return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void
+}
+
+const cancelStreamUnsafe = (stream: ReadableStream): void => {
+  void stream.cancel().catch(constVoid)
 }
 
 const emptyReadableStream = new ReadableStream<Uint8Array>({
