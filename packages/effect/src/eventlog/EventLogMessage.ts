@@ -4,11 +4,7 @@
  * This module is the shared boundary between `EventLogRemote` clients and
  * event-log servers. It defines store ids, protocol errors, the
  * hello/authenticate session handshake, remote calls for writes and changes,
- * and message formats for encrypted or plaintext journal entries.
- *
- * **Gotchas**
- *
- * Upgrade clients and servers together; mixed protocol versions are unsupported.
+* and message formats for encrypted or plaintext journal entries.
  *
  * @stability unstable
  * @since 4.0.0
