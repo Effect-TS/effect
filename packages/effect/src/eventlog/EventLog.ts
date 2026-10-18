@@ -1084,7 +1084,7 @@ const make = Effect.gen(function*() {
           const entries = yield* Queue.takeAll(changes)
           yield* journal.writeFromRemote({
             remoteId: remote.id,
-            entries: entries.flat(),
+            entries,
             compact: registry.compactors.size > 0
               ? Effect.fnUntraced(function*(remoteEntries) {
                 const finalEntries: Array<Array<Entry>> = remoteEntries.map(() => [])
