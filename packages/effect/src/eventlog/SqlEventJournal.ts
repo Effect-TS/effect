@@ -388,6 +388,7 @@ export const make = (options?: {
       const duplicateEntries = options.entries
         .filter((entry) => existingIds.has(entry.entry.idString))
         .map((entry) => entry.entry)
+      yield* EventJournal.observeEntryIds(uncommitted.map((remoteEntry) => remoteEntry.entry.id))
       const compacted = options.compact
         ? yield* options.compact(uncommitted)
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
@@ -438,17 +439,28 @@ export const make = (options?: {
       }
     })
 
+    // Other processes share the database but not the entry id clock. Ids in
+    // the latest millisecond are few, and comparing them here avoids ordering
+    // id bytes in SQL.
+    const latestEntryIds = sql`
+      SELECT id FROM ${entryTableSql} WHERE timestamp = (SELECT MAX(timestamp) FROM ${entryTableSql})
+    `.pipe(
+      Effect.flatMap(decodeEntryIdRows),
+      Effect.map((rows) => rows.map((row) => row.id))
+    )
+
     const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
-      Effect.uninterruptibleMask((restore) => {
-        const committed = EventJournal.makeEntries(entries)
-        return Effect.gen(function*() {
+      Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
           yield* lockWriters
+          yield* Effect.flatMap(latestEntryIds, EventJournal.observeEntryIds)
+          const committed = EventJournal.makeEntries(entries)
           const result = yield* restore(effect(committed)).pipe(
             Effect.mapError((error) => new CallbackFailure(error))
           )
           yield* insertEntries(committed.map(toEntryRow))
           yield* insertSequence(committed)
-          return result
+          return { result, committed }
         }).pipe(
           sql.withTransaction,
           Effect.mapError((error) =>
@@ -456,9 +468,9 @@ export const make = (options?: {
               ? error.error
               : new EventJournal.EventJournalError({ cause: error, method: "writeMany" })
           ),
-          Effect.tap(PubSub.publishAll(pubsub, committed))
+          Effect.flatMap(({ committed, result }) => Effect.as(PubSub.publishAll(pubsub, committed), result))
         )
-      }).pipe(withTracerDisabled)
+      ).pipe(withTracerDisabled)
 
     return EventJournal.EventJournal.of({
       entries: sql`SELECT * FROM ${entryTableSql} ORDER BY timestamp ASC`.pipe(

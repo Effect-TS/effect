@@ -317,14 +317,16 @@ let entryIdCounter = 0
  * the clock stalls or moves backwards, ids keep the last millisecond, and
  * after 4096 ids in one millisecond they move to the next one.
  *
+ * The journals also advance this clock past every committed entry they import
+ * or find in a shared store, so a local id sorts after every entry the process
+ * has seen, even when the local clock is behind.
+ *
  * **Gotchas**
  *
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
- * Ordering is only guaranteed within one process. Ids from different tabs or
- * devices in the same millisecond sort by their random bytes. Ids created with
- * an explicit `msecs` are not part of the sequence.
+ * Ids created with an explicit `msecs` are not part of the sequence.
  *
  * @stability unstable
  * @category unsafe
@@ -348,6 +350,40 @@ export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId => 
   bytes[7] = entryIdCounter & 0xff
   return bytes as EntryId
 }
+
+// Observed ids further ahead of the local clock than this are logged.
+const maxClockSkewMillis = 24 * 60 * 60 * 1000
+
+/**
+ * Advances the local entry id clock past committed entry ids from another
+ * source, so the next local id sorts after all of them. Logs a warning when
+ * this moves the clock more than 24 hours ahead of the local clock.
+ *
+ * @internal
+ */
+export const observeEntryIds = (ids: Iterable<EntryId>): Effect.Effect<void> =>
+  Effect.suspend(() => {
+    let latest: EntryId | undefined
+    for (const id of ids) {
+      if (latest === undefined || EntryIdOrder(id, latest) === 1) latest = id
+    }
+    if (latest === undefined) return Effect.void
+    const millis = entryIdMillis(latest)
+    // The counter takes the place of `rand_a`, so continuing from the observed
+    // `rand_a` sorts the next local id after it.
+    const counter = ((latest[6] & 0x0f) << 8) | latest[7]
+    if (millis < lastEntryIdMillis || (millis === lastEntryIdMillis && counter <= entryIdCounter)) {
+      return Effect.void
+    }
+    const advanced = millis > lastEntryIdMillis
+    lastEntryIdMillis = millis
+    entryIdCounter = counter
+    const ahead = millis - DateTime.nowUnsafe().epochMilliseconds
+    if (!advanced || ahead <= maxClockSkewMillis) return Effect.void
+    return Effect.logWarning(
+      `Observed an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
+    ).pipe(Effect.annotateLogs({ service: "EventJournal", entryId: Uuid.stringify(latest) }))
+  })
 
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.
@@ -592,6 +628,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           uncommittedRemotes.push(remoteEntry)
         }
       }
+      yield* observeEntryIds(uncommittedRemotes.map((remoteEntry) => remoteEntry.entry.id))
 
       const compacted = options.compact
         ? yield* options.compact(uncommittedRemotes)
@@ -776,23 +813,44 @@ export const makeIndexedDb = (options?: {
 
     const pubsub = yield* PubSub.unbounded<Entry>()
 
-    const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
-      Effect.uninterruptibleMask((restore) => {
-        const committed = makeEntries(entries)
-        return restore(effect(committed)).pipe(
-          Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
-            const tx = db.transaction(["entries", "entrySequence"], "readwrite")
-            const store = tx.objectStore("entries")
-            const sequence = tx.objectStore("entrySequence")
-            for (const entry of committed) {
-              store.put(encodeEntryIdb(entry))
-              sequence.add(entry.id as IDBValidKey)
-            }
-            onTransactionDone(tx, "writeMany", resume, constVoid)
-          })),
-          Effect.tap(PubSub.publishAll(pubsub, committed))
-        )
+    // Other tabs share the database but not the entry id clock.
+    const latestEntryId = Effect.callback<ReadonlyArray<EntryId>, EventJournalError>((resume) => {
+      const tx = db.transaction("entries", "readonly")
+      const request = tx.objectStore("entries").openKeyCursor(null, "prev")
+      onTransactionDone(tx, "writeMany", resume, () => {
+        const key = request.result?.primaryKey as ArrayBuffer | ArrayBufferView | undefined
+        if (key === undefined) return []
+        return [
+          (ArrayBuffer.isView(key)
+            ? new Uint8Array(key.buffer, key.byteOffset, key.byteLength)
+            : new Uint8Array(key)) as EntryId
+        ]
       })
+      return Effect.sync(() => tx.abort())
+    })
+
+    const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
+      Effect.uninterruptibleMask((restore) =>
+        latestEntryId.pipe(
+          Effect.flatMap(observeEntryIds),
+          Effect.flatMap(() => {
+            const committed = makeEntries(entries)
+            return restore(effect(committed)).pipe(
+              Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
+                const tx = db.transaction(["entries", "entrySequence"], "readwrite")
+                const store = tx.objectStore("entries")
+                const sequence = tx.objectStore("entrySequence")
+                for (const entry of committed) {
+                  store.put(encodeEntryIdb(entry))
+                  sequence.add(entry.id as IDBValidKey)
+                }
+                onTransactionDone(tx, "writeMany", resume, constVoid)
+              })),
+              Effect.tap(PubSub.publishAll(pubsub, committed))
+            )
+          })
+        )
+      )
 
     return EventJournal.of({
       entries: idbReq("entries", () =>
@@ -843,6 +901,7 @@ export const makeIndexedDb = (options?: {
           onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
+        yield* observeEntryIds(uncommittedRemotes.map((remoteEntry) => remoteEntry.entry.id))
 
         const compacted = options.compact
           ? yield* options.compact(uncommittedRemotes)
