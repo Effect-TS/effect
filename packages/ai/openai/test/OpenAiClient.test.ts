@@ -988,6 +988,26 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
+    it.effect("maps an oversized SSE event to a non-retryable InvalidResponseError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponseStream({
+          model: "gpt-4o",
+          input: "test"
+        }).pipe(
+          Effect.andThen(([_, stream]) => Stream.runDrain(stream)),
+          Effect.flip
+        )
+
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
+        assert.isFalse(result.isRetryable)
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [],
+        // Exceed the default 10 MiB SSE limit without completing an event.
+        trailer: `data: ${"x".repeat(10 * 1024 * 1024 + 1)}`
+      }))))
+
     it.effect("maps HTTP error before stream starts", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
