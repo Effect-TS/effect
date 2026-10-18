@@ -60,7 +60,11 @@
  * @since 4.0.6
  */
 import * as Effect from "../Effect.ts"
+import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
+import * as SchemaGetter from "../SchemaGetter.ts"
+import * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaParser from "../SchemaParser.ts"
 import type { Entry } from "./EventJournal.ts"
 import type { StoreId } from "./EventLogMessage.ts"
 
@@ -162,8 +166,17 @@ export interface EventRow<
   readonly set: (row: Schema.Struct<Fields>["Type"]) => Payload<Fields, Key>
 
   /**
-   * Write some fields of an existing row. A patch on a missing row does
-   * nothing. To clear a value, use a nullable field and write `null`.
+   * Write some fields of an existing row.
+   *
+   * **Details**
+   *
+   * A patch on a missing row does nothing. To clear a value, use a nullable
+   * field and write `null`.
+   *
+   * An absent field is not written, so a field's decoding default never
+   * applies to a patch. Writing a value whose encoding omits the key, such as
+   * `Option.none()` for `Schema.OptionFromOptionalKey`, fails, because
+   * replicas could not tell it from a field that was not written.
    */
   readonly patch: (
     key: Schema.Schema.Type<Fields[Key]>,
@@ -219,7 +232,7 @@ export const make = <
   const keySchema = options.schema.fields[key]
   const patchFields: Record<string, Schema.Constraint> = {}
   for (const name of Object.keys(options.schema.fields)) {
-    if (name !== key) patchFields[name] = Schema.optionalKey(options.schema.fields[name])
+    if (name !== key) patchFields[name] = patchField(options.schema.fields[name])
   }
   const payload = Schema.Union([
     Schema.TaggedStruct("set", { row: options.schema }),
@@ -285,7 +298,7 @@ export const handler = <
   RPatch = never,
   RRemove = never
 >(
-  _row: EventRow<Tag, Fields, Key, Error>,
+  row: EventRow<Tag, Fields, Key, Error>,
   callbacks: {
     readonly set: (row: Schema.Struct<Fields>["Type"]) => Effect.Effect<unknown, Error["Type"], RSet>
     readonly patch: (
@@ -294,8 +307,7 @@ export const handler = <
     ) => Effect.Effect<unknown, Error["Type"], RPatch>
     readonly remove: (key: Schema.Schema.Type<Fields[Key]>) => Effect.Effect<unknown, Error["Type"], RRemove>
   }
-) =>
-(options: {
+): (options: {
   readonly storeId: StoreId
   readonly payload: Payload<Fields, Key>
   readonly entry: Entry
@@ -303,19 +315,78 @@ export const handler = <
     readonly entry: Entry
     readonly payload: Payload<Fields, Key>
   }>
-}): Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove> => {
-  const op = resolve(options.payload as Op, options.conflicts as ReadonlyArray<{ readonly payload: Op }>)
-  if (op === undefined) return Effect.void
-  switch (op._tag) {
-    case "set":
-      return Effect.asVoid(callbacks.set(op.row as any))
-    case "patch":
-      return Object.keys(op.fields).length === 0
-        ? Effect.void
-        : Effect.asVoid(callbacks.patch(op.key as any, op.fields as any))
-    case "remove":
-      return Effect.asVoid(callbacks.remove(op.key as any))
+}) => Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove> => {
+  const rowFields = Object.keys(row.schema.fields)
+  const patchFields = rowFields.filter((name) => name !== row.key)
+  // Replicas decode the entry, which drops keys outside the schema, so a local
+  // write must drop them too. Stored conflicts are already decoded.
+  const normalize = (op: Op): Op => {
+    switch (op._tag) {
+      case "set":
+        return { _tag: "set", row: pick(op.row, rowFields) }
+      case "patch":
+        return { _tag: "patch", key: op.key, fields: pick(op.fields, patchFields) }
+      case "remove":
+        return op
+    }
   }
+  return (options) => {
+    const op = resolve(
+      normalize(options.payload as Op),
+      options.conflicts as ReadonlyArray<{ readonly payload: Op }>
+    )
+    if (op === undefined) return Effect.void
+    switch (op._tag) {
+      case "set":
+        return Effect.asVoid(callbacks.set(op.row as any))
+      case "patch":
+        return Object.keys(op.fields).length === 0
+          ? Effect.void
+          : Effect.asVoid(callbacks.patch(op.key as any, op.fields as any))
+      case "remove":
+        return Effect.asVoid(callbacks.remove(op.key as any))
+    }
+  }
+}
+
+// An optional key for a patch. An absent key stays absent, so missing-key
+// behaviour of the row field, such as a decoding default, never applies.
+// A present value goes through the row field's own codec.
+const patchField = (field: Schema.Constraint): Schema.Constraint => {
+  const decode = SchemaParser.decodeUnknownEffect(field)
+  // Encoded inside a struct, to see whether the field's encoding drops the key.
+  const encode = SchemaParser.encodeUnknownEffect(Schema.Struct({ value: field }))
+  return Schema.optionalKey(Schema.toEncoded(field)).pipe(Schema.decodeTo(Schema.optionalKey(Schema.toType(field)), {
+    decode: SchemaGetter.transformOptionalEffect((input, options) =>
+      Option.isNone(input) ? Effect.succeedNone : Effect.asSome(decode(input.value, options))
+    ),
+    encode: SchemaGetter.transformOptionalEffect((input, options) =>
+      Option.isNone(input) ? Effect.succeedNone : Effect.flatMap(
+        encode({ value: input.value }, options),
+        (encoded) =>
+          Object.hasOwn(encoded, "value")
+            ? Effect.succeedSome(encoded.value)
+            // Replicas would read the missing key as "not written".
+            : Effect.fail(
+              new SchemaIssue.Forbidden(
+                { message: "A patch cannot write a value whose encoding omits the key" },
+                input.value
+              )
+            )
+      )
+    )
+  }))
+}
+
+const pick = (
+  object: Readonly<Record<string, unknown>>,
+  names: ReadonlyArray<string>
+): Readonly<Record<string, unknown>> => {
+  const out: Record<string, unknown> = {}
+  for (const name of names) {
+    if (Object.hasOwn(object, name)) out[name] = object[name]
+  }
+  return out
 }
 
 type Op =
