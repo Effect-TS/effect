@@ -336,6 +336,8 @@ const expandMove = (op: JsonPatchMoveOperation, document: Schema.Json): JsonPatc
     }
     value = (value as Record<string, unknown>)[token]
   }
+  // Moving a location onto itself leaves the document unchanged, once the source is known to exist
+  if (op.from === op.path) return []
   return [{ op: "remove", path: op.from }, { op: "add", path: op.path, value: value as Schema.Json }]
 }
 

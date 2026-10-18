@@ -6148,20 +6148,19 @@ export const BetaInputJsonContentBlockDelta = Schema.Struct({
   "type": Schema.Literal("input_json_delta").annotate({ "title": "Type", "default": "input_json_delta" })
 }).annotate({ "title": "InputJsonContentBlockDelta", "identifier": "BetaInputJsonContentBlockDelta" })
 export type BetaThinkingContentBlockDelta = {
-  readonly "estimated_tokens": number | null
+  readonly "estimated_tokens"?: number | null
   readonly "thinking": string
   readonly "type": "thinking_delta"
 }
 export const BetaThinkingContentBlockDelta = Schema.Struct({
-  "estimated_tokens": Schema.Union([
-    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
-    Schema.Null
-  ]).annotate({
-    "title": "Estimated Tokens",
-    "description":
-      "Per-frame increment of a coarse, running estimate of the tokens this thinking block has produced so far. Present whenever the `thinking-token-count-2026-05-13` beta is set; `null` unless `thinking.display` resolves to `\"omitted\"` and a count is due this frame. Sum the increments across `thinking_delta` frames on this block for a progress indicator. Each increment is a non-negative multiple of a fixed quantum and the cadence is rate-limited, so this is a deliberately lossy display hint, not a billable count; `usage.output_tokens` remains authoritative.",
-    "default": null
-  }),
+  "estimated_tokens": Schema.optionalKey(
+    Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null]).annotate({
+      "title": "Estimated Tokens",
+      "description":
+        "Per-frame increment of a coarse, running estimate of the tokens this thinking block has produced so far. Present whenever the `thinking-token-count-2026-05-13` beta is set; `null` unless `thinking.display` resolves to `\"omitted\"` and a count is due this frame. Sum the increments across `thinking_delta` frames on this block for a progress indicator. Each increment is a non-negative multiple of a fixed quantum and the cadence is rate-limited, so this is a deliberately lossy display hint, not a billable count; `usage.output_tokens` remains authoritative.",
+      "default": null
+    })
+  ),
   "thinking": Schema.String.annotate({
     "title": "Thinking",
     "description":
@@ -6180,16 +6179,18 @@ export const BetaSignatureContentBlockDelta = Schema.Struct({
 }).annotate({ "title": "SignatureContentBlockDelta", "identifier": "BetaSignatureContentBlockDelta" })
 export type BetaCompactionContentBlockDelta = {
   readonly "content": string | null
-  readonly "encrypted_content": string | null
+  readonly "encrypted_content"?: string | null
   readonly "type": "compaction_delta"
 }
 export const BetaCompactionContentBlockDelta = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Content" }),
-  "encrypted_content": Schema.Union([Schema.String, Schema.Null]).annotate({
-    "title": "Encrypted Content",
-    "description": "Opaque metadata from prior compaction, to be round-tripped verbatim",
-    "default": null
-  }),
+  "encrypted_content": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({
+      "title": "Encrypted Content",
+      "description": "Opaque metadata from prior compaction, to be round-tripped verbatim",
+      "default": null
+    })
+  ),
   "type": Schema.Literal("compaction_delta").annotate({ "title": "Type", "default": "compaction_delta" })
 }).annotate({ "title": "CompactionContentBlockDelta", "identifier": "BetaCompactionContentBlockDelta" })
 export type BetaContentBlockStopEvent = { readonly "index": number; readonly "type": "content_block_stop" }
@@ -8885,7 +8886,7 @@ export const CacheMissReason = Schema.Union([
 export type Container = {
   readonly "expires_at": string
   readonly "id": string
-  readonly "skills": ReadonlyArray<ContainerSkill> | null
+  readonly "skills"?: ReadonlyArray<ContainerSkill> | null
 }
 export const Container = Schema.Struct({
   "expires_at": Schema.String.annotate({
@@ -8894,11 +8895,13 @@ export const Container = Schema.Struct({
     "format": "date-time"
   }),
   "id": Schema.String.annotate({ "title": "Id", "description": "Identifier for the container used in this request" }),
-  "skills": Schema.Union([Schema.Array(ContainerSkill), Schema.Null]).annotate({
-    "title": "Skills",
-    "description": "Skills loaded in the container",
-    "default": null
-  })
+  "skills": Schema.optionalKey(
+    Schema.Union([Schema.Array(ContainerSkill), Schema.Null]).annotate({
+      "title": "Skills",
+      "description": "Skills loaded in the container",
+      "default": null
+    })
+  )
 }).annotate({
   "title": "Container",
   "description": "Information about the container used in the request (for the code execution tool)",
@@ -12712,7 +12715,7 @@ export const Diagnostics = Schema.Struct({
 })
 export type MessageDelta = {
   readonly "container": Container | null
-  readonly "stop_details": RefusalStopDetails | null
+  readonly "stop_details"?: RefusalStopDetails | null
   readonly "stop_reason": StopReason | null
   readonly "stop_sequence": string | null
 }
@@ -12722,11 +12725,13 @@ export const MessageDelta = Schema.Struct({
       "Information about the container used in this request.\n\nThis will be non-null if a container tool (e.g. code execution) was used.",
     "default": null
   }),
-  "stop_details": Schema.Union([RefusalStopDetails, Schema.Null]).annotate({
-    "description":
-      "Structured information about why model output stopped.\n\nThis is `null` when the `stop_reason` has no additional detail to report.",
-    "default": null
-  }),
+  "stop_details": Schema.optionalKey(
+    Schema.Union([RefusalStopDetails, Schema.Null]).annotate({
+      "description":
+        "Structured information about why model output stopped.\n\nThis is `null` when the `stop_reason` has no additional detail to report.",
+      "default": null
+    })
+  ),
   "stop_reason": Schema.Union([StopReason, Schema.Null]).annotate({ "title": "Stop Reason", "default": null }),
   "stop_sequence": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Stop Sequence", "default": null })
 }).annotate({ "title": "MessageDelta", "identifier": "MessageDelta" })
@@ -14987,66 +14992,76 @@ export const ContentBlockStartEvent = Schema.Struct({
   "type": Schema.Literal("content_block_start").annotate({ "title": "Type", "default": "content_block_start" })
 }).annotate({ "title": "ContentBlockStartEvent", "identifier": "ContentBlockStartEvent" })
 export type ModelInfo = {
-  readonly "capabilities": ModelCapabilities | null
+  readonly "capabilities"?: ModelCapabilities | null
   readonly "created_at": string
-  readonly "deprecated_at": string | null
+  readonly "deprecated_at"?: string | null
   readonly "display_name": string
   readonly "id": string
-  readonly "lifecycle": "active" | "deprecated" | "retired"
-  readonly "line": ModelLine | null
-  readonly "max_input_tokens": number | null
-  readonly "max_tokens": number | null
-  readonly "retires_at": string | null
+  readonly "lifecycle"?: "active" | "deprecated" | "retired"
+  readonly "line"?: ModelLine | null
+  readonly "max_input_tokens"?: number | null
+  readonly "max_tokens"?: number | null
+  readonly "retires_at"?: string | null
   readonly "type": "model"
 }
 export const ModelInfo = Schema.Struct({
-  "capabilities": Schema.Union([ModelCapabilities, Schema.Null]).annotate({
-    "description":
-      "Object mapping capability names to their support details. Keys are always present for all known capabilities."
-  }),
+  "capabilities": Schema.optionalKey(
+    Schema.Union([ModelCapabilities, Schema.Null]).annotate({
+      "description":
+        "Object mapping capability names to their support details. Keys are always present for all known capabilities."
+    })
+  ),
   "created_at": Schema.String.annotate({
     "title": "Created At",
     "description":
       "RFC 3339 datetime string representing the time at which the model was released. May be set to an epoch value if the release date is unknown.",
     "format": "date-time"
   }),
-  "deprecated_at": Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
-    "title": "Deprecated At",
-    "description":
-      "RFC 3339 datetime string representing the time of the model's most recent deprecation. Populated for `deprecated` and `retired` models; `null` while the model is `active`."
-  }),
+  "deprecated_at": Schema.optionalKey(
+    Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
+      "title": "Deprecated At",
+      "description":
+        "RFC 3339 datetime string representing the time of the model's most recent deprecation. Populated for `deprecated` and `retired` models; `null` while the model is `active`."
+    })
+  ),
   "display_name": Schema.String.annotate({
     "title": "Display Name",
     "description": "A human-readable name for the model."
   }),
   "id": Schema.String.annotate({ "title": "Id", "description": "Unique model identifier." }),
-  "lifecycle": Schema.Literals(["active", "deprecated", "retired"]).annotate({
-    "title": "Lifecycle",
-    "description":
-      "The model's current lifecycle stage.\n\n- `active`: The model is available for use, open to new adopters, and not scheduled for retirement.\n- `deprecated`: The model remains callable for organizations with existing access, but is headed for retirement and closed to new adopters.\n- `retired`: The model is no longer available for use; inference requests naming it fail. It remains in the catalogue as the historical record of its retirement.",
-    "default": "active"
-  }),
-  "line": Schema.Union([ModelLine, Schema.Null]).annotate({
-    "description":
-      "The model line this model belongs to, such as `opus` for both Claude Opus 4.5 and Claude Opus 4.6. More lines may be added. `null` when the model belongs to no line; do not infer a line from the `id`."
-  }),
-  "max_input_tokens": Schema.Union([
-    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
-    Schema.Null
-  ]).annotate({
-    "title": "Max Input Tokens",
-    "description": "Maximum input context window size in tokens for this model."
-  }),
-  "max_tokens": Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null])
-    .annotate({
+  "lifecycle": Schema.optionalKey(
+    Schema.Literals(["active", "deprecated", "retired"]).annotate({
+      "title": "Lifecycle",
+      "description":
+        "The model's current lifecycle stage.\n\n- `active`: The model is available for use, open to new adopters, and not scheduled for retirement.\n- `deprecated`: The model remains callable for organizations with existing access, but is headed for retirement and closed to new adopters.\n- `retired`: The model is no longer available for use; inference requests naming it fail. It remains in the catalogue as the historical record of its retirement.",
+      "default": "active"
+    })
+  ),
+  "line": Schema.optionalKey(
+    Schema.Union([ModelLine, Schema.Null]).annotate({
+      "description":
+        "The model line this model belongs to, such as `opus` for both Claude Opus 4.5 and Claude Opus 4.6. More lines may be added. `null` when the model belongs to no line; do not infer a line from the `id`."
+    })
+  ),
+  "max_input_tokens": Schema.optionalKey(
+    Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null]).annotate({
+      "title": "Max Input Tokens",
+      "description": "Maximum input context window size in tokens for this model."
+    })
+  ),
+  "max_tokens": Schema.optionalKey(
+    Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null]).annotate({
       "title": "Max Tokens",
       "description": "Maximum value for the `max_tokens` parameter when using this model."
-    }),
-  "retires_at": Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
-    "title": "Retires At",
-    "description":
-      "RFC 3339 datetime string representing the model's currently scheduled retirement date. The schedule can be revised until retirement occurs; `null` while the model is `active` or while no retirement is scheduled. A past date on a `deprecated` model means retirement is overdue, not that it has occurred: `lifecycle` is the retirement signal."
-  }),
+    })
+  ),
+  "retires_at": Schema.optionalKey(
+    Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
+      "title": "Retires At",
+      "description":
+        "RFC 3339 datetime string representing the model's currently scheduled retirement date. The schedule can be revised until retirement occurs; `null` while the model is `active` or while no retirement is scheduled. A past date on a `deprecated` model means retirement is overdue, not that it has occurred: `lifecycle` is the retirement signal."
+    })
+  ),
   "type": Schema.Literal("model").annotate({
     "title": "Type",
     "description": "Object type.\n\nFor Models, this is always `\"model\"`.",
@@ -15279,72 +15294,84 @@ export const BetaMessageDeltaEvent = Schema.Struct({
   })
 }).annotate({ "title": "MessageDeltaEvent", "identifier": "BetaMessageDeltaEvent" })
 export type BetaModelInfo = {
-  readonly "allowed_fallback_models": ReadonlyArray<string> | null
-  readonly "capabilities": BetaModelCapabilities | null
+  readonly "allowed_fallback_models"?: ReadonlyArray<string> | null
+  readonly "capabilities"?: BetaModelCapabilities | null
   readonly "created_at": string
-  readonly "deprecated_at": string | null
+  readonly "deprecated_at"?: string | null
   readonly "display_name": string
   readonly "id": string
-  readonly "lifecycle": "active" | "deprecated" | "retired"
-  readonly "line": BetaModelLine | null
-  readonly "max_input_tokens": number | null
-  readonly "max_tokens": number | null
-  readonly "retires_at": string | null
+  readonly "lifecycle"?: "active" | "deprecated" | "retired"
+  readonly "line"?: BetaModelLine | null
+  readonly "max_input_tokens"?: number | null
+  readonly "max_tokens"?: number | null
+  readonly "retires_at"?: string | null
   readonly "type": "model"
 }
 export const BetaModelInfo = Schema.Struct({
-  "allowed_fallback_models": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
-    "title": "Allowed Fallback Models",
-    "description":
-      "Model IDs this model accepts as `fallbacks[i].model` on the Messages API. An empty list means the `fallbacks` parameter is not supported for this model as primary."
-  }),
-  "capabilities": Schema.Union([BetaModelCapabilities, Schema.Null]).annotate({
-    "description":
-      "Object mapping capability names to their support details. Keys are always present for all known capabilities."
-  }),
+  "allowed_fallback_models": Schema.optionalKey(
+    Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
+      "title": "Allowed Fallback Models",
+      "description":
+        "Model IDs this model accepts as `fallbacks[i].model` on the Messages API. An empty list means the `fallbacks` parameter is not supported for this model as primary."
+    })
+  ),
+  "capabilities": Schema.optionalKey(
+    Schema.Union([BetaModelCapabilities, Schema.Null]).annotate({
+      "description":
+        "Object mapping capability names to their support details. Keys are always present for all known capabilities."
+    })
+  ),
   "created_at": Schema.String.annotate({
     "title": "Created At",
     "description":
       "RFC 3339 datetime string representing the time at which the model was released. May be set to an epoch value if the release date is unknown.",
     "format": "date-time"
   }),
-  "deprecated_at": Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
-    "title": "Deprecated At",
-    "description":
-      "RFC 3339 datetime string representing the time of the model's most recent deprecation. Populated for `deprecated` and `retired` models; `null` while the model is `active`."
-  }),
+  "deprecated_at": Schema.optionalKey(
+    Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
+      "title": "Deprecated At",
+      "description":
+        "RFC 3339 datetime string representing the time of the model's most recent deprecation. Populated for `deprecated` and `retired` models; `null` while the model is `active`."
+    })
+  ),
   "display_name": Schema.String.annotate({
     "title": "Display Name",
     "description": "A human-readable name for the model."
   }),
   "id": Schema.String.annotate({ "title": "Id", "description": "Unique model identifier." }),
-  "lifecycle": Schema.Literals(["active", "deprecated", "retired"]).annotate({
-    "title": "Lifecycle",
-    "description":
-      "The model's current lifecycle stage.\n\n- `active`: The model is available for use, open to new adopters, and not scheduled for retirement.\n- `deprecated`: The model remains callable for organizations with existing access, but is headed for retirement and closed to new adopters.\n- `retired`: The model is no longer available for use; inference requests naming it fail. It remains in the catalogue as the historical record of its retirement.",
-    "default": "active"
-  }),
-  "line": Schema.Union([BetaModelLine, Schema.Null]).annotate({
-    "description":
-      "The model line this model belongs to, such as `opus` for both Claude Opus 4.5 and Claude Opus 4.6. More lines may be added. `null` when the model belongs to no line; do not infer a line from the `id`."
-  }),
-  "max_input_tokens": Schema.Union([
-    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
-    Schema.Null
-  ]).annotate({
-    "title": "Max Input Tokens",
-    "description": "Maximum input context window size in tokens for this model."
-  }),
-  "max_tokens": Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null])
-    .annotate({
+  "lifecycle": Schema.optionalKey(
+    Schema.Literals(["active", "deprecated", "retired"]).annotate({
+      "title": "Lifecycle",
+      "description":
+        "The model's current lifecycle stage.\n\n- `active`: The model is available for use, open to new adopters, and not scheduled for retirement.\n- `deprecated`: The model remains callable for organizations with existing access, but is headed for retirement and closed to new adopters.\n- `retired`: The model is no longer available for use; inference requests naming it fail. It remains in the catalogue as the historical record of its retirement.",
+      "default": "active"
+    })
+  ),
+  "line": Schema.optionalKey(
+    Schema.Union([BetaModelLine, Schema.Null]).annotate({
+      "description":
+        "The model line this model belongs to, such as `opus` for both Claude Opus 4.5 and Claude Opus 4.6. More lines may be added. `null` when the model belongs to no line; do not infer a line from the `id`."
+    })
+  ),
+  "max_input_tokens": Schema.optionalKey(
+    Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null]).annotate({
+      "title": "Max Input Tokens",
+      "description": "Maximum input context window size in tokens for this model."
+    })
+  ),
+  "max_tokens": Schema.optionalKey(
+    Schema.Union([Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })), Schema.Null]).annotate({
       "title": "Max Tokens",
       "description": "Maximum value for the `max_tokens` parameter when using this model."
-    }),
-  "retires_at": Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
-    "title": "Retires At",
-    "description":
-      "RFC 3339 datetime string representing the model's currently scheduled retirement date. The schedule can be revised until retirement occurs; `null` while the model is `active` or while no retirement is scheduled. A past date on a `deprecated` model means retirement is overdue, not that it has occurred: `lifecycle` is the retirement signal."
-  }),
+    })
+  ),
+  "retires_at": Schema.optionalKey(
+    Schema.Union([Schema.String.annotate({ "format": "date-time" }), Schema.Null]).annotate({
+      "title": "Retires At",
+      "description":
+        "RFC 3339 datetime string representing the model's currently scheduled retirement date. The schedule can be revised until retirement occurs; `null` while the model is `active` or while no retirement is scheduled. A past date on a `deprecated` model means retirement is overdue, not that it has occurred: `lifecycle` is the retirement signal."
+    })
+  ),
   "type": Schema.Literal("model").annotate({
     "title": "Type",
     "description": "Object type.\n\nFor Models, this is always `\"model\"`.",
@@ -15719,7 +15746,7 @@ export const BetaRequestCompactionBlock = Schema.Struct({
 })
 export type BetaResponseCompactionBlock = {
   readonly "content": string | null
-  readonly "encrypted_content": string | null
+  readonly "encrypted_content"?: string | null
   readonly "signature"?: string | null
   readonly "tool_changes"?: ReadonlyArray<BetaResponseToolAdditionBlock | BetaResponseToolRemovalBlock> | null
   readonly "type": "compaction"
@@ -15729,11 +15756,13 @@ export const BetaResponseCompactionBlock = Schema.Struct({
     "title": "Content",
     "description": "Summary of compacted content, or null if compaction failed"
   }),
-  "encrypted_content": Schema.Union([Schema.String, Schema.Null]).annotate({
-    "title": "Encrypted Content",
-    "description": "Opaque metadata from prior compaction, to be round-tripped verbatim",
-    "default": null
-  }),
+  "encrypted_content": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({
+      "title": "Encrypted Content",
+      "description": "Opaque metadata from prior compaction, to be round-tripped verbatim",
+      "default": null
+    })
+  ),
   "signature": Schema.optionalKey(
     Schema.Union([Schema.String, Schema.Null]).annotate({
       "title": "Signature",
