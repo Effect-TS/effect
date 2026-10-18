@@ -342,6 +342,15 @@ export interface ContentPolicyErrorMetadata extends ProviderMetadata {}
 export interface InvalidRequestErrorMetadata extends ProviderMetadata {}
 
 /**
+ * Provider-specific metadata attached to `InvalidResponseError`.
+ *
+ * @stability unstable
+ * @category configuration
+ * @since 4.1.0
+ */
+export interface InvalidResponseErrorMetadata extends ProviderMetadata {}
+
+/**
  * Provider-specific metadata attached to `InternalProviderError`.
  *
  * @stability unstable
@@ -835,13 +844,63 @@ export class InternalProviderError extends Schema.Error<InternalProviderError>(
 }
 
 /**
- * Error indicating failure to parse or validate AI output or a provider response.
+ * Error indicating the provider response does not conform to the expected format.
  *
  * **Details**
  *
- * Invalid output errors are retryable by default since LLM outputs are
- * non-deterministic. Provider response decoding failures set `retryable` to
- * `false` because retrying does not resolve an incompatible response format.
+ * Invalid response errors are not retryable because retrying does not resolve an
+ * incompatible provider response format. Optional HTTP context can retain request
+ * and response details for diagnosis.
+ *
+ * @see {@link InvalidOutputError} for retryable model-generated output failures
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class InvalidResponseError extends Schema.Error<InvalidResponseError>(
+  "effect/ai/AiError/InvalidResponseError"
+)({
+  _tag: Schema.tag("InvalidResponseError"),
+  description: Schema.String,
+  metadata: providerMetadataWithDefaults<InvalidResponseErrorMetadata>(),
+  http: Schema.optional(HttpContext)
+}) {
+  /**
+   * Marks `InvalidResponseError` as a semantic AI error reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  /**
+   * Invalid response errors are not retryable because the response format is incompatible.
+   *
+   * @since 4.1.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+
+  /**
+   * Creates an InvalidResponseError from a provider response schema error.
+   *
+   * @since 4.1.0
+   */
+  static fromSchemaError(error: Schema.SchemaError): InvalidResponseError {
+    return new InvalidResponseError({ description: error.message })
+  }
+
+  override get message(): string {
+    return `Invalid response: ${this.description}`
+  }
+}
+
+/**
+ * Error indicating failure to parse or validate model-generated output.
+ *
+ * **Details**
+ *
+ * Invalid output errors are retryable since LLM outputs are non-deterministic.
  *
  * **Example** (Creating an invalid output error)
  *
@@ -864,7 +923,6 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
 )({
   _tag: Schema.tag("InvalidOutputError"),
   description: Schema.String,
-  retryable: Schema.optional(Schema.Boolean),
   metadata: providerMetadataWithDefaults<InvalidOutputErrorMetadata>(),
   usage: Schema.optional(UsageInfo)
 }) {
@@ -877,19 +935,17 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
   readonly [ReasonTypeId] = ReasonTypeId
 
   /**
-   * Returns whether the failure is retryable, defaulting to `true` for
-   * non-deterministic LLM output failures.
+   * Invalid output errors are retryable since LLM outputs are non-deterministic.
    *
    * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
-    return this.retryable ?? true
+    return true
   }
 
   /**
-   * Creates an InvalidOutputError from a Schema error, optionally overriding
-   * retryability for deterministic provider response decoding failures.
+   * Creates an InvalidOutputError from a Schema error.
    *
    * **Example** (Creating an invalid output error from a schema error)
    *
@@ -907,14 +963,8 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
    * @stability unstable
    * @since 4.0.0
    */
-  static fromSchemaError(
-    error: Schema.SchemaError,
-    options?: { readonly retryable?: boolean | undefined }
-  ): InvalidOutputError {
-    const description = error.message
-    return new InvalidOutputError(
-      options?.retryable === undefined ? { description } : { description, retryable: options.retryable }
-    )
+  static fromSchemaError(error: Schema.SchemaError): InvalidOutputError {
+    return new InvalidOutputError({ description: error.message })
   }
 
   override get message(): string {
@@ -1529,6 +1579,7 @@ export type AiErrorReason =
   | AuthenticationError
   | ContentPolicyError
   | InvalidRequestError
+  | InvalidResponseError
   | InternalProviderError
   | NetworkError
   | InvalidOutputError
@@ -1566,6 +1617,7 @@ export const AiErrorReason: Schema.Union<[
   typeof AuthenticationError,
   typeof ContentPolicyError,
   typeof InvalidRequestError,
+  typeof InvalidResponseError,
   typeof InternalProviderError,
   typeof NetworkError,
   typeof InvalidOutputError,
@@ -1585,6 +1637,7 @@ export const AiErrorReason: Schema.Union<[
   AuthenticationError,
   ContentPolicyError,
   InvalidRequestError,
+  InvalidResponseError,
   InternalProviderError,
   NetworkError,
   InvalidOutputError,

@@ -45,7 +45,7 @@ export const mapSchemaError = (error: Schema.SchemaError, method: string): AiErr
   AiError.make({
     module: "TypeSafeClient",
     method,
-    reason: AiError.InvalidOutputError.fromSchemaError(error, { retryable: false })
+    reason: AiError.InvalidResponseError.fromSchemaError(error)
   })
 
 export const mapHttpClientError = Effect.fnUntraced(

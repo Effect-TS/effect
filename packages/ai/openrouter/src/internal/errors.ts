@@ -50,7 +50,7 @@ export const mapSchemaError = dual<
   AiError.make({
     module: "OpenRouterClient",
     method,
-    reason: AiError.InvalidOutputError.fromSchemaError(error, { retryable: false })
+    reason: AiError.InvalidResponseError.fromSchemaError(error)
   }))
 
 /** @internal */
@@ -61,7 +61,7 @@ export const mapSseError = dual<
   AiError.make({
     module: "OpenRouterClient",
     method,
-    reason: new AiError.InvalidOutputError({ description: error.message, retryable: false })
+    reason: new AiError.InvalidResponseError({ description: error.message })
   }))
 
 /** @internal */
