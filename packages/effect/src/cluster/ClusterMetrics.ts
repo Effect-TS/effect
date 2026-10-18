@@ -133,22 +133,18 @@ export const shards = Metric.gauge("effect_cluster_shards", { bigint: true })
  * of distinct shards being released. A shard counts from the moment it is no
  * longer acquired until its entities and singletons have stopped and its lock
  * is released, including waits for lock storage to recover and release
- * retries. It is reported to the metric registry and attributes the sharding
- * layer was built with.
+ * retries.
  *
  * **Gotchas**
  *
- * Positive values are normal while shards move. Alert when the value stays
- * positive, not when it is merely nonzero. It does not reflect lock ownership,
- * and it does not exactly track whether reacquisition is blocked by a forced
- * release, which can finish its bookkeeping after this gauge returns to zero.
+ * Positive values are normal while shards move; alert only when the value
+ * stays positive. It does not reflect lock ownership, and reacquisition can
+ * stay blocked briefly after it returns to zero, while a forced release
+ * finishes its bookkeeping.
  *
  * Like the other runner gauges it assumes one runner per process: runners
  * sharing a registry without distinct metric attributes overwrite each other's
  * value.
- *
- * @see {@link shards} for shards acquired by the current runner
- * @see {@link shardReleaseDuration} for completed release durations
  *
  * @stability unstable
  * @category metrics

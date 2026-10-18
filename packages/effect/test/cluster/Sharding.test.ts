@@ -3598,6 +3598,11 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       yield* started.await
       yield* advanceUntil(() => storageState.refreshCalls.some((call) => call.shards.length > 0))
       const acquiresBeforeOutage = storageState.acquireCalls.length
+      const assertStillBlocked = () => {
+        assert.isFalse(sharding.hasShardId(shardId))
+        assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
+        assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      }
 
       storageState.blackholed = true
       yield* TestClock.adjust(201)
@@ -3606,10 +3611,8 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       storageState.blackholed = false
       // Storage recovers, but uninterruptible work must still prevent release.
       yield* TestClock.adjust(1000)
-      assert.isFalse(sharding.hasShardId(shardId))
+      assertStillBlocked()
       assert.isFalse(stopped.isOpen())
-      assert.strictEqual(storageState.releaseAllCalls.length, 0)
-      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
       const firstWarnings = warnings.slice()
       const blockedShards = ClusterMetrics.shards.valueUnsafe(Context.empty()).value
       const blockedReleasing = releasingGauge(registry)
@@ -3617,14 +3620,10 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       yield* entityGate.open
       yield* TestClock.adjust(firstWarnings[0].at + 29_999 - clock.currentTimeMillisUnsafe())
       const warningsBeforeRepeat = warnings.slice()
-      assert.isFalse(sharding.hasShardId(shardId))
-      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
-      assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      assertStillBlocked()
       yield* TestClock.adjust(1)
       const warningsAtRepeat = warnings.slice()
-      assert.isFalse(sharding.hasShardId(shardId))
-      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
-      assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      assertStillBlocked()
 
       yield* singletonGate.open
       yield* advanceUntil(() => sharding.hasShardId(shardId))
@@ -3781,7 +3780,9 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
         Effect.provideService(Metric.MetricRegistry, registry)
       )
       yield* advanceUntil(() => sharding.hasShardId(allShards[0]))
-      const before = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
+      const releaseDuration = () =>
+        ClusterMetrics.shardReleaseDuration.valueUnsafe(Context.make(Metric.MetricRegistry, registry))
+      const before = releaseDuration()
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* advanceUntil(() => storageState.releaseCalls.length > 0)
@@ -3791,7 +3792,7 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
 
       assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
-      assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
+      assert.strictEqual(releaseDuration().count, before.count)
       assert.strictEqual(retryingReleasing, 1n, "retries must not count a shard twice")
 
       // A new runner in the same registry must not report the abandoned release.
@@ -3815,7 +3816,7 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       )
       const gate = yield* makeGate
       yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
-      const initialReleasing = releasingGauge(registry)
+      assert.strictEqual(releasingGauge(registry), 0n, "initialization must publish zero")
       const started = Latch.makeUnsafe()
       const stopping = Latch.makeUnsafe()
       yield* sharding.registerSingleton(
@@ -3853,7 +3854,6 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
       assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [4])
-      assert.strictEqual(initialReleasing, 0n, "initialization must publish zero")
       assert.strictEqual(tearingDownReleasing, 2n, "each shard waiting for teardown must count once")
       assert.strictEqual(retryingReleasing, 2n, "retries must not count a shard twice")
       assert.strictEqual(releasingGauge(registry), 0n, "a completed handoff must publish zero")

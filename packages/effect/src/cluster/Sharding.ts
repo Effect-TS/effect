@@ -284,7 +284,7 @@ const make = Effect.gen(function*() {
   // layer was built with.
   const updateReleasingShardsGauge = () =>
     ClusterMetrics.shardsReleasing.updateUnsafe(BigInt(MutableHashSet.size(releasingShards)), services)
-  const updateShardsGauge = () => {
+  const updateShardGauges = () => {
     ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
     updateReleasingShardsGauge()
   }
@@ -485,33 +485,37 @@ const make = Effect.gen(function*() {
       Duration.fromInputUnsafe(config.shardLockExpiration),
       Duration.seconds(30)
     )
-    // Names the shards and the entity types and singletons still stopping
-    const warnForcedReleasePending = (releaseShardIds: ReadonlyArray<ShardId>) =>
-      Effect.suspend(() => {
-        const shardIds = releaseShardIds.filter((shardId) => MutableHashSet.has(releasingShards, shardId))
-        const entityTypes = Arr.empty<string>()
-        for (const [entityType, state] of entityManagers) {
-          if (shardIds.some((shardId) => state.manager.hasServersUnsafe(shardId))) entityTypes.push(entityType)
-        }
-        const singletonNames = new Set<string>()
-        for (const shardId of shardIds) {
-          for (const [address] of singletons.get(shardId) ?? []) {
-            if (FiberMap.hasUnsafe(singletonFibers, address)) singletonNames.add(address.name)
+    // Names the shards still blocking reacquisition and the entity types and
+    // singletons still stopping on them
+    const warnForcedReleasePending = Effect.suspend(() => {
+      const entityTypes = Arr.empty<string>()
+      for (const [entityType, state] of entityManagers) {
+        for (const shardId of forceReleasingShards) {
+          if (state.manager.hasServersUnsafe(shardId)) {
+            entityTypes.push(entityType)
+            break
           }
         }
-        MutableHashMap.forEach(stoppingSingletons, (_, address) => {
-          if (shardIds.some((shardId) => Equal.equals(shardId, address.shardId))) singletonNames.add(address.name)
-        })
-        return Effect.logWarning(
-          "Forced shard release is still pending; reacquisition is blocked until release completes"
-        ).pipe(Effect.annotateLogs({
-          module: "effect/cluster/Sharding",
-          runner: selfAddress,
-          shardIds: shardIds.map(String),
-          entityTypes,
-          singletonNames: [...singletonNames]
-        }))
+      }
+      const singletonNames = new Set<string>()
+      for (const shardId of forceReleasingShards) {
+        for (const [address] of singletons.get(shardId) ?? []) {
+          if (FiberMap.hasUnsafe(singletonFibers, address)) singletonNames.add(address.name)
+        }
+      }
+      MutableHashMap.forEach(stoppingSingletons, (_, address) => {
+        if (MutableHashSet.has(forceReleasingShards, address.shardId)) singletonNames.add(address.name)
       })
+      return Effect.logWarning(
+        "Forced shard release is still pending; reacquisition is blocked until release completes"
+      ).pipe(Effect.annotateLogs({
+        module: "effect/cluster/Sharding",
+        runner: selfAddress,
+        shardIds: Array.from(forceReleasingShards, String),
+        entityTypes,
+        singletonNames: [...singletonNames]
+      }))
+    })
     const releaseForcedShards = Effect.suspend(() => {
       if (forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) === 0) {
         return Effect.void
@@ -521,9 +525,8 @@ const make = Effect.gen(function*() {
       return Effect.gen(function*() {
         // Observe independently: a timeout around release cannot interrupt
         // uninterruptible work, and must not allow locks to be reacquired.
-        const monitor = yield* warnForcedReleasePending(shardIds).pipe(
-          Effect.andThen(Effect.sleep(forcedReleaseWarningInterval)),
-          Effect.forever,
+        const monitor = yield* warnForcedReleasePending.pipe(
+          Effect.repeat(Schedule.spaced(forcedReleaseWarningInterval)),
           Effect.delay(config.shardLockExpiration),
           Effect.interruptible,
           Effect.forkIn(releaseScope)
@@ -566,7 +569,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.remove(acquiredShards, shardId)
           MutableHashSet.add(releasingShards, shardId)
         }
-        updateShardsGauge()
+        updateShardGauges()
 
         if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
@@ -628,7 +631,7 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.add(acquiredShards, shardId)
         }
-        updateShardsGauge()
+        updateShardGauges()
         if (acquired.length > 0) {
           yield* notifyShardLockWaiters
           yield* storageReadLatch.open
@@ -660,7 +663,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
           MutableHashSet.add(forceReleasingShards, shardId)
         }
-        updateShardsGauge()
+        updateShardGauges()
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
@@ -703,7 +706,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
         }
       }
-      updateShardsGauge()
+      updateShardGauges()
       if (MutableHashSet.size(releasingShards) > 0) {
         yield* activeShardsLatch.open
       }
