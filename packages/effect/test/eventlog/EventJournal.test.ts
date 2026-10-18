@@ -321,6 +321,35 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(sourceMissing, Option.some(idStrings([local, future])))
     }))
 
+  it.effect("reports conflicts in id order after a local write following a future import", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const future = entry(281_474_976_710_655)
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
+        effect: () => Effect.void
+      })
+      const local = yield* journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      })
+      let conflicts: Array<string> = []
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: entry(1_000) })],
+        effect: (batch) =>
+          Effect.sync(() => {
+            conflicts = batch.flatMap((item) => idStrings(item.conflicts))
+          })
+      })
+
+      // The journal holds `[future, local]` in commit order here.
+      assert.deepStrictEqual(conflicts, idStrings([local, future]))
+    }))
+
   it.effect("relays an imported entry to another remote", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
