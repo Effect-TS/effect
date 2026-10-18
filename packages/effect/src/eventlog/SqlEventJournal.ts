@@ -324,7 +324,7 @@ export const make = (options?: {
     })
     const insertSources = (entries: ReadonlyArray<EventJournal.Entry>, remoteId: EventJournal.RemoteId) =>
       forEachChunk(entries, 2, (chunk) => {
-        const rows = chunk.map((entry) => ({ entry_id: entry.id, remote_id: remoteId }))
+        const rows = Arr.map(chunk, (entry) => ({ entry_id: entry.id, remote_id: remoteId }))
         return sql`INSERT INTO ${sourcesTableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING`
       })
     // Serialize writers so checkpoints cannot skip out-of-order commits.
@@ -335,7 +335,7 @@ export const make = (options?: {
     })
     const insertSequence = (entries: ReadonlyArray<EventJournal.Entry>) =>
       forEachChunk(entries, 1, (chunk) => {
-        const rows = chunk.map((entry) => ({ entry_id: entry.id }))
+        const rows = Arr.map(chunk, (entry) => ({ entry_id: entry.id }))
         return sql`INSERT INTO ${sequenceTableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING`
       })
 

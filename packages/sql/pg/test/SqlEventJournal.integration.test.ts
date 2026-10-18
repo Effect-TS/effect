@@ -2,6 +2,7 @@ import { PgClient } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Layer, Option, Redacted } from "effect"
 import * as SqlEventJournalSharedTest from "effect-test/eventlog/SqlEventJournalSharedTest"
+import * as Arr from "effect/Array"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
@@ -149,9 +150,9 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
         )`
       const remoteA = EventJournal.makeRemoteIdUnsafe()
       const remoteB = EventJournal.makeRemoteIdUnsafe()
-      const entries = [remoteEntry("pending").entry, remoteEntry("fromA").entry, remoteEntry("fromB").entry]
+      const entries = Arr.make(remoteEntry("pending").entry, remoteEntry("fromA").entry, remoteEntry("fromB").entry)
       yield* sql`INSERT INTO concurrent_open_entries ${
-        sql.insert(entries.map((entry) => ({
+        sql.insert(Arr.map(entries, (entry) => ({
           id: entry.id,
           event: entry.event,
           primary_key: entry.primaryKey,
