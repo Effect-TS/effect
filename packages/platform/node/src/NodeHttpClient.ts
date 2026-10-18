@@ -249,12 +249,10 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
       return Effect.succeed({ body: body.body as Uint8Array, headers })
     }
     case "FormData": {
-      // undici only encodes its own `FormData` class, not Node's global one
-      const encoded = encodeFormData(body.formData)
-      return Effect.succeed({
-        body: encoded.body,
-        headers: Headers.set(headers, "content-type", encoded.contentType)
-      })
+      return Effect.map(loadUndici, (undici) => ({
+        body: convertFormData(body.formData, undici),
+        headers: Headers.remove(headers, "content-type")
+      }))
     }
     case "Stream": {
       return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers }))
@@ -262,12 +260,16 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
   }
 }
 
-const encodeFormData = (formData: FormData) => {
-  const response = new globalThis.Response(formData)
-  return {
-    body: Readable.fromWeb(response.body! as any),
-    contentType: response.headers.get("content-type")!
+const convertFormData = (formData: FormData, undici: typeof Undici): Undici.FormData => {
+  const converted = new undici.FormData()
+  for (const [key, value] of formData) {
+    if (typeof value === "string") {
+      converted.append(key, value)
+    } else {
+      converted.append(key, value, value.name)
+    }
   }
+  return converted
 }
 
 function noopErrorHandler(_: any) {}
@@ -604,18 +606,20 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        const encoded = encodeFormData(body.formData)
-        nodeRequest.setHeader("content-type", encoded.contentType)
+        return Effect.flatMap(loadUndici, (undici) => {
+          const response = new undici.Response(convertFormData(body.formData, undici))
+          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
 
-        return Effect.tryPromise({
-          try: () => pipeline(encoded.body, nodeRequest),
-          catch: (cause) =>
-            new Error.HttpClientError({
-              reason: new Error.TransportError({
-                request,
-                cause
+          return Effect.tryPromise({
+            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
+            catch: (cause) =>
+              new Error.HttpClientError({
+                reason: new Error.TransportError({
+                  request,
+                  cause
+                })
               })
-            })
+          })
         })
       }
       case "Stream": {
