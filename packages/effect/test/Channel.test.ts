@@ -867,6 +867,16 @@ describe("Channel", () => {
           assert.isTrue(Exit.isSuccess(exit), name)
         }
       }))
+
+    it.effect("error mapping keeps defects and interrupts", () =>
+      Effect.gen(function*() {
+        const exit = yield* failWith(
+          Cause.makeFailReason(error),
+          Cause.makeInterruptReason(1),
+          Cause.makeDieReason(defect)
+        ).pipe(Channel.mapError(() => "mapped"), Channel.runDrain, Effect.exit)
+        assert.deepStrictEqual(reasonsOf(exit), [["Fail", "mapped"], ["Interrupt", 1], ["Die", defect]])
+      }))
   })
 
   describe("unwrapReason", () => {

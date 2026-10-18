@@ -4098,6 +4098,28 @@ describe("Effect", () => {
           assert.isTrue(Exit.isSuccess(exit), name)
         }
       }))
+
+    it.effect("error mapping keeps defects and interrupts", () =>
+      Effect.gen(function*() {
+        const cause = Cause.fromReasons([
+          Cause.makeFailReason(error),
+          Cause.makeInterruptReason(1),
+          Cause.makeDieReason(defect)
+        ])
+        const onFailure = () => "mapped"
+        const mappings: Record<string, (self: Effect.Effect<never, MixedError>) => Effect.Effect<unknown, unknown>> = {
+          mapError: (self) => Effect.mapError(self, onFailure),
+          mapErrorEager: (self) => Effect.mapErrorEager(self, onFailure),
+          mapBoth: (self) => Effect.mapBoth(self, { onFailure, onSuccess: (a) => a }),
+          mapBothEager: (self) => Effect.mapBothEager(self, { onFailure, onSuccess: (a) => a })
+        }
+        for (const [name, map] of Object.entries(mappings)) {
+          for (const self of [Effect.failCause(cause), Effect.suspend(() => Effect.failCause(cause))]) {
+            const exit = yield* Effect.exit(map(self))
+            assert.deepStrictEqual(reasonsOf(exit), [["Fail", "mapped"], ["Interrupt", 1], ["Die", defect]], name)
+          }
+        }
+      }))
   })
 
   describe("firstSuccessOf", () => {

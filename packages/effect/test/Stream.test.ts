@@ -1467,6 +1467,20 @@ describe("Stream", () => {
             assert.isTrue(Exit.isSuccess(exit), name)
           }
         }))
+
+      it.effect("error mapping keeps defects and interrupts", () =>
+        Effect.gen(function*() {
+          const self = failWith(Cause.makeFailReason(error), Cause.makeInterruptReason(1), Cause.makeDieReason(defect))
+          const onError = () => "mapped"
+          const mappings: Record<string, Stream.Stream<unknown, unknown>> = {
+            mapError: Stream.mapError(self, onError),
+            mapBoth: Stream.mapBoth(self, { onElement: (a) => a, onError })
+          }
+          for (const [name, mapped] of Object.entries(mappings)) {
+            const exit = yield* Effect.exit(Stream.runCollect(mapped))
+            assert.deepStrictEqual(reasonsOf(exit), [["Fail", "mapped"], ["Interrupt", 1], ["Die", defect]], name)
+          }
+        }))
     })
   })
 
