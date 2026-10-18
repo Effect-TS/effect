@@ -635,6 +635,18 @@ describe("PubSub", () => {
         assert.deepStrictEqual(yield* PubSub.takeAll(replay), [2, 3])
       }))
 
+    it.effect("takeUpTo keeps its limit when run again after taking replayed messages", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 2 })
+        yield* PubSub.publishAll(pubsub, [1, 2])
+        const sub = yield* PubSub.subscribe(pubsub)
+        const takeThree = PubSub.takeUpTo(sub, 3)
+        yield* PubSub.publish(pubsub, 3)
+        assert.deepStrictEqual(yield* takeThree, [1, 2, 3])
+        yield* PubSub.publishAll(pubsub, [4, 5, 6])
+        assert.deepStrictEqual(yield* takeThree, [4, 5, 6])
+      }))
+
     it.effect("dropping", () =>
       Effect.gen(function*() {
         const messages = [1, 2, 3, 4, 5]
