@@ -1181,7 +1181,7 @@ const callbackOptions: <A, E = never, R = never>(
       }, controller?.signal)
       if (yielded !== false) return yielded
       yielded = true
-      // V8 pretenures a function literal assigned to a property, and minifiers inline a local const back into one
+      // V8 pretenures closures assigned to a property; a method argument avoids that and survives minification
       fiber.yieldWith(() => {
         resumed = true
       })

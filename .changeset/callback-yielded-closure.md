@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Effect.callback` keeping state from completed suspensions, such as the value received by `Deferred.await`, `PubSub.take` or `SubscriptionRef.changes`, alive until the next full garbage collection.
+Fix `Effect.callback` retaining completed suspension state, such as values received by `Deferred.await` or `PubSub.take`, until the next full GC.
