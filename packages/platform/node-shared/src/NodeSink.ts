@@ -85,7 +85,8 @@ export const pullIntoWritable = <A, IE, E>(options: {
   readonly endOnDone?: boolean | undefined
   readonly encoding?: BufferEncoding | undefined
 }): Pull.Pull<never, IE | E, unknown> =>
-  Effect.suspend(() => {
+  Effect.withFiber((fiber) => {
+    const dispatcher = fiber.currentDispatcher
     const completion = Deferred.makeUnsafe<void>()
     const failure = Deferred.makeUnsafe<never, E>()
     const onError = (error: unknown) => Deferred.doneUnsafe(failure, Effect.failSync(() => options.onError(error)))
@@ -110,7 +111,7 @@ export const pullIntoWritable = <A, IE, E>(options: {
         return Effect.callback<void, E>((resume) => {
           let cancelled = false
           // Let Node finish auto-destruction before attempting another write.
-          const onFinish = () => queueMicrotask(loop)
+          const onFinish = () => dispatcher.scheduleTask(loop, 0)
           const loop = () => {
             options.writable.off("drain", loop)
             options.writable.off("finish", onFinish)
@@ -119,9 +120,16 @@ export const pullIntoWritable = <A, IE, E>(options: {
                 return
               }
               const success = options.writable.write(chunk[i++], options.encoding as any, (error) => {
-                // Let Node initiate auto-destruction before failure cleanup
-                // checks whether an error event is still pending.
-                if (error) queueMicrotask(() => onError(error))
+                if (!error) return
+                if (options.writable.closed) {
+                  // Closed streams can reject writes through the callback only;
+                  // there is no pending destruction to wait for.
+                  onError(error)
+                } else {
+                  // Let Node initiate auto-destruction before failure cleanup
+                  // checks whether an error event is still pending.
+                  dispatcher.scheduleTask(() => onError(error), 0)
+                }
               })
               if (!success) {
                 if (!cancelled) {
