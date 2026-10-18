@@ -1713,71 +1713,49 @@ describe("AnthropicLanguageModel", () => {
       options: { anthropic: { info: { type: "thinking", signature: "sig" } } }
     } as const
 
-    it.effect("puts a message breakpoint on the last of many parallel tool calls", () =>
-      Effect.gen(function*() {
-        const toolCalls = Array.from({ length: 12 }, (_, i) => ({
-          type: "tool-call" as const,
-          id: `toolu_${i}`,
-          name: "lookup",
-          params: { i }
-        }))
-        const content = yield* getAssistantContent([
-          { role: "user", content: "Look everything up" },
-          { role: "assistant", content: toolCalls, options: cached },
-          { role: "user", content: "Thanks" }
-        ])
+    const redactedThinking = {
+      type: "reasoning",
+      text: "",
+      options: { anthropic: { info: { type: "redacted_thinking", redactedData: "hidden" } } }
+    } as const
 
-        assert.strictEqual(content.length, 12)
-        assert.deepStrictEqual(content.at(-1).cache_control, ephemeral)
-        assert.isTrue(content.slice(0, -1).every((block) => block.cache_control === undefined))
-      }))
-
-    it.effect("puts a part breakpoint on that part's block", () =>
-      Effect.gen(function*() {
-        const content = yield* getAssistantContent([
-          { role: "user", content: "Question" },
-          {
-            role: "assistant",
-            content: [
-              { type: "text", text: "Answer", options: cached },
-              { type: "tool-call", id: "toolu_1", name: "lookup", params: {} }
-            ]
-          },
-          { role: "user", content: "Thanks" }
-        ])
-
-        assert.deepStrictEqual(content.map((block) => block.cache_control), [ephemeral, undefined])
-      }))
-
-    it.effect("prefers a part breakpoint over the message breakpoint on the last block", () =>
+    it.effect("places part and message breakpoints without overriding a part's TTL", () =>
       Effect.gen(function*() {
         const oneHour = { type: "ephemeral", ttl: "1h" } as const
         const content = yield* getAssistantContent([
           { role: "user", content: "Question" },
           {
             role: "assistant",
-            content: [{ type: "text", text: "Answer", options: { anthropic: { cacheControl: oneHour } } }],
+            content: [
+              { type: "text", text: "Answer", options: { anthropic: { cacheControl: oneHour } } },
+              { type: "tool-call", id: "toolu_1", name: "lookup", params: {} },
+              {
+                type: "tool-call",
+                id: "toolu_2",
+                name: "lookup",
+                params: {},
+                options: { anthropic: { cacheControl: oneHour } }
+              }
+            ],
+            options: cached
+          },
+          {
+            role: "assistant",
+            content: [{ type: "tool-call", id: "toolu_3", name: "lookup", params: {} }],
             options: cached
           },
           { role: "user", content: "Thanks" }
         ])
 
-        assert.deepStrictEqual(content.map((block) => block.cache_control), [oneHour])
-      }))
-
-    it.effect("moves a message breakpoint off a trailing thinking block", () =>
-      Effect.gen(function*() {
-        const content = yield* getAssistantContent([
-          { role: "user", content: "Question" },
-          { role: "assistant", content: [{ type: "text", text: "Answer" }, thinking], options: cached },
-          { role: "user", content: "Thanks" }
+        assert.deepStrictEqual(content, [
+          { type: "text", text: "Answer", cache_control: oneHour },
+          { type: "tool_use", id: "toolu_1", name: "lookup", input: {} },
+          { type: "tool_use", id: "toolu_2", name: "lookup", input: {}, cache_control: oneHour },
+          { type: "tool_use", id: "toolu_3", name: "lookup", input: {}, cache_control: ephemeral }
         ])
-
-        assert.deepStrictEqual(content.map((block) => block.type), ["text", "thinking"])
-        assert.deepStrictEqual(content.map((block) => block.cache_control), [ephemeral, undefined])
       }))
 
-    it.effect("keeps a message breakpoint when the last part sends no block", () =>
+    it.effect("places a message breakpoint before trailing thinking and skipped parts", () =>
       Effect.gen(function*() {
         const content = yield* getAssistantContent([
           { role: "user", content: "Question" },
@@ -1785,6 +1763,8 @@ describe("AnthropicLanguageModel", () => {
             role: "assistant",
             content: [
               { type: "text", text: "Answer" },
+              thinking,
+              redactedThinking,
               { type: "file", mediaType: "image/png", data: "aGVsbG8=" }
             ],
             options: cached
@@ -1792,24 +1772,41 @@ describe("AnthropicLanguageModel", () => {
           { role: "user", content: "Thanks" }
         ])
 
-        assert.deepStrictEqual(content.map((block) => block.cache_control), [ephemeral])
+        assert.deepStrictEqual(content, [
+          { type: "text", text: "Answer", cache_control: ephemeral },
+          { type: "thinking", thinking: "Thinking", signature: "sig" },
+          { type: "redacted_thinking", data: "hidden" }
+        ])
       }))
 
-    it.effect("drops a part breakpoint whose only block is a thinking block", () =>
+    it.effect("drops thinking-only breakpoints without marking other parts or messages", () =>
       Effect.gen(function*() {
         const content = yield* getAssistantContent([
           { role: "user", content: "Question" },
+          { role: "assistant", content: "Unmarked" },
           {
             role: "assistant",
-            content: [{ ...thinking, options: { anthropic: { ...thinking.options.anthropic, ...cached.anthropic } } }, {
-              type: "text",
-              text: "Answer"
-            }]
+            content: [
+              { type: "text", text: "Answer" },
+              { ...thinking, options: { anthropic: { ...thinking.options.anthropic, ...cached.anthropic } } },
+              {
+                ...redactedThinking,
+                options: { anthropic: { ...redactedThinking.options.anthropic, ...cached.anthropic } }
+              }
+            ]
           },
+          { role: "assistant", content: [thinking, redactedThinking], options: cached },
           { role: "user", content: "Thanks" }
         ])
 
-        assert.deepStrictEqual(content.map((block) => block.cache_control), [undefined, undefined])
+        assert.deepStrictEqual(content, [
+          { type: "text", text: "Unmarked" },
+          { type: "text", text: "Answer" },
+          { type: "thinking", thinking: "Thinking", signature: "sig" },
+          { type: "redacted_thinking", data: "hidden" },
+          { type: "thinking", thinking: "Thinking", signature: "sig" },
+          { type: "redacted_thinking", data: "hidden" }
+        ])
       }))
   })
 
