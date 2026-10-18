@@ -61,6 +61,7 @@ import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import type * as Tls from "node:tls"
 import { http } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
@@ -318,6 +319,17 @@ export const makeUpgradeHandler = <
   })
 }
 
+const absoluteTarget = (url: string): URL | undefined => {
+  if (!/^https?:\/\//i.test(url)) {
+    return undefined
+  }
+  try {
+    return new URL(url)
+  } catch {
+    return undefined
+  }
+}
+
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
@@ -330,7 +342,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     source: Http.IncomingMessage,
     response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
-    url = source.url!,
+    url?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>
   ) {
@@ -344,6 +356,17 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     this[Request.TypeId] = Request.TypeId
     this.response = response
     this.upgradeEffect = upgradeEffect
+    if (url === undefined) {
+      const target = absoluteTarget(source.url!)
+      if (target === undefined) {
+        url = source.url!
+      } else {
+        // RFC 9112 §3.2.2: the request-target authority takes precedence over Host.
+        url = target.pathname + target.search
+        const headers: Http.IncomingHttpHeaders = { ...source.headers, host: target.host }
+        headersOverride = headers as Headers.Headers
+      }
+    }
     this.url = url
     this.headersOverride = headersOverride
   }
@@ -378,7 +401,13 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   get originalUrl(): string {
-    return this.source.url!
+    const url = this.source.url!
+    const host = this.source.headers.host
+    if (url[0] !== "/" || host === undefined) {
+      return url
+    }
+    const encrypted = (this.source.socket as Tls.TLSSocket | undefined)?.encrypted
+    return `${encrypted ? "https" : "http"}://${host}${url}`
   }
 
   private cachedMethod: HttpMethod | undefined
