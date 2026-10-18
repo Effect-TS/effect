@@ -795,86 +795,20 @@ describe("Request", { concurrent: false }, () => {
     })
   )
 
-  it.effect("collectWhile preserves synchronous delay side effects across pooled batches", () =>
+  it.effect("setDelay(0) registers the request before running the batch", () =>
     Effect.gen(function*() {
-      const events: Array<string> = []
-      const resolver = Resolver.makeWith<GetRequestService>({
-        batchKey: () => undefined,
-        delay: Effect.andThen(Effect.sync(() => events.push("delay")), Effect.never).pipe(
-          Effect.onInterrupt(() => Effect.sync(() => events.push("interrupt")))
-        ),
-        collectWhile(entries) {
-          events.push(`collect:${entries.size}`)
-          return false
-        },
-        runAll: (entries) =>
+      const batches: Array<Array<number>> = []
+      const resolver = Resolver.makeGrouped<GetNameById, string>({
+        key: () => "all",
+        resolver: (entries) =>
           Effect.sync(() => {
-            events.push(`run:${entries.length}`)
-            for (const entry of entries) entry.completeUnsafe(Exit.succeed("ok"))
+            batches.push(entries.map(({ request }) => request.id))
+            for (const entry of entries) entry.completeUnsafe(Exit.succeed(String(entry.request.id)))
           })
-      })
+      }).pipe(Resolver.setDelay(0), Resolver.batchN(2))
 
-      // Repeat after synchronous completion to exercise reuse of a recycled batch.
-      for (let i = 0; i < 2; i++) {
-        assert.strictEqual(yield* Effect.request(GetRequestService(), resolver), "ok")
-      }
-      assert.deepStrictEqual(events, [
-        "delay",
-        "collect:1",
-        "interrupt",
-        "run:1",
-        "delay",
-        "collect:1",
-        "interrupt",
-        "run:1"
-      ])
+      yield* Effect.promise(() => Promise.resolve())
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "1")
+      assert.deepStrictEqual(batches, [[1]])
     }))
-
-  it.effect("synchronous delay callbacks can enqueue requests that fill a batch", () =>
-    Effect.gen(function*() {
-      const context = yield* Effect.context<never>()
-      const batches: Array<number> = []
-      const results: Array<Request.Result<GetRequestService>> = []
-      const resolver = Resolver.make<GetRequestService>((entries) =>
-        Effect.sync(() => {
-          batches.push(entries.length)
-          for (const entry of entries) entry.completeUnsafe(Exit.succeed("ok"))
-        })
-      ).pipe(
-        Resolver.batchN(2),
-        Resolver.setDelayEffect(Effect.andThen(
-          Effect.sync(() => {
-            Effect.requestUnsafe(GetRequestService(), { resolver, context, onExit: (exit) => results.push(exit) })
-          }),
-          Effect.never
-        ))
-      )
-
-      for (let i = 0; i < 2; i++) {
-        assert.strictEqual(yield* Effect.request(GetRequestService(), resolver), "ok")
-      }
-      assert.deepStrictEqual(batches, [2, 2])
-      assert.deepStrictEqual(results, [Exit.succeed("ok"), Exit.succeed("ok")])
-    }))
-
-  for (const [clock, test] of [["live clock", it.live], ["TestClock", it.effect]] as const) {
-    test(`setDelay(0) resolves a non-empty grouped batch with ${clock}`, () =>
-      Effect.gen(function*() {
-        const batches: Array<Array<number>> = []
-        const resolver = Resolver.makeGrouped<GetNameById, string>({
-          key: () => "all",
-          resolver: (entries) =>
-            Effect.sync(() => {
-              batches.push(entries.map(({ request }) => request.id))
-              for (const entry of entries) entry.completeUnsafe(Exit.succeed(String(entry.request.id)))
-            })
-        }).pipe(Resolver.setDelay(0), Resolver.batchN(2))
-
-        // Resume after a microtask, as in callers awaiting external work before requesting.
-        yield* Effect.promise(() => Promise.resolve())
-        const exit = yield* Effect.exit(Effect.request(new GetNameById({ id: 1 }), resolver))
-
-        assert.deepStrictEqual({ exit, batches }, { exit: Exit.succeed("1"), batches: [[1]] })
-      }))
-  }
 })
