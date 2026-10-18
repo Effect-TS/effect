@@ -36,15 +36,13 @@ import * as Tracer from "effect/Tracer"
 import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
-import { createReadStream } from "node:fs"
-import * as Fs from "node:fs"
+import { createReadStream, readFileSync } from "node:fs"
 import * as Http from "node:http"
 import * as Http2 from "node:http2"
 import * as Https from "node:https"
 import * as Net from "node:net"
 import { Readable } from "node:stream"
 import * as Tls from "node:tls"
-import { fileURLToPath } from "node:url"
 import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
@@ -1543,8 +1541,8 @@ describe("HttpServer", () => {
   })
 })
 
-const tlsCert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
-const tlsKey = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
+const tlsCert = readFileSync(new URL("./fixtures/tls/cert.pem", import.meta.url))
+const tlsKey = readFileSync(new URL("./fixtures/tls/key.pem", import.meta.url))
 
 const serveUrlEcho = Effect.fnUntraced(function*(server: Http.Server) {
   yield* HttpRouter.add(

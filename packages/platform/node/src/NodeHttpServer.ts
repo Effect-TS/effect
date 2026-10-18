@@ -320,7 +320,7 @@ export const makeUpgradeHandler = <
 }
 
 const absoluteTarget = (url: string): URL | undefined => {
-  if (url[0] === "/" || !/^[a-z][a-z\d+.-]*:\/\//i.test(url)) {
+  if (!/^https?:\/\//i.test(url)) {
     return undefined
   }
   try {
@@ -358,7 +358,14 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {
       const target = absoluteTarget(source.url!)
-      url = target === undefined ? source.url! : (target.pathname || "/") + target.search
+      if (target === undefined) {
+        url = source.url!
+      } else {
+        // RFC 9112 §3.2.2: the request-target authority takes precedence over Host.
+        url = target.pathname + target.search
+        const headers: Http.IncomingHttpHeaders = { ...source.headers, host: target.host }
+        headersOverride = headers as Headers.Headers
+      }
     }
     this.url = url
     this.headersOverride = headersOverride
@@ -393,16 +400,14 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     )
   }
 
-  private cachedOriginalUrl: string | undefined
   get originalUrl(): string {
-    if (this.cachedOriginalUrl !== undefined) {
-      return this.cachedOriginalUrl
-    }
     const url = this.source.url!
     const host = this.source.headers.host
-    return this.cachedOriginalUrl = url[0] === "/" && host !== undefined
-      ? `${(this.source.socket as Tls.TLSSocket | null)?.encrypted ? "https" : "http"}://${host}${url}`
-      : url
+    if (url[0] !== "/" || host === undefined) {
+      return url
+    }
+    const encrypted = (this.source.socket as Tls.TLSSocket | undefined)?.encrypted
+    return `${encrypted ? "https" : "http"}://${host}${url}`
   }
 
   private cachedMethod: HttpMethod | undefined
@@ -411,14 +416,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get headers(): Headers.Headers {
-    if (this.headersOverride === undefined) {
-      const headers = this.source.headers
-      // RFC 9112 §3.2.2: the request-target authority takes precedence over Host.
-      const host = absoluteTarget(this.source.url!)?.host
-      this.headersOverride = (host === undefined || host === "" || headers.host === host
-        ? headers
-        : { ...headers, host }) as Headers.Headers
-    }
+    this.headersOverride ??= this.source.headers as Headers.Headers
     return this.headersOverride
   }
 
