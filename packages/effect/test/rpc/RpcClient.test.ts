@@ -236,14 +236,13 @@ describe("RpcClient", () => {
         const scope = yield* Scope.make()
         yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
         const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
-          onFromClient: ({ message }) =>
-            Effect.gen(function*() {
-              sent.push(message._tag)
-              if (message._tag !== "Request") return
-              yield* Deferred.succeed(sending, void 0)
-              if (failure === "interruption") return yield* Effect.never
-              return yield* Effect.fail("send failed")
-            })
+          onFromClient: Effect.fnUntraced(function*({ message }) {
+            sent.push(message._tag)
+            if (message._tag !== "Request") return
+            yield* Deferred.succeed(sending, void 0)
+            if (failure === "interruption") return yield* Effect.never
+            return yield* Effect.fail("send failed")
+          })
         }).pipe(
           Effect.provideService(Scope.Scope, scope)
         )
