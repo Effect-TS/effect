@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix replay-enabled `PubSub` and `SubscriptionRef` keeping values that left the replay buffer alive until the next full garbage collection.
+Fix unnecessary value retention in `PubSub` replay buffers and `SubscriptionRef`.
