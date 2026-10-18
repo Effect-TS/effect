@@ -1,6 +1,6 @@
 ---
 "effect": patch
-"@effect/platform-node": minor
+"@effect/platform-node": patch
 ---
 
 - Fix HTTPS detection in `HttpServerRequest.toURL` and tracing. An exact `http` or `https` in `x-forwarded-proto` takes precedence; otherwise, infer HTTPS from `originalUrl`. Paths starting with `//` preserve the request host.
