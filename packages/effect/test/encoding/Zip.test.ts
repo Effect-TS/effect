@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
-import { type Cause, Effect, Exit, FileSystem, Path, Queue, Stream } from "effect"
+import { Cause, Effect, Exit, FileSystem, Path, Queue, Stream } from "effect"
 import * as Zip from "effect/encoding/Zip"
 import { deflateRawSync } from "node:zlib"
 
@@ -17,7 +17,7 @@ const fixture = (name: string) =>
 
 const text = (bytes: Uint8Array) => textDecoder.decode(bytes)
 
-const encode = <E>(entries: ReadonlyArray<Zip.Entry<E>>) =>
+const encode = <E>(entries: ReadonlyArray<Zip.Entry<E> | Zip.ContentEntry>) =>
   Stream.fromIterable(entries).pipe(
     Stream.pipeThroughChannel(Zip.encode()),
     Stream.mkUint8Array
@@ -250,7 +250,7 @@ describe("Zip", () => {
 
     it.effect("fails on entries that cannot be written", () =>
       Effect.gen(function*() {
-        const invalid: Array<Zip.Entry> = [
+        const invalid: Array<Zip.Entry | Zip.ContentEntry> = [
           Zip.directory(""),
           Zip.file("/etc/passwd", "x"),
           // libarchive and Windows tools read backslashes as separators, and drive letters as roots
@@ -258,14 +258,15 @@ describe("Zip", () => {
           Zip.file("C:x", "x"),
           Zip.file("a\0b", "x"),
           Zip.file("dir/", "x"),
-          Zip.fileStream("f", Stream.make(textEncoder.encode("x")), { method: "Store" }),
+          // A type error for TypeScript callers, and a runtime error for the rest
+          Zip.fileStream("f", Stream.make(textEncoder.encode("x")), { method: "Store" } as Zip.FileStreamOptions),
           Zip.file("f", "x", { mode: 0o10000 }),
           Zip.file("f", "x", { mtime: new Date(Number.NaN) })
         ]
         for (const entry of invalid) assert.strictEqual(yield* failure(encode([entry])), "InvalidHeader")
       }))
 
-    it.effect("fails when the runtime cannot deflate", () =>
+    it.effect("dies when the runtime cannot deflate", () =>
       Effect.gen(function*() {
         yield* Effect.acquireRelease(
           Effect.sync(() => {
@@ -278,8 +279,10 @@ describe("Zip", () => {
           (original) => Effect.sync(() => (globalThis.CompressionStream = original))
         )
         const body = Stream.make(textEncoder.encode("a"))
-        assert.strictEqual(yield* failure(encode([Zip.file("a", "a")])), "Unsupported")
-        assert.strictEqual(yield* failure(encode([Zip.fileStream("a", body)])), "Unsupported")
+        const dies = <A>(effect: Effect.Effect<A, unknown>) =>
+          Effect.map(Effect.exit(effect), (exit) => Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.isTrue(yield* dies(encode([Zip.file("a", "a")])))
+        assert.isTrue(yield* dies(encode([Zip.fileStream("a", body)])))
       }))
 
     it.effect("fails on body errors and bodies that do not match their size", () =>
@@ -291,7 +294,7 @@ describe("Zip", () => {
           const failing = Stream.concat(body, Stream.fail("Boom"))
           assert.strictEqual(yield* failure(encode([Zip.fileStream("f", failing, { method, size: 4 })])), "Boom")
         }
-        assert.strictEqual(yield* failure(encode([{ ...Zip.directory("d"), body }])), "SizeMismatch")
+        assert.strictEqual(yield* failure(encode([{ header: Zip.directory("d").header, body }])), "SizeMismatch")
       }))
 
     it.effect("declares ZIP64 in the local header of streamed entries without a size", () =>

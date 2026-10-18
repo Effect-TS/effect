@@ -23,6 +23,7 @@ import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import { ByteQueue, InflateError, InflateMemory, Inflater, NeedInput } from "../internal/inflate.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import * as Scope from "../Scope.ts"
@@ -47,8 +48,7 @@ const ZipErrorTypeId = "~effect/encoding/Zip/ZipError"
  * - `SizeMismatch`: an entry body produced a byte count other than its declared
  *   `size`, or the data of an entry does not match the sizes in the archive.
  * - `Unsupported`: the archive uses a feature this module does not read, such
- *   as encryption or a compression method other than store and deflate, or
- *   the runtime cannot deflate an entry being encoded.
+ *   as encryption or a compression method other than store and deflate.
  * - `BodyConsumed`: an entry body was read after the decoder had moved past it.
  *
  * @stability unstable
@@ -131,6 +131,13 @@ export interface Header {
 /**
  * Zip entry: a header and a stream of the uncompressed body bytes.
  *
+ * **Details**
+ *
+ * `decode` returns these, and `fileStream` builds them. `encode` writes the
+ * sizes and CRC-32 of a streamed body in a data descriptor after the data.
+ *
+ * @see {@link ContentEntry} for entries whose content is held in memory
+ *
  * @stability unstable
  * @category models
  * @since 4.0.6
@@ -138,6 +145,30 @@ export interface Header {
 export interface Entry<E = never, R = never> {
   readonly header: Header
   readonly body: Stream.Stream<Uint8Array, E, R>
+  readonly content?: undefined
+}
+
+/**
+ * Zip entry whose uncompressed content is held in memory.
+ *
+ * **Details**
+ *
+ * `file` and `directory` build these. Because the content is known before the
+ * entry is written, `encode` puts its sizes and CRC-32 in the local header and
+ * writes no data descriptor, which every zip reader accepts. `content` and
+ * `body` exclude each other, so an entry whose body is replaced must drop
+ * `content`.
+ *
+ * @see {@link Entry} for entries whose content is streamed
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface ContentEntry {
+  readonly header: Header
+  readonly content: Uint8Array
+  readonly body?: undefined
 }
 
 /**
@@ -187,9 +218,12 @@ export interface FileOptions extends EntryOptions {
  * @category models
  * @since 4.0.6
  */
-export interface FileStreamOptions extends FileOptions {
-  readonly size?: number | undefined
-}
+export type FileStreamOptions =
+  & EntryOptions
+  & (
+    | { readonly method?: "Deflate" | undefined; readonly size?: number | undefined }
+    | { readonly method: "Store"; readonly size: number }
+  )
 
 const MIN_MTIME = Date.UTC(1980, 0, 1)
 
@@ -224,21 +258,10 @@ const makeHeader = (
  * @category constructors
  * @since 4.0.6
  */
-export const file = (path: string, content: string | Uint8Array, options?: FileOptions): Entry => {
+export const file = (path: string, content: string | Uint8Array, options?: FileOptions): ContentEntry => {
   const bytes = typeof content === "string" ? textEncoder.encode(content) : content
-  const header = makeHeader(path, "File", options?.method ?? "Deflate", options, bytes.length)
-  if (bytes.length === 0) return { header, body: Stream.empty }
-  const body = Stream.succeed(bytes)
-  inMemoryBodies.set(body, bytes)
-  return { header, body }
+  return { header: makeHeader(path, "File", options?.method ?? "Deflate", options, bytes.length), content: bytes }
 }
-
-// Keyed by body, so an entry whose body is replaced is streamed instead
-const inMemoryBodies = new WeakMap<Stream.Stream<Uint8Array, unknown, unknown>, Uint8Array>()
-
-// Directories and in-memory files have nothing to stream
-const inMemoryContent = (body: Stream.Stream<Uint8Array, unknown, unknown>): Uint8Array | undefined =>
-  body === Stream.empty ? emptyBody : inMemoryBodies.get(body)
 
 /**
  * Creates a file entry whose content is streamed from `body`.
@@ -293,10 +316,10 @@ export const fileStream = <E = never, R = never>(
  * @category constructors
  * @since 4.0.6
  */
-export const directory = (path: string, options?: EntryOptions): Entry => ({
+export const directory = (path: string, options?: EntryOptions): ContentEntry => ({
   // An empty path stays empty, so that `encode` rejects it
   header: makeHeader(path === "" || path.endsWith("/") ? path : `${path}/`, "Directory", "Store", options, 0),
-  body: Stream.empty
+  content: emptyBody
 })
 
 /**
@@ -429,9 +452,10 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * **Details**
  *
  * Each entry is written as soon as it arrives: a local header, the stored or
- * deflated body and, for streamed bodies, a data descriptor with the CRC-32
- * and sizes. The central directory is written once the input ends. Paths are
- * written as UTF-8, with the UTF-8 flag set when they are not ASCII. `mtime`
+ * deflated body and, for entries with a streamed `body`, a data descriptor
+ * with the CRC-32 and sizes. A `ContentEntry` has them in its local header.
+ * The central directory is written once the input ends. Paths are written as
+ * UTF-8, with the UTF-8 flag set when they are not ASCII. `mtime`
  * is written both as a DOS time in UTC, which keeps two-second resolution and
  * covers 1980 to 2107, and as an extended timestamp in whole seconds when it
  * falls between 1970 and 2038. ZIP64 fields are added when a size, an offset
@@ -446,8 +470,9 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * **Gotchas**
  *
- * - Deflated entries need `CompressionStream("deflate-raw")`, which older
- *   runtimes lack; there they fail with an `Unsupported` `ZipError`.
+ * - Deflated entries need `CompressionStream("deflate-raw")`. On a runtime
+ *   without it, encoding a deflated entry dies with the runtime's error, as
+ *   it does when the compressor fails: check for the API or use `Store`.
  * - Deflated bytes come from the runtime's `CompressionStream`, so they can
  *   differ between runtimes. Archives of stored entries are byte-identical
  *   everywhere.
@@ -491,7 +516,11 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * @category encoding
  * @since 4.0.6
  */
-export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = Entry>(): Channel.Channel<
+export const encode = <
+  IE = never,
+  Done = unknown,
+  In extends Entry<any, any> | ContentEntry = Entry | ContentEntry
+>(): Channel.Channel<
   Arr.NonEmptyReadonlyArray<Uint8Array>,
   ZipError | IE | (In extends Entry<infer E, any> ? E : never),
   Done,
@@ -506,7 +535,7 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   return Channel.fromTransform((upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<In>, IE, Done>, scope) =>
     Effect.sync(() => {
       const writer = new Writer()
-      let entries: ReadonlyArray<Entry<E, R>> = []
+      let entries: ReadonlyArray<Entry<E, R> | ContentEntry> = []
       let index = 0
       let done: { readonly value: Done } | undefined
       let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E | ZipError, void, R> | undefined
@@ -518,11 +547,10 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       const startDeflates = (from: number): void => {
         for (let i = from; i < Math.min(entries.length, from + DEFLATE_AHEAD); i++) {
           if (deflates[i] !== undefined) continue
-          const { body, header } = entries[i]
-          if (header.type !== "File" || header.method !== "Deflate") continue
-          const bytes = inMemoryContent(body)
-          if (bytes === undefined || (i > from && bytes.length > DEFLATE_AHEAD_SIZE)) continue
-          const deflate = deflateBytes(bytes)
+          const { content, header } = entries[i]
+          if (header.type !== "File" || header.method !== "Deflate" || content === undefined) continue
+          if (i > from && content.length > DEFLATE_AHEAD_SIZE) continue
+          const deflate = deflateBytes(content)
           // Failures surface when the entry is written; deflates left behind by
           // a failed encode finish on their own
           deflate.catch(() => {})
@@ -554,26 +582,24 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
             continue
           }
           if (index < entries.length) {
-            const { body: content, header } = entries[index++]
+            const entry = entries[index++]
+            const { header } = entry
             yield* write(() => validate(header))
             const compress = header.type === "File" && header.method === "Deflate"
-            const bytes = inMemoryContent(content)
-            if (bytes !== undefined) {
+            if (entry.content !== undefined) {
+              const bytes = entry.content
               let data = bytes
               if (compress) {
                 startDeflates(index - 1)
                 const deflate = deflates[index - 1]!
                 deflates[index - 1] = undefined
-                data = yield* Effect.tryPromise({
-                  try: () => deflate,
-                  catch: (cause) => isZipError(cause) ? cause : invalidData(`deflate failed: ${String(cause)}`)
-                })
+                data = yield* Effect.promise(() => deflate)
               }
               yield* write(() => writer.entry(header, bytes, data))
               continue
             }
             yield* write(() => writer.begin(header))
-            const raw = Stream.mapArray(content, (chunks) => {
+            const raw = Stream.mapArray(entry.body, (chunks) => {
               writer.update(chunks)
               return chunks
             })
@@ -600,12 +626,10 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   )
 }
 
-// Runtimes without `CompressionStream("deflate-raw")` throw when it is created
-const cannotDeflate = (cause: unknown) => unsupported(`the runtime cannot deflate: ${String(cause)}`)
-
-const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Uint8Array, E | ZipError, R> =>
+// Compressor failures, including a runtime without `deflate-raw`, are defects
+const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Uint8Array, E, R> =>
   Stream.unwrap(Effect.map(
-    Effect.try({ try: () => new CompressionStream("deflate-raw"), catch: cannotDeflate }),
+    Effect.sync(() => new CompressionStream("deflate-raw")),
     (compressor) => {
       const writer = compressor.writable.getWriter()
       const feed = Stream.runForEach(
@@ -619,10 +643,10 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
           })
         )
       )
-      const output = Stream.fromReadableStream({
+      const output = Stream.orDie(Stream.fromReadableStream({
         evaluate: () => compressor.readable,
-        onError: (cause) => invalidData(`deflate failed: ${String(cause)}`)
-      })
+        onError: (cause) => cause
+      }))
       return Stream.merge(output, Stream.fromEffectDrain(feed))
     }
   ))
@@ -638,12 +662,7 @@ const DEFLATE_AHEAD_SIZE = 64 * 1024
 
 // One promise per in-memory entry costs less than a stream
 const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
-  let compressor: CompressionStream
-  try {
-    compressor = new CompressionStream("deflate-raw")
-  } catch (cause) {
-    throw cannotDeflate(cause)
-  }
+  const compressor = new CompressionStream("deflate-raw")
   const writer = compressor.writable.getWriter()
   // A failed write errors the readable, so the reads report it
   if (bytes.length > 0) writer.write(compressible(bytes)).catch(() => {})
@@ -1150,107 +1169,6 @@ class Writer {
   }
 }
 
-class ByteQueue {
-  private chunks: Array<Uint8Array | undefined> = []
-  private head = 0
-  private offset = 0
-  length = 0
-  consumed = 0
-
-  push(chunk: Uint8Array): void {
-    if (chunk.length === 0) return
-    // Compacting once half the slots are free keeps copying linear
-    if (this.head >= 1024 && this.head * 2 >= this.chunks.length) {
-      this.chunks = this.chunks.slice(this.head)
-      this.head = 0
-    }
-    this.chunks.push(chunk)
-    this.length += chunk.length
-  }
-
-  // Frees the slot of the first chunk, so that `unread` can fill it
-  private advance(): void {
-    this.chunks[this.head++] = undefined
-    this.offset = 0
-    if (this.head === this.chunks.length) {
-      this.chunks = []
-      this.head = 0
-    }
-  }
-
-  takeSome(max: number): Uint8Array {
-    const chunk = this.chunks[this.head]!
-    const available = chunk.length - this.offset
-    if (max < available) {
-      const out = chunk.subarray(this.offset, this.offset + max)
-      this.offset += max
-      this.length -= max
-      this.consumed += max
-      return out
-    }
-    const out = this.offset === 0 ? chunk : chunk.subarray(this.offset)
-    this.length -= available
-    this.consumed += available
-    this.advance()
-    return out
-  }
-
-  // Takes exactly `n` bytes; the queue must hold at least `n`
-  take(n: number): Uint8Array {
-    if (n === 0) return emptyBody
-    const first = this.takeSome(n)
-    if (first.length === n) return first
-    const out = new Uint8Array(n)
-    out.set(first)
-    let filled = first.length
-    while (filled < n) {
-      const part = this.takeSome(n - filled)
-      out.set(part, filled)
-      filled += part.length
-    }
-    return out
-  }
-
-  // Copies the first `n` bytes without consuming them; the queue must hold at least `n`
-  peek(n: number): Uint8Array {
-    const out = new Uint8Array(n)
-    let filled = 0
-    let index = this.head
-    let offset = this.offset
-    while (filled < n) {
-      const chunk = this.chunks[index++]!
-      const part = chunk.subarray(offset, offset + n - filled)
-      out.set(part, filled)
-      filled += part.length
-      offset = 0
-    }
-    return out
-  }
-
-  skip(n: number): void {
-    while (n > 0) n -= this.takeSome(n).length
-  }
-
-  // Puts back the tail of the chunk that the last `takeSome` returned whole
-  unread(bytes: Uint8Array): void {
-    if (bytes.length === 0) return
-    if (this.head > 0) this.chunks[--this.head] = bytes
-    else this.chunks.unshift(bytes)
-    this.length += bytes.length
-    this.consumed -= bytes.length
-  }
-
-  clear(): void {
-    this.chunks = []
-    this.head = 0
-    this.offset = 0
-    this.length = 0
-  }
-}
-
-// Returned by the decoder when the buffered input is not enough to continue
-const NeedInput: unique symbol = Symbol("effect/encoding/Zip/NeedInput")
-
 interface Current {
   readonly header: Header
   readonly inflater: Inflater | undefined
@@ -1377,7 +1295,12 @@ class Decoder {
           return chunks as Arr.NonEmptyArray<Uint8Array>
         }
       } else {
-        const chunk = current.inflater.pull()
+        let chunk: Uint8Array | undefined | typeof NeedInput
+        try {
+          chunk = current.inflater.pull()
+        } catch (error) {
+          throw error instanceof InflateError ? invalidData(error.message) : error
+        }
         if (chunk === NeedInput) return this.needInput()
         if (chunk !== undefined) {
           current.actualSize += chunk.length
@@ -1572,489 +1495,3 @@ const DESCRIPTOR_PEEK = 28
 
 const isHeaderSignature = (signature: number): boolean =>
   signature === LOCAL || signature === CENTRAL || signature === END || signature === END64
-
-const OUTPUT_SIZE = 64 * 1024
-const WINDOW_SIZE = 32 * 1024
-const INFLATE_BUFFER_SIZE = WINDOW_SIZE + OUTPUT_SIZE
-
-// Extra bits of the length codes 257 to 285 and of the distance codes, and the
-// base values that they are added to (RFC 1951, section 3.2.5)
-const LENGTH_EXTRA = Array.from({ length: 29 }, (_, i) => i < 8 || i === 28 ? 0 : (i >> 2) - 1)
-const DISTANCE_EXTRA = Array.from({ length: 30 }, (_, i) => i < 2 ? 0 : (i >> 1) - 1)
-
-const bases = (first: number, extra: ReadonlyArray<number>): Array<number> => {
-  let base = first
-  return extra.map((bits) => {
-    const value = base
-    base += 1 << bits
-    return value
-  })
-}
-
-// The last length code is 258, not the 259 that its predecessor would give
-const LENGTH_BASE = [...bases(3, LENGTH_EXTRA.slice(0, 28)), 258]
-const DISTANCE_BASE = bases(1, DISTANCE_EXTRA)
-
-const CODE_LENGTH_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
-
-// `table` decodes codes of up to `bits` bits in one lookup on the next input
-// bits. Entries hold `symbol << 4 | length`, zero for unused codes, or LONG for
-// prefixes of longer codes, which `decodeLong` reads bit by bit from `counts`
-// and `symbols`. This caps a table at 2^PRIMARY_BITS entries.
-interface Huffman {
-  readonly table: Int32Array
-  bits: number
-  mask: number
-  readonly counts: Uint16Array
-  readonly symbols: Uint16Array
-}
-
-const PRIMARY_BITS = 10
-const LONG = -1
-
-const makeHuffman = (): Huffman => ({
-  table: new Int32Array(1 << PRIMARY_BITS),
-  bits: 0,
-  mask: 0,
-  counts: new Uint16Array(16),
-  symbols: new Uint16Array(288)
-})
-
-// Scratch space of `huffman`, which returns before any other call can use it
-const nextCodes = new Uint16Array(16)
-const offsets = new Uint16Array(16)
-
-// Builds the code of the symbols with lengths `lengths[start..end)` into the
-// arrays of `codes`. As in zlib, code length codes must be complete, and other
-// codes may only be incomplete when they have a single code of one bit or no
-// codes at all.
-const huffman = (codes: Huffman, lengths: Uint8Array, start: number, end: number, complete: boolean): Huffman => {
-  const { counts, symbols, table } = codes
-  counts.fill(0)
-  let maxLength = 0
-  for (let i = start; i < end; i++) {
-    counts[lengths[i]]++
-    if (lengths[i] > maxLength) maxLength = lengths[i]
-  }
-  counts[0] = 0
-  let left = 1
-  for (let length = 1; length <= 15; length++) {
-    left = (left << 1) - counts[length]
-    if (left < 0) throw invalidData("over-subscribed Huffman code")
-  }
-  if (left > 0 && maxLength > 0 && (complete || maxLength !== 1)) throw invalidData("incomplete Huffman code")
-  offsets[1] = 0
-  for (let length = 1, code = 0; length <= 15; length++) {
-    code = (code + counts[length - 1]) << 1
-    nextCodes[length] = code
-    if (length < 15) offsets[length + 1] = offsets[length] + counts[length]
-  }
-  const bits = Math.min(Math.max(maxLength, 1), PRIMARY_BITS)
-  const size = 1 << bits
-  // Unused codes read as zero
-  table.fill(0, 0, size)
-  for (let symbol = 0; symbol < end - start; symbol++) {
-    const length = lengths[start + symbol]
-    if (length === 0) continue
-    symbols[offsets[length]++] = symbol
-    let code = nextCodes[length]++
-    let reversed = 0
-    for (let i = 0; i < length; i++) {
-      reversed = (reversed << 1) | (code & 1)
-      code >>>= 1
-    }
-    if (length > bits) {
-      table[reversed & (size - 1)] = LONG
-      continue
-    }
-    const entry = (symbol << 4) | length
-    for (let i = reversed; i < size; i += 1 << length) table[i] = entry
-  }
-  codes.bits = bits
-  codes.mask = size - 1
-  return codes
-}
-
-// Returns the table entry of the code in the low `bitCount` bits of
-// `bitBuffer`, LONG when the code needs more bits, or zero when no code matches
-const decodeLong = (codes: Huffman, bitBuffer: number, bitCount: number): number => {
-  let code = 0
-  let first = 0
-  let index = 0
-  for (let length = 1; length <= 15; length++) {
-    if (length > bitCount) return LONG
-    code |= (bitBuffer >>> (length - 1)) & 1
-    const count = codes.counts[length]
-    if (code - count < first) return (codes.symbols[index + code - first] << 4) | length
-    index += count
-    first = (first + count) << 1
-    code <<= 1
-  }
-  return 0
-}
-
-const FIXED_LITERALS = (() => {
-  const lengths = new Uint8Array(288)
-  lengths.fill(8, 0, 144)
-  lengths.fill(9, 144, 256)
-  lengths.fill(7, 256, 280)
-  lengths.fill(8, 280, 288)
-  return huffman(makeHuffman(), lengths, 0, 288, false)
-})()
-
-// Distance codes 30 and 31 complete the fixed code but are invalid
-const FIXED_DISTANCES = huffman(makeHuffman(), new Uint8Array(32).fill(5), 0, 32, false)
-
-// Inflater arrays, reused across a decoder's entries as only one inflates at a time
-class InflateMemory {
-  // The window of earlier output, followed by up to OUTPUT_SIZE bytes of new output
-  readonly buffer = new Uint8Array(INFLATE_BUFFER_SIZE)
-  readonly codeLengths = new Uint8Array(19)
-  readonly lengthCodes = makeHuffman()
-  readonly lengths = new Uint8Array(286 + 30)
-  readonly literals = makeHuffman()
-  readonly distances = makeHuffman()
-}
-
-// Decompresses one deflate (RFC 1951) stream from the queue, reading no byte
-// past its end
-class Inflater {
-  private readonly memory: InflateMemory
-  // Start of the output not handed out yet
-  private start = WINDOW_SIZE
-  private readonly generator: Generator<number, number, void>
-
-  constructor(queue: ByteQueue, memory: InflateMemory) {
-    this.memory = memory
-    this.generator = this.run(queue)
-  }
-
-  // Returns decompressed bytes, `NeedInput`, or `undefined` once the stream has ended
-  pull(): Uint8Array | undefined | typeof NeedInput {
-    const start = this.start
-    // A finished generator returns `undefined` from later calls
-    const { done, value: end = start } = this.generator.next()
-    if (end === start) return done ? undefined : NeedInput
-    const { buffer } = this.memory
-    const out = buffer.slice(start, end)
-    if (end === INFLATE_BUFFER_SIZE) {
-      // Keep the last output as the window
-      buffer.copyWithin(0, OUTPUT_SIZE)
-      this.start = WINDOW_SIZE
-    } else {
-      this.start = end
-    }
-    return out
-  }
-
-  // Yields the output position when the queue is empty or the buffer is full,
-  // and returns it at the end. Output follows the window, so matches copy
-  // within the buffer. A new chunk is only taken when every held bit is
-  // needed, so held whole bytes always belong to the current chunk and can be
-  // given back before stored blocks and at the end.
-  private *run(queue: ByteQueue): Generator<number, number, void> {
-    const { buffer } = this.memory
-    let position = WINDOW_SIZE
-    // Matches cannot reach before this index: until the buffer is first full,
-    // the window holds no output of this stream
-    let floor = WINDOW_SIZE
-    // The chunk being read; what is left of it goes back to the queue at the end
-    let input: Uint8Array = emptyBody
-    let inputPosition = 0
-    let bitBuffer = 0
-    let bitCount = 0
-    let final = 0
-    do {
-      while (bitCount < 3) {
-        if (inputPosition === input.length) {
-          if (queue.length === 0) {
-            yield position
-            continue
-          }
-          input = queue.takeSome(queue.length)
-          inputPosition = 0
-        }
-        bitBuffer |= input[inputPosition++] << bitCount
-        bitCount += 8
-      }
-      final = bitBuffer & 1
-      const type = (bitBuffer >>> 1) & 3
-      bitBuffer >>>= 3
-      bitCount -= 3
-      if (type === 0) {
-        // Stored block: drop the bits up to the byte boundary, then read the
-        // length and its complement
-        inputPosition -= bitCount >>> 3
-        bitBuffer = 0
-        bitCount = 0
-        while (bitCount < 32) {
-          if (inputPosition === input.length) {
-            if (queue.length === 0) {
-              yield position
-              continue
-            }
-            input = queue.takeSome(queue.length)
-            inputPosition = 0
-          }
-          bitBuffer |= input[inputPosition++] << bitCount
-          bitCount += 8
-        }
-        const length = bitBuffer & 0xffff
-        if (length !== (~bitBuffer >>> 16)) throw invalidData("stored block length is corrupt")
-        bitBuffer = 0
-        bitCount = 0
-        let left = length
-        while (left > 0) {
-          if (inputPosition === input.length) {
-            if (queue.length === 0) {
-              yield position
-              continue
-            }
-            input = queue.takeSome(queue.length)
-            inputPosition = 0
-          }
-          const n = Math.min(left, input.length - inputPosition, INFLATE_BUFFER_SIZE - position)
-          buffer.set(input.subarray(inputPosition, inputPosition + n), position)
-          inputPosition += n
-          position += n
-          left -= n
-          if (position === INFLATE_BUFFER_SIZE) {
-            yield position
-            position = WINDOW_SIZE
-            floor = 0
-          }
-        }
-        continue
-      }
-      let literals: Huffman
-      let distances: Huffman
-      if (type === 1) {
-        literals = FIXED_LITERALS
-        distances = FIXED_DISTANCES
-      } else if (type === 2) {
-        while (bitCount < 14) {
-          if (inputPosition === input.length) {
-            if (queue.length === 0) {
-              yield position
-              continue
-            }
-            input = queue.takeSome(queue.length)
-            inputPosition = 0
-          }
-          bitBuffer |= input[inputPosition++] << bitCount
-          bitCount += 8
-        }
-        const literalCount = (bitBuffer & 31) + 257
-        const distanceCount = ((bitBuffer >>> 5) & 31) + 1
-        const codeLengthCount = ((bitBuffer >>> 10) & 15) + 4
-        bitBuffer >>>= 14
-        bitCount -= 14
-        if (literalCount > 286 || distanceCount > 30) throw invalidData("too many length or distance codes")
-        const codeLengths = this.memory.codeLengths.fill(0)
-        for (let i = 0; i < codeLengthCount; i++) {
-          while (bitCount < 3) {
-            if (inputPosition === input.length) {
-              if (queue.length === 0) {
-                yield position
-                continue
-              }
-              input = queue.takeSome(queue.length)
-              inputPosition = 0
-            }
-            bitBuffer |= input[inputPosition++] << bitCount
-            bitCount += 8
-          }
-          codeLengths[CODE_LENGTH_ORDER[i]] = bitBuffer & 7
-          bitBuffer >>>= 3
-          bitCount -= 3
-        }
-        const lengthCodes = huffman(this.memory.lengthCodes, codeLengths, 0, 19, true)
-        const lengths = this.memory.lengths
-        const count = literalCount + distanceCount
-        let i = 0
-        while (i < count) {
-          let entry = 0
-          while (true) {
-            entry = lengthCodes.table[bitBuffer & lengthCodes.mask]
-            const length = entry & 15
-            if (length !== 0 && length <= bitCount) break
-            if (bitCount >= lengthCodes.bits) throw invalidData("invalid code length code")
-            if (inputPosition === input.length) {
-              if (queue.length === 0) {
-                yield position
-                continue
-              }
-              input = queue.takeSome(queue.length)
-              inputPosition = 0
-            }
-            bitBuffer |= input[inputPosition++] << bitCount
-            bitCount += 8
-          }
-          bitBuffer >>>= entry & 15
-          bitCount -= entry & 15
-          const symbol = entry >>> 4
-          if (symbol < 16) {
-            lengths[i++] = symbol
-            continue
-          }
-          const extra = symbol === 16 ? 2 : symbol === 17 ? 3 : 7
-          while (bitCount < extra) {
-            if (inputPosition === input.length) {
-              if (queue.length === 0) {
-                yield position
-                continue
-              }
-              input = queue.takeSome(queue.length)
-              inputPosition = 0
-            }
-            bitBuffer |= input[inputPosition++] << bitCount
-            bitCount += 8
-          }
-          const repeat = (symbol === 18 ? 11 : 3) + (bitBuffer & ((1 << extra) - 1))
-          bitBuffer >>>= extra
-          bitCount -= extra
-          if (symbol === 16 && i === 0) throw invalidData("repeated code length without a previous length")
-          if (i + repeat > count) throw invalidData("too many code lengths")
-          lengths.fill(symbol === 16 ? lengths[i - 1] : 0, i, i + repeat)
-          i += repeat
-        }
-        if (lengths[256] === 0) throw invalidData("missing end-of-block code")
-        literals = huffman(this.memory.literals, lengths, 0, literalCount, false)
-        distances = huffman(this.memory.distances, lengths, literalCount, count, false)
-      } else {
-        throw invalidData("invalid block type")
-      }
-      const literalTable = literals.table
-      const literalMask = literals.mask
-      const literalBits = literals.bits
-      const distanceTable = distances.table
-      const distanceMask = distances.mask
-      const distanceBits = distances.bits
-      while (true) {
-        let entry = 0
-        while (true) {
-          entry = literalTable[bitBuffer & literalMask]
-          if (entry > 0 && (entry & 15) <= bitCount) break
-          if (bitCount >= literalBits) {
-            if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
-            if (entry !== LONG) break
-          }
-          // A longer code means fewer than 15 bits are held, so two bytes fit
-          if (inputPosition === input.length) {
-            if (queue.length === 0) {
-              yield position
-              continue
-            }
-            input = queue.takeSome(queue.length)
-            inputPosition = 0
-          } else if (inputPosition + 1 < input.length) {
-            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
-            inputPosition += 2
-            bitCount += 16
-            continue
-          }
-          bitBuffer |= input[inputPosition++] << bitCount
-          bitCount += 8
-        }
-        if (entry === 0) throw invalidData("invalid literal or length code")
-        bitBuffer >>>= entry & 15
-        bitCount -= entry & 15
-        const symbol = entry >>> 4
-        if (symbol < 256) {
-          buffer[position++] = symbol
-          if (position === INFLATE_BUFFER_SIZE) {
-            yield position
-            position = WINDOW_SIZE
-            floor = 0
-          }
-          continue
-        }
-        if (symbol === 256) break
-        const lengthIndex = symbol - 257
-        if (lengthIndex >= 29) throw invalidData("invalid length code")
-        let length = LENGTH_BASE[lengthIndex]
-        const lengthExtra = LENGTH_EXTRA[lengthIndex]
-        if (lengthExtra > 0) {
-          while (bitCount < lengthExtra) {
-            if (inputPosition === input.length) {
-              if (queue.length === 0) {
-                yield position
-                continue
-              }
-              input = queue.takeSome(queue.length)
-              inputPosition = 0
-            }
-            bitBuffer |= input[inputPosition++] << bitCount
-            bitCount += 8
-          }
-          length += bitBuffer & ((1 << lengthExtra) - 1)
-          bitBuffer >>>= lengthExtra
-          bitCount -= lengthExtra
-        }
-        while (true) {
-          entry = distanceTable[bitBuffer & distanceMask]
-          if (entry > 0 && (entry & 15) <= bitCount) break
-          if (bitCount >= distanceBits) {
-            if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
-            if (entry !== LONG) break
-          }
-          // A longer code means fewer than 15 bits are held, so two bytes fit
-          if (inputPosition === input.length) {
-            if (queue.length === 0) {
-              yield position
-              continue
-            }
-            input = queue.takeSome(queue.length)
-            inputPosition = 0
-          } else if (inputPosition + 1 < input.length) {
-            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
-            inputPosition += 2
-            bitCount += 16
-            continue
-          }
-          bitBuffer |= input[inputPosition++] << bitCount
-          bitCount += 8
-        }
-        if (entry === 0) throw invalidData("invalid distance code")
-        bitBuffer >>>= entry & 15
-        bitCount -= entry & 15
-        const distanceIndex = entry >>> 4
-        if (distanceIndex >= 30) throw invalidData("invalid distance code")
-        let distance = DISTANCE_BASE[distanceIndex]
-        const distanceExtra = DISTANCE_EXTRA[distanceIndex]
-        if (distanceExtra > 0) {
-          while (bitCount < distanceExtra) {
-            if (inputPosition === input.length) {
-              if (queue.length === 0) {
-                yield position
-                continue
-              }
-              input = queue.takeSome(queue.length)
-              inputPosition = 0
-            }
-            bitBuffer |= input[inputPosition++] << bitCount
-            bitCount += 8
-          }
-          distance += bitBuffer & ((1 << distanceExtra) - 1)
-          bitBuffer >>>= distanceExtra
-          bitCount -= distanceExtra
-        }
-        if (distance > position - floor) throw invalidData("distance is beyond the start of the data")
-        while (length > 0) {
-          const end = Math.min(position + length, INFLATE_BUFFER_SIZE)
-          length -= end - position
-          // One byte at a time, as a match can repeat the bytes it writes
-          let from = position - distance
-          while (position < end) buffer[position++] = buffer[from++]
-          if (position === INFLATE_BUFFER_SIZE) {
-            yield position
-            position = WINDOW_SIZE
-            floor = 0
-          }
-        }
-      }
-    } while (final === 0)
-    queue.unread(input.subarray(inputPosition - (bitCount >>> 3)))
-    return position
-  }
-}

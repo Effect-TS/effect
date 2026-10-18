@@ -6,7 +6,7 @@ describe("Zip", () => {
   it("encode infers body errors and services from a union of entries", () => {
     const entries = Stream.make(
       Zip.fileStream("a", Stream.fail("A") as Stream.Stream<Uint8Array, "A", "ServiceA">),
-      Zip.fileStream("b", Stream.fail("B") as Stream.Stream<Uint8Array, "B", "ServiceB">, { method: "Store" }),
+      Zip.fileStream("b", Stream.fail("B") as Stream.Stream<Uint8Array, "B", "ServiceB">, { method: "Store", size: 1 }),
       Zip.file("c", "c")
     )
 
