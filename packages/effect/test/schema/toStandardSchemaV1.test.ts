@@ -285,26 +285,19 @@ describe("toStandardSchemaV1", () => {
       )
     })
 
-    it("preserves annotated filter paths in both formatters", () => {
-      const schema = Schema.Record(Schema.String, Schema.Number).check(
+    it("preserves annotated filter paths, ancestor paths, and sibling messages", () => {
+      const record = Schema.Record(Schema.String, Schema.Number).check(
         Schema.isPropertyNames(Schema.String.check(Schema.isMaxLength(2)), { message: "Custom message" })
       )
       expectFormattedFailure(
-        schema,
+        record,
         { abc: 1 },
         [{ message: "Custom message", path: ["abc"] }],
         `Custom message
   at ["abc"]`
       )
-    })
-
-    it("accumulates ancestor paths without overriding sibling messages", () => {
       const schema = Schema.Struct({
-        records: Schema.Array(
-          Schema.Record(Schema.String, Schema.Number).check(
-            Schema.isPropertyNames(Schema.String.check(Schema.isMaxLength(2)), { message: "Custom message" })
-          )
-        ),
+        records: Schema.Array(record),
         other: Schema.String
       })
       expectFormattedFailure(
@@ -321,46 +314,30 @@ Expected string
       )
     })
 
-    it("does not apply a struct message to multiple filter failures", () => {
+    it.each([
+      { annotations: undefined, messages: ["Invalid a", "Invalid b"] },
+      { annotations: { message: "Custom message" }, messages: ["Custom message", "Custom message"] }
+    ])("formats grouped filter failures with annotations $annotations", ({ annotations, messages: [a, b] }) => {
       const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
         .annotate({ message: "Struct message" })
-        .check(Schema.makeFilter(() => [
-          { path: ["a"], issue: "Invalid a" },
-          { path: ["b"], issue: "Invalid b" }
-        ]))
+        .check(Schema.makeFilter(
+          () => [
+            { path: ["a"], issue: "Invalid a" },
+            { path: ["b"], issue: "Invalid b" }
+          ],
+          annotations
+        ))
       expectFormattedFailure(schema, null, [{ message: "Struct message", path: [] }], "Struct message")
       expectFormattedFailure(
         schema,
         { a: "a", b: "b" },
         [
-          { message: "Invalid a", path: ["a"] },
-          { message: "Invalid b", path: ["b"] }
+          { message: a, path: ["a"] },
+          { message: b, path: ["b"] }
         ],
-        `Invalid a
+        `${a}
   at ["a"]
-Invalid b
-  at ["b"]`
-      )
-    })
-
-    it("applies a filter message at every reported path", () => {
-      const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).check(Schema.makeFilter(
-        () => [
-          { path: ["a"], issue: "Invalid a" },
-          { path: ["b"], issue: "Invalid b" }
-        ],
-        { message: "Custom message" }
-      ))
-      expectFormattedFailure(
-        schema,
-        { a: "a", b: "b" },
-        [
-          { message: "Custom message", path: ["a"] },
-          { message: "Custom message", path: ["b"] }
-        ],
-        `Custom message
-  at ["a"]
-Custom message
+${b}
   at ["b"]`
       )
     })
