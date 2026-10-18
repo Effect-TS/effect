@@ -5,6 +5,8 @@ import * as InternalRecord from "effect/internal/record"
 import assert from "node:assert/strict"
 import { describe, it } from "vitest"
 
+const isDeno = "Deno" in globalThis
+
 describe("Data", () => {
   describe("Class", () => {
     class Person extends Data.Class<{ readonly name: string; readonly age: number }> {}
@@ -428,42 +430,49 @@ describe("assignProperties fast path", () => {
       assert.deepStrictEqual(current.calls, ["gopd:__proto__", ...old.calls])
     })
 
-    it("KNOWN LIMITATION: a Proxy whose getOwnPropertyDescriptor(\"__proto__\") trap answers inconsistently across the two calls above can still pollute self's prototype", () => {
-      // Deliberate gap: no ordinary source (every real call site here) can answer the guard's
-      // check and Object.assign's own check differently. Only an adversarial Proxy can. Pinned
-      // so a future change can't silently widen it; see record.ts and the PR for why it stands.
-      let gopdCalls = 0
-      const target = { a: 1 }
-      const flakyProxy = new Proxy(target, {
-        ownKeys() {
-          return ["a", "__proto__"]
-        },
-        getOwnPropertyDescriptor(t, k) {
-          if (k === "__proto__") {
-            gopdCalls++
-            // first call (the fast path's own guard): report "no own __proto__"
-            // every later call (Object.assign's internal re-derivation): report "yes, enumerable"
-            return gopdCalls === 1
-              ? undefined
-              : { value: { polluted: true }, enumerable: true, writable: true, configurable: true }
+    // Deno hardens Object.prototype against the legacy "__proto__" accessor (an own "__proto__"
+    // write stays a plain data property instead of reassigning [[Prototype]]), so this adversarial
+    // case has nothing to pollute there. Node and Bun keep the standard accessor.
+    it.skipIf(isDeno)(
+      "KNOWN LIMITATION: a Proxy whose getOwnPropertyDescriptor(\"__proto__\") trap answers inconsistently across the two calls above can still pollute self's prototype",
+      () => {
+        // Deliberate gap: no ordinary source (every real call site here) can answer the guard's
+        // check and Object.assign's own check differently. Only an adversarial Proxy can. Pinned
+        // so a future change can't silently widen it; see record.ts and the PR for why it stands.
+        let gopdCalls = 0
+        const target = { a: 1 }
+        const flakyProxy = new Proxy(target, {
+          ownKeys() {
+            return ["a", "__proto__"]
+          },
+          getOwnPropertyDescriptor(t, k) {
+            if (k === "__proto__") {
+              gopdCalls++
+              // first call (the fast path's own guard): report "no own __proto__"
+              // every later call (Object.assign's internal re-derivation): report "yes, enumerable"
+              return gopdCalls === 1
+                ? undefined
+                : { value: { polluted: true }, enumerable: true, writable: true, configurable: true }
+            }
+            return Reflect.getOwnPropertyDescriptor(t, k)
+          },
+          get(t, k, r) {
+            if (k === "__proto__") return { polluted: true }
+            return Reflect.get(t, k, r)
           }
-          return Reflect.getOwnPropertyDescriptor(t, k)
-        },
-        get(t, k, r) {
-          if (k === "__proto__") return { polluted: true }
-          return Reflect.get(t, k, r)
-        }
-      })
+        })
 
-      class Plain {}
-      const self = new Plain()
-      InternalRecord.assignProperties(self, flakyProxy)
+        // oxlint-disable-next-line no-extraneous-class
+        class Plain {}
+        const self = new Plain()
+        InternalRecord.assignProperties(self, flakyProxy)
 
-      // documents the current (undesirable) outcome: self's actual prototype was replaced by the
-      // value the flaky proxy reported on its second (and only its second) answer about "__proto__"
-      assert.notStrictEqual(Object.getPrototypeOf(self), Plain.prototype)
-      assert.deepStrictEqual(Object.getPrototypeOf(self), { polluted: true })
-    })
+        // documents the current (undesirable) outcome: self's actual prototype was replaced by the
+        // value the flaky proxy reported on its second (and only its second) answer about "__proto__"
+        assert.notStrictEqual(Object.getPrototypeOf(self), Plain.prototype)
+        assert.deepStrictEqual(Object.getPrototypeOf(self), { polluted: true })
+      }
+    )
   })
 
   describe("Data.TaggedError non-enumerable plainArgs symbol", () => {
@@ -491,6 +500,7 @@ describe("assignProperties fast path", () => {
     type SourceCase = { readonly name: string; readonly make: () => object }
     type TargetCase = { readonly name: string; readonly make: () => object }
 
+    // oxlint-disable-next-line no-extraneous-class
     class PlainTarget {}
 
     class SetterTarget {
@@ -503,6 +513,7 @@ describe("assignProperties fast path", () => {
       }
     }
 
+    // oxlint-disable-next-line no-extraneous-class
     class ReadOnlyBase {}
     Object.defineProperty(ReadOnlyBase.prototype, "ro", {
       value: "original",
