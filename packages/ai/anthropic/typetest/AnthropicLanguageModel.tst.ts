@@ -11,4 +11,12 @@ describe("AnthropicLanguageModel", () => {
       expect(AnthropicLanguageModel.model).type.toBeCallableWith("not-a-real-model")
     })
   })
+
+  describe("Config", () => {
+    it("accepts the adaptive thinking display setting", () => {
+      expect(AnthropicLanguageModel.model).type.toBeCallableWith("claude-opus-4-6", {
+        thinking: { type: "adaptive", display: "omitted" }
+      })
+    })
+  })
 })
