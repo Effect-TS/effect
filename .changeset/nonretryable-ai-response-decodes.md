@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 "@effect/ai-anthropic": patch
 "@effect/ai-cloudflare": patch
 "@effect/ai-openai": patch
