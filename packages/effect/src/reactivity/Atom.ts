@@ -2630,8 +2630,8 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
 export interface Serializable<S extends Schema.Constraint> {
   readonly [SerializableTypeId]: {
     readonly key: string
-    readonly encode: (value: S["Type"]) => S["Encoded"]
-    readonly decode: (value: S["Encoded"]) => S["Type"]
+    readonly encode: (value: S["Type"]) => Schema.toCodecJson<S>["Encoded"]
+    readonly decode: (value: Schema.toCodecJson<S>["Encoded"]) => S["Type"]
     readonly skipInitialRun?: boolean | undefined
   }
 }

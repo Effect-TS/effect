@@ -479,7 +479,7 @@ class RegistryImpl implements AtomRegistry {
       const serializable = (atom as any as Atom.Serializable<any>)[SerializableTypeId]
       let decoded: A
       try {
-        decoded = serializable.decode(encoded)
+        decoded = serializable.decode(encoded as Schema.Json)
       } catch (error) {
         if (Schema.isSchemaError(error)) return node
         throw error
