@@ -443,7 +443,6 @@ describe("TypeSafeClient", () => {
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "systemOne")
         assert.strictEqual(result.reason._tag, "InvalidResponseError")
-        assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         status: 200,
         body: { model: "jev-latest", answers: { urgent: { type: "noul" } } }

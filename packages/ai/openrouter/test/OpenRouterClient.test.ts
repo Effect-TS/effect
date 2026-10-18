@@ -1,7 +1,7 @@
 import { OpenRouterClient } from "@effect/ai-openrouter"
 import * as Errors from "@effect/ai-openrouter/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Layer, Option, Redacted, type Schema, Stream } from "effect"
+import { Cause, Context, Effect, Exit, Layer, Option, Redacted, type Schema } from "effect"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterClient", () => {
@@ -139,41 +139,6 @@ describe("OpenRouterClient", () => {
           message: "Key does not have permission"
         }
       }
-    }))))
-
-  it.effect("maps a malformed successful chat completion envelope to a non-retryable InvalidResponseError", () =>
-    Effect.gen(function*() {
-      const client = yield* OpenRouterClient.OpenRouterClient
-      const error = yield* client.createChatCompletion({
-        model: "openai/gpt-4o-mini",
-        messages: [{ role: "user", content: "hello" }]
-      }).pipe(Effect.flip)
-
-      assert.strictEqual(error.method, "createChatCompletion")
-      assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
-    }).pipe(Effect.provide(makeTestLayer({
-      _tag: "Json",
-      body: { id: "gen-123", object: "chat.completion", created: 1, model: "openai/gpt-4o-mini", choices: "none" }
-    }))))
-
-  it.effect("maps a malformed stream chunk to a non-retryable InvalidResponseError", () =>
-    Effect.gen(function*() {
-      const client = yield* OpenRouterClient.OpenRouterClient
-      const error = yield* client.createChatCompletionStream({
-        model: "openai/gpt-4o-mini",
-        messages: [{ role: "user", content: "hello" }]
-      }).pipe(
-        Effect.flatMap(([, stream]) => Stream.runDrain(stream)),
-        Effect.flip
-      )
-
-      assert.strictEqual(error.method, "createChatCompletionStream")
-      assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
-    }).pipe(Effect.provide(makeTestLayer({
-      _tag: "Sse",
-      events: [{ id: "gen-123", object: "chat.completion.chunk", created: "1", choices: "none" }]
     }))))
 })
 

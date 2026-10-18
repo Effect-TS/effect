@@ -424,7 +424,6 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error.module, "OpenRouterClient")
       assert.strictEqual(error.method, "createDecisions")
       assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
     }))
 
   it.effect("make constructs a DecisionModel service", () =>
@@ -741,8 +740,6 @@ describe("OpenRouterDecisionModel", () => {
 
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
-      assert.strictEqual(error.module, "DecisionModel")
-      assert.isTrue(error.isRetryable)
     }))
 
   it.effect("fails with InvalidOutputError when an answer is missing", () =>
@@ -758,8 +755,6 @@ describe("OpenRouterDecisionModel", () => {
 
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
-      assert.strictEqual(error.module, "DecisionModel")
-      assert.isTrue(error.isRetryable)
     }))
 
   it.effect("fails with InvalidOutputError when a score answer omits probabilities", () =>

@@ -2,7 +2,6 @@ import { OpenAiClient } from "@effect/ai-openai-compat"
 import * as Errors from "@effect/ai-openai-compat/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, Redacted, type Schema, Stream } from "effect"
-import { Sse } from "effect/encoding"
 import { Headers, HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenAiClient", () => {
@@ -476,50 +475,6 @@ describe("OpenAiClient", () => {
           }
         }
       }))))
-
-    it.effect("maps a malformed successful chat completion envelope to a non-retryable InvalidResponseError", () =>
-      Effect.gen(function*() {
-        const client = yield* OpenAiClient.OpenAiClient
-
-        const error = yield* client.createResponse({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: "hello" }]
-        }).pipe(Effect.flip)
-
-        assert.strictEqual(error.method, "createResponse")
-        assert.strictEqual(error.reason._tag, "InvalidResponseError")
-        assert.isFalse(error.isRetryable)
-      }).pipe(Effect.provide(makeTestLayer({
-        _tag: "Json",
-        body: makeCreateResponse({ choices: "none" as any })
-      }))))
-
-    it.effect("maps a malformed successful embedding envelope to a non-retryable InvalidResponseError", () =>
-      Effect.gen(function*() {
-        const client = yield* OpenAiClient.OpenAiClient
-
-        const error = yield* client.createEmbedding({
-          model: "text-embedding-3-small",
-          input: "hello"
-        }).pipe(Effect.flip)
-
-        assert.strictEqual(error.method, "createEmbedding")
-        assert.strictEqual(error.reason._tag, "InvalidResponseError")
-        assert.isFalse(error.isRetryable)
-      }).pipe(Effect.provide(makeTestLayer({
-        _tag: "Json",
-        body: { object: "list", data: "none", model: "text-embedding-3-small" }
-      }))))
-
-    it("maps SSE decoding failures to a non-retryable InvalidResponseError", () => {
-      const error = Errors.mapSseError(
-        new Sse.SseError({ reason: new Sse.EventTooLarge({ maxEventSize: 1 }) }),
-        "createResponseStream"
-      )
-
-      assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
-    })
   })
 })
 

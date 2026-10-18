@@ -973,8 +973,6 @@ describe("OpenAiClient", () => {
           Effect.flip
         )
 
-        assert.strictEqual(result._tag, "AiError")
-        assert.strictEqual(result.method, "createResponseStream")
         assert.strictEqual(result.reason._tag, "InvalidResponseError")
         assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {

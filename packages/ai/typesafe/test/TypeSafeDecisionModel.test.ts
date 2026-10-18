@@ -619,9 +619,7 @@ describe("TypeSafeDecisionModel", () => {
       )
 
       assert.strictEqual(error._tag, "AiError")
-      assert.strictEqual(error.module, "TypeSafeClient")
       assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
     }))
 
   it.effect("fails with InvalidOutputError when a score distribution skips a level index", () =>

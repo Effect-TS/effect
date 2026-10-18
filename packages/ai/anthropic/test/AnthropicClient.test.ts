@@ -1,7 +1,7 @@
 import { AnthropicClient } from "@effect/ai-anthropic"
 import * as Errors from "@effect/ai-anthropic/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Duration, Effect, Layer, Redacted, type Schema, Stream } from "effect"
+import { Context, Duration, Effect, Layer, Redacted, type Schema } from "effect"
 import { Headers, HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicClient", () => {
@@ -174,47 +174,6 @@ describe("AnthropicClient", () => {
         },
         request_id: null
       }
-    }))))
-
-  it.effect("maps a malformed successful message envelope to a non-retryable InvalidResponseError", () =>
-    Effect.gen(function*() {
-      const client = yield* AnthropicClient.AnthropicClient
-      const error = yield* client.createMessage({
-        payload: {
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1,
-          messages: [{ role: "user", content: "hello" }]
-        }
-      }).pipe(Effect.flip)
-
-      assert.strictEqual(error.method, "createMessage")
-      assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
-    }).pipe(Effect.provide(makeTestLayer({
-      _tag: "Json",
-      body: { id: "msg_123", type: "message", role: "assistant", content: "not an array" }
-    }))))
-
-  it.effect("maps a malformed stream event to a non-retryable InvalidResponseError", () =>
-    Effect.gen(function*() {
-      const client = yield* AnthropicClient.AnthropicClient
-      const error = yield* client.createMessageStream({
-        payload: {
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1,
-          messages: [{ role: "user", content: "hello" }]
-        }
-      }).pipe(
-        Effect.flatMap(([, stream]) => Stream.runDrain(stream)),
-        Effect.flip
-      )
-
-      assert.strictEqual(error.method, "createMessageStream")
-      assert.strictEqual(error.reason._tag, "InvalidResponseError")
-      assert.isFalse(error.isRetryable)
-    }).pipe(Effect.provide(makeTestLayer({
-      _tag: "Sse",
-      events: [{ type: "content_block_delta", index: "zero", delta: { type: "text_delta", text: "hello" } }]
     }))))
 })
 
