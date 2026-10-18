@@ -1102,7 +1102,7 @@ export const makeProtocolSocket = (options?: {
     let currentError: RpcClientError | undefined
 
     const broadcast = (response: FromServerEncoded) => {
-      const deliver = Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+      const deliver = Effect.forEach(Array.from(clientIds), (clientId) => writeResponse(clientId, response))
       if (response._tag !== "Defect" && response._tag !== "ClientProtocolError") return deliver
       // A terminal response ends every request; clear routing before callers can start new ones
       requestClientMap.clear()
