@@ -3,13 +3,18 @@ import { Effect, Equal, Hash, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
-const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
-  new EventJournal.Entry({
-    id: EventJournal.makeEntryIdUnsafe({ msecs }),
+// `tail` fixes the random id bytes, so entries sharing a millisecond sort in a
+// known order by id.
+const entry = (msecs: number, event = "Repro", primaryKey = "key", tail?: number) => {
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  if (tail !== undefined) id.fill(tail, 6)
+  return new EventJournal.Entry({
+    id,
     event,
     primaryKey,
     payload: new Uint8Array()
   }, { disableChecks: true })
+}
 
 const idStrings = (entries: ReadonlyArray<EventJournal.Entry>) => entries.map((item) => item.idString)
 
@@ -226,17 +231,17 @@ describe("EventJournal", () => {
     }
   })
 
-  it.effect("orders imported entries by timestamp and reports newer conflicts per event and key", () =>
+  it.effect("orders imported entries by id and reports conflicts with greater ids per event and key", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
       const peer = EventJournal.makeRemoteIdUnsafe()
       yield* journal.nextRemoteSequence(peer)
 
       const a1 = entry(1_000, "A", "k1")
-      const a2 = entry(3_000, "A", "k1")
-      const otherKey = entry(3_000, "A", "k2")
-      const otherEvent = entry(3_000, "B", "k1")
-      const sameMillis = entry(2_000, "A", "k1")
+      const a2 = entry(3_000, "A", "k1", 0x20)
+      const otherKey = entry(3_000, "A", "k2", 0x30)
+      const otherEvent = entry(3_000, "B", "k1", 0x10)
+      const sameMillis = entry(2_000, "A", "k1", 0x80)
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [a1, a2, otherKey, otherEvent, sameMillis].map((entry, remoteSequence) =>
@@ -245,9 +250,9 @@ describe("EventJournal", () => {
         effect: () => Effect.void
       })
 
-      const x = entry(2_000, "A", "k1")
+      const x = entry(2_000, "A", "k1", 0x10)
       const y = entry(1_500, "A", "k1")
-      const z = entry(3_000, "B", "k1")
+      const z = entry(3_000, "B", "k1", 0x80)
       const replayed: Array<readonly [string, ReadonlyArray<string>]> = []
       let callbacks = 0
       yield* journal.writeFromRemote({
@@ -261,15 +266,15 @@ describe("EventJournal", () => {
       })
 
       assert.strictEqual(callbacks, 1)
+      // The batch replays in id order. `x` shares a millisecond with
+      // `sameMillis` and `z` with `otherEvent`; only greater ids conflict.
       assert.deepStrictEqual(replayed, [
-        [x.idString, [a2.idString]],
         [y.idString, [sameMillis.idString, a2.idString]],
+        [x.idString, [sameMillis.idString, a2.idString]],
         [z.idString, []]
       ])
 
-      // Equal timestamps keep committed entries ahead of imported ones, then
-      // preserve batch order.
-      const expected = idStrings([a1, y, sameMillis, x, a2, otherKey, otherEvent, z])
+      const expected = idStrings([a1, y, x, sameMillis, otherEvent, a2, otherKey, z])
       assert.deepStrictEqual(idStrings(yield* journal.entries), expected)
       const missing = yield* journal.withRemoteUncommited(peer, (entries) => Effect.succeed(idStrings(entries)))
       assert.deepStrictEqual(missing, Option.some(expected))

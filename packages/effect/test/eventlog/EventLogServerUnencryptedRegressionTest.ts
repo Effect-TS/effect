@@ -213,16 +213,16 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           for (let i = 0; i < 252; i++) entries.push(yield* makeEntry(1_000, "x"))
           entries.sort(EventJournal.Entry.Order)
           // `stored` sorts between the batch's first and last entries and only
-          // shares a key with the last, so every lookup must start from the
-          // batch's lowest id.
+          // shares a key with the batch's second entry, so the history must
+          // start from the batch's lowest id.
           const withKeyB = ({ event, id, payload }: EventJournal.Entry) =>
             new EventJournal.Entry({ id, event, primaryKey: "b", payload }, { disableChecks: true })
-          const stored = withKeyB(entries[1])
-          const last = withKeyB(entries[251])
+          const second = withKeyB(entries[1])
+          const stored = withKeyB(entries[2])
           yield* write([stored])
           handled.length = 0
-          yield* write([entries[0], ...entries.slice(2, 251), last])
-          assert.deepStrictEqual(handled.at(-1), { key: "b", conflicts: [stored.idString] })
+          yield* write([entries[0], second, ...entries.slice(3)])
+          assert.deepStrictEqual(handled[1], { key: "b", conflicts: [stored.idString] })
         }))
 
       it.effect("matches long primary keys exactly", () =>

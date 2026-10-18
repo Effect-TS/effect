@@ -24,7 +24,6 @@ import * as EventLogRemote from "effect/eventlog/EventLogRemote"
 import { Reactivity } from "effect/reactivity"
 import * as RpcTest from "effect/rpc/RpcTest"
 import { TestClock } from "effect/testing"
-import { vi } from "vitest"
 
 const UserPayload = Schema.Struct({
   id: Schema.String
@@ -122,16 +121,8 @@ const replayItems = Effect.fnUntraced(function*(
   )
   return yield* Effect.gen(function*() {
     const registry = yield* EventLog.Registry
-    // Control only the randomness boundary: successive replacement UUIDs sort
-    // opposite to compactor write order, without relying on chance or retries.
-    let randomByte = 255
-    const random = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((bytes) => {
-      new Uint8Array(bytes!.buffer, bytes!.byteOffset, bytes!.byteLength).fill(randomByte--)
-      return bytes
-    })
     return yield* registry.registerRemote(remote).pipe(
-      Effect.andThen(Effect.forEach(events, () => Queue.take(handled))),
-      Effect.ensuring(Effect.sync(() => random.mockRestore()))
+      Effect.andThen(Effect.forEach(events, () => Queue.take(handled)))
     )
   }).pipe(Effect.provide(layer))
 })
@@ -329,7 +320,7 @@ describe("EventLog", () => {
     }), { concurrent: false })
 
   it.effect(
-    "replays a mixed same-millisecond batch at source positions even when replacement keys change",
+    "replays a mixed same-millisecond batch in id order even when replacement keys change",
     () =>
       Effect.gen(function*() {
         const handled = yield* replayItems([
@@ -339,9 +330,10 @@ describe("EventLog", () => {
           { event: "ItemObserved" },
           { event: "ItemAdded", list: "b" }
         ])
-        // The opaque b entry stays between sources; b replacements belong at
-        // the first decoded b source, not the opaque entry or group start.
-        assert.deepStrictEqual(handled, [0, 1, 2, 3, 4])
+        // Replacements reuse their source's id, so the batch replays in id
+        // order, the reverse of remote order here. The b replacement takes the
+        // first decoded b source's id, not the opaque entry's or the group start's.
+        assert.deepStrictEqual(handled, [4, 3, 2, 1, 0])
       }),
     { concurrent: false }
   )
@@ -456,7 +448,7 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
-  it.effect("replays forwarded entries unchanged in batch order when old entries arrive after new ones", () =>
+  it.effect("replays forwarded entries unchanged in id order when old entries arrive after new ones", () =>
     Effect.gen(function*() {
       const makeEntry = Effect.fnUntraced(function*(list: string, item: number, msecs: number) {
         return new EventJournal.Entry({
@@ -503,7 +495,7 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(layer))
 
       const fields = (entry: EventJournal.Entry) => [entry.idString, entry.primaryKey, entry.payload] as const
-      assert.deepStrictEqual(replayed.map(fields), entries.map(fields))
+      assert.deepStrictEqual(replayed.map(fields), [entries[1], entries[0], entries[2]].map(fields))
     }))
 
   it.effect("passes every group entry to one batch compactor call in order and drops unforwarded opaque entries", () =>

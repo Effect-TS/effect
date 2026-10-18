@@ -391,7 +391,7 @@ describe("EventJournal.makeIndexedDb", () => {
         [[
           [older.idString, [newer.idString]],
           [sameBatch.idString, [newer.idString]],
-          [sameMillis.idString, []]
+          [sameMillis.idString, [newer.idString]]
         ]]
       )
       // Duplicate check, conflicts, commit.
@@ -458,7 +458,7 @@ describe("EventJournal.makeIndexedDb", () => {
 
       const older = entry(1000)
       const equalMillis = entry(2000, { tail: 0x05 })
-      const crossed = entry(1000, { event: "Other", primaryKey: "other" })
+      const crossed = entry(1000, { event: "Other", primaryKey: "other", tail: 0xf0 })
       const otherEventOlder = entry(2500, { event: "Other" })
       const batches: Array<Batch> = []
       const { duplicateEntries } = yield* journal.writeFromRemote({
@@ -473,8 +473,8 @@ describe("EventJournal.makeIndexedDb", () => {
         duplicates: [newest.idString],
         batches: [[
           [older.idString, [sameMillisLow, sameMillisHigh, newest].map(describeEntry)],
-          [equalMillis.idString, [describeEntry(newest)]],
           [crossed.idString, []],
+          [equalMillis.idString, [sameMillisHigh, newest].map(describeEntry)],
           [otherEventOlder.idString, [describeEntry(otherEvent)]]
         ]]
       })
