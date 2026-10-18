@@ -1625,20 +1625,25 @@ export const withCookiesRef: {
     makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(
-          self.postprocess(request),
+          self.postprocess(Effect.flatMap(request, (request) =>
+            Effect.flatMap(CookiesRefEnabled, (enabled) =>
+              enabled
+                ? Effect.map(Ref.get(ref), (cookies) =>
+                  Cookies.isEmpty(cookies)
+                    ? request
+                    : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies)))
+                : Effect.succeed(request)))),
           (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
         ),
-      (request) =>
-        Effect.flatMap(self.preprocess(request), (request) =>
-          Effect.map(
-            Ref.get(ref),
-            (cookies) =>
-              Cookies.isEmpty(cookies)
-                ? request
-                : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
-          ))
+      self.preprocess
     )
 )
+
+// The cookie ref is not origin-aware, so redirects must not reattach its cookies
+// after crossing an origin boundary.
+const CookiesRefEnabled = Context.Reference<boolean>("effect/http/HttpClient/CookiesRefEnabled", {
+  defaultValue: constTrue
+})
 
 /**
  * Attaches the lifetime of the `HttpClientRequest` to a `Scope`.
@@ -1710,6 +1715,11 @@ export const followRedirects: {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
+                return Effect.provideService(
+                  loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1),
+                  CookiesRefEnabled,
+                  false
+                )
               }
               return loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
             }
