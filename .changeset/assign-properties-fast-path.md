@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Speed up field copying for `Data.Class`, `Data.Error`, `Request` and `Persistable` construction while retaining safe handling of own `__proto__` properties on plain objects.
+Speed up field copying in `Data.Class`, `Data.Error`, `Request.Class` and `Persistable` constructors.
