@@ -390,11 +390,14 @@ export const observeEntryIds = (ids: Iterable<EntryId>): Effect.Effect<void> =>
     const advanced = millis > lastEntryIdMillis
     lastEntryIdMillis = millis
     entryIdCounter = counter
-    const ahead = millis - DateTime.nowUnsafe().epochMilliseconds
-    if (!advanced || ahead <= maxClockSkewMillis) return Effect.void
-    return Effect.logWarning(
-      `Observed an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
-    ).pipe(Effect.annotateLogs({ service: "EventJournal", entryId: Uuid.stringify(latest) }))
+    if (!advanced) return Effect.void
+    return Effect.flatMap(DateTime.now, (now) => {
+      const ahead = millis - now.epochMilliseconds
+      if (ahead <= maxClockSkewMillis) return Effect.void
+      return Effect.logWarning(
+        `Observed an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
+      ).pipe(Effect.annotateLogs({ service: "EventJournal", entryId: Uuid.stringify(latest) }))
+    })
   })
 
 /**
