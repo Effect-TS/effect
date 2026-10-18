@@ -120,8 +120,8 @@ export interface Doctype {
  * the encoder reads.
  *
  * Attribute values have their references replaced and whitespace normalized as
- * XML requires. Decoded attributes are objects without a prototype, so only
- * the attributes of the tag are present. Insertion order is document order,
+ * XML requires. Decoded attributes inherit nothing, so only the attributes of
+ * the tag are present and `__proto__` is an ordinary key. Insertion order is document order,
  * since XML names cannot be integer-like keys; `structuredClone` restores
  * `Object.prototype` on the copy. A self-closing tag such as `<br/>` is
  * decoded as a `StartElement` followed by an `EndElement`.
@@ -587,7 +587,7 @@ const makeChannel = <In, Out, IE, Done>(
       ): Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> => {
         try {
           if (inputs === undefined) machine.end()
-          else for (const input of inputs) machine.push(input)
+          else for (let i = 0; i < inputs.length; i++) machine.push(inputs[i])
         } catch (error) {
           if (!isXmlError(error)) throw error
           failure = error
@@ -653,6 +653,18 @@ const invalidChar = /[\0-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF\uD800-\uDFFF]/u
 // oxlint-disable-next-line no-control-regex
 const invalidDecodedChar = /[\0-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/
 
+// `isWellFormed` (ES2024) finds unpaired surrogates much faster than a `u`
+// regex, which is slow on non-ASCII text
+const isWellFormed: ((s: string) => boolean) | undefined =
+  typeof (String.prototype as { isWellFormed?: unknown }).isWellFormed === "function" ?
+    (s) => (s as unknown as { isWellFormed(): boolean }).isWellFormed() :
+    undefined
+
+// Returns the index of the first character outside the XML `Char` production,
+// or -1
+const searchInvalid = (s: string): number =>
+  isWellFormed !== undefined && s.search(invalidDecodedChar) === -1 && isWellFormed(s) ? -1 : s.search(invalidChar)
+
 const isChar = (c: number): boolean =>
   c === TAB || c === LF || c === CR || (c >= 0x20 && c <= 0xD7FF) || (c >= 0xE000 && c <= 0xFFFD) ||
   (c >= 0x10000 && c <= 0x10FFFF)
@@ -689,7 +701,10 @@ const scanName = (s: string, i: number, end: number): number => {
   return i
 }
 
-const isName = (s: string): boolean => s.length > 0 && scanName(s, 0, s.length) === s.length && !invalidChar.test(s)
+// Name characters exclude every invalid character but unpaired surrogates
+const isName = (s: string): boolean =>
+  s.length > 0 && scanName(s, 0, s.length) === s.length &&
+  (isWellFormed !== undefined ? isWellFormed(s) : !invalidChar.test(s))
 
 const skipSpace = (s: string, i: number, end: number): number => {
   while (i < end && isSpace(s.charCodeAt(i))) i++
@@ -698,6 +713,11 @@ const skipSpace = (s: string, i: number, end: number): number => {
 
 const lineEndings = /\r\n?/g
 const attributeWhitespace = /\r\n|[\t\n\r]/g
+// Characters of an attribute value that need decoding, or are not allowed
+const attributeSpecial = /[&<\t\n\r]/
+const attributeWhitespaceChar = /[\t\n\r]/
+// Attribute values shorter than this are scanned with a loop
+const shortValue = 24
 const publicIdWhitespace = /[ \r\n]+/g
 const decimalDigits = /^[0-9]+$/
 const hexDigits = /^[0-9a-fA-F]+$/
@@ -720,8 +740,6 @@ const declarationPattern =
   /^[ \t\r\n]+version[ \t\r\n]*=[ \t\r\n]*(?:"(1\.[0-9]+)"|'(1\.[0-9]+)')(?:[ \t\r\n]+encoding[ \t\r\n]*=[ \t\r\n]*(?:"([A-Za-z][A-Za-z0-9._-]*)"|'([A-Za-z][A-Za-z0-9._-]*)'))?(?:[ \t\r\n]+standalone[ \t\r\n]*=[ \t\r\n]*(?:"(yes|no)"|'(yes|no)'))?[ \t\r\n]*$/
 
 const pubidPattern = /^[ \r\na-zA-Z0-9\-'()+,./:=?;!*#@$_%]*$/
-
-const predefinedEntities = new Map([["lt", "<"], ["gt", ">"], ["amp", "&"], ["apos", "'"], ["quot", "\""]])
 
 // States of `Scanner`, which finds where a token split between chunks ends
 const S_START = 0
@@ -910,7 +928,23 @@ const describeToken = (s: string, i: number): string =>
     "end tag" :
     "start tag"
 
-const emptyAttributes: Readonly<Record<string, string>> = Object.freeze(Object.create(null))
+// Attribute maps inherit nothing, so "__proto__" is an ordinary key and no
+// attribute is inherited. Instances of a constructor are fast-mode objects in
+// V8, which are several times faster to fill and iterate than the
+// dictionary-mode objects that `Object.create(null)` makes. V8 creates a
+// hidden class for every distinct sequence of keys, so fast-mode maps are
+// used only for elements whose attributes always come in the same order, see
+// `Parser.shapes`.
+const Attributes = function(this: Record<string, string>) {} as unknown as new() => Record<string, string>
+Attributes.prototype = Object.freeze(Object.create(null))
+
+const emptyAttributes: Readonly<Record<string, string>> = Object.freeze(new Attributes())
+
+// The number of element names whose attribute order is tracked, and the
+// number of attributes beyond which V8 would turn a fast-mode map into a
+// dictionary anyway
+const maxShapes = 256
+const maxFastAttributes = 16
 
 const pendingRun = 256
 
@@ -940,6 +974,11 @@ class Parser {
   private state = PROLOG
   private readonly stack: Array<string> = []
   private openNameSize = 0
+  // The attribute names of each element name, in the order they were first
+  // seen. A tag whose attributes follow that order, or extend it, gets a
+  // fast-mode map; one that diverges marks the element `null`, so that later
+  // tags get dictionary-mode maps and V8 does not get a hidden class per tag.
+  private readonly shapes = new Map<string, Array<string> | null>()
   private doctype = false
   private literalEnd = 0
   // Character data that has not been emitted yet, and its size in the input
@@ -964,7 +1003,7 @@ class Parser {
       this.started = true
       if (chunk.charCodeAt(0) === 0xFEFF) chunk = chunk.slice(1)
     }
-    const invalid = chunk.search(this.bytes ? invalidDecodedChar : invalidChar)
+    const invalid = this.bytes ? chunk.search(invalidDecodedChar) : searchInvalid(chunk)
     if (invalid !== -1) {
       // Parse up to the invalid character first, so that earlier errors are
       // reported first however the input is chunked
@@ -1001,25 +1040,22 @@ class Parser {
   // starts at document offset `base`. Counting resumes only where parsing
   // stopped, which is never between a CR and an LF.
   private count(s: string, base: number, to: number): void {
-    let i = this.counted - base
+    const i = this.counted - base
     if (i >= to) return
-    const cr = s.indexOf("\r", i)
-    if (cr === -1 || cr >= to) {
-      let lf = s.indexOf("\n", i)
-      while (lf !== -1 && lf < to) {
+    let cr = s.indexOf("\r", i)
+    let lf = s.indexOf("\n", i)
+    while (true) {
+      if (cr !== -1 && cr < to && (lf === -1 || cr < lf)) {
         this.line++
+        this.lineStart = base + cr + 1
+        cr = s.indexOf("\r", cr + 1)
+      } else if (lf !== -1 && lf < to) {
+        // The LF of a CRLF does not start a new line
+        if (!(lf > 0 && s.charCodeAt(lf - 1) === CR)) this.line++
         this.lineStart = base + lf + 1
         lf = s.indexOf("\n", lf + 1)
-      }
-    } else {
-      for (; i < to; i++) {
-        const c = s.charCodeAt(i)
-        if (c === CR || (c === LF && !(i > 0 && s.charCodeAt(i - 1) === CR))) {
-          this.line++
-          this.lineStart = base + i + 1
-        } else if (c === LF) {
-          this.lineStart = base + i + 1
-        }
+      } else {
+        break
       }
     }
     this.counted = base + to
@@ -1102,7 +1138,9 @@ class Parser {
           if (nextAmp < i) nextAmp = indexOrEnd(s, "&", i)
           if (nextCR < i) nextCR = indexOrEnd(s, "\r", i)
           const raw = s.slice(i, j)
-          this.text += nextAmp >= j && nextCR >= j ? raw : this.decodeText(raw, i, false)
+          this.text += nextAmp >= j
+            ? (nextCR >= j ? raw : normalizeLines(raw))
+            : this.decodeText(raw, i, false, nextCR < j)
         }
         i = j
         continue
@@ -1159,14 +1197,15 @@ class Parser {
     }
   }
 
-  // Replaces references and normalizes line endings, or attribute whitespace
-  private decodeText(raw: string, offset: number, attribute: boolean): string {
+  // Replaces references and normalizes line endings, or attribute whitespace.
+  // `whitespace` is false when `raw` has nothing to normalize.
+  private decodeText(raw: string, offset: number, attribute: boolean, whitespace: boolean): string {
     let out = ""
     let k = 0
     while (true) {
       const amp = raw.indexOf("&", k)
       const literal = raw.slice(k, amp === -1 ? raw.length : amp)
-      out += attribute ? normalizeAttribute(literal) : normalizeLines(literal)
+      out += !whitespace ? literal : attribute ? normalizeAttribute(literal) : normalizeLines(literal)
       if (amp === -1) return out
       const semicolon = raw.indexOf(";", amp + 1)
       if (semicolon === -1) throw this.syntax("unterminated reference", offset + amp)
@@ -1177,7 +1216,19 @@ class Parser {
 
   // Decodes the reference `raw[amp, semicolon]`
   private reference(raw: string, amp: number, semicolon: number, offset: number): string {
-    if (raw.charCodeAt(amp + 1) === HASH) {
+    const c = raw.charCodeAt(amp + 1)
+    // The predefined entities, without slicing their names
+    if (c === 97) {
+      if (raw.startsWith("amp;", amp + 1)) return "&"
+      if (raw.startsWith("apos;", amp + 1)) return "'"
+    } else if (c === 108) {
+      if (raw.startsWith("lt;", amp + 1)) return "<"
+    } else if (c === 103) {
+      if (raw.startsWith("gt;", amp + 1)) return ">"
+    } else if (c === 113) {
+      if (raw.startsWith("quot;", amp + 1)) return "\""
+    }
+    if (c === HASH) {
       const hex = raw.charCodeAt(amp + 2) === LOWER_X
       const digits = raw.slice(amp + (hex ? 3 : 2), semicolon)
       const code = (hex ? hexDigits : decimalDigits).test(digits) ? parseInt(digits, hex ? 16 : 10) : -1
@@ -1185,8 +1236,6 @@ class Parser {
       return String.fromCodePoint(code)
     }
     const name = raw.slice(amp + 1, semicolon)
-    const value = predefinedEntities.get(name)
-    if (value !== undefined) return value
     if (!isName(name)) throw this.syntax("invalid reference", offset + amp)
     if (this.doctype) {
       throw this.error(
@@ -1236,6 +1285,8 @@ class Parser {
     // long names are copied
     const name = j - i - 1 < 13 ? s.slice(i + 1, j) : (" " + s.slice(i + 1, j)).slice(1)
     let attributes: Record<string, string> | undefined
+    let shape: Array<string> | null | undefined
+    let index = 0
     let selfClosing = false
     while (true) {
       let c = s.charCodeAt(j)
@@ -1276,13 +1327,27 @@ class Parser {
         return -1
       }
       const value = this.attributeValue(s, j + 1, close)
-      // Without a prototype, no attribute is inherited and "__proto__" is an
-      // ordinary key
       if (attributes === undefined) {
-        attributes = Object.create(null) as Record<string, string>
-      } else if (Object.hasOwn(attributes, attribute)) {
+        shape = this.shapes.get(name)
+        if (shape === undefined && this.shapes.size < maxShapes) {
+          shape = []
+          this.shapes.set(name, shape)
+        }
+        attributes = shape === undefined || shape === null || shape.length > maxFastAttributes ?
+          Object.create(null) as Record<string, string> :
+          new Attributes()
+      } else if (attributes[attribute] !== undefined) {
         throw this.syntax(`duplicate attribute ${attribute}`, nameStart)
       }
+      if (shape !== undefined && shape !== null && shape.length <= maxFastAttributes) {
+        // Stored names are copied, as they outlive the chunk
+        if (index === shape.length) shape.push((" " + attribute).slice(1))
+        else if (shape[index] !== attribute) {
+          this.shapes.set(name, null)
+          shape = null
+        }
+      }
+      index++
       attributes[attribute] = value
       j = close + 1
       if (j >= n) return -1
@@ -1308,13 +1373,28 @@ class Parser {
   }
 
   private attributeValue(s: string, i: number, j: number): string {
-    let decode = false
-    for (let k = i; k < j; k++) {
-      const c = s.charCodeAt(k)
-      if (c === LT) throw this.syntax("\"<\" is not allowed in attribute values", k)
-      if (c === AMPERSAND || c === TAB || c === LF || c === CR) decode = true
+    let reference = false
+    let whitespace = false
+    if (j - i < shortValue) {
+      for (let k = i; k < j; k++) {
+        const c = s.charCodeAt(k)
+        if (c === LT) throw this.syntax("\"<\" is not allowed in attribute values", k)
+        if (c === AMPERSAND) reference = true
+        else if (c === TAB || c === LF || c === CR) whitespace = true
+      }
+      if (!reference && !whitespace) return s.slice(i, j)
+    } else {
+      // A regex search beats the loop above on long values
+      const value = s.slice(i, j)
+      const special = value.search(attributeSpecial)
+      if (special === -1) return value
+      const lt = value.indexOf("<", special)
+      if (lt !== -1) throw this.syntax("\"<\" is not allowed in attribute values", i + lt)
+      reference = value.indexOf("&", special) !== -1
+      whitespace = !reference || attributeWhitespaceChar.test(value)
     }
-    return decode ? this.decodeText(s.slice(i, j), i, true) : s.slice(i, j)
+    const raw = s.slice(i, j)
+    return reference ? this.decodeText(raw, i, true, whitespace) : normalizeAttribute(raw)
   }
 
   private endTag(s: string, i: number): number {
@@ -1692,23 +1772,58 @@ const positionless = (kind: XmlError["kind"], message: string) =>
 
 const invalidEvent = (message: string) => positionless("InvalidEvent", message)
 
-const textEscapes: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\r": "&#13;" }
-const attributeEscapes: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  "\"": "&quot;",
-  "\t": "&#9;",
-  "\n": "&#10;",
-  "\r": "&#13;"
+const textSpecial = /[&<>\r]/
+const attributeSpecials = /[&<"\t\n\r]/
+
+// The regex finds the first special character, which is fast when there is
+// none; the rest is copied in runs between escapes. Invalid characters are
+// kept, so that the writer can check them in the output.
+const escapeText = (s: string): string => {
+  const first = s.search(textSpecial)
+  if (first === -1) return s
+  let out = ""
+  let last = 0
+  for (let i = first; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    const escaped = c === AMPERSAND ? "&amp;" : c === LT ? "&lt;" : c === GT ? "&gt;" : c === CR ? "&#13;" : undefined
+    if (escaped !== undefined) {
+      out += s.slice(last, i) + escaped
+      last = i + 1
+    }
+  }
+  return out + s.slice(last)
 }
 
-const textSpecials = /[&<>\r]/g
-const attributeSpecials = /[&<"\t\n\r]/g
-const escapeText = (s: string): string => s.replace(textSpecials, (c) => textEscapes[c])
-const escapeAttribute = (s: string): string => s.replace(attributeSpecials, (c) => attributeEscapes[c])
+const escapeAttribute = (s: string): string => {
+  const first = s.search(attributeSpecials)
+  if (first === -1) return s
+  let out = ""
+  let last = 0
+  for (let i = first; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    const escaped = c === AMPERSAND ?
+      "&amp;" :
+      c === LT ?
+      "&lt;" :
+      c === DQUOTE ?
+      "&quot;" :
+      c === TAB ?
+      "&#9;" :
+      c === LF ?
+      "&#10;" :
+      c === CR ?
+      "&#13;" :
+      undefined
+    if (escaped !== undefined) {
+      out += s.slice(last, i) + escaped
+      last = i + 1
+    }
+  }
+  return out + s.slice(last)
+}
 
 const checkChars = (what: string, s: string): void => {
-  const invalid = s.search(invalidChar)
+  const invalid = searchInvalid(s)
   if (invalid !== -1) {
     const code = s.codePointAt(invalid)!.toString(16).toUpperCase().padStart(4, "0")
     throw invalidEvent(`${what} contains the invalid character U+${code}`)
@@ -1734,9 +1849,35 @@ class Writer implements Machine<Event, string> {
   private state = NOTHING_WRITTEN
   private doctype = false
   private readonly bytes: boolean
+  // Element and attribute names already checked, which repeat in most
+  // documents. Cleared when full, so that it stays small.
+  private readonly names = new Set<string>()
 
   constructor(bytes: boolean) {
     this.bytes = bytes
+  }
+
+  private checkName(what: string, name: string): void {
+    if (!this.isName(name)) checkName(what, name)
+  }
+
+  private isName(name: string): boolean {
+    if (this.names.has(name)) return true
+    if (typeof name !== "string" || !isName(name)) return false
+    if (this.names.size >= 1024) this.names.clear()
+    this.names.add(name)
+    return true
+  }
+
+  // Checks attributes one by one, in order, after a batched check has failed
+  private checkAttributes(attributes: Readonly<Record<string, string>>): void {
+    for (const name in attributes) {
+      if (!Object.hasOwn(attributes, name)) continue
+      const value = attributes[name]
+      this.checkName("attribute name", name)
+      if (typeof value !== "string") throw invalidEvent(`attribute ${name} must be a string`)
+      checkChars(`attribute ${name}`, value)
+    }
   }
 
   push(event: Event): void {
@@ -1771,28 +1912,36 @@ class Writer implements Machine<Event, string> {
     }
     switch (event._tag) {
       case "StartElement": {
-        checkName("element name", event.name)
+        this.checkName("element name", event.name)
         if (this.state === EPILOG) throw invalidEvent(`second root element <${event.name}>`)
         let tag = "<" + event.name
+        let valid = true
         for (const name in event.attributes) {
           if (!Object.hasOwn(event.attributes, name)) continue
           const value = event.attributes[name]
-          checkName("attribute name", name)
-          if (typeof value !== "string") throw invalidEvent(`attribute ${name} must be a string`)
-          checkChars(`attribute ${name}`, value)
+          if (typeof value !== "string" || !this.isName(name)) {
+            valid = false
+            break
+          }
           tag += ` ${name}="${escapeAttribute(value)}"`
+        }
+        // Escaping keeps invalid characters, so one search of the tag checks
+        // every value; the first error is then found in attribute order
+        if (!valid || (tag.length > event.name.length + 1 && searchInvalid(tag) !== -1)) {
+          this.checkAttributes(event.attributes)
         }
         this.stack.push(event.name)
         this.state = CONTENT
         return tag + ">"
       }
       case "Text": {
-        checkChars("text", event.text)
         if (this.state !== CONTENT) {
+          checkChars("text", event.text)
           if (!isWhitespace(event.text)) throw invalidEvent("text outside the root element must be whitespace")
           if (this.state === NOTHING_WRITTEN && event.text.length > 0) this.state = PROLOG
           return event.text
         }
+        checkChars("text", event.text)
         return escapeText(event.text)
       }
       case "Comment": {
