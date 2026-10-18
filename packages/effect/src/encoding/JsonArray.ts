@@ -6,7 +6,8 @@
  * Use `JsonArray` when a large response or file is one JSON document, such as
  * `[...]` or `{"items":[...],"total":n}`, and its elements should be processed
  * without buffering the whole document. Use `Ndjson` when the producer writes
- * one JSON value per line.
+ * one JSON value per line. This module is unrelated to `Schema.JsonArray`, the
+ * type of a JSON array value.
  *
  * Decoders stream the elements of one array, the root array by default or the
  * array selected by an RFC 6901 JSON Pointer. Each element is buffered only
@@ -55,7 +56,8 @@ const encoder = new TextEncoder()
  *
  * - `Syntax`: the input is not valid JSON, including an empty input or
  *   content after the document.
- * - `Limit`: a value exceeds `maxDepth` or `maxElementSize`.
+ * - `Limit`: a value exceeds `maxDepth` or `maxElementSize`, whether it is an
+ *   element, a key, or a value outside the selected array.
  * - `Pointer`: the pointer target is missing or not an array, a value along the
  *   pointer is not an object or array, or an object along the pointer repeats
  *   the key that the pointer follows.
@@ -64,7 +66,8 @@ const encoder = new TextEncoder()
  * Decoding errors set `offset`, a zero-based offset in UTF-16 code units into
  * the decoded text after any leading BOM. When a value is invalid or exceeds a
  * limit, the offset is the start of that value. `Encode` errors have no
- * offset.
+ * offset. `Syntax` and `Encode` errors set `cause` to the error thrown by
+ * `JSON.parse` or `JSON.stringify`.
  *
  * @stability unstable
  * @category errors
@@ -74,6 +77,7 @@ export class JsonArrayError extends Data.TaggedError("JsonArrayError")<{
   readonly kind: "Syntax" | "Limit" | "Pointer" | "Encode"
   readonly message: string
   readonly offset?: number | undefined
+  readonly cause?: unknown
 }> {
   /**
    * Marks this value as a JSON array encoding or decoding error for runtime
@@ -224,14 +228,24 @@ class Scanner {
     this.config = config
   }
 
-  fail(kind: "Syntax" | "Limit" | "Pointer", message: string, offset: number): JsonArrayError {
-    return new JsonArrayError({ kind, message, offset })
+  fail(kind: "Syntax" | "Limit" | "Pointer", message: string, offset: number, cause?: unknown): JsonArrayError {
+    return new JsonArrayError({ kind, message, offset, cause })
   }
 
-  pointerPrefix(length: number): string {
+  pointerPrefix(length: number, ...rest: Array<string>): string {
     return JSON.stringify(
-      this.config.tokens.slice(0, length).map((token) => "/" + JsonPointer.escapeToken(token)).join("")
+      this.config.tokens.slice(0, length).concat(rest).map((token) => "/" + JsonPointer.escapeToken(token)).join("")
     )
+  }
+
+  // Names the value being captured, for limit errors.
+  subject(): string {
+    if (this.capture === ELEMENT) return "Element"
+    const depth = this.frames.length - 1
+    if (this.capture === KEY) return `Key in ${this.pointerPrefix(depth)}`
+    const frame = this.frames[depth]
+    const token = frame.object ? this.key : String(frame.index - 1)
+    return `Value outside the selected array at ${this.pointerPrefix(depth, token)}`
   }
 
   feed(text: string, out: Array<unknown>): void {
@@ -373,8 +387,8 @@ class Scanner {
     let value: unknown
     try {
       value = JSON.parse(source)
-    } catch {
-      throw this.fail("Syntax", "Invalid JSON value", this.start)
+    } catch (cause) {
+      throw this.fail("Syntax", "Invalid JSON value", this.start, cause)
     }
     if (mode === ELEMENT) out.push(value)
     else if (mode === KEY) this.key = value as string
@@ -428,12 +442,12 @@ class Scanner {
 
   checkSize(size: number): void {
     if (size > this.config.maxElementSize) {
-      throw this.fail("Limit", `JSON value exceeds maxElementSize of ${this.config.maxElementSize}`, this.start)
+      throw this.fail("Limit", `${this.subject()} exceeds maxElementSize of ${this.config.maxElementSize}`, this.start)
     }
   }
 
   failDepth(): never {
-    throw this.fail("Limit", `JSON value exceeds maxDepth of ${this.config.maxDepth}`, this.start)
+    throw this.fail("Limit", `${this.subject()} exceeds maxDepth of ${this.config.maxDepth}`, this.start)
   }
 }
 
@@ -456,11 +470,15 @@ class Scanner {
  *
  * - The document is validated as it streams, so elements from earlier input
  *   chunks have already been emitted when a later syntax error, limit or
- *   missing pointer target fails the channel.
+ *   missing pointer target fails the channel. Content after the selected
+ *   array is only checked once all of its elements are out, so a failure
+ *   there is a signal that the document was invalid, not a guard against
+ *   using its elements.
  * - The pointer follows the first occurrence of a key, where `JSON.parse`
  *   keeps the last. A repeated followed key fails with a `Pointer` error, as
  *   does a first occurrence that is not an object or array where the pointer
- *   needs one.
+ *   needs one. When the repeat comes after the selected array, every element
+ *   has already been emitted.
  * - A root that is not an array fails with a `Pointer` error unless the
  *   pointer selects an array inside it.
  *
@@ -600,7 +618,7 @@ const stringify = (value: unknown): string => {
   try {
     output = JSON.stringify(value)
   } catch (cause) {
-    throw new JsonArrayError({ kind: "Encode", message: cause instanceof Error ? cause.message : String(cause) })
+    throw new JsonArrayError({ kind: "Encode", message: cause instanceof Error ? cause.message : String(cause), cause })
   }
   if (output === undefined) {
     throw new JsonArrayError({ kind: "Encode", message: `Value of type ${typeof value} cannot be represented as JSON` })
