@@ -9,6 +9,14 @@ export const getGc = async (): Promise<() => void> => {
   return collect
 }
 
+export const getInYoungGeneration = async (): Promise<(value: unknown) => boolean> => {
+  const { setFlagsFromString } = await import("node:v8")
+  setFlagsFromString("--allow-natives-syntax")
+  const inYoungGeneration = new Function("value", "return %InYoungGeneration(value)") as (value: unknown) => boolean
+  setFlagsFromString("--no-allow-natives-syntax")
+  return inYoungGeneration
+}
+
 export const collectGarbage = Effect.promise(async () => {
   const collect = await getGc()
   // WeakRef targets remain alive until the current job ends, so collect across jobs.
