@@ -281,8 +281,8 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         journal.nextSequence += ids.length
         journal.batches.push(remoteBatch)
         stored.push(remoteBatch)
+        PubSub.publishUnsafe(pubsub, remoteBatch)
       }
-      yield* PubSub.publishAll(pubsub, stored)
       return stored
     }, Effect.scoped),
     entrySequences: (publicKey, storeId, entryIds) =>
