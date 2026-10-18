@@ -1164,11 +1164,10 @@ DB_PASS=$PASSWORD`)
   })
 
   describe("layers", () => {
-    const loadFromContext = (path: ConfigProvider.Path) =>
-      Effect.gen(function*() {
-        const provider = yield* ConfigProvider.ConfigProvider
-        return yield* provider.load(path)
-      })
+    const loadFromContext = Effect.fnUntraced(function*(path: ConfigProvider.Path) {
+      const provider = yield* ConfigProvider.ConfigProvider
+      return yield* provider.load(path)
+    })
 
     it("layer installs a provider", async () => {
       const result = await Effect.runPromise(

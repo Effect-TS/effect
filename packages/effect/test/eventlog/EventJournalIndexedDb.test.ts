@@ -375,14 +375,13 @@ describe("EventJournal.makeIndexedDb", () => {
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: remoteEntries([older, sameBatch, sameMillis]),
-        effect: (batch) =>
-          Effect.gen(function*() {
-            const before = transactions.opened
-            batches.push(batch)
-            // Give pending journal requests a turn, as a projection transaction would.
-            yield* Effect.yieldNow
-            assert.strictEqual(transactions.opened, before)
-          })
+        effect: Effect.fnUntraced(function*(batch) {
+          const before = transactions.opened
+          batches.push(batch)
+          // Give pending journal requests a turn, as a projection transaction would.
+          yield* Effect.yieldNow
+          assert.strictEqual(transactions.opened, before)
+        })
       })
       assert.deepStrictEqual(
         batches.map((batch) => batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)])),

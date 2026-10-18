@@ -220,12 +220,11 @@ export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer
             dependencies: [McpSchema.McpRequestContext, McpSchema.McpServerClient]
           }))
           const registration = McpServer.toolkit(toolkit).pipe(Layer.provide(toolkit.toLayer({
-            Metadata: () =>
-              Effect.gen(function*() {
-                const context = yield* McpSchema.McpRequestContext
-                const client = yield* McpSchema.McpServerClient
-                return JSON.stringify({ context: context.requestMetadata, client: client.requestMetadata })
-              })
+            Metadata: Effect.fnUntraced(function*() {
+              const context = yield* McpSchema.McpRequestContext
+              const client = yield* McpSchema.McpServerClient
+              return JSON.stringify({ context: context.requestMetadata, client: client.requestMetadata })
+            })
           })))
           const harness = yield* makeHttpHarness(
             registration.pipe(Layer.provideMerge(makeServerLayer({ name: "RequestMetadata", protocols: [protocol] })))
@@ -252,12 +251,11 @@ export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer
             name: "metadata",
             content: () => Effect.succeed("content"),
             completion: {
-              name: () =>
-                Effect.gen(function*() {
-                  const context = yield* McpSchema.McpRequestContext
-                  const client = yield* McpSchema.McpServerClient
-                  return [JSON.stringify({ context: context.requestMetadata, client: client.requestMetadata })]
-                })
+              name: Effect.fnUntraced(function*() {
+                const context = yield* McpSchema.McpRequestContext
+                const client = yield* McpSchema.McpServerClient
+                return [JSON.stringify({ context: context.requestMetadata, client: client.requestMetadata })]
+              })
             }
           })
           const harness = yield* makeHttpHarness(

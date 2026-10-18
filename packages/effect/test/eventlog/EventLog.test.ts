@@ -748,22 +748,21 @@ describe("EventLog", () => {
         let connections = 0
         yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
           id: EventJournal.makeRemoteIdUnsafe(),
-          changes: ({ startSequence }) =>
-            Effect.gen(function*() {
-              const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
-              connections++
-              if (connections <= 2) {
-                // A real remote sends only entries at or after the requested cursor.
-                yield* Queue.offerAll(changes, entries.filter((entry) => entry.remoteSequence >= startSequence))
-                // Buffered entries drain before the disconnection is observed.
-                yield* Queue.fail(
-                  changes,
-                  new EventLogRemote.EventLogRemoteError({ method: "changes", cause: "offline" })
-                )
-              }
-              yield* Queue.offer(attempts, startSequence)
-              return changes
-            }),
+          changes: Effect.fnUntraced(function*({ startSequence }) {
+            const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+            connections++
+            if (connections <= 2) {
+              // A real remote sends only entries at or after the requested cursor.
+              yield* Queue.offerAll(changes, entries.filter((entry) => entry.remoteSequence >= startSequence))
+              // Buffered entries drain before the disconnection is observed.
+              yield* Queue.fail(
+                changes,
+                new EventLogRemote.EventLogRemoteError({ method: "changes", cause: "offline" })
+              )
+            }
+            yield* Queue.offer(attempts, startSequence)
+            return changes
+          }),
           write: () => Effect.void,
           whenAuthenticated: (effect) => effect
         }))

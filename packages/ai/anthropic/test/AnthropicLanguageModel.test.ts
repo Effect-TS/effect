@@ -1365,56 +1365,55 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("generateObject", () => {
-    const getRequest = (
+    const getRequest = Effect.fnUntraced(function*(
       model: string,
       config?: { readonly structuredOutputs?: boolean | undefined }
-    ) =>
-      Effect.gen(function*() {
-        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              capturedRequest = request
-              return Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model,
-                content: [{ type: "text", text: JSON.stringify({ name: "John", age: 30 }) }],
-                stop_reason: "end_turn",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 10,
-                  output_tokens: 5,
-                  service_tier: null
-                }
-              }))
-            })
-          ))
-        )
+    ) {
+      let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+      const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient((request) => {
+            capturedRequest = request
+            return Effect.succeed(jsonResponse(request, {
+              id: "msg_test_1",
+              type: "message",
+              role: "assistant",
+              model,
+              content: [{ type: "text", text: JSON.stringify({ name: "John", age: 30 }) }],
+              stop_reason: "end_turn",
+              stop_sequence: null,
+              usage: {
+                cache_creation: null,
+                cache_creation_input_tokens: null,
+                cache_read_input_tokens: null,
+                inference_geo: null,
+                input_tokens: 10,
+                output_tokens: 5,
+                service_tier: null
+              }
+            }))
+          })
+        ))
+      )
 
-        // Assert the request shape; the response outcome is irrelevant here.
-        yield* LanguageModel.generateObject({
-          prompt: "Give me a person",
-          schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
-        }).pipe(
-          Effect.provide(AnthropicLanguageModel.model(model, config)),
-          Effect.provide(layer),
-          Effect.ignore
-        )
+      // Assert the request shape; the response outcome is irrelevant here.
+      yield* LanguageModel.generateObject({
+        prompt: "Give me a person",
+        schema: Schema.Struct({ name: Schema.String, age: Schema.Number })
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model(model, config)),
+        Effect.provide(layer),
+        Effect.ignore
+      )
 
-        assert.isDefined(capturedRequest)
-        if (capturedRequest === undefined) {
-          return yield* Effect.die(new Error("Expected a captured request"))
-        }
+      assert.isDefined(capturedRequest)
+      if (capturedRequest === undefined) {
+        return yield* Effect.die(new Error("Expected a captured request"))
+      }
 
-        return yield* getRequestBody(capturedRequest)
-      })
+      return yield* getRequestBody(capturedRequest)
+    })
 
     it.effect("uses native structured output and 128K for Claude 4.6", () =>
       Effect.gen(function*() {
@@ -1548,50 +1547,49 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("system messages", () => {
-    const getRequest = (
+    const getRequest = Effect.fnUntraced(function*(
       model: string,
       prompt: Prompt.RawInput,
       config?: { readonly midConversationSystemMessages?: boolean | undefined }
-    ) =>
-      Effect.gen(function*() {
-        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              capturedRequest = request
-              return Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model,
-                content: [{ type: "text", text: "Done" }],
-                stop_reason: "end_turn",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 1,
-                  output_tokens: 1,
-                  service_tier: null
-                }
-              }))
-            })
-          ))
-        )
+    ) {
+      let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+      const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient((request) => {
+            capturedRequest = request
+            return Effect.succeed(jsonResponse(request, {
+              id: "msg_test_1",
+              type: "message",
+              role: "assistant",
+              model,
+              content: [{ type: "text", text: "Done" }],
+              stop_reason: "end_turn",
+              stop_sequence: null,
+              usage: {
+                cache_creation: null,
+                cache_creation_input_tokens: null,
+                cache_read_input_tokens: null,
+                inference_geo: null,
+                input_tokens: 1,
+                output_tokens: 1,
+                service_tier: null
+              }
+            }))
+          })
+        ))
+      )
 
-        yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
-          Effect.provide(AnthropicLanguageModel.model(model, config)),
-          Effect.provide(layer)
-        )
+      yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
+        Effect.provide(AnthropicLanguageModel.model(model, config)),
+        Effect.provide(layer)
+      )
 
-        if (capturedRequest === undefined) {
-          return yield* Effect.die(new Error("Expected a captured request"))
-        }
-        return yield* getRequestBody(capturedRequest)
-      })
+      if (capturedRequest === undefined) {
+        return yield* Effect.die(new Error("Expected a captured request"))
+      }
+      return yield* getRequestBody(capturedRequest)
+    })
 
     const conversation = Prompt.make([
       { role: "system", content: "A" },
@@ -1986,14 +1984,13 @@ const jsonResponse = (
     })
   )
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag !== "Uint8Array") {
-      return yield* Effect.die(new Error("Expected Uint8Array body"))
-    }
-    return JSON.parse(new TextDecoder().decode(body.body))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag !== "Uint8Array") {
+    return yield* Effect.die(new Error("Expected Uint8Array body"))
+  }
+  return JSON.parse(new TextDecoder().decode(body.body))
+})
 
 const toSseBody = (events: ReadonlyArray<unknown>): string =>
   events.map((event) => `event: message_stream\ndata: ${JSON.stringify(event)}\n\n`).join("")

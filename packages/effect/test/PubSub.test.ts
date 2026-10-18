@@ -743,19 +743,18 @@ describe("PubSub", () => {
   // A small op budget makes the fiber yield at each point between starting a
   // wait and suspending on it; interrupting it there must leave nothing behind.
   // (With a budget below 3 a fiber yields again before making progress.)
-  const interruptAtEveryYield = (
+  const interruptAtEveryYield = Effect.fnUntraced(function*(
     test: (
       budget: (effect: Effect.Effect<unknown>) => Effect.Effect<unknown>
     ) => Effect.Effect<boolean, never, Scope.Scope>
-  ) =>
-    Effect.gen(function*() {
-      const failed: Array<number> = []
-      for (let ops = 3; ops <= 64; ops++) {
-        const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
-        if (!ok) failed.push(ops)
-      }
-      assert.deepStrictEqual(failed, [])
-    })
+  ) {
+    const failed: Array<number> = []
+    for (let ops = 3; ops <= 64; ops++) {
+      const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
+      if (!ok) failed.push(ops)
+    }
+    assert.deepStrictEqual(failed, [])
+  })
 
   it.effect("an interrupted take never swallows the next message", () =>
     interruptAtEveryYield((budget) =>

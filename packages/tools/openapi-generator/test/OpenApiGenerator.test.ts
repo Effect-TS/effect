@@ -11,85 +11,69 @@ import { fileURLToPath } from "node:url"
 // These integration checks start a fresh TypeScript compiler under CI load.
 const compilationTimeout = 60_000
 
-function assertRuntime(spec: OpenAPISpec, expected: string) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+const assertRuntime = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: string) {
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient"
+  })
 
-    // console.log(result)
-    assert.strictEqual(result, expected)
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
-  )
-}
+  // console.log(result)
+  assert.strictEqual(result, expected)
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertTypeOnly(spec: OpenAPISpec, expected: string) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+const assertTypeOnly = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: string) {
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only"
+  })
 
-    // console.log(result)
-    assert.strictEqual(result, expected)
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerTs)
-  )
-}
+  // console.log(result)
+  assert.strictEqual(result, expected)
+}, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
-function assertRuntimeIncludes(
+const assertRuntimeIncludes = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
   excludes: ReadonlyArray<string> = []
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient"
+  })
 
-    for (const expected of includes) {
-      assert.include(result, expected)
-    }
-    for (const excluded of excludes) {
-      assert.notInclude(result, excluded)
-    }
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
-  )
-}
+  for (const expected of includes) {
+    assert.include(result, expected)
+  }
+  for (const excluded of excludes) {
+    assert.notInclude(result, excluded)
+  }
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertTypeOnlyIncludes(
+const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
   excludes: ReadonlyArray<string> = []
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only"
+  })
 
-    for (const expected of includes) {
-      assert.include(result, expected)
-    }
-    for (const excluded of excludes) {
-      assert.notInclude(result, excluded)
-    }
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerTs)
-  )
-}
+  for (const expected of includes) {
+    assert.include(result, expected)
+  }
+  for (const excluded of excludes) {
+    assert.notInclude(result, excluded)
+  }
+}, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
 function assertGeneratedClientsCompile(
   spec: OpenAPISpec,
@@ -156,31 +140,27 @@ function assertGeneratedClientsCompile(
   })
 }
 
-function assertHttpApiIncludes(
+const assertHttpApiIncludes = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
   excludes: ReadonlyArray<string> = []
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpapi"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpapi"
+  })
 
-    for (const expected of includes) {
-      assert.include(result, expected)
-    }
-    for (const excluded of excludes) {
-      assert.notInclude(result, excluded)
-    }
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
-  )
-}
+  for (const expected of includes) {
+    assert.include(result, expected)
+  }
+  for (const excluded of excludes) {
+    assert.notInclude(result, excluded)
+  }
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertHttpApiWithWarnings(
+const assertHttpApiWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   options: {
     readonly includes?: ReadonlyArray<string> | undefined
@@ -196,115 +176,103 @@ function assertHttpApiWithWarnings(
     >
   }
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
-    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpapi",
-      onWarning: (warning) => {
-        warnings.push(warning)
-      }
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpapi",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
 
-    for (const expected of options.includes ?? []) {
-      assert.include(result, expected)
-    }
-    for (const excluded of options.excludes ?? []) {
-      assert.notInclude(result, excluded)
-    }
-    for (const { substring, count } of options.occurrences ?? []) {
-      assert.strictEqual(result.split(substring).length - 1, count)
-    }
+  for (const expected of options.includes ?? []) {
+    assert.include(result, expected)
+  }
+  for (const excluded of options.excludes ?? []) {
+    assert.notInclude(result, excluded)
+  }
+  for (const { substring, count } of options.occurrences ?? []) {
+    assert.strictEqual(result.split(substring).length - 1, count)
+  }
 
-    assert.deepStrictEqual(
-      warnings.map((warning) => ({
-        code: warning.code,
-        path: warning.path,
-        method: warning.method,
-        operationId: warning.operationId
-      })),
-      options.warnings
-    )
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
+  assert.deepStrictEqual(
+    warnings.map((warning) => ({
+      code: warning.code,
+      path: warning.path,
+      method: warning.method,
+      operationId: warning.operationId
+    })),
+    options.warnings
   )
-}
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertRuntimeStableWithWarnings(
+const assertRuntimeStableWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   expectedWarnings: ReadonlyArray<
     Pick<OpenApiGenerator.OpenApiGeneratorWarning, "code" | "path" | "method" | "operationId">
   >
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
-    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
 
-    const baseline = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient"
-    })
-    const withWarnings = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient",
-      onWarning: (warning) => {
-        warnings.push(warning)
-      }
-    })
+  const baseline = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient"
+  })
+  const withWarnings = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
 
-    assert.strictEqual(withWarnings, baseline)
-    assert.deepStrictEqual(
-      warnings.map((warning) => ({
-        code: warning.code,
-        path: warning.path,
-        method: warning.method,
-        operationId: warning.operationId
-      })),
-      expectedWarnings
-    )
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
+  assert.strictEqual(withWarnings, baseline)
+  assert.deepStrictEqual(
+    warnings.map((warning) => ({
+      code: warning.code,
+      path: warning.path,
+      method: warning.method,
+      operationId: warning.operationId
+    })),
+    expectedWarnings
   )
-}
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertTypeOnlyStableWithWarnings(
+const assertTypeOnlyStableWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   expectedWarnings: ReadonlyArray<
     Pick<OpenApiGenerator.OpenApiGeneratorWarning, "code" | "path" | "method" | "operationId">
   >
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
-    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
 
-    const baseline = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only"
-    })
-    const withWarnings = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only",
-      onWarning: (warning) => {
-        warnings.push(warning)
-      }
-    })
+  const baseline = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only"
+  })
+  const withWarnings = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
 
-    assert.strictEqual(withWarnings, baseline)
-    assert.deepStrictEqual(
-      warnings.map((warning) => ({
-        code: warning.code,
-        path: warning.path,
-        method: warning.method,
-        operationId: warning.operationId
-      })),
-      expectedWarnings
-    )
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerTs)
+  assert.strictEqual(withWarnings, baseline)
+  assert.deepStrictEqual(
+    warnings.map((warning) => ({
+      code: warning.code,
+      path: warning.path,
+      method: warning.method,
+      operationId: warning.operationId
+    })),
+    expectedWarnings
   )
-}
+}, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
 const regressionSpec: OpenAPISpec = {
   openapi: "3.1.0",
