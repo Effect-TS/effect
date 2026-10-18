@@ -206,15 +206,15 @@ export const UndiciOptions = Context.Reference<Partial<Undici.Dispatcher.Request
 export const makeUndici = Effect.gen(function*() {
   const dispatcher = yield* Dispatcher
   return Client.make((request, url, signal, fiber) =>
-    convertBody(request.body).pipe(
-      Effect.flatMap((body) =>
+    convertBody(request).pipe(
+      Effect.flatMap(({ body, headers }) =>
         Effect.tryPromise({
           try: () =>
             dispatcher.request({
               ...fiber.getRef(UndiciOptions),
               signal,
               method: request.method,
-              headers: request.headers,
+              headers,
               origin: url.origin,
               path: url.pathname + url.search,
               body,
@@ -236,24 +236,37 @@ export const makeUndici = Effect.gen(function*() {
   )
 })
 
-function convertBody(
-  body: Body.HttpBody
-): Effect.Effect<Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>> {
+function convertBody(request: HttpClientRequest): Effect.Effect<{
+  readonly body: Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>
+  readonly headers: Headers.Headers
+}> {
+  const { body, headers } = request
   switch (body._tag) {
     case "Empty": {
-      return Effect.succeed(null)
+      return Effect.succeed({ body: null, headers })
     }
     case "Uint8Array":
     case "Raw": {
-      return Effect.succeed(body.body as Uint8Array)
+      return Effect.succeed({ body: body.body as Uint8Array, headers })
     }
     case "FormData": {
-      return Effect.succeed(body.formData as any)
+      return Effect.map(loadUndici, (undici) => ({
+        body: convertFormData(body.formData, undici),
+        headers: Headers.remove(headers, "content-type")
+      }))
     }
     case "Stream": {
-      return NodeStream.toReadable(body.stream)
+      return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers }))
     }
   }
+}
+
+const convertFormData = (formData: FormData, undici: typeof Undici): Undici.FormData => {
+  const converted = new undici.FormData()
+  for (const [key, value] of formData) {
+    converted.append(key, value)
+  }
+  return converted
 }
 
 function noopErrorHandler(_: any) {}
@@ -590,21 +603,20 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        const response = new globalThis.Response(body.formData)
+        return Effect.flatMap(loadUndici, (undici) => {
+          const response = new undici.Response(convertFormData(body.formData, undici))
+          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
 
-        response.headers.forEach((value, key) => {
-          nodeRequest.setHeader(key, value)
-        })
-
-        return Effect.tryPromise({
-          try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
-          catch: (cause) =>
-            new Error.HttpClientError({
-              reason: new Error.TransportError({
-                request,
-                cause
+          return Effect.tryPromise({
+            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
+            catch: (cause) =>
+              new Error.HttpClientError({
+                reason: new Error.TransportError({
+                  request,
+                  cause
+                })
               })
-            })
+          })
         })
       }
       case "Stream": {
