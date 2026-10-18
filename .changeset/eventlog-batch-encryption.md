@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 Encrypted event log replication now encrypts entries in batches of up to 100 entries or about 256 KB of payload, one AES-GCM call per batch, and encrypted servers store and stream those batches. Each batch authenticates its store id and plaintext entry ids. This changes the encrypted protocol, APIs and server tables without migration: upgrade encrypted clients and servers together, and start encrypted servers on fresh storage because existing per-entry rows are not read.
