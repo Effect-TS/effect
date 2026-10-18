@@ -115,7 +115,7 @@ describe("Socket", () => {
 
     it.effect("readerString decodes characters split across pulls", () =>
       Effect.gen(function*() {
-        const pulls = [[new Uint8Array([0x61, 0xe2, 0x98])], [new Uint8Array([0x95])]]
+        const pulls: Array<[Uint8Array]> = [[new Uint8Array([0x61, 0xe2, 0x98])], [new Uint8Array([0x95])]]
         const { socket } = stubSocket(Effect.sync(() => pulls.shift()!))
 
         const pull = yield* Socket.readerString(socket)
