@@ -277,9 +277,8 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
-  // SQLite INTEGER comes back as a JavaScript number on drivers that cannot
-  // honor SafeIntegers, including Durable Objects. Snowflakes are above
-  // 2^53, so read the id columns as text and keep the stored digits exact.
+  // Read SQLite IDs as text to avoid rounding on number-returning drivers
+  // such as Durable Objects.
   const idsAsText = sql.onDialectOrElse({
     sqlite: () => true,
     orElse: () => false
