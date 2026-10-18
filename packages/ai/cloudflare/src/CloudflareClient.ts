@@ -105,7 +105,7 @@ export const make = Effect.fnUntraced(
               Effect.fail(AiError.make({
                 module: "CloudflareClient",
                 method: "createDecisions",
-                reason: AiError.InvalidOutputError.fromSchemaError(error)
+                reason: AiError.InvalidResponseError.fromSchemaError(error)
               }))
           })
         )
