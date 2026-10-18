@@ -106,6 +106,7 @@
     },
     "plugins": [{
       "name": "@effect/language-service",
+      "effectFn": ["untraced"],
       "namespaceImportPackages": [],
       "includeSuggestionsInTsc": false,
       "ignoreEffectWarningsInTscExitCode": true,
@@ -124,7 +125,7 @@
         "unknownInEffectCatch": "off",
         "multipleEffectProvide": "off",
         "unstableApiUsage": "off",
-        "effectFnOpportunity": "error"
+        "effectFnOpportunity": "off" // TODO: Convert test helpers returning Effect.gen to Effect.fnUntraced, then set to "error"
       }
     }]
   }

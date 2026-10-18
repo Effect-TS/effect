@@ -527,16 +527,16 @@ export const make = (options?: {
         },
         withTracerDisabled
       ),
-      writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
-        Effect.gen(function*() {
+      writeRemoteAcks: Effect.fnUntraced(
+        function*({ acks, firstSequence, remoteId }) {
           if (acks.length === 0) return
           const next = yield* readCursor(remoteId)
           yield* writeCursor(remoteId, EventJournal.advanceSequence(next, acks, firstSequence))
-        }).pipe(
-          sql.withTransaction,
-          withTracerDisabled,
-          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeRemoteAcks" }))
-        ),
+        },
+        (_) => sql.withTransaction(_),
+        (_) => withTracerDisabled(_),
+        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "writeRemoteAcks" }))
+      ),
       nextRemoteSequence: (remoteId) =>
         readCursor(remoteId).pipe(
           withTracerDisabled,

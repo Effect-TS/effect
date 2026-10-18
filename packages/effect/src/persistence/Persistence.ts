@@ -607,35 +607,33 @@ export const layerBackingSql: Layer.Layer<
     pg: () =>
       sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
         .pipe(Effect.orDie, Effect.asVoid),
-    mysql: () =>
-      Effect.gen(function*() {
-        const indexExists = sql<{ readonly count: number }>`
+    mysql: Effect.fnUntraced(function*() {
+      const indexExists = sql<{ readonly count: number }>`
           SELECT COUNT(*) AS count FROM information_schema.statistics
           WHERE table_schema = DATABASE()
             AND table_name = 'effect_persistence'
             AND index_name = 'effect_persistence_expires_idx'
         `.pipe(
-          Effect.map((rows) => Number(rows[0].count) > 0)
-        )
+        Effect.map((rows) => Number(rows[0].count) > 0)
+      )
 
-        yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires)`.pipe(
-          Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
-        )
-      }).pipe(Effect.orDie),
-    mssql: () =>
-      Effect.gen(function*() {
-        const indexExists = sql<{ readonly count: number }>`
+      yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires)`.pipe(
+        Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
+      )
+    }, (_) => Effect.orDie(_)),
+    mssql: Effect.fnUntraced(function*() {
+      const indexExists = sql<{ readonly count: number }>`
           SELECT COUNT(*) AS count FROM sys.indexes
           WHERE name = N'effect_persistence_expires_idx'
             AND object_id = OBJECT_ID(N'effect_persistence')
         `.pipe(
-          Effect.map((rows) => Number(rows[0].count) > 0)
-        )
+        Effect.map((rows) => Number(rows[0].count) > 0)
+      )
 
-        yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`.pipe(
-          Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
-        )
-      }).pipe(Effect.orDie),
+      yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`.pipe(
+        Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
+      )
+    }, (_) => Effect.orDie(_)),
     // sqlite
     orElse: () =>
       sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
