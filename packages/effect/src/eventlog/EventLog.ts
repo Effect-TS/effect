@@ -669,28 +669,19 @@ export const group = <Events extends Event.Any, Return>(
     })
   ) as any
 
-/**
- * Registers a compaction handler for an event group.
- *
- * **Details**
- *
- * During remote replay, matching entries are decoded, grouped by primary key, and
- * passed to the compaction effect, which may write replacement entries.
- *
- * @stability unstable
- * @category compaction
- * @since 4.0.0
- */
-export const groupCompaction = <Events extends Event.Any, R>(
+const registerBatchCompaction = <Events extends Event.Any, R>(
   group: EventGroup.EventGroup<Events>,
   effect: (options: {
-    readonly primaryKey: string
-    readonly entries: ReadonlyArray<Entry>
-    readonly events: ReadonlyArray<Event.TaggedPayload<Events>>
-    readonly write: <Tag extends Event.Tag<Events>>(
+    readonly entries: ReadonlyArray<{
+      readonly entry: Entry
+      readonly event: Event.TaggedPayload<Events> | undefined
+    }>
+    readonly writeFrom: <Tag extends Event.Tag<Events>>(
+      source: Entry,
       tag: Tag,
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
+    readonly forward: (entry: Entry) => Effect.Effect<void>
   }) => Effect.Effect<void, never, R>
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   Layer.effectDiscard(
@@ -706,7 +697,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
             Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input))
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
-          const writePayload = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
+          const writeFrom = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
             source: Entry,
             tag: Tag,
             payload: Event.PayloadWithTag<Events, Tag>
@@ -722,54 +713,157 @@ export const groupCompaction = <Events extends Event.Any, R>(
             }, { disableChecks: true })
             yield* write(entry, source)
           })
+          // Without a source, the entry keeps its id and its position in the batch.
+          const forward = (entry: Entry) => write(entry)
 
-          const byPrimaryKey = new Map<
-            string,
-            {
-              readonly entries: Array<Entry>
-              readonly taggedPayloads: Array<Event.TaggedPayload<Events>>
-            }
-          >()
+          const decoded: Array<{
+            readonly entry: Entry
+            readonly event: Event.TaggedPayload<Events> | undefined
+          }> = []
           for (const entry of entries) {
             if (!isEventTag(entry.event)) {
               continue
             }
-            const decoded = yield* Effect.result(decodePayload(entry.event, entry.payload))
-            if (Result.isFailure(decoded)) {
-              // Preserve opaque entries for replay or forwarding without compacting them.
-              yield* write(entry)
-              continue
-            }
-            const payload = decoded.success
-            const record = byPrimaryKey.get(entry.primaryKey)
-            const taggedPayload = { _tag: entry.event, payload } as unknown as Event.TaggedPayload<Events>
-            if (record) {
-              record.entries.push(entry)
-              record.taggedPayloads.push(taggedPayload)
-            } else {
-              byPrimaryKey.set(entry.primaryKey, {
-                entries: [entry],
-                taggedPayloads: [taggedPayload]
-              })
-            }
+            const payload = yield* Effect.result(decodePayload(entry.event, entry.payload))
+            decoded.push({
+              entry,
+              event: Result.isFailure(payload)
+                ? undefined
+                : { _tag: entry.event, payload: payload.success } as unknown as Event.TaggedPayload<Events>
+            })
           }
 
-          for (const [primaryKey, { entries, taggedPayloads }] of byPrimaryKey) {
-            yield* Effect.orDie(
-              effect({
-                primaryKey,
-                entries,
-                events: taggedPayloads,
-                write(tag, payload) {
-                  return Effect.orDie(writePayload(entries[0], tag, payload))
-                }
-              }).pipe(
-                Effect.updateContext((input) => Context.merge(services, input))
-              )
-            ) as any
-          }
+          yield* Effect.orDie(
+            effect({ entries: decoded, writeFrom, forward }).pipe(
+              Effect.updateContext((input) => Context.merge(services, input))
+            )
+          ) as any
         })
       })
+    })
+  )
+
+/**
+ * Registers a batch compaction handler for an event group.
+ *
+ * **When to use**
+ *
+ * Use when a compactor needs to see the whole batch, for example when an event
+ * under one primary key affects entries under other keys, or when kept entries
+ * must replay with their original ids and positions.
+ *
+ * **Details**
+ *
+ * During remote replay, the compaction effect receives every entry for the group
+ * in batch order, together with its decoded event. An entry whose payload cannot
+ * be decoded is listed at its position with `event: undefined`.
+ *
+ * Only entries that the effect outputs are kept:
+ *
+ * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
+ *   and primary key, at its original position in the batch.
+ * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
+ *   to the first entry in the batch.
+ *
+ * Entries that are neither forwarded nor replaced are dropped, including entries
+ * that could not be decoded.
+ *
+ * @see {@link groupCompaction} for compaction grouped by primary key
+ *
+ * @stability unstable
+ * @category compaction
+ * @since 4.0.0
+ */
+export const groupBatchCompaction = <Events extends Event.Any, R>(
+  group: EventGroup.EventGroup<Events>,
+  effect: (options: {
+    readonly entries: ReadonlyArray<{
+      readonly entry: Entry
+      readonly event: Event.TaggedPayload<Events> | undefined
+    }>
+    readonly write: <Tag extends Event.Tag<Events>>(
+      tag: Tag,
+      payload: Event.PayloadWithTag<Events, Tag>
+    ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
+    readonly forward: (entry: Entry) => Effect.Effect<void>
+  }) => Effect.Effect<void, never, R>
+): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
+  registerBatchCompaction(group, ({ entries, writeFrom, forward }) =>
+    effect({
+      entries,
+      write: (tag, payload) => writeFrom(entries[0].entry, tag, payload),
+      forward
+    }))
+
+/**
+ * Registers a compaction handler for an event group.
+ *
+ * **Details**
+ *
+ * During remote replay, decoded entries are grouped by primary key and passed to
+ * the compaction effect, which outputs the entries to keep:
+ *
+ * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
+ *   and primary key, at its original position in the batch.
+ * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
+ *   to the first entry for the primary key.
+ *
+ * Entries that are neither forwarded nor replaced are dropped. Entries that
+ * cannot be decoded are not passed to the effect and are kept unchanged.
+ *
+ * @see {@link groupBatchCompaction} for compaction across primary keys
+ *
+ * @stability unstable
+ * @category compaction
+ * @since 4.0.0
+ */
+export const groupCompaction = <Events extends Event.Any, R>(
+  group: EventGroup.EventGroup<Events>,
+  effect: (options: {
+    readonly primaryKey: string
+    readonly entries: ReadonlyArray<Entry>
+    readonly events: ReadonlyArray<Event.TaggedPayload<Events>>
+    readonly write: <Tag extends Event.Tag<Events>>(
+      tag: Tag,
+      payload: Event.PayloadWithTag<Events, Tag>
+    ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
+    readonly forward: (entry: Entry) => Effect.Effect<void>
+  }) => Effect.Effect<void, never, R>
+): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
+  registerBatchCompaction(
+    group,
+    Effect.fnUntraced(function*({ entries, writeFrom, forward }) {
+      const byPrimaryKey = new Map<
+        string,
+        {
+          readonly entries: Array<Entry>
+          readonly events: Array<Event.TaggedPayload<Events>>
+        }
+      >()
+      for (const { entry, event } of entries) {
+        if (event === undefined) {
+          // Preserve opaque entries for replay or forwarding without compacting them.
+          yield* forward(entry)
+          continue
+        }
+        const record = byPrimaryKey.get(entry.primaryKey)
+        if (record) {
+          record.entries.push(entry)
+          record.events.push(event)
+        } else {
+          byPrimaryKey.set(entry.primaryKey, { entries: [entry], events: [event] })
+        }
+      }
+
+      for (const [primaryKey, { entries, events }] of byPrimaryKey) {
+        yield* effect({
+          primaryKey,
+          entries,
+          events,
+          write: (tag, payload) => writeFrom(entries[0], tag, payload),
+          forward
+        })
+      }
     })
   )
 

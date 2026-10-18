@@ -519,7 +519,7 @@ type RegisteredCompactor = {
   readonly events: ReadonlySet<string>
   readonly effect: (options: {
     readonly entries: ReadonlyArray<Entry>
-    readonly write: (entry: Entry) => Effect.Effect<void>
+    readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
   }) => Effect.Effect<void>
 }
 
@@ -585,6 +585,16 @@ const toCompactedRemoteEntries = (options: {
  * entries when the replacement count can be mapped back to increasing remote
  * sequence numbers; otherwise the original entries are kept.
  *
+ * Compacted entries keep the positions the client replay uses: each output is
+ * ordered by the position of its source entry within the run, or of the entry
+ * itself when it was written without a source. Output whose position is unknown
+ * goes to the start of the run, and outputs at the same position keep their
+ * write order.
+ *
+ * Client replay passes all of a batch's entries for a compactor in one call,
+ * while `compactBacklog` calls the compactor once per contiguous run, so a
+ * compactor may see a different grouping of the same entries on the server.
+ *
  * @stability unstable
  * @category compaction
  * @since 4.0.0
@@ -611,7 +621,7 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
 
     const entries: Array<Entry> = [remoteEntry.entry]
     const remoteGroup: Array<RemoteEntry> = [remoteEntry]
-    const compacted: Array<Entry> = []
+    const written: Array<{ readonly entry: Entry; readonly position: number }> = []
     index++
 
     while (index < options.remoteEntries.length) {
@@ -625,17 +635,23 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
       index++
     }
 
+    const positions = new Map<string, number>()
+    for (let i = 0; i < entries.length; i++) {
+      positions.set(entries[i].idString, i)
+    }
     yield* compactor.effect({
       entries,
-      write(entry) {
+      write(entry, source) {
         return Effect.sync(() => {
-          compacted.push(entry)
+          written.push({ entry, position: positions.get((source ?? entry).idString) ?? 0 })
         })
       }
     }).pipe(Effect.orDie)
+    // Array.prototype.sort is stable, so outputs at one position keep their write order.
+    written.sort((a, b) => a.position - b.position)
 
     const projected = toCompactedRemoteEntries({
-      compacted,
+      compacted: written.map(({ entry }) => entry),
       remoteEntries: remoteGroup
     })
 
