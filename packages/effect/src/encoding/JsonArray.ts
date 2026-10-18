@@ -66,8 +66,8 @@ const encoder = new TextEncoder()
  * Decoding errors set `offset`, a zero-based offset in UTF-16 code units into
  * the decoded text after any leading BOM. When a value is invalid or exceeds a
  * limit, the offset is the start of that value. `Encode` errors have no
- * offset. `Syntax` and `Encode` errors set `cause` to the error thrown by
- * `JSON.parse` or `JSON.stringify`.
+ * offset. When `JSON.parse` or `JSON.stringify` throws, `Syntax` and `Encode`
+ * errors retain the original thrown value as `cause`.
  *
  * @stability unstable
  * @category errors
@@ -468,17 +468,17 @@ class Scanner {
  *
  * **Gotchas**
  *
- * - The document is validated as it streams, so elements from earlier input
- *   chunks have already been emitted when a later syntax error, limit or
- *   missing pointer target fails the channel. Content after the selected
- *   array is only checked once all of its elements are out, so a failure
- *   there is a signal that the document was invalid, not a guard against
- *   using its elements.
+ * - The document is validated as it streams, so elements from earlier
+ *   successfully processed input chunks may already have been emitted when a
+ *   later error fails the channel. Elements accumulated in the failing chunk
+ *   are not emitted. A failure in content after the selected array signals
+ *   that the document was invalid, but cannot guard against using earlier
+ *   output.
  * - The pointer follows the first occurrence of a key, where `JSON.parse`
  *   keeps the last. A repeated followed key fails with a `Pointer` error, as
  *   does a first occurrence that is not an object or array where the pointer
- *   needs one. When the repeat comes after the selected array, every element
- *   has already been emitted.
+ *   needs one. When the repeat comes after the selected array, elements from
+ *   earlier successfully processed chunks may already have been emitted.
  * - A root that is not an array fails with a `Pointer` error unless the
  *   pointer selects an array inside it.
  *
