@@ -98,10 +98,10 @@ const transactionDone = (tx: IDBTransaction) =>
     tx.onerror = tx.onabort = () => resume(Effect.fail(tx.error))
   })
 
-// Creates a database with the version 2 schema written by `makeIndexedDb`
-// before the conflict index was added.
-const openVersion2 = (database: string) => {
-  const request = indexedDB.open(database, 2)
+// Creates a database with the schema written by an earlier `makeIndexedDb`:
+// version 2 before the conflict index, version 3 before entry sources.
+const openLegacy = (database: string, version: 2 | 3) => {
+  const request = indexedDB.open(database, version)
   request.onupgradeneeded = () => {
     const db = request.result
     const entries = db.createObjectStore("entries", { keyPath: "id" })
@@ -113,6 +113,7 @@ const openVersion2 = (database: string) => {
     const remoteEntryId = db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] })
     remoteEntryId.createIndex("id", "remoteId", { unique: true })
     db.createObjectStore("entrySequence", { autoIncrement: true })
+    if (version === 3) entries.createIndex("conflict", ["event", "primaryKey", "id"])
   }
   return idbRequest(request)
 }
@@ -508,14 +509,14 @@ describe("EventJournal.makeIndexedDb", () => {
       })
     }))
 
-  it.effect("upgrades a version 2 database to version 3 without losing entries or remote state", () =>
+  it.effect("upgrades a version 2 database to the current version without losing entries or remote state", () =>
     Effect.gen(function*() {
       const database = uniqueName("journal")
       const source = EventJournal.makeRemoteIdUnsafe()
       const upload = EventJournal.makeRemoteIdUnsafe()
       const stored = [entry(1000, { payload: [1] }), entry(2000, { payload: [2] }), entry(3000, { payload: [3] })]
 
-      const v2 = yield* openVersion2(database)
+      const v2 = yield* openLegacy(database, 2)
       const tx = v2.transaction(["entries", "entrySequence", "remotes", "remoteEntryId"], "readwrite")
       for (const item of stored) {
         tx.objectStore("entries").put({
@@ -563,12 +564,101 @@ describe("EventJournal.makeIndexedDb", () => {
         uncommitted,
         batches: batches.map(describeBatch)
       }, {
-        version: 3,
+        version: 4,
         conflictIndex: true,
         entries: stored.map(describeEntry),
         nextSequence: 2,
         uncommitted: Option.some([stored[1].idString, stored[2].idString]),
         batches: [[[incoming.idString, stored.slice(1).map(describeEntry)]]]
+      })
+    }))
+
+  it.effect("replaces per-entry remote rows with entry sources in one restartable upgrade", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const remoteA = EventJournal.makeRemoteIdUnsafe()
+      const remoteB = EventJournal.makeRemoteIdUnsafe()
+      const uploaded = entry(1000, { primaryKey: "uploaded" })
+      const fromA = entry(2000, { primaryKey: "fromA" })
+      // Acknowledged by A, but the upload checkpoint was not saved before a restart.
+      const acked = entry(3000, { primaryKey: "acked" })
+      const fromB = entry(4000, { primaryKey: "fromB" })
+      // Written offline; no remote has it.
+      const pending = entry(5000, { primaryKey: "pending" })
+
+      const v3 = yield* openLegacy(database, 3)
+      const tx = v3.transaction(["entries", "entrySequence", "remotes", "remoteEntryId"], "readwrite")
+      for (const item of [uploaded, fromA, acked, fromB, pending]) {
+        tx.objectStore("entries").put({
+          id: item.id,
+          event: item.event,
+          primaryKey: item.primaryKey,
+          payload: item.payload
+        })
+        tx.objectStore("entrySequence").add(item.id as IDBValidKey)
+      }
+      tx.objectStore("remotes").put({ remoteId: remoteA, entryId: fromA.id, sequence: 0 })
+      tx.objectStore("remotes").put({ remoteId: remoteA, entryId: acked.id, sequence: 1 })
+      tx.objectStore("remotes").put({ remoteId: remoteB, entryId: fromB.id, sequence: 3 })
+      tx.objectStore("remoteEntryId").put({ remoteId: remoteA, sequence: 1 })
+      yield* transactionDone(tx)
+      v3.close()
+
+      const deleteObjectStore = IDBDatabase.prototype.deleteObjectStore
+      IDBDatabase.prototype.deleteObjectStore = () => {
+        throw new Error("interrupted upgrade")
+      }
+      const interrupted = yield* Effect.exit(Effect.scoped(EventJournal.makeIndexedDb({ database })))
+      IDBDatabase.prototype.deleteObjectStore = deleteObjectStore
+
+      const ids = (...entries: ReadonlyArray<EventJournal.Entry>) => entries.map((entry) => entry.idString)
+      const state = Effect.gen(function*() {
+        const journal = yield* EventJournal.makeIndexedDb({ database })
+        return {
+          entries: ids(...(yield* journal.entries)),
+          nextA: yield* journal.nextRemoteSequence(remoteA),
+          nextB: yield* journal.nextRemoteSequence(remoteB)
+        }
+      }).pipe(Effect.scoped)
+      const migrated = yield* state
+      const reopened = yield* state
+
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      const fresh = entry(6000, { primaryKey: "fresh" })
+      yield* journal.writeFromRemote({
+        remoteId: remoteB,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 4, entry: fresh })],
+        effect: () => Effect.void
+      })
+      const upload = (remoteId: EventJournal.RemoteId) =>
+        journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(ids(...entries)))
+      const upgraded = yield* Effect.acquireRelease(
+        idbRequest(indexedDB.open(database)),
+        (db) => Effect.sync(() => db.close())
+      )
+
+      const expected = { entries: ids(uploaded, fromA, acked, fromB, pending), nextA: 2, nextB: 4 }
+      assert.deepStrictEqual({
+        interrupted: Exit.isFailure(interrupted),
+        migrated,
+        reopened,
+        version: upgraded.version,
+        stores: Array.from(upgraded.objectStoreNames),
+        nextB: yield* journal.nextRemoteSequence(remoteB),
+        uploadA: yield* upload(remoteA),
+        uploadB: yield* upload(remoteB),
+        uploadLate: yield* upload(EventJournal.makeRemoteIdUnsafe())
+      }, {
+        interrupted: true,
+        migrated: expected,
+        reopened: expected,
+        version: 4,
+        stores: ["entries", "entrySequence", "entrySource", "remoteEntryId"],
+        nextB: 5,
+        // Never back to the source, and nothing at or below a checkpoint.
+        uploadA: Option.some(ids(fromB, pending, fresh)),
+        uploadB: Option.some(ids(uploaded, fromA, acked, pending)),
+        uploadLate: Option.some(ids(uploaded, fromA, acked, fromB, pending, fresh))
       })
     }))
 
