@@ -17,6 +17,7 @@ import {
   Multipart
 } from "effect/http"
 import * as Layer from "effect/Layer"
+import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { mkdtempSync, openAsBlob, rmSync, truncateSync, writeFileSync } from "node:fs"
@@ -350,6 +351,52 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         expect(response.status).toBe(200)
       }).pipe(Effect.provide(localServerTestLayer)))
   })
+})
+
+it.live("releases an immediately failing form data stream and connection before layer teardown", () => {
+  const server = Http.createServer((request) => {
+    request.on("error", () => {})
+    request.resume()
+  })
+  const layer = HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+  )
+  return Effect.gen(function*() {
+    const streams: Array<ReadableStream<Uint8Array<ArrayBuffer>>> = []
+    class BrokenFile extends File {
+      override stream() {
+        const stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+          start(controller) {
+            controller.error(new Error("file read failed"))
+          }
+        })
+        streams.push(stream)
+        return stream
+      }
+    }
+    const formData = new FormData()
+    formData.append("file", new BrokenFile(["file contents"], "notes.txt"))
+    const error = yield* HttpClient.post("/", { body: HttpBody.formData(formData) }).pipe(
+      Effect.timeout("2 seconds"),
+      Effect.match({ onFailure: (error) => error, onSuccess: () => undefined })
+    )
+    assert.strictEqual(streams.length, 1)
+    assert(error?._tag === "HttpClientError", `Expected HttpClientError, got ${error?._tag}`)
+    assert.strictEqual(error.reason._tag, "TransportError")
+    assert.strictEqual(streams[0].locked, false)
+    const connections = yield* Effect.sleep("10 millis").pipe(
+      Effect.andThen(Effect.callback<number, Error>((resume) => {
+        server.getConnections((error, count) => resume(error ? Effect.fail(error) : Effect.succeed(count)))
+      })),
+      Effect.repeat({ while: (count) => count !== 0, schedule: Schedule.spaced("10 millis") }),
+      Effect.timeout("1 second")
+    )
+    assert.strictEqual(connections, 0)
+  }).pipe(
+    Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+    Effect.provide(layer)
+  )
 })
 
 it.live("returns a stream body encoding failure", () =>
