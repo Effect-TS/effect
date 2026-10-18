@@ -8,12 +8,14 @@ const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
 // Fixtures were written by Info-ZIP Zip 3.0, 7-Zip and Python; see fixtures/zip/README.md
-const fixture = (name: string) =>
-  Effect.gen(function*() {
+const fixture = Effect.fnUntraced(
+  function*(name: string) {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     return yield* fs.readFile(yield* path.fromFileUrl(new URL(`../fixtures/zip/${name}.zip`, import.meta.url)))
-  }).pipe(Effect.provide(NodeServices.layer))
+  },
+  Effect.provide(NodeServices.layer)
+)
 
 const text = (bytes: Uint8Array) => textDecoder.decode(bytes)
 

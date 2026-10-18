@@ -3,6 +3,16 @@ import * as Zip from "effect/encoding/Zip"
 import { describe, expect, it } from "tstyche"
 
 describe("Zip", () => {
+  it("stored streams require a size", () => {
+    expect(Zip.fileStream).type.not.toBeCallableWith("a", Stream.empty, { method: "Store" })
+  })
+
+  it("encode rejects content entries with a replacement body", () => {
+    const entries = Stream.succeed({ ...Zip.file("a", "a"), body: Stream.empty })
+
+    expect(Stream.pipeThroughChannel(Zip.encode())).type.not.toBeCallableWith(entries)
+  })
+
   it("encode infers body errors and services from a union of entries", () => {
     const entries = Stream.make(
       Zip.fileStream("a", Stream.fail("A") as Stream.Stream<Uint8Array, "A", "ServiceA">),
