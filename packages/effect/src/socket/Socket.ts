@@ -275,7 +275,7 @@ export const readerString = (
     const decoder = new TextDecoder(encoding)
     const streamOptions = { stream: true }
     let needsFlush = false
-    let pullString: Effect.Effect<NonEmptyReadonlyArray<string>, SocketError> = Effect.map(pull, (chunk) => {
+    return Effect.map(pull, (chunk) => {
       const out = new Array<string>(chunk.length)
       for (let i = 0; i < chunk.length; i++) {
         const item = chunk[i]
@@ -290,15 +290,14 @@ export const readerString = (
       return out as unknown as NonEmptyReadonlyArray<string>
     }).pipe(
       Effect.catch((error) => {
-        if (error.reason._tag !== "SocketCloseError" || error.reason.code !== 1000) {
-          return Effect.fail(error)
+        if (needsFlush && error.reason._tag === "SocketCloseError" && error.reason.code === 1000) {
+          needsFlush = false
+          const last = decoder.decode()
+          if (last.length > 0) return Effect.succeed([last] as const)
         }
-        pullString = Effect.fail(error)
-        const last = decoder.decode()
-        return last.length > 0 ? Effect.succeed([last] as const) : pullString
+        return Effect.fail(error)
       })
     )
-    return Effect.suspend(() => pullString)
   })
 
 const CloseEventTypeId = "~effect/socket/Socket/CloseEvent"
