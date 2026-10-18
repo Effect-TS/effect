@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Equal, Hash, Option, Schema } from "effect"
+import { Effect, Equal, Hash, Logger, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
@@ -15,6 +15,24 @@ const entry = (msecs: number, event = "Repro", primaryKey = "key", tail?: number
     payload: new Uint8Array()
   }, { disableChecks: true })
 }
+
+// Saturated `rand_a` bits sort above every local id counter in the same
+// millisecond.
+const remoteEntryWithHighRandA = (msecs: number) => {
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  id[6] = 0x7f
+  id[7] = 0xff
+  return new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+}
+
+const importEntry = (journal: EventJournal.EventJournal["Service"], entry: EventJournal.Entry) =>
+  journal.writeFromRemote({
+    remoteId: EventJournal.makeRemoteIdUnsafe(),
+    entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+    effect: () => Effect.void
+  })
 
 const idStrings = (entries: ReadonlyArray<EventJournal.Entry>) => entries.map((item) => item.idString)
 
@@ -231,6 +249,48 @@ describe("EventJournal", () => {
     }
   })
 
+  // These run synchronously so the mocked clock never leaks into concurrent tests.
+  it("generates local ids after imported ids from the same or a later millisecond", () => {
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    // Later than any clock-based id generated so far in this process.
+    const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
+    const now = vi.spyOn(Date, "now").mockReturnValue(millis)
+    try {
+      for (const remote of [remoteEntryWithHighRandA(millis), remoteEntryWithHighRandA(millis + 1)]) {
+        Effect.runSync(importEntry(journal, remote))
+        const local = Effect.runSync(journal.write({
+          event: "Repro",
+          primaryKey: "key",
+          payload: new Uint8Array(),
+          effect: Effect.succeed
+        }))
+        assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
+      }
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("logs a warning when an imported id is more than 24 hours ahead of the clock", () => {
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const hour = 60 * 60 * 1000
+    const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
+    let warnings = 0
+    const logger = Logger.layer([Logger.make(({ logLevel }) => {
+      if (logLevel === "Warn") warnings++
+    })])
+    const now = vi.spyOn(Date, "now").mockReturnValue(millis - 25 * hour)
+    let warningsWithin24Hours = 0
+    try {
+      Effect.runSync(importEntry(journal, entry(millis - 2 * hour)).pipe(Effect.provide(logger)))
+      warningsWithin24Hours = warnings
+      Effect.runSync(importEntry(journal, entry(millis)).pipe(Effect.provide(logger)))
+    } finally {
+      now.mockRestore()
+    }
+    assert.deepStrictEqual({ warningsWithin24Hours, warnings }, { warningsWithin24Hours: 0, warnings: 1 })
+  })
+
   it.effect("orders imported entries by id and reports conflicts with greater ids per event and key", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
@@ -346,8 +406,8 @@ describe("EventJournal", () => {
           })
       })
 
-      // The journal holds `[future, local]` in commit order here.
-      assert.deepStrictEqual(conflicts, idStrings([local, future]))
+      // The local id continues from the imported one, so it sorts after it.
+      assert.deepStrictEqual(conflicts, idStrings([future, local]))
     }))
 
   it.effect("relays an imported entry to another remote", () =>

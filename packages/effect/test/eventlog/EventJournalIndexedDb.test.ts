@@ -1,6 +1,6 @@
 // oxlint-disable-next-line no-unassigned-import
 import "fake-indexeddb/auto"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
@@ -136,6 +136,34 @@ const countTransactions = (database: string) =>
         IDBDatabase.prototype.transaction = original
       })
   ).pipe(Effect.map(({ transactions }) => transactions))
+
+// A fresh module instance keeps its own entry id clock, like another tab. It
+// loads before any test runs, so loading it cannot stall running tests.
+vi.resetModules()
+const OtherTab = await Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
+  [Effect, EventJournal]
+) => ({ Effect, EventJournal }))
+
+// Saturated `rand_a` bits sort the imported entry above every local id counter
+// in the same millisecond.
+const importFromOtherTab = (database: string, msecs: number) => {
+  const { Effect, EventJournal } = OtherTab
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  id[6] = 0x7f
+  id[7] = 0xff
+  const entry = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+  return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+    const journal = yield* EventJournal.makeIndexedDb({ database })
+    yield* journal.writeFromRemote({
+      remoteId: EventJournal.makeRemoteIdUnsafe(),
+      entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+      effect: () => Effect.void
+    })
+    return id
+  })))
+}
 
 describe("EventJournal.makeIndexedDb", () => {
   ConflictsTest.suite(Effect.suspend(() => EventJournal.makeIndexedDb({ database: uniqueName("conflicts") })))
@@ -310,6 +338,20 @@ describe("EventJournal.makeIndexedDb", () => {
         committed: ids,
         published: ids
       })
+    }))
+
+  it.effect("writeMany generates ids after entries another tab imported into the shared database", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      // This tab's clock lags the entry the other tab imports.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const imported = yield* Effect.promise(() => importFromOtherTab(database, millis))
+      const [local] = yield* journal.writeMany({
+        entries: [{ event: "Repro", primaryKey: "key", payload: new Uint8Array() }],
+        effect: Effect.succeed
+      })
+      assert.strictEqual(EventJournal.EntryIdOrder(imported, local.id), -1)
     }))
 
   it.live("writeMany fails when its transaction aborts after the puts succeed", () =>
