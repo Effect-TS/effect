@@ -67,6 +67,9 @@ export interface EntityManager {
   readonly interruptShard: (shardId: ShardId, options?: {
     readonly force?: boolean
   }) => Effect.Effect<void>
+  // Whether any of the shard's entities are still open, including those that
+  // `interruptShard` is waiting on
+  readonly hasServersUnsafe: (shardId: ShardId) => boolean
 
   readonly activeEntityCount: Effect.Effect<number>
 }
@@ -751,6 +754,12 @@ export const make = Effect.fnUntraced(function*<
     },
     clearProcessed() {
       processedRequestIds.clear()
+    },
+    hasServersUnsafe(shardId) {
+      for (const address of serverCloseLatches.keys()) {
+        if (shardId[Equal.symbol](address.shardId)) return true
+      }
+      return false
     },
     isResidentUnsafe: (address) => entities.hasUnsafe(address),
     residentAddressesUnsafe: () => entities.keysUnsafe(),

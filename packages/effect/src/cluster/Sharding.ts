@@ -425,22 +425,30 @@ const make = Effect.gen(function*() {
     const retryShardRelease =
       (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
       <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-        effect.pipe(
-          Effect.sandbox,
-          Effect.tapError((cause) =>
-            Effect.logDebug(`Could not release shards, retrying`, cause).pipe(
-              Effect.annotateLogs({
-                module: "effect/cluster/Sharding",
-                runner: selfAddress,
-                ...annotations
-              }),
-              // Effect.eventually retries immediately, so space failures to
-              // avoid hot-looping while storage is unavailable.
-              Effect.andThen(Effect.sleep(50))
-            )
-          ),
-          Effect.eventually
-        )
+        Effect.suspend(() => {
+          let lastWarning = -Infinity
+          return effect.pipe(
+            Effect.sandbox,
+            Effect.tapError((cause) =>
+              Effect.suspend(() => {
+                const now = clock.currentTimeMillisUnsafe()
+                if (now - lastWarning < 30_000) return Effect.void
+                lastWarning = now
+                return Effect.logWarning("Could not release shards, retrying", cause)
+              }).pipe(
+                Effect.annotateLogs({
+                  module: "effect/cluster/Sharding",
+                  runner: selfAddress,
+                  ...annotations
+                }),
+                // Effect.eventually retries immediately, so space failures to
+                // avoid hot-looping while storage is unavailable.
+                Effect.andThen(Effect.sleep(50))
+              )
+            ),
+            Effect.eventually
+          )
+        })
     const releaseShard = Effect.fnUntraced(
       function*(shardId: ShardId) {
         yield* runShardRelease(
@@ -462,14 +470,51 @@ const make = Effect.gen(function*() {
     // normal path while it is pending, otherwise the bulk release wipes a lock
     // the runner already considers acquired.
     const forcedShardReleasePending = () => forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) > 0
+    // Names the shards and the entity types and singletons still stopping
+    const warnForcedReleasePending = (shardIds: ReadonlyArray<ShardId>) =>
+      Effect.suspend(() => {
+        const entityTypes = Arr.empty<string>()
+        for (const [entityType, state] of entityManagers) {
+          if (shardIds.some((shardId) => state.manager.hasServersUnsafe(shardId))) entityTypes.push(entityType)
+        }
+        const singletonNames = new Set<string>()
+        for (const shardId of shardIds) {
+          for (const [address] of singletons.get(shardId) ?? []) {
+            if (FiberMap.hasUnsafe(singletonFibers, address)) singletonNames.add(address.name)
+          }
+        }
+        MutableHashMap.forEach(stoppingSingletons, (_, address) => {
+          if (shardIds.some((shardId) => Equal.equals(shardId, address.shardId))) singletonNames.add(address.name)
+        })
+        return Effect.logWarning(
+          "Forced shard release is still pending; reacquisition is blocked until release completes"
+        ).pipe(Effect.annotateLogs({
+          module: "effect/cluster/Sharding",
+          runner: selfAddress,
+          shardIds: shardIds.map(String),
+          entityTypes,
+          singletonNames: [...singletonNames]
+        }))
+      })
     const releaseForcedShards = Effect.suspend(() => {
       if (forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) === 0) {
         return Effect.void
       }
       forcedShardReleaseRunning = true
       const shardIds = [...forceReleasingShards]
-      return runShardRelease(shardIds, true, runnerStorage.releaseAll(selfAddress)).pipe(
-        retryShardRelease({ fiber: "releaseForcedShards" }),
+      return Effect.gen(function*() {
+        // Observe independently: a timeout around release cannot interrupt
+        // uninterruptible work, and must not allow locks to be reacquired.
+        const monitor = yield* Effect.sleep(config.shardLockExpiration).pipe(
+          Effect.andThen(warnForcedReleasePending(shardIds)),
+          Effect.interruptible,
+          Effect.forkIn(releaseScope)
+        )
+        yield* runShardRelease(shardIds, true, runnerStorage.releaseAll(selfAddress)).pipe(
+          retryShardRelease({ fiber: "releaseForcedShards" }),
+          Effect.ensuring(Fiber.interrupt(monitor))
+        )
+      }).pipe(
         Effect.ensuring(Effect.sync(() => {
           forcedShardReleaseRunning = false
           activeShardsLatch.openUnsafe()

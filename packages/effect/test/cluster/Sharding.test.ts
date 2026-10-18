@@ -3544,6 +3544,156 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
     return { context, scope, sharding: Context.get(context, Sharding.Sharding) }
   })
 
+  it.effect("warns about pending entities and singletons and reacquires only after teardown", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const registrationScope = yield* makeOwnedScope
+      const warnings: Array<string> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel !== "Warn") return
+        const output = Logger.formatJson.log(options)
+        if (/releas/i.test(output)) warnings.push(output)
+      })
+      const { context, sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000
+      }).pipe(Effect.provide(Logger.layer([logger])))
+      // This finalizer runs before either scope closes, even on assertion failure.
+      const gate = yield* makeGate
+      const started = Latch.makeUnsafe()
+      const stopped = Latch.makeUnsafe()
+      const shardId = ShardId.make("default", 1)
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      yield* sharding.registerEntity(
+        GatedTeardownEntity,
+        Effect.as(Effect.addFinalizer(() => gate.await), GatedTeardownEntity.of({ Activate: () => Effect.void }))
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      const makeClient = yield* GatedTeardownEntity.client.pipe(Effect.provideContext(context))
+      yield* makeClient("1").Activate()
+      yield* sharding.registerSingleton(
+        "StalledReleaseSingleton",
+        Effect.andThen(started.open, gate.await).pipe(
+          Effect.uninterruptible,
+          Effect.ensuring(stopped.open)
+        )
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      yield* started.await
+      yield* advanceUntil(() => storageState.refreshCalls.some((call) => call.shards.length > 0))
+      const acquiresBeforeOutage = storageState.acquireCalls.length
+
+      storageState.blackholed = true
+      yield* TestClock.adjust(201)
+      assert.isFalse(sharding.hasShardId(shardId))
+      assert.deepStrictEqual(warnings, [], "a brief release must not warn")
+      storageState.blackholed = false
+      // Storage recovers, but uninterruptible work must still prevent release.
+      yield* TestClock.adjust(1000)
+      assert.isFalse(sharding.hasShardId(shardId))
+      assert.isFalse(stopped.isOpen())
+      assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
+      const stalledWarnings = warnings.slice()
+      yield* TestClock.adjust(900)
+      assert.deepStrictEqual(warnings, stalledWarnings, "a pending release must not flood warnings")
+      assert.isFalse(sharding.hasShardId(shardId))
+      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
+      assert.strictEqual(storageState.releaseAllCalls.length, 0)
+
+      yield* gate.open
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      assert.isTrue(stopped.isOpen())
+      assert.strictEqual(storageState.releaseAllCalls.length, 1)
+      assert.isTrue(storageState.releaseAllCalls[0].completed)
+      const reacquires = storageState.acquireCalls.slice(acquiresBeforeOutage)
+      assert.isAbove(reacquires.length, 0)
+      assert.isTrue(reacquires.every((call) => call.completedReleaseAlls === 1))
+      yield* TestClock.adjust(900)
+      assert.deepStrictEqual(warnings, stalledWarnings, "the release monitor must stop after recovery")
+
+      // Assert diagnostics last so the red test also exercises safe recovery.
+      assert.strictEqual(stalledWarnings.length, 1, "a prolonged forced release must warn once")
+      assert.include(stalledWarnings[0], "default:1")
+      assert.include(stalledWarnings[0], "GatedTeardownEntity")
+      assert.include(stalledWarnings[0], "StalledReleaseSingleton")
+    }))
+
+  it.effect("does not warn when forced release completes before the warning deadline", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ releaseAllDuration: 50 })
+      const warnings: Array<string> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel === "Warn") {
+          const output = Logger.formatJson.log(options)
+          if (/releas/i.test(output)) warnings.push(output)
+        }
+      })
+      const { sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000
+      }).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          storageState.releaseAllDuration = 0
+        })
+      )
+      const shardId = ShardId.make("default", 1)
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      yield* advanceUntil(() => storageState.refreshCalls.some((call) => call.shards.length > 0))
+      storageState.blackholed = true
+      yield* TestClock.adjust(201)
+      assert.isFalse(sharding.hasShardId(shardId))
+      storageState.blackholed = false
+      yield* advanceUntil(() => storageState.releaseAllCalls.length > 0)
+      assert.isFalse(storageState.releaseAllCalls[0].completed)
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      assert.isTrue(storageState.releaseAllCalls[0].completed)
+      yield* TestClock.adjust(900)
+      assert.deepStrictEqual(warnings, [], "a completed release must cancel its warning monitor")
+    }))
+
+  it.effect("warns immediately on release failure and throttles retries to one warning per 30 seconds", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ releaseFailures: Infinity })
+      const clock = yield* Clock.Clock
+      const warnings: Array<{ at: number; output: string }> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel !== "Warn") return
+        const output = Logger.formatJson.log(options)
+        if (/releas/i.test(output)) warnings.push({ at: clock.currentTimeMillisUnsafe(), output })
+      })
+      const { sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockRefreshInterval: 100
+      }).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          storageState.releaseFailures = 0
+        })
+      )
+      yield* advanceUntil(() => sharding.hasShardId(allShards[0]))
+      storageState.assignSelf = false
+      yield* advanceUntil(() => storageState.releaseCalls.length > 0)
+      assert.strictEqual(warnings.length, 1, "the first failure must warn immediately")
+      assert.include(warnings[0].output, "release failed")
+      assert.include(warnings[0].output, "default")
+      const firstWarningAt = warnings[0].at
+      const firstAttempts = storageState.releaseCalls.length
+      yield* TestClock.adjust(firstWarningAt + 29_999 - (yield* Clock.currentTimeMillis))
+      assert.strictEqual(warnings.length, 1, "retries inside the throttle window must not warn")
+      assert.isAbove(storageState.releaseCalls.length, firstAttempts, "storage retries must continue")
+      yield* TestClock.adjust(1)
+      assert.strictEqual(warnings.length, 2, "a continuing failure must warn again after 30 seconds")
+      assert.strictEqual(warnings[1].at - firstWarningAt, 30_000)
+      storageState.releaseFailures = 0
+      yield* TestClock.adjust(100)
+      const completedAttempts = storageState.releaseCalls.length
+      yield* TestClock.adjust(30_000)
+      assert.strictEqual(storageState.releaseCalls.length, completedAttempts)
+      assert.strictEqual(warnings.length, 2, "warnings must stop after release succeeds")
+    }))
+
   it.effect("waits for entity teardown before handing off without acquiring newly freed shards", () =>
     Effect.gen(function*() {
       const [heldShard, freedShard] = allShards
