@@ -3606,6 +3606,17 @@ describe("Stream", () => {
 
           assert.deepStrictEqual(result, [[1, "a"], [2, "b"], [3, "c"]])
         }))
+
+      it.effect("keeps leftovers from both streams", () =>
+        Effect.gen(function*() {
+          const result = yield* Stream.zipWithArray(
+            Stream.make(1, 2, 3),
+            Stream.make("a", "b", "c"),
+            (left, right) => [[[left[0], right[0]] as const], left.slice(1), right.slice(1)]
+          ).pipe(Stream.runCollect)
+
+          assert.deepStrictEqual(result, [[1, "a"], [2, "b"], [3, "c"]])
+        }))
     })
 
     describe("zip", () => {

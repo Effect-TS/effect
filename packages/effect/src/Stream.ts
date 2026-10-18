@@ -3564,6 +3564,7 @@ export const zipWithArray: {
       | { _tag: "PullBoth" }
       | { _tag: "PullLeft"; rightArray: Arr.NonEmptyReadonlyArray<AR> }
       | { _tag: "PullRight"; leftArray: Arr.NonEmptyReadonlyArray<AL> }
+      | { _tag: "PullNone"; leftArray: Arr.NonEmptyReadonlyArray<AL>; rightArray: Arr.NonEmptyReadonlyArray<AR> }
     let state: State = { _tag: "PullBoth" }
 
     const pull: Effect.Effect<
@@ -3575,16 +3576,20 @@ export const zipWithArray: {
         ? yield* pullBoth
         : state._tag === "PullLeft"
         ? [yield* pullLeft, state.rightArray]
-        : [state.leftArray, yield* pullRight]
-      const result = f(left, right)
-      if (Arr.isReadonlyArrayNonEmpty(result[1])) {
-        state = { _tag: "PullRight", leftArray: result[1] }
-      } else if (Arr.isReadonlyArrayNonEmpty(result[2])) {
-        state = { _tag: "PullLeft", rightArray: result[2] }
+        : state._tag === "PullRight"
+        ? [state.leftArray, yield* pullRight]
+        : [state.leftArray, state.rightArray]
+      const [output, leftoverLeft, leftoverRight] = f(left, right)
+      if (Arr.isReadonlyArrayNonEmpty(leftoverLeft)) {
+        state = Arr.isReadonlyArrayNonEmpty(leftoverRight)
+          ? { _tag: "PullNone", leftArray: leftoverLeft, rightArray: leftoverRight }
+          : { _tag: "PullRight", leftArray: leftoverLeft }
+      } else if (Arr.isReadonlyArrayNonEmpty(leftoverRight)) {
+        state = { _tag: "PullLeft", rightArray: leftoverRight }
       } else {
         state = { _tag: "PullBoth" }
       }
-      return result[0]
+      return output
     })
 
     return pull
