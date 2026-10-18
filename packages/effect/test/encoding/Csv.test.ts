@@ -80,7 +80,10 @@ describe("Csv", () => {
       assert.deepStrictEqual(yield* run(["a,b\n"], channel), [])
       for (const [text, record] of [["a,a\n1,2", 1], ["a,b\n1,2\n3", 3]] as const) {
         const error = yield* Effect.flip(run([text], channel))
-        assert.deepStrictEqual([error.kind, error.record], ["Header", record])
+        assert.deepStrictEqual(
+          [error.kind, error.record, Object.hasOwn(error, "column"), error.column],
+          ["Header", record, true, undefined]
+        )
       }
     }))
 
