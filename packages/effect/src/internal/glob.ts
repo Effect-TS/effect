@@ -572,11 +572,37 @@ const isNotLink = (error: PlatformError): boolean => isIgnorable(error) || error
 
 const byName = Order.mapInput(Order.String, (entry: FileSystem.DirectoryEntry) => entry.name)
 
+interface Walker {
+  readonly readDirectoryEntries: (
+    path: string
+  ) => Effect.Effect<ReadonlyArray<FileSystem.DirectoryEntry>, PlatformError>
+  readonly stat: FileSystem.FileSystem["stat"]
+  readonly readLink: FileSystem.FileSystem["readLink"]
+}
+
+/** @internal */
+export const makeGlob = (
+  fs: Pick<FileSystem.FileSystem, "readDirectory" | "stat" | "readLink"> & {
+    readonly readDirectoryEntries?: Walker["readDirectoryEntries"] | undefined
+  }
+): FileSystem.FileSystem["glob"] => {
+  const walker: Walker = {
+    readDirectoryEntries: fs.readDirectoryEntries ??
+      ((path) =>
+        Effect.map(
+          fs.readDirectory(path),
+          (names) => names.map((name): FileSystem.DirectoryEntry => ({ name, type: "Unknown" }))
+        )),
+    stat: fs.stat,
+    readLink: fs.readLink
+  }
+  return (pattern, options) => walk(walker, compile([pattern], options?.dot ?? false), options)
+}
+
 // Named directories (the root and those reached only through leading literal
 // segments) must be readable; unreadable wildcard-reached ones are skipped.
-/** @internal */
-export const walk = (
-  fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
+const walk = (
+  fs: Walker,
   compiled: Compiled,
   options?: {
     readonly root?: string | undefined

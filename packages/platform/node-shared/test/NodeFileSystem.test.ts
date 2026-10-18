@@ -46,13 +46,13 @@ const startWatch = <E, R>(
     return fiber
   })
 
-// A file system built with `FileSystem.make` without typed directory listings
-// derives `glob` from `readDirectory`, `stat`, and `readLink` alone.
+// A file system built with `FileSystem.make` without a `glob` derives one from
+// `readDirectory`, `stat`, and `readLink` alone.
 const untypedLayer = Layer.effect(
   FileSystem.FileSystem,
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    return FileSystem.make({ ...fs, glob: undefined, readDirectoryEntries: undefined })
+    return FileSystem.make({ ...fs, glob: undefined })
   })
 ).pipe(Layer.provide(NodeFileSystem.layer))
 
