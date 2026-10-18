@@ -419,6 +419,70 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
+  it.effect("reports a stored entry newer than the source as a conflict for every replacement", () =>
+    Effect.gen(function*() {
+      const conflicts = yield* Queue.unbounded<number>()
+      const handlers = Layer.mergeAll(
+        EventLog.group(
+          ItemGroup,
+          (handlers) => handlers.handle("ItemAdded", ({ conflicts: c }) => Queue.offer(conflicts, c.length))
+        ),
+        EventLog.groupCompaction(ItemGroup, ({ events, write }) =>
+          Effect.forEach(
+            [1, 2],
+            (item) => write("ItemAdded", { ...events[0].payload, item }),
+            { discard: true }
+          ))
+      ).pipe(Layer.provide(EventLog.layerRegistry))
+      const layer = EventLog.layer(EventLog.schema(ItemGroup), handlers).pipe(
+        Layer.provideMerge(EventJournal.layerMemory),
+        Layer.provide(
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle))
+        )
+      )
+      // Valid ids can be adjacent: `stored` is the source's id plus one.
+      const makeEntry = Effect.fnUntraced(function*(item: number, lastByte: number) {
+        const id = EventJournal.makeEntryIdUnsafe({ msecs: 1000 })
+        id.fill(0, 7)
+        id[6] = 0x70
+        id[8] = 0x80
+        id[15] = lastByte
+        return new EventJournal.Entry({
+          id,
+          event: "ItemAdded",
+          primaryKey: "list-1",
+          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
+            list: "list-1",
+            item
+          })
+        }, { disableChecks: true })
+      })
+      const source = yield* makeEntry(0, 0x10)
+      const stored = yield* makeEntry(9, 0x11)
+
+      const handled = yield* Effect.gen(function*() {
+        const journal = yield* EventJournal.EventJournal
+        const registry = yield* EventLog.Registry
+        yield* journal.writeFromRemote({
+          remoteId: EventJournal.makeRemoteIdUnsafe(),
+          entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: stored })],
+          effect: () => Effect.void
+        })
+        const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+        yield* Queue.offer(changes, new EventJournal.RemoteEntry({ remoteSequence: 0, entry: source }))
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        return [yield* Queue.take(conflicts), yield* Queue.take(conflicts)]
+      }).pipe(Effect.provide(layer))
+
+      // Both replacements stand for `source`, which `stored` is newer than.
+      assert.deepStrictEqual(handled, [1, 1])
+    }))
+
   it.effect("preserves all undecodable entries without invoking the group compactor", () =>
     Effect.gen(function*() {
       const entries = [

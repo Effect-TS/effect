@@ -246,10 +246,11 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           handled.length = 0
           yield* write([before, stored, after])
           yield* write([yield* makeEntry(500, "a")])
+          // Conflicts are reported in id order, not upload order.
           assert.deepStrictEqual(handled, [
             { key: "a", conflicts: [stored.idString] },
             { key: "a", conflicts: [] },
-            { key: "a", conflicts: [stored.idString, before.idString, after.idString] }
+            { key: "a", conflicts: [before.idString, stored.idString, after.idString] }
           ])
         }))
 
