@@ -6274,6 +6274,9 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  *
  * The `log` option controls whether the failure is logged before the stream
  * terminates.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Gotchas**
  *
@@ -6322,12 +6325,12 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  */
 export const ignore: <
   Arg extends Stream<any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 >(
   selfOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends [Stream<infer A, infer _E, infer R>] ? Stream<A, never, R>
   : <A, E, R>(self: Stream<A, E, R>) => Stream<A, never, R> = dual(
@@ -6335,7 +6338,7 @@ export const ignore: <
     <A, E, R>(
       self: Stream<A, E, R>,
       options?: {
-        readonly log?: boolean | Severity | undefined
+        readonly log?: boolean | Severity | "Unhandled" | undefined
       } | undefined
     ): Stream<A, never, R> => fromChannel(Channel.ignore(self.channel, options))
   )
@@ -6347,6 +6350,12 @@ export const ignore: <
  *
  * Use when you need to silently suppress a stream's entire failure cause,
  * including both typed errors and defects, rather than propagate it downstream.
+ *
+ * **Details**
+ *
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Example** (Ignoring stream failure causes)
  *
@@ -6372,19 +6381,19 @@ export const ignore: <
  */
 export const ignoreCause: <
   Arg extends Stream<any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 >(
   streamOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends [Stream<infer A, infer _E, infer R>] ? Stream<A, never, R>
   : <A, E, R>(self: Stream<A, E, R>) => Stream<A, never, R> = dual(
     (args) => isStream(args[0]),
     <A, E, R>(
       self: Stream<A, E, R>,
-      options?: { readonly log?: boolean | Severity | undefined } | undefined
+      options?: { readonly log?: boolean | Severity | "Unhandled" | undefined } | undefined
     ): Stream<A, never, R> => fromChannel(Channel.ignoreCause(self.channel, options))
   )
 

@@ -22,7 +22,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { ClockRef, endSpan, findRecoverableError } from "./internal/effect.ts"
+import { ClockRef, endSpan, findRecoverableError, ignoreCauseLogger } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -6084,6 +6084,9 @@ export const orDie = <
  * **Details**
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Gotchas**
  *
@@ -6098,14 +6101,14 @@ export const orDie = <
  */
 export const ignore: <
   Arg extends Channel<any, any, any, any, any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined = {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   }
 >(
   selfOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends
   [Channel<infer OutElem, infer _OutErr, infer OutDone, infer InElem, infer InErr, infer InDone, infer Env>]
@@ -6117,13 +6120,13 @@ export const ignore: <
     <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
       self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
       options?: {
-        readonly log?: boolean | Severity | undefined
+        readonly log?: boolean | Severity | "Unhandled" | undefined
       } | undefined
     ): Channel<OutElem, never, OutDone | void, InElem, InErr, InDone, Env> => {
       if (!options?.log) {
         return catch_(self, () => empty)
       }
-      const logEffect = Effect.logWithLevel(options.log === true ? undefined : options.log)
+      const logEffect = ignoreCauseLogger(options.log)
       return catch_(
         tapCause(self, (cause) => Cause.hasFails(cause) ? logEffect(cause) : Effect.void),
         () => empty
@@ -6154,6 +6157,9 @@ const ignoreCause_ = <
  * **Details**
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * @stability stable
  * @category error handling
@@ -6161,14 +6167,14 @@ const ignoreCause_ = <
  */
 export const ignoreCause: <
   Arg extends Channel<any, any, any, any, any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined = {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   }
 >(
   selfOrOptions: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
   } | undefined
 ) => [Arg] extends
   [Channel<infer OutElem, infer _OutErr, infer OutDone, infer InElem, infer InErr, infer InDone, infer Env>]
@@ -6179,10 +6185,10 @@ export const ignoreCause: <
     (args) => isChannel(args[0]),
     <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
       self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-      options?: { readonly log?: boolean | Severity | undefined } | undefined
+      options?: { readonly log?: boolean | Severity | "Unhandled" | undefined } | undefined
     ): Channel<OutElem, never, OutDone | void, InElem, InErr, InDone, Env> => {
       if (!options?.log) return ignoreCause_(self)
-      const logEffect = Effect.logWithLevel(options.log === true ? undefined : options.log)
+      const logEffect = ignoreCauseLogger(options.log)
       return ignoreCause_(tapCause(self, (cause) => logEffect(cause)))
     }
   )
