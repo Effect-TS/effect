@@ -621,7 +621,6 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
 
     const entries: Array<Entry> = [remoteEntry.entry]
     const remoteGroup: Array<RemoteEntry> = [remoteEntry]
-    const written: Array<{ readonly entry: Entry; readonly position: number }> = []
     index++
 
     while (index < options.remoteEntries.length) {
@@ -636,22 +635,23 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
     }
 
     const positions = new Map<string, number>()
+    const compacted: Array<Array<Entry>> = []
     for (let i = 0; i < entries.length; i++) {
       positions.set(entries[i].idString, i)
+      compacted.push([])
     }
     yield* compactor.effect({
       entries,
       write(entry, source) {
         return Effect.sync(() => {
-          written.push({ entry, position: positions.get((source ?? entry).idString) ?? 0 })
+          // Outputs land at their source's position, as in client replay.
+          compacted[positions.get((source ?? entry).idString) ?? 0].push(entry)
         })
       }
     }).pipe(Effect.orDie)
-    // Array.prototype.sort is stable, so outputs at one position keep their write order.
-    written.sort((a, b) => a.position - b.position)
 
     const projected = toCompactedRemoteEntries({
-      compacted: written.map(({ entry }) => entry),
+      compacted: compacted.flat(),
       remoteEntries: remoteGroup
     })
 

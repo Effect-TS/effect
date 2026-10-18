@@ -716,7 +716,7 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
           // Without a source, the entry keeps its id and its position in the batch.
           const forward = (entry: Entry) => write(entry)
 
-          const decoded: Array<{
+          const batch: Array<{
             readonly entry: Entry
             readonly event: Event.TaggedPayload<Events> | undefined
           }> = []
@@ -725,7 +725,7 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
               continue
             }
             const payload = yield* Effect.result(decodePayload(entry.event, entry.payload))
-            decoded.push({
+            batch.push({
               entry,
               event: Result.isFailure(payload)
                 ? undefined
@@ -734,7 +734,7 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
           }
 
           yield* Effect.orDie(
-            effect({ entries: decoded, writeFrom, forward }).pipe(
+            effect({ entries: batch, writeFrom, forward }).pipe(
               Effect.updateContext((input) => Context.merge(services, input))
             )
           ) as any
