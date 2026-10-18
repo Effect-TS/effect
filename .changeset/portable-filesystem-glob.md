@@ -1,7 +1,7 @@
 ---
-"effect": patch
-"@effect/platform-node-shared": patch
-"@effect/platform-deno": patch
+"effect": minor
+"@effect/platform-node-shared": minor
+"@effect/platform-deno": minor
 ---
 
 Add experimental `Glob` path matching and a shared `FileSystem.glob` implementation for Node, Bun, and Deno.
