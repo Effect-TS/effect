@@ -45,6 +45,14 @@ const legacyStringify = (bytes: Uint8Array): string =>
     bytes.subarray(10, 16)
   ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
 
+// Importing the maximum timestamp exhausts the entry id clock of its module, so
+// that test uses its own module instance. It loads before any test runs, so
+// loading it cannot stall running tests.
+vi.resetModules()
+const Isolated = await Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
+  [Effect, EventJournal]
+) => ({ Effect, EventJournal }))
+
 describe("EventJournal", () => {
   ConflictsTest.suite(EventJournal.makeMemory)
 
@@ -291,6 +299,34 @@ describe("EventJournal", () => {
     } finally {
       now.mockRestore()
     }
+  })
+
+  it("never commits a local id below an imported id at the maximum timestamp", () => {
+    const { Effect, EventJournal } = Isolated
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+    id[6] = 0x7f
+    id[7] = 0xff
+    const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+      disableChecks: true
+    })
+    Effect.runSync(journal.writeFromRemote({
+      remoteId: EventJournal.makeRemoteIdUnsafe(),
+      entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+      effect: () => Effect.void
+    }))
+    // No later id exists, so the write may fail, but it must not commit an id
+    // that sorts before the imported one.
+    Effect.runSyncExit(journal.write({
+      event: "Repro",
+      primaryKey: "key",
+      payload: new Uint8Array(),
+      effect: Effect.succeed
+    }))
+    const below = Effect.runSync(journal.entries).filter((entry) =>
+      EventJournal.EntryIdOrder(entry.id, remote.id) === -1
+    )
+    assert.deepStrictEqual(idStrings(below), [])
   })
 
   it("logs a warning when an imported id is more than 24 hours ahead of the clock", () => {
