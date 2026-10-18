@@ -361,6 +361,7 @@ describe("EventJournal", () => {
         payload: new Uint8Array()
       }, { disableChecks: true })
 
+      yield* journal.writeRemoteAcks({ remoteId, acks: [{ entryId: entry.id, sequence: 2 }] })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 0)
       yield* journal.writeFromRemote({
         remoteId,
@@ -368,11 +369,14 @@ describe("EventJournal", () => {
         effect: () => Effect.void
       })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+      yield* journal.writeRemoteAcks({ remoteId, acks: [2, 1, 0].map((sequence) => ({ entryId: entry.id, sequence })) })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 3)
       yield* journal.writeFromRemote({
         remoteId,
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry })],
         effect: () => Effect.void
       })
+      yield* journal.writeRemoteAcks({ remoteId, acks: [{ entryId: entry.id, sequence: 2 }] })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
     }))
 

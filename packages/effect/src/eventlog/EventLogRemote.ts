@@ -35,6 +35,7 @@ import {
   EventLogRemoteRpcs,
   type HelloResponse,
   type StoreId,
+  type WriteAck,
   WriteEntries,
   WriteEntriesUnencrypted
 } from "./EventLogMessage.ts"
@@ -54,12 +55,20 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * It can write local entries to the remote, stream remote changes from a sequence
  * number, and run effects only after the supplied identity has authenticated.
  *
+ * Built-in remotes acknowledge writes instead of echoing them through `changes`.
+ * Custom remotes may return `void` from `write` to confirm uploads through
+ * `changes` instead.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
 export class EventLogRemote extends Context.Service<EventLogRemote, {
   readonly id: RemoteId
+  /**
+   * The lowest sequence the remote assigns, or 0 when omitted.
+   */
+  readonly firstSequence?: number | undefined
   readonly changes: (options: {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
@@ -74,7 +83,7 @@ export class EventLogRemote extends Context.Service<EventLogRemote, {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
     readonly entries: ReadonlyArray<Entry>
-  }) => Effect.Effect<void, EventLogRemoteError>
+  }) => Effect.Effect<ReadonlyArray<WriteAck> | void, EventLogRemoteError>
   readonly whenAuthenticated: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E | EventLogRemoteError, R | Identity>
@@ -243,6 +252,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
 
   const remote = EventLogRemote.of({
     id: hello.remoteId,
+    firstSequence: hello.firstSequence,
     write: Effect.fnUntraced(
       function*(options) {
         yield* ensureAuthenticated(options.identity)
@@ -250,9 +260,11 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
         if (encoded.byteLength <= ChunkedMessage.chunkSize) {
           return yield* client["EventLog.WriteSingle"]({ data: encoded })
         }
+        let acks: ReadonlyArray<WriteAck> = []
         for (const part of ChunkedMessage.split(chunkedIdCounter++, encoded)) {
-          yield* client["EventLog.WriteChunked"](part)
+          acks = yield* client["EventLog.WriteChunked"](part)
         }
+        return acks
       },
       retryForbidden,
       Effect.mapError((cause) => new EventLogRemoteError({ method: "write", cause }))

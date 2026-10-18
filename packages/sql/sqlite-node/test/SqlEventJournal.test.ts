@@ -11,6 +11,7 @@ import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as SqlError from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 
 const makeJournal = Effect.gen(function*() {
@@ -607,4 +608,67 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(uncommittedCalls, 1)
       assert.deepStrictEqual(seenConflicts, [[], []])
     }))
+
+  it.effect("advances the remote sequence only across acknowledgements that follow it", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const open = SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const ack = (sequence: number, entryId = EventJournal.makeEntryIdUnsafe()) => ({ entryId, sequence })
+      // A database from before the cursors table: every remote row was downloaded.
+      yield* sql`CREATE TABLE effect_event_remotes (
+        remote_id BLOB NOT NULL,
+        entry_id BLOB NOT NULL,
+        sequence INT NOT NULL,
+        PRIMARY KEY (remote_id, entry_id)
+      )`
+      yield* sql`INSERT INTO effect_event_remotes ${
+        sql.insert({ remote_id: remoteId, entry_id: EventJournal.makeEntryIdUnsafe(), sequence: 4 })
+      }`
+      const journal = yield* open
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 5)
+
+      // Sequence 5, written by another replica, has not been downloaded.
+      const local = yield* journal.write({ ...localEntry("local-1"), effect: Effect.succeed })
+      yield* journal.writeRemoteAcks({ remoteId, acks: [ack(6, local.id)] })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 5)
+      assert.isTrue(Option.isNone(yield* journal.withRemoteUncommited(remoteId, () => Effect.void)))
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry: entry(1_000) })],
+        effect: () => Effect.void
+      })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
+      yield* journal.writeRemoteAcks({ remoteId, acks: [ack(7), ack(6, local.id), ack(3)] })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 8)
+      assert.strictEqual(yield* (yield* open).nextRemoteSequence(remoteId), 8)
+
+      // A remote that numbers from 1 can be acknowledged before any download.
+      const otherRemoteId = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.writeRemoteAcks({ remoteId: otherRemoteId, acks: [ack(2), ack(1)], firstSequence: 1 })
+      assert.strictEqual(yield* journal.nextRemoteSequence(otherRemoteId), 3)
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("does not resume past unseen entries when the first acknowledgement commits during the read", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      // Sequences 0 to 4, written by another replica, have not been downloaded.
+      const ack = journal.writeRemoteAcks({
+        remoteId,
+        acks: [{ entryId: EventJournal.makeEntryIdUnsafe(), sequence: 5 }]
+      })
+      let interleaved = false
+      // Commits the acknowledgement just before the fallback to the remotes table.
+      const transformer: Statement.Transformer = (statement) => {
+        if (interleaved || !statement.compile()[0].includes("MAX(sequence)")) return Effect.succeed(statement)
+        interleaved = true
+        return ack.pipe(Effect.orDie, Effect.as(statement))
+      }
+      const next = yield* journal.nextRemoteSequence(remoteId).pipe(
+        Effect.provideService(Statement.CurrentTransformer, transformer)
+      )
+      assert.deepStrictEqual({ interleaved, next }, { interleaved: true, next: 0 })
+    }).pipe(Effect.provide(Reactivity.layer)))
 })

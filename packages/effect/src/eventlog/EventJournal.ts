@@ -131,6 +131,16 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<Option<A>, EventJournalError | E, R>
 
   /**
+   * Records upload acknowledgements, advancing `nextRemoteSequence` only across
+   * contiguous sequences from the current cursor or `firstSequence`.
+   */
+  readonly writeRemoteAcks: (options: {
+    readonly remoteId: RemoteId
+    readonly acks: ReadonlyArray<RemoteAck>
+    readonly firstSequence?: number | undefined
+  }) => Effect.Effect<void, EventJournalError>
+
+  /**
    * Retrieve the first unused sequence number for a remote source.
    */
   readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
@@ -437,6 +447,18 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
 }
 
 /**
+ * A local entry's remote-assigned sequence.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface RemoteAck {
+  readonly entryId: EntryId
+  readonly sequence: number
+}
+
+/**
  * Schema for an event journal entry received from a remote source.
  *
  * **Details**
@@ -616,6 +638,11 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
             }
           })
       ),
+    writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
+      Effect.sync(() => {
+        const remote = ensureRemote(remoteId)
+        remote.sequence = advanceSequence(remote.sequence, acks, firstSequence)
+      }),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
     entriesById: (ids) => Effect.sync(() => ids.map((id) => byId.get(Uuid.stringify(id)))),
     changes: PubSub.subscribe(pubsub),
@@ -901,6 +928,29 @@ export const makeIndexedDb = (options?: {
           })
         )
       },
+      writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
+        Effect.callback<void, EventJournalError>((resume) => {
+          const tx = db.transaction("remotes", "readwrite")
+          const remotes = tx.objectStore("remotes")
+          const remoteIdKey = remoteId as IDBValidKey
+          const cursorRequest = remotes.index("sequence").openCursor(
+            IDBKeyRange.bound([remoteIdKey, 0], [remoteIdKey, Infinity]),
+            "prev"
+          )
+          cursorRequest.onsuccess = () => {
+            // Store only contiguous acks: the highest stored sequence determines the cursor.
+            const cursor = cursorRequest.result
+            const start = Math.max(cursor ? cursor.value.sequence + 1 : 0, firstSequence ?? 0)
+            const end = advanceSequence(start, acks)
+            for (const ack of acks) {
+              if (ack.sequence >= start && ack.sequence < end) {
+                remotes.put({ remoteId, entryId: ack.entryId, sequence: ack.sequence })
+              }
+            }
+          }
+          onTransactionDone(tx, "writeRemoteAcks", resume, constVoid)
+          return Effect.sync(() => tx.abort())
+        }),
       nextRemoteSequence: (remoteId) =>
         Effect.callback<number, EventJournalError>((resume) => {
           const tx = db.transaction("remotes", "readonly")
@@ -925,6 +975,25 @@ export const makeIndexedDb = (options?: {
       withLock: yield* makeBrowserWithLock(database)
     })
   })
+
+/**
+ * Advances across contiguous acknowledgements without skipping unseen entries.
+ *
+ * @internal
+ */
+export const advanceSequence = (
+  next: number,
+  acks: ReadonlyArray<RemoteAck>,
+  firstSequence = 0
+): number => {
+  next = Math.max(next, firstSequence)
+  const sequences = acks.map((ack) => ack.sequence).sort((a, b) => a - b)
+  for (const sequence of sequences) {
+    if (sequence === next) next++
+    else if (sequence > next) break
+  }
+  return next
+}
 
 const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
   if (typeof navigator !== "undefined" && "locks" in navigator) {

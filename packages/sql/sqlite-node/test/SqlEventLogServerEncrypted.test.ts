@@ -388,6 +388,13 @@ describe("SqlEventLogServer", () => {
       assert.deepStrictEqual([yield* Queue.take(changes), yield* Queue.take(changes)], written)
 
       yield* storage.write("client-1", storeIdA, entries)
+      assert.sameDeepMembers(
+        [...yield* storage.entrySequences("client-1", storeIdA, [entries[1].entryIds[0], entries[0].entryIds[0]])],
+        [
+          { entryId: entries[1].entryIds[0], sequence: 2 },
+          { entryId: entries[0].entryIds[0], sequence: 1 }
+        ]
+      )
       const next = yield* storage.write("client-1", storeIdA, [makeBatch(3)])
       // A fresh entry marks the end of the replay without a sleep or timeout.
       const published = yield* Stream.fromQueue(changes).pipe(

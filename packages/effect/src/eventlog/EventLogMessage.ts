@@ -20,7 +20,7 @@ import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
 import * as Schema from "../Schema.ts"
 import type * as SchemaAST from "../SchemaAST.ts"
 import * as Transferable from "../workers/Transferable.ts"
-import { Entry, EntryFields, entryFromFields, RemoteEntry, RemoteId } from "./EventJournal.ts"
+import { Entry, EntryFields, entryFromFields, EntryId, RemoteEntry, RemoteId } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
 import { EncryptedBatch, EncryptedRemoteBatch } from "./EventLogEncryption.ts"
 
@@ -111,8 +111,8 @@ export class EventLogAuthentication extends RpcMiddleware.Service<EventLogAuthen
  *
  * **Details**
  *
- * It contains the server remote id and a challenge that must be signed by the
- * client.
+ * Contains the remote id, a challenge for the client to sign, and the lowest
+ * assigned sequence (default 0) for initializing acknowledgement cursors.
  *
  * @stability unstable
  * @category protocols
@@ -120,7 +120,8 @@ export class EventLogAuthentication extends RpcMiddleware.Service<EventLogAuthen
  */
 export class HelloResponse extends Schema.Class<HelloResponse>("effect/eventlog/EventLogRemote/HelloResponse")({
   remoteId: RemoteId,
-  challenge: Transferable.Uint8Array
+  challenge: Transferable.Uint8Array,
+  firstSequence: Schema.optional(Schema.Natural)
 }) {}
 
 /**
@@ -274,7 +275,36 @@ export class ChunkedMessage
 }
 
 /**
+ * Schema for a written entry's id and a sequence at which the server stores
+ * it. Entries the server already held keep their stored sequence. When a write
+ * stores an entry again, as part of a partly known batch, it is acknowledged at
+ * its new position.
+ *
+ * @stability unstable
+ * @category protocols
+ * @since 4.0.6
+ */
+export const WriteAck = Schema.Struct({
+  entryId: EntryId,
+  sequence: Schema.Natural
+})
+
+/**
+ * Acknowledgement of one written entry.
+ *
+ * @stability unstable
+ * @category protocols
+ * @since 4.0.6
+ */
+export type WriteAck = typeof WriteAck.Type
+
+/**
  * RPC used to send one chunk of a large encoded write payload.
+ *
+ * **Details**
+ *
+ * The completing chunk returns acknowledgements in request order; earlier
+ * chunks return an empty array.
  *
  * @stability unstable
  * @category protocols
@@ -282,6 +312,7 @@ export class ChunkedMessage
  */
 export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
   payload: ChunkedMessage,
+  success: Schema.Array(WriteAck),
   error: EventLogProtocolError
 }).middleware(EventLogAuthentication) {}
 
@@ -348,6 +379,10 @@ const decodeWriteEntriesUnencryptedFields = Schema.decodeEffect(SchemaBinary.toC
 /**
  * RPC used to send an encoded write payload that fits in one message.
  *
+ * **Details**
+ *
+ * The response acknowledges every written entry, in request order.
+ *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
@@ -356,6 +391,7 @@ export class WriteSingleRpc extends Rpc.make("EventLog.WriteSingle", {
   payload: {
     data: Transferable.Uint8Array
   },
+  success: Schema.Array(WriteAck),
   error: EventLogProtocolError
 }).middleware(EventLogAuthentication) {}
 
@@ -366,7 +402,7 @@ export class WriteSingleRpc extends Rpc.make("EventLog.WriteSingle", {
  * **Details**
  *
  * Responses are encoded as either `SingleMessage` values or `ChunkedMessage`
- * parts.
+ * parts. Entries written on this connection are acknowledged, not echoed.
  *
  * @stability unstable
  * @category protocols

@@ -106,7 +106,7 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
 
           const history = yield* storage.entriesAfter(storeId, boundary)
 
-          assert.deepStrictEqual(history.map((entry) => entry.idString), [
+          assert.deepStrictEqual(history.map((entry) => entry.entry.idString), [
             otherKey.idString,
             boundary.idString,
             otherEvent.idString,
