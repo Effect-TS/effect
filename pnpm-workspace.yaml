@@ -38,13 +38,3 @@ overrides:
   # binary (Uint8Array) keys throw DataError during comparison in EventJournal.makeIndexedDb.
   # Remove after a later fake-indexeddb release passes the EventJournal IndexedDB suite.
   fake-indexeddb: 6.2.5
-
-minimumReleaseAgeExclude:
-  - '@effect/tsgo-darwin-arm64@0.51.0'
-  - '@effect/tsgo-darwin-x64@0.51.0'
-  - '@effect/tsgo-linux-arm64@0.51.0'
-  - '@effect/tsgo-linux-arm@0.51.0'
-  - '@effect/tsgo-linux-x64@0.51.0'
-  - '@effect/tsgo-win32-arm64@0.51.0'
-  - '@effect/tsgo-win32-x64@0.51.0'
-  - '@effect/tsgo@0.51.0'
