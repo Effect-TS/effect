@@ -17,7 +17,8 @@
         "diagnosticSeverity": {
           "floatingEffect": "off",
           "preferSchemaOverJson": "off",
-          "unstableApiUsage": "off"
+          "unstableApiUsage": "off",
+          "effectFnOpportunity": "error"
         }
       }
     ]

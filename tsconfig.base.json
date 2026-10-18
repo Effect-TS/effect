@@ -37,7 +37,8 @@
       "diagnosticSeverity": {
         "globalErrorInEffectFailure": "off", // TODO: Check if we should fix the warnings this reports
         "unstableApiUsage": "off",
-        "experimentalApiUsage": "off"
+        "experimentalApiUsage": "off",
+        "effectFnOpportunity": "error"
       },
       "includeSuggestionsInTsc": false,
       "ignoreEffectWarningsInTscExitCode": true,

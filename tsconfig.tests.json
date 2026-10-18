@@ -123,7 +123,8 @@
       "diagnosticSeverity": {
         "unknownInEffectCatch": "off",
         "multipleEffectProvide": "off",
-        "unstableApiUsage": "off"
+        "unstableApiUsage": "off",
+        "effectFnOpportunity": "error"
       }
     }]
   }
