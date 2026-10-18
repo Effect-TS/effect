@@ -505,31 +505,44 @@ describe("Atom", { concurrent: false }, () => {
     assert(Effect.isEffect(result.value.get))
   })
 
-  it("runtime atom with keepInitialValue keeps its seed when an async runtime resolves", async () => {
-    const runtime = Atom.runtime(Layer.effectDiscard(Effect.sleep(10)))
-    let runs = 0
-    const atom = runtime.atom(Effect.sync(() => ++runs))
-    const r = AtomRegistry.make({
-      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { keepInitialValue: true })]
-    })
-    try {
-      r.mount(atom)
-      await vitest.advanceTimersByTimeAsync(10)
+  it.each([
+    { reconfigure: false, expected: 0 },
+    { reconfigure: true, expected: 1 }
+  ])(
+    "runtime atom with keepInitialValue keeps its seed only when an async runtime resolves unchanged (reconfigure: $reconfigure)",
+    async ({ expected, reconfigure }) => {
+      const config = Atom.make(0)
+      const runtime = Atom.runtime((get) => {
+        get(config)
+        return Layer.effectDiscard(Effect.sleep(10))
+      })
+      let runs = 0
+      const atom = runtime.atom(Effect.sync(() => ++runs))
+      const r = AtomRegistry.make({
+        initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { keepInitialValue: true })]
+      })
+      try {
+        r.mount(atom)
+        if (reconfigure) {
+          r.set(config, 1)
+        }
+        await vitest.advanceTimersByTimeAsync(10)
 
-      let result = r.get(atom)
-      assert(AsyncResult.isSuccess(result))
-      assert.strictEqual(result.value, 0)
-      assert.strictEqual(runs, 0)
+        let result = r.get(atom)
+        assert(AsyncResult.isSuccess(result))
+        assert.strictEqual(result.value, expected)
+        assert.strictEqual(runs, expected)
 
-      r.refresh(atom)
-      result = r.get(atom)
-      assert(AsyncResult.isSuccess(result))
-      assert.strictEqual(result.value, 1)
-      assert.strictEqual(runs, 1)
-    } finally {
-      r.dispose()
+        r.refresh(atom)
+        result = r.get(atom)
+        assert(AsyncResult.isSuccess(result))
+        assert.strictEqual(result.value, expected + 1)
+        assert.strictEqual(runs, expected + 1)
+      } finally {
+        r.dispose()
+      }
     }
-  })
+  )
 
   it("effect initial", async () => {
     const count = Atom.make(
