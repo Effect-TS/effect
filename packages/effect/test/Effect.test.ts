@@ -2084,17 +2084,16 @@ describe("Effect", () => {
           }).pipe(Effect.provideService(Local, "source-local"))
           const value = yield* Effect.timeoutOrElse(source, {
             duration: 0,
-            orElse: () =>
-              Effect.gen(function*() {
-                const annotations = yield* References.CurrentLogAnnotations
-                observed.push(
-                  (yield* Effect.fiberId) === callerId,
-                  yield* Local,
-                  (yield* Effect.currentSpan) === parentSpan,
-                  annotations["request"]
-                )
-                return yield* FallbackService
-              })
+            orElse: Effect.fnUntraced(function*() {
+              const annotations = yield* References.CurrentLogAnnotations
+              observed.push(
+                (yield* Effect.fiberId) === callerId,
+                yield* Local,
+                (yield* Effect.currentSpan) === parentSpan,
+                annotations["request"]
+              )
+              return yield* FallbackService
+            })
           })
           observed.push(yield* Local, (yield* Effect.currentSpan) === parentSpan)
           return value
@@ -3305,8 +3304,8 @@ describe("Effect", () => {
       return { capturedLogs, testLogger }
     }
 
-    const runIgnore = (options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") =>
-      Effect.gen(function*() {
+    const runIgnore = Effect.fnUntraced(
+      function*(options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") {
         const { capturedLogs, testLogger } = makeTestLogger()
         const program = options === undefined
           ? Effect.fail("boom").pipe(Effect.ignore)
@@ -3317,7 +3316,8 @@ describe("Effect", () => {
           Effect.provideService(References.CurrentLogLevel, currentLogLevel)
         )
         return capturedLogs
-      })
+      }
+    )
 
     it.effect("does not log when log is omitted", () =>
       Effect.gen(function*() {
@@ -3371,8 +3371,8 @@ describe("Effect", () => {
       return { capturedLogs, testLogger }
     }
 
-    const runIgnoreCause = (options?: IgnoreCauseOptions, currentLogLevel: LogLevel.Severity = "Info") =>
-      Effect.gen(function*() {
+    const runIgnoreCause = Effect.fnUntraced(
+      function*(options?: IgnoreCauseOptions, currentLogLevel: LogLevel.Severity = "Info") {
         const { capturedLogs, testLogger } = makeTestLogger()
         const program = options === undefined
           ? Effect.fail("boom").pipe(Effect.ignoreCause)
@@ -3383,7 +3383,8 @@ describe("Effect", () => {
           Effect.provideService(References.CurrentLogLevel, currentLogLevel)
         )
         return capturedLogs
-      })
+      }
+    )
 
     it.effect("ignores defects", () =>
       Effect.gen(function*() {

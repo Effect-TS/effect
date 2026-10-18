@@ -4,25 +4,23 @@ import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } 
 import type { SqlError } from "effect/sql/SqlError"
 import { PgContainer, waitUntilAdvisoryLock } from "./utils.ts"
 
-const makeConnection = (options?: PgConnection.Config) =>
-  Effect.gen(function*() {
-    const container = yield* PgContainer
-    return yield* PgConnection.make({
-      url: Redacted.make(container.getConnectionUri()),
-      ...options
-    })
+const makeConnection = Effect.fnUntraced(function*(options?: PgConnection.Config) {
+  const container = yield* PgContainer
+  return yield* PgConnection.make({
+    url: Redacted.make(container.getConnectionUri()),
+    ...options
   })
+})
 
-const assertInterruptedOnClose = (
+const assertInterruptedOnClose = Effect.fnUntraced(function*(
   scope: Scope.Closeable,
   notifications: Queue.Dequeue<PgConnection.Notification, SqlError>
-) =>
-  Effect.gen(function*() {
-    const consumer = yield* Effect.forkScoped(Queue.take(notifications))
-    yield* Scope.close(scope, Exit.void)
-    const exit = yield* Fiber.await(consumer)
-    assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
-  })
+) {
+  const consumer = yield* Effect.forkScoped(Queue.take(notifications))
+  yield* Scope.close(scope, Exit.void)
+  const exit = yield* Fiber.await(consumer)
+  assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+})
 
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
   it.effect("interrupts notification consumers when the connection scope closes", () =>
