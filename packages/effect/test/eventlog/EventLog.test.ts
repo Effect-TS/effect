@@ -865,6 +865,41 @@ describe("EventLog", () => {
       ])
     }))
 
+  it.effect("records upload acknowledgements when the change stream is silent", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const uploads = yield* Queue.unbounded<void>()
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      let writes = 0
+      yield* Effect.gen(function*() {
+        const log = yield* EventLog.EventLog
+        const registry = yield* EventLog.Registry
+        yield* log.write({ schema, event: "UserCreated", payload: { id: "user-1" } })
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: remoteId,
+          firstSequence: 1,
+          changes: () => Queue.unbounded(),
+          whenAuthenticated: (effect) => effect,
+          write: ({ entries }) => {
+            writes++
+            return Queue.offer(uploads, undefined).pipe(Effect.andThen(
+              writes === 1
+                ? Effect.succeed(entries.map((entry) => ({ entryId: entry.id, sequence: 1 })))
+                : Effect.fail(new EventLogRemote.EventLogRemoteError({ method: "write", cause: "paused" }))
+            ))
+          }
+        }))
+        yield* Queue.take(uploads)
+        yield* log.write({ schema, event: "UserCreated", payload: { id: "barrier" } })
+        yield* Queue.take(uploads)
+        assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 2)
+      }).pipe(
+        Effect.provide(
+          logLayer(yield* Ref.make<ReadonlyArray<string>>([]), Layer.succeed(EventJournal.EventJournal, journal))
+        )
+      )
+    }))
+
   it.effect("retries a failed remote write and flushes changes made during the retry", () =>
     Effect.gen(function*() {
       const handled = yield* Ref.make<ReadonlyArray<string>>([])

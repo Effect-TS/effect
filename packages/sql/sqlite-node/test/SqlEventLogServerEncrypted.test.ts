@@ -378,38 +378,31 @@ describe("SqlEventLogServer", () => {
       const storage = yield* SqlEventLogServer.makeStorage().pipe(
         Effect.provideService(SqlClient.SqlClient, sql)
       )
-      const encryption = yield* EventLogEncryption.EventLogEncryption
-      const identity = yield* encryption.generateIdentity
-      const rpcClient = yield* makeAuthenticatedRpcClient(storage, [identity])
-      const entries = [makeEntry(1), makeEntry(2)]
-      const encode = Effect.fnUntraced(function*(entries: ReadonlyArray<EventJournal.Entry>) {
-        return yield* new EventLogMessage.WriteEntries({
-          publicKey: identity.publicKey,
-          storeId: storeIdA,
-          batches: yield* encryption.encrypt(identity, storeIdA, entries)
-        }).encoded
-      })
-      const firstAck = yield* rpcClient["EventLog.WriteSingle"]({ data: yield* encode(entries) })
-      assert.deepStrictEqual(firstAck, [
-        { entryId: entries[0].id, sequence: 1 },
-        { entryId: entries[1].id, sequence: 2 }
-      ])
+      const entries = [makeBatch(1), makeBatch(2)]
+      const written = yield* storage.write("client-1", storeIdA, entries)
+      assert.deepStrictEqual(written.map((entry) => entry.sequence), [1, 2])
 
-      const changes = yield* storage.changes(identity.publicKey, storeIdA, 0).pipe(
+      const changes = yield* storage.changes("client-1", storeIdA, 0).pipe(
         Stream.toQueue({ capacity: "unbounded" })
       )
-      const written = [yield* Queue.take(changes)]
+      assert.deepStrictEqual([yield* Queue.take(changes), yield* Queue.take(changes)], written)
 
-      const retryAck = yield* rpcClient["EventLog.WriteSingle"]({ data: yield* encode([...entries].reverse()) })
-      assert.deepStrictEqual(retryAck, [...firstAck].reverse())
-      const next = yield* storage.write(identity.publicKey, storeIdA, [makeBatch(3)])
+      yield* storage.write("client-1", storeIdA, entries)
+      assert.sameDeepMembers(
+        [...yield* storage.entrySequences("client-1", storeIdA, [entries[1].entryIds[0], entries[0].entryIds[0]])],
+        [
+          { entryId: entries[1].entryIds[0], sequence: 2 },
+          { entryId: entries[0].entryIds[0], sequence: 1 }
+        ]
+      )
+      const next = yield* storage.write("client-1", storeIdA, [makeBatch(3)])
       // A fresh entry marks the end of the replay without a sleep or timeout.
       const published = yield* Stream.fromQueue(changes).pipe(
         Stream.takeUntil((entry) => entry.sequence === next[0].sequence),
         Stream.runCollect
       )
-      const backlog = yield* storage.changes(identity.publicKey, storeIdA, 0).pipe(
-        Stream.take(2),
+      const backlog = yield* storage.changes("client-1", storeIdA, 0).pipe(
+        Stream.take(3),
         Stream.runCollect
       )
       assert.deepStrictEqual(backlog, [...written, ...next])
