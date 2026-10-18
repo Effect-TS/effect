@@ -25,7 +25,7 @@ import * as Pool from "effect/Pool"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Rec from "effect/Record"
 import * as Redacted from "effect/Redacted"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import {
@@ -620,11 +620,7 @@ export const make = (
     const withTransaction = Client.makeWithTransaction({
       transactionService,
       spanAttributes,
-      acquireConnection: Effect.gen(function*() {
-        const scope = Scope.makeUnsafe()
-        const conn = yield* Scope.provide(acquireConnection, scope)
-        return [scope, conn] as const
-      }),
+      acquireConnection: (restore) => restore(acquireConnection),
       begin: (conn) => conn.begin,
       savepoint: (conn, id) => conn.savepoint(`effect_sql_${id}`),
       commit: (conn) => conn.commit,

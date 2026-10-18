@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, Scope, Stream } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, type Scope, Semaphore, Stream } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
 import type { SqlConnection } from "effect/sql"
@@ -55,14 +55,11 @@ const makeHarness = (options: {
   const withTransaction = SqlClient.makeWithTransaction({
     transactionService,
     spanAttributes: [],
-    acquireConnection: Effect.flatMap(Scope.make(), (scope) =>
+    acquireConnection: () =>
       Effect.as(
-        Effect.flatMap(
-          record("acquireConnection"),
-          () => Scope.addFinalizer(scope, record("closeConnection"))
-        ),
-        [scope, conn] as const
-      )),
+        Effect.flatMap(record("acquireConnection"), () => Effect.addFinalizer(() => record("closeConnection"))),
+        conn
+      ),
     begin: () =>
       Effect.flatMap(record("begin"), () => {
         if (options.begin !== undefined) {
@@ -122,6 +119,7 @@ const makeHarness = (options: {
  * registered with `after`.
  */
 const makeClient = (options: {
+  readonly acquire?: Effect.Effect<void, never, Scope.Scope> | undefined
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
   readonly release?: Effect.Effect<void> | undefined
 } = {}) => {
@@ -143,7 +141,10 @@ const makeClient = (options: {
   return SqlClient.make({
     driver: "test",
     acquirer: Effect.as(
-      Effect.addFinalizer(() => Effect.andThen(record("release"), options.release ?? Effect.void)),
+      Effect.andThen(
+        options.acquire ?? Effect.void,
+        Effect.addFinalizer(() => Effect.andThen(record("release"), options.release ?? Effect.void))
+      ),
       connection
     ),
     compiler: Statement.makeCompilerSqlite(),
@@ -168,6 +169,43 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
 }
 
 describe("SqlClient", () => {
+  it.effect("interrupts a queued transaction before the connection is released without starting its body", () =>
+    Effect.gen(function*() {
+      const semaphore = yield* Semaphore.make(1)
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const { calls, record, sql } = yield* makeClient({
+        acquire: Effect.asVoid(
+          Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true })
+        )
+      })
+      const holder = yield* Effect.forkChild(sql.withTransaction(
+        Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(release))
+      ))
+      yield* Deferred.await(entered)
+
+      const queued = yield* Effect.forkChild(sql.withTransaction(record("queued body")), { startImmediately: true })
+      const interrupting = yield* Effect.forkChild(
+        Effect.andThen(Fiber.interrupt(queued), Deferred.succeed(interrupted, undefined))
+      )
+      yield* Effect.yieldNow
+      const interruptedBeforeRelease = yield* Deferred.isDone(interrupted)
+
+      // Unblock both fibers before asserting, so the regression fails rather than hanging.
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(holder)
+      yield* Fiber.join(interrupting)
+      const exit = yield* Fiber.await(queued)
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+      assert.isFalse(calls.includes("queued body"))
+
+      // A cancelled waiter must not retain the connection or its permit.
+      yield* sql.withTransaction(record("reused"))
+      assert.isTrue(interruptedBeforeRelease, "interruption must complete while the holder still owns the connection")
+      assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "BEGIN", "reused", "COMMIT", "release"])
+    }))
+
   describe("makeWithTransaction", () => {
     it.effect("recovers a failed commit with catchTag after successful cleanup", () =>
       Effect.gen(function*() {

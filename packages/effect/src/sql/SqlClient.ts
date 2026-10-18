@@ -257,14 +257,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const withTransaction = makeWithTransaction({
     transactionService,
     spanAttributes: options.spanAttributes,
-    acquireConnection: Effect.flatMap(
-      Scope.make(),
-      (scope) =>
-        Scope.provide(transactionAcquirer!, scope).pipe(
-          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),
-          Effect.map((conn) => [scope, conn] as const)
-        )
-    ),
+    acquireConnection: (restore) => restore(transactionAcquirer!),
     begin: (conn) => control(conn, beginTransaction),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
@@ -503,7 +496,16 @@ const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect
 export const makeWithTransaction = <I, S>(options: {
   readonly transactionService: Context.Key<I, readonly [conn: S, counter: number]>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
-  readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
+  /**
+   * Acquires the connection for a top-level transaction. Runs under the
+   * transaction's uninterruptible mask; wrap the wait for a connection in
+   * `restore` so a queued transaction can be interrupted, and register
+   * releases on the provided scope. The scope closes with the transaction, or
+   * immediately when acquisition fails or is interrupted.
+   */
+  readonly acquireConnection: (
+    restore: <XA, XE, XR>(effect: Effect.Effect<XA, XE, XR>) => Effect.Effect<XA, XE, XR>
+  ) => Effect.Effect<S, SqlError, Scope.Scope>
   readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
   /**
@@ -534,9 +536,13 @@ export const makeWithTransaction = <I, S>(options: {
             const services = fiber.context
             const clock = fiber.getRef(Clock)
             const connOption = Context.getOption(services, options.transactionService)
-            const conn = connOption._tag === "Some"
+            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
-              : options.acquireConnection
+              : Effect.flatMap(Scope.make(), (scope) =>
+                Scope.provide(options.acquireConnection(restore), scope).pipe(
+                  Effect.map((conn) => [scope, conn] as const),
+                  Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
+                ))
             const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
             const buffer: AfterCommitBuffer = {
               callbacks: [],
