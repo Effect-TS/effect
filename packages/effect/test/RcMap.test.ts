@@ -597,11 +597,10 @@ describe("RcMap", () => {
       let released = 0
       const scope = yield* Scope.make()
       const map = yield* RcMap.make({
-        lookup: (_: string) =>
-          Effect.gen(function*() {
-            yield* Effect.addFinalizer(() => Effect.sync(() => released++))
-            yield* Effect.addFinalizer(() => Effect.andThen(Deferred.await(gate), Effect.sync(() => released++)))
-          }),
+        lookup: Effect.fnUntraced(function*(_: string) {
+          yield* Effect.addFinalizer(() => Effect.sync(() => released++))
+          yield* Effect.addFinalizer(() => Effect.andThen(Deferred.await(gate), Effect.sync(() => released++)))
+        }),
         idleTimeToLive: "1 second"
       }).pipe(Scope.provide(scope))
       yield* Effect.scoped(RcMap.get(map, "a"))
@@ -620,14 +619,13 @@ describe("RcMap", () => {
       const interrupt = yield* Deferred.make<void>()
       const finalized = yield* Deferred.make<void>()
       const map = yield* RcMap.make({
-        lookup: (_key: string) =>
-          Effect.gen(function*() {
-            if (++lookups > 1) return lookups
-            yield* Effect.addFinalizer(() => Deferred.succeed(finalized, void 0))
-            yield* Deferred.succeed(started, void 0)
-            yield* Deferred.await(interrupt)
-            return yield* Effect.interrupt
-          }),
+        lookup: Effect.fnUntraced(function*(_key: string) {
+          if (++lookups > 1) return lookups
+          yield* Effect.addFinalizer(() => Deferred.succeed(finalized, void 0))
+          yield* Deferred.succeed(started, void 0)
+          yield* Deferred.await(interrupt)
+          return yield* Effect.interrupt
+        }),
         idleTimeToLive: "1 minute"
       })
 

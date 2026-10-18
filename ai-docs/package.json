@@ -28,7 +28,7 @@
     "@effect/vitest": "workspace:*",
     "effect": "workspace:*",
     "hono": "^4.13.13",
-    "nodemailer": "^10.1.0"
+    "nodemailer": "^10.1.2"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.2"

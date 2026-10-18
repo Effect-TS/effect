@@ -14,32 +14,37 @@ const group = EventGroup.empty.add({
   tag: "Set",
   primaryKey: (payload) => payload.key,
   payload: Schema.Struct({ key: Schema.String })
+}).add({
+  tag: "Other",
+  primaryKey: (payload) => payload.key,
+  payload: Schema.Struct({ key: Schema.String })
 })
-const event = group.events.Set
-const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string) {
+export const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string, tag: "Set" | "Other" = "Set") {
   return new EventJournal.Entry({
     id: EventJournal.makeEntryIdUnsafe({ msecs }),
-    event: event.tag,
+    event: tag,
     primaryKey: key,
-    payload: yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)({ key })
+    payload: yield* Schema.encodeUnknownEffect(group.events[tag].payloadSchemaBinary)({ key })
   }, { disableChecks: true })
 })
 
-const makeClient = Effect.fnUntraced(function*(name: string) {
+export const makeClient = Effect.fnUntraced(function*(name: string) {
   const storage = yield* EventLogServerUnencrypted.Storage
   const registry = yield* EventLog.Registry.pipe(Effect.provide(EventLog.layerRegistry))
   const handled: Array<{ key: string; conflicts: ReadonlyArray<string> }> = []
-  registry.registerHandlerUnsafe({
-    event: event.tag,
-    handler: {
-      event,
-      context: Context.empty() as Context.Context<any>,
-      handler: ({ entry, conflicts }) =>
-        Effect.sync(() => {
-          handled.push({ key: entry.primaryKey, conflicts: conflicts.map(({ entry }) => entry.idString) })
-        })
-    }
-  })
+  for (const event of [group.events.Set, group.events.Other]) {
+    registry.registerHandlerUnsafe({
+      event: event.tag,
+      handler: {
+        event,
+        context: Context.empty() as Context.Context<any>,
+        handler: ({ entry, conflicts }) =>
+          Effect.sync(() => {
+            handled.push({ key: entry.primaryKey, conflicts: conflicts.map(({ entry }) => entry.idString) })
+          })
+      }
+    })
+  }
   const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
     Effect.provide(EventLogServerUnencrypted.layerRpcHandlers.pipe(
       Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, storage)),
@@ -85,9 +90,30 @@ const makeClient = Effect.fnUntraced(function*(name: string) {
 })
 
 export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypted.Storage, unknown>) =>
-  it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle))(
+  it.layer(Layer.merge(storage, EventLogEncryption.layerSubtle), { timeout: "30 seconds" })(
     `Unencrypted write ordering (${name})`,
     (it) => {
+      it.effect("returns full at-or-after history when batch is omitted", () =>
+        Effect.gen(function*() {
+          const storage = yield* EventLogServerUnencrypted.Storage
+          const storeId = EventLogMessage.StoreId.make("history-without-batch")
+          const older = yield* makeEntry(1_000, "key")
+          const boundary = yield* makeEntry(2_000, "key")
+          const otherEvent = yield* makeEntry(3_000, "key", "Other")
+          const otherKey = yield* makeEntry(4_000, "unrelated")
+          const newer = yield* makeEntry(5_000, "key")
+          yield* storage.write(storeId, [older, otherKey, boundary, otherEvent, newer])
+
+          const history = yield* storage.entriesAfter(storeId, boundary)
+
+          assert.deepStrictEqual(history.map((entry) => entry.entry.idString), [
+            otherKey.idString,
+            boundary.idString,
+            otherEvent.idString,
+            newer.idString
+          ])
+        }))
+
       it.effect("acknowledges an out-of-order duplicate without invoking its handler", () =>
         Effect.gen(function*() {
           const { write, handled } = yield* makeClient("out-of-order")
@@ -135,6 +161,105 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
             [{ key: "c", conflicts: [] }, { key: "a", conflicts: [z.idString] }],
             [{ key: "c", conflicts: [] }, { key: "a", conflicts: [z.idString] }]
           ])
+        }))
+
+      it.effect("ignores same-key entries from a different event", () =>
+        Effect.gen(function*() {
+          const { write, handled } = yield* makeClient("different-event")
+          const storedOther = yield* makeEntry(2_000, "a", "Other")
+          const storedSet = yield* makeEntry(3_000, "a")
+          yield* write([storedOther])
+          yield* write([storedSet])
+          handled.length = 0
+          yield* write([yield* makeEntry(1_000, "a"), yield* makeEntry(1_500, "a", "Other")])
+          assert.deepStrictEqual(handled, [
+            { key: "a", conflicts: [storedSet.idString] },
+            { key: "a", conflicts: [storedOther.idString] }
+          ])
+        }))
+
+      it.effect("reports equal-timestamp conflicts by entry id order and batch start", () =>
+        Effect.gen(function*() {
+          const [lower, stored, higher] = [
+            yield* makeEntry(1_000, "a"),
+            yield* makeEntry(1_000, "a"),
+            yield* makeEntry(1_000, "a")
+          ].sort(EventJournal.Entry.Order)
+          const results = []
+          const batches: Array<[EventJournal.Entry, ...Array<EventJournal.Entry>]> = [[lower], [higher], [
+            lower,
+            higher
+          ]]
+          for (const [index, batch] of batches.entries()) {
+            const { write, handled } = yield* makeClient(`equal-timestamp-conflicts-${index}`)
+            yield* write([stored])
+            handled.length = 0
+            yield* write(batch)
+            results.push(handled.map(({ conflicts }) => conflicts))
+          }
+          // History is read from the batch's lowest entry id, so a stored entry
+          // with the same timestamp and a lower id conflicts with `higher` only
+          // when `lower` is in the same batch.
+          assert.deepStrictEqual(results, [
+            [[stored.idString]],
+            [[]],
+            [[stored.idString], [stored.idString]]
+          ])
+        }))
+
+      it.effect("applies the batch's lowest id to every lookup in a large batch", () =>
+        Effect.gen(function*() {
+          const { write, handled } = yield* makeClient("large-batch")
+          const entries: Array<EventJournal.Entry> = []
+          for (let i = 0; i < 252; i++) entries.push(yield* makeEntry(1_000, "x"))
+          entries.sort(EventJournal.Entry.Order)
+          // `stored` sorts between the batch's first and last entries and only
+          // shares a key with the last, so every lookup must start from the
+          // batch's lowest id.
+          const withKeyB = ({ event, id, payload }: EventJournal.Entry) =>
+            new EventJournal.Entry({ id, event, primaryKey: "b", payload }, { disableChecks: true })
+          const stored = withKeyB(entries[1])
+          const last = withKeyB(entries[251])
+          yield* write([stored])
+          handled.length = 0
+          yield* write([entries[0], ...entries.slice(2, 251), last])
+          assert.deepStrictEqual(handled.at(-1), { key: "b", conflicts: [stored.idString] })
+        }))
+
+      it.effect("matches long primary keys exactly", () =>
+        Effect.gen(function*() {
+          const { write, handled } = yield* makeClient("long-keys")
+          const prefix = Array.from({ length: 125 }, () => crypto.randomUUID()).join("")
+          const stored = yield* makeEntry(2_000, `${prefix}a`)
+          yield* write([stored])
+          handled.length = 0
+          yield* write([yield* makeEntry(1_000, `${prefix}a`), yield* makeEntry(1_500, `${prefix}b`)])
+          assert.deepStrictEqual(handled.map(({ conflicts }) => conflicts), [[stored.idString], []])
+        }))
+
+      it.effect("skips a stored duplicate inside a mixed batch and persists the rest", () =>
+        Effect.gen(function*() {
+          const { write, handled } = yield* makeClient("mixed-duplicate")
+          const stored = yield* makeEntry(2_000, "a")
+          const before = yield* makeEntry(1_000, "a")
+          const after = yield* makeEntry(2_500, "a")
+          yield* write([stored])
+          handled.length = 0
+          yield* write([before, stored, after])
+          yield* write([yield* makeEntry(500, "a")])
+          assert.deepStrictEqual(handled, [
+            { key: "a", conflicts: [stored.idString] },
+            { key: "a", conflicts: [] },
+            { key: "a", conflicts: [stored.idString, before.idString, after.idString] }
+          ])
+        }))
+
+      it.effect("does not report conflicts between entries of the same batch", () =>
+        Effect.gen(function*() {
+          const { write, handled } = yield* makeClient("same-batch")
+          const sameMillis = [yield* makeEntry(1_000, "a"), yield* makeEntry(1_000, "a")]
+          yield* write([yield* makeEntry(2_000, "a"), ...sameMillis])
+          assert.deepStrictEqual(handled.map(({ conflicts }) => conflicts), [[], [], []])
         }))
     }
   )

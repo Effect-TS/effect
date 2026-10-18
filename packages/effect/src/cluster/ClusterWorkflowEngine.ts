@@ -384,26 +384,25 @@ export const make = Effect.gen(function*() {
   // `Suspended`. Replies are only observed on the runner that saves them, so
   // callers on other runners, and any failure here, leave delivery to the
   // caller's retry schedule.
-  const awaitComplete = (workflow: Workflow.Any, executionId: string) =>
-    Effect.gen(function*() {
-      const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
-      if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
-      const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
-      if (Option.isNone(requestId)) return yield* Effect.never
-      const request = Envelope.makeRequest<any>({
-        requestId: requestId.value,
-        address,
-        tag: "run",
-        payload: {},
-        headers: Headers.empty
-      })
-      // A replay that suspends again re-arms the wait, so it does not spend a
-      // step of the caller's retry schedule.
-      let settled = false
-      while (!settled) {
-        settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
-      }
-    }).pipe(Effect.catchCause(() => Effect.never))
+  const awaitComplete = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string) {
+    const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
+    if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
+    const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
+    if (Option.isNone(requestId)) return yield* Effect.never
+    const request = Envelope.makeRequest<any>({
+      requestId: requestId.value,
+      address,
+      tag: "run",
+      payload: {},
+      headers: Headers.empty
+    })
+    // A replay that suspends again re-arms the wait, so it does not spend a
+    // step of the caller's retry schedule.
+    let settled = false
+    while (!settled) {
+      settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
+    }
+  }, Effect.catchCause(() => Effect.never))
 
   const interrupt = Effect.fnUntraced(
     function*(workflow: Workflow.Any, executionId: string) {

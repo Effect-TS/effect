@@ -261,6 +261,21 @@ describe("Channel", () => {
         assertExitFailure(exit, Cause.fail(error))
       }))
 
+    it.effect("fromTransformStream - preserves upstream errors while a read is pending", () =>
+      Effect.gen(function*() {
+        const channel = Channel.fromTransformStream<string, number, number, Error>({
+          evaluate: () => new TransformStream<number, number>(),
+          onError: () => new Error("transform failed")
+        })
+        const exit = yield* Channel.fail("upstream failed").pipe(
+          Channel.pipeTo(channel),
+          Channel.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.fail("upstream failed"))
+      }))
+
     it.effect("acquireRelease", () =>
       Effect.gen(function*() {
         const acquired = yield* Ref.make(false)

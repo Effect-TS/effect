@@ -558,7 +558,7 @@ const readLink = (() => {
 
 const realPath = (() => {
   const nodeRealPath = effectify(
-    NFS.realpath,
+    process.platform === "win32" ? NFS.realpath.native : NFS.realpath,
     handleErrnoException("FileSystem", "realPath"),
     handleBadArgument("realPath")
   )

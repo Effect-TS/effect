@@ -39,25 +39,24 @@ const ChunkGroup = RpcGroup.make(
   Rpc.make("Unary", { success: Schema.String })
 )
 
-const makeChunkProtocol = (beforeInterrupt: Effect.Effect<void> = Effect.void) =>
-  Effect.gen(function*() {
-    const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
-    const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
-    const protocol = RpcClient.Protocol.of({
-      codecFor: RpcSerialization.json.codecFor,
-      supportsAck: false,
-      supportsTransferables: false,
-      run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
-      send: (_clientId, message) =>
-        Effect.andThen(
-          message._tag === "Interrupt" ? beforeInterrupt : Effect.void,
-          Effect.asVoid(Queue.offer(sent, message))
-        )
-    })
-    const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
-    const handle = yield* Deferred.await(received)
-    return { client, handle, sent }
+const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Effect<void> = Effect.void) {
+  const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+  const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+  const protocol = RpcClient.Protocol.of({
+    codecFor: RpcSerialization.json.codecFor,
+    supportsAck: false,
+    supportsTransferables: false,
+    run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+    send: (_clientId, message) =>
+      Effect.andThen(
+        message._tag === "Interrupt" ? beforeInterrupt : Effect.void,
+        Effect.asVoid(Queue.offer(sent, message))
+      )
   })
+  const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+  const handle = yield* Deferred.await(received)
+  return { client, handle, sent }
+})
 
 const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
   assert(message._tag === "Request")
@@ -88,26 +87,25 @@ const makeProtocolLayer = (
   body: string
 ) => makeProtocolLayerWithClient(serializationLayer, makeHttpClient(body))
 
-const assertEmptyResponseFailsRequest = (
+const assertEmptyResponseFailsRequest = Effect.fnUntraced(function*(
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
   body: string
-) =>
-  Effect.gen(function*() {
-    const client = yield* RpcClient.make(TestGroup).pipe(
-      Effect.provide(makeProtocolLayer(serializationLayer, body))
-    )
+) {
+  const client = yield* RpcClient.make(TestGroup).pipe(
+    Effect.provide(makeProtocolLayer(serializationLayer, body))
+  )
 
-    const cause = yield* client.Ping().pipe(
-      Effect.timeout("1 second"),
-      Effect.sandbox,
-      Effect.flip
-    )
+  const cause = yield* client.Ping().pipe(
+    Effect.timeout("1 second"),
+    Effect.sandbox,
+    Effect.flip
+  )
 
-    const error = Cause.squash(cause)
-    assert.instanceOf(error, RpcClientError)
-    assert.strictEqual(error.reason._tag, "RpcClientDefect")
-    assert.strictEqual(error.reason.message, "Received empty HTTP response from RPC server")
-  })
+  const error = Cause.squash(cause)
+  assert.instanceOf(error, RpcClientError)
+  assert.strictEqual(error.reason._tag, "RpcClientDefect")
+  assert.strictEqual(error.reason.message, "Received empty HTTP response from RPC server")
+})
 
 describe("RpcClient", () => {
   it.effect("does not fail a new request started synchronously during connection defect delivery", () =>
@@ -664,17 +662,16 @@ describe("RpcClient", () => {
       const requestSent = yield* Deferred.make<void>()
       const frames = yield* Queue.unbounded<string>()
       let pings = 0
-      const write: Socket.Writer["write"] = (data) =>
-        Effect.gen(function*() {
-          if (Socket.isCloseEvent(data)) return
-          const message = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data))
-          if (message._tag === "Ping") {
-            pings++
-            yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
-          } else if (message._tag === "Request") {
-            yield* Deferred.succeed(requestSent, void 0)
-          }
-        })
+      const write: Socket.Writer["write"] = Effect.fnUntraced(function*(data) {
+        if (Socket.isCloseEvent(data)) return
+        const message = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data))
+        if (message._tag === "Ping") {
+          pings++
+          yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
+        } else if (message._tag === "Request") {
+          yield* Deferred.succeed(requestSent, void 0)
+        }
+      })
       const socket = Socket.make({
         reader: Effect.succeed({
           pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),

@@ -3233,11 +3233,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20)
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20)
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)
@@ -3285,11 +3284,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20) // Short delay to create Initial state window
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20) // Short delay to create Initial state window
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)
@@ -3338,11 +3336,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20) // Short delay to create Initial state window
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20) // Short delay to create Initial state window
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)

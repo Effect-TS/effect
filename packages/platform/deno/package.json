@@ -77,9 +77,9 @@
   },
   "devDependencies": {
     "@std/assert": "jsr:^1.0.19",
-    "@testcontainers/redis": "^12.2.0",
+    "@testcontainers/redis": "^12.2.1",
     "@types/deno": "^2.7.0",
     "effect": "workspace:^",
-    "tinybench": "^6.2.1"
+    "tinybench": "^6.2.2"
   }
 }

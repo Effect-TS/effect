@@ -143,7 +143,7 @@ jobs:
       - name: Pre-pull test container images
         run: |
           docker pull ghcr.io/tursodatabase/libsql-server:main &
-          docker pull postgres:alpine &
+          docker pull postgres:14-alpine &
           docker pull mysql:lts &
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &

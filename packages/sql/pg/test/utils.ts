@@ -73,11 +73,11 @@ const instrumentClient = <A, E, R>(
   )
 
 // Shared with the regression tests so they exercise the real container finalizer.
-export const releasePgContainer = (container: {
-  getId(): string
-  stop(options: { remove: boolean }): Promise<unknown>
-}) =>
-  Effect.gen(function*() {
+export const releasePgContainer = Effect.fnUntraced(
+  function*(container: {
+    getId(): string
+    stop(options: { remove: boolean }): Promise<unknown>
+  }) {
     const id = container.getId()
     lifecycleLog(id, "container-release", "start", 0)
     yield* Effect.promise(() => lifecycle(id, "stop", () => container.stop({ remove: false })))
@@ -91,19 +91,19 @@ export const releasePgContainer = (container: {
     ).pipe(Effect.timeout("5 seconds"), Effect.retry({ times: 2 }))
     yield* Effect.promise(() => lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true })))
     lifecycleLog(id, "container-release", "done", 0)
-  }).pipe(
-    // Bound the entire release below the existing 30s hook limit, including
-    // stop and removal. Exhausted retries and timeouts remain visible defects.
-    Effect.timeout("20 seconds"),
-    Effect.orDie,
-    // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.
-    Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
-  )
+  },
+  // Bound the entire release below the existing 30s hook limit, including
+  // stop and removal. Exhausted retries and timeouts remain visible defects.
+  Effect.timeout("20 seconds"),
+  (_) => Effect.orDie(_),
+  // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.
+  Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
+)
 
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
     Effect.tryPromise({
-      try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:alpine").start()),
+      try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:14-alpine").start()),
       catch: (cause) => new ContainerError({ cause })
     }).pipe(Effect.tap((container) => marker(container.getId(), "container-started"))),
     releasePgContainer
@@ -201,8 +201,8 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
 export const realSleep = Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
 const activeTimeoutMs = 10_000
 
-export const waitUntilActive = (observer: PgConnection.PgConnection, pid: number, advisoryLock = false) =>
-  Effect.gen(function*() {
+export const waitUntilActive = Effect.fnUntraced(
+  function*(observer: PgConnection.PgConnection, pid: number, advisoryLock = false) {
     const startedAt = Date.now()
     while (Date.now() - startedAt < activeTimeoutMs) {
       const active = yield* observer.query(
@@ -221,7 +221,8 @@ export const waitUntilActive = (observer: PgConnection.PgConnection, pid: number
         } within 10 seconds`
       )
     )
-  })
+  }
+)
 
 // Parse can report active before Execute starts. Cancellation needs the query to be waiting on the lock.
 export const waitUntilAdvisoryLock = (observer: PgConnection.PgConnection, pid: number) =>

@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { Effect, Equal, Hash, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 
 const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
@@ -12,7 +12,178 @@ const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
 
 const idStrings = (entries: ReadonlyArray<EventJournal.Entry>) => entries.map((item) => item.idString)
 
+// Preserve the original UUID formatter as the compatibility oracle.
+const legacyStringify = (bytes: Uint8Array): string =>
+  [
+    bytes.subarray(0, 4),
+    bytes.subarray(4, 6),
+    bytes.subarray(6, 8),
+    bytes.subarray(8, 10),
+    bytes.subarray(10, 16)
+  ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
+
 describe("EventJournal", () => {
+  it.effect("deduplicates overlapping remote entries within one incoming array", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const a = entry(1_000)
+      const b = entry(2_000)
+      const handled: Array<string> = []
+      // Flattened overlapping batches [A] and [A, B], not separate journal writes.
+      const repeatedA = new EventJournal.Entry({ ...a, id: a.id.slice() as EventJournal.EntryId })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [a, repeatedA, b].map((entry, remoteSequence) =>
+          new EventJournal.RemoteEntry({ remoteSequence, entry })
+        ),
+        effect: (batch) =>
+          Effect.sync(() => {
+            handled.push(...batch.map(({ entry }) => entry.idString))
+          })
+      })
+
+      assert.deepStrictEqual({
+        handled,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }, {
+        handled: [a.idString, b.idString],
+        stored: [a.idString, b.idString],
+        nextSequence: 3
+      })
+    }))
+
+  it.effect("advances remote progress past a trailing known entry in a partly known batch", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const a = entry(1_000)
+      const b = entry(2_000)
+      const handled: Array<string> = []
+      const effect = (batch: ReadonlyArray<{ readonly entry: EventJournal.Entry }>) =>
+        Effect.sync(() => {
+          handled.push(...batch.map(({ entry }) => entry.idString))
+        })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: a })],
+        effect
+      })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [
+          new EventJournal.RemoteEntry({ remoteSequence: 1, entry: b }),
+          new EventJournal.RemoteEntry({ remoteSequence: 2, entry: a })
+        ],
+        effect
+      })
+
+      assert.deepStrictEqual({
+        handled,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }, {
+        handled: [a.idString, b.idString],
+        stored: [a.idString, b.idString],
+        nextSequence: 3
+      })
+    }))
+
+  it.effect("entriesById preserves order, repeated ids and missing entries", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const entries: Array<EventJournal.Entry> = []
+      for (const primaryKey of ["first", "second"]) {
+        entries.push(
+          yield* journal.write({
+            event: "Repro",
+            primaryKey,
+            payload: new Uint8Array([entries.length + 1]),
+            effect: Effect.succeed
+          })
+        )
+      }
+      const [first, second] = entries
+      const missing = EventJournal.makeEntryIdUnsafe()
+      const found = yield* journal.entriesById([
+        second.id.slice() as EventJournal.EntryId,
+        missing,
+        first.id.slice() as EventJournal.EntryId,
+        second.id.slice() as EventJournal.EntryId
+      ])
+      assert.deepStrictEqual(found, [second, undefined, first, second])
+      assert.deepStrictEqual(yield* journal.entriesById([]), [])
+    }))
+
+  it("formats schema-accepted ids identically to the original UUID formatter", () => {
+    const ids: Array<Uint8Array> = [new Uint8Array(16), new Uint8Array(16).fill(0xff)]
+    for (let length = 0; length < 16; length++) {
+      ids.push(Uint8Array.from({ length }, (_, offset) => offset + 1))
+    }
+    // Exercise every lookup-table value, including bytes that need a leading zero.
+    for (let start = 0; start < 256; start += 16) {
+      ids.push(Uint8Array.from({ length: 16 }, (_, offset) => start + offset))
+    }
+    for (let i = 0; i < 100; i++) {
+      ids.push(
+        crypto.getRandomValues(new Uint8Array(16)),
+        EventJournal.makeRemoteIdUnsafe(),
+        EventJournal.makeEntryIdUnsafe({ msecs: i })
+      )
+    }
+    for (const id of ids) {
+      const item = new EventJournal.Entry({
+        id: Schema.decodeUnknownSync(EventJournal.EntryId)(id),
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array()
+      })
+      assert.strictEqual(item.idString, legacyStringify(id))
+    }
+  })
+
+  it("memoizes idString per entry instance, not per id buffer", () => {
+    const id = new Uint8Array(16) as EventJournal.EntryId
+    const makeEntry = () =>
+      new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+        disableChecks: true
+      })
+    const first = makeEntry()
+    assert.strictEqual(first.idString, "00000000-0000-0000-0000-000000000000")
+
+    // Changing the public byte buffer must not cause an already-read entry to reformat.
+    id.fill(0xff)
+    const second = makeEntry()
+    assert.strictEqual(second.idString, "ffffffff-ffff-ffff-ffff-ffffffffffff")
+    id.fill(0x11)
+    assert.strictEqual(first.idString, "00000000-0000-0000-0000-000000000000")
+    assert.strictEqual(second.idString, "ffffffff-ffff-ffff-ffff-ffffffffffff")
+  })
+
+  it("keeps equality, hashing and JSON independent of idString access", () => {
+    const first = entry(1_000)
+    const second = new EventJournal.Entry({
+      id: first.id,
+      event: first.event,
+      primaryKey: first.primaryKey,
+      payload: first.payload
+    })
+    const json = JSON.stringify(first)
+
+    assert.strictEqual(first.idString, legacyStringify(first.id))
+    assert.deepStrictEqual({
+      equal: Equal.equals(first, second),
+      sameHash: Hash.hash(first) === Hash.hash(second),
+      json: JSON.stringify(first)
+    }, { equal: true, sameHash: true, json })
+  })
+
+  it("reads idString on a frozen entry", () => {
+    const item = Object.freeze(entry(1_000))
+    assert.strictEqual(item.idString, legacyStringify(item.id))
+  })
+
   it("decodes the 48-bit UUID v7 timestamp from entry ids", () => {
     const cases: ReadonlyArray<readonly [prefix: ReadonlyArray<number>, millis: number]> = [
       [[0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 0],
@@ -190,6 +361,7 @@ describe("EventJournal", () => {
         payload: new Uint8Array()
       }, { disableChecks: true })
 
+      yield* journal.writeRemoteAcks({ remoteId, acks: [{ entryId: entry.id, sequence: 2 }] })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 0)
       yield* journal.writeFromRemote({
         remoteId,
@@ -197,11 +369,14 @@ describe("EventJournal", () => {
         effect: () => Effect.void
       })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+      yield* journal.writeRemoteAcks({ remoteId, acks: [2, 1, 0].map((sequence) => ({ entryId: entry.id, sequence })) })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 3)
       yield* journal.writeFromRemote({
         remoteId,
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry })],
         effect: () => Effect.void
       })
+      yield* journal.writeRemoteAcks({ remoteId, acks: [{ entryId: entry.id, sequence: 2 }] })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
     }))
 

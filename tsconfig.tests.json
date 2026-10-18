@@ -106,10 +106,11 @@
     },
     "plugins": [{
       "name": "@effect/language-service",
+      "effectFn": ["untraced"],
       "namespaceImportPackages": [],
       "includeSuggestionsInTsc": false,
       "ignoreEffectWarningsInTscExitCode": true,
-      "ignoreEffectErrorsInTscExitCode": true,
+      "ignoreEffectErrorsInTscExitCode": false,
       "overrides": [
         {
           "include": ["**/typetest/**/*.ts"],
@@ -123,7 +124,8 @@
       "diagnosticSeverity": {
         "unknownInEffectCatch": "off",
         "multipleEffectProvide": "off",
-        "unstableApiUsage": "off"
+        "unstableApiUsage": "off",
+        "effectFnOpportunity": "error"
       }
     }]
   }
