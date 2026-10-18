@@ -13,7 +13,8 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "namespaceImportPackages": []
+        "namespaceImportPackages": [],
+        "diagnosticSeverity": { "effectFnOpportunity": "error" }
       }
     ]
   }
