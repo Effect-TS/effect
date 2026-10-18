@@ -524,11 +524,12 @@ describe("EventJournal.makeIndexedDb", () => {
           payload: item.payload
         })
       }
-      // The first two came from `source`; `upload` has sent the first one.
+      // The first two came from `source`. `upload` has sent the first one but
+      // not echoed it back yet, so version 1 only recorded it as the last upload.
       stored.slice(0, 2).forEach((item, sequence) =>
         tx.objectStore("remotes").put({ remoteId: source, entryId: item.id, sequence })
       )
-      tx.objectStore("remoteEntryId").put({ remoteId: upload, sequence: 1 })
+      tx.objectStore("remoteEntryId").put({ remoteId: upload, entryId: stored[0].id })
       yield* transactionDone(tx)
       v1.close()
 
@@ -565,7 +566,9 @@ describe("EventJournal.makeIndexedDb", () => {
         conflictIndex: true,
         entries: stored.map(describeEntry),
         nextSequence: 2,
-        uncommitted: Option.some([stored[1].idString, stored[2].idString]),
+        // Version 1 upload progress is an entry id and is dropped, so the
+        // unechoed upload is sent again.
+        uncommitted: Option.some(stored.map((item) => item.idString)),
         batches: [[[incoming.idString, stored.slice(1).map(describeEntry)]]]
       })
     }))
@@ -575,9 +578,11 @@ describe("EventJournal.makeIndexedDb", () => {
       const database = uniqueName("journal")
       const remoteA = EventJournal.makeRemoteIdUnsafe()
       const remoteB = EventJournal.makeRemoteIdUnsafe()
+      // Uploaded to A, which has not echoed it back; version 1 recorded it as
+      // the last upload.
       const uploaded = entry(1000, { primaryKey: "uploaded" })
       const fromA = entry(2000, { primaryKey: "fromA" })
-      // Acknowledged by A, but the upload checkpoint was not saved before a restart.
+      // Uploaded to A and echoed back, so A's remotes row is its only record.
       const acked = entry(3000, { primaryKey: "acked" })
       const fromB = entry(4000, { primaryKey: "fromB" })
       // Written offline; no remote has it.
@@ -596,7 +601,7 @@ describe("EventJournal.makeIndexedDb", () => {
       tx.objectStore("remotes").put({ remoteId: remoteA, entryId: fromA.id, sequence: 0 })
       tx.objectStore("remotes").put({ remoteId: remoteA, entryId: acked.id, sequence: 1 })
       tx.objectStore("remotes").put({ remoteId: remoteB, entryId: fromB.id, sequence: 3 })
-      tx.objectStore("remoteEntryId").put({ remoteId: remoteA, sequence: 1 })
+      tx.objectStore("remoteEntryId").put({ remoteId: remoteA, entryId: uploaded.id })
       yield* transactionDone(tx)
       v1.close()
 
@@ -651,8 +656,9 @@ describe("EventJournal.makeIndexedDb", () => {
         version: 2,
         stores: ["entries", "entrySequence", "entrySource", "remoteEntryId"],
         nextB: 5,
-        // Never back to the source, and nothing at or below a checkpoint.
-        uploadA: Option.some(ids(fromB, pending, fresh)),
+        // Never back to the source. The version 1 upload record is dropped, so
+        // the unechoed upload is sent again.
+        uploadA: Option.some(ids(uploaded, fromB, pending, fresh)),
         uploadB: Option.some(ids(uploaded, fromA, acked, pending)),
         uploadLate: Option.some(ids(uploaded, fromA, acked, fromB, pending, fresh))
       })
