@@ -183,14 +183,13 @@ for (const fallback of [false, true]) {
         const registry = yield* EventLog.Registry
         yield* registry.registerCompaction({
           events: [event.tag],
-          effect: ({ entries, write }) =>
-            Effect.gen(function*() {
-              for (let index = fallback ? 0 : 1; index < entries.length; index++) {
-                yield* write(entries[index])
-              }
-              // More outputs than inputs cannot be projected onto remote sequences.
-              if (fallback) yield* write(entries[0])
-            })
+          effect: Effect.fnUntraced(function*({ entries, write }) {
+            for (let index = fallback ? 0 : 1; index < entries.length; index++) {
+              yield* write(entries[index])
+            }
+            // More outputs than inputs cannot be projected onto remote sequences.
+            if (fallback) yield* write(entries[0])
+          })
         })
 
         const compacted = yield* EventLogServerUnencrypted.compactBacklog({
