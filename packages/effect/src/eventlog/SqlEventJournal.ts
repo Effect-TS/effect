@@ -300,7 +300,7 @@ export const make = (options?: {
         // `WHERE true` keeps SQLite from parsing ON CONFLICT as a join constraint.
         yield* sql`
           INSERT INTO ${sourcesTableSql} (entry_id, remote_id)
-          SELECT entry_id, MIN(remote_id) FROM ${remotesTableSql} WHERE true GROUP BY entry_id
+          SELECT entry_id, remote_id FROM ${remotesTableSql} WHERE true
           ON CONFLICT DO NOTHING
         `
         // Remotes without a cursor resume after their highest downloaded sequence.
