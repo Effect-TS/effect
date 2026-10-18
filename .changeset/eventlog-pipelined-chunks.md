@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Pipeline large event-log remote writes with up to four chunk requests in flight, preserving write acknowledgements when responses arrive out of order.
+Send chunked event-log remote writes with up to four parts in flight instead of one at a time.

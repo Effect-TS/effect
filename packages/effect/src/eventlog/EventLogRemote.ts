@@ -260,18 +260,13 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
         if (encoded.byteLength <= ChunkedMessage.chunkSize) {
           return yield* client["EventLog.WriteSingle"]({ data: encoded })
         }
-        let acks: ReadonlyArray<WriteAck> = []
-        yield* Effect.forEach(
+        // Only the part the server receives last carries acknowledgements.
+        const acks = yield* Effect.forEach(
           ChunkedMessage.split(chunkedIdCounter++, encoded),
-          (part) =>
-            Effect.map(client["EventLog.WriteChunked"](part), (response) => {
-              // Only the part completing the message has acknowledgements. Its
-              // response can arrive before the empty responses from other parts.
-              if (response.length > 0) acks = response
-            }),
-          { concurrency: 4, discard: true }
+          (part) => client["EventLog.WriteChunked"](part),
+          { concurrency: 4 }
         )
-        return acks
+        return acks.flat()
       },
       retryForbidden,
       Effect.mapError((cause) => new EventLogRemoteError({ method: "write", cause }))
