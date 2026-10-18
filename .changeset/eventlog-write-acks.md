@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 Acknowledge event log writes without echoing them to the writing connection, while preserving peer delivery and safe reconnect cursors. This is a breaking protocol change: upgrade clients and servers together; mixed old and new versions are not supported.
