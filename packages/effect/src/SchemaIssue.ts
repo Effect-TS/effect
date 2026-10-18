@@ -1242,8 +1242,8 @@ export type CheckHook = (issue: Filter) => string | undefined
  *
  * **Details**
  *
- * - Looks for a `message` annotation on the inner issue first, then on the
- *   filter itself.
+ * - Looks for a `message` annotation on the filter first, then on the inner
+ *   issue.
  * - Returns `undefined` when no annotation is found, causing the formatter to
  *   fall back to `"Expected <filter>"` or, when the filter reports input,
  *   `"Expected <filter>, got <input>"`.
@@ -1255,7 +1255,7 @@ export type CheckHook = (issue: Filter) => string | undefined
  * @category formatting
  * @since 4.0.0
  */
-export const defaultCheckHook: CheckHook = (issue): string | undefined => findMessage(issue.issue) ?? findMessage(issue)
+export const defaultCheckHook: CheckHook = (issue): string | undefined => findMessage(issue) ?? findMessage(issue.issue)
 
 /**
  * Creates a {@link Formatter} that produces a `StandardSchemaV1.FailureResult`.

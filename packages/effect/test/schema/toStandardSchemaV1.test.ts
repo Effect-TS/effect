@@ -76,6 +76,18 @@ const expectSyncFailure = <I, A>(
   }
 }
 
+const expectFormattedFailure = (
+  schema: Schema.ConstraintDecoder<unknown>,
+  input: unknown,
+  issues: ReadonlyArray<StandardSchemaV1.Issue>,
+  message: string
+) => {
+  expectSyncFailure(Schema.toStandardSchemaV1(schema), input, issues)
+  const result = Schema.decodeUnknownResult(schema, { errors: "all" })(input)
+  assertTrue(Result.isFailure(result))
+  strictEqual(SchemaIssue.makeFormatterDefault()(result.failure.issue), message)
+}
+
 const expectAsyncFailure = async <I, A>(
   schema: StandardSchemaV1<I, A>,
   input: unknown,
@@ -258,19 +270,54 @@ describe("toStandardSchemaV1", () => {
   })
 
   describe("should respect the `message` annotation", () => {
+    it.each(["Custom message", ""])("preserves a custom filter's path with message %j", (message) => {
+      const Passwords = Schema.Struct({ password: Schema.String, confirm: Schema.String })
+      const schema = Passwords.check(Schema.makeFilter(
+        (value: typeof Passwords.Type) =>
+          value.password === value.confirm || { path: ["confirm"], issue: "Passwords must match" },
+        { message }
+      ))
+      expectFormattedFailure(
+        schema,
+        { password: "a", confirm: "b" },
+        [{ message, path: ["confirm"] }],
+        `${message}\n  at ["confirm"]`
+      )
+    })
+
     it("preserves annotated filter paths in both formatters", () => {
       const schema = Schema.Record(Schema.String, Schema.Number).check(
         Schema.isPropertyNames(Schema.String.check(Schema.isMaxLength(2)), { message: "Custom message" })
       )
-      expectSyncFailure(Schema.toStandardSchemaV1(schema), { abc: 1 }, [
-        { message: "Custom message", path: ["abc"] }
-      ])
-      const result = Schema.decodeUnknownResult(schema)({ abc: 1 })
-      assertTrue(Result.isFailure(result))
-      strictEqual(
-        SchemaIssue.makeFormatterDefault()(result.failure.issue),
+      expectFormattedFailure(
+        schema,
+        { abc: 1 },
+        [{ message: "Custom message", path: ["abc"] }],
         `Custom message
   at ["abc"]`
+      )
+    })
+
+    it("accumulates ancestor paths without overriding sibling messages", () => {
+      const schema = Schema.Struct({
+        records: Schema.Array(
+          Schema.Record(Schema.String, Schema.Number).check(
+            Schema.isPropertyNames(Schema.String.check(Schema.isMaxLength(2)), { message: "Custom message" })
+          )
+        ),
+        other: Schema.String
+      })
+      expectFormattedFailure(
+        schema,
+        { records: [{ abc: 1 }], other: null },
+        [
+          { message: "Custom message", path: ["records", 0, "abc"] },
+          { message: "Expected string", path: ["other"] }
+        ],
+        `Custom message
+  at ["records"][0]["abc"]
+Expected string
+  at ["other"]`
       )
     })
 
@@ -281,12 +328,50 @@ describe("toStandardSchemaV1", () => {
           { path: ["a"], issue: "Invalid a" },
           { path: ["b"], issue: "Invalid b" }
         ]))
-      const standardSchema = Schema.toStandardSchemaV1(schema)
-      expectSyncFailure(standardSchema, null, [{ message: "Struct message", path: [] }])
-      expectSyncFailure(standardSchema, { a: "a", b: "b" }, [
-        { message: "Invalid a", path: ["a"] },
-        { message: "Invalid b", path: ["b"] }
-      ])
+      expectFormattedFailure(schema, null, [{ message: "Struct message", path: [] }], "Struct message")
+      expectFormattedFailure(
+        schema,
+        { a: "a", b: "b" },
+        [
+          { message: "Invalid a", path: ["a"] },
+          { message: "Invalid b", path: ["b"] }
+        ],
+        `Invalid a
+  at ["a"]
+Invalid b
+  at ["b"]`
+      )
+    })
+
+    it("applies a filter message at every reported path", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).check(Schema.makeFilter(
+        () => [
+          { path: ["a"], issue: "Invalid a" },
+          { path: ["b"], issue: "Invalid b" }
+        ],
+        { message: "Custom message" }
+      ))
+      expectFormattedFailure(
+        schema,
+        { a: "a", b: "b" },
+        [
+          { message: "Custom message", path: ["a"] },
+          { message: "Custom message", path: ["b"] }
+        ],
+        `Custom message
+  at ["a"]
+Custom message
+  at ["b"]`
+      )
+    })
+
+    it.each([
+      { annotations: undefined, message: "Returned message" },
+      { annotations: { message: "Filter message" }, message: "Filter message" },
+      { annotations: { message: "" }, message: "" }
+    ])("formats a directly returned message with annotations $annotations", ({ annotations, message }) => {
+      const schema = Schema.String.check(Schema.makeFilter(() => "Returned message", annotations))
+      expectFormattedFailure(schema, "", [{ message, path: [] }], message)
     })
 
     describe("String", () => {
