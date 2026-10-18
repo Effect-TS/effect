@@ -115,17 +115,20 @@ describe("Socket", () => {
 
     it.effect("readerString decodes characters split across pulls", () =>
       Effect.gen(function*() {
-        const bytes = new TextEncoder().encode("café ☕")
-        const chunks = [bytes.subarray(0, 4), bytes.subarray(4, 7), bytes.subarray(7)]
-        const { socket } = stubSocket(Effect.sync(() => [chunks.shift()!]))
+        const pulls = [[new Uint8Array([0x61, 0xe2, 0x98])], [new Uint8Array([0x95])]]
+        const { socket } = stubSocket(Effect.sync(() => pulls.shift()!))
 
         const pull = yield* Socket.readerString(socket)
-        let text = ""
-        for (let i = 0; i < 3; i++) {
-          text += (yield* pull).join("")
-        }
+        assert.deepStrictEqual(yield* pull, ["a"])
+        assert.deepStrictEqual(yield* pull, ["☕"])
+      }))
 
-        assert.strictEqual(text, "café ☕")
+    it.effect("readerString flushes an incomplete character before a string frame", () =>
+      Effect.gen(function*() {
+        const { socket } = stubSocket(Effect.succeed([new Uint8Array([0x61, 0xe2]), "b"]))
+
+        const pull = yield* Socket.readerString(socket)
+        assert.deepStrictEqual(yield* pull, ["a", "\ufffdb"])
       }))
 
     it.effect("readerString flushes an incomplete character on a normal close", () =>
