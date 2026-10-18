@@ -2,6 +2,7 @@ import * as BrowserHttpClient from "@effect/platform-browser/BrowserHttpClient"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Cookies from "effect/http/Cookies"
+import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
@@ -45,6 +46,18 @@ describe("BrowserHttpClient", () => {
       get: ["http://localhost:8080/my/url?existing=1&value=a%23b#fragment", {
         headers: { "Content-Type": "application/json" },
         body: "{ \"message\": \"Success!\" }"
+      }]
+    }))))
+
+  it.effect("streamed request body", () =>
+    Effect.gen(function*() {
+      const response = yield* HttpClient.post("http://localhost:8080/upload", {
+        body: HttpBody.stream(Stream.make(new Uint8Array([1, 2]), new Uint8Array([3])))
+      })
+      assert.deepStrictEqual(yield* response.json, [1, 2, 3])
+    }).pipe(Effect.provide(layer({
+      post: ["http://localhost:8080/upload", (request) => {
+        request.respond(200, { "Content-Type": "application/json" }, JSON.stringify(Array.from(request.body)))
       }]
     }))))
 

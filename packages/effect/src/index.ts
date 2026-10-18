@@ -82,6 +82,12 @@ export * as Brand from "./Brand.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.6
+ */
+export * as Bytes from "./Bytes.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as ByteSize from "./ByteSize.ts"
