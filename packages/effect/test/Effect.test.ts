@@ -4030,6 +4030,70 @@ describe("Effect", () => {
       }))
   })
 
+  describe("typed recovery with mixed causes", () => {
+    class MixedError extends Data.TaggedError("MixedError") {}
+    const error = new MixedError()
+    const defect = new Error("boom")
+    const recovered = Effect.succeed("recovered")
+    const recoveries: Record<string, (self: Effect.Effect<never, MixedError>) => Effect.Effect<unknown, unknown>> = {
+      catch: (self) => Effect.catch(self, () => recovered),
+      catchEager: (self) => Effect.catchEager(self, () => recovered),
+      catchTag: (self) => Effect.catchTag(self, "MixedError", () => recovered),
+      catchTags: (self) => Effect.catchTags(self, { MixedError: () => recovered }),
+      catchIf: (self) => Effect.catchIf(self, () => true, () => recovered),
+      catchFilter: (self) => Effect.catchFilter(self, Result.succeed, () => recovered),
+      matchEffect: (self) => Effect.matchEffect(self, { onFailure: () => recovered, onSuccess: Effect.succeed }),
+      match: (self) => Effect.match(self, { onFailure: () => "recovered", onSuccess: (a) => a }),
+      matchEager: (self) => Effect.matchEager(self, { onFailure: () => "recovered", onSuccess: (a) => a }),
+      orElseSucceed: (self) => Effect.orElseSucceed(self, () => "recovered"),
+      ignore: (self) => Effect.ignore(self),
+      ignoreLogged: (self) => Effect.ignore(self, { log: "Debug" }),
+      option: Effect.option,
+      result: Effect.result
+    }
+    const reasonsOf = (exit: Exit.Exit<unknown, unknown>) =>
+      Exit.isSuccess(exit) ? exit : exit.cause.reasons.map((reason) =>
+        reason._tag === "Fail"
+          ? ["Fail", reason.error]
+          : reason._tag === "Die"
+          ? ["Die", reason.defect]
+          : ["Interrupt", reason.fiberId]
+      )
+
+    it.effect("defects take precedence over typed errors", () =>
+      Effect.gen(function*() {
+        for (const [name, recover] of Object.entries({ ...recoveries, orDie: Effect.orDie })) {
+          const failAndDie = yield* Effect.exit(recover(Effect.failCause(Cause.fromReasons([
+            Cause.makeFailReason(error),
+            Cause.makeDieReason(defect)
+          ]))))
+          assert.deepStrictEqual(reasonsOf(failAndDie), [["Die", error], ["Die", defect]], name)
+
+          const failInterruptAndDie = yield* Effect.exit(recover(Effect.failCause(Cause.fromReasons([
+            Cause.makeFailReason(error),
+            Cause.makeInterruptReason(1),
+            Cause.makeDieReason(defect)
+          ]))))
+          assert.deepStrictEqual(
+            reasonsOf(failInterruptAndDie),
+            [["Die", error], ["Interrupt", 1], ["Die", defect]],
+            name
+          )
+        }
+      }))
+
+    it.effect("interrupts beside a typed error do not block recovery", () =>
+      Effect.gen(function*() {
+        for (const [name, recover] of Object.entries(recoveries)) {
+          const exit = yield* Effect.exit(recover(Effect.failCause(Cause.fromReasons([
+            Cause.makeFailReason(error),
+            Cause.makeInterruptReason(1)
+          ]))))
+          assert.isTrue(Exit.isSuccess(exit), name)
+        }
+      }))
+  })
+
   describe("firstSuccessOf", () => {
     it.effect("returns the first success and does not run later effects", () =>
       Effect.gen(function*() {

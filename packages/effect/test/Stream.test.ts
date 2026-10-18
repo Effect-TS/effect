@@ -1403,6 +1403,66 @@ describe("Stream", () => {
           assertCauseFail(logs[0].cause, "boom")
         }))
     })
+
+    describe("typed recovery with mixed causes", () => {
+      class MixedError extends Data.TaggedError("MixedError") {}
+      const error = new MixedError()
+      const defect = new Error("boom")
+      const recovered = Stream.succeed("recovered")
+      const recoveries: Record<string, (self: Stream.Stream<string, MixedError>) => Stream.Stream<unknown, unknown>> = {
+        catch: (self) => Stream.catch(self, () => recovered),
+        catchTag: (self) => Stream.catchTag(self, "MixedError", () => recovered),
+        catchTags: (self) => Stream.catchTags(self, { MixedError: () => recovered }),
+        catchIf: (self) => Stream.catchIf(self, () => true, () => recovered),
+        catchFilter: (self) => Stream.catchFilter(self, Result.succeed, () => recovered),
+        orElseSucceed: (self) => Stream.orElseSucceed(self, () => "recovered"),
+        ignore: (self) => Stream.ignore(self),
+        result: Stream.result
+      }
+      const failWith = (...reasons: Array<Cause.Reason<MixedError>>) =>
+        Stream.make("a").pipe(Stream.concat(Stream.failCause(Cause.fromReasons(reasons))))
+      const reasonsOf = (exit: Exit.Exit<unknown, unknown>) =>
+        Exit.isSuccess(exit) ? exit : exit.cause.reasons.map((reason) =>
+          reason._tag === "Fail"
+            ? ["Fail", reason.error]
+            : reason._tag === "Die"
+            ? ["Die", reason.defect]
+            : ["Interrupt", reason.fiberId]
+        )
+
+      it.effect("defects take precedence over typed errors", () =>
+        Effect.gen(function*() {
+          for (const [name, recover] of Object.entries({ ...recoveries, orDie: Stream.orDie })) {
+            const failAndDie = yield* recover(failWith(Cause.makeFailReason(error), Cause.makeDieReason(defect))).pipe(
+              Stream.runCollect,
+              Effect.exit
+            )
+            assert.deepStrictEqual(reasonsOf(failAndDie), [["Die", error], ["Die", defect]], name)
+
+            const failInterruptAndDie = yield* recover(failWith(
+              Cause.makeFailReason(error),
+              Cause.makeInterruptReason(1),
+              Cause.makeDieReason(defect)
+            )).pipe(Stream.runCollect, Effect.exit)
+            assert.deepStrictEqual(
+              reasonsOf(failInterruptAndDie),
+              [["Die", error], ["Interrupt", 1], ["Die", defect]],
+              name
+            )
+          }
+        }))
+
+      it.effect("interrupts beside a typed error do not block recovery", () =>
+        Effect.gen(function*() {
+          for (const [name, recover] of Object.entries(recoveries)) {
+            const exit = yield* recover(failWith(Cause.makeFailReason(error), Cause.makeInterruptReason(1))).pipe(
+              Stream.runCollect,
+              Effect.exit
+            )
+            assert.isTrue(Exit.isSuccess(exit), name)
+          }
+        }))
+    })
   })
 
   describe("scanning", () => {
