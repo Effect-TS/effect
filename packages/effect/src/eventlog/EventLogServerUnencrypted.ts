@@ -519,7 +519,7 @@ type RegisteredCompactor = {
   readonly events: ReadonlySet<string>
   readonly effect: (options: {
     readonly entries: ReadonlyArray<Entry>
-    readonly write: (entry: Entry) => Effect.Effect<void>
+    readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
   }) => Effect.Effect<void>
 }
 
@@ -585,6 +585,12 @@ const toCompactedRemoteEntries = (options: {
  * entries when the replacement count can be mapped back to increasing remote
  * sequence numbers; otherwise the original entries are kept.
  *
+ * Outputs are ordered by the position of `source ?? entry` within the run, as in
+ * client replay. Unknown positions go to the start; ties keep write order.
+ *
+ * Client replay groups the whole batch per compactor; the server calls each
+ * compactor per contiguous run, so batch boundaries can differ.
+ *
  * @stability unstable
  * @category compaction
  * @since 4.0.0
@@ -611,7 +617,6 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
 
     const entries: Array<Entry> = [remoteEntry.entry]
     const remoteGroup: Array<RemoteEntry> = [remoteEntry]
-    const compacted: Array<Entry> = []
     index++
 
     while (index < options.remoteEntries.length) {
@@ -625,17 +630,23 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
       index++
     }
 
+    const positions = new Map<string, number>()
+    const compacted: Array<Array<Entry>> = []
+    for (let i = 0; i < entries.length; i++) {
+      positions.set(entries[i].idString, i)
+      compacted.push([])
+    }
     yield* compactor.effect({
       entries,
-      write(entry) {
+      write(entry, source) {
         return Effect.sync(() => {
-          compacted.push(entry)
+          compacted[positions.get((source ?? entry).idString) ?? 0].push(entry)
         })
       }
     }).pipe(Effect.orDie)
 
     const projected = toCompactedRemoteEntries({
-      compacted,
+      compacted: compacted.flat(),
       remoteEntries: remoteGroup
     })
 

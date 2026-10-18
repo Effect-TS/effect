@@ -19,6 +19,11 @@ const ReproGroup = EventGroup.empty.add({
   payload: Schema.Struct({ key: Schema.String, value: Schema.Number })
 })
 const event = ReproGroup.events.ReproEvent
+const OpaqueReproGroup = EventGroup.empty.add({
+  tag: "ReproEvent",
+  primaryKey: (payload) => payload.key,
+  payload: Schema.Struct({ key: Schema.String })
+})
 const storeId = EventLogMessage.StoreId.make("repro-store")
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
 
@@ -118,6 +123,45 @@ it.effect("indexes conflicts from the sliced history", () =>
     assert.isDefined(originBConflicts)
     assert.deepStrictEqual(originBConflicts.map((entry) => entry.idString), [newerSameKey.idString])
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("compactBacklog keeps forwarded entries in batch order", () =>
+  Effect.gen(function*() {
+    const makeEntry = Effect.fnUntraced(function*(key: string, value?: number) {
+      return new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "ReproEvent",
+        primaryKey: key,
+        payload: value === undefined
+          ? yield* Schema.encodeUnknownEffect(OpaqueReproGroup.events.ReproEvent.payloadSchemaBinary)({ key })
+          : yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)({ key, value })
+      }, { disableChecks: true })
+    })
+    // The opaque entry lacks `value`, so the compactor cannot decode it.
+    const entries = [
+      yield* makeEntry("a", 0),
+      yield* makeEntry("a"),
+      yield* makeEntry("b", 2),
+      yield* makeEntry("a", 3)
+    ]
+    const remoteEntries = entries.map((entry, remoteSequence) =>
+      new EventJournal.RemoteEntry({ remoteSequence, entry })
+    )
+    // Output is written with the opaque entry first, then grouped by key.
+    const compaction = EventLog.groupCompaction(
+      ReproGroup,
+      ({ entries, forward }) => Effect.forEach(entries, forward, { discard: true })
+    )
+
+    const compacted = yield* Effect.gen(function*() {
+      const registry = yield* EventLog.Registry
+      return yield* EventLogServerUnencrypted.compactBacklog({ remoteEntries, compactors: registry.compactors })
+    }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+
+    const fields = (remoteEntry: EventJournal.RemoteEntry) =>
+      [remoteEntry.remoteSequence, remoteEntry.entry.idString, remoteEntry.entry.payload] as const
+    assert.deepStrictEqual(compacted.map(fields), remoteEntries.map(fields))
+  }))
+
 const makeAuthClient = (options: {
   readonly storage: EventLogServerUnencrypted.Storage["Service"]
   readonly authorization: EventLogServerUnencrypted.EventLogServerAuthorization["Service"]
