@@ -120,13 +120,13 @@ const openVersion1 = (database: string) => {
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
-const countTransactions = (database: string) =>
+const countTransactions = (database: string, transactionMode?: IDBTransactionMode) =>
   Effect.acquireRelease(
     Effect.sync(() => {
       const transactions = { opened: 0 }
       const original = IDBDatabase.prototype.transaction
       IDBDatabase.prototype.transaction = function(this: IDBDatabase, storeNames, mode, options) {
-        if (this.name === database) transactions.opened++
+        if (this.name === database && (transactionMode === undefined || mode === transactionMode)) transactions.opened++
         return original.call(this, storeNames, mode, options)
       }
       return { transactions, original }
@@ -316,7 +316,8 @@ describe("EventJournal.makeIndexedDb", () => {
       const database = uniqueName("journal")
       const journal = yield* EventJournal.makeIndexedDb({ database })
       const changes = yield* journal.changes
-      const transactions = yield* countTransactions(database)
+      // Clock observations may read separately; the batch must still use one write transaction.
+      const transactions = yield* countTransactions(database, "readwrite")
       const local = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
       const entries = [local("a"), local("b"), local("c")] as const
       const failed = yield* Effect.exit(journal.writeMany({ entries, effect: () => Effect.fail("callback failed") }))
