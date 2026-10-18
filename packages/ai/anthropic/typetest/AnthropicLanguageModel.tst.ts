@@ -42,4 +42,16 @@ describe("Generated", () => {
       readonly updated_at: string
     }>()
   })
+
+  it("keeps the released standalone Skill contract", () => {
+    expect<Generated.Skill>().type.toBe<{
+      readonly created_at: string
+      readonly display_title: string | null
+      readonly id: string
+      readonly latest_version: string | null
+      readonly source: string
+      readonly type: string
+      readonly updated_at: string
+    }>()
+  })
 })
