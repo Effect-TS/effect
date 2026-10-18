@@ -239,30 +239,30 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
   readonly body: Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>
   readonly headers: Headers.Headers
 }> {
-  const body = request.body
+  const { body, headers } = request
   switch (body._tag) {
     case "Empty": {
-      return Effect.succeed({ body: null, headers: request.headers })
+      return Effect.succeed({ body: null, headers })
     }
     case "Uint8Array":
     case "Raw": {
-      return Effect.succeed({ body: body.body as Uint8Array, headers: request.headers })
+      return Effect.succeed({ body: body.body as Uint8Array, headers })
     }
     case "FormData": {
       // undici only encodes its own `FormData` class, not Node's global one
       const encoded = encodeFormData(body.formData)
       return Effect.succeed({
         body: encoded.body,
-        headers: Headers.set(request.headers, "content-type", encoded.contentType)
+        headers: Headers.set(headers, "content-type", encoded.contentType)
       })
     }
     case "Stream": {
-      return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers: request.headers }))
+      return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers }))
     }
   }
 }
 
-const encodeFormData = (formData: FormData): { readonly body: Readable; readonly contentType: string } => {
+const encodeFormData = (formData: FormData) => {
   const response = new globalThis.Response(formData)
   return {
     body: Readable.fromWeb(response.body! as any),
