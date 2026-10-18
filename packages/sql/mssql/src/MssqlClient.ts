@@ -18,7 +18,6 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -26,7 +25,7 @@ import * as Pool from "effect/Pool"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Rec from "effect/Record"
 import * as Redacted from "effect/Redacted"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import {
@@ -621,11 +620,7 @@ export const make = (
     const withTransaction = Client.makeWithTransaction({
       transactionService,
       spanAttributes,
-      acquireConnection: Effect.flatMap(Scope.make(), (scope) =>
-        Scope.provide(acquireConnection, scope).pipe(
-          Effect.map((conn) => [scope, conn] as const),
-          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
-        )),
+      acquireConnection: (restore) => restore(acquireConnection),
       begin: (conn) => conn.begin,
       savepoint: (conn, id) => conn.savepoint(`effect_sql_${id}`),
       commit: (conn) => conn.commit,

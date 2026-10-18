@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, Scope, Semaphore, Stream } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, type Scope, Semaphore, Stream } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
 import type { SqlConnection } from "effect/sql"
@@ -55,14 +55,11 @@ const makeHarness = (options: {
   const withTransaction = SqlClient.makeWithTransaction({
     transactionService,
     spanAttributes: [],
-    acquireConnection: Effect.flatMap(Scope.make(), (scope) =>
+    acquireConnection: () =>
       Effect.as(
-        Effect.flatMap(
-          record("acquireConnection"),
-          () => Scope.addFinalizer(scope, record("closeConnection"))
-        ),
-        [scope, conn] as const
-      )),
+        Effect.flatMap(record("acquireConnection"), () => Effect.addFinalizer(() => record("closeConnection"))),
+        conn
+      ),
     begin: () =>
       Effect.flatMap(record("begin"), () => {
         if (options.begin !== undefined) {

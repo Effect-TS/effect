@@ -14,12 +14,11 @@ import * as Libsql from "@libsql/client"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Redacted from "effect/Redacted"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -318,24 +317,10 @@ export const make = (
     const withTransaction = Client.makeWithTransaction({
       transactionService: LibsqlTransaction,
       spanAttributes,
-      acquireConnection: Effect.suspend(() => {
-        const scope = Scope.makeUnsafe()
-        let acquired: LibsqlConnectionImpl | undefined
-        return Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-          yield* restore(semaphore.take(1))
-          yield* Scope.addFinalizer(scope, semaphore.release(1))
-          acquired = yield* connection.beginTransaction
-          return [scope, acquired] as const
-        })).pipe(
-          // An interruption pending during BEGIN can arrive as the mask exits,
-          // before makeWithTransaction receives the connection and its scope.
-          Effect.onError((cause) =>
-            Effect.ensuring(
-              acquired ? Effect.orDie(acquired.rollback) : Effect.void,
-              Scope.close(scope, Exit.failCause(cause))
-            )
-          )
-        )
+      acquireConnection: Effect.fnUntraced(function*(restore) {
+        yield* restore(semaphore.take(1))
+        yield* Effect.addFinalizer(() => semaphore.release(1))
+        return yield* connection.beginTransaction
       }),
       begin: () => Effect.void, // already begun in acquireConnection
       savepoint: (conn, id) => conn.executeRaw(`SAVEPOINT effect_sql_${id};`, []),
