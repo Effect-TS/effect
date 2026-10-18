@@ -953,7 +953,7 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               role: "tool",
               tool_call_id: part.id,
-              content: Predicate.isNotNull(cache_control) && text.length > 0
+              content: Predicate.isNotNull(cache_control) && typeof text === "string" && text.length > 0
                 ? [{ type: "text", text, cache_control }]
                 : text
             })
