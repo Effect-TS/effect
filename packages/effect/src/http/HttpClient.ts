@@ -1628,10 +1628,13 @@ export const withCookiesRef: {
           self.postprocess(Effect.flatMap(request, (request) =>
             Effect.flatMap(CookiesRefEnabled, (enabled) =>
               enabled
-                ? Effect.map(Ref.get(ref), (cookies) =>
-                  Cookies.isEmpty(cookies)
-                    ? request
-                    : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies)))
+                ? Effect.map(Ref.get(ref), (cookies) => {
+                  if (Cookies.isEmpty(cookies)) return request
+                  const withCookies = HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
+                  const controller = scopedRequests.get(request)
+                  if (controller) scopedRequests.set(withCookies, controller)
+                  return withCookies
+                })
                 : Effect.succeed(request)))),
           (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
         ),
