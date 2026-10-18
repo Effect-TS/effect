@@ -319,7 +319,6 @@ export const makeUpgradeHandler = <
   })
 }
 
-// An absolute-form request-target (RFC 9112 §3.2.2), as sent to proxies.
 const absoluteTarget = (url: string): URL | undefined => {
   if (url[0] === "/" || !/^[a-z][a-z\d+.-]*:\/\//i.test(url)) {
     return undefined
@@ -399,7 +398,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     if (this.cachedOriginalUrl !== undefined) {
       return this.cachedOriginalUrl
     }
-    // The target URI, reconstructed per RFC 9112 §3.3.
     const url = this.source.url!
     const host = this.source.headers.host
     return this.cachedOriginalUrl = url[0] === "/" && host !== undefined
@@ -415,7 +413,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   override get headers(): Headers.Headers {
     if (this.headersOverride === undefined) {
       const headers = this.source.headers
-      // The authority of an absolute-form target replaces any `host` header.
+      // RFC 9112 §3.2.2: the request-target authority takes precedence over Host.
       const host = absoluteTarget(this.source.url!)?.host
       this.headersOverride = (host === undefined || host === "" || headers.host === host
         ? headers

@@ -1546,7 +1546,6 @@ describe("HttpServer", () => {
 const tlsCert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
 const tlsKey = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
 
-// Answers GET requests with the request's host header, url and `toURL`.
 const serveUrlEcho = Effect.fnUntraced(function*(server: Http.Server) {
   yield* HttpRouter.add(
     "GET",
@@ -1564,7 +1563,6 @@ const serveUrlEcho = Effect.fnUntraced(function*(server: Http.Server) {
   return tcpPort(server)
 })
 
-// Sends a raw HTTP/1.1 request head and resolves with the response body.
 const rawRequest = (port: number, head: string, options?: { readonly tls?: boolean }) =>
   Effect.callback<string, Error>((resume) => {
     const socket = options?.tls
