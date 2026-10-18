@@ -207,7 +207,7 @@ export const make = (options?: {
             )`
       })
 
-      // One source per imported entry, instead of a row per entry per remote.
+      // The remote each imported entry came from, so uploads skip it.
       yield* sql.onDialectOrElse({
         pg: () =>
           sql`
@@ -265,43 +265,42 @@ export const make = (options?: {
         SELECT id FROM ${entryTableSql} WHERE true ORDER BY timestamp ASC, id ASC
         ON CONFLICT DO NOTHING
       `
+    })
 
-      // Earlier releases kept a remotes row per entry per remote.
-      if (!(yield* tableExists(remotesTable))) return
-      // An entry known to several remotes keeps one of them as its source.
+    // Earlier releases kept a remotes row per entry per remote. An entry known
+    // to several remotes keeps one of them as its source, and a remote without
+    // a cursor resumes after its highest downloaded sequence.
+    const importRemotes = Effect.gen(function*() {
       yield* sql`
         INSERT INTO ${sourcesTableSql} (entry_id, remote_id)
         SELECT entry_id, remote_id FROM ${remotesTableSql} WHERE true
         ON CONFLICT DO NOTHING
       `
-      // Remotes without a cursor resume after their highest downloaded sequence.
       yield* sql`
         INSERT INTO ${remoteCursorsTableSql} (remote_id, next_sequence)
-        SELECT remote_id, MAX(sequence) + 1 FROM ${remotesTableSql} r
-        WHERE NOT EXISTS (SELECT 1 FROM ${remoteCursorsTableSql} c WHERE c.remote_id = r.remote_id)
-        GROUP BY remote_id
+        SELECT remote_id, MAX(sequence) + 1 FROM ${remotesTableSql} GROUP BY remote_id
+        ON CONFLICT DO NOTHING
       `
       yield* sql`DROP TABLE ${remotesTableSql}`
     })
 
-    // The schema is created in one transaction, so the sources table exists and
-    // the remotes table is gone only once it is complete. Checking that first
-    // lets complete databases open read-only; PostgreSQL also locks and rechecks
-    // so concurrent opens migrate once.
-    const schemaComplete = Effect.zipWith(
-      tableExists(sourcesTable),
-      tableExists(remotesTable),
-      (sources, remotes) => sources && !remotes
-    )
+    // Both steps run in one transaction, so a complete schema has the sources
+    // table and no remotes table. Checking that first lets complete databases
+    // open read-only; PostgreSQL also locks and rechecks so concurrent opens
+    // migrate once.
+    const schemaState = Effect.all({ sources: tableExists(sourcesTable), remotes: tableExists(remotesTable) })
+    const isComplete = (state: { readonly sources: boolean; readonly remotes: boolean }) =>
+      state.sources && !state.remotes
     yield* Effect.gen(function*() {
-      if (yield* schemaComplete) return
+      if (isComplete(yield* schemaState)) return
       yield* Effect.gen(function*() {
         yield* sql.onDialectOrElse({
           pg: () => sql`SELECT pg_advisory_xact_lock(hashtext(${quoted(entryTable)}))`,
           orElse: () => Effect.void
         })
-        if (yield* schemaComplete) return
-        yield* createSchema
+        const state = yield* schemaState
+        if (!state.sources) yield* createSchema
+        if (state.remotes) yield* importRemotes
       }).pipe(sql.withTransaction)
     }).pipe(withTracerDisabled)
 
@@ -316,10 +315,10 @@ export const make = (options?: {
       Request: EntryRowArray,
       execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
-    const insertSources = SqlSchema.void({
-      Request: SourceRowArray,
-      execute: (rows) => sql`INSERT INTO ${sourcesTableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING`
-    })
+    const insertSources = (entries: ReadonlyArray<EventJournal.Entry>, remoteId: EventJournal.RemoteId) =>
+      sql`INSERT INTO ${sourcesTableSql} ${
+        sql.insert(entries.map((entry) => ({ entry_id: entry.id, remote_id: remoteId })))
+      } ON CONFLICT DO NOTHING`
     // Serialize writers so checkpoints cannot skip out-of-order commits.
     // Lock before callbacks in both paths to avoid projection-row deadlocks.
     const lockWriters = sql.onDialectOrElse({
@@ -422,20 +421,14 @@ export const make = (options?: {
       // Keep the incoming batch out of conflict queries and persist only after
       // compaction and every callback have succeeded.
       if (uncommitted.length > 0) {
-        yield* insertEntries(uncommitted.map((remoteEntry) => toEntryRow(remoteEntry.entry)))
-        yield* insertSequence(uncommitted.map((remoteEntry) => remoteEntry.entry))
-        yield* insertSources(uncommitted.map((remoteEntry) => ({
-          entry_id: remoteEntry.entry.id,
-          remote_id: options.remoteId
-        })))
+        const imported = uncommitted.map((remoteEntry) => remoteEntry.entry)
+        yield* insertEntries(imported.map(toEntryRow))
+        yield* insertSequence(imported)
+        yield* insertSources(imported, options.remoteId)
       }
+      // The change stream is ordered, so every earlier sequence is now known.
       if (options.entries.length > 0) {
-        // The change stream is ordered, so every earlier sequence is now known.
-        let last = 0
-        for (const remoteEntry of options.entries) {
-          if (remoteEntry.remoteSequence > last) last = remoteEntry.remoteSequence
-        }
-        yield* writeCursor(options.remoteId, last + 1)
+        yield* writeCursor(options.remoteId, EventJournal.nextSequenceAfter(options.entries))
       }
 
       return {
@@ -651,11 +644,6 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
   payload: entry.payload,
   timestamp: EventJournal.entryIdMillis(entry.id)
 })
-
-const SourceRowArray = Schema.Array(Schema.Struct({
-  entry_id: EventJournal.EntryId,
-  remote_id: EventJournal.RemoteId
-}))
 
 const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural }))
 
