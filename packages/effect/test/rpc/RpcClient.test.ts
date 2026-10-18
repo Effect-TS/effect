@@ -381,23 +381,46 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
     }))
 
+  it.effect("does not send Interrupt when a failed streaming send closes its scope", () =>
+    Effect.gen(function*() {
+      const sent: Array<string> = []
+      const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
+        onFromClient: ({ message }) => {
+          sent.push(message._tag)
+          return message._tag === "Request" ? Effect.die("send failed") : Effect.void
+        }
+      })
+      const exit = yield* client.Events(undefined, { asQueue: true }).pipe(
+        Effect.flatMap(Queue.take),
+        Effect.scoped,
+        Effect.exit
+      )
+      assert(Exit.isFailure(exit))
+      assert.strictEqual(Cause.squash(exit.cause), "send failed")
+      assert.deepStrictEqual(sent, ["Request"])
+    }))
+
   for (const consumer of ["queue", "stream"] as const) {
     it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
       Effect.gen(function*() {
         const writing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const sent: Array<string> = []
         const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
-          onFromClient: ({ message }) =>
-            message._tag === "Request"
+          onFromClient: ({ message }) => {
+            sent.push(message._tag)
+            return message._tag === "Request"
               ? Effect.withFiber((fiber) => Deferred.succeed(writing, fiber).pipe(Effect.andThen(Effect.never)))
               : Effect.void
+          }
         })
         const reader = yield* (consumer === "queue"
           ? client.Events(undefined, { asQueue: true }).pipe(Effect.flatMap(Queue.take), Effect.asVoid)
-          : Stream.runDrain(client.Events())).pipe(Effect.forkChild)
+          : Stream.runDrain(client.Events())).pipe(Effect.scoped, Effect.forkChild)
         const writer = yield* Deferred.await(writing)
         yield* Fiber.interrupt(writer)
         const readExit = yield* Fiber.await(reader)
         assert(Exit.isFailure(readExit) && Cause.hasInterruptsOnly(readExit.cause))
+        assert.deepStrictEqual(sent, ["Request", "Interrupt"])
       }))
   }
 
