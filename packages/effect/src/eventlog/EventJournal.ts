@@ -713,71 +713,62 @@ export const makeIndexedDb = (options?: {
 }): Effect.Effect<EventJournal["Service"], EventJournalError, Scope> =>
   Effect.gen(function*() {
     const database = options?.database ?? "effect_event_journal"
-    const openRequest = indexedDB.open(database, 4)
+    const openRequest = indexedDB.open(database, 2)
     openRequest.onupgradeneeded = (event) => {
       const db = openRequest.result
+      const tx = openRequest.transaction!
 
       if (event.oldVersion < 1) {
         const entries = db.createObjectStore("entries", { keyPath: "id" })
         entries.createIndex("id", "id", { unique: true })
         entries.createIndex("event", "event")
-
-        const remotes = db.createObjectStore("remotes", { keyPath: ["remoteId", "entryId"] })
-        remotes.createIndex("id", ["remoteId", "entryId"], { unique: true })
-        remotes.createIndex("sequence", ["remoteId", "sequence"], { unique: true })
-
-        const remoteEntryId = db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] })
-        remoteEntryId.createIndex("id", "remoteId", { unique: true })
+        db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] }).createIndex("id", "remoteId", { unique: true })
       }
 
-      if (event.oldVersion < 2) {
-        // Entry ids order creation, not insertion, so uploads checkpoint an
-        // insertion sequence instead. Backfill it from the existing entries.
-        const sequence = db.createObjectStore("entrySequence", { autoIncrement: true })
-        const cursorRequest = openRequest.transaction!.objectStore("entries").openKeyCursor()
-        cursorRequest.onsuccess = () => {
-          const cursor = cursorRequest.result
-          if (!cursor) return
-          sequence.add(cursor.primaryKey)
-          cursor.continue()
-        }
+      const entries = tx.objectStore("entries")
+      // Bounds conflict reads to one event and primary key.
+      entries.createIndex("conflict", ["event", "primaryKey", "id"])
+      // Entry ids order creation, not insertion, so uploads checkpoint an
+      // insertion sequence instead.
+      const sequence = db.createObjectStore("entrySequence", { autoIncrement: true })
+      // One source per imported entry, instead of a row per entry per remote.
+      const sources = db.createObjectStore("entrySource")
+      if (event.oldVersion < 1) return
+
+      // Number the existing entries in creation order.
+      const entryIds = entries.openKeyCursor()
+      entryIds.onsuccess = () => {
+        const cursor = entryIds.result
+        if (!cursor) return
+        sequence.add(cursor.primaryKey)
+        cursor.continue()
       }
 
-      if (event.oldVersion < 3) {
-        // Bounds conflict reads to one event and primary key.
-        openRequest.transaction!.objectStore("entries").createIndex("conflict", ["event", "primaryKey", "id"])
+      // Version 1 kept a `remotes` row per entry per remote. Keep one source per
+      // entry and a download cursor per remote, then drop the store. Rows are
+      // ordered by remote, so each remote's rows are contiguous.
+      const progress = tx.objectStore("remoteEntryId")
+      const saveNextSequence = (remoteId: IDBValidKey, nextSequence: number) => {
+        const request = progress.get([remoteId]) as IDBRequest<RemoteProgress | undefined>
+        request.onsuccess = () => progress.put({ ...request.result, remoteId, nextSequence })
       }
-
-      if (event.oldVersion < 4) {
-        // Replace per-entry remote rows with one source per imported entry and a
-        // download cursor per remote. An entry known to several remotes keeps
-        // one of them as its source.
-        const tx = openRequest.transaction!
-        const sources = db.createObjectStore("entrySource")
-        const progress = tx.objectStore("remoteEntryId")
-        const saveNextSequence = (remoteId: IDBValidKey, nextSequence: number) => {
-          const request = progress.get([remoteId]) as IDBRequest<RemoteProgress | undefined>
-          request.onsuccess = () => progress.put({ ...request.result, remoteId, nextSequence })
+      let remote: { readonly id: IDBValidKey; nextSequence: number } | undefined
+      const remotes = tx.objectStore("remotes").openCursor()
+      remotes.onsuccess = () => {
+        const cursor = remotes.result
+        const row = cursor?.value as { remoteId: IDBValidKey; entryId: IDBValidKey; sequence: number } | undefined
+        if (remote && (!row || indexedDB.cmp(remote.id, row.remoteId) !== 0)) {
+          saveNextSequence(remote.id, remote.nextSequence)
+          remote = undefined
         }
-        // Rows are ordered by remote, so each remote's rows are contiguous.
-        let remote: { readonly id: IDBValidKey; nextSequence: number } | undefined
-        const cursorRequest = tx.objectStore("remotes").openCursor()
-        cursorRequest.onsuccess = () => {
-          const cursor = cursorRequest.result
-          const row = cursor?.value as { remoteId: IDBValidKey; entryId: IDBValidKey; sequence: number } | undefined
-          if (remote && (!row || indexedDB.cmp(remote.id, row.remoteId) !== 0)) {
-            saveNextSequence(remote.id, remote.nextSequence)
-            remote = undefined
-          }
-          if (!cursor || !row) {
-            db.deleteObjectStore("remotes")
-            return
-          }
-          sources.put(row.remoteId, row.entryId)
-          remote ??= { id: row.remoteId, nextSequence: 0 }
-          remote.nextSequence = Math.max(remote.nextSequence, row.sequence + 1)
-          cursor.continue()
+        if (!cursor || !row) {
+          db.deleteObjectStore("remotes")
+          return
         }
+        sources.put(row.remoteId, row.entryId)
+        remote ??= { id: row.remoteId, nextSequence: 0 }
+        remote.nextSequence = Math.max(remote.nextSequence, row.sequence + 1)
+        cursor.continue()
       }
     }
 
