@@ -306,6 +306,7 @@ export class ConnectionWrites {
     const open = this.streams.get(makeStreamKey(options.publicKey, options.storeId))
     if (open === undefined || options.entryIds.length === 0) return write
     const streams = Array.from(open)
+    const started = streams.map((stream) => stream.position)
     const ids = options.entryIds.map(Uuid.stringify)
     // Track before writing: storage can publish an entry before the write
     // returns. Each occurrence is counted, as an id can be stored more than once.
@@ -314,14 +315,15 @@ export class ConnectionWrites {
     }
     return Effect.onExit(write, (exit) =>
       Effect.sync(() => {
-        for (const stream of streams) {
+        for (let i = 0; i < streams.length; i++) {
+          const stream = streams[i]
           if (exit._tag === "Failure") {
             for (const id of ids) release(stream.ids, id)
             continue
           }
-          // Occurrences already passed by the stream will not be published again.
+          // Release occurrences the stream had already passed when the write began.
           for (const ack of exit.value) {
-            if (ack.sequence <= stream.position) release(stream.ids, Uuid.stringify(ack.entryId))
+            if (ack.sequence <= started[i]) release(stream.ids, Uuid.stringify(ack.entryId))
           }
         }
       }))
