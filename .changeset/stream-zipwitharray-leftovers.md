@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Stream.zipWithArray` dropping the right leftovers when the function returns leftovers for both streams.
+Fix `Stream.zipWithArray` discarding right-side leftovers when the callback returns leftovers for both streams.
