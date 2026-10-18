@@ -1661,6 +1661,155 @@ describe("AnthropicLanguageModel", () => {
       ))
   })
 
+  describe("assistant cache control", () => {
+    const ephemeral = { type: "ephemeral" } as const
+    const cached = { anthropic: { cacheControl: ephemeral } }
+
+    const getAssistantContent = (prompt: Prompt.RawInput) =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        if (capturedRequest === undefined) {
+          return yield* Effect.die(new Error("Expected a captured request"))
+        }
+        const body = yield* getRequestBody(capturedRequest)
+        return body.messages.find((message: any) => message.role === "assistant").content as Array<any>
+      })
+
+    const thinking = {
+      type: "reasoning",
+      text: "Thinking",
+      options: { anthropic: { info: { type: "thinking", signature: "sig" } } }
+    } as const
+
+    const redactedThinking = {
+      type: "reasoning",
+      text: "",
+      options: { anthropic: { info: { type: "redacted_thinking", redactedData: "hidden" } } }
+    } as const
+
+    it.effect("places part and message breakpoints without overriding a part's TTL", () =>
+      Effect.gen(function*() {
+        const oneHour = { type: "ephemeral", ttl: "1h" } as const
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Answer", options: { anthropic: { cacheControl: oneHour } } },
+              { type: "tool-call", id: "toolu_1", name: "lookup", params: {} },
+              {
+                type: "tool-call",
+                id: "toolu_2",
+                name: "lookup",
+                params: {},
+                options: { anthropic: { cacheControl: oneHour } }
+              }
+            ],
+            options: cached
+          },
+          {
+            role: "assistant",
+            content: [{ type: "tool-call", id: "toolu_3", name: "lookup", params: {} }],
+            options: cached
+          },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content, [
+          { type: "text", text: "Answer", cache_control: oneHour },
+          { type: "tool_use", id: "toolu_1", name: "lookup", input: {} },
+          { type: "tool_use", id: "toolu_2", name: "lookup", input: {}, cache_control: oneHour },
+          { type: "tool_use", id: "toolu_3", name: "lookup", input: {}, cache_control: ephemeral }
+        ])
+      }))
+
+    it.effect("places a message breakpoint before trailing thinking and skipped parts", () =>
+      Effect.gen(function*() {
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Answer" },
+              thinking,
+              redactedThinking,
+              { type: "file", mediaType: "image/png", data: "aGVsbG8=" }
+            ],
+            options: cached
+          },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content, [
+          { type: "text", text: "Answer", cache_control: ephemeral },
+          { type: "thinking", thinking: "Thinking", signature: "sig" },
+          { type: "redacted_thinking", data: "hidden" }
+        ])
+      }))
+
+    it.effect("drops thinking-only breakpoints without marking other parts or messages", () =>
+      Effect.gen(function*() {
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          { role: "assistant", content: "Unmarked" },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Answer" },
+              { ...thinking, options: { anthropic: { ...thinking.options.anthropic, ...cached.anthropic } } },
+              {
+                ...redactedThinking,
+                options: { anthropic: { ...redactedThinking.options.anthropic, ...cached.anthropic } }
+              }
+            ]
+          },
+          { role: "assistant", content: [thinking, redactedThinking], options: cached },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content, [
+          { type: "text", text: "Unmarked" },
+          { type: "text", text: "Answer" },
+          { type: "thinking", thinking: "Thinking", signature: "sig" },
+          { type: "redacted_thinking", data: "hidden" },
+          { type: "thinking", thinking: "Thinking", signature: "sig" },
+          { type: "redacted_thinking", data: "hidden" }
+        ])
+      }))
+  })
+
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
   // `providerName: "memory"`, and is a client-executed provider tool. These
   // tests cover the round-trip that was broken on beta.98 (see #2615):
