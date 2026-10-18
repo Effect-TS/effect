@@ -1,6 +1,7 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Layer, Option, Redacted } from "effect"
+import * as SqlEventJournalSharedTest from "effect-test/eventlog/SqlEventJournalSharedTest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
@@ -329,3 +330,5 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
       assert.deepStrictEqual(yield* sql`SELECT id FROM rollback_projection`, [])
     }))
 })
+
+SqlEventJournalSharedTest.suite("pg", PgContainer.layerClient)

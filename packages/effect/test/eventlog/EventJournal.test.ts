@@ -16,12 +16,11 @@ const entry = (msecs: number, event = "Repro", primaryKey = "key", tail?: number
   }, { disableChecks: true })
 }
 
-// Saturated `rand_a` bits sort above every local id counter in the same
-// millisecond.
-const remoteEntryWithHighRandA = (msecs: number) => {
+// Fixes the 12 `rand_a` bits, which local ids use for their counter.
+const remoteEntryWithRandA = (msecs: number, randA: number) => {
   const id = EventJournal.makeEntryIdUnsafe({ msecs })
-  id[6] = 0x7f
-  id[7] = 0xff
+  id[6] = 0x70 | (randA >> 8)
+  id[7] = randA & 0xff
   return new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
     disableChecks: true
   })
@@ -256,7 +255,9 @@ describe("EventJournal", () => {
     const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
     const now = vi.spyOn(Date, "now").mockReturnValue(millis)
     try {
-      for (const remote of [remoteEntryWithHighRandA(millis), remoteEntryWithHighRandA(millis + 1)]) {
+      // Saturated `rand_a` bits sort above every local id counter in the same
+      // millisecond.
+      for (const remote of [remoteEntryWithRandA(millis, 0xfff), remoteEntryWithRandA(millis + 1, 0xfff)]) {
         Effect.runSync(importEntry(journal, remote))
         const local = Effect.runSync(journal.write({
           event: "Repro",
@@ -266,6 +267,27 @@ describe("EventJournal", () => {
         }))
         assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
       }
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("continues the local id counter after a low imported rand_a in the same millisecond", () => {
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
+    const remote = remoteEntryWithRandA(millis, 5)
+    const now = vi.spyOn(Date, "now").mockReturnValue(millis)
+    try {
+      Effect.runSync(importEntry(journal, remote))
+      const local = Effect.runSync(journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      }))
+      assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
+      // Only a saturated counter needs the next millisecond.
+      assert.strictEqual(EventJournal.entryIdMillis(local.id), millis)
     } finally {
       now.mockRestore()
     }
