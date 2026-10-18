@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Avoid argument-limit errors when compacting large event log backlogs and reduce unnecessary replay work.
+Fix event log server compaction failing with an argument-limit error on large groups, and stop scanning the whole in-memory journal on replay.

@@ -458,6 +458,7 @@ const constEmptyPrivateKey = Redacted.make(new Uint8Array(32))
 
 const makeServerWriteIdentityPublicKey = (storeId: StoreId): string => `effect-eventlog-server-write:${storeId}`
 
+// The memory journal is append-only with strictly increasing sequences.
 const entriesAfter = (journal: Array<RemoteEntry>, startSequence: number): ReadonlyArray<RemoteEntry> => {
   let low = 0
   let high = journal.length
