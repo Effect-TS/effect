@@ -47,6 +47,8 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   header: Schema.optional(Schema.String),
   patches: Schema.optional(Schema.Array(Schema.String)),
   includePaths: Schema.optional(Schema.Array(Schema.String)),
+  includeSchemas: Schema.optional(Schema.Array(Schema.String)),
+  collapseErrorResponses: Schema.optional(Schema.Boolean),
   replacements: Schema.optional(Schema.Array(Replacement)),
   excludeAnnotations: Schema.optional(Schema.Array(Schema.String)),
   disableAdditionalProperties: Schema.optional(Schema.Boolean)
@@ -85,6 +87,24 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
    */
   get includePathList(): ReadonlyArray<string> | undefined {
     return this.includePaths
+  }
+
+  /**
+   * Get the component schemas to generate even when no operation references them.
+   *
+   * @since 4.0.0
+   */
+  get includeSchemaList(): ReadonlyArray<string> | undefined {
+    return this.includeSchemas
+  }
+
+  /**
+   * Whether to replace each operation's explicit error responses with one `4XX` response.
+   *
+   * @since 4.0.0
+   */
+  get shouldCollapseErrorResponses(): boolean {
+    return this.collapseErrorResponses ?? false
   }
 
   /**

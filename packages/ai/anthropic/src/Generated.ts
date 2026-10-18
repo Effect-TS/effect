@@ -5,7 +5,6 @@
 
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Sse from "effect/encoding/Sse"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -945,8 +944,8 @@ export const AllowedCaller = Schema.Literals([
     "Specifies who can invoke a tool.\n\nValues:\n    direct: The model can call this tool directly.\n    code_execution_20250825: The tool can be called from the code execution environment (v1).\n    code_execution_20260120: The tool can be called from the code execution environment (v2 with persistence).\n    code_execution_20260521: The tool can be called from the code execution environment (v2 with persistence).",
   "identifier": "AllowedCaller"
 })
-export type JsonValue = Schema.Json
-export const JsonValue = Schema.Json.annotate({ "expected": "JSON value", "identifier": "JsonValue" })
+export type JsonValue = unknown
+export const JsonValue = Schema.Unknown
 export type BrowserCloseTabConfig = { readonly "defer_loading"?: boolean | null; readonly "enabled"?: boolean | null }
 export const BrowserCloseTabConfig = Schema.Struct({
   "defer_loading": Schema.optionalKey(
@@ -2536,164 +2535,6 @@ export const ContainerSkill = Schema.Struct({
   "description": "A skill that was loaded in a container (response model).",
   "identifier": "ContainerSkill"
 })
-export type AvailableToolsLimitExceededErrorDetails = { readonly "error_code": "available_tools_limit_exceeded" }
-export const AvailableToolsLimitExceededErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("available_tools_limit_exceeded").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "AvailableToolsLimitExceededErrorDetails",
-  "description": "The tools available after a message exceed a limit on their number or their size.",
-  "identifier": "AvailableToolsLimitExceededErrorDetails"
-})
-export type ClaudeCodeKeyCreatorNotMemberErrorDetails = { readonly "error_code": "claude_code_key_creator_not_member" }
-export const ClaudeCodeKeyCreatorNotMemberErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("claude_code_key_creator_not_member").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ClaudeCodeKeyCreatorNotMemberErrorDetails",
-  "description":
-    "The API key belongs to the Claude Code workspace, and the user who created it is no longer a member of the organization or of that workspace.",
-  "identifier": "ClaudeCodeKeyCreatorNotMemberErrorDetails"
-})
-export type ClaudeCodeVersionTooOldErrorDetails = { readonly "error_code": "claude_code_version_too_old" }
-export const ClaudeCodeVersionTooOldErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("claude_code_version_too_old").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ClaudeCodeVersionTooOldErrorDetails",
-  "description":
-    "The request comes from a Claude Code version older than the minimum that the requested model or the organization requires. Update Claude Code, then retry.",
-  "identifier": "ClaudeCodeVersionTooOldErrorDetails"
-})
-export type CmekKeyDisabledErrorDetails = { readonly "error_code": "cmek_key_disabled" }
-export const CmekKeyDisabledErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("cmek_key_disabled").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CmekKeyDisabledErrorDetails",
-  "description":
-    "The workspace's customer-managed encryption key is disabled or revoked. Re-enable the key, then retry.",
-  "identifier": "CmekKeyDisabledErrorDetails"
-})
-export type CmekKeyNetworkBlockedErrorDetails = { readonly "error_code": "cmek_key_network_blocked" }
-export const CmekKeyNetworkBlockedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("cmek_key_network_blocked").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CmekKeyNetworkBlockedErrorDetails",
-  "description":
-    "The key management service's network access controls blocked the request to the workspace's customer-managed encryption key. The key itself may be healthy.",
-  "identifier": "CmekKeyNetworkBlockedErrorDetails"
-})
-export type CompactionBlockAmbiguousErrorDetails = { readonly "error_code": "compaction_block_ambiguous" }
-export const CompactionBlockAmbiguousErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_block_ambiguous").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionBlockAmbiguousErrorDetails",
-  "description":
-    "`messages` holds more than one `compaction` block with content. Send only the block the conversation returned last.",
-  "identifier": "CompactionBlockAmbiguousErrorDetails"
-})
-export type CompactionBlockMisplacedErrorDetails = { readonly "error_code": "compaction_block_misplaced" }
-export const CompactionBlockMisplacedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_block_misplaced").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionBlockMisplacedErrorDetails",
-  "description": "The `compaction` block is not the first block of the conversation, or is in a `system` message.",
-  "identifier": "CompactionBlockMisplacedErrorDetails"
-})
-export type CompactionContentMismatchErrorDetails = { readonly "error_code": "compaction_content_mismatch" }
-export const CompactionContentMismatchErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_content_mismatch").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionContentMismatchErrorDetails",
-  "description": "The `compaction` block's `content` differs from the text its `signature` recorded.",
-  "identifier": "CompactionContentMismatchErrorDetails"
-})
-export type CompactionIncompleteTurnErrorDetails = { readonly "error_code": "compaction_incomplete_turn" }
-export const CompactionIncompleteTurnErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_incomplete_turn").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionIncompleteTurnErrorDetails",
-  "description": "The compaction request ends on an `assistant` turn that is not finished.",
-  "identifier": "CompactionIncompleteTurnErrorDetails"
-})
-export type CompactionNothingToSummarizeErrorDetails = { readonly "error_code": "compaction_nothing_to_summarize" }
-export const CompactionNothingToSummarizeErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_nothing_to_summarize").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionNothingToSummarizeErrorDetails",
-  "description": "`messages` holds no `user` or `assistant` content to summarize or adopt.",
-  "identifier": "CompactionNothingToSummarizeErrorDetails"
-})
-export type CompactionSignatureInvalidErrorDetails = { readonly "error_code": "compaction_signature_invalid" }
-export const CompactionSignatureInvalidErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_signature_invalid").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionSignatureInvalidErrorDetails",
-  "description": "The `compaction` block's `signature` does not verify.",
-  "identifier": "CompactionSignatureInvalidErrorDetails"
-})
-export type CompactionTooManyToolReferencesErrorDetails = {
-  readonly "error_code": "compaction_too_many_tool_references"
-}
-export const CompactionTooManyToolReferencesErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_too_many_tool_references").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionTooManyToolReferencesErrorDetails",
-  "description": "The conversation references more distinct tools than a `compaction` block can record.",
-  "identifier": "CompactionTooManyToolReferencesErrorDetails"
-})
-export type CompactionToolChangesMismatchErrorDetails = { readonly "error_code": "compaction_tool_changes_mismatch" }
-export const CompactionToolChangesMismatchErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_tool_changes_mismatch").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionToolChangesMismatchErrorDetails",
-  "description": "The `compaction` block's `tool_changes` differs from what was returned with the block.",
-  "identifier": "CompactionToolChangesMismatchErrorDetails"
-})
-export type OrganizationOnHoldErrorDetails = {
-  readonly "appeal_url"?: string | null
-  readonly "error_code": "organization_on_hold"
-}
-export const OrganizationOnHoldErrorDetails = Schema.Struct({
-  "appeal_url": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Appeal Url" })),
-  "error_code": Schema.Literal("organization_on_hold").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "OrganizationOnHoldErrorDetails",
-  "description":
-    "Anthropic has disabled the organization for trust and safety reasons. An organization disabled for any other reason, such as billing, does not get this code. `appeal_url`, when present, is where the organization can appeal.",
-  "identifier": "OrganizationOnHoldErrorDetails"
-})
-export type RequestBodyEncodingInvalidErrorDetails = { readonly "error_code": "request_body_encoding_invalid" }
-export const RequestBodyEncodingInvalidErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("request_body_encoding_invalid").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "RequestBodyEncodingInvalidErrorDetails",
-  "description": "The request body is not valid for its `Content-Encoding`.",
-  "identifier": "RequestBodyEncodingInvalidErrorDetails"
-})
-export type RequestBodyEncodingUnsupportedErrorDetails = { readonly "error_code": "request_body_encoding_unsupported" }
-export const RequestBodyEncodingUnsupportedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("request_body_encoding_unsupported").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "RequestBodyEncodingUnsupportedErrorDetails",
-  "description": "The request's `Content-Encoding` is not supported.",
-  "identifier": "RequestBodyEncodingUnsupportedErrorDetails"
-})
-export type ToolNameConflictErrorDetails = { readonly "error_code": "tool_name_conflict" }
-export const ToolNameConflictErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("tool_name_conflict").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ToolNameConflictErrorDetails",
-  "description":
-    "A tool made available in `messages` takes a name that an available tool of another kind, or of another MCP server, already holds.",
-  "identifier": "ToolNameConflictErrorDetails"
-})
-export type ToolReferenceUnresolvedErrorDetails = { readonly "error_code": "tool_reference_unresolved" }
-export const ToolReferenceUnresolvedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("tool_reference_unresolved").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ToolReferenceUnresolvedErrorDetails",
-  "description":
-    "A tool change or MCP tool listing references a tool or MCP server that is not defined at that position in the conversation.",
-  "identifier": "ToolReferenceUnresolvedErrorDetails"
-})
 export type InvalidRequestError = { readonly "message": string; readonly "type": "invalid_request_error" }
 export const InvalidRequestError = Schema.Struct({
   "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
@@ -2739,41 +2580,6 @@ export const OverloadedError = Schema.Struct({
   "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
   "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
 }).annotate({ "title": "OverloadedError", "identifier": "OverloadedError" })
-export type SkillReadBlockedUndecryptableErrorDetails = { readonly "error_code": "skill_read_blocked_undecryptable" }
-export const SkillReadBlockedUndecryptableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("skill_read_blocked_undecryptable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "SkillReadBlockedUndecryptableErrorDetails",
-  "description":
-    "A custom skill the request names is stored under an encryption key state the workspace cannot currently decrypt.",
-  "identifier": "SkillReadBlockedUndecryptableErrorDetails"
-})
-export type RequestBodyTooLargeAfterDecodingErrorDetails = {
-  readonly "error_code": "request_body_too_large_after_decoding"
-}
-export const RequestBodyTooLargeAfterDecodingErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("request_body_too_large_after_decoding").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "RequestBodyTooLargeAfterDecodingErrorDetails",
-  "description": "The compressed request body exceeds the request size limit once decoded.",
-  "identifier": "RequestBodyTooLargeAfterDecodingErrorDetails"
-})
-export type EnforcedSpendLimitReachedErrorDetails = { readonly "error_code": "enforced_spend_limit_reached" }
-export const EnforcedSpendLimitReachedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("enforced_spend_limit_reached").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "EnforcedSpendLimitReachedErrorDetails",
-  "description": "The organization has crossed the monthly API usage threshold of its API tier.",
-  "identifier": "EnforcedSpendLimitReachedErrorDetails"
-})
-export type CompactionUnavailableErrorDetails = { readonly "error_code": "compaction_unavailable" }
-export const CompactionUnavailableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_unavailable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionUnavailableErrorDetails",
-  "description": "The compaction could not be completed for a transient server reason. Retry the request.",
-  "identifier": "CompactionUnavailableErrorDetails"
-})
 export type AnthropicBeta =
   | string
   | "message-batches-2024-09-24"
@@ -3006,15 +2812,6 @@ export const FileMetadataSchema = Schema.Struct({
 }).annotate({ "title": "FileMetadataSchema", "identifier": "FileMetadataSchema" })
 export type __ClientMultipartFile = globalThis.File | globalThis.Blob
 export const __ClientMultipartFile = Schema.instanceOf(globalThis.Blob, { expected: "File | Blob" })
-export type StorageQuotaExceededErrorDetails = { readonly "error_code": "storage_quota_exceeded" }
-export const StorageQuotaExceededErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("storage_quota_exceeded").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "StorageQuotaExceededErrorDetails",
-  "description":
-    "The organization's file storage quota is exhausted. Delete files to free up space, then retry the upload.",
-  "identifier": "StorageQuotaExceededErrorDetails"
-})
 export type FileDeleteResponse = { readonly "id": string; readonly "type"?: "file_deleted" }
 export const FileDeleteResponse = Schema.Struct({
   "id": Schema.String.annotate({ "title": "Id", "description": "ID of the deleted file." }),
@@ -3026,23 +2823,6 @@ export const FileDeleteResponse = Schema.Struct({
     })
   )
 }).annotate({ "title": "FileDeleteResponse", "identifier": "FileDeleteResponse" })
-export type FileNotDownloadableErrorDetails = { readonly "error_code": "file_not_downloadable" }
-export const FileNotDownloadableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("file_not_downloadable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "FileNotDownloadableErrorDetails",
-  "description":
-    "The file has `downloadable: false`. Only files generated by a tool, such as the code execution tool, can be downloaded.",
-  "identifier": "FileNotDownloadableErrorDetails"
-})
-export type FileExpiredErrorDetails = { readonly "error_code": "file_expired" }
-export const FileExpiredErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("file_expired").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "FileExpiredErrorDetails",
-  "description": "The file's `expires_at` has passed, so its content is no longer available.",
-  "identifier": "FileExpiredErrorDetails"
-})
 export type SkillSource = { readonly "type": "custom" | "anthropic" | "anthropic_example" | "plugin" }
 export const SkillSource = Schema.Struct({
   "type": Schema.Literals(["custom", "anthropic", "anthropic_example", "plugin"]).annotate({
@@ -3051,15 +2831,6 @@ export const SkillSource = Schema.Struct({
       "Where the Skill comes from.\n\nPossible values:\n* `\"custom\"`: authored by the platform user; private to their workspace\n* `\"anthropic\"`: published by Anthropic; shared and read-only\n* `\"anthropic_example\"`: Anthropic-published sample Skill\n* `\"plugin\"`: resolved from an installed plugin"
   })
 }).annotate({ "title": "SkillSource", "identifier": "SkillSource" })
-export type CmekContextUnavailableErrorDetails = { readonly "error_code": "cmek_context_unavailable" }
-export const CmekContextUnavailableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("cmek_context_unavailable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CmekContextUnavailableErrorDetails",
-  "description":
-    "The request's workspace encryption context could not be resolved, so the request was refused. Retry in a few minutes.",
-  "identifier": "CmekContextUnavailableErrorDetails"
-})
 export type DeletedSkill = { readonly "id": string; readonly "type": "skill_deleted" }
 export const DeletedSkill = Schema.Struct({
   "id": Schema.String.annotate({
@@ -3925,8 +3696,8 @@ export const BetaAllowedCaller = Schema.Literals([
     "Specifies who can invoke a tool.\n\nValues:\n    direct: The model can call this tool directly.\n    code_execution_20250825: The tool can be called from the code execution environment (v1).\n    code_execution_20260120: The tool can be called from the code execution environment (v2 with persistence).\n    code_execution_20260521: The tool can be called from the code execution environment (v2 with persistence).",
   "identifier": "BetaAllowedCaller"
 })
-export type BetaJsonValue = Schema.Json
-export const BetaJsonValue = Schema.Json.annotate({ "expected": "JSON value", "identifier": "BetaJsonValue" })
+export type BetaJsonValue = unknown
+export const BetaJsonValue = Schema.Unknown
 export type BetaBrowserCloseTabConfig = {
   readonly "defer_loading"?: boolean | null
   readonly "enabled"?: boolean | null
@@ -6157,234 +5928,6 @@ export const BetaContainerSkill = Schema.Struct({
   "description": "A skill that was loaded in a container (response model).",
   "identifier": "BetaContainerSkill"
 })
-export type BetaMessageStopEvent = { readonly "type": "message_stop" }
-export const BetaMessageStopEvent = Schema.Struct({
-  "type": Schema.Literal("message_stop").annotate({ "title": "Type", "default": "message_stop" })
-}).annotate({ "title": "MessageStopEvent", "identifier": "BetaMessageStopEvent" })
-export type BetaTextContentBlockDelta = { readonly "text": string; readonly "type": "text_delta" }
-export const BetaTextContentBlockDelta = Schema.Struct({
-  "text": Schema.String.annotate({ "title": "Text" }),
-  "type": Schema.Literal("text_delta").annotate({ "title": "Type", "default": "text_delta" })
-}).annotate({ "title": "TextContentBlockDelta", "identifier": "BetaTextContentBlockDelta" })
-export type BetaInputJsonContentBlockDelta = { readonly "partial_json": string; readonly "type": "input_json_delta" }
-export const BetaInputJsonContentBlockDelta = Schema.Struct({
-  "partial_json": Schema.String.annotate({ "title": "Partial Json" }),
-  "type": Schema.Literal("input_json_delta").annotate({ "title": "Type", "default": "input_json_delta" })
-}).annotate({ "title": "InputJsonContentBlockDelta", "identifier": "BetaInputJsonContentBlockDelta" })
-export type BetaThinkingContentBlockDelta = {
-  readonly "estimated_tokens": number | null
-  readonly "thinking": string
-  readonly "type": "thinking_delta"
-}
-export const BetaThinkingContentBlockDelta = Schema.Struct({
-  "estimated_tokens": Schema.Union([
-    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
-    Schema.Null
-  ]).annotate({
-    "title": "Estimated Tokens",
-    "description":
-      "Per-frame increment of a coarse, running estimate of the tokens this thinking block has produced so far. Present whenever the `thinking-token-count-2026-05-13` beta is set; `null` unless `thinking.display` resolves to `\"omitted\"` and a count is due this frame. Sum the increments across `thinking_delta` frames on this block for a progress indicator. Each increment is a non-negative multiple of a fixed quantum and the cadence is rate-limited, so this is a deliberately lossy display hint, not a billable count; `usage.output_tokens` remains authoritative.",
-    "default": null
-  }),
-  "thinking": Schema.String.annotate({
-    "title": "Thinking",
-    "description":
-      "The incremental `thinking` text for this content block. Concatenate the `thinking` values of successive `thinking_delta` events to assemble the block's full `thinking` value."
-  }),
-  "type": Schema.Literal("thinking_delta").annotate({ "title": "Type", "default": "thinking_delta" })
-}).annotate({ "title": "ThinkingContentBlockDelta", "identifier": "BetaThinkingContentBlockDelta" })
-export type BetaSignatureContentBlockDelta = { readonly "signature": string; readonly "type": "signature_delta" }
-export const BetaSignatureContentBlockDelta = Schema.Struct({
-  "signature": Schema.String.annotate({
-    "title": "Signature",
-    "description":
-      "The `signature` for this thinking block: an opaque value used to verify that the block was generated by Claude when it is passed back to the API. Delivered in a `signature_delta` event just before the block's `content_block_stop` event."
-  }),
-  "type": Schema.Literal("signature_delta").annotate({ "title": "Type", "default": "signature_delta" })
-}).annotate({ "title": "SignatureContentBlockDelta", "identifier": "BetaSignatureContentBlockDelta" })
-export type BetaCompactionContentBlockDelta = {
-  readonly "content": string | null
-  readonly "encrypted_content": string | null
-  readonly "type": "compaction_delta"
-}
-export const BetaCompactionContentBlockDelta = Schema.Struct({
-  "content": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Content" }),
-  "encrypted_content": Schema.Union([Schema.String, Schema.Null]).annotate({
-    "title": "Encrypted Content",
-    "description": "Opaque metadata from prior compaction, to be round-tripped verbatim",
-    "default": null
-  }),
-  "type": Schema.Literal("compaction_delta").annotate({ "title": "Type", "default": "compaction_delta" })
-}).annotate({ "title": "CompactionContentBlockDelta", "identifier": "BetaCompactionContentBlockDelta" })
-export type BetaContentBlockStopEvent = { readonly "index": number; readonly "type": "content_block_stop" }
-export const BetaContentBlockStopEvent = Schema.Struct({
-  "index": Schema.Number.annotate({ "title": "Index" }).check(Schema.isInt().annotate({ "expected": "an integer" })),
-  "type": Schema.Literal("content_block_stop").annotate({ "title": "Type", "default": "content_block_stop" })
-}).annotate({ "title": "ContentBlockStopEvent", "identifier": "BetaContentBlockStopEvent" })
-export type BetaAvailableToolsLimitExceededErrorDetails = { readonly "error_code": "available_tools_limit_exceeded" }
-export const BetaAvailableToolsLimitExceededErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("available_tools_limit_exceeded").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "AvailableToolsLimitExceededErrorDetails",
-  "description": "The tools available after a message exceed a limit on their number or their size.",
-  "identifier": "BetaAvailableToolsLimitExceededErrorDetails"
-})
-export type BetaClaudeCodeKeyCreatorNotMemberErrorDetails = {
-  readonly "error_code": "claude_code_key_creator_not_member"
-}
-export const BetaClaudeCodeKeyCreatorNotMemberErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("claude_code_key_creator_not_member").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ClaudeCodeKeyCreatorNotMemberErrorDetails",
-  "description":
-    "The API key belongs to the Claude Code workspace, and the user who created it is no longer a member of the organization or of that workspace.",
-  "identifier": "BetaClaudeCodeKeyCreatorNotMemberErrorDetails"
-})
-export type BetaClaudeCodeVersionTooOldErrorDetails = { readonly "error_code": "claude_code_version_too_old" }
-export const BetaClaudeCodeVersionTooOldErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("claude_code_version_too_old").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ClaudeCodeVersionTooOldErrorDetails",
-  "description":
-    "The request comes from a Claude Code version older than the minimum that the requested model or the organization requires. Update Claude Code, then retry.",
-  "identifier": "BetaClaudeCodeVersionTooOldErrorDetails"
-})
-export type BetaCmekKeyDisabledErrorDetails = { readonly "error_code": "cmek_key_disabled" }
-export const BetaCmekKeyDisabledErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("cmek_key_disabled").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CmekKeyDisabledErrorDetails",
-  "description":
-    "The workspace's customer-managed encryption key is disabled or revoked. Re-enable the key, then retry.",
-  "identifier": "BetaCmekKeyDisabledErrorDetails"
-})
-export type BetaCmekKeyNetworkBlockedErrorDetails = { readonly "error_code": "cmek_key_network_blocked" }
-export const BetaCmekKeyNetworkBlockedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("cmek_key_network_blocked").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CmekKeyNetworkBlockedErrorDetails",
-  "description":
-    "The key management service's network access controls blocked the request to the workspace's customer-managed encryption key. The key itself may be healthy.",
-  "identifier": "BetaCmekKeyNetworkBlockedErrorDetails"
-})
-export type BetaCompactionBlockAmbiguousErrorDetails = { readonly "error_code": "compaction_block_ambiguous" }
-export const BetaCompactionBlockAmbiguousErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_block_ambiguous").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionBlockAmbiguousErrorDetails",
-  "description":
-    "`messages` holds more than one `compaction` block with content. Send only the block the conversation returned last.",
-  "identifier": "BetaCompactionBlockAmbiguousErrorDetails"
-})
-export type BetaCompactionBlockMisplacedErrorDetails = { readonly "error_code": "compaction_block_misplaced" }
-export const BetaCompactionBlockMisplacedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_block_misplaced").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionBlockMisplacedErrorDetails",
-  "description": "The `compaction` block is not the first block of the conversation, or is in a `system` message.",
-  "identifier": "BetaCompactionBlockMisplacedErrorDetails"
-})
-export type BetaCompactionContentMismatchErrorDetails = { readonly "error_code": "compaction_content_mismatch" }
-export const BetaCompactionContentMismatchErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_content_mismatch").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionContentMismatchErrorDetails",
-  "description": "The `compaction` block's `content` differs from the text its `signature` recorded.",
-  "identifier": "BetaCompactionContentMismatchErrorDetails"
-})
-export type BetaCompactionIncompleteTurnErrorDetails = { readonly "error_code": "compaction_incomplete_turn" }
-export const BetaCompactionIncompleteTurnErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_incomplete_turn").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionIncompleteTurnErrorDetails",
-  "description": "The compaction request ends on an `assistant` turn that is not finished.",
-  "identifier": "BetaCompactionIncompleteTurnErrorDetails"
-})
-export type BetaCompactionNothingToSummarizeErrorDetails = { readonly "error_code": "compaction_nothing_to_summarize" }
-export const BetaCompactionNothingToSummarizeErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_nothing_to_summarize").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionNothingToSummarizeErrorDetails",
-  "description": "`messages` holds no `user` or `assistant` content to summarize or adopt.",
-  "identifier": "BetaCompactionNothingToSummarizeErrorDetails"
-})
-export type BetaCompactionSignatureInvalidErrorDetails = { readonly "error_code": "compaction_signature_invalid" }
-export const BetaCompactionSignatureInvalidErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_signature_invalid").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionSignatureInvalidErrorDetails",
-  "description": "The `compaction` block's `signature` does not verify.",
-  "identifier": "BetaCompactionSignatureInvalidErrorDetails"
-})
-export type BetaCompactionTooManyToolReferencesErrorDetails = {
-  readonly "error_code": "compaction_too_many_tool_references"
-}
-export const BetaCompactionTooManyToolReferencesErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_too_many_tool_references").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionTooManyToolReferencesErrorDetails",
-  "description": "The conversation references more distinct tools than a `compaction` block can record.",
-  "identifier": "BetaCompactionTooManyToolReferencesErrorDetails"
-})
-export type BetaCompactionToolChangesMismatchErrorDetails = {
-  readonly "error_code": "compaction_tool_changes_mismatch"
-}
-export const BetaCompactionToolChangesMismatchErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_tool_changes_mismatch").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionToolChangesMismatchErrorDetails",
-  "description": "The `compaction` block's `tool_changes` differs from what was returned with the block.",
-  "identifier": "BetaCompactionToolChangesMismatchErrorDetails"
-})
-export type BetaOrganizationOnHoldErrorDetails = {
-  readonly "appeal_url"?: string | null
-  readonly "error_code": "organization_on_hold"
-}
-export const BetaOrganizationOnHoldErrorDetails = Schema.Struct({
-  "appeal_url": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Appeal Url" })),
-  "error_code": Schema.Literal("organization_on_hold").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "OrganizationOnHoldErrorDetails",
-  "description":
-    "Anthropic has disabled the organization for trust and safety reasons. An organization disabled for any other reason, such as billing, does not get this code. `appeal_url`, when present, is where the organization can appeal.",
-  "identifier": "BetaOrganizationOnHoldErrorDetails"
-})
-export type BetaRequestBodyEncodingInvalidErrorDetails = { readonly "error_code": "request_body_encoding_invalid" }
-export const BetaRequestBodyEncodingInvalidErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("request_body_encoding_invalid").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "RequestBodyEncodingInvalidErrorDetails",
-  "description": "The request body is not valid for its `Content-Encoding`.",
-  "identifier": "BetaRequestBodyEncodingInvalidErrorDetails"
-})
-export type BetaRequestBodyEncodingUnsupportedErrorDetails = {
-  readonly "error_code": "request_body_encoding_unsupported"
-}
-export const BetaRequestBodyEncodingUnsupportedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("request_body_encoding_unsupported").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "RequestBodyEncodingUnsupportedErrorDetails",
-  "description": "The request's `Content-Encoding` is not supported.",
-  "identifier": "BetaRequestBodyEncodingUnsupportedErrorDetails"
-})
-export type BetaToolNameConflictErrorDetails = { readonly "error_code": "tool_name_conflict" }
-export const BetaToolNameConflictErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("tool_name_conflict").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ToolNameConflictErrorDetails",
-  "description":
-    "A tool made available in `messages` takes a name that an available tool of another kind, or of another MCP server, already holds.",
-  "identifier": "BetaToolNameConflictErrorDetails"
-})
-export type BetaToolReferenceUnresolvedErrorDetails = { readonly "error_code": "tool_reference_unresolved" }
-export const BetaToolReferenceUnresolvedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("tool_reference_unresolved").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "ToolReferenceUnresolvedErrorDetails",
-  "description":
-    "A tool change or MCP tool listing references a tool or MCP server that is not defined at that position in the conversation.",
-  "identifier": "BetaToolReferenceUnresolvedErrorDetails"
-})
 export type BetaInvalidRequestError = { readonly "message": string; readonly "type": "invalid_request_error" }
 export const BetaInvalidRequestError = Schema.Struct({
   "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
@@ -6430,43 +5973,6 @@ export const BetaOverloadedError = Schema.Struct({
   "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
   "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
 }).annotate({ "title": "OverloadedError", "identifier": "BetaOverloadedError" })
-export type BetaSkillReadBlockedUndecryptableErrorDetails = {
-  readonly "error_code": "skill_read_blocked_undecryptable"
-}
-export const BetaSkillReadBlockedUndecryptableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("skill_read_blocked_undecryptable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "SkillReadBlockedUndecryptableErrorDetails",
-  "description":
-    "A custom skill the request names is stored under an encryption key state the workspace cannot currently decrypt.",
-  "identifier": "BetaSkillReadBlockedUndecryptableErrorDetails"
-})
-export type BetaRequestBodyTooLargeAfterDecodingErrorDetails = {
-  readonly "error_code": "request_body_too_large_after_decoding"
-}
-export const BetaRequestBodyTooLargeAfterDecodingErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("request_body_too_large_after_decoding").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "RequestBodyTooLargeAfterDecodingErrorDetails",
-  "description": "The compressed request body exceeds the request size limit once decoded.",
-  "identifier": "BetaRequestBodyTooLargeAfterDecodingErrorDetails"
-})
-export type BetaEnforcedSpendLimitReachedErrorDetails = { readonly "error_code": "enforced_spend_limit_reached" }
-export const BetaEnforcedSpendLimitReachedErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("enforced_spend_limit_reached").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "EnforcedSpendLimitReachedErrorDetails",
-  "description": "The organization has crossed the monthly API usage threshold of its API tier.",
-  "identifier": "BetaEnforcedSpendLimitReachedErrorDetails"
-})
-export type BetaCompactionUnavailableErrorDetails = { readonly "error_code": "compaction_unavailable" }
-export const BetaCompactionUnavailableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("compaction_unavailable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CompactionUnavailableErrorDetails",
-  "description": "The compaction could not be completed for a transient server reason. Retry the request.",
-  "identifier": "BetaCompactionUnavailableErrorDetails"
-})
 export type BetaCapabilitySupport = { readonly "supported": boolean }
 export const BetaCapabilitySupport = Schema.Struct({
   "supported": Schema.Boolean.annotate({
@@ -6549,15 +6055,6 @@ export const BetaFileScope = Schema.Struct({
     "description": "The type of scope (e.g., `\"session\"`)."
   })
 }).annotate({ "title": "FileScope", "identifier": "BetaFileScope" })
-export type BetaStorageQuotaExceededErrorDetails = { readonly "error_code": "storage_quota_exceeded" }
-export const BetaStorageQuotaExceededErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("storage_quota_exceeded").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "StorageQuotaExceededErrorDetails",
-  "description":
-    "The organization's file storage quota is exhausted. Delete files to free up space, then retry the upload.",
-  "identifier": "BetaStorageQuotaExceededErrorDetails"
-})
 export type BetaFileDeleteResponse = { readonly "id": string; readonly "type"?: "file_deleted" }
 export const BetaFileDeleteResponse = Schema.Struct({
   "id": Schema.String.annotate({ "title": "Id", "description": "ID of the deleted file." }),
@@ -6569,23 +6066,6 @@ export const BetaFileDeleteResponse = Schema.Struct({
     })
   )
 }).annotate({ "title": "FileDeleteResponse", "identifier": "BetaFileDeleteResponse" })
-export type BetaFileNotDownloadableErrorDetails = { readonly "error_code": "file_not_downloadable" }
-export const BetaFileNotDownloadableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("file_not_downloadable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "FileNotDownloadableErrorDetails",
-  "description":
-    "The file has `downloadable: false`. Only files generated by a tool, such as the code execution tool, can be downloaded.",
-  "identifier": "BetaFileNotDownloadableErrorDetails"
-})
-export type BetaFileExpiredErrorDetails = { readonly "error_code": "file_expired" }
-export const BetaFileExpiredErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("file_expired").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "FileExpiredErrorDetails",
-  "description": "The file's `expires_at` has passed, so its content is no longer available.",
-  "identifier": "BetaFileExpiredErrorDetails"
-})
 export type BetaSkillSource = { readonly "type": "custom" | "anthropic" | "anthropic_example" | "plugin" }
 export const BetaSkillSource = Schema.Struct({
   "type": Schema.Literals(["custom", "anthropic", "anthropic_example", "plugin"]).annotate({
@@ -6594,15 +6074,6 @@ export const BetaSkillSource = Schema.Struct({
       "Where the Skill comes from.\n\nPossible values:\n* `\"custom\"`: authored by the platform user; private to their workspace\n* `\"anthropic\"`: published by Anthropic; shared and read-only\n* `\"anthropic_example\"`: Anthropic-published sample Skill\n* `\"plugin\"`: resolved from an installed plugin"
   })
 }).annotate({ "title": "SkillSource", "identifier": "BetaSkillSource" })
-export type BetaCmekContextUnavailableErrorDetails = { readonly "error_code": "cmek_context_unavailable" }
-export const BetaCmekContextUnavailableErrorDetails = Schema.Struct({
-  "error_code": Schema.Literal("cmek_context_unavailable").annotate({ "title": "Error Code" })
-}).annotate({
-  "title": "CmekContextUnavailableErrorDetails",
-  "description":
-    "The request's workspace encryption context could not be resolved, so the request was refused. Retry in a few minutes.",
-  "identifier": "BetaCmekContextUnavailableErrorDetails"
-})
 export type BetaDeletedSkill = { readonly "id": string; readonly "type": "skill_deleted" }
 export const BetaDeletedSkill = Schema.Struct({
   "id": Schema.String.annotate({
@@ -6666,6 +6137,710 @@ export const BetaDeletedSkillVersion = Schema.Struct({
     "default": "skill_version_deleted"
   })
 }).annotate({ "title": "DeletedSkillVersion", "identifier": "BetaDeletedSkillVersion" })
+export type BetaTextContentBlockDelta = { readonly "text": string; readonly "type": "text_delta" }
+export const BetaTextContentBlockDelta = Schema.Struct({
+  "text": Schema.String.annotate({ "title": "Text" }),
+  "type": Schema.Literal("text_delta").annotate({ "title": "Type", "default": "text_delta" })
+}).annotate({ "title": "TextContentBlockDelta", "identifier": "BetaTextContentBlockDelta" })
+export type BetaInputJsonContentBlockDelta = { readonly "partial_json": string; readonly "type": "input_json_delta" }
+export const BetaInputJsonContentBlockDelta = Schema.Struct({
+  "partial_json": Schema.String.annotate({ "title": "Partial Json" }),
+  "type": Schema.Literal("input_json_delta").annotate({ "title": "Type", "default": "input_json_delta" })
+}).annotate({ "title": "InputJsonContentBlockDelta", "identifier": "BetaInputJsonContentBlockDelta" })
+export type BetaThinkingContentBlockDelta = {
+  readonly "estimated_tokens": number | null
+  readonly "thinking": string
+  readonly "type": "thinking_delta"
+}
+export const BetaThinkingContentBlockDelta = Schema.Struct({
+  "estimated_tokens": Schema.Union([
+    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
+    Schema.Null
+  ]).annotate({
+    "title": "Estimated Tokens",
+    "description":
+      "Per-frame increment of a coarse, running estimate of the tokens this thinking block has produced so far. Present whenever the `thinking-token-count-2026-05-13` beta is set; `null` unless `thinking.display` resolves to `\"omitted\"` and a count is due this frame. Sum the increments across `thinking_delta` frames on this block for a progress indicator. Each increment is a non-negative multiple of a fixed quantum and the cadence is rate-limited, so this is a deliberately lossy display hint, not a billable count; `usage.output_tokens` remains authoritative.",
+    "default": null
+  }),
+  "thinking": Schema.String.annotate({
+    "title": "Thinking",
+    "description":
+      "The incremental `thinking` text for this content block. Concatenate the `thinking` values of successive `thinking_delta` events to assemble the block's full `thinking` value."
+  }),
+  "type": Schema.Literal("thinking_delta").annotate({ "title": "Type", "default": "thinking_delta" })
+}).annotate({ "title": "ThinkingContentBlockDelta", "identifier": "BetaThinkingContentBlockDelta" })
+export type BetaSignatureContentBlockDelta = { readonly "signature": string; readonly "type": "signature_delta" }
+export const BetaSignatureContentBlockDelta = Schema.Struct({
+  "signature": Schema.String.annotate({
+    "title": "Signature",
+    "description":
+      "The `signature` for this thinking block: an opaque value used to verify that the block was generated by Claude when it is passed back to the API. Delivered in a `signature_delta` event just before the block's `content_block_stop` event."
+  }),
+  "type": Schema.Literal("signature_delta").annotate({ "title": "Type", "default": "signature_delta" })
+}).annotate({ "title": "SignatureContentBlockDelta", "identifier": "BetaSignatureContentBlockDelta" })
+export type BetaCompactionContentBlockDelta = {
+  readonly "content": string | null
+  readonly "encrypted_content": string | null
+  readonly "type": "compaction_delta"
+}
+export const BetaCompactionContentBlockDelta = Schema.Struct({
+  "content": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Content" }),
+  "encrypted_content": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Encrypted Content",
+    "description": "Opaque metadata from prior compaction, to be round-tripped verbatim",
+    "default": null
+  }),
+  "type": Schema.Literal("compaction_delta").annotate({ "title": "Type", "default": "compaction_delta" })
+}).annotate({ "title": "CompactionContentBlockDelta", "identifier": "BetaCompactionContentBlockDelta" })
+export type BetaContentBlockStopEvent = { readonly "index": number; readonly "type": "content_block_stop" }
+export const BetaContentBlockStopEvent = Schema.Struct({
+  "index": Schema.Number.annotate({ "title": "Index" }).check(Schema.isInt().annotate({ "expected": "an integer" })),
+  "type": Schema.Literal("content_block_stop").annotate({ "title": "Type", "default": "content_block_stop" })
+}).annotate({ "title": "ContentBlockStopEvent", "identifier": "BetaContentBlockStopEvent" })
+export type BetaMessageStopEvent = { readonly "type": "message_stop" }
+export const BetaMessageStopEvent = Schema.Struct({
+  "type": Schema.Literal("message_stop").annotate({ "title": "Type", "default": "message_stop" })
+}).annotate({ "title": "MessageStopEvent", "identifier": "BetaMessageStopEvent" })
+export type TextContentBlockDelta = { readonly "text": string; readonly "type": "text_delta" }
+export const TextContentBlockDelta = Schema.Struct({
+  "text": Schema.String.annotate({ "title": "Text" }),
+  "type": Schema.Literal("text_delta").annotate({ "title": "Type", "default": "text_delta" })
+}).annotate({ "title": "TextContentBlockDelta", "identifier": "TextContentBlockDelta" })
+export type InputJsonContentBlockDelta = { readonly "partial_json": string; readonly "type": "input_json_delta" }
+export const InputJsonContentBlockDelta = Schema.Struct({
+  "partial_json": Schema.String.annotate({ "title": "Partial Json" }),
+  "type": Schema.Literal("input_json_delta").annotate({ "title": "Type", "default": "input_json_delta" })
+}).annotate({ "title": "InputJsonContentBlockDelta", "identifier": "InputJsonContentBlockDelta" })
+export type ThinkingContentBlockDelta = { readonly "thinking": string; readonly "type": "thinking_delta" }
+export const ThinkingContentBlockDelta = Schema.Struct({
+  "thinking": Schema.String.annotate({
+    "title": "Thinking",
+    "description":
+      "The incremental `thinking` text for this content block. Concatenate the `thinking` values of successive `thinking_delta` events to assemble the block's full `thinking` value."
+  }),
+  "type": Schema.Literal("thinking_delta").annotate({ "title": "Type", "default": "thinking_delta" })
+}).annotate({ "title": "ThinkingContentBlockDelta", "identifier": "ThinkingContentBlockDelta" })
+export type SignatureContentBlockDelta = { readonly "signature": string; readonly "type": "signature_delta" }
+export const SignatureContentBlockDelta = Schema.Struct({
+  "signature": Schema.String.annotate({
+    "title": "Signature",
+    "description":
+      "The `signature` for this thinking block: an opaque value used to verify that the block was generated by Claude when it is passed back to the API. Delivered in a `signature_delta` event just before the block's `content_block_stop` event."
+  }),
+  "type": Schema.Literal("signature_delta").annotate({ "title": "Type", "default": "signature_delta" })
+}).annotate({ "title": "SignatureContentBlockDelta", "identifier": "SignatureContentBlockDelta" })
+export type ContentBlockStopEvent = { readonly "index": number; readonly "type": "content_block_stop" }
+export const ContentBlockStopEvent = Schema.Struct({
+  "index": Schema.Number.annotate({ "title": "Index" }).check(Schema.isInt().annotate({ "expected": "an integer" })),
+  "type": Schema.Literal("content_block_stop").annotate({ "title": "Type", "default": "content_block_stop" })
+}).annotate({ "title": "ContentBlockStopEvent", "identifier": "ContentBlockStopEvent" })
+export type MessageStopEvent = { readonly "type": "message_stop" }
+export const MessageStopEvent = Schema.Struct({
+  "type": Schema.Literal("message_stop").annotate({ "title": "Type", "default": "message_stop" })
+}).annotate({ "title": "MessageStopEvent", "identifier": "MessageStopEvent" })
+export type BetaCanceledResult = { readonly "type": "canceled" }
+export const BetaCanceledResult = Schema.Struct({
+  "type": Schema.Literal("canceled").annotate({ "title": "Type", "default": "canceled" })
+}).annotate({ "title": "CanceledResult", "identifier": "BetaCanceledResult" })
+export type BetaExpiredResult = { readonly "type": "expired" }
+export const BetaExpiredResult = Schema.Struct({
+  "type": Schema.Literal("expired").annotate({ "title": "Type", "default": "expired" })
+}).annotate({ "title": "ExpiredResult", "identifier": "BetaExpiredResult" })
+export type CanceledResult = { readonly "type": "canceled" }
+export const CanceledResult = Schema.Struct({
+  "type": Schema.Literal("canceled").annotate({ "title": "Type", "default": "canceled" })
+}).annotate({ "title": "CanceledResult", "identifier": "CanceledResult" })
+export type ExpiredResult = { readonly "type": "expired" }
+export const ExpiredResult = Schema.Struct({
+  "type": Schema.Literal("expired").annotate({ "title": "Type", "default": "expired" })
+}).annotate({ "title": "ExpiredResult", "identifier": "ExpiredResult" })
+export type BetaMemoryTool_20250818_CreateCommand = {
+  readonly "command": "create"
+  readonly "path": string
+  readonly "file_text": string
+}
+export const BetaMemoryTool_20250818_CreateCommand = Schema.Struct({
+  "command": Schema.Literal("create").annotate({ "description": "Command type identifier", "default": "create" }),
+  "path": Schema.String.annotate({ "description": "Path where the file should be created" }),
+  "file_text": Schema.String.annotate({ "description": "Content to write to the file" })
+}).annotate({ "identifier": "BetaMemoryTool_20250818_CreateCommand" })
+export type BetaMemoryTool_20250818_DeleteCommand = { readonly "command": "delete"; readonly "path": string }
+export const BetaMemoryTool_20250818_DeleteCommand = Schema.Struct({
+  "command": Schema.Literal("delete").annotate({ "description": "Command type identifier", "default": "delete" }),
+  "path": Schema.String.annotate({ "description": "Path to the file or directory to delete" })
+}).annotate({ "identifier": "BetaMemoryTool_20250818_DeleteCommand" })
+export type BetaMemoryTool_20250818_InsertCommand = {
+  readonly "command": "insert"
+  readonly "path": string
+  readonly "insert_line": number
+  readonly "insert_text": string
+}
+export const BetaMemoryTool_20250818_InsertCommand = Schema.Struct({
+  "command": Schema.Literal("insert").annotate({ "description": "Command type identifier", "default": "insert" }),
+  "path": Schema.String.annotate({ "description": "Path to the file where text should be inserted" }),
+  "insert_line": Schema.Number.annotate({ "description": "Line number where text should be inserted" }).check(
+    Schema.isInt().annotate({ "expected": "an integer" })
+  ).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" })),
+  "insert_text": Schema.String.annotate({ "description": "Text to insert at the specified line" })
+}).annotate({ "identifier": "BetaMemoryTool_20250818_InsertCommand" })
+export type BetaMemoryTool_20250818_RenameCommand = {
+  readonly "command": "rename"
+  readonly "old_path": string
+  readonly "new_path": string
+}
+export const BetaMemoryTool_20250818_RenameCommand = Schema.Struct({
+  "command": Schema.Literal("rename").annotate({ "description": "Command type identifier", "default": "rename" }),
+  "old_path": Schema.String.annotate({ "description": "Current path of the file or directory" }),
+  "new_path": Schema.String.annotate({ "description": "New path for the file or directory" })
+}).annotate({ "identifier": "BetaMemoryTool_20250818_RenameCommand" })
+export type BetaMemoryTool_20250818_StrReplaceCommand = {
+  readonly "command": "str_replace"
+  readonly "path": string
+  readonly "old_str": string
+  readonly "new_str": string
+}
+export const BetaMemoryTool_20250818_StrReplaceCommand = Schema.Struct({
+  "command": Schema.Literal("str_replace").annotate({
+    "description": "Command type identifier",
+    "default": "str_replace"
+  }),
+  "path": Schema.String.annotate({ "description": "Path to the file where text should be replaced" }),
+  "old_str": Schema.String.annotate({ "description": "Text to search for and replace" }),
+  "new_str": Schema.String.annotate({ "description": "Text to replace with" })
+}).annotate({ "identifier": "BetaMemoryTool_20250818_StrReplaceCommand" })
+export type BetaMemoryTool_20250818_ViewCommand = {
+  readonly "command": "view"
+  readonly "path": string
+  readonly "view_range"?: ReadonlyArray<number>
+}
+export const BetaMemoryTool_20250818_ViewCommand = Schema.Struct({
+  "command": Schema.Literal("view").annotate({ "description": "Command type identifier", "default": "view" }),
+  "path": Schema.String.annotate({ "description": "Path to directory or file to view" }),
+  "view_range": Schema.optionalKey(
+    Schema.Array(Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" }))).annotate({
+      "description": "Optional line range for viewing specific lines"
+    }).check(Schema.isMinLength(2).annotate({ "expected": "a value with a length of at least 2" })).check(
+      Schema.isMaxLength(2).annotate({ "expected": "a value with a length of at most 2" })
+    )
+  )
+}).annotate({ "identifier": "BetaMemoryTool_20250818_ViewCommand" })
+export type BetaBody_create_skill_v1_skills_post = {
+  readonly "files": ReadonlyArray<string>
+  readonly "display_name"?: string | null
+}
+export const BetaBody_create_skill_v1_skills_post = Schema.Struct({
+  "files": Schema.Array(Schema.String.annotate({ "format": "binary" })).annotate({
+    "title": "Files",
+    "description":
+      "Files to upload for the skill.\n\nAll files must be in the same top-level directory and must include a SKILL.md file at the root of that directory."
+  }),
+  "display_name": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({
+      "title": "Display Name",
+      "description":
+        "Human-readable, single-line label for the Skill. Maximum 255 characters.\nAlways set: derived from the SKILL.md frontmatter `name` when omitted at\ncreation. Not unique."
+    })
+  )
+}).annotate({ "title": "Body_create_skill_v1_skills_post", "identifier": "BetaBody_create_skill_v1_skills_post" })
+export type BetaBody_create_skill_version_v1_skills__skill_id__versions_post = {
+  readonly "files": ReadonlyArray<string>
+}
+export const BetaBody_create_skill_version_v1_skills__skill_id__versions_post = Schema.Struct({
+  "files": Schema.Array(Schema.String.annotate({ "format": "binary" })).annotate({
+    "title": "Files",
+    "description":
+      "Files to upload for the skill.\n\nAll files must be in the same top-level directory and must include a SKILL.md file at the root of that directory."
+  })
+}).annotate({
+  "title": "Body_create_skill_version_v1_skills__skill_id__versions_post",
+  "identifier": "BetaBody_create_skill_version_v1_skills__skill_id__versions_post"
+})
+export type Body_create_skill_v1_skills_post = {
+  readonly "files": ReadonlyArray<string>
+  readonly "display_name"?: string | null
+}
+export const Body_create_skill_v1_skills_post = Schema.Struct({
+  "files": Schema.Array(Schema.String.annotate({ "format": "binary" })).annotate({
+    "title": "Files",
+    "description":
+      "Files to upload for the skill.\n\nAll files must be in the same top-level directory and must include a SKILL.md file at the root of that directory."
+  }),
+  "display_name": Schema.optionalKey(
+    Schema.Union([Schema.String, Schema.Null]).annotate({
+      "title": "Display Name",
+      "description":
+        "Human-readable, single-line label for the Skill. Maximum 255 characters.\nAlways set: derived from the SKILL.md frontmatter `name` when omitted at\ncreation. Not unique."
+    })
+  )
+}).annotate({ "title": "Body_create_skill_v1_skills_post", "identifier": "Body_create_skill_v1_skills_post" })
+export type Body_create_skill_version_v1_skills__skill_id__versions_post = { readonly "files": ReadonlyArray<string> }
+export const Body_create_skill_version_v1_skills__skill_id__versions_post = Schema.Struct({
+  "files": Schema.Array(Schema.String.annotate({ "format": "binary" })).annotate({
+    "title": "Files",
+    "description":
+      "Files to upload for the skill.\n\nAll files must be in the same top-level directory and must include a SKILL.md file at the root of that directory."
+  })
+}).annotate({
+  "title": "Body_create_skill_version_v1_skills__skill_id__versions_post",
+  "identifier": "Body_create_skill_version_v1_skills__skill_id__versions_post"
+})
+export type Betaapi__schemas__skills__Skill = {
+  readonly "created_at": string
+  readonly "display_title": string | null
+  readonly "id": string
+  readonly "latest_version": string | null
+  readonly "source": string
+  readonly "type": string
+  readonly "updated_at": string
+}
+export const Betaapi__schemas__skills__Skill = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill was created."
+  }),
+  "display_title": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Display Title",
+    "description":
+      "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "latest_version": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Latest Version",
+    "description":
+      "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created."
+  }),
+  "source": Schema.String.annotate({
+    "title": "Source",
+    "description":
+      "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic"
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+    "default": "skill"
+  }),
+  "updated_at": Schema.String.annotate({
+    "title": "Updated At",
+    "description": "ISO 8601 timestamp of when the skill was last updated."
+  })
+}).annotate({ "title": "Skill", "identifier": "Betaapi__schemas__skills__Skill" })
+export type BetaCreateSkillResponse = {
+  readonly "created_at": string
+  readonly "display_title": string | null
+  readonly "id": string
+  readonly "latest_version": string | null
+  readonly "source": string
+  readonly "type": string
+  readonly "updated_at": string
+}
+export const BetaCreateSkillResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill was created."
+  }),
+  "display_title": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Display Title",
+    "description":
+      "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "latest_version": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Latest Version",
+    "description":
+      "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created."
+  }),
+  "source": Schema.String.annotate({
+    "title": "Source",
+    "description":
+      "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic"
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+    "default": "skill"
+  }),
+  "updated_at": Schema.String.annotate({
+    "title": "Updated At",
+    "description": "ISO 8601 timestamp of when the skill was last updated."
+  })
+}).annotate({ "title": "CreateSkillResponse", "identifier": "BetaCreateSkillResponse" })
+export type BetaCreateSkillVersionResponse = {
+  readonly "created_at": string
+  readonly "description": string
+  readonly "directory": string
+  readonly "id": string
+  readonly "name": string
+  readonly "skill_id": string
+  readonly "type": string
+  readonly "version": string
+}
+export const BetaCreateSkillVersionResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill version was created."
+  }),
+  "description": Schema.String.annotate({
+    "title": "Description",
+    "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "directory": Schema.String.annotate({
+    "title": "Directory",
+    "description":
+      "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time."
+  }),
+  "name": Schema.String.annotate({
+    "title": "Name",
+    "description":
+      "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Identifier for the skill that this version belongs to."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+    "default": "skill_version"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  })
+}).annotate({ "title": "CreateSkillVersionResponse", "identifier": "BetaCreateSkillVersionResponse" })
+export type BetaDeleteSkillResponse = { readonly "id": string; readonly "type": string }
+export const BetaDeleteSkillResponse = Schema.Struct({
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Deleted object type.\n\nFor Skills, this is always `\"skill_deleted\"`.",
+    "default": "skill_deleted"
+  })
+}).annotate({ "title": "DeleteSkillResponse", "identifier": "BetaDeleteSkillResponse" })
+export type BetaDeleteSkillVersionResponse = { readonly "id": string; readonly "type": string }
+export const BetaDeleteSkillVersionResponse = Schema.Struct({
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Deleted object type.\n\nFor Skill Versions, this is always `\"skill_version_deleted\"`.",
+    "default": "skill_version_deleted"
+  })
+}).annotate({ "title": "DeleteSkillVersionResponse", "identifier": "BetaDeleteSkillVersionResponse" })
+export type BetaGetSkillResponse = {
+  readonly "created_at": string
+  readonly "display_title": string | null
+  readonly "id": string
+  readonly "latest_version": string | null
+  readonly "source": string
+  readonly "type": string
+  readonly "updated_at": string
+}
+export const BetaGetSkillResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill was created."
+  }),
+  "display_title": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Display Title",
+    "description":
+      "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "latest_version": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Latest Version",
+    "description":
+      "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created."
+  }),
+  "source": Schema.String.annotate({
+    "title": "Source",
+    "description":
+      "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic"
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+    "default": "skill"
+  }),
+  "updated_at": Schema.String.annotate({
+    "title": "Updated At",
+    "description": "ISO 8601 timestamp of when the skill was last updated."
+  })
+}).annotate({ "title": "GetSkillResponse", "identifier": "BetaGetSkillResponse" })
+export type BetaGetSkillVersionResponse = {
+  readonly "created_at": string
+  readonly "description": string
+  readonly "directory": string
+  readonly "id": string
+  readonly "name": string
+  readonly "skill_id": string
+  readonly "type": string
+  readonly "version": string
+}
+export const BetaGetSkillVersionResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill version was created."
+  }),
+  "description": Schema.String.annotate({
+    "title": "Description",
+    "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "directory": Schema.String.annotate({
+    "title": "Directory",
+    "description":
+      "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time."
+  }),
+  "name": Schema.String.annotate({
+    "title": "Name",
+    "description":
+      "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Identifier for the skill that this version belongs to."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+    "default": "skill_version"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  })
+}).annotate({ "title": "GetSkillVersionResponse", "identifier": "BetaGetSkillVersionResponse" })
+export type CreateSkillResponse = {
+  readonly "created_at": string
+  readonly "display_title": string | null
+  readonly "id": string
+  readonly "latest_version": string | null
+  readonly "source": string
+  readonly "type": string
+  readonly "updated_at": string
+}
+export const CreateSkillResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill was created."
+  }),
+  "display_title": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Display Title",
+    "description":
+      "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "latest_version": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Latest Version",
+    "description":
+      "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created."
+  }),
+  "source": Schema.String.annotate({
+    "title": "Source",
+    "description":
+      "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic"
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+    "default": "skill"
+  }),
+  "updated_at": Schema.String.annotate({
+    "title": "Updated At",
+    "description": "ISO 8601 timestamp of when the skill was last updated."
+  })
+}).annotate({ "title": "CreateSkillResponse", "identifier": "CreateSkillResponse" })
+export type CreateSkillVersionResponse = {
+  readonly "created_at": string
+  readonly "description": string
+  readonly "directory": string
+  readonly "id": string
+  readonly "name": string
+  readonly "skill_id": string
+  readonly "type": string
+  readonly "version": string
+}
+export const CreateSkillVersionResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill version was created."
+  }),
+  "description": Schema.String.annotate({
+    "title": "Description",
+    "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "directory": Schema.String.annotate({
+    "title": "Directory",
+    "description":
+      "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time."
+  }),
+  "name": Schema.String.annotate({
+    "title": "Name",
+    "description":
+      "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Identifier for the skill that this version belongs to."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+    "default": "skill_version"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  })
+}).annotate({ "title": "CreateSkillVersionResponse", "identifier": "CreateSkillVersionResponse" })
+export type DeleteSkillResponse = { readonly "id": string; readonly "type": string }
+export const DeleteSkillResponse = Schema.Struct({
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Deleted object type.\n\nFor Skills, this is always `\"skill_deleted\"`.",
+    "default": "skill_deleted"
+  })
+}).annotate({ "title": "DeleteSkillResponse", "identifier": "DeleteSkillResponse" })
+export type DeleteSkillVersionResponse = { readonly "id": string; readonly "type": string }
+export const DeleteSkillVersionResponse = Schema.Struct({
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Deleted object type.\n\nFor Skill Versions, this is always `\"skill_version_deleted\"`.",
+    "default": "skill_version_deleted"
+  })
+}).annotate({ "title": "DeleteSkillVersionResponse", "identifier": "DeleteSkillVersionResponse" })
+export type GetSkillResponse = {
+  readonly "created_at": string
+  readonly "display_title": string | null
+  readonly "id": string
+  readonly "latest_version": string | null
+  readonly "source": string
+  readonly "type": string
+  readonly "updated_at": string
+}
+export const GetSkillResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill was created."
+  }),
+  "display_title": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Display Title",
+    "description":
+      "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "latest_version": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Latest Version",
+    "description":
+      "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created."
+  }),
+  "source": Schema.String.annotate({
+    "title": "Source",
+    "description":
+      "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic"
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+    "default": "skill"
+  }),
+  "updated_at": Schema.String.annotate({
+    "title": "Updated At",
+    "description": "ISO 8601 timestamp of when the skill was last updated."
+  })
+}).annotate({ "title": "GetSkillResponse", "identifier": "GetSkillResponse" })
+export type GetSkillVersionResponse = {
+  readonly "created_at": string
+  readonly "description": string
+  readonly "directory": string
+  readonly "id": string
+  readonly "name": string
+  readonly "skill_id": string
+  readonly "type": string
+  readonly "version": string
+}
+export const GetSkillVersionResponse = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill version was created."
+  }),
+  "description": Schema.String.annotate({
+    "title": "Description",
+    "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "directory": Schema.String.annotate({
+    "title": "Directory",
+    "description":
+      "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time."
+  }),
+  "name": Schema.String.annotate({
+    "title": "Name",
+    "description":
+      "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Identifier for the skill that this version belongs to."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+    "default": "skill_version"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  })
+}).annotate({ "title": "GetSkillVersionResponse", "identifier": "GetSkillVersionResponse" })
 export type CompletionResponse = {
   readonly "completion": string
   readonly "id": string
@@ -8258,6 +8433,25 @@ export const ResponseTextBlock = Schema.Struct({
   ),
   "type": Schema.Literal("text").annotate({ "title": "Type", "default": "text" })
 }).annotate({ "title": "ResponseTextBlock", "identifier": "ResponseTextBlock" })
+export type CitationsDelta = {
+  readonly "citation":
+    | ResponseCharLocationCitation
+    | ResponsePageLocationCitation
+    | ResponseContentBlockLocationCitation
+    | ResponseWebSearchResultLocationCitation
+    | ResponseSearchResultLocationCitation
+  readonly "type": "citations_delta"
+}
+export const CitationsDelta = Schema.Struct({
+  "citation": Schema.Union([
+    ResponseCharLocationCitation,
+    ResponsePageLocationCitation,
+    ResponseContentBlockLocationCitation,
+    ResponseWebSearchResultLocationCitation,
+    ResponseSearchResultLocationCitation
+  ], { mode: "oneOf" }).annotate({ "title": "Citation" }),
+  "type": Schema.Literal("citations_delta").annotate({ "title": "Type", "default": "citations_delta" })
+}).annotate({ "title": "CitationsDelta", "identifier": "CitationsDelta" })
 export type ResponseDocumentBlock = {
   readonly "citations": ResponseCitationsConfig | null
   readonly "source": Base64PDFSource | PlainTextSource
@@ -8453,6 +8647,63 @@ export const Usage = Schema.Struct({
     })
   )
 }).annotate({ "title": "Usage", "identifier": "Usage" })
+export type MessageDeltaUsage = {
+  readonly "cache_creation_input_tokens": number | null
+  readonly "cache_read_input_tokens": number | null
+  readonly "input_tokens": number | null
+  readonly "output_tokens": number
+  readonly "output_tokens_details"?: OutputTokensDetails | null
+  readonly "server_tool_use"?: ServerToolUsage | null
+}
+export const MessageDeltaUsage = Schema.Struct({
+  "cache_creation_input_tokens": Schema.Union([
+    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(
+      Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })
+    ),
+    Schema.Null
+  ]).annotate({
+    "title": "Cache Creation Input Tokens",
+    "description": "The cumulative number of input tokens used to create the cache entry.",
+    "default": null
+  }),
+  "cache_read_input_tokens": Schema.Union([
+    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(
+      Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })
+    ),
+    Schema.Null
+  ]).annotate({
+    "title": "Cache Read Input Tokens",
+    "description": "The cumulative number of input tokens read from the cache.",
+    "default": null
+  }),
+  "input_tokens": Schema.Union([
+    Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(
+      Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })
+    ),
+    Schema.Null
+  ]).annotate({
+    "title": "Input Tokens",
+    "description": "The cumulative number of input tokens which were used.",
+    "default": null
+  }),
+  "output_tokens": Schema.Number.annotate({
+    "title": "Output Tokens",
+    "description": "The cumulative number of output tokens which were used."
+  }).check(Schema.isInt().annotate({ "expected": "an integer" })),
+  "output_tokens_details": Schema.optionalKey(
+    Schema.Union([OutputTokensDetails, Schema.Null]).annotate({
+      "description":
+        "Breakdown of output tokens by category.\n\n`output_tokens` remains the inclusive, authoritative total used for billing.\nThis object provides a read-only decomposition for observability — for example,\nhow many of the billed output tokens were spent on internal reasoning that may\nhave been summarized before being returned to you.",
+      "default": null
+    })
+  ),
+  "server_tool_use": Schema.optionalKey(
+    Schema.Union([ServerToolUsage, Schema.Null]).annotate({
+      "description": "The number of server tool requests.",
+      "default": null
+    })
+  )
+}).annotate({ "title": "MessageDeltaUsage", "identifier": "MessageDeltaUsage" })
 export type CacheMissReason =
   | CacheMissModelChanged
   | CacheMissSystemChanged
@@ -12116,6 +12367,27 @@ export const WebFetchUrlSources = Schema.Struct({
     "Which sources contribute to the set of URLs web fetch may fetch.\n\nEach key is a tagged variant: ``user_input`` is ``all`` or ``none``; the\ntwo tool filters are ``all``, ``none``, ``only`` (only the named tools'\nresults) or ``except`` (every result but the named tools'). A named tool\nmust be declared in this request's ``tools[]``.",
   "identifier": "WebFetchUrlSources"
 })
+export type ContentBlockDeltaEvent = {
+  readonly "delta":
+    | TextContentBlockDelta
+    | InputJsonContentBlockDelta
+    | CitationsDelta
+    | ThinkingContentBlockDelta
+    | SignatureContentBlockDelta
+  readonly "index": number
+  readonly "type": "content_block_delta"
+}
+export const ContentBlockDeltaEvent = Schema.Struct({
+  "delta": Schema.Union([
+    TextContentBlockDelta,
+    InputJsonContentBlockDelta,
+    CitationsDelta,
+    ThinkingContentBlockDelta,
+    SignatureContentBlockDelta
+  ], { mode: "oneOf" }).annotate({ "title": "Delta" }),
+  "index": Schema.Number.annotate({ "title": "Index" }).check(Schema.isInt().annotate({ "expected": "an integer" })),
+  "type": Schema.Literal("content_block_delta").annotate({ "title": "Type", "default": "content_block_delta" })
+}).annotate({ "title": "ContentBlockDeltaEvent", "identifier": "ContentBlockDeltaEvent" })
 export type ResponseWebFetchResultBlock = {
   readonly "content": ResponseDocumentBlock
   readonly "retrieved_at": string | null
@@ -12207,6 +12479,31 @@ export const Diagnostics = Schema.Struct({
     "Request-level diagnostics: why the prompt cache could not fully reuse\nthe prefix of the request named by `diagnostics.previous_message_id`.",
   "identifier": "Diagnostics"
 })
+export type MessageDelta = {
+  readonly "container": Container | null
+  readonly "stop_details": RefusalStopDetails | null
+  readonly "stop_reason": StopReason | null
+  readonly "stop_sequence": string | null
+}
+export const MessageDelta = Schema.Struct({
+  "container": Schema.Union([Container, Schema.Null]).annotate({
+    "description":
+      "Information about the container used in this request.\n\nThis will be non-null if a container tool (e.g. code execution) was used.",
+    "default": null
+  }),
+  "stop_details": Schema.Union([RefusalStopDetails, Schema.Null]).annotate({
+    "description":
+      "Structured information about why model output stopped.\n\nThis is `null` when the `stop_reason` has no additional detail to report.",
+    "default": null
+  }),
+  "stop_reason": Schema.Union([StopReason, Schema.Null]).annotate({ "title": "Stop Reason", "default": null }),
+  "stop_sequence": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Stop Sequence", "default": null })
+}).annotate({ "title": "MessageDelta", "identifier": "MessageDelta" })
+export type ErroredResult = { readonly "error": ErrorResponse; readonly "type": "errored" }
+export const ErroredResult = Schema.Struct({
+  "error": ErrorResponse,
+  "type": Schema.Literal("errored").annotate({ "title": "Type", "default": "errored" })
+}).annotate({ "title": "ErroredResult", "identifier": "ErroredResult" })
 export type ThinkingCapability = { readonly "supported": boolean; readonly "types": ThinkingTypes }
 export const ThinkingCapability = Schema.Struct({
   "supported": Schema.Boolean.annotate({
@@ -13001,6 +13298,11 @@ export const BetaMessageDelta = Schema.Struct({
   "stop_reason": Schema.Union([BetaStopReason, Schema.Null]).annotate({ "title": "Stop Reason", "default": null }),
   "stop_sequence": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Stop Sequence", "default": null })
 }).annotate({ "title": "MessageDelta", "identifier": "BetaMessageDelta" })
+export type BetaErroredResult = { readonly "error": BetaErrorResponse; readonly "type": "errored" }
+export const BetaErroredResult = Schema.Struct({
+  "error": BetaErrorResponse,
+  "type": Schema.Literal("errored").annotate({ "title": "Type", "default": "errored" })
+}).annotate({ "title": "ErroredResult", "identifier": "BetaErroredResult" })
 export type BetaThinkingCapability = { readonly "supported": boolean; readonly "types": BetaThinkingTypes }
 export const BetaThinkingCapability = Schema.Struct({
   "supported": Schema.Boolean.annotate({
@@ -13513,6 +13815,19 @@ export const ResponseWebFetchToolResultBlock = Schema.Struct({
   ),
   "type": Schema.Literal("web_fetch_tool_result").annotate({ "title": "Type", "default": "web_fetch_tool_result" })
 }).annotate({ "title": "ResponseWebFetchToolResultBlock", "identifier": "ResponseWebFetchToolResultBlock" })
+export type MessageDeltaEvent = {
+  readonly "delta": MessageDelta
+  readonly "type": "message_delta"
+  readonly "usage": MessageDeltaUsage
+}
+export const MessageDeltaEvent = Schema.Struct({
+  "delta": MessageDelta,
+  "type": Schema.Literal("message_delta").annotate({ "title": "Type", "default": "message_delta" }),
+  "usage": Schema.suspend((): Schema.Codec<MessageDeltaUsage> => MessageDeltaUsage).annotate({
+    "description":
+      "Billing and rate-limit usage.\n\nAnthropic's API bills and rate-limits by token counts, as tokens represent the underlying cost to our systems.\n\nUnder the hood, the API transforms requests into a format suitable for the model. The model's output then goes through a parsing stage before becoming an API response. As a result, the token counts in `usage` will not match one-to-one with the exact visible content of an API request or response.\n\nFor example, `output_tokens` will be non-zero, even for an empty string response from Claude.\n\nTotal input tokens in a request is the summation of `input_tokens`, `cache_creation_input_tokens`, and `cache_read_input_tokens`."
+  })
+}).annotate({ "title": "MessageDeltaEvent", "identifier": "MessageDeltaEvent" })
 export type ModelCapabilities = {
   readonly "batch": CapabilitySupport
   readonly "citations": CapabilitySupport
@@ -14399,6 +14714,41 @@ export const ContentBlock = Schema.Union([
   ResponseToolSearchToolResultBlock,
   ResponseContainerUploadBlock
 ], { mode: "oneOf" }).annotate({ "identifier": "ContentBlock" })
+export type ContentBlockStartEvent = {
+  readonly "content_block":
+    | ResponseTextBlock
+    | ResponseThinkingBlock
+    | ResponseRedactedThinkingBlock
+    | ResponseToolUseBlock
+    | ResponseServerToolUseBlock
+    | ResponseWebSearchToolResultBlock
+    | ResponseWebFetchToolResultBlock
+    | ResponseCodeExecutionToolResultBlock
+    | ResponseBashCodeExecutionToolResultBlock
+    | ResponseTextEditorCodeExecutionToolResultBlock
+    | ResponseToolSearchToolResultBlock
+    | ResponseContainerUploadBlock
+  readonly "index": number
+  readonly "type": "content_block_start"
+}
+export const ContentBlockStartEvent = Schema.Struct({
+  "content_block": Schema.Union([
+    ResponseTextBlock,
+    ResponseThinkingBlock,
+    ResponseRedactedThinkingBlock,
+    ResponseToolUseBlock,
+    ResponseServerToolUseBlock,
+    ResponseWebSearchToolResultBlock,
+    ResponseWebFetchToolResultBlock,
+    ResponseCodeExecutionToolResultBlock,
+    ResponseBashCodeExecutionToolResultBlock,
+    ResponseTextEditorCodeExecutionToolResultBlock,
+    ResponseToolSearchToolResultBlock,
+    ResponseContainerUploadBlock
+  ], { mode: "oneOf" }).annotate({ "title": "Content Block" }),
+  "index": Schema.Number.annotate({ "title": "Index" }).check(Schema.isInt().annotate({ "expected": "an integer" })),
+  "type": Schema.Literal("content_block_start").annotate({ "title": "Type", "default": "content_block_start" })
+}).annotate({ "title": "ContentBlockStartEvent", "identifier": "ContentBlockStartEvent" })
 export type ModelInfo = {
   readonly "capabilities": ModelCapabilities | null
   readonly "created_at": string
@@ -15007,6 +15357,16 @@ export const InputContentBlock = Schema.Union([
   RequestToolSearchToolResultBlock,
   RequestContainerUploadBlock
 ], { mode: "oneOf" }).annotate({ "identifier": "InputContentBlock" })
+export type MessageStartEvent = { readonly "message": Message; readonly "type": "message_start" }
+export const MessageStartEvent = Schema.Struct({
+  "message": Message,
+  "type": Schema.Literal("message_start").annotate({ "title": "Type", "default": "message_start" })
+}).annotate({ "title": "MessageStartEvent", "identifier": "MessageStartEvent" })
+export type SucceededResult = { readonly "message": Message; readonly "type": "succeeded" }
+export const SucceededResult = Schema.Struct({
+  "message": Message,
+  "type": Schema.Literal("succeeded").annotate({ "title": "Type", "default": "succeeded" })
+}).annotate({ "title": "SucceededResult", "identifier": "SucceededResult" })
 export type BetaRequestToolAdditionBlock = {
   readonly "cache_control"?: BetaCacheControlEphemeral | null
   readonly "tool":
@@ -16077,6 +16437,11 @@ export const BetaMessageStartEvent = Schema.Struct({
   "message": BetaMessage,
   "type": Schema.Literal("message_start").annotate({ "title": "Type", "default": "message_start" })
 }).annotate({ "title": "MessageStartEvent", "identifier": "BetaMessageStartEvent" })
+export type BetaSucceededResult = { readonly "message": BetaMessage; readonly "type": "succeeded" }
+export const BetaSucceededResult = Schema.Struct({
+  "message": BetaMessage,
+  "type": Schema.Literal("succeeded").annotate({ "title": "Type", "default": "succeeded" })
+}).annotate({ "title": "SucceededResult", "identifier": "BetaSucceededResult" })
 export type BetaMessageBatchIndividualRequestParams = {
   readonly "custom_id": string
   readonly "params": BetaCreateMessageParams
@@ -16098,21 +16463,6 @@ export const BetaMessageBatchIndividualRequestParams = Schema.Struct({
       "Messages API creation parameters for the individual request.\n\nSee the [Messages API reference](https://platform.claude.com/docs/en/api/messages) for full documentation on available parameters."
   })
 }).annotate({ "title": "MessageBatchIndividualRequestParams", "identifier": "BetaMessageBatchIndividualRequestParams" })
-export type BetaMessageStreamEvent =
-  | BetaMessageStartEvent
-  | BetaMessageDeltaEvent
-  | BetaMessageStopEvent
-  | BetaContentBlockStartEvent
-  | BetaContentBlockDeltaEvent
-  | BetaContentBlockStopEvent
-export const BetaMessageStreamEvent = Schema.Union([
-  BetaMessageStartEvent,
-  BetaMessageDeltaEvent,
-  BetaMessageStopEvent,
-  BetaContentBlockStartEvent,
-  BetaContentBlockDeltaEvent,
-  BetaContentBlockStopEvent
-], { mode: "oneOf" }).annotate({ "title": "MessageStreamEvent", "identifier": "BetaMessageStreamEvent" })
 export type BetaCreateMessageBatchParams = {
   readonly "requests": ReadonlyArray<BetaMessageBatchIndividualRequestParams>
 }
@@ -16151,186 +16501,11 @@ export type MessagesPostRequestJson = CreateMessageParams
 export const MessagesPostRequestJson = CreateMessageParams
 export type MessagesPost200 = Message
 export const MessagesPost200 = Message
-export type MessagesPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | AvailableToolsLimitExceededErrorDetails
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | ClaudeCodeVersionTooOldErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | CompactionBlockAmbiguousErrorDetails
-      | CompactionBlockMisplacedErrorDetails
-      | CompactionContentMismatchErrorDetails
-      | CompactionIncompleteTurnErrorDetails
-      | CompactionNothingToSummarizeErrorDetails
-      | CompactionSignatureInvalidErrorDetails
-      | CompactionTooManyToolReferencesErrorDetails
-      | CompactionToolChangesMismatchErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | RequestBodyEncodingInvalidErrorDetails
-      | RequestBodyEncodingUnsupportedErrorDetails
-      | ToolNameConflictErrorDetails
-      | ToolReferenceUnresolvedErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        AvailableToolsLimitExceededErrorDetails,
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        ClaudeCodeVersionTooOldErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        CompactionBlockAmbiguousErrorDetails,
-        CompactionBlockMisplacedErrorDetails,
-        CompactionContentMismatchErrorDetails,
-        CompactionIncompleteTurnErrorDetails,
-        CompactionNothingToSummarizeErrorDetails,
-        CompactionSignatureInvalidErrorDetails,
-        CompactionTooManyToolReferencesErrorDetails,
-        CompactionToolChangesMismatchErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        RequestBodyEncodingInvalidErrorDetails,
-        RequestBodyEncodingUnsupportedErrorDetails,
-        ToolNameConflictErrorDetails,
-        ToolReferenceUnresolvedErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesPost401 = ErrorResponse
-export const MessagesPost401 = ErrorResponse
-export type MessagesPost403 = ErrorResponse
-export const MessagesPost403 = ErrorResponse
-export type MessagesPost404 = ErrorResponse
-export const MessagesPost404 = ErrorResponse
-export type MessagesPost408 = ErrorResponse
-export const MessagesPost408 = ErrorResponse
-export type MessagesPost409 = {
-  readonly "error": {
-    readonly "details"?: SkillReadBlockedUndecryptableErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesPost409 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([SkillReadBlockedUndecryptableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesPost412 = ErrorResponse
-export const MessagesPost412 = ErrorResponse
-export type MessagesPost413 = {
-  readonly "error": {
-    readonly "details"?: RequestBodyTooLargeAfterDecodingErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesPost413 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([RequestBodyTooLargeAfterDecodingErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesPost429 = {
-  readonly "error": {
-    readonly "details"?: EnforcedSpendLimitReachedErrorDetails | null
-    readonly "message": string
-    readonly "type": "rate_limit_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesPost429 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([EnforcedSpendLimitReachedErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Rate limited" }),
-    "type": Schema.Literal("rate_limit_error").annotate({ "title": "Type", "default": "rate_limit_error" })
-  }).annotate({ "title": "RateLimitError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesPost431 = ErrorResponse
-export const MessagesPost431 = ErrorResponse
-export type MessagesPost499 = ErrorResponse
-export const MessagesPost499 = ErrorResponse
-export type MessagesPost500 = ErrorResponse
-export const MessagesPost500 = ErrorResponse
-export type MessagesPost501 = ErrorResponse
-export const MessagesPost501 = ErrorResponse
-export type MessagesPost503 = ErrorResponse
-export const MessagesPost503 = ErrorResponse
-export type MessagesPost504 = ErrorResponse
-export const MessagesPost504 = ErrorResponse
-export type MessagesPost529 = {
-  readonly "error": {
-    readonly "details"?: CompactionUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesPost529 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([CompactionUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
+export type MessagesPost4XX = ErrorResponse
+export const MessagesPost4XX = ErrorResponse
 export type CompletePostParams = {
   readonly "anthropic-version"?: string
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-workspace-id"?: string
 }
 export const CompletePostParams = Schema.Struct({
@@ -16342,7 +16517,7 @@ export const CompletePostParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -16353,67 +16528,15 @@ export type CompletePostRequestJson = CompletionRequest
 export const CompletePostRequestJson = CompletionRequest
 export type CompletePost200 = CompletionResponse
 export const CompletePost200 = CompletionResponse
-export type CompletePost400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const CompletePost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type CompletePost401 = ErrorResponse
-export const CompletePost401 = ErrorResponse
-export type CompletePost403 = ErrorResponse
-export const CompletePost403 = ErrorResponse
-export type CompletePost404 = ErrorResponse
-export const CompletePost404 = ErrorResponse
-export type CompletePost408 = ErrorResponse
-export const CompletePost408 = ErrorResponse
-export type CompletePost409 = ErrorResponse
-export const CompletePost409 = ErrorResponse
-export type CompletePost412 = ErrorResponse
-export const CompletePost412 = ErrorResponse
-export type CompletePost413 = ErrorResponse
-export const CompletePost413 = ErrorResponse
-export type CompletePost429 = ErrorResponse
-export const CompletePost429 = ErrorResponse
-export type CompletePost431 = ErrorResponse
-export const CompletePost431 = ErrorResponse
-export type CompletePost499 = ErrorResponse
-export const CompletePost499 = ErrorResponse
-export type CompletePost500 = ErrorResponse
-export const CompletePost500 = ErrorResponse
-export type CompletePost501 = ErrorResponse
-export const CompletePost501 = ErrorResponse
-export type CompletePost503 = ErrorResponse
-export const CompletePost503 = ErrorResponse
-export type CompletePost504 = ErrorResponse
-export const CompletePost504 = ErrorResponse
-export type CompletePost529 = ErrorResponse
-export const CompletePost529 = ErrorResponse
+export type CompletePost4XX = ErrorResponse
+export const CompletePost4XX = ErrorResponse
 export type ModelsListParams = {
   readonly "before_id"?: string
   readonly "after_id"?: string
   readonly "limit"?: number
   readonly "lifecycle[]"?: ReadonlyArray<"active" | "deprecated" | "retired">
   readonly "anthropic-version"?: string
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
@@ -16456,7 +16579,7 @@ export const ModelsListParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -16470,63 +16593,11 @@ export const ModelsListParams = Schema.Struct({
 })
 export type ModelsList200 = ListResponse_ModelInfo_
 export const ModelsList200 = ListResponse_ModelInfo_
-export type ModelsList400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const ModelsList400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type ModelsList401 = ErrorResponse
-export const ModelsList401 = ErrorResponse
-export type ModelsList403 = ErrorResponse
-export const ModelsList403 = ErrorResponse
-export type ModelsList404 = ErrorResponse
-export const ModelsList404 = ErrorResponse
-export type ModelsList408 = ErrorResponse
-export const ModelsList408 = ErrorResponse
-export type ModelsList409 = ErrorResponse
-export const ModelsList409 = ErrorResponse
-export type ModelsList412 = ErrorResponse
-export const ModelsList412 = ErrorResponse
-export type ModelsList413 = ErrorResponse
-export const ModelsList413 = ErrorResponse
-export type ModelsList429 = ErrorResponse
-export const ModelsList429 = ErrorResponse
-export type ModelsList431 = ErrorResponse
-export const ModelsList431 = ErrorResponse
-export type ModelsList499 = ErrorResponse
-export const ModelsList499 = ErrorResponse
-export type ModelsList500 = ErrorResponse
-export const ModelsList500 = ErrorResponse
-export type ModelsList501 = ErrorResponse
-export const ModelsList501 = ErrorResponse
-export type ModelsList503 = ErrorResponse
-export const ModelsList503 = ErrorResponse
-export type ModelsList504 = ErrorResponse
-export const ModelsList504 = ErrorResponse
-export type ModelsList529 = ErrorResponse
-export const ModelsList529 = ErrorResponse
+export type ModelsList4XX = ErrorResponse
+export const ModelsList4XX = ErrorResponse
 export type ModelsGetParams = {
   readonly "anthropic-version"?: string
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
@@ -16539,7 +16610,7 @@ export const ModelsGetParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -16553,60 +16624,8 @@ export const ModelsGetParams = Schema.Struct({
 })
 export type ModelsGet200 = ModelInfo
 export const ModelsGet200 = ModelInfo
-export type ModelsGet400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const ModelsGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type ModelsGet401 = ErrorResponse
-export const ModelsGet401 = ErrorResponse
-export type ModelsGet403 = ErrorResponse
-export const ModelsGet403 = ErrorResponse
-export type ModelsGet404 = ErrorResponse
-export const ModelsGet404 = ErrorResponse
-export type ModelsGet408 = ErrorResponse
-export const ModelsGet408 = ErrorResponse
-export type ModelsGet409 = ErrorResponse
-export const ModelsGet409 = ErrorResponse
-export type ModelsGet412 = ErrorResponse
-export const ModelsGet412 = ErrorResponse
-export type ModelsGet413 = ErrorResponse
-export const ModelsGet413 = ErrorResponse
-export type ModelsGet429 = ErrorResponse
-export const ModelsGet429 = ErrorResponse
-export type ModelsGet431 = ErrorResponse
-export const ModelsGet431 = ErrorResponse
-export type ModelsGet499 = ErrorResponse
-export const ModelsGet499 = ErrorResponse
-export type ModelsGet500 = ErrorResponse
-export const ModelsGet500 = ErrorResponse
-export type ModelsGet501 = ErrorResponse
-export const ModelsGet501 = ErrorResponse
-export type ModelsGet503 = ErrorResponse
-export const ModelsGet503 = ErrorResponse
-export type ModelsGet504 = ErrorResponse
-export const ModelsGet504 = ErrorResponse
-export type ModelsGet529 = ErrorResponse
-export const ModelsGet529 = ErrorResponse
+export type ModelsGet4XX = ErrorResponse
+export const ModelsGet4XX = ErrorResponse
 export type MessageBatchesListParams = {
   readonly "before_id"?: string
   readonly "after_id"?: string
@@ -16655,60 +16674,8 @@ export const MessageBatchesListParams = Schema.Struct({
 })
 export type MessageBatchesList200 = ListResponse_MessageBatch_
 export const MessageBatchesList200 = ListResponse_MessageBatch_
-export type MessageBatchesList400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesList400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesList401 = ErrorResponse
-export const MessageBatchesList401 = ErrorResponse
-export type MessageBatchesList403 = ErrorResponse
-export const MessageBatchesList403 = ErrorResponse
-export type MessageBatchesList404 = ErrorResponse
-export const MessageBatchesList404 = ErrorResponse
-export type MessageBatchesList408 = ErrorResponse
-export const MessageBatchesList408 = ErrorResponse
-export type MessageBatchesList409 = ErrorResponse
-export const MessageBatchesList409 = ErrorResponse
-export type MessageBatchesList412 = ErrorResponse
-export const MessageBatchesList412 = ErrorResponse
-export type MessageBatchesList413 = ErrorResponse
-export const MessageBatchesList413 = ErrorResponse
-export type MessageBatchesList429 = ErrorResponse
-export const MessageBatchesList429 = ErrorResponse
-export type MessageBatchesList431 = ErrorResponse
-export const MessageBatchesList431 = ErrorResponse
-export type MessageBatchesList499 = ErrorResponse
-export const MessageBatchesList499 = ErrorResponse
-export type MessageBatchesList500 = ErrorResponse
-export const MessageBatchesList500 = ErrorResponse
-export type MessageBatchesList501 = ErrorResponse
-export const MessageBatchesList501 = ErrorResponse
-export type MessageBatchesList503 = ErrorResponse
-export const MessageBatchesList503 = ErrorResponse
-export type MessageBatchesList504 = ErrorResponse
-export const MessageBatchesList504 = ErrorResponse
-export type MessageBatchesList529 = ErrorResponse
-export const MessageBatchesList529 = ErrorResponse
+export type MessageBatchesList4XX = ErrorResponse
+export const MessageBatchesList4XX = ErrorResponse
 export type MessageBatchesPostParams = {
   readonly "anthropic-version"?: string
   readonly "anthropic-user-profile-id"?: string
@@ -16733,90 +16700,8 @@ export type MessageBatchesPostRequestJson = CreateMessageBatchParams
 export const MessageBatchesPostRequestJson = CreateMessageBatchParams
 export type MessageBatchesPost200 = MessageBatch
 export const MessageBatchesPost200 = MessageBatch
-export type MessageBatchesPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesPost401 = ErrorResponse
-export const MessageBatchesPost401 = ErrorResponse
-export type MessageBatchesPost403 = ErrorResponse
-export const MessageBatchesPost403 = ErrorResponse
-export type MessageBatchesPost404 = ErrorResponse
-export const MessageBatchesPost404 = ErrorResponse
-export type MessageBatchesPost408 = ErrorResponse
-export const MessageBatchesPost408 = ErrorResponse
-export type MessageBatchesPost409 = ErrorResponse
-export const MessageBatchesPost409 = ErrorResponse
-export type MessageBatchesPost412 = ErrorResponse
-export const MessageBatchesPost412 = ErrorResponse
-export type MessageBatchesPost413 = ErrorResponse
-export const MessageBatchesPost413 = ErrorResponse
-export type MessageBatchesPost429 = {
-  readonly "error": {
-    readonly "details"?: EnforcedSpendLimitReachedErrorDetails | null
-    readonly "message": string
-    readonly "type": "rate_limit_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesPost429 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([EnforcedSpendLimitReachedErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Rate limited" }),
-    "type": Schema.Literal("rate_limit_error").annotate({ "title": "Type", "default": "rate_limit_error" })
-  }).annotate({ "title": "RateLimitError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesPost431 = ErrorResponse
-export const MessageBatchesPost431 = ErrorResponse
-export type MessageBatchesPost499 = ErrorResponse
-export const MessageBatchesPost499 = ErrorResponse
-export type MessageBatchesPost500 = ErrorResponse
-export const MessageBatchesPost500 = ErrorResponse
-export type MessageBatchesPost501 = ErrorResponse
-export const MessageBatchesPost501 = ErrorResponse
-export type MessageBatchesPost503 = ErrorResponse
-export const MessageBatchesPost503 = ErrorResponse
-export type MessageBatchesPost504 = ErrorResponse
-export const MessageBatchesPost504 = ErrorResponse
-export type MessageBatchesPost529 = ErrorResponse
-export const MessageBatchesPost529 = ErrorResponse
+export type MessageBatchesPost4XX = ErrorResponse
+export const MessageBatchesPost4XX = ErrorResponse
 export type MessageBatchesRetrieveParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -16839,60 +16724,8 @@ export const MessageBatchesRetrieveParams = Schema.Struct({
 })
 export type MessageBatchesRetrieve200 = MessageBatch
 export const MessageBatchesRetrieve200 = MessageBatch
-export type MessageBatchesRetrieve400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesRetrieve400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesRetrieve401 = ErrorResponse
-export const MessageBatchesRetrieve401 = ErrorResponse
-export type MessageBatchesRetrieve403 = ErrorResponse
-export const MessageBatchesRetrieve403 = ErrorResponse
-export type MessageBatchesRetrieve404 = ErrorResponse
-export const MessageBatchesRetrieve404 = ErrorResponse
-export type MessageBatchesRetrieve408 = ErrorResponse
-export const MessageBatchesRetrieve408 = ErrorResponse
-export type MessageBatchesRetrieve409 = ErrorResponse
-export const MessageBatchesRetrieve409 = ErrorResponse
-export type MessageBatchesRetrieve412 = ErrorResponse
-export const MessageBatchesRetrieve412 = ErrorResponse
-export type MessageBatchesRetrieve413 = ErrorResponse
-export const MessageBatchesRetrieve413 = ErrorResponse
-export type MessageBatchesRetrieve429 = ErrorResponse
-export const MessageBatchesRetrieve429 = ErrorResponse
-export type MessageBatchesRetrieve431 = ErrorResponse
-export const MessageBatchesRetrieve431 = ErrorResponse
-export type MessageBatchesRetrieve499 = ErrorResponse
-export const MessageBatchesRetrieve499 = ErrorResponse
-export type MessageBatchesRetrieve500 = ErrorResponse
-export const MessageBatchesRetrieve500 = ErrorResponse
-export type MessageBatchesRetrieve501 = ErrorResponse
-export const MessageBatchesRetrieve501 = ErrorResponse
-export type MessageBatchesRetrieve503 = ErrorResponse
-export const MessageBatchesRetrieve503 = ErrorResponse
-export type MessageBatchesRetrieve504 = ErrorResponse
-export const MessageBatchesRetrieve504 = ErrorResponse
-export type MessageBatchesRetrieve529 = ErrorResponse
-export const MessageBatchesRetrieve529 = ErrorResponse
+export type MessageBatchesRetrieve4XX = ErrorResponse
+export const MessageBatchesRetrieve4XX = ErrorResponse
 export type MessageBatchesDeleteParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -16915,60 +16748,8 @@ export const MessageBatchesDeleteParams = Schema.Struct({
 })
 export type MessageBatchesDelete200 = DeleteMessageBatchResponse
 export const MessageBatchesDelete200 = DeleteMessageBatchResponse
-export type MessageBatchesDelete400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesDelete401 = ErrorResponse
-export const MessageBatchesDelete401 = ErrorResponse
-export type MessageBatchesDelete403 = ErrorResponse
-export const MessageBatchesDelete403 = ErrorResponse
-export type MessageBatchesDelete404 = ErrorResponse
-export const MessageBatchesDelete404 = ErrorResponse
-export type MessageBatchesDelete408 = ErrorResponse
-export const MessageBatchesDelete408 = ErrorResponse
-export type MessageBatchesDelete409 = ErrorResponse
-export const MessageBatchesDelete409 = ErrorResponse
-export type MessageBatchesDelete412 = ErrorResponse
-export const MessageBatchesDelete412 = ErrorResponse
-export type MessageBatchesDelete413 = ErrorResponse
-export const MessageBatchesDelete413 = ErrorResponse
-export type MessageBatchesDelete429 = ErrorResponse
-export const MessageBatchesDelete429 = ErrorResponse
-export type MessageBatchesDelete431 = ErrorResponse
-export const MessageBatchesDelete431 = ErrorResponse
-export type MessageBatchesDelete499 = ErrorResponse
-export const MessageBatchesDelete499 = ErrorResponse
-export type MessageBatchesDelete500 = ErrorResponse
-export const MessageBatchesDelete500 = ErrorResponse
-export type MessageBatchesDelete501 = ErrorResponse
-export const MessageBatchesDelete501 = ErrorResponse
-export type MessageBatchesDelete503 = ErrorResponse
-export const MessageBatchesDelete503 = ErrorResponse
-export type MessageBatchesDelete504 = ErrorResponse
-export const MessageBatchesDelete504 = ErrorResponse
-export type MessageBatchesDelete529 = ErrorResponse
-export const MessageBatchesDelete529 = ErrorResponse
+export type MessageBatchesDelete4XX = ErrorResponse
+export const MessageBatchesDelete4XX = ErrorResponse
 export type MessageBatchesCancelParams = {
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
@@ -16985,60 +16766,8 @@ export const MessageBatchesCancelParams = Schema.Struct({
 })
 export type MessageBatchesCancel200 = MessageBatch
 export const MessageBatchesCancel200 = MessageBatch
-export type MessageBatchesCancel400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesCancel400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesCancel401 = ErrorResponse
-export const MessageBatchesCancel401 = ErrorResponse
-export type MessageBatchesCancel403 = ErrorResponse
-export const MessageBatchesCancel403 = ErrorResponse
-export type MessageBatchesCancel404 = ErrorResponse
-export const MessageBatchesCancel404 = ErrorResponse
-export type MessageBatchesCancel408 = ErrorResponse
-export const MessageBatchesCancel408 = ErrorResponse
-export type MessageBatchesCancel409 = ErrorResponse
-export const MessageBatchesCancel409 = ErrorResponse
-export type MessageBatchesCancel412 = ErrorResponse
-export const MessageBatchesCancel412 = ErrorResponse
-export type MessageBatchesCancel413 = ErrorResponse
-export const MessageBatchesCancel413 = ErrorResponse
-export type MessageBatchesCancel429 = ErrorResponse
-export const MessageBatchesCancel429 = ErrorResponse
-export type MessageBatchesCancel431 = ErrorResponse
-export const MessageBatchesCancel431 = ErrorResponse
-export type MessageBatchesCancel499 = ErrorResponse
-export const MessageBatchesCancel499 = ErrorResponse
-export type MessageBatchesCancel500 = ErrorResponse
-export const MessageBatchesCancel500 = ErrorResponse
-export type MessageBatchesCancel501 = ErrorResponse
-export const MessageBatchesCancel501 = ErrorResponse
-export type MessageBatchesCancel503 = ErrorResponse
-export const MessageBatchesCancel503 = ErrorResponse
-export type MessageBatchesCancel504 = ErrorResponse
-export const MessageBatchesCancel504 = ErrorResponse
-export type MessageBatchesCancel529 = ErrorResponse
-export const MessageBatchesCancel529 = ErrorResponse
+export type MessageBatchesCancel4XX = ErrorResponse
+export const MessageBatchesCancel4XX = ErrorResponse
 export type MessageBatchesResultsParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -17059,69 +16788,8 @@ export const MessageBatchesResultsParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type MessageBatchesResults400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessageBatchesResults400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessageBatchesResults401 = ErrorResponse
-export const MessageBatchesResults401 = ErrorResponse
-export type MessageBatchesResults403 = ErrorResponse
-export const MessageBatchesResults403 = ErrorResponse
-export type MessageBatchesResults404 = ErrorResponse
-export const MessageBatchesResults404 = ErrorResponse
-export type MessageBatchesResults408 = ErrorResponse
-export const MessageBatchesResults408 = ErrorResponse
-export type MessageBatchesResults409 = ErrorResponse
-export const MessageBatchesResults409 = ErrorResponse
-export type MessageBatchesResults412 = ErrorResponse
-export const MessageBatchesResults412 = ErrorResponse
-export type MessageBatchesResults413 = ErrorResponse
-export const MessageBatchesResults413 = ErrorResponse
-export type MessageBatchesResults429 = ErrorResponse
-export const MessageBatchesResults429 = ErrorResponse
-export type MessageBatchesResults431 = ErrorResponse
-export const MessageBatchesResults431 = ErrorResponse
-export type MessageBatchesResults499 = ErrorResponse
-export const MessageBatchesResults499 = ErrorResponse
-export type MessageBatchesResults500 = ErrorResponse
-export const MessageBatchesResults500 = ErrorResponse
-export type MessageBatchesResults501 = ErrorResponse
-export const MessageBatchesResults501 = ErrorResponse
-export type MessageBatchesResults503 = ErrorResponse
-export const MessageBatchesResults503 = ErrorResponse
-export type MessageBatchesResults504 = ErrorResponse
-export const MessageBatchesResults504 = ErrorResponse
-export type MessageBatchesResults529 = ErrorResponse
-export const MessageBatchesResults529 = ErrorResponse
+export type MessageBatchesResults4XX = ErrorResponse
+export const MessageBatchesResults4XX = ErrorResponse
 export type MessagesCountTokensPostParams = {
   readonly "anthropic-version"?: string
   readonly "anthropic-user-profile-id"?: string
@@ -17148,152 +16816,8 @@ export type MessagesCountTokensPostRequestJson = CountMessageTokensParams
 export const MessagesCountTokensPostRequestJson = CountMessageTokensParams
 export type MessagesCountTokensPost200 = CountMessageTokensResponse
 export const MessagesCountTokensPost200 = CountMessageTokensResponse
-export type MessagesCountTokensPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | AvailableToolsLimitExceededErrorDetails
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CompactionBlockAmbiguousErrorDetails
-      | CompactionBlockMisplacedErrorDetails
-      | CompactionContentMismatchErrorDetails
-      | CompactionNothingToSummarizeErrorDetails
-      | CompactionSignatureInvalidErrorDetails
-      | CompactionToolChangesMismatchErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | RequestBodyEncodingInvalidErrorDetails
-      | RequestBodyEncodingUnsupportedErrorDetails
-      | ToolNameConflictErrorDetails
-      | ToolReferenceUnresolvedErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesCountTokensPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        AvailableToolsLimitExceededErrorDetails,
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CompactionBlockAmbiguousErrorDetails,
-        CompactionBlockMisplacedErrorDetails,
-        CompactionContentMismatchErrorDetails,
-        CompactionNothingToSummarizeErrorDetails,
-        CompactionSignatureInvalidErrorDetails,
-        CompactionToolChangesMismatchErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        RequestBodyEncodingInvalidErrorDetails,
-        RequestBodyEncodingUnsupportedErrorDetails,
-        ToolNameConflictErrorDetails,
-        ToolReferenceUnresolvedErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesCountTokensPost401 = ErrorResponse
-export const MessagesCountTokensPost401 = ErrorResponse
-export type MessagesCountTokensPost403 = ErrorResponse
-export const MessagesCountTokensPost403 = ErrorResponse
-export type MessagesCountTokensPost404 = ErrorResponse
-export const MessagesCountTokensPost404 = ErrorResponse
-export type MessagesCountTokensPost408 = ErrorResponse
-export const MessagesCountTokensPost408 = ErrorResponse
-export type MessagesCountTokensPost409 = ErrorResponse
-export const MessagesCountTokensPost409 = ErrorResponse
-export type MessagesCountTokensPost412 = ErrorResponse
-export const MessagesCountTokensPost412 = ErrorResponse
-export type MessagesCountTokensPost413 = {
-  readonly "error": {
-    readonly "details"?: RequestBodyTooLargeAfterDecodingErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesCountTokensPost413 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([RequestBodyTooLargeAfterDecodingErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesCountTokensPost429 = {
-  readonly "error": {
-    readonly "details"?: EnforcedSpendLimitReachedErrorDetails | null
-    readonly "message": string
-    readonly "type": "rate_limit_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesCountTokensPost429 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([EnforcedSpendLimitReachedErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Rate limited" }),
-    "type": Schema.Literal("rate_limit_error").annotate({ "title": "Type", "default": "rate_limit_error" })
-  }).annotate({ "title": "RateLimitError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type MessagesCountTokensPost431 = ErrorResponse
-export const MessagesCountTokensPost431 = ErrorResponse
-export type MessagesCountTokensPost499 = ErrorResponse
-export const MessagesCountTokensPost499 = ErrorResponse
-export type MessagesCountTokensPost500 = ErrorResponse
-export const MessagesCountTokensPost500 = ErrorResponse
-export type MessagesCountTokensPost501 = ErrorResponse
-export const MessagesCountTokensPost501 = ErrorResponse
-export type MessagesCountTokensPost503 = ErrorResponse
-export const MessagesCountTokensPost503 = ErrorResponse
-export type MessagesCountTokensPost504 = ErrorResponse
-export const MessagesCountTokensPost504 = ErrorResponse
-export type MessagesCountTokensPost529 = {
-  readonly "error": {
-    readonly "details"?: CompactionUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const MessagesCountTokensPost529 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([CompactionUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
+export type MessagesCountTokensPost4XX = ErrorResponse
+export const MessagesCountTokensPost4XX = ErrorResponse
 export type ListFilesV1FilesGetParams = {
   readonly "page"?: string | null
   readonly "ids[]"?: ReadonlyArray<string> | null
@@ -17341,71 +16865,8 @@ export const ListFilesV1FilesGetParams = Schema.Struct({
 })
 export type ListFilesV1FilesGet200 = FileListResponse
 export const ListFilesV1FilesGet200 = FileListResponse
-export type ListFilesV1FilesGet400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const ListFilesV1FilesGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type ListFilesV1FilesGet401 = ErrorResponse
-export const ListFilesV1FilesGet401 = ErrorResponse
-export type ListFilesV1FilesGet403 = ErrorResponse
-export const ListFilesV1FilesGet403 = ErrorResponse
-export type ListFilesV1FilesGet404 = ErrorResponse
-export const ListFilesV1FilesGet404 = ErrorResponse
-export type ListFilesV1FilesGet408 = ErrorResponse
-export const ListFilesV1FilesGet408 = ErrorResponse
-export type ListFilesV1FilesGet409 = ErrorResponse
-export const ListFilesV1FilesGet409 = ErrorResponse
-export type ListFilesV1FilesGet412 = ErrorResponse
-export const ListFilesV1FilesGet412 = ErrorResponse
-export type ListFilesV1FilesGet413 = ErrorResponse
-export const ListFilesV1FilesGet413 = ErrorResponse
-export type ListFilesV1FilesGet429 = ErrorResponse
-export const ListFilesV1FilesGet429 = ErrorResponse
-export type ListFilesV1FilesGet431 = ErrorResponse
-export const ListFilesV1FilesGet431 = ErrorResponse
-export type ListFilesV1FilesGet499 = ErrorResponse
-export const ListFilesV1FilesGet499 = ErrorResponse
-export type ListFilesV1FilesGet500 = ErrorResponse
-export const ListFilesV1FilesGet500 = ErrorResponse
-export type ListFilesV1FilesGet501 = ErrorResponse
-export const ListFilesV1FilesGet501 = ErrorResponse
-export type ListFilesV1FilesGet503 = ErrorResponse
-export const ListFilesV1FilesGet503 = ErrorResponse
-export type ListFilesV1FilesGet504 = ErrorResponse
-export const ListFilesV1FilesGet504 = ErrorResponse
-export type ListFilesV1FilesGet529 = ErrorResponse
-export const ListFilesV1FilesGet529 = ErrorResponse
+export type ListFilesV1FilesGet4XX = ErrorResponse
+export const ListFilesV1FilesGet4XX = ErrorResponse
 export type UploadFileV1FilesPostParams = {
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
@@ -17437,73 +16898,8 @@ export const UploadFileV1FilesPostRequestFormData = Schema.Struct({
 })
 export type UploadFileV1FilesPost200 = FileMetadataSchema
 export const UploadFileV1FilesPost200 = FileMetadataSchema
-export type UploadFileV1FilesPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | StorageQuotaExceededErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const UploadFileV1FilesPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        StorageQuotaExceededErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type UploadFileV1FilesPost401 = ErrorResponse
-export const UploadFileV1FilesPost401 = ErrorResponse
-export type UploadFileV1FilesPost403 = ErrorResponse
-export const UploadFileV1FilesPost403 = ErrorResponse
-export type UploadFileV1FilesPost404 = ErrorResponse
-export const UploadFileV1FilesPost404 = ErrorResponse
-export type UploadFileV1FilesPost408 = ErrorResponse
-export const UploadFileV1FilesPost408 = ErrorResponse
-export type UploadFileV1FilesPost409 = ErrorResponse
-export const UploadFileV1FilesPost409 = ErrorResponse
-export type UploadFileV1FilesPost412 = ErrorResponse
-export const UploadFileV1FilesPost412 = ErrorResponse
-export type UploadFileV1FilesPost413 = ErrorResponse
-export const UploadFileV1FilesPost413 = ErrorResponse
-export type UploadFileV1FilesPost429 = ErrorResponse
-export const UploadFileV1FilesPost429 = ErrorResponse
-export type UploadFileV1FilesPost431 = ErrorResponse
-export const UploadFileV1FilesPost431 = ErrorResponse
-export type UploadFileV1FilesPost499 = ErrorResponse
-export const UploadFileV1FilesPost499 = ErrorResponse
-export type UploadFileV1FilesPost500 = ErrorResponse
-export const UploadFileV1FilesPost500 = ErrorResponse
-export type UploadFileV1FilesPost501 = ErrorResponse
-export const UploadFileV1FilesPost501 = ErrorResponse
-export type UploadFileV1FilesPost503 = ErrorResponse
-export const UploadFileV1FilesPost503 = ErrorResponse
-export type UploadFileV1FilesPost504 = ErrorResponse
-export const UploadFileV1FilesPost504 = ErrorResponse
-export type UploadFileV1FilesPost529 = ErrorResponse
-export const UploadFileV1FilesPost529 = ErrorResponse
+export type UploadFileV1FilesPost4XX = ErrorResponse
+export const UploadFileV1FilesPost4XX = ErrorResponse
 export type GetFileMetadataV1FilesFileIdGetParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -17526,71 +16922,8 @@ export const GetFileMetadataV1FilesFileIdGetParams = Schema.Struct({
 })
 export type GetFileMetadataV1FilesFileIdGet200 = FileMetadataSchema
 export const GetFileMetadataV1FilesFileIdGet200 = FileMetadataSchema
-export type GetFileMetadataV1FilesFileIdGet400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const GetFileMetadataV1FilesFileIdGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type GetFileMetadataV1FilesFileIdGet401 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet401 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet403 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet403 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet404 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet404 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet408 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet408 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet409 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet409 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet412 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet412 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet413 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet413 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet429 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet429 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet431 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet431 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet499 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet499 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet500 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet500 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet501 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet501 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet503 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet503 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet504 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet504 = ErrorResponse
-export type GetFileMetadataV1FilesFileIdGet529 = ErrorResponse
-export const GetFileMetadataV1FilesFileIdGet529 = ErrorResponse
+export type GetFileMetadataV1FilesFileIdGet4XX = ErrorResponse
+export const GetFileMetadataV1FilesFileIdGet4XX = ErrorResponse
 export type DeleteFileV1FilesFileIdDeleteParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -17613,71 +16946,8 @@ export const DeleteFileV1FilesFileIdDeleteParams = Schema.Struct({
 })
 export type DeleteFileV1FilesFileIdDelete200 = FileDeleteResponse
 export const DeleteFileV1FilesFileIdDelete200 = FileDeleteResponse
-export type DeleteFileV1FilesFileIdDelete400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const DeleteFileV1FilesFileIdDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type DeleteFileV1FilesFileIdDelete401 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete401 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete403 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete403 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete404 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete404 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete408 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete408 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete409 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete409 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete412 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete412 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete413 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete413 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete429 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete429 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete431 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete431 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete499 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete499 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete500 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete500 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete501 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete501 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete503 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete503 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete504 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete504 = ErrorResponse
-export type DeleteFileV1FilesFileIdDelete529 = ErrorResponse
-export const DeleteFileV1FilesFileIdDelete529 = ErrorResponse
+export type DeleteFileV1FilesFileIdDelete4XX = ErrorResponse
+export const DeleteFileV1FilesFileIdDelete4XX = ErrorResponse
 export type DownloadFileV1FilesFileIdContentGetParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -17698,94 +16968,8 @@ export const DownloadFileV1FilesFileIdContentGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type DownloadFileV1FilesFileIdContentGet400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | FileNotDownloadableErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const DownloadFileV1FilesFileIdContentGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        FileNotDownloadableErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type DownloadFileV1FilesFileIdContentGet401 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet401 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet403 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet403 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet404 = {
-  readonly "error": {
-    readonly "details"?: FileExpiredErrorDetails | null
-    readonly "message": string
-    readonly "type": "not_found_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const DownloadFileV1FilesFileIdContentGet404 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([FileExpiredErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Not found" }),
-    "type": Schema.Literal("not_found_error").annotate({ "title": "Type", "default": "not_found_error" })
-  }).annotate({ "title": "NotFoundError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type DownloadFileV1FilesFileIdContentGet408 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet408 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet409 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet409 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet412 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet412 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet413 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet413 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet429 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet429 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet431 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet431 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet499 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet499 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet500 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet500 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet501 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet501 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet503 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet503 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet504 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet504 = ErrorResponse
-export type DownloadFileV1FilesFileIdContentGet529 = ErrorResponse
-export const DownloadFileV1FilesFileIdContentGet529 = ErrorResponse
+export type DownloadFileV1FilesFileIdContentGet4XX = ErrorResponse
+export const DownloadFileV1FilesFileIdContentGet4XX = ErrorResponse
 export type ListSkillsV1SkillsGetParams = {
   readonly "page"?: string | null
   readonly "limit"?: number
@@ -17834,60 +17018,8 @@ export const ListSkillsV1SkillsGetParams = Schema.Struct({
 })
 export type ListSkillsV1SkillsGet200 = ListSkillsResponse
 export const ListSkillsV1SkillsGet200 = ListSkillsResponse
-export type ListSkillsV1SkillsGet400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const ListSkillsV1SkillsGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type ListSkillsV1SkillsGet401 = ErrorResponse
-export const ListSkillsV1SkillsGet401 = ErrorResponse
-export type ListSkillsV1SkillsGet403 = ErrorResponse
-export const ListSkillsV1SkillsGet403 = ErrorResponse
-export type ListSkillsV1SkillsGet404 = ErrorResponse
-export const ListSkillsV1SkillsGet404 = ErrorResponse
-export type ListSkillsV1SkillsGet408 = ErrorResponse
-export const ListSkillsV1SkillsGet408 = ErrorResponse
-export type ListSkillsV1SkillsGet409 = ErrorResponse
-export const ListSkillsV1SkillsGet409 = ErrorResponse
-export type ListSkillsV1SkillsGet412 = ErrorResponse
-export const ListSkillsV1SkillsGet412 = ErrorResponse
-export type ListSkillsV1SkillsGet413 = ErrorResponse
-export const ListSkillsV1SkillsGet413 = ErrorResponse
-export type ListSkillsV1SkillsGet429 = ErrorResponse
-export const ListSkillsV1SkillsGet429 = ErrorResponse
-export type ListSkillsV1SkillsGet431 = ErrorResponse
-export const ListSkillsV1SkillsGet431 = ErrorResponse
-export type ListSkillsV1SkillsGet499 = ErrorResponse
-export const ListSkillsV1SkillsGet499 = ErrorResponse
-export type ListSkillsV1SkillsGet500 = ErrorResponse
-export const ListSkillsV1SkillsGet500 = ErrorResponse
-export type ListSkillsV1SkillsGet501 = ErrorResponse
-export const ListSkillsV1SkillsGet501 = ErrorResponse
-export type ListSkillsV1SkillsGet503 = ErrorResponse
-export const ListSkillsV1SkillsGet503 = ErrorResponse
-export type ListSkillsV1SkillsGet504 = ErrorResponse
-export const ListSkillsV1SkillsGet504 = ErrorResponse
-export type ListSkillsV1SkillsGet529 = ErrorResponse
-export const ListSkillsV1SkillsGet529 = ErrorResponse
+export type ListSkillsV1SkillsGet4XX = ErrorResponse
+export const ListSkillsV1SkillsGet4XX = ErrorResponse
 export type CreateSkillV1SkillsPostParams = {
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
@@ -17906,92 +17038,8 @@ export type CreateSkillV1SkillsPostRequestFormData = Body_create_skill_v1_skills
 export const CreateSkillV1SkillsPostRequestFormData = Body_create_skill_v1_skills_postMultipart
 export type CreateSkillV1SkillsPost200 = Skill
 export const CreateSkillV1SkillsPost200 = Skill
-export type CreateSkillV1SkillsPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const CreateSkillV1SkillsPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type CreateSkillV1SkillsPost401 = ErrorResponse
-export const CreateSkillV1SkillsPost401 = ErrorResponse
-export type CreateSkillV1SkillsPost403 = ErrorResponse
-export const CreateSkillV1SkillsPost403 = ErrorResponse
-export type CreateSkillV1SkillsPost404 = ErrorResponse
-export const CreateSkillV1SkillsPost404 = ErrorResponse
-export type CreateSkillV1SkillsPost408 = ErrorResponse
-export const CreateSkillV1SkillsPost408 = ErrorResponse
-export type CreateSkillV1SkillsPost409 = ErrorResponse
-export const CreateSkillV1SkillsPost409 = ErrorResponse
-export type CreateSkillV1SkillsPost412 = ErrorResponse
-export const CreateSkillV1SkillsPost412 = ErrorResponse
-export type CreateSkillV1SkillsPost413 = ErrorResponse
-export const CreateSkillV1SkillsPost413 = ErrorResponse
-export type CreateSkillV1SkillsPost429 = ErrorResponse
-export const CreateSkillV1SkillsPost429 = ErrorResponse
-export type CreateSkillV1SkillsPost431 = ErrorResponse
-export const CreateSkillV1SkillsPost431 = ErrorResponse
-export type CreateSkillV1SkillsPost499 = ErrorResponse
-export const CreateSkillV1SkillsPost499 = ErrorResponse
-export type CreateSkillV1SkillsPost500 = ErrorResponse
-export const CreateSkillV1SkillsPost500 = ErrorResponse
-export type CreateSkillV1SkillsPost501 = ErrorResponse
-export const CreateSkillV1SkillsPost501 = ErrorResponse
-export type CreateSkillV1SkillsPost503 = {
-  readonly "error": {
-    readonly "details"?: CmekContextUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const CreateSkillV1SkillsPost503 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([CmekContextUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type CreateSkillV1SkillsPost504 = ErrorResponse
-export const CreateSkillV1SkillsPost504 = ErrorResponse
-export type CreateSkillV1SkillsPost529 = ErrorResponse
-export const CreateSkillV1SkillsPost529 = ErrorResponse
+export type CreateSkillV1SkillsPost4XX = ErrorResponse
+export const CreateSkillV1SkillsPost4XX = ErrorResponse
 export type GetSkillV1SkillsSkillIdGetParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -18014,60 +17062,8 @@ export const GetSkillV1SkillsSkillIdGetParams = Schema.Struct({
 })
 export type GetSkillV1SkillsSkillIdGet200 = Skill
 export const GetSkillV1SkillsSkillIdGet200 = Skill
-export type GetSkillV1SkillsSkillIdGet400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const GetSkillV1SkillsSkillIdGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type GetSkillV1SkillsSkillIdGet401 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet401 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet403 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet403 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet404 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet404 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet408 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet408 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet409 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet409 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet412 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet412 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet413 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet413 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet429 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet429 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet431 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet431 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet499 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet499 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet500 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet500 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet501 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet501 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet503 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet503 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet504 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet504 = ErrorResponse
-export type GetSkillV1SkillsSkillIdGet529 = ErrorResponse
-export const GetSkillV1SkillsSkillIdGet529 = ErrorResponse
+export type GetSkillV1SkillsSkillIdGet4XX = ErrorResponse
+export const GetSkillV1SkillsSkillIdGet4XX = ErrorResponse
 export type DeleteSkillV1SkillsSkillIdDeleteParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -18090,60 +17086,8 @@ export const DeleteSkillV1SkillsSkillIdDeleteParams = Schema.Struct({
 })
 export type DeleteSkillV1SkillsSkillIdDelete200 = DeletedSkill
 export const DeleteSkillV1SkillsSkillIdDelete200 = DeletedSkill
-export type DeleteSkillV1SkillsSkillIdDelete400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const DeleteSkillV1SkillsSkillIdDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type DeleteSkillV1SkillsSkillIdDelete401 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete401 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete403 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete403 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete404 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete404 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete408 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete408 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete409 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete409 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete412 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete412 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete413 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete413 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete429 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete429 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete431 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete431 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete499 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete499 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete500 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete500 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete501 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete501 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete503 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete503 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete504 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete504 = ErrorResponse
-export type DeleteSkillV1SkillsSkillIdDelete529 = ErrorResponse
-export const DeleteSkillV1SkillsSkillIdDelete529 = ErrorResponse
+export type DeleteSkillV1SkillsSkillIdDelete4XX = ErrorResponse
+export const DeleteSkillV1SkillsSkillIdDelete4XX = ErrorResponse
 export type ListSkillVersionsV1SkillsSkillIdVersionsGetParams = {
   readonly "page"?: string | null
   readonly "limit"?: number | null
@@ -18186,60 +17130,8 @@ export const ListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Struct({
 })
 export type ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionsResponse
 export const ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionsResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet401 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet401 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet403 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet403 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet404 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet404 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet408 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet408 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet409 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet409 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet412 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet412 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet413 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet413 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet429 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet429 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet431 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet431 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet499 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet499 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet500 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet500 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet501 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet501 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet503 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet503 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet504 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet504 = ErrorResponse
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet529 = ErrorResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet529 = ErrorResponse
+export type ListSkillVersionsV1SkillsSkillIdVersionsGet4XX = ErrorResponse
+export const ListSkillVersionsV1SkillsSkillIdVersionsGet4XX = ErrorResponse
 export type CreateSkillVersionV1SkillsSkillIdVersionsPostParams = {
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
@@ -18260,92 +17152,8 @@ export const CreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
   Body_create_skill_version_v1_skills__skill_id__versions_postMultipart
 export type CreateSkillVersionV1SkillsSkillIdVersionsPost200 = SkillVersion
 export const CreateSkillVersionV1SkillsSkillIdVersionsPost200 = SkillVersion
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | ClaudeCodeKeyCreatorNotMemberErrorDetails
-      | CmekKeyDisabledErrorDetails
-      | CmekKeyNetworkBlockedErrorDetails
-      | OrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        ClaudeCodeKeyCreatorNotMemberErrorDetails,
-        CmekKeyDisabledErrorDetails,
-        CmekKeyNetworkBlockedErrorDetails,
-        OrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost401 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost401 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost403 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost403 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost404 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost404 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost408 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost408 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost409 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost409 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost412 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost412 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost413 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost413 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost429 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost429 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost431 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost431 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost499 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost499 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost500 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost500 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost501 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost501 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost503 = {
-  readonly "error": {
-    readonly "details"?: CmekContextUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost503 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([CmekContextUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost504 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost504 = ErrorResponse
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost529 = ErrorResponse
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost529 = ErrorResponse
+export type CreateSkillVersionV1SkillsSkillIdVersionsPost4XX = ErrorResponse
+export const CreateSkillVersionV1SkillsSkillIdVersionsPost4XX = ErrorResponse
 export type GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -18368,60 +17176,8 @@ export const GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema.Str
 })
 export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersion
 export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersion
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet401 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet401 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet403 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet403 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet404 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet404 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet408 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet408 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet409 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet409 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet412 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet412 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet413 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet413 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet429 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet429 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet431 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet431 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet499 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet499 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet500 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet500 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet501 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet501 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet503 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet503 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet504 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet504 = ErrorResponse
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet529 = ErrorResponse
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet529 = ErrorResponse
+export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = ErrorResponse
+export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = ErrorResponse
 export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = {
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
@@ -18444,69 +17200,17 @@ export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = Sche
 })
 export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = DeletedSkillVersion
 export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = DeletedSkillVersion
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400 = {
-  readonly "error": {
-    readonly "details"?: ClaudeCodeKeyCreatorNotMemberErrorDetails | OrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([ClaudeCodeKeyCreatorNotMemberErrorDetails, OrganizationOnHoldErrorDetails, Schema.Null]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504 = ErrorResponse
-export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529 = ErrorResponse
-export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529 = ErrorResponse
+export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX = ErrorResponse
+export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX = ErrorResponse
 export type BetaMessagesPostParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-user-profile-id"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessagesPostParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -18531,192 +17235,15 @@ export type BetaMessagesPostRequestJson = BetaCreateMessageParams
 export const BetaMessagesPostRequestJson = BetaCreateMessageParams
 export type BetaMessagesPost200 = BetaMessage
 export const BetaMessagesPost200 = BetaMessage
-export type BetaMessagesPost200Sse = BetaMessageStreamEvent
-export const BetaMessagesPost200Sse = BetaMessageStreamEvent
-export type BetaMessagesPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaAvailableToolsLimitExceededErrorDetails
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaClaudeCodeVersionTooOldErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaCompactionBlockAmbiguousErrorDetails
-      | BetaCompactionBlockMisplacedErrorDetails
-      | BetaCompactionContentMismatchErrorDetails
-      | BetaCompactionIncompleteTurnErrorDetails
-      | BetaCompactionNothingToSummarizeErrorDetails
-      | BetaCompactionSignatureInvalidErrorDetails
-      | BetaCompactionTooManyToolReferencesErrorDetails
-      | BetaCompactionToolChangesMismatchErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | BetaRequestBodyEncodingInvalidErrorDetails
-      | BetaRequestBodyEncodingUnsupportedErrorDetails
-      | BetaToolNameConflictErrorDetails
-      | BetaToolReferenceUnresolvedErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaAvailableToolsLimitExceededErrorDetails,
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaClaudeCodeVersionTooOldErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaCompactionBlockAmbiguousErrorDetails,
-        BetaCompactionBlockMisplacedErrorDetails,
-        BetaCompactionContentMismatchErrorDetails,
-        BetaCompactionIncompleteTurnErrorDetails,
-        BetaCompactionNothingToSummarizeErrorDetails,
-        BetaCompactionSignatureInvalidErrorDetails,
-        BetaCompactionTooManyToolReferencesErrorDetails,
-        BetaCompactionToolChangesMismatchErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        BetaRequestBodyEncodingInvalidErrorDetails,
-        BetaRequestBodyEncodingUnsupportedErrorDetails,
-        BetaToolNameConflictErrorDetails,
-        BetaToolReferenceUnresolvedErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesPost401 = BetaErrorResponse
-export const BetaMessagesPost401 = BetaErrorResponse
-export type BetaMessagesPost403 = BetaErrorResponse
-export const BetaMessagesPost403 = BetaErrorResponse
-export type BetaMessagesPost404 = BetaErrorResponse
-export const BetaMessagesPost404 = BetaErrorResponse
-export type BetaMessagesPost408 = BetaErrorResponse
-export const BetaMessagesPost408 = BetaErrorResponse
-export type BetaMessagesPost409 = {
-  readonly "error": {
-    readonly "details"?: BetaSkillReadBlockedUndecryptableErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesPost409 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaSkillReadBlockedUndecryptableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesPost412 = BetaErrorResponse
-export const BetaMessagesPost412 = BetaErrorResponse
-export type BetaMessagesPost413 = {
-  readonly "error": {
-    readonly "details"?: BetaRequestBodyTooLargeAfterDecodingErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesPost413 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaRequestBodyTooLargeAfterDecodingErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesPost429 = {
-  readonly "error": {
-    readonly "details"?: BetaEnforcedSpendLimitReachedErrorDetails | null
-    readonly "message": string
-    readonly "type": "rate_limit_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesPost429 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaEnforcedSpendLimitReachedErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Rate limited" }),
-    "type": Schema.Literal("rate_limit_error").annotate({ "title": "Type", "default": "rate_limit_error" })
-  }).annotate({ "title": "RateLimitError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesPost431 = BetaErrorResponse
-export const BetaMessagesPost431 = BetaErrorResponse
-export type BetaMessagesPost499 = BetaErrorResponse
-export const BetaMessagesPost499 = BetaErrorResponse
-export type BetaMessagesPost500 = BetaErrorResponse
-export const BetaMessagesPost500 = BetaErrorResponse
-export type BetaMessagesPost501 = BetaErrorResponse
-export const BetaMessagesPost501 = BetaErrorResponse
-export type BetaMessagesPost503 = BetaErrorResponse
-export const BetaMessagesPost503 = BetaErrorResponse
-export type BetaMessagesPost504 = BetaErrorResponse
-export const BetaMessagesPost504 = BetaErrorResponse
-export type BetaMessagesPost529 = {
-  readonly "error": {
-    readonly "details"?: BetaCompactionUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesPost529 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaCompactionUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
+export type BetaMessagesPost4XX = BetaErrorResponse
+export const BetaMessagesPost4XX = BetaErrorResponse
 export type BetaModelsListParams = {
   readonly "before_id"?: string
   readonly "after_id"?: string
   readonly "limit"?: number
   readonly "lifecycle[]"?: ReadonlyArray<"active" | "deprecated" | "retired">
   readonly "anthropic-version"?: string
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
@@ -18759,7 +17286,7 @@ export const BetaModelsListParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -18773,64 +17300,11 @@ export const BetaModelsListParams = Schema.Struct({
 })
 export type BetaModelsList200 = BetaListResponse_ModelInfo_
 export const BetaModelsList200 = BetaListResponse_ModelInfo_
-export type BetaModelsList400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaModelsList400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaModelsList401 = BetaErrorResponse
-export const BetaModelsList401 = BetaErrorResponse
-export type BetaModelsList403 = BetaErrorResponse
-export const BetaModelsList403 = BetaErrorResponse
-export type BetaModelsList404 = BetaErrorResponse
-export const BetaModelsList404 = BetaErrorResponse
-export type BetaModelsList408 = BetaErrorResponse
-export const BetaModelsList408 = BetaErrorResponse
-export type BetaModelsList409 = BetaErrorResponse
-export const BetaModelsList409 = BetaErrorResponse
-export type BetaModelsList412 = BetaErrorResponse
-export const BetaModelsList412 = BetaErrorResponse
-export type BetaModelsList413 = BetaErrorResponse
-export const BetaModelsList413 = BetaErrorResponse
-export type BetaModelsList429 = BetaErrorResponse
-export const BetaModelsList429 = BetaErrorResponse
-export type BetaModelsList431 = BetaErrorResponse
-export const BetaModelsList431 = BetaErrorResponse
-export type BetaModelsList499 = BetaErrorResponse
-export const BetaModelsList499 = BetaErrorResponse
-export type BetaModelsList500 = BetaErrorResponse
-export const BetaModelsList500 = BetaErrorResponse
-export type BetaModelsList501 = BetaErrorResponse
-export const BetaModelsList501 = BetaErrorResponse
-export type BetaModelsList503 = BetaErrorResponse
-export const BetaModelsList503 = BetaErrorResponse
-export type BetaModelsList504 = BetaErrorResponse
-export const BetaModelsList504 = BetaErrorResponse
-export type BetaModelsList529 = BetaErrorResponse
-export const BetaModelsList529 = BetaErrorResponse
+export type BetaModelsList4XX = BetaErrorResponse
+export const BetaModelsList4XX = BetaErrorResponse
 export type BetaModelsGetParams = {
   readonly "anthropic-version"?: string
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
@@ -18843,7 +17317,7 @@ export const BetaModelsGetParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -18857,66 +17331,13 @@ export const BetaModelsGetParams = Schema.Struct({
 })
 export type BetaModelsGet200 = BetaModelInfo
 export const BetaModelsGet200 = BetaModelInfo
-export type BetaModelsGet400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaModelsGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaModelsGet401 = BetaErrorResponse
-export const BetaModelsGet401 = BetaErrorResponse
-export type BetaModelsGet403 = BetaErrorResponse
-export const BetaModelsGet403 = BetaErrorResponse
-export type BetaModelsGet404 = BetaErrorResponse
-export const BetaModelsGet404 = BetaErrorResponse
-export type BetaModelsGet408 = BetaErrorResponse
-export const BetaModelsGet408 = BetaErrorResponse
-export type BetaModelsGet409 = BetaErrorResponse
-export const BetaModelsGet409 = BetaErrorResponse
-export type BetaModelsGet412 = BetaErrorResponse
-export const BetaModelsGet412 = BetaErrorResponse
-export type BetaModelsGet413 = BetaErrorResponse
-export const BetaModelsGet413 = BetaErrorResponse
-export type BetaModelsGet429 = BetaErrorResponse
-export const BetaModelsGet429 = BetaErrorResponse
-export type BetaModelsGet431 = BetaErrorResponse
-export const BetaModelsGet431 = BetaErrorResponse
-export type BetaModelsGet499 = BetaErrorResponse
-export const BetaModelsGet499 = BetaErrorResponse
-export type BetaModelsGet500 = BetaErrorResponse
-export const BetaModelsGet500 = BetaErrorResponse
-export type BetaModelsGet501 = BetaErrorResponse
-export const BetaModelsGet501 = BetaErrorResponse
-export type BetaModelsGet503 = BetaErrorResponse
-export const BetaModelsGet503 = BetaErrorResponse
-export type BetaModelsGet504 = BetaErrorResponse
-export const BetaModelsGet504 = BetaErrorResponse
-export type BetaModelsGet529 = BetaErrorResponse
-export const BetaModelsGet529 = BetaErrorResponse
+export type BetaModelsGet4XX = BetaErrorResponse
+export const BetaModelsGet4XX = BetaErrorResponse
 export type BetaMessageBatchesListParams = {
   readonly "before_id"?: string
   readonly "after_id"?: string
   readonly "limit"?: number
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
@@ -18946,7 +17367,7 @@ export const BetaMessageBatchesListParams = Schema.Struct({
     ).check(Schema.isLessThanOrEqualTo(1000).annotate({ "expected": "a value less than or equal to 1000" }))
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -18967,70 +17388,17 @@ export const BetaMessageBatchesListParams = Schema.Struct({
 })
 export type BetaMessageBatchesList200 = BetaListResponse_MessageBatch_
 export const BetaMessageBatchesList200 = BetaListResponse_MessageBatch_
-export type BetaMessageBatchesList400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesList400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesList401 = BetaErrorResponse
-export const BetaMessageBatchesList401 = BetaErrorResponse
-export type BetaMessageBatchesList403 = BetaErrorResponse
-export const BetaMessageBatchesList403 = BetaErrorResponse
-export type BetaMessageBatchesList404 = BetaErrorResponse
-export const BetaMessageBatchesList404 = BetaErrorResponse
-export type BetaMessageBatchesList408 = BetaErrorResponse
-export const BetaMessageBatchesList408 = BetaErrorResponse
-export type BetaMessageBatchesList409 = BetaErrorResponse
-export const BetaMessageBatchesList409 = BetaErrorResponse
-export type BetaMessageBatchesList412 = BetaErrorResponse
-export const BetaMessageBatchesList412 = BetaErrorResponse
-export type BetaMessageBatchesList413 = BetaErrorResponse
-export const BetaMessageBatchesList413 = BetaErrorResponse
-export type BetaMessageBatchesList429 = BetaErrorResponse
-export const BetaMessageBatchesList429 = BetaErrorResponse
-export type BetaMessageBatchesList431 = BetaErrorResponse
-export const BetaMessageBatchesList431 = BetaErrorResponse
-export type BetaMessageBatchesList499 = BetaErrorResponse
-export const BetaMessageBatchesList499 = BetaErrorResponse
-export type BetaMessageBatchesList500 = BetaErrorResponse
-export const BetaMessageBatchesList500 = BetaErrorResponse
-export type BetaMessageBatchesList501 = BetaErrorResponse
-export const BetaMessageBatchesList501 = BetaErrorResponse
-export type BetaMessageBatchesList503 = BetaErrorResponse
-export const BetaMessageBatchesList503 = BetaErrorResponse
-export type BetaMessageBatchesList504 = BetaErrorResponse
-export const BetaMessageBatchesList504 = BetaErrorResponse
-export type BetaMessageBatchesList529 = BetaErrorResponse
-export const BetaMessageBatchesList529 = BetaErrorResponse
+export type BetaMessageBatchesList4XX = BetaErrorResponse
+export const BetaMessageBatchesList4XX = BetaErrorResponse
 export type BetaMessageBatchesPostParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-user-profile-id"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessageBatchesPostParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19053,99 +17421,17 @@ export type BetaMessageBatchesPostRequestJson = BetaCreateMessageBatchParams
 export const BetaMessageBatchesPostRequestJson = BetaCreateMessageBatchParams
 export type BetaMessageBatchesPost200 = BetaMessageBatch
 export const BetaMessageBatchesPost200 = BetaMessageBatch
-export type BetaMessageBatchesPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesPost401 = BetaErrorResponse
-export const BetaMessageBatchesPost401 = BetaErrorResponse
-export type BetaMessageBatchesPost403 = BetaErrorResponse
-export const BetaMessageBatchesPost403 = BetaErrorResponse
-export type BetaMessageBatchesPost404 = BetaErrorResponse
-export const BetaMessageBatchesPost404 = BetaErrorResponse
-export type BetaMessageBatchesPost408 = BetaErrorResponse
-export const BetaMessageBatchesPost408 = BetaErrorResponse
-export type BetaMessageBatchesPost409 = BetaErrorResponse
-export const BetaMessageBatchesPost409 = BetaErrorResponse
-export type BetaMessageBatchesPost412 = BetaErrorResponse
-export const BetaMessageBatchesPost412 = BetaErrorResponse
-export type BetaMessageBatchesPost413 = BetaErrorResponse
-export const BetaMessageBatchesPost413 = BetaErrorResponse
-export type BetaMessageBatchesPost429 = {
-  readonly "error": {
-    readonly "details"?: BetaEnforcedSpendLimitReachedErrorDetails | null
-    readonly "message": string
-    readonly "type": "rate_limit_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesPost429 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaEnforcedSpendLimitReachedErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Rate limited" }),
-    "type": Schema.Literal("rate_limit_error").annotate({ "title": "Type", "default": "rate_limit_error" })
-  }).annotate({ "title": "RateLimitError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesPost431 = BetaErrorResponse
-export const BetaMessageBatchesPost431 = BetaErrorResponse
-export type BetaMessageBatchesPost499 = BetaErrorResponse
-export const BetaMessageBatchesPost499 = BetaErrorResponse
-export type BetaMessageBatchesPost500 = BetaErrorResponse
-export const BetaMessageBatchesPost500 = BetaErrorResponse
-export type BetaMessageBatchesPost501 = BetaErrorResponse
-export const BetaMessageBatchesPost501 = BetaErrorResponse
-export type BetaMessageBatchesPost503 = BetaErrorResponse
-export const BetaMessageBatchesPost503 = BetaErrorResponse
-export type BetaMessageBatchesPost504 = BetaErrorResponse
-export const BetaMessageBatchesPost504 = BetaErrorResponse
-export type BetaMessageBatchesPost529 = BetaErrorResponse
-export const BetaMessageBatchesPost529 = BetaErrorResponse
+export type BetaMessageBatchesPost4XX = BetaErrorResponse
+export const BetaMessageBatchesPost4XX = BetaErrorResponse
 export type BetaMessageBatchesRetrieveParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessageBatchesRetrieveParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19166,70 +17452,17 @@ export const BetaMessageBatchesRetrieveParams = Schema.Struct({
 })
 export type BetaMessageBatchesRetrieve200 = BetaMessageBatch
 export const BetaMessageBatchesRetrieve200 = BetaMessageBatch
-export type BetaMessageBatchesRetrieve400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesRetrieve400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesRetrieve401 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve401 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve403 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve403 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve404 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve404 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve408 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve408 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve409 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve409 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve412 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve412 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve413 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve413 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve429 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve429 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve431 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve431 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve499 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve499 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve500 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve500 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve501 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve501 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve503 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve503 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve504 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve504 = BetaErrorResponse
-export type BetaMessageBatchesRetrieve529 = BetaErrorResponse
-export const BetaMessageBatchesRetrieve529 = BetaErrorResponse
+export type BetaMessageBatchesRetrieve4XX = BetaErrorResponse
+export const BetaMessageBatchesRetrieve4XX = BetaErrorResponse
 export type BetaMessageBatchesDeleteParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessageBatchesDeleteParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19250,69 +17483,16 @@ export const BetaMessageBatchesDeleteParams = Schema.Struct({
 })
 export type BetaMessageBatchesDelete200 = BetaDeleteMessageBatchResponse
 export const BetaMessageBatchesDelete200 = BetaDeleteMessageBatchResponse
-export type BetaMessageBatchesDelete400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesDelete401 = BetaErrorResponse
-export const BetaMessageBatchesDelete401 = BetaErrorResponse
-export type BetaMessageBatchesDelete403 = BetaErrorResponse
-export const BetaMessageBatchesDelete403 = BetaErrorResponse
-export type BetaMessageBatchesDelete404 = BetaErrorResponse
-export const BetaMessageBatchesDelete404 = BetaErrorResponse
-export type BetaMessageBatchesDelete408 = BetaErrorResponse
-export const BetaMessageBatchesDelete408 = BetaErrorResponse
-export type BetaMessageBatchesDelete409 = BetaErrorResponse
-export const BetaMessageBatchesDelete409 = BetaErrorResponse
-export type BetaMessageBatchesDelete412 = BetaErrorResponse
-export const BetaMessageBatchesDelete412 = BetaErrorResponse
-export type BetaMessageBatchesDelete413 = BetaErrorResponse
-export const BetaMessageBatchesDelete413 = BetaErrorResponse
-export type BetaMessageBatchesDelete429 = BetaErrorResponse
-export const BetaMessageBatchesDelete429 = BetaErrorResponse
-export type BetaMessageBatchesDelete431 = BetaErrorResponse
-export const BetaMessageBatchesDelete431 = BetaErrorResponse
-export type BetaMessageBatchesDelete499 = BetaErrorResponse
-export const BetaMessageBatchesDelete499 = BetaErrorResponse
-export type BetaMessageBatchesDelete500 = BetaErrorResponse
-export const BetaMessageBatchesDelete500 = BetaErrorResponse
-export type BetaMessageBatchesDelete501 = BetaErrorResponse
-export const BetaMessageBatchesDelete501 = BetaErrorResponse
-export type BetaMessageBatchesDelete503 = BetaErrorResponse
-export const BetaMessageBatchesDelete503 = BetaErrorResponse
-export type BetaMessageBatchesDelete504 = BetaErrorResponse
-export const BetaMessageBatchesDelete504 = BetaErrorResponse
-export type BetaMessageBatchesDelete529 = BetaErrorResponse
-export const BetaMessageBatchesDelete529 = BetaErrorResponse
+export type BetaMessageBatchesDelete4XX = BetaErrorResponse
+export const BetaMessageBatchesDelete4XX = BetaErrorResponse
 export type BetaMessageBatchesCancelParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessageBatchesCancelParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19328,70 +17508,17 @@ export const BetaMessageBatchesCancelParams = Schema.Struct({
 })
 export type BetaMessageBatchesCancel200 = BetaMessageBatch
 export const BetaMessageBatchesCancel200 = BetaMessageBatch
-export type BetaMessageBatchesCancel400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesCancel400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesCancel401 = BetaErrorResponse
-export const BetaMessageBatchesCancel401 = BetaErrorResponse
-export type BetaMessageBatchesCancel403 = BetaErrorResponse
-export const BetaMessageBatchesCancel403 = BetaErrorResponse
-export type BetaMessageBatchesCancel404 = BetaErrorResponse
-export const BetaMessageBatchesCancel404 = BetaErrorResponse
-export type BetaMessageBatchesCancel408 = BetaErrorResponse
-export const BetaMessageBatchesCancel408 = BetaErrorResponse
-export type BetaMessageBatchesCancel409 = BetaErrorResponse
-export const BetaMessageBatchesCancel409 = BetaErrorResponse
-export type BetaMessageBatchesCancel412 = BetaErrorResponse
-export const BetaMessageBatchesCancel412 = BetaErrorResponse
-export type BetaMessageBatchesCancel413 = BetaErrorResponse
-export const BetaMessageBatchesCancel413 = BetaErrorResponse
-export type BetaMessageBatchesCancel429 = BetaErrorResponse
-export const BetaMessageBatchesCancel429 = BetaErrorResponse
-export type BetaMessageBatchesCancel431 = BetaErrorResponse
-export const BetaMessageBatchesCancel431 = BetaErrorResponse
-export type BetaMessageBatchesCancel499 = BetaErrorResponse
-export const BetaMessageBatchesCancel499 = BetaErrorResponse
-export type BetaMessageBatchesCancel500 = BetaErrorResponse
-export const BetaMessageBatchesCancel500 = BetaErrorResponse
-export type BetaMessageBatchesCancel501 = BetaErrorResponse
-export const BetaMessageBatchesCancel501 = BetaErrorResponse
-export type BetaMessageBatchesCancel503 = BetaErrorResponse
-export const BetaMessageBatchesCancel503 = BetaErrorResponse
-export type BetaMessageBatchesCancel504 = BetaErrorResponse
-export const BetaMessageBatchesCancel504 = BetaErrorResponse
-export type BetaMessageBatchesCancel529 = BetaErrorResponse
-export const BetaMessageBatchesCancel529 = BetaErrorResponse
+export type BetaMessageBatchesCancel4XX = BetaErrorResponse
+export const BetaMessageBatchesCancel4XX = BetaErrorResponse
 export type BetaMessageBatchesResultsParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessageBatchesResultsParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19410,78 +17537,17 @@ export const BetaMessageBatchesResultsParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaMessageBatchesResults400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessageBatchesResults400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessageBatchesResults401 = BetaErrorResponse
-export const BetaMessageBatchesResults401 = BetaErrorResponse
-export type BetaMessageBatchesResults403 = BetaErrorResponse
-export const BetaMessageBatchesResults403 = BetaErrorResponse
-export type BetaMessageBatchesResults404 = BetaErrorResponse
-export const BetaMessageBatchesResults404 = BetaErrorResponse
-export type BetaMessageBatchesResults408 = BetaErrorResponse
-export const BetaMessageBatchesResults408 = BetaErrorResponse
-export type BetaMessageBatchesResults409 = BetaErrorResponse
-export const BetaMessageBatchesResults409 = BetaErrorResponse
-export type BetaMessageBatchesResults412 = BetaErrorResponse
-export const BetaMessageBatchesResults412 = BetaErrorResponse
-export type BetaMessageBatchesResults413 = BetaErrorResponse
-export const BetaMessageBatchesResults413 = BetaErrorResponse
-export type BetaMessageBatchesResults429 = BetaErrorResponse
-export const BetaMessageBatchesResults429 = BetaErrorResponse
-export type BetaMessageBatchesResults431 = BetaErrorResponse
-export const BetaMessageBatchesResults431 = BetaErrorResponse
-export type BetaMessageBatchesResults499 = BetaErrorResponse
-export const BetaMessageBatchesResults499 = BetaErrorResponse
-export type BetaMessageBatchesResults500 = BetaErrorResponse
-export const BetaMessageBatchesResults500 = BetaErrorResponse
-export type BetaMessageBatchesResults501 = BetaErrorResponse
-export const BetaMessageBatchesResults501 = BetaErrorResponse
-export type BetaMessageBatchesResults503 = BetaErrorResponse
-export const BetaMessageBatchesResults503 = BetaErrorResponse
-export type BetaMessageBatchesResults504 = BetaErrorResponse
-export const BetaMessageBatchesResults504 = BetaErrorResponse
-export type BetaMessageBatchesResults529 = BetaErrorResponse
-export const BetaMessageBatchesResults529 = BetaErrorResponse
+export type BetaMessageBatchesResults4XX = BetaErrorResponse
+export const BetaMessageBatchesResults4XX = BetaErrorResponse
 export type BetaMessagesCountTokensPostParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-user-profile-id"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaMessagesCountTokensPostParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19506,158 +17572,14 @@ export type BetaMessagesCountTokensPostRequestJson = BetaCountMessageTokensParam
 export const BetaMessagesCountTokensPostRequestJson = BetaCountMessageTokensParams
 export type BetaMessagesCountTokensPost200 = BetaCountMessageTokensResponse
 export const BetaMessagesCountTokensPost200 = BetaCountMessageTokensResponse
-export type BetaMessagesCountTokensPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaAvailableToolsLimitExceededErrorDetails
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCompactionBlockAmbiguousErrorDetails
-      | BetaCompactionBlockMisplacedErrorDetails
-      | BetaCompactionContentMismatchErrorDetails
-      | BetaCompactionNothingToSummarizeErrorDetails
-      | BetaCompactionSignatureInvalidErrorDetails
-      | BetaCompactionToolChangesMismatchErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | BetaRequestBodyEncodingInvalidErrorDetails
-      | BetaRequestBodyEncodingUnsupportedErrorDetails
-      | BetaToolNameConflictErrorDetails
-      | BetaToolReferenceUnresolvedErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesCountTokensPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaAvailableToolsLimitExceededErrorDetails,
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCompactionBlockAmbiguousErrorDetails,
-        BetaCompactionBlockMisplacedErrorDetails,
-        BetaCompactionContentMismatchErrorDetails,
-        BetaCompactionNothingToSummarizeErrorDetails,
-        BetaCompactionSignatureInvalidErrorDetails,
-        BetaCompactionToolChangesMismatchErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        BetaRequestBodyEncodingInvalidErrorDetails,
-        BetaRequestBodyEncodingUnsupportedErrorDetails,
-        BetaToolNameConflictErrorDetails,
-        BetaToolReferenceUnresolvedErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesCountTokensPost401 = BetaErrorResponse
-export const BetaMessagesCountTokensPost401 = BetaErrorResponse
-export type BetaMessagesCountTokensPost403 = BetaErrorResponse
-export const BetaMessagesCountTokensPost403 = BetaErrorResponse
-export type BetaMessagesCountTokensPost404 = BetaErrorResponse
-export const BetaMessagesCountTokensPost404 = BetaErrorResponse
-export type BetaMessagesCountTokensPost408 = BetaErrorResponse
-export const BetaMessagesCountTokensPost408 = BetaErrorResponse
-export type BetaMessagesCountTokensPost409 = BetaErrorResponse
-export const BetaMessagesCountTokensPost409 = BetaErrorResponse
-export type BetaMessagesCountTokensPost412 = BetaErrorResponse
-export const BetaMessagesCountTokensPost412 = BetaErrorResponse
-export type BetaMessagesCountTokensPost413 = {
-  readonly "error": {
-    readonly "details"?: BetaRequestBodyTooLargeAfterDecodingErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesCountTokensPost413 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaRequestBodyTooLargeAfterDecodingErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesCountTokensPost429 = {
-  readonly "error": {
-    readonly "details"?: BetaEnforcedSpendLimitReachedErrorDetails | null
-    readonly "message": string
-    readonly "type": "rate_limit_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesCountTokensPost429 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaEnforcedSpendLimitReachedErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Rate limited" }),
-    "type": Schema.Literal("rate_limit_error").annotate({ "title": "Type", "default": "rate_limit_error" })
-  }).annotate({ "title": "RateLimitError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaMessagesCountTokensPost431 = BetaErrorResponse
-export const BetaMessagesCountTokensPost431 = BetaErrorResponse
-export type BetaMessagesCountTokensPost499 = BetaErrorResponse
-export const BetaMessagesCountTokensPost499 = BetaErrorResponse
-export type BetaMessagesCountTokensPost500 = BetaErrorResponse
-export const BetaMessagesCountTokensPost500 = BetaErrorResponse
-export type BetaMessagesCountTokensPost501 = BetaErrorResponse
-export const BetaMessagesCountTokensPost501 = BetaErrorResponse
-export type BetaMessagesCountTokensPost503 = BetaErrorResponse
-export const BetaMessagesCountTokensPost503 = BetaErrorResponse
-export type BetaMessagesCountTokensPost504 = BetaErrorResponse
-export const BetaMessagesCountTokensPost504 = BetaErrorResponse
-export type BetaMessagesCountTokensPost529 = {
-  readonly "error": {
-    readonly "details"?: BetaCompactionUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaMessagesCountTokensPost529 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaCompactionUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
+export type BetaMessagesCountTokensPost4XX = BetaErrorResponse
+export const BetaMessagesCountTokensPost4XX = BetaErrorResponse
 export type BetaListFilesV1FilesGetParams = {
   readonly "page"?: string | null
   readonly "ids[]"?: ReadonlyArray<string> | null
   readonly "limit"?: number
   readonly "scope_id"?: string
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
@@ -19692,7 +17614,7 @@ export const BetaListFilesV1FilesGetParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19713,79 +17635,16 @@ export const BetaListFilesV1FilesGetParams = Schema.Struct({
 })
 export type BetaListFilesV1FilesGet200 = BetaFileListResponse
 export const BetaListFilesV1FilesGet200 = BetaFileListResponse
-export type BetaListFilesV1FilesGet400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaListFilesV1FilesGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaListFilesV1FilesGet401 = BetaErrorResponse
-export const BetaListFilesV1FilesGet401 = BetaErrorResponse
-export type BetaListFilesV1FilesGet403 = BetaErrorResponse
-export const BetaListFilesV1FilesGet403 = BetaErrorResponse
-export type BetaListFilesV1FilesGet404 = BetaErrorResponse
-export const BetaListFilesV1FilesGet404 = BetaErrorResponse
-export type BetaListFilesV1FilesGet408 = BetaErrorResponse
-export const BetaListFilesV1FilesGet408 = BetaErrorResponse
-export type BetaListFilesV1FilesGet409 = BetaErrorResponse
-export const BetaListFilesV1FilesGet409 = BetaErrorResponse
-export type BetaListFilesV1FilesGet412 = BetaErrorResponse
-export const BetaListFilesV1FilesGet412 = BetaErrorResponse
-export type BetaListFilesV1FilesGet413 = BetaErrorResponse
-export const BetaListFilesV1FilesGet413 = BetaErrorResponse
-export type BetaListFilesV1FilesGet429 = BetaErrorResponse
-export const BetaListFilesV1FilesGet429 = BetaErrorResponse
-export type BetaListFilesV1FilesGet431 = BetaErrorResponse
-export const BetaListFilesV1FilesGet431 = BetaErrorResponse
-export type BetaListFilesV1FilesGet499 = BetaErrorResponse
-export const BetaListFilesV1FilesGet499 = BetaErrorResponse
-export type BetaListFilesV1FilesGet500 = BetaErrorResponse
-export const BetaListFilesV1FilesGet500 = BetaErrorResponse
-export type BetaListFilesV1FilesGet501 = BetaErrorResponse
-export const BetaListFilesV1FilesGet501 = BetaErrorResponse
-export type BetaListFilesV1FilesGet503 = BetaErrorResponse
-export const BetaListFilesV1FilesGet503 = BetaErrorResponse
-export type BetaListFilesV1FilesGet504 = BetaErrorResponse
-export const BetaListFilesV1FilesGet504 = BetaErrorResponse
-export type BetaListFilesV1FilesGet529 = BetaErrorResponse
-export const BetaListFilesV1FilesGet529 = BetaErrorResponse
+export type BetaListFilesV1FilesGet4XX = BetaErrorResponse
+export const BetaListFilesV1FilesGet4XX = BetaErrorResponse
 export type BetaUploadFileV1FilesPostParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaUploadFileV1FilesPostParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19816,82 +17675,17 @@ export const BetaUploadFileV1FilesPostRequestFormData = Schema.Struct({
 })
 export type BetaUploadFileV1FilesPost200 = BetaFileMetadataSchema
 export const BetaUploadFileV1FilesPost200 = BetaFileMetadataSchema
-export type BetaUploadFileV1FilesPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | BetaStorageQuotaExceededErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaUploadFileV1FilesPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        BetaStorageQuotaExceededErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaUploadFileV1FilesPost401 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost401 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost403 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost403 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost404 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost404 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost408 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost408 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost409 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost409 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost412 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost412 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost413 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost413 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost429 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost429 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost431 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost431 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost499 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost499 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost500 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost500 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost501 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost501 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost503 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost503 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost504 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost504 = BetaErrorResponse
-export type BetaUploadFileV1FilesPost529 = BetaErrorResponse
-export const BetaUploadFileV1FilesPost529 = BetaErrorResponse
+export type BetaUploadFileV1FilesPost4XX = BetaErrorResponse
+export const BetaUploadFileV1FilesPost4XX = BetaErrorResponse
 export type BetaGetFileMetadataV1FilesFileIdGetParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaGetFileMetadataV1FilesFileIdGetParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -19912,80 +17706,17 @@ export const BetaGetFileMetadataV1FilesFileIdGetParams = Schema.Struct({
 })
 export type BetaGetFileMetadataV1FilesFileIdGet200 = BetaFileMetadataSchema
 export const BetaGetFileMetadataV1FilesFileIdGet200 = BetaFileMetadataSchema
-export type BetaGetFileMetadataV1FilesFileIdGet400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaGetFileMetadataV1FilesFileIdGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaGetFileMetadataV1FilesFileIdGet401 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet401 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet403 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet403 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet404 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet404 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet408 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet408 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet409 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet409 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet412 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet412 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet413 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet413 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet429 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet429 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet431 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet431 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet499 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet499 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet500 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet500 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet501 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet501 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet503 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet503 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet504 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet504 = BetaErrorResponse
-export type BetaGetFileMetadataV1FilesFileIdGet529 = BetaErrorResponse
-export const BetaGetFileMetadataV1FilesFileIdGet529 = BetaErrorResponse
+export type BetaGetFileMetadataV1FilesFileIdGet4XX = BetaErrorResponse
+export const BetaGetFileMetadataV1FilesFileIdGet4XX = BetaErrorResponse
 export type BetaDeleteFileV1FilesFileIdDeleteParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaDeleteFileV1FilesFileIdDeleteParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20006,80 +17737,17 @@ export const BetaDeleteFileV1FilesFileIdDeleteParams = Schema.Struct({
 })
 export type BetaDeleteFileV1FilesFileIdDelete200 = BetaFileDeleteResponse
 export const BetaDeleteFileV1FilesFileIdDelete200 = BetaFileDeleteResponse
-export type BetaDeleteFileV1FilesFileIdDelete400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaDeleteFileV1FilesFileIdDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaDeleteFileV1FilesFileIdDelete401 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete401 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete403 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete403 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete404 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete404 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete408 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete408 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete409 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete409 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete412 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete412 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete413 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete413 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete429 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete429 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete431 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete431 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete499 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete499 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete500 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete500 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete501 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete501 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete503 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete503 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete504 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete504 = BetaErrorResponse
-export type BetaDeleteFileV1FilesFileIdDelete529 = BetaErrorResponse
-export const BetaDeleteFileV1FilesFileIdDelete529 = BetaErrorResponse
+export type BetaDeleteFileV1FilesFileIdDelete4XX = BetaErrorResponse
+export const BetaDeleteFileV1FilesFileIdDelete4XX = BetaErrorResponse
 export type BetaDownloadFileV1FilesFileIdContentGetParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaDownloadFileV1FilesFileIdContentGetParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20098,99 +17766,13 @@ export const BetaDownloadFileV1FilesFileIdContentGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaDownloadFileV1FilesFileIdContentGet400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaFileNotDownloadableErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaDownloadFileV1FilesFileIdContentGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaFileNotDownloadableErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaDownloadFileV1FilesFileIdContentGet401 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet401 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet403 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet403 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet404 = {
-  readonly "error": {
-    readonly "details"?: BetaFileExpiredErrorDetails | null
-    readonly "message": string
-    readonly "type": "not_found_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaDownloadFileV1FilesFileIdContentGet404 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaFileExpiredErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Not found" }),
-    "type": Schema.Literal("not_found_error").annotate({ "title": "Type", "default": "not_found_error" })
-  }).annotate({ "title": "NotFoundError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaDownloadFileV1FilesFileIdContentGet408 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet408 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet409 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet409 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet412 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet412 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet413 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet413 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet429 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet429 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet431 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet431 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet499 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet499 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet500 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet500 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet501 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet501 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet503 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet503 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet504 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet504 = BetaErrorResponse
-export type BetaDownloadFileV1FilesFileIdContentGet529 = BetaErrorResponse
-export const BetaDownloadFileV1FilesFileIdContentGet529 = BetaErrorResponse
+export type BetaDownloadFileV1FilesFileIdContentGet4XX = BetaErrorResponse
+export const BetaDownloadFileV1FilesFileIdContentGet4XX = BetaErrorResponse
 export type BetaListSkillsV1SkillsGetParams = {
   readonly "page"?: string | null
   readonly "limit"?: number
   readonly "source"?: string | null
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
@@ -20220,7 +17802,7 @@ export const BetaListSkillsV1SkillsGetParams = Schema.Struct({
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20241,69 +17823,16 @@ export const BetaListSkillsV1SkillsGetParams = Schema.Struct({
 })
 export type BetaListSkillsV1SkillsGet200 = BetaListSkillsResponse
 export const BetaListSkillsV1SkillsGet200 = BetaListSkillsResponse
-export type BetaListSkillsV1SkillsGet400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaListSkillsV1SkillsGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaListSkillsV1SkillsGet401 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet401 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet403 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet403 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet404 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet404 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet408 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet408 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet409 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet409 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet412 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet412 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet413 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet413 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet429 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet429 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet431 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet431 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet499 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet499 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet500 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet500 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet501 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet501 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet503 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet503 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet504 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet504 = BetaErrorResponse
-export type BetaListSkillsV1SkillsGet529 = BetaErrorResponse
-export const BetaListSkillsV1SkillsGet529 = BetaErrorResponse
+export type BetaListSkillsV1SkillsGet4XX = BetaErrorResponse
+export const BetaListSkillsV1SkillsGet4XX = BetaErrorResponse
 export type BetaCreateSkillV1SkillsPostParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaCreateSkillV1SkillsPostParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20321,101 +17850,17 @@ export type BetaCreateSkillV1SkillsPostRequestFormData = BetaBody_create_skill_v
 export const BetaCreateSkillV1SkillsPostRequestFormData = BetaBody_create_skill_v1_skills_postMultipart
 export type BetaCreateSkillV1SkillsPost200 = BetaSkill
 export const BetaCreateSkillV1SkillsPost200 = BetaSkill
-export type BetaCreateSkillV1SkillsPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaCreateSkillV1SkillsPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaCreateSkillV1SkillsPost401 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost401 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost403 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost403 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost404 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost404 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost408 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost408 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost409 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost409 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost412 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost412 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost413 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost413 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost429 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost429 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost431 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost431 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost499 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost499 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost500 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost500 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost501 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost501 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost503 = {
-  readonly "error": {
-    readonly "details"?: BetaCmekContextUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaCreateSkillV1SkillsPost503 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaCmekContextUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaCreateSkillV1SkillsPost504 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost504 = BetaErrorResponse
-export type BetaCreateSkillV1SkillsPost529 = BetaErrorResponse
-export const BetaCreateSkillV1SkillsPost529 = BetaErrorResponse
+export type BetaCreateSkillV1SkillsPost4XX = BetaErrorResponse
+export const BetaCreateSkillV1SkillsPost4XX = BetaErrorResponse
 export type BetaGetSkillV1SkillsSkillIdGetParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaGetSkillV1SkillsSkillIdGetParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20436,70 +17881,17 @@ export const BetaGetSkillV1SkillsSkillIdGetParams = Schema.Struct({
 })
 export type BetaGetSkillV1SkillsSkillIdGet200 = BetaSkill
 export const BetaGetSkillV1SkillsSkillIdGet200 = BetaSkill
-export type BetaGetSkillV1SkillsSkillIdGet400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaGetSkillV1SkillsSkillIdGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaGetSkillV1SkillsSkillIdGet401 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet401 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet403 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet403 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet404 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet404 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet408 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet408 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet409 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet409 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet412 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet412 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet413 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet413 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet429 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet429 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet431 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet431 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet499 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet499 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet500 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet500 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet501 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet501 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet503 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet503 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet504 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet504 = BetaErrorResponse
-export type BetaGetSkillV1SkillsSkillIdGet529 = BetaErrorResponse
-export const BetaGetSkillV1SkillsSkillIdGet529 = BetaErrorResponse
+export type BetaGetSkillV1SkillsSkillIdGet4XX = BetaErrorResponse
+export const BetaGetSkillV1SkillsSkillIdGet4XX = BetaErrorResponse
 export type BetaDeleteSkillV1SkillsSkillIdDeleteParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaDeleteSkillV1SkillsSkillIdDeleteParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20520,65 +17912,12 @@ export const BetaDeleteSkillV1SkillsSkillIdDeleteParams = Schema.Struct({
 })
 export type BetaDeleteSkillV1SkillsSkillIdDelete200 = BetaDeletedSkill
 export const BetaDeleteSkillV1SkillsSkillIdDelete200 = BetaDeletedSkill
-export type BetaDeleteSkillV1SkillsSkillIdDelete400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaDeleteSkillV1SkillsSkillIdDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaDeleteSkillV1SkillsSkillIdDelete401 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete401 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete403 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete403 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete404 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete404 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete408 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete408 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete409 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete409 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete412 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete412 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete413 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete413 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete429 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete429 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete431 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete431 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete499 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete499 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete500 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete500 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete501 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete501 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete503 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete503 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete504 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete504 = BetaErrorResponse
-export type BetaDeleteSkillV1SkillsSkillIdDelete529 = BetaErrorResponse
-export const BetaDeleteSkillV1SkillsSkillIdDelete529 = BetaErrorResponse
+export type BetaDeleteSkillV1SkillsSkillIdDelete4XX = BetaErrorResponse
+export const BetaDeleteSkillV1SkillsSkillIdDelete4XX = BetaErrorResponse
 export type BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams = {
   readonly "page"?: string | null
   readonly "limit"?: number | null
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
@@ -20603,7 +17942,7 @@ export const BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Stru
     })
   ),
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20624,69 +17963,16 @@ export const BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Stru
 })
 export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionsResponse
 export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionsResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet401 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet401 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet403 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet403 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet404 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet404 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet408 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet408 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet409 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet409 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet412 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet412 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet413 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet413 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet429 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet429 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet431 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet431 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet499 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet499 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet500 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet500 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet501 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet501 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet503 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet503 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet504 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet504 = BetaErrorResponse
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet529 = BetaErrorResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet529 = BetaErrorResponse
+export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX = BetaErrorResponse
+export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX = BetaErrorResponse
 export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20706,101 +17992,17 @@ export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
   BetaBody_create_skill_version_v1_skills__skill_id__versions_postMultipart
 export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200 = BetaSkillVersion
 export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200 = BetaSkillVersion
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400 = {
-  readonly "error": {
-    readonly "details"?:
-      | BetaClaudeCodeKeyCreatorNotMemberErrorDetails
-      | BetaCmekKeyDisabledErrorDetails
-      | BetaCmekKeyNetworkBlockedErrorDetails
-      | BetaOrganizationOnHoldErrorDetails
-      | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([
-        BetaClaudeCodeKeyCreatorNotMemberErrorDetails,
-        BetaCmekKeyDisabledErrorDetails,
-        BetaCmekKeyNetworkBlockedErrorDetails,
-        BetaOrganizationOnHoldErrorDetails,
-        Schema.Null
-      ]).annotate({
-        "title": "Details",
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503 = {
-  readonly "error": {
-    readonly "details"?: BetaCmekContextUnavailableErrorDetails | null
-    readonly "message": string
-    readonly "type": "overloaded_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaCmekContextUnavailableErrorDetails, Schema.Null]).annotate({
-        "description":
-          "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-      })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Overloaded" }),
-    "type": Schema.Literal("overloaded_error").annotate({ "title": "Type", "default": "overloaded_error" })
-  }).annotate({ "title": "OverloadedError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504 = BetaErrorResponse
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529 = BetaErrorResponse
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529 = BetaErrorResponse
+export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX = BetaErrorResponse
+export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX = BetaErrorResponse
 export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20821,70 +18023,17 @@ export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema
 })
 export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersion
 export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersion
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504 = BetaErrorResponse
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529 = BetaErrorResponse
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529 = BetaErrorResponse
+export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = BetaErrorResponse
+export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = BetaErrorResponse
 export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20905,70 +18054,17 @@ export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = 
 })
 export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = BetaDeletedSkillVersion
 export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = BetaDeletedSkillVersion
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400 = {
-  readonly "error": {
-    readonly "details"?: BetaClaudeCodeKeyCreatorNotMemberErrorDetails | BetaOrganizationOnHoldErrorDetails | null
-    readonly "message": string
-    readonly "type": "invalid_request_error"
-  }
-  readonly "request_id": string | null
-  readonly "type": "error"
-}
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400 = Schema.Struct({
-  "error": Schema.Struct({
-    "details": Schema.optionalKey(
-      Schema.Union([BetaClaudeCodeKeyCreatorNotMemberErrorDetails, BetaOrganizationOnHoldErrorDetails, Schema.Null])
-        .annotate({
-          "title": "Details",
-          "description":
-            "Machine-readable detail about the cause of the error. `error_code` names the cause; branch on it rather than on `message`. Absent when the error has no code. Treat an unrecognized `error_code` as the bare `type`."
-        })
-    ),
-    "message": Schema.String.annotate({ "title": "Message", "default": "Invalid request" }),
-    "type": Schema.Literal("invalid_request_error").annotate({ "title": "Type", "default": "invalid_request_error" })
-  }).annotate({ "title": "InvalidRequestError" }),
-  "request_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Request Id" }),
-  "type": Schema.Literal("error").annotate({ "title": "Type", "default": "error" })
-}).annotate({ "title": "ErrorResponse" })
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504 = BetaErrorResponse
-export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529 = BetaErrorResponse
-export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529 = BetaErrorResponse
+export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX = BetaErrorResponse
+export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX = BetaErrorResponse
 export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetParams = {
-  readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>
+  readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>
   readonly "anthropic-version"?: string
   readonly "x-api-key"?: string
   readonly "anthropic-workspace-id"?: string
 }
 export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetParams = Schema.Struct({
   "anthropic-beta": Schema.optionalKey(
-    Schema.Array(AnthropicBeta).annotate({
+    Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate({
       "title": "Anthropic-Beta",
       "description": "Optional header to specify the beta version(s) you want to use."
     })
@@ -20987,38 +18083,8 @@ export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionConten
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504 = BetaErrorResponse
-export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529 = BetaErrorResponse
-export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529 = BetaErrorResponse
+export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX = BetaErrorResponse
+export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX = BetaErrorResponse
 
 export interface OperationConfig {
   /**
@@ -21119,25 +18185,6 @@ export const make = (
           HttpClient.filterStatusOk(client).execute(request))
         : HttpClient.filterStatusOk(httpClient).execute(request)
     )
-  const sseRequest = <
-    Type,
-    DecodingServices
-  >(
-    schema: Schema.ConstraintDecoder<Type, DecodingServices>
-  ) =>
-  (
-    request: HttpClientRequest.HttpClientRequest
-  ): Stream.Stream<
-    { readonly event: string; readonly id: string | undefined; readonly data: Type },
-    HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
-    DecodingServices
-  > =>
-    executeStreamRequest(request).pipe(
-      Effect.map((response) => response.stream),
-      Stream.unwrap,
-      Stream.decodeText(),
-      Stream.pipeThroughChannel(Sse.decodeDataSchema(schema))
-    )
   const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))
   const binaryRequest = (
@@ -21169,22 +18216,7 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(MessagesPost200),
-          "400": decodeError("MessagesPost400", MessagesPost400),
-          "401": decodeError("MessagesPost401", MessagesPost401),
-          "403": decodeError("MessagesPost403", MessagesPost403),
-          "404": decodeError("MessagesPost404", MessagesPost404),
-          "408": decodeError("MessagesPost408", MessagesPost408),
-          "409": decodeError("MessagesPost409", MessagesPost409),
-          "412": decodeError("MessagesPost412", MessagesPost412),
-          "413": decodeError("MessagesPost413", MessagesPost413),
-          "429": decodeError("MessagesPost429", MessagesPost429),
-          "431": decodeError("MessagesPost431", MessagesPost431),
-          "499": decodeError("MessagesPost499", MessagesPost499),
-          "500": decodeError("MessagesPost500", MessagesPost500),
-          "501": decodeError("MessagesPost501", MessagesPost501),
-          "503": decodeError("MessagesPost503", MessagesPost503),
-          "504": decodeError("MessagesPost504", MessagesPost504),
-          "529": decodeError("MessagesPost529", MessagesPost529),
+          "4xx": decodeError("MessagesPost4XX", MessagesPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21198,22 +18230,7 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CompletePost200),
-          "400": decodeError("CompletePost400", CompletePost400),
-          "401": decodeError("CompletePost401", CompletePost401),
-          "403": decodeError("CompletePost403", CompletePost403),
-          "404": decodeError("CompletePost404", CompletePost404),
-          "408": decodeError("CompletePost408", CompletePost408),
-          "409": decodeError("CompletePost409", CompletePost409),
-          "412": decodeError("CompletePost412", CompletePost412),
-          "413": decodeError("CompletePost413", CompletePost413),
-          "429": decodeError("CompletePost429", CompletePost429),
-          "431": decodeError("CompletePost431", CompletePost431),
-          "499": decodeError("CompletePost499", CompletePost499),
-          "500": decodeError("CompletePost500", CompletePost500),
-          "501": decodeError("CompletePost501", CompletePost501),
-          "503": decodeError("CompletePost503", CompletePost503),
-          "504": decodeError("CompletePost504", CompletePost504),
-          "529": decodeError("CompletePost529", CompletePost529),
+          "4xx": decodeError("CompletePost4XX", CompletePost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21233,22 +18250,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ModelsList200),
-          "400": decodeError("ModelsList400", ModelsList400),
-          "401": decodeError("ModelsList401", ModelsList401),
-          "403": decodeError("ModelsList403", ModelsList403),
-          "404": decodeError("ModelsList404", ModelsList404),
-          "408": decodeError("ModelsList408", ModelsList408),
-          "409": decodeError("ModelsList409", ModelsList409),
-          "412": decodeError("ModelsList412", ModelsList412),
-          "413": decodeError("ModelsList413", ModelsList413),
-          "429": decodeError("ModelsList429", ModelsList429),
-          "431": decodeError("ModelsList431", ModelsList431),
-          "499": decodeError("ModelsList499", ModelsList499),
-          "500": decodeError("ModelsList500", ModelsList500),
-          "501": decodeError("ModelsList501", ModelsList501),
-          "503": decodeError("ModelsList503", ModelsList503),
-          "504": decodeError("ModelsList504", ModelsList504),
-          "529": decodeError("ModelsList529", ModelsList529),
+          "4xx": decodeError("ModelsList4XX", ModelsList4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21264,22 +18266,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(ModelsGet200),
-              "400": decodeError("ModelsGet400", ModelsGet400),
-              "401": decodeError("ModelsGet401", ModelsGet401),
-              "403": decodeError("ModelsGet403", ModelsGet403),
-              "404": decodeError("ModelsGet404", ModelsGet404),
-              "408": decodeError("ModelsGet408", ModelsGet408),
-              "409": decodeError("ModelsGet409", ModelsGet409),
-              "412": decodeError("ModelsGet412", ModelsGet412),
-              "413": decodeError("ModelsGet413", ModelsGet413),
-              "429": decodeError("ModelsGet429", ModelsGet429),
-              "431": decodeError("ModelsGet431", ModelsGet431),
-              "499": decodeError("ModelsGet499", ModelsGet499),
-              "500": decodeError("ModelsGet500", ModelsGet500),
-              "501": decodeError("ModelsGet501", ModelsGet501),
-              "503": decodeError("ModelsGet503", ModelsGet503),
-              "504": decodeError("ModelsGet504", ModelsGet504),
-              "529": decodeError("ModelsGet529", ModelsGet529),
+              "4xx": decodeError("ModelsGet4XX", ModelsGet4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21299,22 +18286,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(MessageBatchesList200),
-          "400": decodeError("MessageBatchesList400", MessageBatchesList400),
-          "401": decodeError("MessageBatchesList401", MessageBatchesList401),
-          "403": decodeError("MessageBatchesList403", MessageBatchesList403),
-          "404": decodeError("MessageBatchesList404", MessageBatchesList404),
-          "408": decodeError("MessageBatchesList408", MessageBatchesList408),
-          "409": decodeError("MessageBatchesList409", MessageBatchesList409),
-          "412": decodeError("MessageBatchesList412", MessageBatchesList412),
-          "413": decodeError("MessageBatchesList413", MessageBatchesList413),
-          "429": decodeError("MessageBatchesList429", MessageBatchesList429),
-          "431": decodeError("MessageBatchesList431", MessageBatchesList431),
-          "499": decodeError("MessageBatchesList499", MessageBatchesList499),
-          "500": decodeError("MessageBatchesList500", MessageBatchesList500),
-          "501": decodeError("MessageBatchesList501", MessageBatchesList501),
-          "503": decodeError("MessageBatchesList503", MessageBatchesList503),
-          "504": decodeError("MessageBatchesList504", MessageBatchesList504),
-          "529": decodeError("MessageBatchesList529", MessageBatchesList529),
+          "4xx": decodeError("MessageBatchesList4XX", MessageBatchesList4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21328,22 +18300,7 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(MessageBatchesPost200),
-          "400": decodeError("MessageBatchesPost400", MessageBatchesPost400),
-          "401": decodeError("MessageBatchesPost401", MessageBatchesPost401),
-          "403": decodeError("MessageBatchesPost403", MessageBatchesPost403),
-          "404": decodeError("MessageBatchesPost404", MessageBatchesPost404),
-          "408": decodeError("MessageBatchesPost408", MessageBatchesPost408),
-          "409": decodeError("MessageBatchesPost409", MessageBatchesPost409),
-          "412": decodeError("MessageBatchesPost412", MessageBatchesPost412),
-          "413": decodeError("MessageBatchesPost413", MessageBatchesPost413),
-          "429": decodeError("MessageBatchesPost429", MessageBatchesPost429),
-          "431": decodeError("MessageBatchesPost431", MessageBatchesPost431),
-          "499": decodeError("MessageBatchesPost499", MessageBatchesPost499),
-          "500": decodeError("MessageBatchesPost500", MessageBatchesPost500),
-          "501": decodeError("MessageBatchesPost501", MessageBatchesPost501),
-          "503": decodeError("MessageBatchesPost503", MessageBatchesPost503),
-          "504": decodeError("MessageBatchesPost504", MessageBatchesPost504),
-          "529": decodeError("MessageBatchesPost529", MessageBatchesPost529),
+          "4xx": decodeError("MessageBatchesPost4XX", MessageBatchesPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21362,22 +18319,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(MessageBatchesRetrieve200),
-              "400": decodeError("MessageBatchesRetrieve400", MessageBatchesRetrieve400),
-              "401": decodeError("MessageBatchesRetrieve401", MessageBatchesRetrieve401),
-              "403": decodeError("MessageBatchesRetrieve403", MessageBatchesRetrieve403),
-              "404": decodeError("MessageBatchesRetrieve404", MessageBatchesRetrieve404),
-              "408": decodeError("MessageBatchesRetrieve408", MessageBatchesRetrieve408),
-              "409": decodeError("MessageBatchesRetrieve409", MessageBatchesRetrieve409),
-              "412": decodeError("MessageBatchesRetrieve412", MessageBatchesRetrieve412),
-              "413": decodeError("MessageBatchesRetrieve413", MessageBatchesRetrieve413),
-              "429": decodeError("MessageBatchesRetrieve429", MessageBatchesRetrieve429),
-              "431": decodeError("MessageBatchesRetrieve431", MessageBatchesRetrieve431),
-              "499": decodeError("MessageBatchesRetrieve499", MessageBatchesRetrieve499),
-              "500": decodeError("MessageBatchesRetrieve500", MessageBatchesRetrieve500),
-              "501": decodeError("MessageBatchesRetrieve501", MessageBatchesRetrieve501),
-              "503": decodeError("MessageBatchesRetrieve503", MessageBatchesRetrieve503),
-              "504": decodeError("MessageBatchesRetrieve504", MessageBatchesRetrieve504),
-              "529": decodeError("MessageBatchesRetrieve529", MessageBatchesRetrieve529),
+              "4xx": decodeError("MessageBatchesRetrieve4XX", MessageBatchesRetrieve4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21398,22 +18340,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(MessageBatchesDelete200),
-              "400": decodeError("MessageBatchesDelete400", MessageBatchesDelete400),
-              "401": decodeError("MessageBatchesDelete401", MessageBatchesDelete401),
-              "403": decodeError("MessageBatchesDelete403", MessageBatchesDelete403),
-              "404": decodeError("MessageBatchesDelete404", MessageBatchesDelete404),
-              "408": decodeError("MessageBatchesDelete408", MessageBatchesDelete408),
-              "409": decodeError("MessageBatchesDelete409", MessageBatchesDelete409),
-              "412": decodeError("MessageBatchesDelete412", MessageBatchesDelete412),
-              "413": decodeError("MessageBatchesDelete413", MessageBatchesDelete413),
-              "429": decodeError("MessageBatchesDelete429", MessageBatchesDelete429),
-              "431": decodeError("MessageBatchesDelete431", MessageBatchesDelete431),
-              "499": decodeError("MessageBatchesDelete499", MessageBatchesDelete499),
-              "500": decodeError("MessageBatchesDelete500", MessageBatchesDelete500),
-              "501": decodeError("MessageBatchesDelete501", MessageBatchesDelete501),
-              "503": decodeError("MessageBatchesDelete503", MessageBatchesDelete503),
-              "504": decodeError("MessageBatchesDelete504", MessageBatchesDelete504),
-              "529": decodeError("MessageBatchesDelete529", MessageBatchesDelete529),
+              "4xx": decodeError("MessageBatchesDelete4XX", MessageBatchesDelete4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21433,22 +18360,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(MessageBatchesCancel200),
-              "400": decodeError("MessageBatchesCancel400", MessageBatchesCancel400),
-              "401": decodeError("MessageBatchesCancel401", MessageBatchesCancel401),
-              "403": decodeError("MessageBatchesCancel403", MessageBatchesCancel403),
-              "404": decodeError("MessageBatchesCancel404", MessageBatchesCancel404),
-              "408": decodeError("MessageBatchesCancel408", MessageBatchesCancel408),
-              "409": decodeError("MessageBatchesCancel409", MessageBatchesCancel409),
-              "412": decodeError("MessageBatchesCancel412", MessageBatchesCancel412),
-              "413": decodeError("MessageBatchesCancel413", MessageBatchesCancel413),
-              "429": decodeError("MessageBatchesCancel429", MessageBatchesCancel429),
-              "431": decodeError("MessageBatchesCancel431", MessageBatchesCancel431),
-              "499": decodeError("MessageBatchesCancel499", MessageBatchesCancel499),
-              "500": decodeError("MessageBatchesCancel500", MessageBatchesCancel500),
-              "501": decodeError("MessageBatchesCancel501", MessageBatchesCancel501),
-              "503": decodeError("MessageBatchesCancel503", MessageBatchesCancel503),
-              "504": decodeError("MessageBatchesCancel504", MessageBatchesCancel504),
-              "529": decodeError("MessageBatchesCancel529", MessageBatchesCancel529),
+              "4xx": decodeError("MessageBatchesCancel4XX", MessageBatchesCancel4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21468,22 +18380,7 @@ export const make = (
               "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
-              "400": decodeError("MessageBatchesResults400", MessageBatchesResults400),
-              "401": decodeError("MessageBatchesResults401", MessageBatchesResults401),
-              "403": decodeError("MessageBatchesResults403", MessageBatchesResults403),
-              "404": decodeError("MessageBatchesResults404", MessageBatchesResults404),
-              "408": decodeError("MessageBatchesResults408", MessageBatchesResults408),
-              "409": decodeError("MessageBatchesResults409", MessageBatchesResults409),
-              "412": decodeError("MessageBatchesResults412", MessageBatchesResults412),
-              "413": decodeError("MessageBatchesResults413", MessageBatchesResults413),
-              "429": decodeError("MessageBatchesResults429", MessageBatchesResults429),
-              "431": decodeError("MessageBatchesResults431", MessageBatchesResults431),
-              "499": decodeError("MessageBatchesResults499", MessageBatchesResults499),
-              "500": decodeError("MessageBatchesResults500", MessageBatchesResults500),
-              "501": decodeError("MessageBatchesResults501", MessageBatchesResults501),
-              "503": decodeError("MessageBatchesResults503", MessageBatchesResults503),
-              "504": decodeError("MessageBatchesResults504", MessageBatchesResults504),
-              "529": decodeError("MessageBatchesResults529", MessageBatchesResults529),
+              "4xx": decodeError("MessageBatchesResults4XX", MessageBatchesResults4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21499,22 +18396,7 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(MessagesCountTokensPost200),
-          "400": decodeError("MessagesCountTokensPost400", MessagesCountTokensPost400),
-          "401": decodeError("MessagesCountTokensPost401", MessagesCountTokensPost401),
-          "403": decodeError("MessagesCountTokensPost403", MessagesCountTokensPost403),
-          "404": decodeError("MessagesCountTokensPost404", MessagesCountTokensPost404),
-          "408": decodeError("MessagesCountTokensPost408", MessagesCountTokensPost408),
-          "409": decodeError("MessagesCountTokensPost409", MessagesCountTokensPost409),
-          "412": decodeError("MessagesCountTokensPost412", MessagesCountTokensPost412),
-          "413": decodeError("MessagesCountTokensPost413", MessagesCountTokensPost413),
-          "429": decodeError("MessagesCountTokensPost429", MessagesCountTokensPost429),
-          "431": decodeError("MessagesCountTokensPost431", MessagesCountTokensPost431),
-          "499": decodeError("MessagesCountTokensPost499", MessagesCountTokensPost499),
-          "500": decodeError("MessagesCountTokensPost500", MessagesCountTokensPost500),
-          "501": decodeError("MessagesCountTokensPost501", MessagesCountTokensPost501),
-          "503": decodeError("MessagesCountTokensPost503", MessagesCountTokensPost503),
-          "504": decodeError("MessagesCountTokensPost504", MessagesCountTokensPost504),
-          "529": decodeError("MessagesCountTokensPost529", MessagesCountTokensPost529),
+          "4xx": decodeError("MessagesCountTokensPost4XX", MessagesCountTokensPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21532,22 +18414,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ListFilesV1FilesGet200),
-          "400": decodeError("ListFilesV1FilesGet400", ListFilesV1FilesGet400),
-          "401": decodeError("ListFilesV1FilesGet401", ListFilesV1FilesGet401),
-          "403": decodeError("ListFilesV1FilesGet403", ListFilesV1FilesGet403),
-          "404": decodeError("ListFilesV1FilesGet404", ListFilesV1FilesGet404),
-          "408": decodeError("ListFilesV1FilesGet408", ListFilesV1FilesGet408),
-          "409": decodeError("ListFilesV1FilesGet409", ListFilesV1FilesGet409),
-          "412": decodeError("ListFilesV1FilesGet412", ListFilesV1FilesGet412),
-          "413": decodeError("ListFilesV1FilesGet413", ListFilesV1FilesGet413),
-          "429": decodeError("ListFilesV1FilesGet429", ListFilesV1FilesGet429),
-          "431": decodeError("ListFilesV1FilesGet431", ListFilesV1FilesGet431),
-          "499": decodeError("ListFilesV1FilesGet499", ListFilesV1FilesGet499),
-          "500": decodeError("ListFilesV1FilesGet500", ListFilesV1FilesGet500),
-          "501": decodeError("ListFilesV1FilesGet501", ListFilesV1FilesGet501),
-          "503": decodeError("ListFilesV1FilesGet503", ListFilesV1FilesGet503),
-          "504": decodeError("ListFilesV1FilesGet504", ListFilesV1FilesGet504),
-          "529": decodeError("ListFilesV1FilesGet529", ListFilesV1FilesGet529),
+          "4xx": decodeError("ListFilesV1FilesGet4XX", ListFilesV1FilesGet4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21560,22 +18427,7 @@ export const make = (
         HttpClientRequest.bodyFormDataRecord(options.payload as any),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(UploadFileV1FilesPost200),
-          "400": decodeError("UploadFileV1FilesPost400", UploadFileV1FilesPost400),
-          "401": decodeError("UploadFileV1FilesPost401", UploadFileV1FilesPost401),
-          "403": decodeError("UploadFileV1FilesPost403", UploadFileV1FilesPost403),
-          "404": decodeError("UploadFileV1FilesPost404", UploadFileV1FilesPost404),
-          "408": decodeError("UploadFileV1FilesPost408", UploadFileV1FilesPost408),
-          "409": decodeError("UploadFileV1FilesPost409", UploadFileV1FilesPost409),
-          "412": decodeError("UploadFileV1FilesPost412", UploadFileV1FilesPost412),
-          "413": decodeError("UploadFileV1FilesPost413", UploadFileV1FilesPost413),
-          "429": decodeError("UploadFileV1FilesPost429", UploadFileV1FilesPost429),
-          "431": decodeError("UploadFileV1FilesPost431", UploadFileV1FilesPost431),
-          "499": decodeError("UploadFileV1FilesPost499", UploadFileV1FilesPost499),
-          "500": decodeError("UploadFileV1FilesPost500", UploadFileV1FilesPost500),
-          "501": decodeError("UploadFileV1FilesPost501", UploadFileV1FilesPost501),
-          "503": decodeError("UploadFileV1FilesPost503", UploadFileV1FilesPost503),
-          "504": decodeError("UploadFileV1FilesPost504", UploadFileV1FilesPost504),
-          "529": decodeError("UploadFileV1FilesPost529", UploadFileV1FilesPost529),
+          "4xx": decodeError("UploadFileV1FilesPost4XX", UploadFileV1FilesPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21593,22 +18445,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(GetFileMetadataV1FilesFileIdGet200),
-              "400": decodeError("GetFileMetadataV1FilesFileIdGet400", GetFileMetadataV1FilesFileIdGet400),
-              "401": decodeError("GetFileMetadataV1FilesFileIdGet401", GetFileMetadataV1FilesFileIdGet401),
-              "403": decodeError("GetFileMetadataV1FilesFileIdGet403", GetFileMetadataV1FilesFileIdGet403),
-              "404": decodeError("GetFileMetadataV1FilesFileIdGet404", GetFileMetadataV1FilesFileIdGet404),
-              "408": decodeError("GetFileMetadataV1FilesFileIdGet408", GetFileMetadataV1FilesFileIdGet408),
-              "409": decodeError("GetFileMetadataV1FilesFileIdGet409", GetFileMetadataV1FilesFileIdGet409),
-              "412": decodeError("GetFileMetadataV1FilesFileIdGet412", GetFileMetadataV1FilesFileIdGet412),
-              "413": decodeError("GetFileMetadataV1FilesFileIdGet413", GetFileMetadataV1FilesFileIdGet413),
-              "429": decodeError("GetFileMetadataV1FilesFileIdGet429", GetFileMetadataV1FilesFileIdGet429),
-              "431": decodeError("GetFileMetadataV1FilesFileIdGet431", GetFileMetadataV1FilesFileIdGet431),
-              "499": decodeError("GetFileMetadataV1FilesFileIdGet499", GetFileMetadataV1FilesFileIdGet499),
-              "500": decodeError("GetFileMetadataV1FilesFileIdGet500", GetFileMetadataV1FilesFileIdGet500),
-              "501": decodeError("GetFileMetadataV1FilesFileIdGet501", GetFileMetadataV1FilesFileIdGet501),
-              "503": decodeError("GetFileMetadataV1FilesFileIdGet503", GetFileMetadataV1FilesFileIdGet503),
-              "504": decodeError("GetFileMetadataV1FilesFileIdGet504", GetFileMetadataV1FilesFileIdGet504),
-              "529": decodeError("GetFileMetadataV1FilesFileIdGet529", GetFileMetadataV1FilesFileIdGet529),
+              "4xx": decodeError("GetFileMetadataV1FilesFileIdGet4XX", GetFileMetadataV1FilesFileIdGet4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21628,22 +18465,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(DeleteFileV1FilesFileIdDelete200),
-              "400": decodeError("DeleteFileV1FilesFileIdDelete400", DeleteFileV1FilesFileIdDelete400),
-              "401": decodeError("DeleteFileV1FilesFileIdDelete401", DeleteFileV1FilesFileIdDelete401),
-              "403": decodeError("DeleteFileV1FilesFileIdDelete403", DeleteFileV1FilesFileIdDelete403),
-              "404": decodeError("DeleteFileV1FilesFileIdDelete404", DeleteFileV1FilesFileIdDelete404),
-              "408": decodeError("DeleteFileV1FilesFileIdDelete408", DeleteFileV1FilesFileIdDelete408),
-              "409": decodeError("DeleteFileV1FilesFileIdDelete409", DeleteFileV1FilesFileIdDelete409),
-              "412": decodeError("DeleteFileV1FilesFileIdDelete412", DeleteFileV1FilesFileIdDelete412),
-              "413": decodeError("DeleteFileV1FilesFileIdDelete413", DeleteFileV1FilesFileIdDelete413),
-              "429": decodeError("DeleteFileV1FilesFileIdDelete429", DeleteFileV1FilesFileIdDelete429),
-              "431": decodeError("DeleteFileV1FilesFileIdDelete431", DeleteFileV1FilesFileIdDelete431),
-              "499": decodeError("DeleteFileV1FilesFileIdDelete499", DeleteFileV1FilesFileIdDelete499),
-              "500": decodeError("DeleteFileV1FilesFileIdDelete500", DeleteFileV1FilesFileIdDelete500),
-              "501": decodeError("DeleteFileV1FilesFileIdDelete501", DeleteFileV1FilesFileIdDelete501),
-              "503": decodeError("DeleteFileV1FilesFileIdDelete503", DeleteFileV1FilesFileIdDelete503),
-              "504": decodeError("DeleteFileV1FilesFileIdDelete504", DeleteFileV1FilesFileIdDelete504),
-              "529": decodeError("DeleteFileV1FilesFileIdDelete529", DeleteFileV1FilesFileIdDelete529),
+              "4xx": decodeError("DeleteFileV1FilesFileIdDelete4XX", DeleteFileV1FilesFileIdDelete4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21664,22 +18486,7 @@ export const make = (
               }),
               withResponse(options?.config)(HttpClientResponse.matchStatus({
                 "2xx": decodeBinary,
-                "400": decodeError("DownloadFileV1FilesFileIdContentGet400", DownloadFileV1FilesFileIdContentGet400),
-                "401": decodeError("DownloadFileV1FilesFileIdContentGet401", DownloadFileV1FilesFileIdContentGet401),
-                "403": decodeError("DownloadFileV1FilesFileIdContentGet403", DownloadFileV1FilesFileIdContentGet403),
-                "404": decodeError("DownloadFileV1FilesFileIdContentGet404", DownloadFileV1FilesFileIdContentGet404),
-                "408": decodeError("DownloadFileV1FilesFileIdContentGet408", DownloadFileV1FilesFileIdContentGet408),
-                "409": decodeError("DownloadFileV1FilesFileIdContentGet409", DownloadFileV1FilesFileIdContentGet409),
-                "412": decodeError("DownloadFileV1FilesFileIdContentGet412", DownloadFileV1FilesFileIdContentGet412),
-                "413": decodeError("DownloadFileV1FilesFileIdContentGet413", DownloadFileV1FilesFileIdContentGet413),
-                "429": decodeError("DownloadFileV1FilesFileIdContentGet429", DownloadFileV1FilesFileIdContentGet429),
-                "431": decodeError("DownloadFileV1FilesFileIdContentGet431", DownloadFileV1FilesFileIdContentGet431),
-                "499": decodeError("DownloadFileV1FilesFileIdContentGet499", DownloadFileV1FilesFileIdContentGet499),
-                "500": decodeError("DownloadFileV1FilesFileIdContentGet500", DownloadFileV1FilesFileIdContentGet500),
-                "501": decodeError("DownloadFileV1FilesFileIdContentGet501", DownloadFileV1FilesFileIdContentGet501),
-                "503": decodeError("DownloadFileV1FilesFileIdContentGet503", DownloadFileV1FilesFileIdContentGet503),
-                "504": decodeError("DownloadFileV1FilesFileIdContentGet504", DownloadFileV1FilesFileIdContentGet504),
-                "529": decodeError("DownloadFileV1FilesFileIdContentGet529", DownloadFileV1FilesFileIdContentGet529),
+                "4xx": decodeError("DownloadFileV1FilesFileIdContentGet4XX", DownloadFileV1FilesFileIdContentGet4XX),
                 orElse: unexpectedStatus
               }))
             )
@@ -21715,22 +18522,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ListSkillsV1SkillsGet200),
-          "400": decodeError("ListSkillsV1SkillsGet400", ListSkillsV1SkillsGet400),
-          "401": decodeError("ListSkillsV1SkillsGet401", ListSkillsV1SkillsGet401),
-          "403": decodeError("ListSkillsV1SkillsGet403", ListSkillsV1SkillsGet403),
-          "404": decodeError("ListSkillsV1SkillsGet404", ListSkillsV1SkillsGet404),
-          "408": decodeError("ListSkillsV1SkillsGet408", ListSkillsV1SkillsGet408),
-          "409": decodeError("ListSkillsV1SkillsGet409", ListSkillsV1SkillsGet409),
-          "412": decodeError("ListSkillsV1SkillsGet412", ListSkillsV1SkillsGet412),
-          "413": decodeError("ListSkillsV1SkillsGet413", ListSkillsV1SkillsGet413),
-          "429": decodeError("ListSkillsV1SkillsGet429", ListSkillsV1SkillsGet429),
-          "431": decodeError("ListSkillsV1SkillsGet431", ListSkillsV1SkillsGet431),
-          "499": decodeError("ListSkillsV1SkillsGet499", ListSkillsV1SkillsGet499),
-          "500": decodeError("ListSkillsV1SkillsGet500", ListSkillsV1SkillsGet500),
-          "501": decodeError("ListSkillsV1SkillsGet501", ListSkillsV1SkillsGet501),
-          "503": decodeError("ListSkillsV1SkillsGet503", ListSkillsV1SkillsGet503),
-          "504": decodeError("ListSkillsV1SkillsGet504", ListSkillsV1SkillsGet504),
-          "529": decodeError("ListSkillsV1SkillsGet529", ListSkillsV1SkillsGet529),
+          "4xx": decodeError("ListSkillsV1SkillsGet4XX", ListSkillsV1SkillsGet4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21743,22 +18535,7 @@ export const make = (
         HttpClientRequest.bodyFormDataRecord(options.payload as any),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CreateSkillV1SkillsPost200),
-          "400": decodeError("CreateSkillV1SkillsPost400", CreateSkillV1SkillsPost400),
-          "401": decodeError("CreateSkillV1SkillsPost401", CreateSkillV1SkillsPost401),
-          "403": decodeError("CreateSkillV1SkillsPost403", CreateSkillV1SkillsPost403),
-          "404": decodeError("CreateSkillV1SkillsPost404", CreateSkillV1SkillsPost404),
-          "408": decodeError("CreateSkillV1SkillsPost408", CreateSkillV1SkillsPost408),
-          "409": decodeError("CreateSkillV1SkillsPost409", CreateSkillV1SkillsPost409),
-          "412": decodeError("CreateSkillV1SkillsPost412", CreateSkillV1SkillsPost412),
-          "413": decodeError("CreateSkillV1SkillsPost413", CreateSkillV1SkillsPost413),
-          "429": decodeError("CreateSkillV1SkillsPost429", CreateSkillV1SkillsPost429),
-          "431": decodeError("CreateSkillV1SkillsPost431", CreateSkillV1SkillsPost431),
-          "499": decodeError("CreateSkillV1SkillsPost499", CreateSkillV1SkillsPost499),
-          "500": decodeError("CreateSkillV1SkillsPost500", CreateSkillV1SkillsPost500),
-          "501": decodeError("CreateSkillV1SkillsPost501", CreateSkillV1SkillsPost501),
-          "503": decodeError("CreateSkillV1SkillsPost503", CreateSkillV1SkillsPost503),
-          "504": decodeError("CreateSkillV1SkillsPost504", CreateSkillV1SkillsPost504),
-          "529": decodeError("CreateSkillV1SkillsPost529", CreateSkillV1SkillsPost529),
+          "4xx": decodeError("CreateSkillV1SkillsPost4XX", CreateSkillV1SkillsPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -21773,22 +18550,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(GetSkillV1SkillsSkillIdGet200),
-              "400": decodeError("GetSkillV1SkillsSkillIdGet400", GetSkillV1SkillsSkillIdGet400),
-              "401": decodeError("GetSkillV1SkillsSkillIdGet401", GetSkillV1SkillsSkillIdGet401),
-              "403": decodeError("GetSkillV1SkillsSkillIdGet403", GetSkillV1SkillsSkillIdGet403),
-              "404": decodeError("GetSkillV1SkillsSkillIdGet404", GetSkillV1SkillsSkillIdGet404),
-              "408": decodeError("GetSkillV1SkillsSkillIdGet408", GetSkillV1SkillsSkillIdGet408),
-              "409": decodeError("GetSkillV1SkillsSkillIdGet409", GetSkillV1SkillsSkillIdGet409),
-              "412": decodeError("GetSkillV1SkillsSkillIdGet412", GetSkillV1SkillsSkillIdGet412),
-              "413": decodeError("GetSkillV1SkillsSkillIdGet413", GetSkillV1SkillsSkillIdGet413),
-              "429": decodeError("GetSkillV1SkillsSkillIdGet429", GetSkillV1SkillsSkillIdGet429),
-              "431": decodeError("GetSkillV1SkillsSkillIdGet431", GetSkillV1SkillsSkillIdGet431),
-              "499": decodeError("GetSkillV1SkillsSkillIdGet499", GetSkillV1SkillsSkillIdGet499),
-              "500": decodeError("GetSkillV1SkillsSkillIdGet500", GetSkillV1SkillsSkillIdGet500),
-              "501": decodeError("GetSkillV1SkillsSkillIdGet501", GetSkillV1SkillsSkillIdGet501),
-              "503": decodeError("GetSkillV1SkillsSkillIdGet503", GetSkillV1SkillsSkillIdGet503),
-              "504": decodeError("GetSkillV1SkillsSkillIdGet504", GetSkillV1SkillsSkillIdGet504),
-              "529": decodeError("GetSkillV1SkillsSkillIdGet529", GetSkillV1SkillsSkillIdGet529),
+              "4xx": decodeError("GetSkillV1SkillsSkillIdGet4XX", GetSkillV1SkillsSkillIdGet4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -21809,22 +18571,7 @@ export const make = (
               }),
               withResponse(options?.config)(HttpClientResponse.matchStatus({
                 "2xx": decodeSuccess(DeleteSkillV1SkillsSkillIdDelete200),
-                "400": decodeError("DeleteSkillV1SkillsSkillIdDelete400", DeleteSkillV1SkillsSkillIdDelete400),
-                "401": decodeError("DeleteSkillV1SkillsSkillIdDelete401", DeleteSkillV1SkillsSkillIdDelete401),
-                "403": decodeError("DeleteSkillV1SkillsSkillIdDelete403", DeleteSkillV1SkillsSkillIdDelete403),
-                "404": decodeError("DeleteSkillV1SkillsSkillIdDelete404", DeleteSkillV1SkillsSkillIdDelete404),
-                "408": decodeError("DeleteSkillV1SkillsSkillIdDelete408", DeleteSkillV1SkillsSkillIdDelete408),
-                "409": decodeError("DeleteSkillV1SkillsSkillIdDelete409", DeleteSkillV1SkillsSkillIdDelete409),
-                "412": decodeError("DeleteSkillV1SkillsSkillIdDelete412", DeleteSkillV1SkillsSkillIdDelete412),
-                "413": decodeError("DeleteSkillV1SkillsSkillIdDelete413", DeleteSkillV1SkillsSkillIdDelete413),
-                "429": decodeError("DeleteSkillV1SkillsSkillIdDelete429", DeleteSkillV1SkillsSkillIdDelete429),
-                "431": decodeError("DeleteSkillV1SkillsSkillIdDelete431", DeleteSkillV1SkillsSkillIdDelete431),
-                "499": decodeError("DeleteSkillV1SkillsSkillIdDelete499", DeleteSkillV1SkillsSkillIdDelete499),
-                "500": decodeError("DeleteSkillV1SkillsSkillIdDelete500", DeleteSkillV1SkillsSkillIdDelete500),
-                "501": decodeError("DeleteSkillV1SkillsSkillIdDelete501", DeleteSkillV1SkillsSkillIdDelete501),
-                "503": decodeError("DeleteSkillV1SkillsSkillIdDelete503", DeleteSkillV1SkillsSkillIdDelete503),
-                "504": decodeError("DeleteSkillV1SkillsSkillIdDelete504", DeleteSkillV1SkillsSkillIdDelete504),
-                "529": decodeError("DeleteSkillV1SkillsSkillIdDelete529", DeleteSkillV1SkillsSkillIdDelete529),
+                "4xx": decodeError("DeleteSkillV1SkillsSkillIdDelete4XX", DeleteSkillV1SkillsSkillIdDelete4XX),
                 orElse: unexpectedStatus
               }))
             )
@@ -21852,69 +18599,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(ListSkillVersionsV1SkillsSkillIdVersionsGet200),
-              "400": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet400",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet400
-              ),
-              "401": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet401",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet401
-              ),
-              "403": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet403",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet403
-              ),
-              "404": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet404",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet404
-              ),
-              "408": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet408",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet408
-              ),
-              "409": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet409",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet409
-              ),
-              "412": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet412",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet412
-              ),
-              "413": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet413",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet413
-              ),
-              "429": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet429",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet429
-              ),
-              "431": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet431",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet431
-              ),
-              "499": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet499",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet499
-              ),
-              "500": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet500",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet500
-              ),
-              "501": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet501",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet501
-              ),
-              "503": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet503",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet503
-              ),
-              "504": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet504",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet504
-              ),
-              "529": decodeError(
-                "ListSkillVersionsV1SkillsSkillIdVersionsGet529",
-                ListSkillVersionsV1SkillsSkillIdVersionsGet529
+              "4xx": decodeError(
+                "ListSkillVersionsV1SkillsSkillIdVersionsGet4XX",
+                ListSkillVersionsV1SkillsSkillIdVersionsGet4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -21939,69 +18626,9 @@ export const make = (
             HttpClientRequest.bodyFormDataRecord(options.payload as any),
             withResponse(options.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(CreateSkillVersionV1SkillsSkillIdVersionsPost200),
-              "400": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost400",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost400
-              ),
-              "401": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost401",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost401
-              ),
-              "403": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost403",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost403
-              ),
-              "404": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost404",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost404
-              ),
-              "408": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost408",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost408
-              ),
-              "409": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost409",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost409
-              ),
-              "412": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost412",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost412
-              ),
-              "413": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost413",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost413
-              ),
-              "429": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost429",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost429
-              ),
-              "431": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost431",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost431
-              ),
-              "499": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost499",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost499
-              ),
-              "500": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost500",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost500
-              ),
-              "501": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost501",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost501
-              ),
-              "503": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost503",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost503
-              ),
-              "504": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost504",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost504
-              ),
-              "529": decodeError(
-                "CreateSkillVersionV1SkillsSkillIdVersionsPost529",
-                CreateSkillVersionV1SkillsSkillIdVersionsPost529
+              "4xx": decodeError(
+                "CreateSkillVersionV1SkillsSkillIdVersionsPost4XX",
+                CreateSkillVersionV1SkillsSkillIdVersionsPost4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -22027,69 +18654,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(GetSkillVersionV1SkillsSkillIdVersionsVersionGet200),
-              "400": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet400",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet400
-              ),
-              "401": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet401",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet401
-              ),
-              "403": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet403",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet403
-              ),
-              "404": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet404",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet404
-              ),
-              "408": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet408",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet408
-              ),
-              "409": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet409",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet409
-              ),
-              "412": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet412",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet412
-              ),
-              "413": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet413",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet413
-              ),
-              "429": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet429",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet429
-              ),
-              "431": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet431",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet431
-              ),
-              "499": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet499",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet499
-              ),
-              "500": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet500",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet500
-              ),
-              "501": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet501",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet501
-              ),
-              "503": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet503",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet503
-              ),
-              "504": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet504",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet504
-              ),
-              "529": decodeError(
-                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet529",
-                GetSkillVersionV1SkillsSkillIdVersionsVersionGet529
+              "4xx": decodeError(
+                "GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX",
+                GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -22115,69 +18682,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200),
-              "400": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400
-              ),
-              "401": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401
-              ),
-              "403": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403
-              ),
-              "404": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404
-              ),
-              "408": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408
-              ),
-              "409": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409
-              ),
-              "412": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412
-              ),
-              "413": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413
-              ),
-              "429": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429
-              ),
-              "431": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431
-              ),
-              "499": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499
-              ),
-              "500": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500
-              ),
-              "501": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501
-              ),
-              "503": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503
-              ),
-              "504": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504
-              ),
-              "529": decodeError(
-                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529",
-                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529
+              "4xx": decodeError(
+                "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX",
+                DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -22195,35 +18702,9 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaMessagesPost200),
-          "400": decodeError("BetaMessagesPost400", BetaMessagesPost400),
-          "401": decodeError("BetaMessagesPost401", BetaMessagesPost401),
-          "403": decodeError("BetaMessagesPost403", BetaMessagesPost403),
-          "404": decodeError("BetaMessagesPost404", BetaMessagesPost404),
-          "408": decodeError("BetaMessagesPost408", BetaMessagesPost408),
-          "409": decodeError("BetaMessagesPost409", BetaMessagesPost409),
-          "412": decodeError("BetaMessagesPost412", BetaMessagesPost412),
-          "413": decodeError("BetaMessagesPost413", BetaMessagesPost413),
-          "429": decodeError("BetaMessagesPost429", BetaMessagesPost429),
-          "431": decodeError("BetaMessagesPost431", BetaMessagesPost431),
-          "499": decodeError("BetaMessagesPost499", BetaMessagesPost499),
-          "500": decodeError("BetaMessagesPost500", BetaMessagesPost500),
-          "501": decodeError("BetaMessagesPost501", BetaMessagesPost501),
-          "503": decodeError("BetaMessagesPost503", BetaMessagesPost503),
-          "504": decodeError("BetaMessagesPost504", BetaMessagesPost504),
-          "529": decodeError("BetaMessagesPost529", BetaMessagesPost529),
+          "4xx": decodeError("BetaMessagesPost4XX", BetaMessagesPost4XX),
           orElse: unexpectedStatus
         }))
-      ),
-    "betaMessagesPostSse": (options) =>
-      HttpClientRequest.post("/v1/messages?beta=true").pipe(
-        HttpClientRequest.setHeaders({
-          "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
-          "anthropic-version": options.params?.["anthropic-version"] ?? undefined,
-          "anthropic-user-profile-id": options.params?.["anthropic-user-profile-id"] ?? undefined,
-          "anthropic-workspace-id": options.params?.["anthropic-workspace-id"] ?? undefined
-        }),
-        HttpClientRequest.bodyJsonUnsafe(options.payload),
-        sseRequest(BetaMessagesPost200Sse)
       ),
     "betaModelsList": (options: Parameters<AnthropicClient["betaModelsList"]>[0]) =>
       HttpClientRequest.get("/v1/models?beta=true").pipe(
@@ -22241,22 +18722,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaModelsList200),
-          "400": decodeError("BetaModelsList400", BetaModelsList400),
-          "401": decodeError("BetaModelsList401", BetaModelsList401),
-          "403": decodeError("BetaModelsList403", BetaModelsList403),
-          "404": decodeError("BetaModelsList404", BetaModelsList404),
-          "408": decodeError("BetaModelsList408", BetaModelsList408),
-          "409": decodeError("BetaModelsList409", BetaModelsList409),
-          "412": decodeError("BetaModelsList412", BetaModelsList412),
-          "413": decodeError("BetaModelsList413", BetaModelsList413),
-          "429": decodeError("BetaModelsList429", BetaModelsList429),
-          "431": decodeError("BetaModelsList431", BetaModelsList431),
-          "499": decodeError("BetaModelsList499", BetaModelsList499),
-          "500": decodeError("BetaModelsList500", BetaModelsList500),
-          "501": decodeError("BetaModelsList501", BetaModelsList501),
-          "503": decodeError("BetaModelsList503", BetaModelsList503),
-          "504": decodeError("BetaModelsList504", BetaModelsList504),
-          "529": decodeError("BetaModelsList529", BetaModelsList529),
+          "4xx": decodeError("BetaModelsList4XX", BetaModelsList4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22276,22 +18742,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaModelsGet200),
-              "400": decodeError("BetaModelsGet400", BetaModelsGet400),
-              "401": decodeError("BetaModelsGet401", BetaModelsGet401),
-              "403": decodeError("BetaModelsGet403", BetaModelsGet403),
-              "404": decodeError("BetaModelsGet404", BetaModelsGet404),
-              "408": decodeError("BetaModelsGet408", BetaModelsGet408),
-              "409": decodeError("BetaModelsGet409", BetaModelsGet409),
-              "412": decodeError("BetaModelsGet412", BetaModelsGet412),
-              "413": decodeError("BetaModelsGet413", BetaModelsGet413),
-              "429": decodeError("BetaModelsGet429", BetaModelsGet429),
-              "431": decodeError("BetaModelsGet431", BetaModelsGet431),
-              "499": decodeError("BetaModelsGet499", BetaModelsGet499),
-              "500": decodeError("BetaModelsGet500", BetaModelsGet500),
-              "501": decodeError("BetaModelsGet501", BetaModelsGet501),
-              "503": decodeError("BetaModelsGet503", BetaModelsGet503),
-              "504": decodeError("BetaModelsGet504", BetaModelsGet504),
-              "529": decodeError("BetaModelsGet529", BetaModelsGet529),
+              "4xx": decodeError("BetaModelsGet4XX", BetaModelsGet4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22312,22 +18763,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaMessageBatchesList200),
-          "400": decodeError("BetaMessageBatchesList400", BetaMessageBatchesList400),
-          "401": decodeError("BetaMessageBatchesList401", BetaMessageBatchesList401),
-          "403": decodeError("BetaMessageBatchesList403", BetaMessageBatchesList403),
-          "404": decodeError("BetaMessageBatchesList404", BetaMessageBatchesList404),
-          "408": decodeError("BetaMessageBatchesList408", BetaMessageBatchesList408),
-          "409": decodeError("BetaMessageBatchesList409", BetaMessageBatchesList409),
-          "412": decodeError("BetaMessageBatchesList412", BetaMessageBatchesList412),
-          "413": decodeError("BetaMessageBatchesList413", BetaMessageBatchesList413),
-          "429": decodeError("BetaMessageBatchesList429", BetaMessageBatchesList429),
-          "431": decodeError("BetaMessageBatchesList431", BetaMessageBatchesList431),
-          "499": decodeError("BetaMessageBatchesList499", BetaMessageBatchesList499),
-          "500": decodeError("BetaMessageBatchesList500", BetaMessageBatchesList500),
-          "501": decodeError("BetaMessageBatchesList501", BetaMessageBatchesList501),
-          "503": decodeError("BetaMessageBatchesList503", BetaMessageBatchesList503),
-          "504": decodeError("BetaMessageBatchesList504", BetaMessageBatchesList504),
-          "529": decodeError("BetaMessageBatchesList529", BetaMessageBatchesList529),
+          "4xx": decodeError("BetaMessageBatchesList4XX", BetaMessageBatchesList4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22342,22 +18778,7 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaMessageBatchesPost200),
-          "400": decodeError("BetaMessageBatchesPost400", BetaMessageBatchesPost400),
-          "401": decodeError("BetaMessageBatchesPost401", BetaMessageBatchesPost401),
-          "403": decodeError("BetaMessageBatchesPost403", BetaMessageBatchesPost403),
-          "404": decodeError("BetaMessageBatchesPost404", BetaMessageBatchesPost404),
-          "408": decodeError("BetaMessageBatchesPost408", BetaMessageBatchesPost408),
-          "409": decodeError("BetaMessageBatchesPost409", BetaMessageBatchesPost409),
-          "412": decodeError("BetaMessageBatchesPost412", BetaMessageBatchesPost412),
-          "413": decodeError("BetaMessageBatchesPost413", BetaMessageBatchesPost413),
-          "429": decodeError("BetaMessageBatchesPost429", BetaMessageBatchesPost429),
-          "431": decodeError("BetaMessageBatchesPost431", BetaMessageBatchesPost431),
-          "499": decodeError("BetaMessageBatchesPost499", BetaMessageBatchesPost499),
-          "500": decodeError("BetaMessageBatchesPost500", BetaMessageBatchesPost500),
-          "501": decodeError("BetaMessageBatchesPost501", BetaMessageBatchesPost501),
-          "503": decodeError("BetaMessageBatchesPost503", BetaMessageBatchesPost503),
-          "504": decodeError("BetaMessageBatchesPost504", BetaMessageBatchesPost504),
-          "529": decodeError("BetaMessageBatchesPost529", BetaMessageBatchesPost529),
+          "4xx": decodeError("BetaMessageBatchesPost4XX", BetaMessageBatchesPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22380,22 +18801,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaMessageBatchesRetrieve200),
-              "400": decodeError("BetaMessageBatchesRetrieve400", BetaMessageBatchesRetrieve400),
-              "401": decodeError("BetaMessageBatchesRetrieve401", BetaMessageBatchesRetrieve401),
-              "403": decodeError("BetaMessageBatchesRetrieve403", BetaMessageBatchesRetrieve403),
-              "404": decodeError("BetaMessageBatchesRetrieve404", BetaMessageBatchesRetrieve404),
-              "408": decodeError("BetaMessageBatchesRetrieve408", BetaMessageBatchesRetrieve408),
-              "409": decodeError("BetaMessageBatchesRetrieve409", BetaMessageBatchesRetrieve409),
-              "412": decodeError("BetaMessageBatchesRetrieve412", BetaMessageBatchesRetrieve412),
-              "413": decodeError("BetaMessageBatchesRetrieve413", BetaMessageBatchesRetrieve413),
-              "429": decodeError("BetaMessageBatchesRetrieve429", BetaMessageBatchesRetrieve429),
-              "431": decodeError("BetaMessageBatchesRetrieve431", BetaMessageBatchesRetrieve431),
-              "499": decodeError("BetaMessageBatchesRetrieve499", BetaMessageBatchesRetrieve499),
-              "500": decodeError("BetaMessageBatchesRetrieve500", BetaMessageBatchesRetrieve500),
-              "501": decodeError("BetaMessageBatchesRetrieve501", BetaMessageBatchesRetrieve501),
-              "503": decodeError("BetaMessageBatchesRetrieve503", BetaMessageBatchesRetrieve503),
-              "504": decodeError("BetaMessageBatchesRetrieve504", BetaMessageBatchesRetrieve504),
-              "529": decodeError("BetaMessageBatchesRetrieve529", BetaMessageBatchesRetrieve529),
+              "4xx": decodeError("BetaMessageBatchesRetrieve4XX", BetaMessageBatchesRetrieve4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22417,22 +18823,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaMessageBatchesDelete200),
-              "400": decodeError("BetaMessageBatchesDelete400", BetaMessageBatchesDelete400),
-              "401": decodeError("BetaMessageBatchesDelete401", BetaMessageBatchesDelete401),
-              "403": decodeError("BetaMessageBatchesDelete403", BetaMessageBatchesDelete403),
-              "404": decodeError("BetaMessageBatchesDelete404", BetaMessageBatchesDelete404),
-              "408": decodeError("BetaMessageBatchesDelete408", BetaMessageBatchesDelete408),
-              "409": decodeError("BetaMessageBatchesDelete409", BetaMessageBatchesDelete409),
-              "412": decodeError("BetaMessageBatchesDelete412", BetaMessageBatchesDelete412),
-              "413": decodeError("BetaMessageBatchesDelete413", BetaMessageBatchesDelete413),
-              "429": decodeError("BetaMessageBatchesDelete429", BetaMessageBatchesDelete429),
-              "431": decodeError("BetaMessageBatchesDelete431", BetaMessageBatchesDelete431),
-              "499": decodeError("BetaMessageBatchesDelete499", BetaMessageBatchesDelete499),
-              "500": decodeError("BetaMessageBatchesDelete500", BetaMessageBatchesDelete500),
-              "501": decodeError("BetaMessageBatchesDelete501", BetaMessageBatchesDelete501),
-              "503": decodeError("BetaMessageBatchesDelete503", BetaMessageBatchesDelete503),
-              "504": decodeError("BetaMessageBatchesDelete504", BetaMessageBatchesDelete504),
-              "529": decodeError("BetaMessageBatchesDelete529", BetaMessageBatchesDelete529),
+              "4xx": decodeError("BetaMessageBatchesDelete4XX", BetaMessageBatchesDelete4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22453,22 +18844,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaMessageBatchesCancel200),
-              "400": decodeError("BetaMessageBatchesCancel400", BetaMessageBatchesCancel400),
-              "401": decodeError("BetaMessageBatchesCancel401", BetaMessageBatchesCancel401),
-              "403": decodeError("BetaMessageBatchesCancel403", BetaMessageBatchesCancel403),
-              "404": decodeError("BetaMessageBatchesCancel404", BetaMessageBatchesCancel404),
-              "408": decodeError("BetaMessageBatchesCancel408", BetaMessageBatchesCancel408),
-              "409": decodeError("BetaMessageBatchesCancel409", BetaMessageBatchesCancel409),
-              "412": decodeError("BetaMessageBatchesCancel412", BetaMessageBatchesCancel412),
-              "413": decodeError("BetaMessageBatchesCancel413", BetaMessageBatchesCancel413),
-              "429": decodeError("BetaMessageBatchesCancel429", BetaMessageBatchesCancel429),
-              "431": decodeError("BetaMessageBatchesCancel431", BetaMessageBatchesCancel431),
-              "499": decodeError("BetaMessageBatchesCancel499", BetaMessageBatchesCancel499),
-              "500": decodeError("BetaMessageBatchesCancel500", BetaMessageBatchesCancel500),
-              "501": decodeError("BetaMessageBatchesCancel501", BetaMessageBatchesCancel501),
-              "503": decodeError("BetaMessageBatchesCancel503", BetaMessageBatchesCancel503),
-              "504": decodeError("BetaMessageBatchesCancel504", BetaMessageBatchesCancel504),
-              "529": decodeError("BetaMessageBatchesCancel529", BetaMessageBatchesCancel529),
+              "4xx": decodeError("BetaMessageBatchesCancel4XX", BetaMessageBatchesCancel4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22492,22 +18868,7 @@ export const make = (
               "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
-              "400": decodeError("BetaMessageBatchesResults400", BetaMessageBatchesResults400),
-              "401": decodeError("BetaMessageBatchesResults401", BetaMessageBatchesResults401),
-              "403": decodeError("BetaMessageBatchesResults403", BetaMessageBatchesResults403),
-              "404": decodeError("BetaMessageBatchesResults404", BetaMessageBatchesResults404),
-              "408": decodeError("BetaMessageBatchesResults408", BetaMessageBatchesResults408),
-              "409": decodeError("BetaMessageBatchesResults409", BetaMessageBatchesResults409),
-              "412": decodeError("BetaMessageBatchesResults412", BetaMessageBatchesResults412),
-              "413": decodeError("BetaMessageBatchesResults413", BetaMessageBatchesResults413),
-              "429": decodeError("BetaMessageBatchesResults429", BetaMessageBatchesResults429),
-              "431": decodeError("BetaMessageBatchesResults431", BetaMessageBatchesResults431),
-              "499": decodeError("BetaMessageBatchesResults499", BetaMessageBatchesResults499),
-              "500": decodeError("BetaMessageBatchesResults500", BetaMessageBatchesResults500),
-              "501": decodeError("BetaMessageBatchesResults501", BetaMessageBatchesResults501),
-              "503": decodeError("BetaMessageBatchesResults503", BetaMessageBatchesResults503),
-              "504": decodeError("BetaMessageBatchesResults504", BetaMessageBatchesResults504),
-              "529": decodeError("BetaMessageBatchesResults529", BetaMessageBatchesResults529),
+              "4xx": decodeError("BetaMessageBatchesResults4XX", BetaMessageBatchesResults4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22524,22 +18885,7 @@ export const make = (
         HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaMessagesCountTokensPost200),
-          "400": decodeError("BetaMessagesCountTokensPost400", BetaMessagesCountTokensPost400),
-          "401": decodeError("BetaMessagesCountTokensPost401", BetaMessagesCountTokensPost401),
-          "403": decodeError("BetaMessagesCountTokensPost403", BetaMessagesCountTokensPost403),
-          "404": decodeError("BetaMessagesCountTokensPost404", BetaMessagesCountTokensPost404),
-          "408": decodeError("BetaMessagesCountTokensPost408", BetaMessagesCountTokensPost408),
-          "409": decodeError("BetaMessagesCountTokensPost409", BetaMessagesCountTokensPost409),
-          "412": decodeError("BetaMessagesCountTokensPost412", BetaMessagesCountTokensPost412),
-          "413": decodeError("BetaMessagesCountTokensPost413", BetaMessagesCountTokensPost413),
-          "429": decodeError("BetaMessagesCountTokensPost429", BetaMessagesCountTokensPost429),
-          "431": decodeError("BetaMessagesCountTokensPost431", BetaMessagesCountTokensPost431),
-          "499": decodeError("BetaMessagesCountTokensPost499", BetaMessagesCountTokensPost499),
-          "500": decodeError("BetaMessagesCountTokensPost500", BetaMessagesCountTokensPost500),
-          "501": decodeError("BetaMessagesCountTokensPost501", BetaMessagesCountTokensPost501),
-          "503": decodeError("BetaMessagesCountTokensPost503", BetaMessagesCountTokensPost503),
-          "504": decodeError("BetaMessagesCountTokensPost504", BetaMessagesCountTokensPost504),
-          "529": decodeError("BetaMessagesCountTokensPost529", BetaMessagesCountTokensPost529),
+          "4xx": decodeError("BetaMessagesCountTokensPost4XX", BetaMessagesCountTokensPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22559,22 +18905,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaListFilesV1FilesGet200),
-          "400": decodeError("BetaListFilesV1FilesGet400", BetaListFilesV1FilesGet400),
-          "401": decodeError("BetaListFilesV1FilesGet401", BetaListFilesV1FilesGet401),
-          "403": decodeError("BetaListFilesV1FilesGet403", BetaListFilesV1FilesGet403),
-          "404": decodeError("BetaListFilesV1FilesGet404", BetaListFilesV1FilesGet404),
-          "408": decodeError("BetaListFilesV1FilesGet408", BetaListFilesV1FilesGet408),
-          "409": decodeError("BetaListFilesV1FilesGet409", BetaListFilesV1FilesGet409),
-          "412": decodeError("BetaListFilesV1FilesGet412", BetaListFilesV1FilesGet412),
-          "413": decodeError("BetaListFilesV1FilesGet413", BetaListFilesV1FilesGet413),
-          "429": decodeError("BetaListFilesV1FilesGet429", BetaListFilesV1FilesGet429),
-          "431": decodeError("BetaListFilesV1FilesGet431", BetaListFilesV1FilesGet431),
-          "499": decodeError("BetaListFilesV1FilesGet499", BetaListFilesV1FilesGet499),
-          "500": decodeError("BetaListFilesV1FilesGet500", BetaListFilesV1FilesGet500),
-          "501": decodeError("BetaListFilesV1FilesGet501", BetaListFilesV1FilesGet501),
-          "503": decodeError("BetaListFilesV1FilesGet503", BetaListFilesV1FilesGet503),
-          "504": decodeError("BetaListFilesV1FilesGet504", BetaListFilesV1FilesGet504),
-          "529": decodeError("BetaListFilesV1FilesGet529", BetaListFilesV1FilesGet529),
+          "4xx": decodeError("BetaListFilesV1FilesGet4XX", BetaListFilesV1FilesGet4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22588,22 +18919,7 @@ export const make = (
         HttpClientRequest.bodyFormDataRecord(options.payload as any),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaUploadFileV1FilesPost200),
-          "400": decodeError("BetaUploadFileV1FilesPost400", BetaUploadFileV1FilesPost400),
-          "401": decodeError("BetaUploadFileV1FilesPost401", BetaUploadFileV1FilesPost401),
-          "403": decodeError("BetaUploadFileV1FilesPost403", BetaUploadFileV1FilesPost403),
-          "404": decodeError("BetaUploadFileV1FilesPost404", BetaUploadFileV1FilesPost404),
-          "408": decodeError("BetaUploadFileV1FilesPost408", BetaUploadFileV1FilesPost408),
-          "409": decodeError("BetaUploadFileV1FilesPost409", BetaUploadFileV1FilesPost409),
-          "412": decodeError("BetaUploadFileV1FilesPost412", BetaUploadFileV1FilesPost412),
-          "413": decodeError("BetaUploadFileV1FilesPost413", BetaUploadFileV1FilesPost413),
-          "429": decodeError("BetaUploadFileV1FilesPost429", BetaUploadFileV1FilesPost429),
-          "431": decodeError("BetaUploadFileV1FilesPost431", BetaUploadFileV1FilesPost431),
-          "499": decodeError("BetaUploadFileV1FilesPost499", BetaUploadFileV1FilesPost499),
-          "500": decodeError("BetaUploadFileV1FilesPost500", BetaUploadFileV1FilesPost500),
-          "501": decodeError("BetaUploadFileV1FilesPost501", BetaUploadFileV1FilesPost501),
-          "503": decodeError("BetaUploadFileV1FilesPost503", BetaUploadFileV1FilesPost503),
-          "504": decodeError("BetaUploadFileV1FilesPost504", BetaUploadFileV1FilesPost504),
-          "529": decodeError("BetaUploadFileV1FilesPost529", BetaUploadFileV1FilesPost529),
+          "4xx": decodeError("BetaUploadFileV1FilesPost4XX", BetaUploadFileV1FilesPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22623,22 +18939,7 @@ export const make = (
               }),
               withResponse(options?.config)(HttpClientResponse.matchStatus({
                 "2xx": decodeSuccess(BetaGetFileMetadataV1FilesFileIdGet200),
-                "400": decodeError("BetaGetFileMetadataV1FilesFileIdGet400", BetaGetFileMetadataV1FilesFileIdGet400),
-                "401": decodeError("BetaGetFileMetadataV1FilesFileIdGet401", BetaGetFileMetadataV1FilesFileIdGet401),
-                "403": decodeError("BetaGetFileMetadataV1FilesFileIdGet403", BetaGetFileMetadataV1FilesFileIdGet403),
-                "404": decodeError("BetaGetFileMetadataV1FilesFileIdGet404", BetaGetFileMetadataV1FilesFileIdGet404),
-                "408": decodeError("BetaGetFileMetadataV1FilesFileIdGet408", BetaGetFileMetadataV1FilesFileIdGet408),
-                "409": decodeError("BetaGetFileMetadataV1FilesFileIdGet409", BetaGetFileMetadataV1FilesFileIdGet409),
-                "412": decodeError("BetaGetFileMetadataV1FilesFileIdGet412", BetaGetFileMetadataV1FilesFileIdGet412),
-                "413": decodeError("BetaGetFileMetadataV1FilesFileIdGet413", BetaGetFileMetadataV1FilesFileIdGet413),
-                "429": decodeError("BetaGetFileMetadataV1FilesFileIdGet429", BetaGetFileMetadataV1FilesFileIdGet429),
-                "431": decodeError("BetaGetFileMetadataV1FilesFileIdGet431", BetaGetFileMetadataV1FilesFileIdGet431),
-                "499": decodeError("BetaGetFileMetadataV1FilesFileIdGet499", BetaGetFileMetadataV1FilesFileIdGet499),
-                "500": decodeError("BetaGetFileMetadataV1FilesFileIdGet500", BetaGetFileMetadataV1FilesFileIdGet500),
-                "501": decodeError("BetaGetFileMetadataV1FilesFileIdGet501", BetaGetFileMetadataV1FilesFileIdGet501),
-                "503": decodeError("BetaGetFileMetadataV1FilesFileIdGet503", BetaGetFileMetadataV1FilesFileIdGet503),
-                "504": decodeError("BetaGetFileMetadataV1FilesFileIdGet504", BetaGetFileMetadataV1FilesFileIdGet504),
-                "529": decodeError("BetaGetFileMetadataV1FilesFileIdGet529", BetaGetFileMetadataV1FilesFileIdGet529),
+                "4xx": decodeError("BetaGetFileMetadataV1FilesFileIdGet4XX", BetaGetFileMetadataV1FilesFileIdGet4XX),
                 orElse: unexpectedStatus
               }))
             )
@@ -22663,22 +18964,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaDeleteFileV1FilesFileIdDelete200),
-              "400": decodeError("BetaDeleteFileV1FilesFileIdDelete400", BetaDeleteFileV1FilesFileIdDelete400),
-              "401": decodeError("BetaDeleteFileV1FilesFileIdDelete401", BetaDeleteFileV1FilesFileIdDelete401),
-              "403": decodeError("BetaDeleteFileV1FilesFileIdDelete403", BetaDeleteFileV1FilesFileIdDelete403),
-              "404": decodeError("BetaDeleteFileV1FilesFileIdDelete404", BetaDeleteFileV1FilesFileIdDelete404),
-              "408": decodeError("BetaDeleteFileV1FilesFileIdDelete408", BetaDeleteFileV1FilesFileIdDelete408),
-              "409": decodeError("BetaDeleteFileV1FilesFileIdDelete409", BetaDeleteFileV1FilesFileIdDelete409),
-              "412": decodeError("BetaDeleteFileV1FilesFileIdDelete412", BetaDeleteFileV1FilesFileIdDelete412),
-              "413": decodeError("BetaDeleteFileV1FilesFileIdDelete413", BetaDeleteFileV1FilesFileIdDelete413),
-              "429": decodeError("BetaDeleteFileV1FilesFileIdDelete429", BetaDeleteFileV1FilesFileIdDelete429),
-              "431": decodeError("BetaDeleteFileV1FilesFileIdDelete431", BetaDeleteFileV1FilesFileIdDelete431),
-              "499": decodeError("BetaDeleteFileV1FilesFileIdDelete499", BetaDeleteFileV1FilesFileIdDelete499),
-              "500": decodeError("BetaDeleteFileV1FilesFileIdDelete500", BetaDeleteFileV1FilesFileIdDelete500),
-              "501": decodeError("BetaDeleteFileV1FilesFileIdDelete501", BetaDeleteFileV1FilesFileIdDelete501),
-              "503": decodeError("BetaDeleteFileV1FilesFileIdDelete503", BetaDeleteFileV1FilesFileIdDelete503),
-              "504": decodeError("BetaDeleteFileV1FilesFileIdDelete504", BetaDeleteFileV1FilesFileIdDelete504),
-              "529": decodeError("BetaDeleteFileV1FilesFileIdDelete529", BetaDeleteFileV1FilesFileIdDelete529),
+              "4xx": decodeError("BetaDeleteFileV1FilesFileIdDelete4XX", BetaDeleteFileV1FilesFileIdDelete4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22703,69 +18989,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeBinary,
-              "400": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet400",
-                BetaDownloadFileV1FilesFileIdContentGet400
-              ),
-              "401": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet401",
-                BetaDownloadFileV1FilesFileIdContentGet401
-              ),
-              "403": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet403",
-                BetaDownloadFileV1FilesFileIdContentGet403
-              ),
-              "404": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet404",
-                BetaDownloadFileV1FilesFileIdContentGet404
-              ),
-              "408": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet408",
-                BetaDownloadFileV1FilesFileIdContentGet408
-              ),
-              "409": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet409",
-                BetaDownloadFileV1FilesFileIdContentGet409
-              ),
-              "412": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet412",
-                BetaDownloadFileV1FilesFileIdContentGet412
-              ),
-              "413": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet413",
-                BetaDownloadFileV1FilesFileIdContentGet413
-              ),
-              "429": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet429",
-                BetaDownloadFileV1FilesFileIdContentGet429
-              ),
-              "431": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet431",
-                BetaDownloadFileV1FilesFileIdContentGet431
-              ),
-              "499": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet499",
-                BetaDownloadFileV1FilesFileIdContentGet499
-              ),
-              "500": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet500",
-                BetaDownloadFileV1FilesFileIdContentGet500
-              ),
-              "501": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet501",
-                BetaDownloadFileV1FilesFileIdContentGet501
-              ),
-              "503": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet503",
-                BetaDownloadFileV1FilesFileIdContentGet503
-              ),
-              "504": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet504",
-                BetaDownloadFileV1FilesFileIdContentGet504
-              ),
-              "529": decodeError(
-                "BetaDownloadFileV1FilesFileIdContentGet529",
-                BetaDownloadFileV1FilesFileIdContentGet529
+              "4xx": decodeError(
+                "BetaDownloadFileV1FilesFileIdContentGet4XX",
+                BetaDownloadFileV1FilesFileIdContentGet4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -22804,22 +19030,7 @@ export const make = (
         }),
         withResponse(options?.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaListSkillsV1SkillsGet200),
-          "400": decodeError("BetaListSkillsV1SkillsGet400", BetaListSkillsV1SkillsGet400),
-          "401": decodeError("BetaListSkillsV1SkillsGet401", BetaListSkillsV1SkillsGet401),
-          "403": decodeError("BetaListSkillsV1SkillsGet403", BetaListSkillsV1SkillsGet403),
-          "404": decodeError("BetaListSkillsV1SkillsGet404", BetaListSkillsV1SkillsGet404),
-          "408": decodeError("BetaListSkillsV1SkillsGet408", BetaListSkillsV1SkillsGet408),
-          "409": decodeError("BetaListSkillsV1SkillsGet409", BetaListSkillsV1SkillsGet409),
-          "412": decodeError("BetaListSkillsV1SkillsGet412", BetaListSkillsV1SkillsGet412),
-          "413": decodeError("BetaListSkillsV1SkillsGet413", BetaListSkillsV1SkillsGet413),
-          "429": decodeError("BetaListSkillsV1SkillsGet429", BetaListSkillsV1SkillsGet429),
-          "431": decodeError("BetaListSkillsV1SkillsGet431", BetaListSkillsV1SkillsGet431),
-          "499": decodeError("BetaListSkillsV1SkillsGet499", BetaListSkillsV1SkillsGet499),
-          "500": decodeError("BetaListSkillsV1SkillsGet500", BetaListSkillsV1SkillsGet500),
-          "501": decodeError("BetaListSkillsV1SkillsGet501", BetaListSkillsV1SkillsGet501),
-          "503": decodeError("BetaListSkillsV1SkillsGet503", BetaListSkillsV1SkillsGet503),
-          "504": decodeError("BetaListSkillsV1SkillsGet504", BetaListSkillsV1SkillsGet504),
-          "529": decodeError("BetaListSkillsV1SkillsGet529", BetaListSkillsV1SkillsGet529),
+          "4xx": decodeError("BetaListSkillsV1SkillsGet4XX", BetaListSkillsV1SkillsGet4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22833,22 +19044,7 @@ export const make = (
         HttpClientRequest.bodyFormDataRecord(options.payload as any),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BetaCreateSkillV1SkillsPost200),
-          "400": decodeError("BetaCreateSkillV1SkillsPost400", BetaCreateSkillV1SkillsPost400),
-          "401": decodeError("BetaCreateSkillV1SkillsPost401", BetaCreateSkillV1SkillsPost401),
-          "403": decodeError("BetaCreateSkillV1SkillsPost403", BetaCreateSkillV1SkillsPost403),
-          "404": decodeError("BetaCreateSkillV1SkillsPost404", BetaCreateSkillV1SkillsPost404),
-          "408": decodeError("BetaCreateSkillV1SkillsPost408", BetaCreateSkillV1SkillsPost408),
-          "409": decodeError("BetaCreateSkillV1SkillsPost409", BetaCreateSkillV1SkillsPost409),
-          "412": decodeError("BetaCreateSkillV1SkillsPost412", BetaCreateSkillV1SkillsPost412),
-          "413": decodeError("BetaCreateSkillV1SkillsPost413", BetaCreateSkillV1SkillsPost413),
-          "429": decodeError("BetaCreateSkillV1SkillsPost429", BetaCreateSkillV1SkillsPost429),
-          "431": decodeError("BetaCreateSkillV1SkillsPost431", BetaCreateSkillV1SkillsPost431),
-          "499": decodeError("BetaCreateSkillV1SkillsPost499", BetaCreateSkillV1SkillsPost499),
-          "500": decodeError("BetaCreateSkillV1SkillsPost500", BetaCreateSkillV1SkillsPost500),
-          "501": decodeError("BetaCreateSkillV1SkillsPost501", BetaCreateSkillV1SkillsPost501),
-          "503": decodeError("BetaCreateSkillV1SkillsPost503", BetaCreateSkillV1SkillsPost503),
-          "504": decodeError("BetaCreateSkillV1SkillsPost504", BetaCreateSkillV1SkillsPost504),
-          "529": decodeError("BetaCreateSkillV1SkillsPost529", BetaCreateSkillV1SkillsPost529),
+          "4xx": decodeError("BetaCreateSkillV1SkillsPost4XX", BetaCreateSkillV1SkillsPost4XX),
           orElse: unexpectedStatus
         }))
       ),
@@ -22871,22 +19067,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaGetSkillV1SkillsSkillIdGet200),
-              "400": decodeError("BetaGetSkillV1SkillsSkillIdGet400", BetaGetSkillV1SkillsSkillIdGet400),
-              "401": decodeError("BetaGetSkillV1SkillsSkillIdGet401", BetaGetSkillV1SkillsSkillIdGet401),
-              "403": decodeError("BetaGetSkillV1SkillsSkillIdGet403", BetaGetSkillV1SkillsSkillIdGet403),
-              "404": decodeError("BetaGetSkillV1SkillsSkillIdGet404", BetaGetSkillV1SkillsSkillIdGet404),
-              "408": decodeError("BetaGetSkillV1SkillsSkillIdGet408", BetaGetSkillV1SkillsSkillIdGet408),
-              "409": decodeError("BetaGetSkillV1SkillsSkillIdGet409", BetaGetSkillV1SkillsSkillIdGet409),
-              "412": decodeError("BetaGetSkillV1SkillsSkillIdGet412", BetaGetSkillV1SkillsSkillIdGet412),
-              "413": decodeError("BetaGetSkillV1SkillsSkillIdGet413", BetaGetSkillV1SkillsSkillIdGet413),
-              "429": decodeError("BetaGetSkillV1SkillsSkillIdGet429", BetaGetSkillV1SkillsSkillIdGet429),
-              "431": decodeError("BetaGetSkillV1SkillsSkillIdGet431", BetaGetSkillV1SkillsSkillIdGet431),
-              "499": decodeError("BetaGetSkillV1SkillsSkillIdGet499", BetaGetSkillV1SkillsSkillIdGet499),
-              "500": decodeError("BetaGetSkillV1SkillsSkillIdGet500", BetaGetSkillV1SkillsSkillIdGet500),
-              "501": decodeError("BetaGetSkillV1SkillsSkillIdGet501", BetaGetSkillV1SkillsSkillIdGet501),
-              "503": decodeError("BetaGetSkillV1SkillsSkillIdGet503", BetaGetSkillV1SkillsSkillIdGet503),
-              "504": decodeError("BetaGetSkillV1SkillsSkillIdGet504", BetaGetSkillV1SkillsSkillIdGet504),
-              "529": decodeError("BetaGetSkillV1SkillsSkillIdGet529", BetaGetSkillV1SkillsSkillIdGet529),
+              "4xx": decodeError("BetaGetSkillV1SkillsSkillIdGet4XX", BetaGetSkillV1SkillsSkillIdGet4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22911,22 +19092,7 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaDeleteSkillV1SkillsSkillIdDelete200),
-              "400": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete400", BetaDeleteSkillV1SkillsSkillIdDelete400),
-              "401": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete401", BetaDeleteSkillV1SkillsSkillIdDelete401),
-              "403": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete403", BetaDeleteSkillV1SkillsSkillIdDelete403),
-              "404": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete404", BetaDeleteSkillV1SkillsSkillIdDelete404),
-              "408": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete408", BetaDeleteSkillV1SkillsSkillIdDelete408),
-              "409": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete409", BetaDeleteSkillV1SkillsSkillIdDelete409),
-              "412": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete412", BetaDeleteSkillV1SkillsSkillIdDelete412),
-              "413": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete413", BetaDeleteSkillV1SkillsSkillIdDelete413),
-              "429": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete429", BetaDeleteSkillV1SkillsSkillIdDelete429),
-              "431": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete431", BetaDeleteSkillV1SkillsSkillIdDelete431),
-              "499": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete499", BetaDeleteSkillV1SkillsSkillIdDelete499),
-              "500": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete500", BetaDeleteSkillV1SkillsSkillIdDelete500),
-              "501": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete501", BetaDeleteSkillV1SkillsSkillIdDelete501),
-              "503": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete503", BetaDeleteSkillV1SkillsSkillIdDelete503),
-              "504": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete504", BetaDeleteSkillV1SkillsSkillIdDelete504),
-              "529": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete529", BetaDeleteSkillV1SkillsSkillIdDelete529),
+              "4xx": decodeError("BetaDeleteSkillV1SkillsSkillIdDelete4XX", BetaDeleteSkillV1SkillsSkillIdDelete4XX),
               orElse: unexpectedStatus
             }))
           )
@@ -22955,69 +19121,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaListSkillVersionsV1SkillsSkillIdVersionsGet200),
-              "400": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet400",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet400
-              ),
-              "401": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet401",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet401
-              ),
-              "403": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet403",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet403
-              ),
-              "404": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet404",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet404
-              ),
-              "408": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet408",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet408
-              ),
-              "409": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet409",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet409
-              ),
-              "412": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet412",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet412
-              ),
-              "413": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet413",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet413
-              ),
-              "429": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet429",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet429
-              ),
-              "431": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet431",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet431
-              ),
-              "499": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet499",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet499
-              ),
-              "500": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet500",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet500
-              ),
-              "501": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet501",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet501
-              ),
-              "503": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet503",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet503
-              ),
-              "504": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet504",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet504
-              ),
-              "529": decodeError(
-                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet529",
-                BetaListSkillVersionsV1SkillsSkillIdVersionsGet529
+              "4xx": decodeError(
+                "BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX",
+                BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -23043,69 +19149,9 @@ export const make = (
             HttpClientRequest.bodyFormDataRecord(options.payload as any),
             withResponse(options.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200),
-              "400": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400
-              ),
-              "401": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401
-              ),
-              "403": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403
-              ),
-              "404": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404
-              ),
-              "408": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408
-              ),
-              "409": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409
-              ),
-              "412": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412
-              ),
-              "413": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413
-              ),
-              "429": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429
-              ),
-              "431": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431
-              ),
-              "499": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499
-              ),
-              "500": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500
-              ),
-              "501": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501
-              ),
-              "503": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503
-              ),
-              "504": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504
-              ),
-              "529": decodeError(
-                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529",
-                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529
+              "4xx": decodeError(
+                "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX",
+                BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -23132,69 +19178,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200),
-              "400": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400
-              ),
-              "401": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401
-              ),
-              "403": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403
-              ),
-              "404": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404
-              ),
-              "408": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408
-              ),
-              "409": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409
-              ),
-              "412": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412
-              ),
-              "413": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413
-              ),
-              "429": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429
-              ),
-              "431": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431
-              ),
-              "499": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499
-              ),
-              "500": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500
-              ),
-              "501": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501
-              ),
-              "503": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503
-              ),
-              "504": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504
-              ),
-              "529": decodeError(
-                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529",
-                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529
+              "4xx": decodeError(
+                "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX",
+                BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -23221,69 +19207,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeSuccess(BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200),
-              "400": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400
-              ),
-              "401": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401
-              ),
-              "403": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403
-              ),
-              "404": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404
-              ),
-              "408": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408
-              ),
-              "409": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409
-              ),
-              "412": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412
-              ),
-              "413": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413
-              ),
-              "429": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429
-              ),
-              "431": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431
-              ),
-              "499": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499
-              ),
-              "500": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500
-              ),
-              "501": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501
-              ),
-              "503": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503
-              ),
-              "504": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504
-              ),
-              "529": decodeError(
-                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529",
-                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529
+              "4xx": decodeError(
+                "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX",
+                BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -23311,69 +19237,9 @@ export const make = (
             }),
             withResponse(options?.config)(HttpClientResponse.matchStatus({
               "2xx": decodeBinary,
-              "400": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400
-              ),
-              "401": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401
-              ),
-              "403": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403
-              ),
-              "404": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404
-              ),
-              "408": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408
-              ),
-              "409": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409
-              ),
-              "412": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412
-              ),
-              "413": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413
-              ),
-              "429": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429
-              ),
-              "431": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431
-              ),
-              "499": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499
-              ),
-              "500": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500
-              ),
-              "501": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501
-              ),
-              "503": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503
-              ),
-              "504": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504
-              ),
-              "529": decodeError(
-                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529",
-                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529
+              "4xx": decodeError(
+                "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX",
+                BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX
               ),
               orElse: unexpectedStatus
             }))
@@ -23424,24 +19290,7 @@ export interface AnthropicClient {
       }
     ): Effect.Effect<
       WithOptionalResponse<MessagesPost200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"MessagesPost400", MessagesPost400>
-      | AnthropicClientError<"MessagesPost401", MessagesPost401>
-      | AnthropicClientError<"MessagesPost403", MessagesPost403>
-      | AnthropicClientError<"MessagesPost404", MessagesPost404>
-      | AnthropicClientError<"MessagesPost408", MessagesPost408>
-      | AnthropicClientError<"MessagesPost409", MessagesPost409>
-      | AnthropicClientError<"MessagesPost412", MessagesPost412>
-      | AnthropicClientError<"MessagesPost413", MessagesPost413>
-      | AnthropicClientError<"MessagesPost429", MessagesPost429>
-      | AnthropicClientError<"MessagesPost431", MessagesPost431>
-      | AnthropicClientError<"MessagesPost499", MessagesPost499>
-      | AnthropicClientError<"MessagesPost500", MessagesPost500>
-      | AnthropicClientError<"MessagesPost501", MessagesPost501>
-      | AnthropicClientError<"MessagesPost503", MessagesPost503>
-      | AnthropicClientError<"MessagesPost504", MessagesPost504>
-      | AnthropicClientError<"MessagesPost529", MessagesPost529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"MessagesPost4XX", MessagesPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -23451,24 +19300,7 @@ export interface AnthropicClient {
       }
     ): Effect.Effect<
       WithOptionalResponse<MessagesPost200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"MessagesPost400", MessagesPost400>
-      | AnthropicClientError<"MessagesPost401", MessagesPost401>
-      | AnthropicClientError<"MessagesPost403", MessagesPost403>
-      | AnthropicClientError<"MessagesPost404", MessagesPost404>
-      | AnthropicClientError<"MessagesPost408", MessagesPost408>
-      | AnthropicClientError<"MessagesPost409", MessagesPost409>
-      | AnthropicClientError<"MessagesPost412", MessagesPost412>
-      | AnthropicClientError<"MessagesPost413", MessagesPost413>
-      | AnthropicClientError<"MessagesPost429", MessagesPost429>
-      | AnthropicClientError<"MessagesPost431", MessagesPost431>
-      | AnthropicClientError<"MessagesPost499", MessagesPost499>
-      | AnthropicClientError<"MessagesPost500", MessagesPost500>
-      | AnthropicClientError<"MessagesPost501", MessagesPost501>
-      | AnthropicClientError<"MessagesPost503", MessagesPost503>
-      | AnthropicClientError<"MessagesPost504", MessagesPost504>
-      | AnthropicClientError<"MessagesPost529", MessagesPost529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"MessagesPost4XX", MessagesPost4XX>
     >
   }
   /**
@@ -23487,24 +19319,7 @@ export interface AnthropicClient {
       }
     ): Effect.Effect<
       WithOptionalResponse<CompletePost200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"CompletePost400", CompletePost400>
-      | AnthropicClientError<"CompletePost401", CompletePost401>
-      | AnthropicClientError<"CompletePost403", CompletePost403>
-      | AnthropicClientError<"CompletePost404", CompletePost404>
-      | AnthropicClientError<"CompletePost408", CompletePost408>
-      | AnthropicClientError<"CompletePost409", CompletePost409>
-      | AnthropicClientError<"CompletePost412", CompletePost412>
-      | AnthropicClientError<"CompletePost413", CompletePost413>
-      | AnthropicClientError<"CompletePost429", CompletePost429>
-      | AnthropicClientError<"CompletePost431", CompletePost431>
-      | AnthropicClientError<"CompletePost499", CompletePost499>
-      | AnthropicClientError<"CompletePost500", CompletePost500>
-      | AnthropicClientError<"CompletePost501", CompletePost501>
-      | AnthropicClientError<"CompletePost503", CompletePost503>
-      | AnthropicClientError<"CompletePost504", CompletePost504>
-      | AnthropicClientError<"CompletePost529", CompletePost529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"CompletePost4XX", CompletePost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -23514,24 +19329,7 @@ export interface AnthropicClient {
       }
     ): Effect.Effect<
       WithOptionalResponse<CompletePost200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"CompletePost400", CompletePost400>
-      | AnthropicClientError<"CompletePost401", CompletePost401>
-      | AnthropicClientError<"CompletePost403", CompletePost403>
-      | AnthropicClientError<"CompletePost404", CompletePost404>
-      | AnthropicClientError<"CompletePost408", CompletePost408>
-      | AnthropicClientError<"CompletePost409", CompletePost409>
-      | AnthropicClientError<"CompletePost412", CompletePost412>
-      | AnthropicClientError<"CompletePost413", CompletePost413>
-      | AnthropicClientError<"CompletePost429", CompletePost429>
-      | AnthropicClientError<"CompletePost431", CompletePost431>
-      | AnthropicClientError<"CompletePost499", CompletePost499>
-      | AnthropicClientError<"CompletePost500", CompletePost500>
-      | AnthropicClientError<"CompletePost501", CompletePost501>
-      | AnthropicClientError<"CompletePost503", CompletePost503>
-      | AnthropicClientError<"CompletePost504", CompletePost504>
-      | AnthropicClientError<"CompletePost529", CompletePost529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"CompletePost4XX", CompletePost4XX>
     >
   }
   /**
@@ -23544,24 +19342,7 @@ export interface AnthropicClient {
       options: { readonly params?: typeof ModelsListParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModelsList200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"ModelsList400", ModelsList400>
-      | AnthropicClientError<"ModelsList401", ModelsList401>
-      | AnthropicClientError<"ModelsList403", ModelsList403>
-      | AnthropicClientError<"ModelsList404", ModelsList404>
-      | AnthropicClientError<"ModelsList408", ModelsList408>
-      | AnthropicClientError<"ModelsList409", ModelsList409>
-      | AnthropicClientError<"ModelsList412", ModelsList412>
-      | AnthropicClientError<"ModelsList413", ModelsList413>
-      | AnthropicClientError<"ModelsList429", ModelsList429>
-      | AnthropicClientError<"ModelsList431", ModelsList431>
-      | AnthropicClientError<"ModelsList499", ModelsList499>
-      | AnthropicClientError<"ModelsList500", ModelsList500>
-      | AnthropicClientError<"ModelsList501", ModelsList501>
-      | AnthropicClientError<"ModelsList503", ModelsList503>
-      | AnthropicClientError<"ModelsList504", ModelsList504>
-      | AnthropicClientError<"ModelsList529", ModelsList529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"ModelsList4XX", ModelsList4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options:
@@ -23569,24 +19350,7 @@ export interface AnthropicClient {
         | undefined
     ): Effect.Effect<
       WithOptionalResponse<ModelsList200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"ModelsList400", ModelsList400>
-      | AnthropicClientError<"ModelsList401", ModelsList401>
-      | AnthropicClientError<"ModelsList403", ModelsList403>
-      | AnthropicClientError<"ModelsList404", ModelsList404>
-      | AnthropicClientError<"ModelsList408", ModelsList408>
-      | AnthropicClientError<"ModelsList409", ModelsList409>
-      | AnthropicClientError<"ModelsList412", ModelsList412>
-      | AnthropicClientError<"ModelsList413", ModelsList413>
-      | AnthropicClientError<"ModelsList429", ModelsList429>
-      | AnthropicClientError<"ModelsList431", ModelsList431>
-      | AnthropicClientError<"ModelsList499", ModelsList499>
-      | AnthropicClientError<"ModelsList500", ModelsList500>
-      | AnthropicClientError<"ModelsList501", ModelsList501>
-      | AnthropicClientError<"ModelsList503", ModelsList503>
-      | AnthropicClientError<"ModelsList504", ModelsList504>
-      | AnthropicClientError<"ModelsList529", ModelsList529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"ModelsList4XX", ModelsList4XX>
     >
   }
   /**
@@ -23600,24 +19364,7 @@ export interface AnthropicClient {
       options: { readonly params?: typeof ModelsGetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModelsGet200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"ModelsGet400", ModelsGet400>
-      | AnthropicClientError<"ModelsGet401", ModelsGet401>
-      | AnthropicClientError<"ModelsGet403", ModelsGet403>
-      | AnthropicClientError<"ModelsGet404", ModelsGet404>
-      | AnthropicClientError<"ModelsGet408", ModelsGet408>
-      | AnthropicClientError<"ModelsGet409", ModelsGet409>
-      | AnthropicClientError<"ModelsGet412", ModelsGet412>
-      | AnthropicClientError<"ModelsGet413", ModelsGet413>
-      | AnthropicClientError<"ModelsGet429", ModelsGet429>
-      | AnthropicClientError<"ModelsGet431", ModelsGet431>
-      | AnthropicClientError<"ModelsGet499", ModelsGet499>
-      | AnthropicClientError<"ModelsGet500", ModelsGet500>
-      | AnthropicClientError<"ModelsGet501", ModelsGet501>
-      | AnthropicClientError<"ModelsGet503", ModelsGet503>
-      | AnthropicClientError<"ModelsGet504", ModelsGet504>
-      | AnthropicClientError<"ModelsGet529", ModelsGet529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"ModelsGet4XX", ModelsGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       modelId: string,
@@ -23626,24 +19373,7 @@ export interface AnthropicClient {
         | undefined
     ): Effect.Effect<
       WithOptionalResponse<ModelsGet200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"ModelsGet400", ModelsGet400>
-      | AnthropicClientError<"ModelsGet401", ModelsGet401>
-      | AnthropicClientError<"ModelsGet403", ModelsGet403>
-      | AnthropicClientError<"ModelsGet404", ModelsGet404>
-      | AnthropicClientError<"ModelsGet408", ModelsGet408>
-      | AnthropicClientError<"ModelsGet409", ModelsGet409>
-      | AnthropicClientError<"ModelsGet412", ModelsGet412>
-      | AnthropicClientError<"ModelsGet413", ModelsGet413>
-      | AnthropicClientError<"ModelsGet429", ModelsGet429>
-      | AnthropicClientError<"ModelsGet431", ModelsGet431>
-      | AnthropicClientError<"ModelsGet499", ModelsGet499>
-      | AnthropicClientError<"ModelsGet500", ModelsGet500>
-      | AnthropicClientError<"ModelsGet501", ModelsGet501>
-      | AnthropicClientError<"ModelsGet503", ModelsGet503>
-      | AnthropicClientError<"ModelsGet504", ModelsGet504>
-      | AnthropicClientError<"ModelsGet529", ModelsGet529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"ModelsGet4XX", ModelsGet4XX>
     >
   }
   /**
@@ -23658,22 +19388,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesList200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesList400", MessageBatchesList400>
-      | AnthropicClientError<"MessageBatchesList401", MessageBatchesList401>
-      | AnthropicClientError<"MessageBatchesList403", MessageBatchesList403>
-      | AnthropicClientError<"MessageBatchesList404", MessageBatchesList404>
-      | AnthropicClientError<"MessageBatchesList408", MessageBatchesList408>
-      | AnthropicClientError<"MessageBatchesList409", MessageBatchesList409>
-      | AnthropicClientError<"MessageBatchesList412", MessageBatchesList412>
-      | AnthropicClientError<"MessageBatchesList413", MessageBatchesList413>
-      | AnthropicClientError<"MessageBatchesList429", MessageBatchesList429>
-      | AnthropicClientError<"MessageBatchesList431", MessageBatchesList431>
-      | AnthropicClientError<"MessageBatchesList499", MessageBatchesList499>
-      | AnthropicClientError<"MessageBatchesList500", MessageBatchesList500>
-      | AnthropicClientError<"MessageBatchesList501", MessageBatchesList501>
-      | AnthropicClientError<"MessageBatchesList503", MessageBatchesList503>
-      | AnthropicClientError<"MessageBatchesList504", MessageBatchesList504>
-      | AnthropicClientError<"MessageBatchesList529", MessageBatchesList529>
+      | AnthropicClientError<"MessageBatchesList4XX", MessageBatchesList4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -23684,22 +19399,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesList200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesList400", MessageBatchesList400>
-      | AnthropicClientError<"MessageBatchesList401", MessageBatchesList401>
-      | AnthropicClientError<"MessageBatchesList403", MessageBatchesList403>
-      | AnthropicClientError<"MessageBatchesList404", MessageBatchesList404>
-      | AnthropicClientError<"MessageBatchesList408", MessageBatchesList408>
-      | AnthropicClientError<"MessageBatchesList409", MessageBatchesList409>
-      | AnthropicClientError<"MessageBatchesList412", MessageBatchesList412>
-      | AnthropicClientError<"MessageBatchesList413", MessageBatchesList413>
-      | AnthropicClientError<"MessageBatchesList429", MessageBatchesList429>
-      | AnthropicClientError<"MessageBatchesList431", MessageBatchesList431>
-      | AnthropicClientError<"MessageBatchesList499", MessageBatchesList499>
-      | AnthropicClientError<"MessageBatchesList500", MessageBatchesList500>
-      | AnthropicClientError<"MessageBatchesList501", MessageBatchesList501>
-      | AnthropicClientError<"MessageBatchesList503", MessageBatchesList503>
-      | AnthropicClientError<"MessageBatchesList504", MessageBatchesList504>
-      | AnthropicClientError<"MessageBatchesList529", MessageBatchesList529>
+      | AnthropicClientError<"MessageBatchesList4XX", MessageBatchesList4XX>
     >
   }
   /**
@@ -23720,22 +19420,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesPost400", MessageBatchesPost400>
-      | AnthropicClientError<"MessageBatchesPost401", MessageBatchesPost401>
-      | AnthropicClientError<"MessageBatchesPost403", MessageBatchesPost403>
-      | AnthropicClientError<"MessageBatchesPost404", MessageBatchesPost404>
-      | AnthropicClientError<"MessageBatchesPost408", MessageBatchesPost408>
-      | AnthropicClientError<"MessageBatchesPost409", MessageBatchesPost409>
-      | AnthropicClientError<"MessageBatchesPost412", MessageBatchesPost412>
-      | AnthropicClientError<"MessageBatchesPost413", MessageBatchesPost413>
-      | AnthropicClientError<"MessageBatchesPost429", MessageBatchesPost429>
-      | AnthropicClientError<"MessageBatchesPost431", MessageBatchesPost431>
-      | AnthropicClientError<"MessageBatchesPost499", MessageBatchesPost499>
-      | AnthropicClientError<"MessageBatchesPost500", MessageBatchesPost500>
-      | AnthropicClientError<"MessageBatchesPost501", MessageBatchesPost501>
-      | AnthropicClientError<"MessageBatchesPost503", MessageBatchesPost503>
-      | AnthropicClientError<"MessageBatchesPost504", MessageBatchesPost504>
-      | AnthropicClientError<"MessageBatchesPost529", MessageBatchesPost529>
+      | AnthropicClientError<"MessageBatchesPost4XX", MessageBatchesPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -23747,22 +19432,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesPost400", MessageBatchesPost400>
-      | AnthropicClientError<"MessageBatchesPost401", MessageBatchesPost401>
-      | AnthropicClientError<"MessageBatchesPost403", MessageBatchesPost403>
-      | AnthropicClientError<"MessageBatchesPost404", MessageBatchesPost404>
-      | AnthropicClientError<"MessageBatchesPost408", MessageBatchesPost408>
-      | AnthropicClientError<"MessageBatchesPost409", MessageBatchesPost409>
-      | AnthropicClientError<"MessageBatchesPost412", MessageBatchesPost412>
-      | AnthropicClientError<"MessageBatchesPost413", MessageBatchesPost413>
-      | AnthropicClientError<"MessageBatchesPost429", MessageBatchesPost429>
-      | AnthropicClientError<"MessageBatchesPost431", MessageBatchesPost431>
-      | AnthropicClientError<"MessageBatchesPost499", MessageBatchesPost499>
-      | AnthropicClientError<"MessageBatchesPost500", MessageBatchesPost500>
-      | AnthropicClientError<"MessageBatchesPost501", MessageBatchesPost501>
-      | AnthropicClientError<"MessageBatchesPost503", MessageBatchesPost503>
-      | AnthropicClientError<"MessageBatchesPost504", MessageBatchesPost504>
-      | AnthropicClientError<"MessageBatchesPost529", MessageBatchesPost529>
+      | AnthropicClientError<"MessageBatchesPost4XX", MessageBatchesPost4XX>
     >
   }
   /**
@@ -23778,22 +19448,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesRetrieve200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesRetrieve400", MessageBatchesRetrieve400>
-      | AnthropicClientError<"MessageBatchesRetrieve401", MessageBatchesRetrieve401>
-      | AnthropicClientError<"MessageBatchesRetrieve403", MessageBatchesRetrieve403>
-      | AnthropicClientError<"MessageBatchesRetrieve404", MessageBatchesRetrieve404>
-      | AnthropicClientError<"MessageBatchesRetrieve408", MessageBatchesRetrieve408>
-      | AnthropicClientError<"MessageBatchesRetrieve409", MessageBatchesRetrieve409>
-      | AnthropicClientError<"MessageBatchesRetrieve412", MessageBatchesRetrieve412>
-      | AnthropicClientError<"MessageBatchesRetrieve413", MessageBatchesRetrieve413>
-      | AnthropicClientError<"MessageBatchesRetrieve429", MessageBatchesRetrieve429>
-      | AnthropicClientError<"MessageBatchesRetrieve431", MessageBatchesRetrieve431>
-      | AnthropicClientError<"MessageBatchesRetrieve499", MessageBatchesRetrieve499>
-      | AnthropicClientError<"MessageBatchesRetrieve500", MessageBatchesRetrieve500>
-      | AnthropicClientError<"MessageBatchesRetrieve501", MessageBatchesRetrieve501>
-      | AnthropicClientError<"MessageBatchesRetrieve503", MessageBatchesRetrieve503>
-      | AnthropicClientError<"MessageBatchesRetrieve504", MessageBatchesRetrieve504>
-      | AnthropicClientError<"MessageBatchesRetrieve529", MessageBatchesRetrieve529>
+      | AnthropicClientError<"MessageBatchesRetrieve4XX", MessageBatchesRetrieve4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -23805,22 +19460,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesRetrieve200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesRetrieve400", MessageBatchesRetrieve400>
-      | AnthropicClientError<"MessageBatchesRetrieve401", MessageBatchesRetrieve401>
-      | AnthropicClientError<"MessageBatchesRetrieve403", MessageBatchesRetrieve403>
-      | AnthropicClientError<"MessageBatchesRetrieve404", MessageBatchesRetrieve404>
-      | AnthropicClientError<"MessageBatchesRetrieve408", MessageBatchesRetrieve408>
-      | AnthropicClientError<"MessageBatchesRetrieve409", MessageBatchesRetrieve409>
-      | AnthropicClientError<"MessageBatchesRetrieve412", MessageBatchesRetrieve412>
-      | AnthropicClientError<"MessageBatchesRetrieve413", MessageBatchesRetrieve413>
-      | AnthropicClientError<"MessageBatchesRetrieve429", MessageBatchesRetrieve429>
-      | AnthropicClientError<"MessageBatchesRetrieve431", MessageBatchesRetrieve431>
-      | AnthropicClientError<"MessageBatchesRetrieve499", MessageBatchesRetrieve499>
-      | AnthropicClientError<"MessageBatchesRetrieve500", MessageBatchesRetrieve500>
-      | AnthropicClientError<"MessageBatchesRetrieve501", MessageBatchesRetrieve501>
-      | AnthropicClientError<"MessageBatchesRetrieve503", MessageBatchesRetrieve503>
-      | AnthropicClientError<"MessageBatchesRetrieve504", MessageBatchesRetrieve504>
-      | AnthropicClientError<"MessageBatchesRetrieve529", MessageBatchesRetrieve529>
+      | AnthropicClientError<"MessageBatchesRetrieve4XX", MessageBatchesRetrieve4XX>
     >
   }
   /**
@@ -23838,22 +19478,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesDelete200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesDelete400", MessageBatchesDelete400>
-      | AnthropicClientError<"MessageBatchesDelete401", MessageBatchesDelete401>
-      | AnthropicClientError<"MessageBatchesDelete403", MessageBatchesDelete403>
-      | AnthropicClientError<"MessageBatchesDelete404", MessageBatchesDelete404>
-      | AnthropicClientError<"MessageBatchesDelete408", MessageBatchesDelete408>
-      | AnthropicClientError<"MessageBatchesDelete409", MessageBatchesDelete409>
-      | AnthropicClientError<"MessageBatchesDelete412", MessageBatchesDelete412>
-      | AnthropicClientError<"MessageBatchesDelete413", MessageBatchesDelete413>
-      | AnthropicClientError<"MessageBatchesDelete429", MessageBatchesDelete429>
-      | AnthropicClientError<"MessageBatchesDelete431", MessageBatchesDelete431>
-      | AnthropicClientError<"MessageBatchesDelete499", MessageBatchesDelete499>
-      | AnthropicClientError<"MessageBatchesDelete500", MessageBatchesDelete500>
-      | AnthropicClientError<"MessageBatchesDelete501", MessageBatchesDelete501>
-      | AnthropicClientError<"MessageBatchesDelete503", MessageBatchesDelete503>
-      | AnthropicClientError<"MessageBatchesDelete504", MessageBatchesDelete504>
-      | AnthropicClientError<"MessageBatchesDelete529", MessageBatchesDelete529>
+      | AnthropicClientError<"MessageBatchesDelete4XX", MessageBatchesDelete4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -23865,22 +19490,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesDelete200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesDelete400", MessageBatchesDelete400>
-      | AnthropicClientError<"MessageBatchesDelete401", MessageBatchesDelete401>
-      | AnthropicClientError<"MessageBatchesDelete403", MessageBatchesDelete403>
-      | AnthropicClientError<"MessageBatchesDelete404", MessageBatchesDelete404>
-      | AnthropicClientError<"MessageBatchesDelete408", MessageBatchesDelete408>
-      | AnthropicClientError<"MessageBatchesDelete409", MessageBatchesDelete409>
-      | AnthropicClientError<"MessageBatchesDelete412", MessageBatchesDelete412>
-      | AnthropicClientError<"MessageBatchesDelete413", MessageBatchesDelete413>
-      | AnthropicClientError<"MessageBatchesDelete429", MessageBatchesDelete429>
-      | AnthropicClientError<"MessageBatchesDelete431", MessageBatchesDelete431>
-      | AnthropicClientError<"MessageBatchesDelete499", MessageBatchesDelete499>
-      | AnthropicClientError<"MessageBatchesDelete500", MessageBatchesDelete500>
-      | AnthropicClientError<"MessageBatchesDelete501", MessageBatchesDelete501>
-      | AnthropicClientError<"MessageBatchesDelete503", MessageBatchesDelete503>
-      | AnthropicClientError<"MessageBatchesDelete504", MessageBatchesDelete504>
-      | AnthropicClientError<"MessageBatchesDelete529", MessageBatchesDelete529>
+      | AnthropicClientError<"MessageBatchesDelete4XX", MessageBatchesDelete4XX>
     >
   }
   /**
@@ -23898,22 +19508,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesCancel200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesCancel400", MessageBatchesCancel400>
-      | AnthropicClientError<"MessageBatchesCancel401", MessageBatchesCancel401>
-      | AnthropicClientError<"MessageBatchesCancel403", MessageBatchesCancel403>
-      | AnthropicClientError<"MessageBatchesCancel404", MessageBatchesCancel404>
-      | AnthropicClientError<"MessageBatchesCancel408", MessageBatchesCancel408>
-      | AnthropicClientError<"MessageBatchesCancel409", MessageBatchesCancel409>
-      | AnthropicClientError<"MessageBatchesCancel412", MessageBatchesCancel412>
-      | AnthropicClientError<"MessageBatchesCancel413", MessageBatchesCancel413>
-      | AnthropicClientError<"MessageBatchesCancel429", MessageBatchesCancel429>
-      | AnthropicClientError<"MessageBatchesCancel431", MessageBatchesCancel431>
-      | AnthropicClientError<"MessageBatchesCancel499", MessageBatchesCancel499>
-      | AnthropicClientError<"MessageBatchesCancel500", MessageBatchesCancel500>
-      | AnthropicClientError<"MessageBatchesCancel501", MessageBatchesCancel501>
-      | AnthropicClientError<"MessageBatchesCancel503", MessageBatchesCancel503>
-      | AnthropicClientError<"MessageBatchesCancel504", MessageBatchesCancel504>
-      | AnthropicClientError<"MessageBatchesCancel529", MessageBatchesCancel529>
+      | AnthropicClientError<"MessageBatchesCancel4XX", MessageBatchesCancel4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -23925,22 +19520,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessageBatchesCancel200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesCancel400", MessageBatchesCancel400>
-      | AnthropicClientError<"MessageBatchesCancel401", MessageBatchesCancel401>
-      | AnthropicClientError<"MessageBatchesCancel403", MessageBatchesCancel403>
-      | AnthropicClientError<"MessageBatchesCancel404", MessageBatchesCancel404>
-      | AnthropicClientError<"MessageBatchesCancel408", MessageBatchesCancel408>
-      | AnthropicClientError<"MessageBatchesCancel409", MessageBatchesCancel409>
-      | AnthropicClientError<"MessageBatchesCancel412", MessageBatchesCancel412>
-      | AnthropicClientError<"MessageBatchesCancel413", MessageBatchesCancel413>
-      | AnthropicClientError<"MessageBatchesCancel429", MessageBatchesCancel429>
-      | AnthropicClientError<"MessageBatchesCancel431", MessageBatchesCancel431>
-      | AnthropicClientError<"MessageBatchesCancel499", MessageBatchesCancel499>
-      | AnthropicClientError<"MessageBatchesCancel500", MessageBatchesCancel500>
-      | AnthropicClientError<"MessageBatchesCancel501", MessageBatchesCancel501>
-      | AnthropicClientError<"MessageBatchesCancel503", MessageBatchesCancel503>
-      | AnthropicClientError<"MessageBatchesCancel504", MessageBatchesCancel504>
-      | AnthropicClientError<"MessageBatchesCancel529", MessageBatchesCancel529>
+      | AnthropicClientError<"MessageBatchesCancel4XX", MessageBatchesCancel4XX>
     >
   }
   /**
@@ -23958,22 +19538,7 @@ export interface AnthropicClient {
       WithOptionalResponse<void, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesResults400", MessageBatchesResults400>
-      | AnthropicClientError<"MessageBatchesResults401", MessageBatchesResults401>
-      | AnthropicClientError<"MessageBatchesResults403", MessageBatchesResults403>
-      | AnthropicClientError<"MessageBatchesResults404", MessageBatchesResults404>
-      | AnthropicClientError<"MessageBatchesResults408", MessageBatchesResults408>
-      | AnthropicClientError<"MessageBatchesResults409", MessageBatchesResults409>
-      | AnthropicClientError<"MessageBatchesResults412", MessageBatchesResults412>
-      | AnthropicClientError<"MessageBatchesResults413", MessageBatchesResults413>
-      | AnthropicClientError<"MessageBatchesResults429", MessageBatchesResults429>
-      | AnthropicClientError<"MessageBatchesResults431", MessageBatchesResults431>
-      | AnthropicClientError<"MessageBatchesResults499", MessageBatchesResults499>
-      | AnthropicClientError<"MessageBatchesResults500", MessageBatchesResults500>
-      | AnthropicClientError<"MessageBatchesResults501", MessageBatchesResults501>
-      | AnthropicClientError<"MessageBatchesResults503", MessageBatchesResults503>
-      | AnthropicClientError<"MessageBatchesResults504", MessageBatchesResults504>
-      | AnthropicClientError<"MessageBatchesResults529", MessageBatchesResults529>
+      | AnthropicClientError<"MessageBatchesResults4XX", MessageBatchesResults4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -23985,22 +19550,7 @@ export interface AnthropicClient {
       WithOptionalResponse<void, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessageBatchesResults400", MessageBatchesResults400>
-      | AnthropicClientError<"MessageBatchesResults401", MessageBatchesResults401>
-      | AnthropicClientError<"MessageBatchesResults403", MessageBatchesResults403>
-      | AnthropicClientError<"MessageBatchesResults404", MessageBatchesResults404>
-      | AnthropicClientError<"MessageBatchesResults408", MessageBatchesResults408>
-      | AnthropicClientError<"MessageBatchesResults409", MessageBatchesResults409>
-      | AnthropicClientError<"MessageBatchesResults412", MessageBatchesResults412>
-      | AnthropicClientError<"MessageBatchesResults413", MessageBatchesResults413>
-      | AnthropicClientError<"MessageBatchesResults429", MessageBatchesResults429>
-      | AnthropicClientError<"MessageBatchesResults431", MessageBatchesResults431>
-      | AnthropicClientError<"MessageBatchesResults499", MessageBatchesResults499>
-      | AnthropicClientError<"MessageBatchesResults500", MessageBatchesResults500>
-      | AnthropicClientError<"MessageBatchesResults501", MessageBatchesResults501>
-      | AnthropicClientError<"MessageBatchesResults503", MessageBatchesResults503>
-      | AnthropicClientError<"MessageBatchesResults504", MessageBatchesResults504>
-      | AnthropicClientError<"MessageBatchesResults529", MessageBatchesResults529>
+      | AnthropicClientError<"MessageBatchesResults4XX", MessageBatchesResults4XX>
     >
   }
   /**
@@ -24021,22 +19571,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessagesCountTokensPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessagesCountTokensPost400", MessagesCountTokensPost400>
-      | AnthropicClientError<"MessagesCountTokensPost401", MessagesCountTokensPost401>
-      | AnthropicClientError<"MessagesCountTokensPost403", MessagesCountTokensPost403>
-      | AnthropicClientError<"MessagesCountTokensPost404", MessagesCountTokensPost404>
-      | AnthropicClientError<"MessagesCountTokensPost408", MessagesCountTokensPost408>
-      | AnthropicClientError<"MessagesCountTokensPost409", MessagesCountTokensPost409>
-      | AnthropicClientError<"MessagesCountTokensPost412", MessagesCountTokensPost412>
-      | AnthropicClientError<"MessagesCountTokensPost413", MessagesCountTokensPost413>
-      | AnthropicClientError<"MessagesCountTokensPost429", MessagesCountTokensPost429>
-      | AnthropicClientError<"MessagesCountTokensPost431", MessagesCountTokensPost431>
-      | AnthropicClientError<"MessagesCountTokensPost499", MessagesCountTokensPost499>
-      | AnthropicClientError<"MessagesCountTokensPost500", MessagesCountTokensPost500>
-      | AnthropicClientError<"MessagesCountTokensPost501", MessagesCountTokensPost501>
-      | AnthropicClientError<"MessagesCountTokensPost503", MessagesCountTokensPost503>
-      | AnthropicClientError<"MessagesCountTokensPost504", MessagesCountTokensPost504>
-      | AnthropicClientError<"MessagesCountTokensPost529", MessagesCountTokensPost529>
+      | AnthropicClientError<"MessagesCountTokensPost4XX", MessagesCountTokensPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -24048,22 +19583,7 @@ export interface AnthropicClient {
       WithOptionalResponse<MessagesCountTokensPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"MessagesCountTokensPost400", MessagesCountTokensPost400>
-      | AnthropicClientError<"MessagesCountTokensPost401", MessagesCountTokensPost401>
-      | AnthropicClientError<"MessagesCountTokensPost403", MessagesCountTokensPost403>
-      | AnthropicClientError<"MessagesCountTokensPost404", MessagesCountTokensPost404>
-      | AnthropicClientError<"MessagesCountTokensPost408", MessagesCountTokensPost408>
-      | AnthropicClientError<"MessagesCountTokensPost409", MessagesCountTokensPost409>
-      | AnthropicClientError<"MessagesCountTokensPost412", MessagesCountTokensPost412>
-      | AnthropicClientError<"MessagesCountTokensPost413", MessagesCountTokensPost413>
-      | AnthropicClientError<"MessagesCountTokensPost429", MessagesCountTokensPost429>
-      | AnthropicClientError<"MessagesCountTokensPost431", MessagesCountTokensPost431>
-      | AnthropicClientError<"MessagesCountTokensPost499", MessagesCountTokensPost499>
-      | AnthropicClientError<"MessagesCountTokensPost500", MessagesCountTokensPost500>
-      | AnthropicClientError<"MessagesCountTokensPost501", MessagesCountTokensPost501>
-      | AnthropicClientError<"MessagesCountTokensPost503", MessagesCountTokensPost503>
-      | AnthropicClientError<"MessagesCountTokensPost504", MessagesCountTokensPost504>
-      | AnthropicClientError<"MessagesCountTokensPost529", MessagesCountTokensPost529>
+      | AnthropicClientError<"MessagesCountTokensPost4XX", MessagesCountTokensPost4XX>
     >
   }
   /**
@@ -24076,22 +19596,7 @@ export interface AnthropicClient {
       WithOptionalResponse<ListFilesV1FilesGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"ListFilesV1FilesGet400", ListFilesV1FilesGet400>
-      | AnthropicClientError<"ListFilesV1FilesGet401", ListFilesV1FilesGet401>
-      | AnthropicClientError<"ListFilesV1FilesGet403", ListFilesV1FilesGet403>
-      | AnthropicClientError<"ListFilesV1FilesGet404", ListFilesV1FilesGet404>
-      | AnthropicClientError<"ListFilesV1FilesGet408", ListFilesV1FilesGet408>
-      | AnthropicClientError<"ListFilesV1FilesGet409", ListFilesV1FilesGet409>
-      | AnthropicClientError<"ListFilesV1FilesGet412", ListFilesV1FilesGet412>
-      | AnthropicClientError<"ListFilesV1FilesGet413", ListFilesV1FilesGet413>
-      | AnthropicClientError<"ListFilesV1FilesGet429", ListFilesV1FilesGet429>
-      | AnthropicClientError<"ListFilesV1FilesGet431", ListFilesV1FilesGet431>
-      | AnthropicClientError<"ListFilesV1FilesGet499", ListFilesV1FilesGet499>
-      | AnthropicClientError<"ListFilesV1FilesGet500", ListFilesV1FilesGet500>
-      | AnthropicClientError<"ListFilesV1FilesGet501", ListFilesV1FilesGet501>
-      | AnthropicClientError<"ListFilesV1FilesGet503", ListFilesV1FilesGet503>
-      | AnthropicClientError<"ListFilesV1FilesGet504", ListFilesV1FilesGet504>
-      | AnthropicClientError<"ListFilesV1FilesGet529", ListFilesV1FilesGet529>
+      | AnthropicClientError<"ListFilesV1FilesGet4XX", ListFilesV1FilesGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -24102,22 +19607,7 @@ export interface AnthropicClient {
       WithOptionalResponse<ListFilesV1FilesGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"ListFilesV1FilesGet400", ListFilesV1FilesGet400>
-      | AnthropicClientError<"ListFilesV1FilesGet401", ListFilesV1FilesGet401>
-      | AnthropicClientError<"ListFilesV1FilesGet403", ListFilesV1FilesGet403>
-      | AnthropicClientError<"ListFilesV1FilesGet404", ListFilesV1FilesGet404>
-      | AnthropicClientError<"ListFilesV1FilesGet408", ListFilesV1FilesGet408>
-      | AnthropicClientError<"ListFilesV1FilesGet409", ListFilesV1FilesGet409>
-      | AnthropicClientError<"ListFilesV1FilesGet412", ListFilesV1FilesGet412>
-      | AnthropicClientError<"ListFilesV1FilesGet413", ListFilesV1FilesGet413>
-      | AnthropicClientError<"ListFilesV1FilesGet429", ListFilesV1FilesGet429>
-      | AnthropicClientError<"ListFilesV1FilesGet431", ListFilesV1FilesGet431>
-      | AnthropicClientError<"ListFilesV1FilesGet499", ListFilesV1FilesGet499>
-      | AnthropicClientError<"ListFilesV1FilesGet500", ListFilesV1FilesGet500>
-      | AnthropicClientError<"ListFilesV1FilesGet501", ListFilesV1FilesGet501>
-      | AnthropicClientError<"ListFilesV1FilesGet503", ListFilesV1FilesGet503>
-      | AnthropicClientError<"ListFilesV1FilesGet504", ListFilesV1FilesGet504>
-      | AnthropicClientError<"ListFilesV1FilesGet529", ListFilesV1FilesGet529>
+      | AnthropicClientError<"ListFilesV1FilesGet4XX", ListFilesV1FilesGet4XX>
     >
   }
   /**
@@ -24134,22 +19624,7 @@ export interface AnthropicClient {
       WithOptionalResponse<UploadFileV1FilesPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"UploadFileV1FilesPost400", UploadFileV1FilesPost400>
-      | AnthropicClientError<"UploadFileV1FilesPost401", UploadFileV1FilesPost401>
-      | AnthropicClientError<"UploadFileV1FilesPost403", UploadFileV1FilesPost403>
-      | AnthropicClientError<"UploadFileV1FilesPost404", UploadFileV1FilesPost404>
-      | AnthropicClientError<"UploadFileV1FilesPost408", UploadFileV1FilesPost408>
-      | AnthropicClientError<"UploadFileV1FilesPost409", UploadFileV1FilesPost409>
-      | AnthropicClientError<"UploadFileV1FilesPost412", UploadFileV1FilesPost412>
-      | AnthropicClientError<"UploadFileV1FilesPost413", UploadFileV1FilesPost413>
-      | AnthropicClientError<"UploadFileV1FilesPost429", UploadFileV1FilesPost429>
-      | AnthropicClientError<"UploadFileV1FilesPost431", UploadFileV1FilesPost431>
-      | AnthropicClientError<"UploadFileV1FilesPost499", UploadFileV1FilesPost499>
-      | AnthropicClientError<"UploadFileV1FilesPost500", UploadFileV1FilesPost500>
-      | AnthropicClientError<"UploadFileV1FilesPost501", UploadFileV1FilesPost501>
-      | AnthropicClientError<"UploadFileV1FilesPost503", UploadFileV1FilesPost503>
-      | AnthropicClientError<"UploadFileV1FilesPost504", UploadFileV1FilesPost504>
-      | AnthropicClientError<"UploadFileV1FilesPost529", UploadFileV1FilesPost529>
+      | AnthropicClientError<"UploadFileV1FilesPost4XX", UploadFileV1FilesPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -24161,22 +19636,7 @@ export interface AnthropicClient {
       WithOptionalResponse<UploadFileV1FilesPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"UploadFileV1FilesPost400", UploadFileV1FilesPost400>
-      | AnthropicClientError<"UploadFileV1FilesPost401", UploadFileV1FilesPost401>
-      | AnthropicClientError<"UploadFileV1FilesPost403", UploadFileV1FilesPost403>
-      | AnthropicClientError<"UploadFileV1FilesPost404", UploadFileV1FilesPost404>
-      | AnthropicClientError<"UploadFileV1FilesPost408", UploadFileV1FilesPost408>
-      | AnthropicClientError<"UploadFileV1FilesPost409", UploadFileV1FilesPost409>
-      | AnthropicClientError<"UploadFileV1FilesPost412", UploadFileV1FilesPost412>
-      | AnthropicClientError<"UploadFileV1FilesPost413", UploadFileV1FilesPost413>
-      | AnthropicClientError<"UploadFileV1FilesPost429", UploadFileV1FilesPost429>
-      | AnthropicClientError<"UploadFileV1FilesPost431", UploadFileV1FilesPost431>
-      | AnthropicClientError<"UploadFileV1FilesPost499", UploadFileV1FilesPost499>
-      | AnthropicClientError<"UploadFileV1FilesPost500", UploadFileV1FilesPost500>
-      | AnthropicClientError<"UploadFileV1FilesPost501", UploadFileV1FilesPost501>
-      | AnthropicClientError<"UploadFileV1FilesPost503", UploadFileV1FilesPost503>
-      | AnthropicClientError<"UploadFileV1FilesPost504", UploadFileV1FilesPost504>
-      | AnthropicClientError<"UploadFileV1FilesPost529", UploadFileV1FilesPost529>
+      | AnthropicClientError<"UploadFileV1FilesPost4XX", UploadFileV1FilesPost4XX>
     >
   }
   /**
@@ -24193,22 +19653,7 @@ export interface AnthropicClient {
       WithOptionalResponse<GetFileMetadataV1FilesFileIdGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet400", GetFileMetadataV1FilesFileIdGet400>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet401", GetFileMetadataV1FilesFileIdGet401>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet403", GetFileMetadataV1FilesFileIdGet403>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet404", GetFileMetadataV1FilesFileIdGet404>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet408", GetFileMetadataV1FilesFileIdGet408>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet409", GetFileMetadataV1FilesFileIdGet409>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet412", GetFileMetadataV1FilesFileIdGet412>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet413", GetFileMetadataV1FilesFileIdGet413>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet429", GetFileMetadataV1FilesFileIdGet429>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet431", GetFileMetadataV1FilesFileIdGet431>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet499", GetFileMetadataV1FilesFileIdGet499>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet500", GetFileMetadataV1FilesFileIdGet500>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet501", GetFileMetadataV1FilesFileIdGet501>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet503", GetFileMetadataV1FilesFileIdGet503>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet504", GetFileMetadataV1FilesFileIdGet504>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet529", GetFileMetadataV1FilesFileIdGet529>
+      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet4XX", GetFileMetadataV1FilesFileIdGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       fileId: string,
@@ -24220,22 +19665,7 @@ export interface AnthropicClient {
       WithOptionalResponse<GetFileMetadataV1FilesFileIdGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet400", GetFileMetadataV1FilesFileIdGet400>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet401", GetFileMetadataV1FilesFileIdGet401>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet403", GetFileMetadataV1FilesFileIdGet403>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet404", GetFileMetadataV1FilesFileIdGet404>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet408", GetFileMetadataV1FilesFileIdGet408>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet409", GetFileMetadataV1FilesFileIdGet409>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet412", GetFileMetadataV1FilesFileIdGet412>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet413", GetFileMetadataV1FilesFileIdGet413>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet429", GetFileMetadataV1FilesFileIdGet429>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet431", GetFileMetadataV1FilesFileIdGet431>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet499", GetFileMetadataV1FilesFileIdGet499>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet500", GetFileMetadataV1FilesFileIdGet500>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet501", GetFileMetadataV1FilesFileIdGet501>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet503", GetFileMetadataV1FilesFileIdGet503>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet504", GetFileMetadataV1FilesFileIdGet504>
-      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet529", GetFileMetadataV1FilesFileIdGet529>
+      | AnthropicClientError<"GetFileMetadataV1FilesFileIdGet4XX", GetFileMetadataV1FilesFileIdGet4XX>
     >
   }
   /**
@@ -24252,22 +19682,7 @@ export interface AnthropicClient {
       WithOptionalResponse<DeleteFileV1FilesFileIdDelete200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete400", DeleteFileV1FilesFileIdDelete400>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete401", DeleteFileV1FilesFileIdDelete401>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete403", DeleteFileV1FilesFileIdDelete403>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete404", DeleteFileV1FilesFileIdDelete404>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete408", DeleteFileV1FilesFileIdDelete408>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete409", DeleteFileV1FilesFileIdDelete409>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete412", DeleteFileV1FilesFileIdDelete412>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete413", DeleteFileV1FilesFileIdDelete413>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete429", DeleteFileV1FilesFileIdDelete429>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete431", DeleteFileV1FilesFileIdDelete431>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete499", DeleteFileV1FilesFileIdDelete499>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete500", DeleteFileV1FilesFileIdDelete500>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete501", DeleteFileV1FilesFileIdDelete501>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete503", DeleteFileV1FilesFileIdDelete503>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete504", DeleteFileV1FilesFileIdDelete504>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete529", DeleteFileV1FilesFileIdDelete529>
+      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete4XX", DeleteFileV1FilesFileIdDelete4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       fileId: string,
@@ -24279,22 +19694,7 @@ export interface AnthropicClient {
       WithOptionalResponse<DeleteFileV1FilesFileIdDelete200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete400", DeleteFileV1FilesFileIdDelete400>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete401", DeleteFileV1FilesFileIdDelete401>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete403", DeleteFileV1FilesFileIdDelete403>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete404", DeleteFileV1FilesFileIdDelete404>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete408", DeleteFileV1FilesFileIdDelete408>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete409", DeleteFileV1FilesFileIdDelete409>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete412", DeleteFileV1FilesFileIdDelete412>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete413", DeleteFileV1FilesFileIdDelete413>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete429", DeleteFileV1FilesFileIdDelete429>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete431", DeleteFileV1FilesFileIdDelete431>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete499", DeleteFileV1FilesFileIdDelete499>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete500", DeleteFileV1FilesFileIdDelete500>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete501", DeleteFileV1FilesFileIdDelete501>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete503", DeleteFileV1FilesFileIdDelete503>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete504", DeleteFileV1FilesFileIdDelete504>
-      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete529", DeleteFileV1FilesFileIdDelete529>
+      | AnthropicClientError<"DeleteFileV1FilesFileIdDelete4XX", DeleteFileV1FilesFileIdDelete4XX>
     >
   }
   /**
@@ -24311,22 +19711,7 @@ export interface AnthropicClient {
       WithOptionalResponse<Uint8Array, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet400", DownloadFileV1FilesFileIdContentGet400>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet401", DownloadFileV1FilesFileIdContentGet401>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet403", DownloadFileV1FilesFileIdContentGet403>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet404", DownloadFileV1FilesFileIdContentGet404>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet408", DownloadFileV1FilesFileIdContentGet408>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet409", DownloadFileV1FilesFileIdContentGet409>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet412", DownloadFileV1FilesFileIdContentGet412>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet413", DownloadFileV1FilesFileIdContentGet413>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet429", DownloadFileV1FilesFileIdContentGet429>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet431", DownloadFileV1FilesFileIdContentGet431>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet499", DownloadFileV1FilesFileIdContentGet499>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet500", DownloadFileV1FilesFileIdContentGet500>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet501", DownloadFileV1FilesFileIdContentGet501>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet503", DownloadFileV1FilesFileIdContentGet503>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet504", DownloadFileV1FilesFileIdContentGet504>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet529", DownloadFileV1FilesFileIdContentGet529>
+      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet4XX", DownloadFileV1FilesFileIdContentGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       fileId: string,
@@ -24338,22 +19723,7 @@ export interface AnthropicClient {
       WithOptionalResponse<Uint8Array, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet400", DownloadFileV1FilesFileIdContentGet400>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet401", DownloadFileV1FilesFileIdContentGet401>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet403", DownloadFileV1FilesFileIdContentGet403>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet404", DownloadFileV1FilesFileIdContentGet404>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet408", DownloadFileV1FilesFileIdContentGet408>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet409", DownloadFileV1FilesFileIdContentGet409>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet412", DownloadFileV1FilesFileIdContentGet412>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet413", DownloadFileV1FilesFileIdContentGet413>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet429", DownloadFileV1FilesFileIdContentGet429>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet431", DownloadFileV1FilesFileIdContentGet431>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet499", DownloadFileV1FilesFileIdContentGet499>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet500", DownloadFileV1FilesFileIdContentGet500>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet501", DownloadFileV1FilesFileIdContentGet501>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet503", DownloadFileV1FilesFileIdContentGet503>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet504", DownloadFileV1FilesFileIdContentGet504>
-      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet529", DownloadFileV1FilesFileIdContentGet529>
+      | AnthropicClientError<"DownloadFileV1FilesFileIdContentGet4XX", DownloadFileV1FilesFileIdContentGet4XX>
     >
   }
   /**
@@ -24373,22 +19743,7 @@ export interface AnthropicClient {
       WithOptionalResponse<ListSkillsV1SkillsGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"ListSkillsV1SkillsGet400", ListSkillsV1SkillsGet400>
-      | AnthropicClientError<"ListSkillsV1SkillsGet401", ListSkillsV1SkillsGet401>
-      | AnthropicClientError<"ListSkillsV1SkillsGet403", ListSkillsV1SkillsGet403>
-      | AnthropicClientError<"ListSkillsV1SkillsGet404", ListSkillsV1SkillsGet404>
-      | AnthropicClientError<"ListSkillsV1SkillsGet408", ListSkillsV1SkillsGet408>
-      | AnthropicClientError<"ListSkillsV1SkillsGet409", ListSkillsV1SkillsGet409>
-      | AnthropicClientError<"ListSkillsV1SkillsGet412", ListSkillsV1SkillsGet412>
-      | AnthropicClientError<"ListSkillsV1SkillsGet413", ListSkillsV1SkillsGet413>
-      | AnthropicClientError<"ListSkillsV1SkillsGet429", ListSkillsV1SkillsGet429>
-      | AnthropicClientError<"ListSkillsV1SkillsGet431", ListSkillsV1SkillsGet431>
-      | AnthropicClientError<"ListSkillsV1SkillsGet499", ListSkillsV1SkillsGet499>
-      | AnthropicClientError<"ListSkillsV1SkillsGet500", ListSkillsV1SkillsGet500>
-      | AnthropicClientError<"ListSkillsV1SkillsGet501", ListSkillsV1SkillsGet501>
-      | AnthropicClientError<"ListSkillsV1SkillsGet503", ListSkillsV1SkillsGet503>
-      | AnthropicClientError<"ListSkillsV1SkillsGet504", ListSkillsV1SkillsGet504>
-      | AnthropicClientError<"ListSkillsV1SkillsGet529", ListSkillsV1SkillsGet529>
+      | AnthropicClientError<"ListSkillsV1SkillsGet4XX", ListSkillsV1SkillsGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -24399,22 +19754,7 @@ export interface AnthropicClient {
       WithOptionalResponse<ListSkillsV1SkillsGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"ListSkillsV1SkillsGet400", ListSkillsV1SkillsGet400>
-      | AnthropicClientError<"ListSkillsV1SkillsGet401", ListSkillsV1SkillsGet401>
-      | AnthropicClientError<"ListSkillsV1SkillsGet403", ListSkillsV1SkillsGet403>
-      | AnthropicClientError<"ListSkillsV1SkillsGet404", ListSkillsV1SkillsGet404>
-      | AnthropicClientError<"ListSkillsV1SkillsGet408", ListSkillsV1SkillsGet408>
-      | AnthropicClientError<"ListSkillsV1SkillsGet409", ListSkillsV1SkillsGet409>
-      | AnthropicClientError<"ListSkillsV1SkillsGet412", ListSkillsV1SkillsGet412>
-      | AnthropicClientError<"ListSkillsV1SkillsGet413", ListSkillsV1SkillsGet413>
-      | AnthropicClientError<"ListSkillsV1SkillsGet429", ListSkillsV1SkillsGet429>
-      | AnthropicClientError<"ListSkillsV1SkillsGet431", ListSkillsV1SkillsGet431>
-      | AnthropicClientError<"ListSkillsV1SkillsGet499", ListSkillsV1SkillsGet499>
-      | AnthropicClientError<"ListSkillsV1SkillsGet500", ListSkillsV1SkillsGet500>
-      | AnthropicClientError<"ListSkillsV1SkillsGet501", ListSkillsV1SkillsGet501>
-      | AnthropicClientError<"ListSkillsV1SkillsGet503", ListSkillsV1SkillsGet503>
-      | AnthropicClientError<"ListSkillsV1SkillsGet504", ListSkillsV1SkillsGet504>
-      | AnthropicClientError<"ListSkillsV1SkillsGet529", ListSkillsV1SkillsGet529>
+      | AnthropicClientError<"ListSkillsV1SkillsGet4XX", ListSkillsV1SkillsGet4XX>
     >
   }
   /**
@@ -24431,22 +19771,7 @@ export interface AnthropicClient {
       WithOptionalResponse<CreateSkillV1SkillsPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"CreateSkillV1SkillsPost400", CreateSkillV1SkillsPost400>
-      | AnthropicClientError<"CreateSkillV1SkillsPost401", CreateSkillV1SkillsPost401>
-      | AnthropicClientError<"CreateSkillV1SkillsPost403", CreateSkillV1SkillsPost403>
-      | AnthropicClientError<"CreateSkillV1SkillsPost404", CreateSkillV1SkillsPost404>
-      | AnthropicClientError<"CreateSkillV1SkillsPost408", CreateSkillV1SkillsPost408>
-      | AnthropicClientError<"CreateSkillV1SkillsPost409", CreateSkillV1SkillsPost409>
-      | AnthropicClientError<"CreateSkillV1SkillsPost412", CreateSkillV1SkillsPost412>
-      | AnthropicClientError<"CreateSkillV1SkillsPost413", CreateSkillV1SkillsPost413>
-      | AnthropicClientError<"CreateSkillV1SkillsPost429", CreateSkillV1SkillsPost429>
-      | AnthropicClientError<"CreateSkillV1SkillsPost431", CreateSkillV1SkillsPost431>
-      | AnthropicClientError<"CreateSkillV1SkillsPost499", CreateSkillV1SkillsPost499>
-      | AnthropicClientError<"CreateSkillV1SkillsPost500", CreateSkillV1SkillsPost500>
-      | AnthropicClientError<"CreateSkillV1SkillsPost501", CreateSkillV1SkillsPost501>
-      | AnthropicClientError<"CreateSkillV1SkillsPost503", CreateSkillV1SkillsPost503>
-      | AnthropicClientError<"CreateSkillV1SkillsPost504", CreateSkillV1SkillsPost504>
-      | AnthropicClientError<"CreateSkillV1SkillsPost529", CreateSkillV1SkillsPost529>
+      | AnthropicClientError<"CreateSkillV1SkillsPost4XX", CreateSkillV1SkillsPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -24458,22 +19783,7 @@ export interface AnthropicClient {
       WithOptionalResponse<CreateSkillV1SkillsPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"CreateSkillV1SkillsPost400", CreateSkillV1SkillsPost400>
-      | AnthropicClientError<"CreateSkillV1SkillsPost401", CreateSkillV1SkillsPost401>
-      | AnthropicClientError<"CreateSkillV1SkillsPost403", CreateSkillV1SkillsPost403>
-      | AnthropicClientError<"CreateSkillV1SkillsPost404", CreateSkillV1SkillsPost404>
-      | AnthropicClientError<"CreateSkillV1SkillsPost408", CreateSkillV1SkillsPost408>
-      | AnthropicClientError<"CreateSkillV1SkillsPost409", CreateSkillV1SkillsPost409>
-      | AnthropicClientError<"CreateSkillV1SkillsPost412", CreateSkillV1SkillsPost412>
-      | AnthropicClientError<"CreateSkillV1SkillsPost413", CreateSkillV1SkillsPost413>
-      | AnthropicClientError<"CreateSkillV1SkillsPost429", CreateSkillV1SkillsPost429>
-      | AnthropicClientError<"CreateSkillV1SkillsPost431", CreateSkillV1SkillsPost431>
-      | AnthropicClientError<"CreateSkillV1SkillsPost499", CreateSkillV1SkillsPost499>
-      | AnthropicClientError<"CreateSkillV1SkillsPost500", CreateSkillV1SkillsPost500>
-      | AnthropicClientError<"CreateSkillV1SkillsPost501", CreateSkillV1SkillsPost501>
-      | AnthropicClientError<"CreateSkillV1SkillsPost503", CreateSkillV1SkillsPost503>
-      | AnthropicClientError<"CreateSkillV1SkillsPost504", CreateSkillV1SkillsPost504>
-      | AnthropicClientError<"CreateSkillV1SkillsPost529", CreateSkillV1SkillsPost529>
+      | AnthropicClientError<"CreateSkillV1SkillsPost4XX", CreateSkillV1SkillsPost4XX>
     >
   }
   /**
@@ -24490,22 +19800,7 @@ export interface AnthropicClient {
       WithOptionalResponse<GetSkillV1SkillsSkillIdGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet400", GetSkillV1SkillsSkillIdGet400>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet401", GetSkillV1SkillsSkillIdGet401>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet403", GetSkillV1SkillsSkillIdGet403>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet404", GetSkillV1SkillsSkillIdGet404>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet408", GetSkillV1SkillsSkillIdGet408>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet409", GetSkillV1SkillsSkillIdGet409>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet412", GetSkillV1SkillsSkillIdGet412>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet413", GetSkillV1SkillsSkillIdGet413>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet429", GetSkillV1SkillsSkillIdGet429>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet431", GetSkillV1SkillsSkillIdGet431>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet499", GetSkillV1SkillsSkillIdGet499>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet500", GetSkillV1SkillsSkillIdGet500>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet501", GetSkillV1SkillsSkillIdGet501>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet503", GetSkillV1SkillsSkillIdGet503>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet504", GetSkillV1SkillsSkillIdGet504>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet529", GetSkillV1SkillsSkillIdGet529>
+      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet4XX", GetSkillV1SkillsSkillIdGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       skillId: string,
@@ -24517,22 +19812,7 @@ export interface AnthropicClient {
       WithOptionalResponse<GetSkillV1SkillsSkillIdGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet400", GetSkillV1SkillsSkillIdGet400>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet401", GetSkillV1SkillsSkillIdGet401>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet403", GetSkillV1SkillsSkillIdGet403>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet404", GetSkillV1SkillsSkillIdGet404>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet408", GetSkillV1SkillsSkillIdGet408>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet409", GetSkillV1SkillsSkillIdGet409>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet412", GetSkillV1SkillsSkillIdGet412>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet413", GetSkillV1SkillsSkillIdGet413>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet429", GetSkillV1SkillsSkillIdGet429>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet431", GetSkillV1SkillsSkillIdGet431>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet499", GetSkillV1SkillsSkillIdGet499>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet500", GetSkillV1SkillsSkillIdGet500>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet501", GetSkillV1SkillsSkillIdGet501>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet503", GetSkillV1SkillsSkillIdGet503>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet504", GetSkillV1SkillsSkillIdGet504>
-      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet529", GetSkillV1SkillsSkillIdGet529>
+      | AnthropicClientError<"GetSkillV1SkillsSkillIdGet4XX", GetSkillV1SkillsSkillIdGet4XX>
     >
   }
   /**
@@ -24549,22 +19829,7 @@ export interface AnthropicClient {
       WithOptionalResponse<DeleteSkillV1SkillsSkillIdDelete200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete400", DeleteSkillV1SkillsSkillIdDelete400>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete401", DeleteSkillV1SkillsSkillIdDelete401>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete403", DeleteSkillV1SkillsSkillIdDelete403>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete404", DeleteSkillV1SkillsSkillIdDelete404>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete408", DeleteSkillV1SkillsSkillIdDelete408>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete409", DeleteSkillV1SkillsSkillIdDelete409>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete412", DeleteSkillV1SkillsSkillIdDelete412>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete413", DeleteSkillV1SkillsSkillIdDelete413>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete429", DeleteSkillV1SkillsSkillIdDelete429>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete431", DeleteSkillV1SkillsSkillIdDelete431>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete499", DeleteSkillV1SkillsSkillIdDelete499>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete500", DeleteSkillV1SkillsSkillIdDelete500>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete501", DeleteSkillV1SkillsSkillIdDelete501>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete503", DeleteSkillV1SkillsSkillIdDelete503>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete504", DeleteSkillV1SkillsSkillIdDelete504>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete529", DeleteSkillV1SkillsSkillIdDelete529>
+      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete4XX", DeleteSkillV1SkillsSkillIdDelete4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       skillId: string,
@@ -24576,22 +19841,7 @@ export interface AnthropicClient {
       WithOptionalResponse<DeleteSkillV1SkillsSkillIdDelete200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete400", DeleteSkillV1SkillsSkillIdDelete400>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete401", DeleteSkillV1SkillsSkillIdDelete401>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete403", DeleteSkillV1SkillsSkillIdDelete403>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete404", DeleteSkillV1SkillsSkillIdDelete404>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete408", DeleteSkillV1SkillsSkillIdDelete408>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete409", DeleteSkillV1SkillsSkillIdDelete409>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete412", DeleteSkillV1SkillsSkillIdDelete412>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete413", DeleteSkillV1SkillsSkillIdDelete413>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete429", DeleteSkillV1SkillsSkillIdDelete429>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete431", DeleteSkillV1SkillsSkillIdDelete431>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete499", DeleteSkillV1SkillsSkillIdDelete499>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete500", DeleteSkillV1SkillsSkillIdDelete500>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete501", DeleteSkillV1SkillsSkillIdDelete501>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete503", DeleteSkillV1SkillsSkillIdDelete503>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete504", DeleteSkillV1SkillsSkillIdDelete504>
-      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete529", DeleteSkillV1SkillsSkillIdDelete529>
+      | AnthropicClientError<"DeleteSkillV1SkillsSkillIdDelete4XX", DeleteSkillV1SkillsSkillIdDelete4XX>
     >
   }
   /**
@@ -24609,68 +19859,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet400",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet400
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet401",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet401
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet403",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet403
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet404",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet404
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet408",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet408
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet409",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet409
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet412",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet412
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet413",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet413
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet429",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet429
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet431",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet431
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet499",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet499
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet500",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet500
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet501",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet501
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet503",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet503
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet504",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet504
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet529",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet529
+        "ListSkillVersionsV1SkillsSkillIdVersionsGet4XX",
+        ListSkillVersionsV1SkillsSkillIdVersionsGet4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -24684,68 +19874,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet400",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet400
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet401",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet401
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet403",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet403
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet404",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet404
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet408",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet408
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet409",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet409
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet412",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet412
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet413",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet413
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet429",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet429
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet431",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet431
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet499",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet499
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet500",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet500
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet501",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet501
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet503",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet503
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet504",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet504
-      >
-      | AnthropicClientError<
-        "ListSkillVersionsV1SkillsSkillIdVersionsGet529",
-        ListSkillVersionsV1SkillsSkillIdVersionsGet529
+        "ListSkillVersionsV1SkillsSkillIdVersionsGet4XX",
+        ListSkillVersionsV1SkillsSkillIdVersionsGet4XX
       >
     >
   }
@@ -24765,68 +19895,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost400",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost400
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost401",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost401
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost403",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost403
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost404",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost404
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost408",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost408
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost409",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost409
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost412",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost412
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost413",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost413
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost429",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost429
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost431",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost431
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost499",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost499
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost500",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost500
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost501",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost501
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost503",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost503
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost504",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost504
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost529",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost529
+        "CreateSkillVersionV1SkillsSkillIdVersionsPost4XX",
+        CreateSkillVersionV1SkillsSkillIdVersionsPost4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -24841,68 +19911,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost400",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost400
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost401",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost401
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost403",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost403
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost404",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost404
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost408",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost408
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost409",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost409
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost412",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost412
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost413",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost413
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost429",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost429
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost431",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost431
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost499",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost499
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost500",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost500
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost501",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost501
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost503",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost503
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost504",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost504
-      >
-      | AnthropicClientError<
-        "CreateSkillVersionV1SkillsSkillIdVersionsPost529",
-        CreateSkillVersionV1SkillsSkillIdVersionsPost529
+        "CreateSkillVersionV1SkillsSkillIdVersionsPost4XX",
+        CreateSkillVersionV1SkillsSkillIdVersionsPost4XX
       >
     >
   }
@@ -24922,68 +19932,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet400",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet400
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet401",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet401
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet403",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet403
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet404",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet404
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet408",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet408
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet409",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet409
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet412",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet412
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet413",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet413
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet429",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet429
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet431",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet431
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet499",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet499
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet500",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet500
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet501",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet501
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet503",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet503
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet504",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet504
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet529",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet529
+        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX",
+        GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -24998,68 +19948,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet400",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet400
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet401",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet401
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet403",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet403
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet404",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet404
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet408",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet408
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet409",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet409
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet412",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet412
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet413",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet413
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet429",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet429
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet431",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet431
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet499",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet499
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet500",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet500
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet501",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet501
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet503",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet503
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet504",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet504
-      >
-      | AnthropicClientError<
-        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet529",
-        GetSkillVersionV1SkillsSkillIdVersionsVersionGet529
+        "GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX",
+        GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX
       >
     >
   }
@@ -25079,68 +19969,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529
+        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX",
+        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -25155,68 +19985,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504
-      >
-      | AnthropicClientError<
-        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529",
-        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529
+        "DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX",
+        DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX
       >
     >
   }
@@ -25236,24 +20006,7 @@ export interface AnthropicClient {
       }
     ): Effect.Effect<
       WithOptionalResponse<BetaMessagesPost200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"BetaMessagesPost400", BetaMessagesPost400>
-      | AnthropicClientError<"BetaMessagesPost401", BetaMessagesPost401>
-      | AnthropicClientError<"BetaMessagesPost403", BetaMessagesPost403>
-      | AnthropicClientError<"BetaMessagesPost404", BetaMessagesPost404>
-      | AnthropicClientError<"BetaMessagesPost408", BetaMessagesPost408>
-      | AnthropicClientError<"BetaMessagesPost409", BetaMessagesPost409>
-      | AnthropicClientError<"BetaMessagesPost412", BetaMessagesPost412>
-      | AnthropicClientError<"BetaMessagesPost413", BetaMessagesPost413>
-      | AnthropicClientError<"BetaMessagesPost429", BetaMessagesPost429>
-      | AnthropicClientError<"BetaMessagesPost431", BetaMessagesPost431>
-      | AnthropicClientError<"BetaMessagesPost499", BetaMessagesPost499>
-      | AnthropicClientError<"BetaMessagesPost500", BetaMessagesPost500>
-      | AnthropicClientError<"BetaMessagesPost501", BetaMessagesPost501>
-      | AnthropicClientError<"BetaMessagesPost503", BetaMessagesPost503>
-      | AnthropicClientError<"BetaMessagesPost504", BetaMessagesPost504>
-      | AnthropicClientError<"BetaMessagesPost529", BetaMessagesPost529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"BetaMessagesPost4XX", BetaMessagesPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25263,43 +20016,9 @@ export interface AnthropicClient {
       }
     ): Effect.Effect<
       WithOptionalResponse<BetaMessagesPost200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"BetaMessagesPost400", BetaMessagesPost400>
-      | AnthropicClientError<"BetaMessagesPost401", BetaMessagesPost401>
-      | AnthropicClientError<"BetaMessagesPost403", BetaMessagesPost403>
-      | AnthropicClientError<"BetaMessagesPost404", BetaMessagesPost404>
-      | AnthropicClientError<"BetaMessagesPost408", BetaMessagesPost408>
-      | AnthropicClientError<"BetaMessagesPost409", BetaMessagesPost409>
-      | AnthropicClientError<"BetaMessagesPost412", BetaMessagesPost412>
-      | AnthropicClientError<"BetaMessagesPost413", BetaMessagesPost413>
-      | AnthropicClientError<"BetaMessagesPost429", BetaMessagesPost429>
-      | AnthropicClientError<"BetaMessagesPost431", BetaMessagesPost431>
-      | AnthropicClientError<"BetaMessagesPost499", BetaMessagesPost499>
-      | AnthropicClientError<"BetaMessagesPost500", BetaMessagesPost500>
-      | AnthropicClientError<"BetaMessagesPost501", BetaMessagesPost501>
-      | AnthropicClientError<"BetaMessagesPost503", BetaMessagesPost503>
-      | AnthropicClientError<"BetaMessagesPost504", BetaMessagesPost504>
-      | AnthropicClientError<"BetaMessagesPost529", BetaMessagesPost529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"BetaMessagesPost4XX", BetaMessagesPost4XX>
     >
   }
-  /**
-   * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
-   *
-   * The Messages API can be used for either single queries or stateless multi-turn conversations.
-   *
-   * Learn more about the Messages API in our [user guide](https://platform.claude.com/docs/en/get-started)
-   */
-  readonly "betaMessagesPostSse": (
-    options: {
-      readonly params?: typeof BetaMessagesPostParams.Encoded | undefined
-      readonly payload: typeof BetaMessagesPostRequestJson.Encoded
-    }
-  ) => Stream.Stream<
-    { readonly event: string; readonly id: string | undefined; readonly data: BetaMessagesPost200Sse },
-    HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
-    typeof BetaMessagesPost200Sse.DecodingServices
-  >
   /**
    * List available models.
    *
@@ -25310,24 +20029,7 @@ export interface AnthropicClient {
       options: { readonly params?: typeof BetaModelsListParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaModelsList200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"BetaModelsList400", BetaModelsList400>
-      | AnthropicClientError<"BetaModelsList401", BetaModelsList401>
-      | AnthropicClientError<"BetaModelsList403", BetaModelsList403>
-      | AnthropicClientError<"BetaModelsList404", BetaModelsList404>
-      | AnthropicClientError<"BetaModelsList408", BetaModelsList408>
-      | AnthropicClientError<"BetaModelsList409", BetaModelsList409>
-      | AnthropicClientError<"BetaModelsList412", BetaModelsList412>
-      | AnthropicClientError<"BetaModelsList413", BetaModelsList413>
-      | AnthropicClientError<"BetaModelsList429", BetaModelsList429>
-      | AnthropicClientError<"BetaModelsList431", BetaModelsList431>
-      | AnthropicClientError<"BetaModelsList499", BetaModelsList499>
-      | AnthropicClientError<"BetaModelsList500", BetaModelsList500>
-      | AnthropicClientError<"BetaModelsList501", BetaModelsList501>
-      | AnthropicClientError<"BetaModelsList503", BetaModelsList503>
-      | AnthropicClientError<"BetaModelsList504", BetaModelsList504>
-      | AnthropicClientError<"BetaModelsList529", BetaModelsList529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"BetaModelsList4XX", BetaModelsList4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25336,24 +20038,7 @@ export interface AnthropicClient {
       } | undefined
     ): Effect.Effect<
       WithOptionalResponse<BetaModelsList200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"BetaModelsList400", BetaModelsList400>
-      | AnthropicClientError<"BetaModelsList401", BetaModelsList401>
-      | AnthropicClientError<"BetaModelsList403", BetaModelsList403>
-      | AnthropicClientError<"BetaModelsList404", BetaModelsList404>
-      | AnthropicClientError<"BetaModelsList408", BetaModelsList408>
-      | AnthropicClientError<"BetaModelsList409", BetaModelsList409>
-      | AnthropicClientError<"BetaModelsList412", BetaModelsList412>
-      | AnthropicClientError<"BetaModelsList413", BetaModelsList413>
-      | AnthropicClientError<"BetaModelsList429", BetaModelsList429>
-      | AnthropicClientError<"BetaModelsList431", BetaModelsList431>
-      | AnthropicClientError<"BetaModelsList499", BetaModelsList499>
-      | AnthropicClientError<"BetaModelsList500", BetaModelsList500>
-      | AnthropicClientError<"BetaModelsList501", BetaModelsList501>
-      | AnthropicClientError<"BetaModelsList503", BetaModelsList503>
-      | AnthropicClientError<"BetaModelsList504", BetaModelsList504>
-      | AnthropicClientError<"BetaModelsList529", BetaModelsList529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"BetaModelsList4XX", BetaModelsList4XX>
     >
   }
   /**
@@ -25367,24 +20052,7 @@ export interface AnthropicClient {
       options: { readonly params?: typeof BetaModelsGetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaModelsGet200, Config>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"BetaModelsGet400", BetaModelsGet400>
-      | AnthropicClientError<"BetaModelsGet401", BetaModelsGet401>
-      | AnthropicClientError<"BetaModelsGet403", BetaModelsGet403>
-      | AnthropicClientError<"BetaModelsGet404", BetaModelsGet404>
-      | AnthropicClientError<"BetaModelsGet408", BetaModelsGet408>
-      | AnthropicClientError<"BetaModelsGet409", BetaModelsGet409>
-      | AnthropicClientError<"BetaModelsGet412", BetaModelsGet412>
-      | AnthropicClientError<"BetaModelsGet413", BetaModelsGet413>
-      | AnthropicClientError<"BetaModelsGet429", BetaModelsGet429>
-      | AnthropicClientError<"BetaModelsGet431", BetaModelsGet431>
-      | AnthropicClientError<"BetaModelsGet499", BetaModelsGet499>
-      | AnthropicClientError<"BetaModelsGet500", BetaModelsGet500>
-      | AnthropicClientError<"BetaModelsGet501", BetaModelsGet501>
-      | AnthropicClientError<"BetaModelsGet503", BetaModelsGet503>
-      | AnthropicClientError<"BetaModelsGet504", BetaModelsGet504>
-      | AnthropicClientError<"BetaModelsGet529", BetaModelsGet529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"BetaModelsGet4XX", BetaModelsGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       modelId: string,
@@ -25394,24 +20062,7 @@ export interface AnthropicClient {
       } | undefined
     ): Effect.Effect<
       WithOptionalResponse<BetaModelsGet200, Config | undefined>,
-      | HttpClientError.HttpClientError
-      | SchemaError
-      | AnthropicClientError<"BetaModelsGet400", BetaModelsGet400>
-      | AnthropicClientError<"BetaModelsGet401", BetaModelsGet401>
-      | AnthropicClientError<"BetaModelsGet403", BetaModelsGet403>
-      | AnthropicClientError<"BetaModelsGet404", BetaModelsGet404>
-      | AnthropicClientError<"BetaModelsGet408", BetaModelsGet408>
-      | AnthropicClientError<"BetaModelsGet409", BetaModelsGet409>
-      | AnthropicClientError<"BetaModelsGet412", BetaModelsGet412>
-      | AnthropicClientError<"BetaModelsGet413", BetaModelsGet413>
-      | AnthropicClientError<"BetaModelsGet429", BetaModelsGet429>
-      | AnthropicClientError<"BetaModelsGet431", BetaModelsGet431>
-      | AnthropicClientError<"BetaModelsGet499", BetaModelsGet499>
-      | AnthropicClientError<"BetaModelsGet500", BetaModelsGet500>
-      | AnthropicClientError<"BetaModelsGet501", BetaModelsGet501>
-      | AnthropicClientError<"BetaModelsGet503", BetaModelsGet503>
-      | AnthropicClientError<"BetaModelsGet504", BetaModelsGet504>
-      | AnthropicClientError<"BetaModelsGet529", BetaModelsGet529>
+      HttpClientError.HttpClientError | SchemaError | AnthropicClientError<"BetaModelsGet4XX", BetaModelsGet4XX>
     >
   }
   /**
@@ -25426,22 +20077,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesList200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesList400", BetaMessageBatchesList400>
-      | AnthropicClientError<"BetaMessageBatchesList401", BetaMessageBatchesList401>
-      | AnthropicClientError<"BetaMessageBatchesList403", BetaMessageBatchesList403>
-      | AnthropicClientError<"BetaMessageBatchesList404", BetaMessageBatchesList404>
-      | AnthropicClientError<"BetaMessageBatchesList408", BetaMessageBatchesList408>
-      | AnthropicClientError<"BetaMessageBatchesList409", BetaMessageBatchesList409>
-      | AnthropicClientError<"BetaMessageBatchesList412", BetaMessageBatchesList412>
-      | AnthropicClientError<"BetaMessageBatchesList413", BetaMessageBatchesList413>
-      | AnthropicClientError<"BetaMessageBatchesList429", BetaMessageBatchesList429>
-      | AnthropicClientError<"BetaMessageBatchesList431", BetaMessageBatchesList431>
-      | AnthropicClientError<"BetaMessageBatchesList499", BetaMessageBatchesList499>
-      | AnthropicClientError<"BetaMessageBatchesList500", BetaMessageBatchesList500>
-      | AnthropicClientError<"BetaMessageBatchesList501", BetaMessageBatchesList501>
-      | AnthropicClientError<"BetaMessageBatchesList503", BetaMessageBatchesList503>
-      | AnthropicClientError<"BetaMessageBatchesList504", BetaMessageBatchesList504>
-      | AnthropicClientError<"BetaMessageBatchesList529", BetaMessageBatchesList529>
+      | AnthropicClientError<"BetaMessageBatchesList4XX", BetaMessageBatchesList4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25452,22 +20088,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesList200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesList400", BetaMessageBatchesList400>
-      | AnthropicClientError<"BetaMessageBatchesList401", BetaMessageBatchesList401>
-      | AnthropicClientError<"BetaMessageBatchesList403", BetaMessageBatchesList403>
-      | AnthropicClientError<"BetaMessageBatchesList404", BetaMessageBatchesList404>
-      | AnthropicClientError<"BetaMessageBatchesList408", BetaMessageBatchesList408>
-      | AnthropicClientError<"BetaMessageBatchesList409", BetaMessageBatchesList409>
-      | AnthropicClientError<"BetaMessageBatchesList412", BetaMessageBatchesList412>
-      | AnthropicClientError<"BetaMessageBatchesList413", BetaMessageBatchesList413>
-      | AnthropicClientError<"BetaMessageBatchesList429", BetaMessageBatchesList429>
-      | AnthropicClientError<"BetaMessageBatchesList431", BetaMessageBatchesList431>
-      | AnthropicClientError<"BetaMessageBatchesList499", BetaMessageBatchesList499>
-      | AnthropicClientError<"BetaMessageBatchesList500", BetaMessageBatchesList500>
-      | AnthropicClientError<"BetaMessageBatchesList501", BetaMessageBatchesList501>
-      | AnthropicClientError<"BetaMessageBatchesList503", BetaMessageBatchesList503>
-      | AnthropicClientError<"BetaMessageBatchesList504", BetaMessageBatchesList504>
-      | AnthropicClientError<"BetaMessageBatchesList529", BetaMessageBatchesList529>
+      | AnthropicClientError<"BetaMessageBatchesList4XX", BetaMessageBatchesList4XX>
     >
   }
   /**
@@ -25488,22 +20109,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesPost400", BetaMessageBatchesPost400>
-      | AnthropicClientError<"BetaMessageBatchesPost401", BetaMessageBatchesPost401>
-      | AnthropicClientError<"BetaMessageBatchesPost403", BetaMessageBatchesPost403>
-      | AnthropicClientError<"BetaMessageBatchesPost404", BetaMessageBatchesPost404>
-      | AnthropicClientError<"BetaMessageBatchesPost408", BetaMessageBatchesPost408>
-      | AnthropicClientError<"BetaMessageBatchesPost409", BetaMessageBatchesPost409>
-      | AnthropicClientError<"BetaMessageBatchesPost412", BetaMessageBatchesPost412>
-      | AnthropicClientError<"BetaMessageBatchesPost413", BetaMessageBatchesPost413>
-      | AnthropicClientError<"BetaMessageBatchesPost429", BetaMessageBatchesPost429>
-      | AnthropicClientError<"BetaMessageBatchesPost431", BetaMessageBatchesPost431>
-      | AnthropicClientError<"BetaMessageBatchesPost499", BetaMessageBatchesPost499>
-      | AnthropicClientError<"BetaMessageBatchesPost500", BetaMessageBatchesPost500>
-      | AnthropicClientError<"BetaMessageBatchesPost501", BetaMessageBatchesPost501>
-      | AnthropicClientError<"BetaMessageBatchesPost503", BetaMessageBatchesPost503>
-      | AnthropicClientError<"BetaMessageBatchesPost504", BetaMessageBatchesPost504>
-      | AnthropicClientError<"BetaMessageBatchesPost529", BetaMessageBatchesPost529>
+      | AnthropicClientError<"BetaMessageBatchesPost4XX", BetaMessageBatchesPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25515,22 +20121,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesPost400", BetaMessageBatchesPost400>
-      | AnthropicClientError<"BetaMessageBatchesPost401", BetaMessageBatchesPost401>
-      | AnthropicClientError<"BetaMessageBatchesPost403", BetaMessageBatchesPost403>
-      | AnthropicClientError<"BetaMessageBatchesPost404", BetaMessageBatchesPost404>
-      | AnthropicClientError<"BetaMessageBatchesPost408", BetaMessageBatchesPost408>
-      | AnthropicClientError<"BetaMessageBatchesPost409", BetaMessageBatchesPost409>
-      | AnthropicClientError<"BetaMessageBatchesPost412", BetaMessageBatchesPost412>
-      | AnthropicClientError<"BetaMessageBatchesPost413", BetaMessageBatchesPost413>
-      | AnthropicClientError<"BetaMessageBatchesPost429", BetaMessageBatchesPost429>
-      | AnthropicClientError<"BetaMessageBatchesPost431", BetaMessageBatchesPost431>
-      | AnthropicClientError<"BetaMessageBatchesPost499", BetaMessageBatchesPost499>
-      | AnthropicClientError<"BetaMessageBatchesPost500", BetaMessageBatchesPost500>
-      | AnthropicClientError<"BetaMessageBatchesPost501", BetaMessageBatchesPost501>
-      | AnthropicClientError<"BetaMessageBatchesPost503", BetaMessageBatchesPost503>
-      | AnthropicClientError<"BetaMessageBatchesPost504", BetaMessageBatchesPost504>
-      | AnthropicClientError<"BetaMessageBatchesPost529", BetaMessageBatchesPost529>
+      | AnthropicClientError<"BetaMessageBatchesPost4XX", BetaMessageBatchesPost4XX>
     >
   }
   /**
@@ -25549,22 +20140,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesRetrieve200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesRetrieve400", BetaMessageBatchesRetrieve400>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve401", BetaMessageBatchesRetrieve401>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve403", BetaMessageBatchesRetrieve403>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve404", BetaMessageBatchesRetrieve404>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve408", BetaMessageBatchesRetrieve408>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve409", BetaMessageBatchesRetrieve409>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve412", BetaMessageBatchesRetrieve412>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve413", BetaMessageBatchesRetrieve413>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve429", BetaMessageBatchesRetrieve429>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve431", BetaMessageBatchesRetrieve431>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve499", BetaMessageBatchesRetrieve499>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve500", BetaMessageBatchesRetrieve500>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve501", BetaMessageBatchesRetrieve501>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve503", BetaMessageBatchesRetrieve503>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve504", BetaMessageBatchesRetrieve504>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve529", BetaMessageBatchesRetrieve529>
+      | AnthropicClientError<"BetaMessageBatchesRetrieve4XX", BetaMessageBatchesRetrieve4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -25576,22 +20152,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesRetrieve200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesRetrieve400", BetaMessageBatchesRetrieve400>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve401", BetaMessageBatchesRetrieve401>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve403", BetaMessageBatchesRetrieve403>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve404", BetaMessageBatchesRetrieve404>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve408", BetaMessageBatchesRetrieve408>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve409", BetaMessageBatchesRetrieve409>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve412", BetaMessageBatchesRetrieve412>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve413", BetaMessageBatchesRetrieve413>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve429", BetaMessageBatchesRetrieve429>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve431", BetaMessageBatchesRetrieve431>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve499", BetaMessageBatchesRetrieve499>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve500", BetaMessageBatchesRetrieve500>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve501", BetaMessageBatchesRetrieve501>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve503", BetaMessageBatchesRetrieve503>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve504", BetaMessageBatchesRetrieve504>
-      | AnthropicClientError<"BetaMessageBatchesRetrieve529", BetaMessageBatchesRetrieve529>
+      | AnthropicClientError<"BetaMessageBatchesRetrieve4XX", BetaMessageBatchesRetrieve4XX>
     >
   }
   /**
@@ -25609,22 +20170,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesDelete200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesDelete400", BetaMessageBatchesDelete400>
-      | AnthropicClientError<"BetaMessageBatchesDelete401", BetaMessageBatchesDelete401>
-      | AnthropicClientError<"BetaMessageBatchesDelete403", BetaMessageBatchesDelete403>
-      | AnthropicClientError<"BetaMessageBatchesDelete404", BetaMessageBatchesDelete404>
-      | AnthropicClientError<"BetaMessageBatchesDelete408", BetaMessageBatchesDelete408>
-      | AnthropicClientError<"BetaMessageBatchesDelete409", BetaMessageBatchesDelete409>
-      | AnthropicClientError<"BetaMessageBatchesDelete412", BetaMessageBatchesDelete412>
-      | AnthropicClientError<"BetaMessageBatchesDelete413", BetaMessageBatchesDelete413>
-      | AnthropicClientError<"BetaMessageBatchesDelete429", BetaMessageBatchesDelete429>
-      | AnthropicClientError<"BetaMessageBatchesDelete431", BetaMessageBatchesDelete431>
-      | AnthropicClientError<"BetaMessageBatchesDelete499", BetaMessageBatchesDelete499>
-      | AnthropicClientError<"BetaMessageBatchesDelete500", BetaMessageBatchesDelete500>
-      | AnthropicClientError<"BetaMessageBatchesDelete501", BetaMessageBatchesDelete501>
-      | AnthropicClientError<"BetaMessageBatchesDelete503", BetaMessageBatchesDelete503>
-      | AnthropicClientError<"BetaMessageBatchesDelete504", BetaMessageBatchesDelete504>
-      | AnthropicClientError<"BetaMessageBatchesDelete529", BetaMessageBatchesDelete529>
+      | AnthropicClientError<"BetaMessageBatchesDelete4XX", BetaMessageBatchesDelete4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -25636,22 +20182,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesDelete200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesDelete400", BetaMessageBatchesDelete400>
-      | AnthropicClientError<"BetaMessageBatchesDelete401", BetaMessageBatchesDelete401>
-      | AnthropicClientError<"BetaMessageBatchesDelete403", BetaMessageBatchesDelete403>
-      | AnthropicClientError<"BetaMessageBatchesDelete404", BetaMessageBatchesDelete404>
-      | AnthropicClientError<"BetaMessageBatchesDelete408", BetaMessageBatchesDelete408>
-      | AnthropicClientError<"BetaMessageBatchesDelete409", BetaMessageBatchesDelete409>
-      | AnthropicClientError<"BetaMessageBatchesDelete412", BetaMessageBatchesDelete412>
-      | AnthropicClientError<"BetaMessageBatchesDelete413", BetaMessageBatchesDelete413>
-      | AnthropicClientError<"BetaMessageBatchesDelete429", BetaMessageBatchesDelete429>
-      | AnthropicClientError<"BetaMessageBatchesDelete431", BetaMessageBatchesDelete431>
-      | AnthropicClientError<"BetaMessageBatchesDelete499", BetaMessageBatchesDelete499>
-      | AnthropicClientError<"BetaMessageBatchesDelete500", BetaMessageBatchesDelete500>
-      | AnthropicClientError<"BetaMessageBatchesDelete501", BetaMessageBatchesDelete501>
-      | AnthropicClientError<"BetaMessageBatchesDelete503", BetaMessageBatchesDelete503>
-      | AnthropicClientError<"BetaMessageBatchesDelete504", BetaMessageBatchesDelete504>
-      | AnthropicClientError<"BetaMessageBatchesDelete529", BetaMessageBatchesDelete529>
+      | AnthropicClientError<"BetaMessageBatchesDelete4XX", BetaMessageBatchesDelete4XX>
     >
   }
   /**
@@ -25669,22 +20200,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesCancel200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesCancel400", BetaMessageBatchesCancel400>
-      | AnthropicClientError<"BetaMessageBatchesCancel401", BetaMessageBatchesCancel401>
-      | AnthropicClientError<"BetaMessageBatchesCancel403", BetaMessageBatchesCancel403>
-      | AnthropicClientError<"BetaMessageBatchesCancel404", BetaMessageBatchesCancel404>
-      | AnthropicClientError<"BetaMessageBatchesCancel408", BetaMessageBatchesCancel408>
-      | AnthropicClientError<"BetaMessageBatchesCancel409", BetaMessageBatchesCancel409>
-      | AnthropicClientError<"BetaMessageBatchesCancel412", BetaMessageBatchesCancel412>
-      | AnthropicClientError<"BetaMessageBatchesCancel413", BetaMessageBatchesCancel413>
-      | AnthropicClientError<"BetaMessageBatchesCancel429", BetaMessageBatchesCancel429>
-      | AnthropicClientError<"BetaMessageBatchesCancel431", BetaMessageBatchesCancel431>
-      | AnthropicClientError<"BetaMessageBatchesCancel499", BetaMessageBatchesCancel499>
-      | AnthropicClientError<"BetaMessageBatchesCancel500", BetaMessageBatchesCancel500>
-      | AnthropicClientError<"BetaMessageBatchesCancel501", BetaMessageBatchesCancel501>
-      | AnthropicClientError<"BetaMessageBatchesCancel503", BetaMessageBatchesCancel503>
-      | AnthropicClientError<"BetaMessageBatchesCancel504", BetaMessageBatchesCancel504>
-      | AnthropicClientError<"BetaMessageBatchesCancel529", BetaMessageBatchesCancel529>
+      | AnthropicClientError<"BetaMessageBatchesCancel4XX", BetaMessageBatchesCancel4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -25696,22 +20212,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessageBatchesCancel200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesCancel400", BetaMessageBatchesCancel400>
-      | AnthropicClientError<"BetaMessageBatchesCancel401", BetaMessageBatchesCancel401>
-      | AnthropicClientError<"BetaMessageBatchesCancel403", BetaMessageBatchesCancel403>
-      | AnthropicClientError<"BetaMessageBatchesCancel404", BetaMessageBatchesCancel404>
-      | AnthropicClientError<"BetaMessageBatchesCancel408", BetaMessageBatchesCancel408>
-      | AnthropicClientError<"BetaMessageBatchesCancel409", BetaMessageBatchesCancel409>
-      | AnthropicClientError<"BetaMessageBatchesCancel412", BetaMessageBatchesCancel412>
-      | AnthropicClientError<"BetaMessageBatchesCancel413", BetaMessageBatchesCancel413>
-      | AnthropicClientError<"BetaMessageBatchesCancel429", BetaMessageBatchesCancel429>
-      | AnthropicClientError<"BetaMessageBatchesCancel431", BetaMessageBatchesCancel431>
-      | AnthropicClientError<"BetaMessageBatchesCancel499", BetaMessageBatchesCancel499>
-      | AnthropicClientError<"BetaMessageBatchesCancel500", BetaMessageBatchesCancel500>
-      | AnthropicClientError<"BetaMessageBatchesCancel501", BetaMessageBatchesCancel501>
-      | AnthropicClientError<"BetaMessageBatchesCancel503", BetaMessageBatchesCancel503>
-      | AnthropicClientError<"BetaMessageBatchesCancel504", BetaMessageBatchesCancel504>
-      | AnthropicClientError<"BetaMessageBatchesCancel529", BetaMessageBatchesCancel529>
+      | AnthropicClientError<"BetaMessageBatchesCancel4XX", BetaMessageBatchesCancel4XX>
     >
   }
   /**
@@ -25729,22 +20230,7 @@ export interface AnthropicClient {
       WithOptionalResponse<void, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesResults400", BetaMessageBatchesResults400>
-      | AnthropicClientError<"BetaMessageBatchesResults401", BetaMessageBatchesResults401>
-      | AnthropicClientError<"BetaMessageBatchesResults403", BetaMessageBatchesResults403>
-      | AnthropicClientError<"BetaMessageBatchesResults404", BetaMessageBatchesResults404>
-      | AnthropicClientError<"BetaMessageBatchesResults408", BetaMessageBatchesResults408>
-      | AnthropicClientError<"BetaMessageBatchesResults409", BetaMessageBatchesResults409>
-      | AnthropicClientError<"BetaMessageBatchesResults412", BetaMessageBatchesResults412>
-      | AnthropicClientError<"BetaMessageBatchesResults413", BetaMessageBatchesResults413>
-      | AnthropicClientError<"BetaMessageBatchesResults429", BetaMessageBatchesResults429>
-      | AnthropicClientError<"BetaMessageBatchesResults431", BetaMessageBatchesResults431>
-      | AnthropicClientError<"BetaMessageBatchesResults499", BetaMessageBatchesResults499>
-      | AnthropicClientError<"BetaMessageBatchesResults500", BetaMessageBatchesResults500>
-      | AnthropicClientError<"BetaMessageBatchesResults501", BetaMessageBatchesResults501>
-      | AnthropicClientError<"BetaMessageBatchesResults503", BetaMessageBatchesResults503>
-      | AnthropicClientError<"BetaMessageBatchesResults504", BetaMessageBatchesResults504>
-      | AnthropicClientError<"BetaMessageBatchesResults529", BetaMessageBatchesResults529>
+      | AnthropicClientError<"BetaMessageBatchesResults4XX", BetaMessageBatchesResults4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       messageBatchId: string,
@@ -25756,22 +20242,7 @@ export interface AnthropicClient {
       WithOptionalResponse<void, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessageBatchesResults400", BetaMessageBatchesResults400>
-      | AnthropicClientError<"BetaMessageBatchesResults401", BetaMessageBatchesResults401>
-      | AnthropicClientError<"BetaMessageBatchesResults403", BetaMessageBatchesResults403>
-      | AnthropicClientError<"BetaMessageBatchesResults404", BetaMessageBatchesResults404>
-      | AnthropicClientError<"BetaMessageBatchesResults408", BetaMessageBatchesResults408>
-      | AnthropicClientError<"BetaMessageBatchesResults409", BetaMessageBatchesResults409>
-      | AnthropicClientError<"BetaMessageBatchesResults412", BetaMessageBatchesResults412>
-      | AnthropicClientError<"BetaMessageBatchesResults413", BetaMessageBatchesResults413>
-      | AnthropicClientError<"BetaMessageBatchesResults429", BetaMessageBatchesResults429>
-      | AnthropicClientError<"BetaMessageBatchesResults431", BetaMessageBatchesResults431>
-      | AnthropicClientError<"BetaMessageBatchesResults499", BetaMessageBatchesResults499>
-      | AnthropicClientError<"BetaMessageBatchesResults500", BetaMessageBatchesResults500>
-      | AnthropicClientError<"BetaMessageBatchesResults501", BetaMessageBatchesResults501>
-      | AnthropicClientError<"BetaMessageBatchesResults503", BetaMessageBatchesResults503>
-      | AnthropicClientError<"BetaMessageBatchesResults504", BetaMessageBatchesResults504>
-      | AnthropicClientError<"BetaMessageBatchesResults529", BetaMessageBatchesResults529>
+      | AnthropicClientError<"BetaMessageBatchesResults4XX", BetaMessageBatchesResults4XX>
     >
   }
   /**
@@ -25792,22 +20263,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessagesCountTokensPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessagesCountTokensPost400", BetaMessagesCountTokensPost400>
-      | AnthropicClientError<"BetaMessagesCountTokensPost401", BetaMessagesCountTokensPost401>
-      | AnthropicClientError<"BetaMessagesCountTokensPost403", BetaMessagesCountTokensPost403>
-      | AnthropicClientError<"BetaMessagesCountTokensPost404", BetaMessagesCountTokensPost404>
-      | AnthropicClientError<"BetaMessagesCountTokensPost408", BetaMessagesCountTokensPost408>
-      | AnthropicClientError<"BetaMessagesCountTokensPost409", BetaMessagesCountTokensPost409>
-      | AnthropicClientError<"BetaMessagesCountTokensPost412", BetaMessagesCountTokensPost412>
-      | AnthropicClientError<"BetaMessagesCountTokensPost413", BetaMessagesCountTokensPost413>
-      | AnthropicClientError<"BetaMessagesCountTokensPost429", BetaMessagesCountTokensPost429>
-      | AnthropicClientError<"BetaMessagesCountTokensPost431", BetaMessagesCountTokensPost431>
-      | AnthropicClientError<"BetaMessagesCountTokensPost499", BetaMessagesCountTokensPost499>
-      | AnthropicClientError<"BetaMessagesCountTokensPost500", BetaMessagesCountTokensPost500>
-      | AnthropicClientError<"BetaMessagesCountTokensPost501", BetaMessagesCountTokensPost501>
-      | AnthropicClientError<"BetaMessagesCountTokensPost503", BetaMessagesCountTokensPost503>
-      | AnthropicClientError<"BetaMessagesCountTokensPost504", BetaMessagesCountTokensPost504>
-      | AnthropicClientError<"BetaMessagesCountTokensPost529", BetaMessagesCountTokensPost529>
+      | AnthropicClientError<"BetaMessagesCountTokensPost4XX", BetaMessagesCountTokensPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25819,22 +20275,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaMessagesCountTokensPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaMessagesCountTokensPost400", BetaMessagesCountTokensPost400>
-      | AnthropicClientError<"BetaMessagesCountTokensPost401", BetaMessagesCountTokensPost401>
-      | AnthropicClientError<"BetaMessagesCountTokensPost403", BetaMessagesCountTokensPost403>
-      | AnthropicClientError<"BetaMessagesCountTokensPost404", BetaMessagesCountTokensPost404>
-      | AnthropicClientError<"BetaMessagesCountTokensPost408", BetaMessagesCountTokensPost408>
-      | AnthropicClientError<"BetaMessagesCountTokensPost409", BetaMessagesCountTokensPost409>
-      | AnthropicClientError<"BetaMessagesCountTokensPost412", BetaMessagesCountTokensPost412>
-      | AnthropicClientError<"BetaMessagesCountTokensPost413", BetaMessagesCountTokensPost413>
-      | AnthropicClientError<"BetaMessagesCountTokensPost429", BetaMessagesCountTokensPost429>
-      | AnthropicClientError<"BetaMessagesCountTokensPost431", BetaMessagesCountTokensPost431>
-      | AnthropicClientError<"BetaMessagesCountTokensPost499", BetaMessagesCountTokensPost499>
-      | AnthropicClientError<"BetaMessagesCountTokensPost500", BetaMessagesCountTokensPost500>
-      | AnthropicClientError<"BetaMessagesCountTokensPost501", BetaMessagesCountTokensPost501>
-      | AnthropicClientError<"BetaMessagesCountTokensPost503", BetaMessagesCountTokensPost503>
-      | AnthropicClientError<"BetaMessagesCountTokensPost504", BetaMessagesCountTokensPost504>
-      | AnthropicClientError<"BetaMessagesCountTokensPost529", BetaMessagesCountTokensPost529>
+      | AnthropicClientError<"BetaMessagesCountTokensPost4XX", BetaMessagesCountTokensPost4XX>
     >
   }
   /**
@@ -25847,22 +20288,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaListFilesV1FilesGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaListFilesV1FilesGet400", BetaListFilesV1FilesGet400>
-      | AnthropicClientError<"BetaListFilesV1FilesGet401", BetaListFilesV1FilesGet401>
-      | AnthropicClientError<"BetaListFilesV1FilesGet403", BetaListFilesV1FilesGet403>
-      | AnthropicClientError<"BetaListFilesV1FilesGet404", BetaListFilesV1FilesGet404>
-      | AnthropicClientError<"BetaListFilesV1FilesGet408", BetaListFilesV1FilesGet408>
-      | AnthropicClientError<"BetaListFilesV1FilesGet409", BetaListFilesV1FilesGet409>
-      | AnthropicClientError<"BetaListFilesV1FilesGet412", BetaListFilesV1FilesGet412>
-      | AnthropicClientError<"BetaListFilesV1FilesGet413", BetaListFilesV1FilesGet413>
-      | AnthropicClientError<"BetaListFilesV1FilesGet429", BetaListFilesV1FilesGet429>
-      | AnthropicClientError<"BetaListFilesV1FilesGet431", BetaListFilesV1FilesGet431>
-      | AnthropicClientError<"BetaListFilesV1FilesGet499", BetaListFilesV1FilesGet499>
-      | AnthropicClientError<"BetaListFilesV1FilesGet500", BetaListFilesV1FilesGet500>
-      | AnthropicClientError<"BetaListFilesV1FilesGet501", BetaListFilesV1FilesGet501>
-      | AnthropicClientError<"BetaListFilesV1FilesGet503", BetaListFilesV1FilesGet503>
-      | AnthropicClientError<"BetaListFilesV1FilesGet504", BetaListFilesV1FilesGet504>
-      | AnthropicClientError<"BetaListFilesV1FilesGet529", BetaListFilesV1FilesGet529>
+      | AnthropicClientError<"BetaListFilesV1FilesGet4XX", BetaListFilesV1FilesGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25873,22 +20299,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaListFilesV1FilesGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaListFilesV1FilesGet400", BetaListFilesV1FilesGet400>
-      | AnthropicClientError<"BetaListFilesV1FilesGet401", BetaListFilesV1FilesGet401>
-      | AnthropicClientError<"BetaListFilesV1FilesGet403", BetaListFilesV1FilesGet403>
-      | AnthropicClientError<"BetaListFilesV1FilesGet404", BetaListFilesV1FilesGet404>
-      | AnthropicClientError<"BetaListFilesV1FilesGet408", BetaListFilesV1FilesGet408>
-      | AnthropicClientError<"BetaListFilesV1FilesGet409", BetaListFilesV1FilesGet409>
-      | AnthropicClientError<"BetaListFilesV1FilesGet412", BetaListFilesV1FilesGet412>
-      | AnthropicClientError<"BetaListFilesV1FilesGet413", BetaListFilesV1FilesGet413>
-      | AnthropicClientError<"BetaListFilesV1FilesGet429", BetaListFilesV1FilesGet429>
-      | AnthropicClientError<"BetaListFilesV1FilesGet431", BetaListFilesV1FilesGet431>
-      | AnthropicClientError<"BetaListFilesV1FilesGet499", BetaListFilesV1FilesGet499>
-      | AnthropicClientError<"BetaListFilesV1FilesGet500", BetaListFilesV1FilesGet500>
-      | AnthropicClientError<"BetaListFilesV1FilesGet501", BetaListFilesV1FilesGet501>
-      | AnthropicClientError<"BetaListFilesV1FilesGet503", BetaListFilesV1FilesGet503>
-      | AnthropicClientError<"BetaListFilesV1FilesGet504", BetaListFilesV1FilesGet504>
-      | AnthropicClientError<"BetaListFilesV1FilesGet529", BetaListFilesV1FilesGet529>
+      | AnthropicClientError<"BetaListFilesV1FilesGet4XX", BetaListFilesV1FilesGet4XX>
     >
   }
   /**
@@ -25905,22 +20316,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaUploadFileV1FilesPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaUploadFileV1FilesPost400", BetaUploadFileV1FilesPost400>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost401", BetaUploadFileV1FilesPost401>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost403", BetaUploadFileV1FilesPost403>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost404", BetaUploadFileV1FilesPost404>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost408", BetaUploadFileV1FilesPost408>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost409", BetaUploadFileV1FilesPost409>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost412", BetaUploadFileV1FilesPost412>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost413", BetaUploadFileV1FilesPost413>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost429", BetaUploadFileV1FilesPost429>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost431", BetaUploadFileV1FilesPost431>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost499", BetaUploadFileV1FilesPost499>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost500", BetaUploadFileV1FilesPost500>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost501", BetaUploadFileV1FilesPost501>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost503", BetaUploadFileV1FilesPost503>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost504", BetaUploadFileV1FilesPost504>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost529", BetaUploadFileV1FilesPost529>
+      | AnthropicClientError<"BetaUploadFileV1FilesPost4XX", BetaUploadFileV1FilesPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -25932,22 +20328,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaUploadFileV1FilesPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaUploadFileV1FilesPost400", BetaUploadFileV1FilesPost400>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost401", BetaUploadFileV1FilesPost401>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost403", BetaUploadFileV1FilesPost403>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost404", BetaUploadFileV1FilesPost404>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost408", BetaUploadFileV1FilesPost408>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost409", BetaUploadFileV1FilesPost409>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost412", BetaUploadFileV1FilesPost412>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost413", BetaUploadFileV1FilesPost413>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost429", BetaUploadFileV1FilesPost429>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost431", BetaUploadFileV1FilesPost431>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost499", BetaUploadFileV1FilesPost499>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost500", BetaUploadFileV1FilesPost500>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost501", BetaUploadFileV1FilesPost501>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost503", BetaUploadFileV1FilesPost503>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost504", BetaUploadFileV1FilesPost504>
-      | AnthropicClientError<"BetaUploadFileV1FilesPost529", BetaUploadFileV1FilesPost529>
+      | AnthropicClientError<"BetaUploadFileV1FilesPost4XX", BetaUploadFileV1FilesPost4XX>
     >
   }
   /**
@@ -25964,22 +20345,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaGetFileMetadataV1FilesFileIdGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet400", BetaGetFileMetadataV1FilesFileIdGet400>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet401", BetaGetFileMetadataV1FilesFileIdGet401>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet403", BetaGetFileMetadataV1FilesFileIdGet403>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet404", BetaGetFileMetadataV1FilesFileIdGet404>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet408", BetaGetFileMetadataV1FilesFileIdGet408>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet409", BetaGetFileMetadataV1FilesFileIdGet409>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet412", BetaGetFileMetadataV1FilesFileIdGet412>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet413", BetaGetFileMetadataV1FilesFileIdGet413>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet429", BetaGetFileMetadataV1FilesFileIdGet429>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet431", BetaGetFileMetadataV1FilesFileIdGet431>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet499", BetaGetFileMetadataV1FilesFileIdGet499>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet500", BetaGetFileMetadataV1FilesFileIdGet500>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet501", BetaGetFileMetadataV1FilesFileIdGet501>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet503", BetaGetFileMetadataV1FilesFileIdGet503>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet504", BetaGetFileMetadataV1FilesFileIdGet504>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet529", BetaGetFileMetadataV1FilesFileIdGet529>
+      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet4XX", BetaGetFileMetadataV1FilesFileIdGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       fileId: string,
@@ -25991,22 +20357,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaGetFileMetadataV1FilesFileIdGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet400", BetaGetFileMetadataV1FilesFileIdGet400>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet401", BetaGetFileMetadataV1FilesFileIdGet401>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet403", BetaGetFileMetadataV1FilesFileIdGet403>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet404", BetaGetFileMetadataV1FilesFileIdGet404>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet408", BetaGetFileMetadataV1FilesFileIdGet408>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet409", BetaGetFileMetadataV1FilesFileIdGet409>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet412", BetaGetFileMetadataV1FilesFileIdGet412>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet413", BetaGetFileMetadataV1FilesFileIdGet413>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet429", BetaGetFileMetadataV1FilesFileIdGet429>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet431", BetaGetFileMetadataV1FilesFileIdGet431>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet499", BetaGetFileMetadataV1FilesFileIdGet499>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet500", BetaGetFileMetadataV1FilesFileIdGet500>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet501", BetaGetFileMetadataV1FilesFileIdGet501>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet503", BetaGetFileMetadataV1FilesFileIdGet503>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet504", BetaGetFileMetadataV1FilesFileIdGet504>
-      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet529", BetaGetFileMetadataV1FilesFileIdGet529>
+      | AnthropicClientError<"BetaGetFileMetadataV1FilesFileIdGet4XX", BetaGetFileMetadataV1FilesFileIdGet4XX>
     >
   }
   /**
@@ -26023,22 +20374,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaDeleteFileV1FilesFileIdDelete200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete400", BetaDeleteFileV1FilesFileIdDelete400>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete401", BetaDeleteFileV1FilesFileIdDelete401>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete403", BetaDeleteFileV1FilesFileIdDelete403>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete404", BetaDeleteFileV1FilesFileIdDelete404>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete408", BetaDeleteFileV1FilesFileIdDelete408>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete409", BetaDeleteFileV1FilesFileIdDelete409>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete412", BetaDeleteFileV1FilesFileIdDelete412>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete413", BetaDeleteFileV1FilesFileIdDelete413>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete429", BetaDeleteFileV1FilesFileIdDelete429>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete431", BetaDeleteFileV1FilesFileIdDelete431>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete499", BetaDeleteFileV1FilesFileIdDelete499>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete500", BetaDeleteFileV1FilesFileIdDelete500>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete501", BetaDeleteFileV1FilesFileIdDelete501>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete503", BetaDeleteFileV1FilesFileIdDelete503>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete504", BetaDeleteFileV1FilesFileIdDelete504>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete529", BetaDeleteFileV1FilesFileIdDelete529>
+      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete4XX", BetaDeleteFileV1FilesFileIdDelete4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       fileId: string,
@@ -26050,22 +20386,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaDeleteFileV1FilesFileIdDelete200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete400", BetaDeleteFileV1FilesFileIdDelete400>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete401", BetaDeleteFileV1FilesFileIdDelete401>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete403", BetaDeleteFileV1FilesFileIdDelete403>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete404", BetaDeleteFileV1FilesFileIdDelete404>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete408", BetaDeleteFileV1FilesFileIdDelete408>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete409", BetaDeleteFileV1FilesFileIdDelete409>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete412", BetaDeleteFileV1FilesFileIdDelete412>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete413", BetaDeleteFileV1FilesFileIdDelete413>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete429", BetaDeleteFileV1FilesFileIdDelete429>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete431", BetaDeleteFileV1FilesFileIdDelete431>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete499", BetaDeleteFileV1FilesFileIdDelete499>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete500", BetaDeleteFileV1FilesFileIdDelete500>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete501", BetaDeleteFileV1FilesFileIdDelete501>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete503", BetaDeleteFileV1FilesFileIdDelete503>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete504", BetaDeleteFileV1FilesFileIdDelete504>
-      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete529", BetaDeleteFileV1FilesFileIdDelete529>
+      | AnthropicClientError<"BetaDeleteFileV1FilesFileIdDelete4XX", BetaDeleteFileV1FilesFileIdDelete4XX>
     >
   }
   /**
@@ -26082,22 +20403,7 @@ export interface AnthropicClient {
       WithOptionalResponse<Uint8Array, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet400", BetaDownloadFileV1FilesFileIdContentGet400>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet401", BetaDownloadFileV1FilesFileIdContentGet401>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet403", BetaDownloadFileV1FilesFileIdContentGet403>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet404", BetaDownloadFileV1FilesFileIdContentGet404>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet408", BetaDownloadFileV1FilesFileIdContentGet408>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet409", BetaDownloadFileV1FilesFileIdContentGet409>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet412", BetaDownloadFileV1FilesFileIdContentGet412>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet413", BetaDownloadFileV1FilesFileIdContentGet413>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet429", BetaDownloadFileV1FilesFileIdContentGet429>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet431", BetaDownloadFileV1FilesFileIdContentGet431>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet499", BetaDownloadFileV1FilesFileIdContentGet499>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet500", BetaDownloadFileV1FilesFileIdContentGet500>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet501", BetaDownloadFileV1FilesFileIdContentGet501>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet503", BetaDownloadFileV1FilesFileIdContentGet503>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet504", BetaDownloadFileV1FilesFileIdContentGet504>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet529", BetaDownloadFileV1FilesFileIdContentGet529>
+      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet4XX", BetaDownloadFileV1FilesFileIdContentGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       fileId: string,
@@ -26109,22 +20415,7 @@ export interface AnthropicClient {
       WithOptionalResponse<Uint8Array, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet400", BetaDownloadFileV1FilesFileIdContentGet400>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet401", BetaDownloadFileV1FilesFileIdContentGet401>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet403", BetaDownloadFileV1FilesFileIdContentGet403>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet404", BetaDownloadFileV1FilesFileIdContentGet404>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet408", BetaDownloadFileV1FilesFileIdContentGet408>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet409", BetaDownloadFileV1FilesFileIdContentGet409>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet412", BetaDownloadFileV1FilesFileIdContentGet412>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet413", BetaDownloadFileV1FilesFileIdContentGet413>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet429", BetaDownloadFileV1FilesFileIdContentGet429>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet431", BetaDownloadFileV1FilesFileIdContentGet431>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet499", BetaDownloadFileV1FilesFileIdContentGet499>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet500", BetaDownloadFileV1FilesFileIdContentGet500>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet501", BetaDownloadFileV1FilesFileIdContentGet501>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet503", BetaDownloadFileV1FilesFileIdContentGet503>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet504", BetaDownloadFileV1FilesFileIdContentGet504>
-      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet529", BetaDownloadFileV1FilesFileIdContentGet529>
+      | AnthropicClientError<"BetaDownloadFileV1FilesFileIdContentGet4XX", BetaDownloadFileV1FilesFileIdContentGet4XX>
     >
   }
   /**
@@ -26144,22 +20435,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaListSkillsV1SkillsGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet400", BetaListSkillsV1SkillsGet400>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet401", BetaListSkillsV1SkillsGet401>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet403", BetaListSkillsV1SkillsGet403>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet404", BetaListSkillsV1SkillsGet404>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet408", BetaListSkillsV1SkillsGet408>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet409", BetaListSkillsV1SkillsGet409>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet412", BetaListSkillsV1SkillsGet412>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet413", BetaListSkillsV1SkillsGet413>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet429", BetaListSkillsV1SkillsGet429>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet431", BetaListSkillsV1SkillsGet431>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet499", BetaListSkillsV1SkillsGet499>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet500", BetaListSkillsV1SkillsGet500>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet501", BetaListSkillsV1SkillsGet501>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet503", BetaListSkillsV1SkillsGet503>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet504", BetaListSkillsV1SkillsGet504>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet529", BetaListSkillsV1SkillsGet529>
+      | AnthropicClientError<"BetaListSkillsV1SkillsGet4XX", BetaListSkillsV1SkillsGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -26170,22 +20446,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaListSkillsV1SkillsGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet400", BetaListSkillsV1SkillsGet400>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet401", BetaListSkillsV1SkillsGet401>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet403", BetaListSkillsV1SkillsGet403>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet404", BetaListSkillsV1SkillsGet404>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet408", BetaListSkillsV1SkillsGet408>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet409", BetaListSkillsV1SkillsGet409>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet412", BetaListSkillsV1SkillsGet412>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet413", BetaListSkillsV1SkillsGet413>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet429", BetaListSkillsV1SkillsGet429>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet431", BetaListSkillsV1SkillsGet431>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet499", BetaListSkillsV1SkillsGet499>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet500", BetaListSkillsV1SkillsGet500>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet501", BetaListSkillsV1SkillsGet501>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet503", BetaListSkillsV1SkillsGet503>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet504", BetaListSkillsV1SkillsGet504>
-      | AnthropicClientError<"BetaListSkillsV1SkillsGet529", BetaListSkillsV1SkillsGet529>
+      | AnthropicClientError<"BetaListSkillsV1SkillsGet4XX", BetaListSkillsV1SkillsGet4XX>
     >
   }
   /**
@@ -26202,22 +20463,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaCreateSkillV1SkillsPost200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost400", BetaCreateSkillV1SkillsPost400>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost401", BetaCreateSkillV1SkillsPost401>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost403", BetaCreateSkillV1SkillsPost403>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost404", BetaCreateSkillV1SkillsPost404>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost408", BetaCreateSkillV1SkillsPost408>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost409", BetaCreateSkillV1SkillsPost409>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost412", BetaCreateSkillV1SkillsPost412>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost413", BetaCreateSkillV1SkillsPost413>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost429", BetaCreateSkillV1SkillsPost429>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost431", BetaCreateSkillV1SkillsPost431>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost499", BetaCreateSkillV1SkillsPost499>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost500", BetaCreateSkillV1SkillsPost500>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost501", BetaCreateSkillV1SkillsPost501>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost503", BetaCreateSkillV1SkillsPost503>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost504", BetaCreateSkillV1SkillsPost504>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost529", BetaCreateSkillV1SkillsPost529>
+      | AnthropicClientError<"BetaCreateSkillV1SkillsPost4XX", BetaCreateSkillV1SkillsPost4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       options: {
@@ -26229,22 +20475,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaCreateSkillV1SkillsPost200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost400", BetaCreateSkillV1SkillsPost400>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost401", BetaCreateSkillV1SkillsPost401>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost403", BetaCreateSkillV1SkillsPost403>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost404", BetaCreateSkillV1SkillsPost404>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost408", BetaCreateSkillV1SkillsPost408>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost409", BetaCreateSkillV1SkillsPost409>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost412", BetaCreateSkillV1SkillsPost412>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost413", BetaCreateSkillV1SkillsPost413>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost429", BetaCreateSkillV1SkillsPost429>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost431", BetaCreateSkillV1SkillsPost431>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost499", BetaCreateSkillV1SkillsPost499>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost500", BetaCreateSkillV1SkillsPost500>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost501", BetaCreateSkillV1SkillsPost501>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost503", BetaCreateSkillV1SkillsPost503>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost504", BetaCreateSkillV1SkillsPost504>
-      | AnthropicClientError<"BetaCreateSkillV1SkillsPost529", BetaCreateSkillV1SkillsPost529>
+      | AnthropicClientError<"BetaCreateSkillV1SkillsPost4XX", BetaCreateSkillV1SkillsPost4XX>
     >
   }
   /**
@@ -26261,22 +20492,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaGetSkillV1SkillsSkillIdGet200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet400", BetaGetSkillV1SkillsSkillIdGet400>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet401", BetaGetSkillV1SkillsSkillIdGet401>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet403", BetaGetSkillV1SkillsSkillIdGet403>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet404", BetaGetSkillV1SkillsSkillIdGet404>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet408", BetaGetSkillV1SkillsSkillIdGet408>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet409", BetaGetSkillV1SkillsSkillIdGet409>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet412", BetaGetSkillV1SkillsSkillIdGet412>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet413", BetaGetSkillV1SkillsSkillIdGet413>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet429", BetaGetSkillV1SkillsSkillIdGet429>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet431", BetaGetSkillV1SkillsSkillIdGet431>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet499", BetaGetSkillV1SkillsSkillIdGet499>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet500", BetaGetSkillV1SkillsSkillIdGet500>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet501", BetaGetSkillV1SkillsSkillIdGet501>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet503", BetaGetSkillV1SkillsSkillIdGet503>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet504", BetaGetSkillV1SkillsSkillIdGet504>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet529", BetaGetSkillV1SkillsSkillIdGet529>
+      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet4XX", BetaGetSkillV1SkillsSkillIdGet4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       skillId: string,
@@ -26288,22 +20504,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaGetSkillV1SkillsSkillIdGet200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet400", BetaGetSkillV1SkillsSkillIdGet400>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet401", BetaGetSkillV1SkillsSkillIdGet401>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet403", BetaGetSkillV1SkillsSkillIdGet403>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet404", BetaGetSkillV1SkillsSkillIdGet404>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet408", BetaGetSkillV1SkillsSkillIdGet408>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet409", BetaGetSkillV1SkillsSkillIdGet409>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet412", BetaGetSkillV1SkillsSkillIdGet412>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet413", BetaGetSkillV1SkillsSkillIdGet413>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet429", BetaGetSkillV1SkillsSkillIdGet429>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet431", BetaGetSkillV1SkillsSkillIdGet431>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet499", BetaGetSkillV1SkillsSkillIdGet499>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet500", BetaGetSkillV1SkillsSkillIdGet500>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet501", BetaGetSkillV1SkillsSkillIdGet501>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet503", BetaGetSkillV1SkillsSkillIdGet503>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet504", BetaGetSkillV1SkillsSkillIdGet504>
-      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet529", BetaGetSkillV1SkillsSkillIdGet529>
+      | AnthropicClientError<"BetaGetSkillV1SkillsSkillIdGet4XX", BetaGetSkillV1SkillsSkillIdGet4XX>
     >
   }
   /**
@@ -26320,22 +20521,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaDeleteSkillV1SkillsSkillIdDelete200, Config>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete400", BetaDeleteSkillV1SkillsSkillIdDelete400>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete401", BetaDeleteSkillV1SkillsSkillIdDelete401>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete403", BetaDeleteSkillV1SkillsSkillIdDelete403>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete404", BetaDeleteSkillV1SkillsSkillIdDelete404>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete408", BetaDeleteSkillV1SkillsSkillIdDelete408>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete409", BetaDeleteSkillV1SkillsSkillIdDelete409>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete412", BetaDeleteSkillV1SkillsSkillIdDelete412>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete413", BetaDeleteSkillV1SkillsSkillIdDelete413>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete429", BetaDeleteSkillV1SkillsSkillIdDelete429>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete431", BetaDeleteSkillV1SkillsSkillIdDelete431>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete499", BetaDeleteSkillV1SkillsSkillIdDelete499>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete500", BetaDeleteSkillV1SkillsSkillIdDelete500>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete501", BetaDeleteSkillV1SkillsSkillIdDelete501>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete503", BetaDeleteSkillV1SkillsSkillIdDelete503>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete504", BetaDeleteSkillV1SkillsSkillIdDelete504>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete529", BetaDeleteSkillV1SkillsSkillIdDelete529>
+      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete4XX", BetaDeleteSkillV1SkillsSkillIdDelete4XX>
     >
     <Config extends OperationConfig | undefined = undefined>(
       skillId: string,
@@ -26347,22 +20533,7 @@ export interface AnthropicClient {
       WithOptionalResponse<BetaDeleteSkillV1SkillsSkillIdDelete200, Config | undefined>,
       | HttpClientError.HttpClientError
       | SchemaError
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete400", BetaDeleteSkillV1SkillsSkillIdDelete400>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete401", BetaDeleteSkillV1SkillsSkillIdDelete401>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete403", BetaDeleteSkillV1SkillsSkillIdDelete403>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete404", BetaDeleteSkillV1SkillsSkillIdDelete404>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete408", BetaDeleteSkillV1SkillsSkillIdDelete408>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete409", BetaDeleteSkillV1SkillsSkillIdDelete409>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete412", BetaDeleteSkillV1SkillsSkillIdDelete412>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete413", BetaDeleteSkillV1SkillsSkillIdDelete413>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete429", BetaDeleteSkillV1SkillsSkillIdDelete429>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete431", BetaDeleteSkillV1SkillsSkillIdDelete431>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete499", BetaDeleteSkillV1SkillsSkillIdDelete499>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete500", BetaDeleteSkillV1SkillsSkillIdDelete500>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete501", BetaDeleteSkillV1SkillsSkillIdDelete501>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete503", BetaDeleteSkillV1SkillsSkillIdDelete503>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete504", BetaDeleteSkillV1SkillsSkillIdDelete504>
-      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete529", BetaDeleteSkillV1SkillsSkillIdDelete529>
+      | AnthropicClientError<"BetaDeleteSkillV1SkillsSkillIdDelete4XX", BetaDeleteSkillV1SkillsSkillIdDelete4XX>
     >
   }
   /**
@@ -26380,68 +20551,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet400",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet400
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet401",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet401
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet403",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet403
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet404",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet404
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet408",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet408
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet409",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet409
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet412",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet412
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet413",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet413
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet429",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet429
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet431",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet431
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet499",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet499
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet500",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet500
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet501",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet501
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet503",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet503
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet504",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet504
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet529",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet529
+        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX",
+        BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -26455,68 +20566,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet400",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet400
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet401",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet401
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet403",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet403
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet404",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet404
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet408",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet408
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet409",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet409
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet412",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet412
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet413",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet413
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet429",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet429
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet431",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet431
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet499",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet499
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet500",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet500
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet501",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet501
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet503",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet503
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet504",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet504
-      >
-      | AnthropicClientError<
-        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet529",
-        BetaListSkillVersionsV1SkillsSkillIdVersionsGet529
+        "BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX",
+        BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX
       >
     >
   }
@@ -26536,68 +20587,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529
+        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX",
+        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -26612,68 +20603,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost400
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost401
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost403
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost404
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost408
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost409
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost412
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost413
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost429
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost431
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost499
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost500
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost501
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost503
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost504
-      >
-      | AnthropicClientError<
-        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529",
-        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost529
+        "BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX",
+        BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX
       >
     >
   }
@@ -26693,68 +20624,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529
+        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX",
+        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -26769,68 +20640,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet400
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet401
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet403
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet404
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet408
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet409
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet412
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet413
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet429
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet431
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet499
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet500
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet501
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet503
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet504
-      >
-      | AnthropicClientError<
-        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529",
-        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet529
+        "BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX",
+        BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX
       >
     >
   }
@@ -26850,68 +20661,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529
+        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX",
+        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -26926,68 +20677,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete400
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete401
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete403
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete404
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete408
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete409
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete412
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete413
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete429
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete431
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete499
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete500
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete501
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete503
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete504
-      >
-      | AnthropicClientError<
-        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529",
-        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete529
+        "BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX",
+        BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete4XX
       >
     >
   }
@@ -27009,68 +20700,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529
+        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX",
+        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX
       >
     >
     <Config extends OperationConfig | undefined = undefined>(
@@ -27087,68 +20718,8 @@ export interface AnthropicClient {
       | HttpClientError.HttpClientError
       | SchemaError
       | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet400
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet401
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet403
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet404
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet408
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet409
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet412
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet413
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet429
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet431
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet499
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet500
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet501
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet503
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet504
-      >
-      | AnthropicClientError<
-        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529",
-        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet529
+        "BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX",
+        BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX
       >
     >
   }

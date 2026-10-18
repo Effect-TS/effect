@@ -1,0 +1,877 @@
+[
+  {
+    "op": "add",
+    "path": "/components/schemas/BetaCreateSkillResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "display_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Title",
+          "description": "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model.",
+          "examples": [
+            "My Custom Skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Version",
+          "description": "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created.",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic",
+          "examples": [
+            "custom"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+          "default": "skill"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "ISO 8601 timestamp of when the skill was last updated.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "display_title",
+        "id",
+        "latest_version",
+        "source",
+        "type",
+        "updated_at"
+      ],
+      "title": "CreateSkillResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/BetaCreateSkillVersionResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill version was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "A custom skill for doing something useful"
+          ]
+        },
+        "directory": {
+          "type": "string",
+          "title": "Directory",
+          "description": "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skillver_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "skill_id": {
+          "type": "string",
+          "title": "Skill Id",
+          "description": "Identifier for the skill that this version belongs to.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+          "default": "skill_version"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\").",
+          "examples": [
+            "1759178010641129"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "description",
+        "directory",
+        "id",
+        "name",
+        "skill_id",
+        "type",
+        "version"
+      ],
+      "title": "CreateSkillVersionResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/BetaDeleteSkillResponse",
+    "value": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Deleted object type.\n\nFor Skills, this is always `\"skill_deleted\"`.",
+          "default": "skill_deleted"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "DeleteSkillResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/BetaDeleteSkillVersionResponse",
+    "value": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\").",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Deleted object type.\n\nFor Skill Versions, this is always `\"skill_version_deleted\"`.",
+          "default": "skill_version_deleted"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "DeleteSkillVersionResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/BetaGetSkillResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "display_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Title",
+          "description": "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model.",
+          "examples": [
+            "My Custom Skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Version",
+          "description": "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created.",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic",
+          "examples": [
+            "custom"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+          "default": "skill"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "ISO 8601 timestamp of when the skill was last updated.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "display_title",
+        "id",
+        "latest_version",
+        "source",
+        "type",
+        "updated_at"
+      ],
+      "title": "GetSkillResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/BetaGetSkillVersionResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill version was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "A custom skill for doing something useful"
+          ]
+        },
+        "directory": {
+          "type": "string",
+          "title": "Directory",
+          "description": "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skillver_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "skill_id": {
+          "type": "string",
+          "title": "Skill Id",
+          "description": "Identifier for the skill that this version belongs to.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+          "default": "skill_version"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\").",
+          "examples": [
+            "1759178010641129"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "description",
+        "directory",
+        "id",
+        "name",
+        "skill_id",
+        "type",
+        "version"
+      ],
+      "title": "GetSkillVersionResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/Betaapi__schemas__skills__Skill",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "display_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Title",
+          "description": "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model.",
+          "examples": [
+            "My Custom Skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Version",
+          "description": "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created.",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic",
+          "examples": [
+            "custom"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+          "default": "skill"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "ISO 8601 timestamp of when the skill was last updated.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "display_title",
+        "id",
+        "latest_version",
+        "source",
+        "type",
+        "updated_at"
+      ],
+      "title": "Skill"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/CreateSkillResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "display_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Title",
+          "description": "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model.",
+          "examples": [
+            "My Custom Skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Version",
+          "description": "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created.",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic",
+          "examples": [
+            "custom"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+          "default": "skill"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "ISO 8601 timestamp of when the skill was last updated.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "display_title",
+        "id",
+        "latest_version",
+        "source",
+        "type",
+        "updated_at"
+      ],
+      "title": "CreateSkillResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/CreateSkillVersionResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill version was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "A custom skill for doing something useful"
+          ]
+        },
+        "directory": {
+          "type": "string",
+          "title": "Directory",
+          "description": "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skillver_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "skill_id": {
+          "type": "string",
+          "title": "Skill Id",
+          "description": "Identifier for the skill that this version belongs to.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+          "default": "skill_version"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\").",
+          "examples": [
+            "1759178010641129"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "description",
+        "directory",
+        "id",
+        "name",
+        "skill_id",
+        "type",
+        "version"
+      ],
+      "title": "CreateSkillVersionResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/DeleteSkillResponse",
+    "value": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Deleted object type.\n\nFor Skills, this is always `\"skill_deleted\"`.",
+          "default": "skill_deleted"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "DeleteSkillResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/DeleteSkillVersionResponse",
+    "value": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\").",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Deleted object type.\n\nFor Skill Versions, this is always `\"skill_version_deleted\"`.",
+          "default": "skill_version_deleted"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "DeleteSkillVersionResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/GetSkillResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "display_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Title",
+          "description": "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model.",
+          "examples": [
+            "My Custom Skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "latest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Version",
+          "description": "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created.",
+          "examples": [
+            "1759178010641129"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic",
+          "examples": [
+            "custom"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+          "default": "skill"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "ISO 8601 timestamp of when the skill was last updated.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "display_title",
+        "id",
+        "latest_version",
+        "source",
+        "type",
+        "updated_at"
+      ],
+      "title": "GetSkillResponse"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/components/schemas/GetSkillVersionResponse",
+    "value": {
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "ISO 8601 timestamp of when the skill version was created.",
+          "examples": [
+            "2024-10-30T23:58:27.427722Z"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "A custom skill for doing something useful"
+          ]
+        },
+        "directory": {
+          "type": "string",
+          "title": "Directory",
+          "description": "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time.",
+          "examples": [
+            "skillver_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload.",
+          "examples": [
+            "my-skill"
+          ]
+        },
+        "skill_id": {
+          "type": "string",
+          "title": "Skill Id",
+          "description": "Identifier for the skill that this version belongs to.",
+          "examples": [
+            "skill_01JAbcdefghijklmnopqrstuvw"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+          "default": "skill_version"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\").",
+          "examples": [
+            "1759178010641129"
+          ]
+        }
+      },
+      "type": "object",
+      "required": [
+        "created_at",
+        "description",
+        "directory",
+        "id",
+        "name",
+        "skill_id",
+        "type",
+        "version"
+      ],
+      "title": "GetSkillVersionResponse"
+    }
+  }
+]

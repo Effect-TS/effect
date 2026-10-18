@@ -41,6 +41,18 @@
         "type": "string"
       }
     },
+    "includeSchemas": {
+      "type": "array",
+      "description": "Component schemas to generate even when no operation references them, such as stream events or deprecated legacy contracts.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "collapseErrorResponses": {
+      "type": "boolean",
+      "description": "Replace each operation's explicit 4xx and 5xx responses with one 4XX response using the error envelope component they share. Generation fails when an operation's error responses do not reference exactly one component.",
+      "default": false
+    },
     "replacements": {
       "type": "array",
       "description": "Text replacements to apply to generated code.",

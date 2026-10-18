@@ -755,7 +755,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
       if (betas.size > 0) {
-        params["anthropic-beta"] = Array.from(betas)
+        params["anthropic-beta"] = Array.from(betas).join(",")
       }
       const {
         disableParallelToolCalls: _,

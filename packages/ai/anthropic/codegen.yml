@@ -13,8 +13,12 @@ includePaths:
   - /v1/skills
 name: AnthropicClient
 patches:
-  # Expose the stream event schemas, which are only reachable through BetaMessageStreamEvent.
-  - '[{"op":"add","path":"/paths/~1v1~1messages?beta=true/post/responses/200/content/text~1event-stream","value":{"schema":{"$ref":"#/components/schemas/BetaMessageStreamEvent"}}}]'
+  # Released Skills response contracts, before upstream renamed and reshaped them. Copied verbatim from the
+  # spec generated on 2026-02-20 (anthropic-sdk-typescript fdaa72bed1). Regenerate with:
+  #   curl -sL 'https://storage.googleapis.com/stainless-sdk-openapi-specs/anthropic%2Fanthropic-29a6b7ba51942cd606e5bf4b533e5aac1bef42f6d4b1f7f45f756304cf676782.yml' \
+  #     | jq '[.components.schemas | to_entries[] | select(.key | test("^(Beta)?((Create|Get|Delete)Skill(Version)?Response|api__schemas__skills__Skill)$")) | {op: "add", path: "/components/schemas/\(.key)", value: .value}]' \
+  #     > packages/ai/anthropic/patches/legacy-skills.json
+  - patches/legacy-skills.json
   # Keep usage fields optional when the API or Anthropic-compatible gateways omit them (#8464).
   - '[{"op":"replace","path":"/components/schemas/BetaUsage/required","value":["cache_creation","cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens","service_tier"]},{"op":"replace","path":"/components/schemas/Usage/required","value":["cache_creation","cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens","service_tier"]},{"op":"replace","path":"/components/schemas/BetaMessageDeltaUsage/required","value":["cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens"]},{"op":"replace","path":"/components/schemas/MessageDeltaUsage/required","value":["cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens"]}]'
   # Keep message metadata optional when the API omits it.
@@ -23,6 +27,60 @@ patches:
   - '[{"op":"replace","path":"/components/schemas/ResponseTextBlock/required","value":["text","type"]},{"op":"replace","path":"/components/schemas/BetaResponseTextBlock/required","value":["text","type"]}]'
   # Make model optional in BetaMessageIterationUsage (gateways and older responses may omit it)
   - '[{"op":"replace","path":"/components/schemas/BetaMessageIterationUsage/required","value":["cache_creation","cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens","type"]}]'
+# Decode every error envelope and let the status code decide the error, as released.
+collapseErrorResponses: true
+# Released schemas that no operation references: stream events, batch results, memory tool
+# commands, multipart bodies, and the deprecated Skills contracts patched in above.
+includeSchemas:
+  - BetaContentBlockDeltaEvent
+  - BetaContentBlockStartEvent
+  - BetaContentBlockStopEvent
+  - BetaMessageDeltaEvent
+  - BetaMessageStartEvent
+  - BetaMessageStopEvent
+  - ContentBlockDeltaEvent
+  - ContentBlockStartEvent
+  - ContentBlockStopEvent
+  - MessageDeltaEvent
+  - MessageStartEvent
+  - MessageStopEvent
+  - CitationsDelta
+  - InputJsonContentBlockDelta
+  - MessageDelta
+  - SignatureContentBlockDelta
+  - TextContentBlockDelta
+  - ThinkingContentBlockDelta
+  - BetaCanceledResult
+  - BetaErroredResult
+  - BetaExpiredResult
+  - BetaSucceededResult
+  - CanceledResult
+  - ErroredResult
+  - ExpiredResult
+  - SucceededResult
+  - BetaMemoryTool_20250818_CreateCommand
+  - BetaMemoryTool_20250818_DeleteCommand
+  - BetaMemoryTool_20250818_InsertCommand
+  - BetaMemoryTool_20250818_RenameCommand
+  - BetaMemoryTool_20250818_StrReplaceCommand
+  - BetaMemoryTool_20250818_ViewCommand
+  - BetaBody_create_skill_v1_skills_post
+  - BetaBody_create_skill_version_v1_skills__skill_id__versions_post
+  - Body_create_skill_v1_skills_post
+  - Body_create_skill_version_v1_skills__skill_id__versions_post
+  - Betaapi__schemas__skills__Skill
+  - BetaCreateSkillResponse
+  - BetaCreateSkillVersionResponse
+  - BetaDeleteSkillResponse
+  - BetaDeleteSkillVersionResponse
+  - BetaGetSkillResponse
+  - BetaGetSkillVersionResponse
+  - CreateSkillResponse
+  - CreateSkillVersionResponse
+  - DeleteSkillResponse
+  - DeleteSkillVersionResponse
+  - GetSkillResponse
+  - GetSkillVersionResponse
 header: |
   /**
    * @stability unstable
@@ -41,3 +99,16 @@ replacements:
   # Index signature in struct rest pattern
   - from: "readonly [x: string]: unknown"
     to: "readonly [x: string]: Schema.Json"
+  # Keep the released types: tool input examples accept any value, and beta headers accept a string
+  - from: "export type BetaJsonValue = Schema.Json"
+    to: "export type BetaJsonValue = unknown"
+  - from: 'export const BetaJsonValue = Schema.Json.annotate({ "expected": "JSON value", "identifier": "BetaJsonValue" })'
+    to: "export const BetaJsonValue = Schema.Unknown"
+  - from: "export type JsonValue = Schema.Json"
+    to: "export type JsonValue = unknown"
+  - from: 'export const JsonValue = Schema.Json.annotate({ "expected": "JSON value", "identifier": "JsonValue" })'
+    to: "export const JsonValue = Schema.Unknown"
+  - from: 'readonly "anthropic-beta"?: ReadonlyArray<AnthropicBeta>'
+    to: 'readonly "anthropic-beta"?: string | ReadonlyArray<AnthropicBeta>'
+  - from: '"anthropic-beta": Schema.optionalKey(Schema.Array(AnthropicBeta).annotate('
+    to: '"anthropic-beta": Schema.optionalKey(Schema.Union([Schema.String, Schema.Array(AnthropicBeta)]).annotate('
