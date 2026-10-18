@@ -47,7 +47,7 @@ import * as InternalUtilities from "./internal/utilities.ts"
  * @category models
  * @since 4.0.0
  */
-export type Model = (typeof Generated.Model)["members"][1]["Encoded"]
+export type Model = Extract<(typeof Generated.Model)["members"][number], { readonly literal: string }>["literal"]
 
 // =============================================================================
 // Configuration

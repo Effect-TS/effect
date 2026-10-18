@@ -1136,6 +1136,44 @@ export const TestClientError = <Tag extends string, E>(
         `"304": () => Effect.void`,
         `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
+
+    it.effect("emits included component schemas that no operation references", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const result = yield* generator.generate({
+          openapi: "3.1.0",
+          info: { title: "Test API", version: "1.0.0" },
+          paths: {
+            "/ping": {
+              get: {
+                operationId: "ping",
+                parameters: [],
+                responses: { 204: { description: "Pong" } },
+                tags: ["Ping"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              Legacy: {
+                type: "object",
+                properties: { value: { $ref: "#/components/schemas/LegacyValue" } },
+                required: ["value"]
+              },
+              LegacyValue: { type: "string" },
+              Unlisted: { type: "string" }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Ping" }]
+        }, { name: "TestClient", format: "httpclient", includeSchemas: ["Legacy"] })
+
+        assert.include(result, "export const Legacy = ")
+        assert.include(result, "export const LegacyValue = ")
+        assert.notInclude(result, "Unlisted")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
   })
 
   describe("type-only", () => {
