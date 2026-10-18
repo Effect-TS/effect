@@ -11,6 +11,7 @@ import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as SqlError from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 
 const makeJournal = Effect.gen(function*() {
@@ -34,6 +35,99 @@ const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
 describe("SqlEventJournal", () => {
+  it.effect("deduplicates overlapping remote entries within one incoming array", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const a = entry(1_000)
+      const b = entry(2_000)
+      const handled: Array<string> = []
+      // Flattened overlapping batches [A] and [A, B], not separate journal writes.
+      const repeatedA = new EventJournal.Entry({ ...a, id: a.id.slice() as EventJournal.EntryId })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [a, repeatedA, b].map((entry, remoteSequence) =>
+          new EventJournal.RemoteEntry({ remoteSequence, entry })
+        ),
+        effect: (batch) =>
+          Effect.sync(() => {
+            handled.push(...batch.map(({ entry }) => entry.idString))
+          })
+      })
+
+      assert.deepStrictEqual({
+        handled,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }, {
+        handled: [a.idString, b.idString],
+        stored: [a.idString, b.idString],
+        nextSequence: 3
+      })
+    }))
+
+  it.effect("advances remote progress past a trailing known entry in a partly known batch", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const a = entry(1_000)
+      const b = entry(2_000)
+      const handled: Array<string> = []
+      const effect = (batch: ReadonlyArray<{ readonly entry: EventJournal.Entry }>) =>
+        Effect.sync(() => {
+          handled.push(...batch.map(({ entry }) => entry.idString))
+        })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: a })],
+        effect
+      })
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [
+          new EventJournal.RemoteEntry({ remoteSequence: 1, entry: b }),
+          new EventJournal.RemoteEntry({ remoteSequence: 2, entry: a })
+        ],
+        effect
+      })
+
+      assert.deepStrictEqual({
+        handled,
+        stored: (yield* journal.entries).map((entry) => entry.idString),
+        nextSequence: yield* journal.nextRemoteSequence(remoteId)
+      }, {
+        handled: [a.idString, b.idString],
+        stored: [a.idString, b.idString],
+        nextSequence: 3
+      })
+    }))
+
+  it.effect("entriesById preserves order, repeated ids and missing entries", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const entries: Array<EventJournal.Entry> = []
+      for (const primaryKey of ["first", "second"]) {
+        entries.push(
+          yield* journal.write({
+            event: "Repro",
+            primaryKey,
+            payload: new Uint8Array([entries.length + 1]),
+            effect: Effect.succeed
+          })
+        )
+      }
+      const [first, second] = entries
+      const missing = EventJournal.makeEntryIdUnsafe()
+      const found = yield* journal.entriesById([
+        second.id.slice() as EventJournal.EntryId,
+        missing,
+        first.id.slice() as EventJournal.EntryId,
+        second.id.slice() as EventJournal.EntryId
+      ])
+      assert.deepStrictEqual(found, [second, undefined, first, second])
+      assert.deepStrictEqual(yield* journal.entriesById([]), [])
+    }))
+
   it.effect("replay invalidation observes committed entries from another connection", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -206,8 +300,222 @@ describe("SqlEventJournal", () => {
       )
     }))
 
+  it.effect("journal queries use indexes", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const plan = (query: string) =>
+        sql.unsafe<{ detail: string }>(`EXPLAIN QUERY PLAN ${query}`).pipe(
+          Effect.map((rows) => rows.map((row) => row.detail.replace(/INDEX \S+/, "INDEX <index>")))
+        )
+      assert.deepStrictEqual({
+        conflicts: yield* plan(
+          "SELECT * FROM effect_event_journal WHERE event IN ('a', 'b') AND primary_key IN ('a', 'b') AND timestamp > 0"
+        ),
+        entries: yield* plan("SELECT * FROM effect_event_journal ORDER BY timestamp ASC"),
+        source: yield* plan("SELECT remote_id FROM effect_event_journal_sources WHERE entry_id = x'00'")
+      }, {
+        conflicts: ["SEARCH effect_event_journal USING INDEX <index> (event=? AND primary_key=? AND timestamp>?)"],
+        entries: ["SCAN effect_event_journal USING INDEX <index>"],
+        source: ["SEARCH effect_event_journal_sources USING INDEX <index> (entry_id=?)"]
+      })
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("opens and keeps working on a database created before upload checkpoints", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      // The schema as created by the first release of SqlEventJournal.
+      yield* sql`
+        CREATE TABLE effect_event_journal (
+          id BLOB PRIMARY KEY,
+          event TEXT NOT NULL,
+          primary_key TEXT NOT NULL,
+          payload BLOB NOT NULL,
+          timestamp INTEGER NOT NULL
+        )`
+      yield* sql`
+        CREATE TABLE effect_event_remotes (
+          remote_id BLOB NOT NULL,
+          entry_id BLOB NOT NULL,
+          sequence INT NOT NULL,
+          PRIMARY KEY (remote_id, entry_id)
+        )`
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const local = entry(1000, "Repro", "local")
+      const imported = entry(2000, "Repro", "imported")
+      for (const { event, id, primaryKey, payload, createdAtMillis } of [local, imported]) {
+        yield* sql`INSERT INTO effect_event_journal ${
+          sql.insert({ id, event, primary_key: primaryKey, payload, timestamp: createdAtMillis })
+        }`
+      }
+      yield* sql`INSERT INTO effect_event_remotes ${
+        sql.insert({ remote_id: remoteId, entry_id: imported.id, sequence: 0 })
+      }`
+
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const upload = (remoteId: EventJournal.RemoteId) =>
+        journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries.map((entry) => entry.idString)))
+      assert.deepStrictEqual({
+        remote: yield* upload(remoteId),
+        otherRemote: yield* upload(EventJournal.makeRemoteIdUnsafe())
+      }, {
+        remote: Option.some([local.idString]),
+        otherRemote: Option.some([local.idString, imported.idString])
+      })
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("replaces per-entry remote rows with entry sources in one restartable migration", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const filename = (yield* fs.makeTempDirectoryScoped()) + "/journal.db"
+      const sql = yield* SqliteClient.make({ filename })
+      // A journal written by an unreleased build with upload checkpoints and cursors.
+      yield* sql`
+        CREATE TABLE effect_event_journal (
+          id BLOB PRIMARY KEY,
+          event TEXT NOT NULL,
+          primary_key TEXT NOT NULL,
+          payload BLOB NOT NULL,
+          timestamp INTEGER NOT NULL
+        )`
+      yield* sql`
+        CREATE TABLE effect_event_remotes (
+          remote_id BLOB NOT NULL,
+          entry_id BLOB NOT NULL,
+          sequence INT NOT NULL,
+          PRIMARY KEY (remote_id, entry_id)
+        )`
+      yield* sql`CREATE TABLE effect_event_journal_sequence (sequence INTEGER PRIMARY KEY, entry_id BLOB NOT NULL UNIQUE)`
+      yield* sql`CREATE TABLE effect_event_remotes_checkpoints (remote_id BLOB PRIMARY KEY, sequence INTEGER NOT NULL)`
+      yield* sql`CREATE TABLE effect_event_remotes_cursors (remote_id BLOB PRIMARY KEY, next_sequence INT NOT NULL)`
+      yield* sql`CREATE INDEX effect_event_journal_event_idx ON effect_event_journal (event, primary_key, timestamp)`
+      yield* sql`CREATE INDEX effect_event_journal_timestamp_idx ON effect_event_journal (timestamp)`
+      yield* sql`CREATE INDEX effect_event_remotes_sequence_idx ON effect_event_remotes (remote_id, sequence)`
+
+      const remoteA = EventJournal.makeRemoteIdUnsafe()
+      const remoteB = EventJournal.makeRemoteIdUnsafe()
+      const uploaded = entry(1000, "Repro", "uploaded")
+      const fromA = entry(2000, "Repro", "fromA")
+      // Acknowledged by A, but the upload checkpoint was not saved before a restart.
+      const acked = entry(3000, "Repro", "acked")
+      const fromB = entry(4000, "Repro", "fromB")
+      // Written offline; no remote has it.
+      const pending = entry(5000, "Repro", "pending")
+      for (const { createdAtMillis, event, id, payload, primaryKey } of [uploaded, fromA, acked, fromB, pending]) {
+        yield* sql`INSERT INTO effect_event_journal ${
+          sql.insert({ id, event, primary_key: primaryKey, payload, timestamp: createdAtMillis })
+        }`
+        yield* sql`INSERT INTO effect_event_journal_sequence ${sql.insert({ entry_id: id })}`
+      }
+      yield* sql`INSERT INTO effect_event_remotes ${
+        sql.insert([
+          { remote_id: remoteA, entry_id: fromA.id, sequence: 0 },
+          { remote_id: remoteA, entry_id: acked.id, sequence: 1 },
+          { remote_id: remoteB, entry_id: fromB.id, sequence: 3 }
+        ])
+      }`
+      yield* sql`INSERT INTO effect_event_remotes_checkpoints ${sql.insert({ remote_id: remoteA, sequence: 1 })}`
+      // B has no cursor row, so its download progress is only in the remotes table.
+      yield* sql`INSERT INTO effect_event_remotes_cursors ${sql.insert({ remote_id: remoteA, next_sequence: 2 })}`
+
+      const open = (client: SqlClient.SqlClient) =>
+        SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, client))
+      const failDrop: Statement.Transformer = (statement) =>
+        statement.compile()[0].includes("DROP TABLE")
+          ? Effect.die("interrupted migration")
+          : Effect.succeed(statement)
+      const interrupted = yield* Effect.exit(
+        open(sql).pipe(Effect.provideService(Statement.CurrentTransformer, failDrop))
+      )
+
+      const journal = yield* open(sql)
+      const readonly = yield* open(yield* SqliteClient.make({ filename, readonly: true }))
+      const state = (journal: EventJournal.EventJournal["Service"]) =>
+        Effect.all({
+          entries: Effect.map(journal.entries, (entries) => entries.map((entry) => entry.idString)),
+          nextA: journal.nextRemoteSequence(remoteA),
+          nextB: journal.nextRemoteSequence(remoteB)
+        })
+      const migrated = yield* state(journal)
+      const reopened = yield* state(readonly)
+      const tables = yield* sql<{ name: string }>`SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`
+
+      const fresh = entry(6000, "Repro", "fresh")
+      yield* journal.writeFromRemote({
+        remoteId: remoteB,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 4, entry: fresh })],
+        effect: () => Effect.void
+      })
+      const upload = (remoteId: EventJournal.RemoteId) =>
+        journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries.map((entry) => entry.idString)))
+      const ids = (...entries: ReadonlyArray<EventJournal.Entry>) => entries.map((entry) => entry.idString)
+
+      const expected = {
+        entries: ids(uploaded, fromA, acked, fromB, pending),
+        nextA: 2,
+        nextB: 4
+      }
+      assert.deepStrictEqual({
+        interrupted: Exit.isFailure(interrupted),
+        migrated,
+        reopened,
+        tables: tables.map((table) => table.name),
+        nextB: yield* journal.nextRemoteSequence(remoteB),
+        uploadA: yield* upload(remoteA),
+        uploadB: yield* upload(remoteB),
+        uploadLate: yield* upload(EventJournal.makeRemoteIdUnsafe())
+      }, {
+        interrupted: true,
+        migrated: expected,
+        reopened: expected,
+        tables: [
+          "effect_event_journal",
+          "effect_event_journal_sequence",
+          "effect_event_journal_sources",
+          "effect_event_remotes_checkpoints",
+          "effect_event_remotes_cursors"
+        ],
+        nextB: 5,
+        // Never back to the source, and nothing at or below a checkpoint.
+        uploadA: Option.some(ids(fromB, pending, fresh)),
+        uploadB: Option.some(ids(uploaded, fromA, acked, pending)),
+        uploadLate: Option.some(ids(uploaded, fromA, acked, fromB, pending, fresh))
+      })
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
   for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
     describe(name, () => {
+      it.effect("withRemoteUncommited uploads each entry once, retries failures and forwards older imports", () =>
+        Effect.gen(function*() {
+          const journal = yield* make
+          const remoteId = EventJournal.makeRemoteIdUnsafe()
+          const upload = journal.withRemoteUncommited(
+            remoteId,
+            (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+          )
+          const a = yield* journal.write({ ...localEntry("a"), effect: Effect.succeed })
+          const failed = yield* Effect.exit(journal.withRemoteUncommited(remoteId, () => Effect.fail("upload failed")))
+          const retried = yield* upload
+          // No echo from the remote: a successful upload alone must advance it.
+          const b = yield* journal.write({ ...localEntry("b"), effect: Effect.succeed })
+          const next = yield* upload
+          const older = entry(a.createdAtMillis - 1)
+          yield* journal.writeFromRemote({
+            remoteId: EventJournal.makeRemoteIdUnsafe(),
+            entries: remoteEntries([older]),
+            effect: () => Effect.void
+          })
+          const forwarded = yield* upload
+          const idle = yield* upload
+          assert.deepStrictEqual({ failed: Exit.isFailure(failed), retried, next, forwarded, idle }, {
+            failed: true,
+            retried: Option.some([a.idString]),
+            next: Option.some([b.idString]),
+            forwarded: Option.some([older.idString]),
+            idle: Option.none()
+          })
+        }))
+
       it.effect("writeMany commits and publishes a batch in order only when its callback succeeds", () =>
         Effect.gen(function*() {
           const journal = yield* make
@@ -419,4 +727,43 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(uncommittedCalls, 1)
       assert.deepStrictEqual(seenConflicts, [[], []])
     }))
+
+  it.effect("advances the remote sequence only across acknowledgements that follow it", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const open = SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const ack = (sequence: number, entryId = EventJournal.makeEntryIdUnsafe()) => ({ entryId, sequence })
+      // A database from before the cursors table: every remote row was downloaded.
+      yield* sql`CREATE TABLE effect_event_remotes (
+        remote_id BLOB NOT NULL,
+        entry_id BLOB NOT NULL,
+        sequence INT NOT NULL,
+        PRIMARY KEY (remote_id, entry_id)
+      )`
+      yield* sql`INSERT INTO effect_event_remotes ${
+        sql.insert({ remote_id: remoteId, entry_id: EventJournal.makeEntryIdUnsafe(), sequence: 4 })
+      }`
+      const journal = yield* open
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 5)
+
+      // Sequence 5, written by another replica, has not been downloaded.
+      const local = yield* journal.write({ ...localEntry("local-1"), effect: Effect.succeed })
+      yield* journal.writeRemoteAcks({ remoteId, acks: [ack(6, local.id)] })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 5)
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry: entry(1_000) })],
+        effect: () => Effect.void
+      })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
+      yield* journal.writeRemoteAcks({ remoteId, acks: [ack(7), ack(6, local.id), ack(3)] })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 8)
+      assert.strictEqual(yield* (yield* open).nextRemoteSequence(remoteId), 8)
+
+      // A remote that numbers from 1 can be acknowledged before any download.
+      const otherRemoteId = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.writeRemoteAcks({ remoteId: otherRemoteId, acks: [ack(2), ack(1)], firstSequence: 1 })
+      assert.strictEqual(yield* journal.nextRemoteSequence(otherRemoteId), 3)
+    }).pipe(Effect.provide(Reactivity.layer)))
 })

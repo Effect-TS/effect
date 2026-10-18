@@ -2586,7 +2586,9 @@ The default formatter chooses the error label from the level that failed:
 
 An `identifier` does not name a failed filter. Use `expected` to name the
 filter in the default formatter, or `message` to replace the filter failure
-message completely.
+message completely. A filter's `message` annotation also overrides messages
+returned by the filter, whether they are returned directly or attached to a
+nested path. Without a `message` annotation, returned messages are preserved.
 
 **Example** (Schema identifier versus filter expected message)
 

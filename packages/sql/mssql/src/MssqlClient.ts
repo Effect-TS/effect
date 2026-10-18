@@ -20,6 +20,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Rec from "effect/Record"
@@ -607,6 +608,14 @@ export const make = (
     )
 
     const transactionService = TransactionConnection(clientIdCounter++)
+    // Inside `withTransaction`, statements and procedures use its connection.
+    const getConnection = Effect.flatMap(
+      Effect.serviceOption(transactionService),
+      Option.match({
+        onNone: () => acquireConnection,
+        onSome: ([conn]) => Effect.succeed(conn)
+      })
+    )
 
     const withTransaction = Client.makeWithTransaction({
       transactionService,
@@ -647,9 +656,9 @@ export const make = (
           A
         >(
           procedure: Procedure.ProcedureWithValues<I, O, A>
-        ) => Effect.scoped(Effect.flatMap(acquireConnection, (_) => _.call(procedure, transformRows))),
+        ) => Effect.scoped(Effect.flatMap(getConnection, (_) => _.call(procedure, transformRows))),
         withoutTransforms() {
-          const statement = Statement.make(acquireConnection, compiler.withoutTransform, spanAttributes, undefined)
+          const statement = Statement.make(getConnection, compiler.withoutTransform, spanAttributes, undefined)
           const client = Object.assign(
             statement,
             this,
@@ -661,7 +670,7 @@ export const make = (
                 A
               >(
                 procedure: Procedure.ProcedureWithValues<I, O, A>
-              ) => Effect.scoped(Effect.flatMap(acquireConnection, (_) => _.call(procedure, undefined)))
+              ) => Effect.scoped(Effect.flatMap(getConnection, (_) => _.call(procedure, undefined)))
             }
           )
           ;(client as any).safe = client

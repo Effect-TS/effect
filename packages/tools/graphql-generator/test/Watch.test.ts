@@ -189,19 +189,18 @@ describe("graphqlgen --watch", () => {
               options?.onReady?.()
               return Stream.fromSubscription(subscription)
             })),
-          readDirectory: (directory, options) =>
-            Effect.gen(function*() {
-              if (directory === parent) {
-                yield* Deferred.succeed(scanningParent, undefined)
-                yield* Deferred.await(releaseParent)
-              } else if (directory === nested) {
-                yield* Deferred.succeed(scanningNested, undefined)
-                yield* Deferred.await(holdNested).pipe(
-                  Effect.ensuring(Deferred.succeed(discoveryCancelled, undefined))
-                )
-              }
-              return yield* fs.readDirectory(directory, options)
-            }),
+          readDirectory: Effect.fnUntraced(function*(directory, options) {
+            if (directory === parent) {
+              yield* Deferred.succeed(scanningParent, undefined)
+              yield* Deferred.await(releaseParent)
+            } else if (directory === nested) {
+              yield* Deferred.succeed(scanningNested, undefined)
+              yield* Deferred.await(holdNested).pipe(
+                Effect.ensuring(Deferred.succeed(discoveryCancelled, undefined))
+              )
+            }
+            return yield* fs.readDirectory(directory, options)
+          }),
           stat: (file) =>
             fs.stat(file).pipe(Effect.tap(() => {
               // The create handler stats D first; the initial scan discovers it second.

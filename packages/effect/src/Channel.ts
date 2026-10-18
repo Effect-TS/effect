@@ -1749,6 +1749,7 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
   readonly writable: WritableStream<A>
   readonly onError: (error: unknown) => E
   readonly closeOnDone?: boolean | undefined
+  readonly onAbort?: ((cause: Cause.Cause<IE | E>) => void) | undefined
 }): Pull.Pull<never, IE | E, unknown> =>
   Effect.acquireUseRelease(
     Effect.sync(() => options.writable.getWriter()),
@@ -1779,10 +1780,11 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
         : loop
       return Effect.onError(
         withClose,
-        (cause) =>
-          Pull.isDoneCause(cause)
-            ? Effect.void
-            : Effect.promise(() => writer.abort(cause).catch(constVoid))
+        (cause) => {
+          if (Pull.isDoneCause(cause)) return Effect.void
+          options.onAbort?.(cause as Cause.Cause<IE | E>)
+          return Effect.promise(() => writer.abort(cause).catch(constVoid))
+        }
       )
     },
     (writer) => Effect.sync(() => writer.releaseLock())
@@ -1873,7 +1875,12 @@ export const fromTransformStream = <IE, I, O, E>(options: {
       pull: upstream,
       writable: transform.writable,
       onError: options.onError,
-      closeOnDone: options.closeOnDone
+      closeOnDone: options.closeOnDone,
+      // Aborting errors the readable, so record the failure first. Otherwise a
+      // pending read reports the abort reason instead.
+      onAbort: (cause) => {
+        exit.current = Exit.failCause(cause)
+      }
     }).pipe(
       Effect.catchCause((cause) => {
         if (!Pull.isDoneCause(cause)) {

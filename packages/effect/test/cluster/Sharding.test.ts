@@ -140,11 +140,10 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         { defectRetryPolicy: Schedule.forever }
       ).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
-        resetRequests: (ids) =>
-          Effect.gen(function*() {
-            released.push(...ids)
-            yield* storage.resetRequests(ids)
-          }),
+        resetRequests: Effect.fnUntraced(function*(ids) {
+          released.push(...ids)
+          yield* storage.resetRequests(ids)
+        }),
         unprocessedMessages: (shards, options) =>
           storage.unprocessedMessages(shards, options).pipe(
             Effect.tap((messages) =>
@@ -210,20 +209,18 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           .annotate(ClusterSchema.Uninterruptible, true)
       ])
       const layer = Restarting.toLayer({
-        Run: () =>
-          Effect.gen(function*() {
-            starts++
-            active++
-            yield* Queue.offer(started, starts)
-            return yield* Effect.never
-          }).pipe(Effect.ensuring(Effect.sync(() => active--)))
+        Run: Effect.fnUntraced(function*() {
+          starts++
+          active++
+          yield* Queue.offer(started, starts)
+          return yield* Effect.never
+        }, Effect.ensuring(Effect.sync(() => active--)))
       }).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
-        resetRequests: (ids) =>
-          Effect.gen(function*() {
-            released.push(...ids)
-            yield* storage.resetRequests(ids)
-          }),
+        resetRequests: Effect.fnUntraced(function*(ids) {
+          released.push(...ids)
+          yield* storage.resetRequests(ids)
+        }),
         unprocessedMessages: (shards, options) =>
           storage.unprocessedMessages(shards, options).pipe(
             Effect.tap((messages) =>
@@ -323,11 +320,10 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           storage.saveEnvelope(message).pipe(
             Effect.tap(() => message.envelope._tag === "AckChunk" ? Deferred.succeed(acked, void 0) : Effect.void)
           ),
-        resetRequests: (ids) =>
-          Effect.gen(function*() {
-            released.push(...ids)
-            yield* storage.resetRequests(ids)
-          }),
+        resetRequests: Effect.fnUntraced(function*(ids) {
+          released.push(...ids)
+          yield* storage.resetRequests(ids)
+        }),
         unprocessedMessages: (shards, options) =>
           storage.unprocessedMessages(shards, options).pipe(
             Effect.tap((messages) =>
@@ -388,22 +384,20 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
             failedReleases.push(...ids)
             return Effect.fail(new ClusterError.PersistenceError({ cause: "injected targeted release failure" }))
           }),
-        resetAddresses: (addresses) =>
-          Effect.gen(function*() {
-            cappedReleases.push(...addresses)
-            yield* storage.resetAddresses(addresses)
-          }),
-        unprocessedMessages: (shards, options) =>
-          Effect.gen(function*() {
-            if (pauseNextRead) {
-              pauseNextRead = false
-              yield* Deferred.succeed(readStarted, void 0)
-              yield* Deferred.await(releaseRead)
-            }
-            const messages = yield* storage.unprocessedMessages(shards, options)
-            for (const message of messages) claimed.push(message.envelope.address.entityId)
-            return messages
-          })
+        resetAddresses: Effect.fnUntraced(function*(addresses) {
+          cappedReleases.push(...addresses)
+          yield* storage.resetAddresses(addresses)
+        }),
+        unprocessedMessages: Effect.fnUntraced(function*(shards, options) {
+          if (pauseNextRead) {
+            pauseNextRead = false
+            yield* Deferred.succeed(readStarted, void 0)
+            yield* Deferred.await(releaseRead)
+          }
+          const messages = yield* storage.unprocessedMessages(shards, options)
+          for (const message of messages) claimed.push(message.envelope.address.entityId)
+          return messages
+        })
       }))))
     }))
 
@@ -453,17 +447,16 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         )
       }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
-        unprocessedMessages: (shardIds, options) =>
-          Effect.gen(function*() {
-            if (pauseNextRead) {
-              pauseNextRead = false
-              yield* Deferred.succeed(readStarted, void 0)
-              yield* Deferred.await(releaseRead)
-            }
-            const messages = yield* storage.unprocessedMessages(shardIds, options)
-            for (const message of messages) claimed.push(message.envelope.requestId)
-            return messages
-          })
+        unprocessedMessages: Effect.fnUntraced(function*(shardIds, options) {
+          if (pauseNextRead) {
+            pauseNextRead = false
+            yield* Deferred.succeed(readStarted, void 0)
+            yield* Deferred.await(releaseRead)
+          }
+          const messages = yield* storage.unprocessedMessages(shardIds, options)
+          for (const message of messages) claimed.push(message.envelope.requestId)
+          return messages
+        })
       }))))
     }))
 })
@@ -533,36 +526,33 @@ describe.concurrent("Sharding", () => {
             expect(Queue.sizeUnsafe(state.envelopes)).toEqual(0)
           }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
             ...storage,
-            resetRequests: (ids) =>
-              Effect.gen(function*() {
-                released.push(...ids)
-                yield* storage.resetRequests(ids)
-              }),
-            unprocessedMessages: (shards, options) =>
-              Effect.gen(function*() {
-                if (pauseNextRead) {
-                  pauseNextRead = false
-                  yield* Deferred.succeed(readStarted, void 0)
-                  yield* Deferred.await(releaseRead)
-                }
-                const messages = yield* storage.unprocessedMessages(shards, options)
-                return messages.map((message) =>
-                  message._tag !== "IncomingRequest" ?
-                    message :
-                    new Message.IncomingRequest({
-                      ...message,
-                      respond: (reply) =>
-                        Effect.gen(function*() {
-                          yield* message.respond(reply)
-                          if (pauseNextReply) {
-                            pauseNextReply = false
-                            yield* Deferred.succeed(replyPublished, void 0)
-                            yield* Deferred.await(releaseReply)
-                          }
-                        })
+            resetRequests: Effect.fnUntraced(function*(ids) {
+              released.push(...ids)
+              yield* storage.resetRequests(ids)
+            }),
+            unprocessedMessages: Effect.fnUntraced(function*(shards, options) {
+              if (pauseNextRead) {
+                pauseNextRead = false
+                yield* Deferred.succeed(readStarted, void 0)
+                yield* Deferred.await(releaseRead)
+              }
+              const messages = yield* storage.unprocessedMessages(shards, options)
+              return messages.map((message) =>
+                message._tag !== "IncomingRequest" ?
+                  message :
+                  new Message.IncomingRequest({
+                    ...message,
+                    respond: Effect.fnUntraced(function*(reply) {
+                      yield* message.respond(reply)
+                      if (pauseNextReply) {
+                        pauseNextReply = false
+                        yield* Deferred.succeed(replyPublished, void 0)
+                        yield* Deferred.await(releaseReply)
+                      }
                     })
-                )
-              })
+                  })
+              )
+            })
           }))))
         })
     )
@@ -3519,13 +3509,12 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
   const makeOwnedScope = Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
   // Open teardown gates before closing scopes, including on assertion failure.
   const makeGate = Effect.acquireRelease(Effect.sync(() => Latch.makeUnsafe()), (gate) => gate.open)
-  const advanceUntil = (done: () => boolean) =>
-    Effect.gen(function*() {
-      for (let i = 0; i < 100 && !done(); i++) {
-        yield* TestClock.adjust(10)
-      }
-      assert.isTrue(done())
-    })
+  const advanceUntil = Effect.fnUntraced(function*(done: () => boolean) {
+    for (let i = 0; i < 100 && !done(); i++) {
+      yield* TestClock.adjust(10)
+    }
+    assert.isTrue(done())
+  })
   const buildSharding = Effect.fnUntraced(function*(
     storageState: FailoverStorageState,
     config?: Partial<ShardingConfig.ShardingConfig["Service"]>,

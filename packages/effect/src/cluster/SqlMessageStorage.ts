@@ -277,9 +277,35 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
+  // Read SQLite IDs as text to avoid rounding on number-returning drivers
+  // such as Durable Objects.
+  const idsAsText = sql.onDialectOrElse({
+    sqlite: () => true,
+    orElse: () => false
+  })
+  const idAs = (column: string, alias: string) =>
+    idsAsText ? `CAST(${column} AS TEXT) AS ${alias}` : `${column} AS ${alias}`
+  const replyJoinColumns = "r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence"
+  const messageColumns = idsAsText
+    ? `${idAs("m.id", "id")}, m.message_id, m.shard_id, m.entity_type, m.entity_id, m.kind, m.tag, m.payload, ` +
+      `m.headers, m.trace_id, m.span_id, m.sampled, m.processed, ${idAs("m.request_id", "request_id")}, ` +
+      `${idAs("m.reply_id", "reply_id")}, ${idAs("m.last_reply_id", "last_reply_id")}, m.last_read, m.deliver_at`
+    : "m.*"
+
+  const idColumn = sql.literal(idAs("id", "id"))
+  const replyColumns = sql.literal(
+    `${idAs("id", "id")}, kind, ${idAs("request_id", "request_id")}, payload, sequence`
+  )
+  const duplicateColumns = sql.literal(
+    `${idAs("m.id", "id")}, ${idAs("r.id", "reply_id")}, ${replyJoinColumns}`
+  )
+  const messageJoinColumns = sql.literal(
+    `${messageColumns}, ${idAs("r.id", "reply_reply_id")}, ${replyJoinColumns}`
+  )
+
   const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
     sql`
-      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+      SELECT ${duplicateColumns}
       FROM ${messagesTableSql} m
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
@@ -459,7 +485,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
       `,
     orElse: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
       sql<MessageJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        SELECT ${messageJoinColumns}
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
@@ -630,11 +656,11 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     requestIdForPrimaryKey: (primaryKey) =>
       messageIdForPrimaryKey(primaryKey).pipe(
         Effect.flatMap((messageId) =>
-          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+          sql<{ id: string | bigint }>`SELECT ${idColumn} FROM ${messagesTableSql} WHERE message_id = ${messageId}`
         ),
         Effect.flatMap((rows) =>
           rows.length === 0 && mayHaveLegacyRow(primaryKey)
-            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            ? sql<{ id: string | bigint }>`SELECT ${idColumn} FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
             : Effect.succeed(rows)
         ),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
@@ -649,7 +675,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
       // - the kind is WithExit
       // - or the kind is Chunk and has not been acked yet
       sql<ReplyRow>`
-        SELECT id, kind, request_id, payload, sequence
+        SELECT ${replyColumns}
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
         AND (
@@ -669,7 +695,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
 
     repliesForUnfiltered: (requestIds) =>
       sql<ReplyRow>`
-        SELECT id, kind, request_id, payload, sequence
+        SELECT ${replyColumns}
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
         ORDER BY rowid ASC
@@ -705,7 +731,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     unprocessedMessagesById(ids, now) {
       const idArr = Array.from(ids, (id) => String(id))
       return sql<MessageRow & ReplyJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        SELECT ${messageJoinColumns}
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.id IN (${sql.literal(idArr.join(","))})
@@ -967,17 +993,16 @@ export const migrations = (options?: {
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
-        pg: () =>
-          Effect.gen(function*() {
-            yield* sql`
+        pg: Effect.fnUntraced(function*() {
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
               ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
             `
-            yield* sql`
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
               ON ${messagesTableSql} (request_id)
             `
-          }),
+        }),
         orElse: () =>
           // sqlite
           Effect.all([

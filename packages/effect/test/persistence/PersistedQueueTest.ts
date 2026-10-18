@@ -10,25 +10,23 @@ const Item = Schema.Struct({
 
 // advance the virtual clock one poll cycle, give real-time stores a moment,
 // then check the forked take is still waiting
-const assertNotDelivered = <A, E>(fiber: Fiber.Fiber<A, E>) =>
-  Effect.gen(function*() {
-    yield* TestClock.adjust(1000)
-    yield* Effect.sleep(1000).pipe(TestClock.withLive)
-    assert.isUndefined(fiber.pollUnsafe())
-  })
+const assertNotDelivered = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
+  yield* TestClock.adjust(1000)
+  yield* Effect.sleep(1000).pipe(TestClock.withLive)
+  assert.isUndefined(fiber.pollUnsafe())
+})
 
 // advance both clocks until the forked take completes, including acknowledgement.
 // Keep advancing while it is pending: an SQL poll can miss a virtual-clock
 // wakeup, and acknowledgement retries also sleep on the virtual clock.
-const awaitDelivery = <A, E>(fiber: Fiber.Fiber<A, E>) =>
-  Effect.gen(function*() {
-    for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
-      yield* TestClock.adjust(1000)
-      yield* Effect.sleep(700).pipe(TestClock.withLive)
-    }
-    assert.isDefined(fiber.pollUnsafe())
-    return yield* Fiber.join(fiber)
-  })
+const awaitDelivery = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
+  for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
+    yield* TestClock.adjust(1000)
+    yield* Effect.sleep(700).pipe(TestClock.withLive)
+  }
+  assert.isDefined(fiber.pollUnsafe())
+  return yield* Fiber.join(fiber)
+})
 
 // move both the virtual clock and real time past a 1 second ttl. The virtual
 // jump is kept small: a large jump can fire the SQL clients' pool timers and

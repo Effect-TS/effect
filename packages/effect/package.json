@@ -138,8 +138,8 @@
     "fake-indexeddb": "^6.2.5",
     "immer": "^11.1.21",
     "miniflare": "5.20260925.0-alpha",
-    "protobufjs": "^8.8.0",
-    "tinybench": "^6.2.1",
+    "protobufjs": "^8.8.1",
+    "tinybench": "^6.2.2",
     "valibot": "^1.5.0"
   }
 }
