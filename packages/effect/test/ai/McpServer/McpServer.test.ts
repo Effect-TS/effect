@@ -328,31 +328,30 @@ describe("McpServer", () => {
         yield* server.addTool({
           tool: new McpSchema.Tool({ name: "Authorize", inputSchema: { type: "object" } }),
           annotations: Context.empty(),
-          handle: () =>
-            Effect.gen(function*() {
-              const client = yield* Effect.serviceOption(McpSchema.McpServerClient).pipe(
-                Effect.flatMap(Effect.fromOption)
-              )
-              yield* client.getClient.pipe(
-                Effect.flatMap((reverseClient) =>
-                  reverseClient.elicit(
-                    Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)({
-                      mode: "url",
-                      message: "Authorize access",
-                      url: "https://example.com/authorize",
-                      elicitationId: "authorization-1"
-                    })
-                  )
-                ),
-                Effect.scoped
-              )
-              yield* Deferred.await(authorizationCompleted)
-              yield* server.notifyElicitationComplete({
-                clientId: client.clientId,
-                elicitationId: "authorization-1"
-              })
-              return new McpSchema.CallToolResult({ content: [{ type: "text", text: "Authorized" }] })
-            }).pipe(Effect.orDie)
+          handle: Effect.fnUntraced(function*() {
+            const client = yield* Effect.serviceOption(McpSchema.McpServerClient).pipe(
+              Effect.flatMap(Effect.fromOption)
+            )
+            yield* client.getClient.pipe(
+              Effect.flatMap((reverseClient) =>
+                reverseClient.elicit(
+                  Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)({
+                    mode: "url",
+                    message: "Authorize access",
+                    url: "https://example.com/authorize",
+                    elicitationId: "authorization-1"
+                  })
+                )
+              ),
+              Effect.scoped
+            )
+            yield* Deferred.await(authorizationCompleted)
+            yield* server.notifyElicitationComplete({
+              clientId: client.clientId,
+              elicitationId: "authorization-1"
+            })
+            return new McpSchema.CallToolResult({ content: [{ type: "text", text: "Authorized" }] })
+          }, (_) => Effect.orDie(_))
         })
       }))
       const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
@@ -415,13 +414,12 @@ describe("McpServer", () => {
             yield* server.addTool({
               tool: new McpSchema.Tool({ name: "Capture", inputSchema: { type: "object" } }),
               annotations: Context.empty(),
-              handle: () =>
-                Effect.gen(function*() {
-                  const context = yield* McpSchema.McpRequestContext
-                  references.push(new WeakRef(context.requestMetadata!))
-                  controls.push(new WeakRef({ unrelated: true }))
-                  return new McpSchema.CallToolResult({ content: [] })
-                })
+              handle: Effect.fnUntraced(function*() {
+                const context = yield* McpSchema.McpRequestContext
+                references.push(new WeakRef(context.requestMetadata!))
+                controls.push(new WeakRef({ unrelated: true }))
+                return new McpSchema.CallToolResult({ content: [] })
+              })
             })
           })).pipe(Layer.provideMerge(makeServerLayer({
             name: "HttpRequestLifecycle",
@@ -494,18 +492,17 @@ describe("McpServer", () => {
         yield* Layer.build(
           McpServer.toolkit(toolkit).pipe(
             Layer.provide(toolkit.toLayer({
-              Probe: () =>
-                Effect.gen(function*() {
-                  const client = yield* McpSchema.McpServerClient
-                  refs.set(client.clientId, new WeakRef(client.clientInfo))
-                  if (client.clientId === 2) return "control"
-                  yield* McpServer.elicit({ message: "Approve", schema: Schema.Struct({ approved: Schema.Boolean }) })
-                    .pipe(
-                      Effect.orDie,
-                      Effect.onInterrupt(() => Deferred.succeed(cancelled, undefined))
-                    )
-                  return "done"
-                })
+              Probe: Effect.fnUntraced(function*() {
+                const client = yield* McpSchema.McpServerClient
+                refs.set(client.clientId, new WeakRef(client.clientInfo))
+                if (client.clientId === 2) return "control"
+                yield* McpServer.elicit({ message: "Approve", schema: Schema.Struct({ approved: Schema.Boolean }) })
+                  .pipe(
+                    Effect.orDie,
+                    Effect.onInterrupt(() => Deferred.succeed(cancelled, undefined))
+                  )
+                return "done"
+              })
             })),
             Layer.provide(
               McpServer.layer({ name: "ReverseLifetime", version: "1", protocols: [McpProtocol.v2025_11_25] }).pipe(
@@ -653,12 +650,11 @@ describe("McpServer", () => {
           server.addTool({
             tool: new McpSchema.Tool({ name: "Emit", inputSchema: { type: "object" } }),
             annotations: Context.empty(),
-            handle: () =>
-              Effect.gen(function*() {
-                yield* server.notifications["notifications/message"]({ level: "warning", data: "filtered" })
-                yield* server.notifications["notifications/message"]({ level: "error", data: "delivered" })
-                return new McpSchema.CallToolResult({ content: [] })
-              })
+            handle: Effect.fnUntraced(function*() {
+              yield* server.notifications["notifications/message"]({ level: "warning", data: "filtered" })
+              yield* server.notifications["notifications/message"]({ level: "error", data: "delivered" })
+              return new McpSchema.CallToolResult({ content: [] })
+            })
           })
         )).pipe(Layer.provideMerge(makeServerLayer({
           name: "SessionLogLevel",
@@ -864,16 +860,15 @@ describe("McpServer", () => {
       const transport = yield* RpcServer.Protocol.make((write) =>
         Deferred.succeed(ready, write).pipe(Effect.as({
           disconnects,
-          send: (clientId, message) =>
-            Effect.gen(function*() {
-              if (
-                clientId === 1 && message._tag === "Request" && (message.payload as { data?: string }).data === "first"
-              ) {
-                yield* Deferred.succeed(blocked, undefined)
-                yield* Deferred.await(release)
-              }
-              yield* Queue.offer(outbound, { clientId, message })
-            }),
+          send: Effect.fnUntraced(function*(clientId, message) {
+            if (
+              clientId === 1 && message._tag === "Request" && (message.payload as { data?: string }).data === "first"
+            ) {
+              yield* Deferred.succeed(blocked, undefined)
+              yield* Deferred.await(release)
+            }
+            yield* Queue.offer(outbound, { clientId, message })
+          }),
           end: () => Effect.void,
           clientIds: Effect.succeed(new Set([1, 2])),
           initialMessage: Effect.succeedNone,
@@ -892,20 +887,21 @@ describe("McpServer", () => {
       yield* server.addTool({
         tool: new McpSchema.Tool({ name: "Log", inputSchema: { type: "object" } }),
         annotations: Context.empty(),
-        handle: () =>
-          Effect.gen(function*() {
-            yield* Effect.forEach(["first", "second"], (data) =>
-              server.notifications["notifications/message"]({ level: "error", data }), { concurrency: "unbounded" })
-            if ((yield* McpSchema.McpRequestContext).clientId === 2) {
-              yield* server.addTool({
-                tool: new McpSchema.Tool({ name: "Dynamic", inputSchema: { type: "object" } }),
-                annotations: Context.empty(),
-                handle: () =>
-                  Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
-              })
-            }
-            return new McpSchema.CallToolResult({ content: [] })
-          })
+        handle: Effect.fnUntraced(function*() {
+          yield* Effect.forEach(
+            ["first", "second"],
+            (data) => server.notifications["notifications/message"]({ level: "error", data }),
+            { concurrency: "unbounded" }
+          )
+          if ((yield* McpSchema.McpRequestContext).clientId === 2) {
+            yield* server.addTool({
+              tool: new McpSchema.Tool({ name: "Dynamic", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+            })
+          }
+          return new McpSchema.CallToolResult({ content: [] })
+        })
       })
       const take = Effect.fnUntraced(function*(clientId: number) {
         const event = yield* Queue.take(outbound)
@@ -1198,8 +1194,8 @@ describe("McpServer", () => {
         yield* server.addTool({
           tool: new McpSchema.Tool({ name: "register", inputSchema: { type: "object" } }),
           annotations: Context.empty(),
-          handle: () =>
-            Effect.gen(function*() {
+          handle: Effect.fnUntraced(
+            function*() {
               yield* McpServer.registerResource({ uri: "file:///owner", name: "owner", content: currentOwner })
               yield* McpServer.registerResource`file:///owners/${Schema.String}`({
                 name: "owners",
@@ -1216,10 +1212,10 @@ describe("McpServer", () => {
                 Effect.provide(toolkit.toLayer({ owner: () => currentOwner }))
               )
               return new McpSchema.CallToolResult({ content: [] })
-            }).pipe(
-              Effect.provideService(McpServer.McpServer, server),
-              Effect.provideService(RegistrationLabel, "registered")
-            )
+            },
+            Effect.provideService(McpServer.McpServer, server),
+            Effect.provideService(RegistrationLabel, "registered")
+          )
         })
         yield* server.callTool({ name: "register" }).pipe(Effect.provideService(McpSchema.McpServerClient, alice))
         return server
@@ -2377,8 +2373,8 @@ describe("McpServer", () => {
         yield* server.addTool({
           tool: new McpSchema.Tool({ name: "Authorize", inputSchema: { type: "object" } }),
           annotations: Context.empty(),
-          handle: () =>
-            Effect.gen(function*() {
+          handle: Effect.fnUntraced(
+            function*() {
               const client = yield* Effect.serviceOption(McpSchema.McpServerClient).pipe(
                 Effect.flatMap(Effect.fromOption)
               )
@@ -2392,11 +2388,11 @@ describe("McpServer", () => {
                 })
               )
               return new McpSchema.CallToolResult({ content: [] })
-            }).pipe(
-              Effect.scoped,
-              Effect.orDie,
-              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
-            )
+            },
+            (_) => Effect.scoped(_),
+            (_) => Effect.orDie(_),
+            Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+          )
         })
       }))
       const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
@@ -3024,13 +3020,12 @@ describe("McpServer", () => {
         yield* fixture.server.addTool({
           tool: new McpSchema.Tool({ name: "Emit", inputSchema: { type: "object" } }),
           annotations: Context.empty(),
-          handle: () =>
-            Effect.gen(function*() {
-              yield* fixture.server.notifications["notifications/message"]({ level: "info", data: "filtered" })
-              yield* fixture.server.notifications["notifications/message"]({ level: "error", data: "delivered" })
-              yield* fixture.server.notifications["notifications/progress"]({ progressToken: "token", progress: 1 })
-              return new McpSchema.CallToolResult({ content: [] })
-            })
+          handle: Effect.fnUntraced(function*() {
+            yield* fixture.server.notifications["notifications/message"]({ level: "info", data: "filtered" })
+            yield* fixture.server.notifications["notifications/message"]({ level: "error", data: "delivered" })
+            yield* fixture.server.notifications["notifications/progress"]({ progressToken: "token", progress: 1 })
+            return new McpSchema.CallToolResult({ content: [] })
+          })
         })
         yield* fixture.initialize()
         yield* fixture.takeFrame

@@ -110,7 +110,7 @@
       "namespaceImportPackages": [],
       "includeSuggestionsInTsc": false,
       "ignoreEffectWarningsInTscExitCode": true,
-      "ignoreEffectErrorsInTscExitCode": true,
+      "ignoreEffectErrorsInTscExitCode": false,
       "overrides": [
         {
           "include": ["**/typetest/**/*.ts"],
@@ -125,7 +125,7 @@
         "unknownInEffectCatch": "off",
         "multipleEffectProvide": "off",
         "unstableApiUsage": "off",
-        "effectFnOpportunity": "off" // TODO: Convert test helpers returning Effect.gen to Effect.fnUntraced, then set to "error"
+        "effectFnOpportunity": "error"
       }
     }]
   }

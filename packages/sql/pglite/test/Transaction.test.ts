@@ -5,13 +5,12 @@ import { TestClock } from "effect/testing"
 
 const ClientLayer = PgliteClient.layer({})
 
-const setup = (table: string) =>
-  Effect.gen(function*() {
-    const sql = yield* PgliteClient.PgliteClient
-    yield* sql.unsafe(`CREATE TABLE IF NOT EXISTS ${table} (id SERIAL PRIMARY KEY, name TEXT)`)
-    yield* sql.unsafe(`TRUNCATE TABLE ${table} RESTART IDENTITY`)
-    return sql
-  })
+const setup = Effect.fnUntraced(function*(table: string) {
+  const sql = yield* PgliteClient.PgliteClient
+  yield* sql.unsafe(`CREATE TABLE IF NOT EXISTS ${table} (id SERIAL PRIMARY KEY, name TEXT)`)
+  yield* sql.unsafe(`TRUNCATE TABLE ${table} RESTART IDENTITY`)
+  return sql
+})
 
 describe("PgliteClient transactions", () => {
   layer(ClientLayer, { timeout: "30 seconds" })((it) => {

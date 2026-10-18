@@ -225,13 +225,12 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL
 })
 
 // polls a condition on the live clock until it holds or the rounds run out
-const waitFor = <E>(condition: () => Effect.Effect<boolean, E>) =>
-  Effect.gen(function*() {
-    for (let i = 0; i < 100; i++) {
-      if (yield* condition()) return
-      yield* Effect.sleep(100)
-    }
-  })
+const waitFor = Effect.fnUntraced(function*<E>(condition: () => Effect.Effect<boolean, E>) {
+  for (let i = 0; i < 100; i++) {
+    if (yield* condition()) return
+    yield* Effect.sleep(100)
+  }
+})
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("Persistence SQL cleanup", (it) => {
   it.effect("deletes expired entries in batches", () =>
