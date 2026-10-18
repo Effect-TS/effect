@@ -275,8 +275,10 @@ export class ChunkedMessage
 }
 
 /**
- * Schema for a written entry's id and server-assigned sequence. Duplicate
- * entries retain their original sequence.
+ * Schema for a written entry's id and a sequence at which the server stores
+ * it. Entries the server already held keep their stored sequence. When a write
+ * stores an entry again, as part of a partly known batch, it is acknowledged at
+ * its new position.
  *
  * @stability unstable
  * @category protocols

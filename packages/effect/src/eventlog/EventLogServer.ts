@@ -307,20 +307,21 @@ export class ConnectionWrites {
     if (open === undefined || options.entryIds.length === 0) return write
     const streams = Array.from(open)
     const ids = options.entryIds.map(Uuid.stringify)
-    // Track before writing: storage can publish an entry before the write returns.
+    // Track before writing: storage can publish an entry before the write
+    // returns. Each occurrence is counted, as an id can be stored more than once.
     for (const stream of streams) {
-      for (const id of ids) stream.ids.add(id)
+      for (const id of ids) stream.ids.set(id, (stream.ids.get(id) ?? 0) + 1)
     }
     return Effect.onExit(write, (exit) =>
       Effect.sync(() => {
         for (const stream of streams) {
           if (exit._tag === "Failure") {
-            for (const id of ids) stream.ids.delete(id)
+            for (const id of ids) release(stream.ids, id)
             continue
           }
-          // Entries already passed by the stream will not be published again.
+          // Occurrences already passed by the stream will not be published again.
           for (const ack of exit.value) {
-            if (ack.sequence <= stream.position) stream.ids.delete(Uuid.stringify(ack.entryId))
+            if (ack.sequence <= stream.position) release(stream.ids, Uuid.stringify(ack.entryId))
           }
         }
       }))
@@ -344,7 +345,7 @@ export class ConnectionWrites {
   ): Stream.Stream<A, E, R> {
     return Stream.suspend(() => {
       const key = makeStreamKey(options.publicKey, options.storeId)
-      const state: ConnectionStream = { ids: new Set(), position: -1 }
+      const state: ConnectionStream = { ids: new Map(), position: -1 }
       let open = this.streams.get(key)
       if (open === undefined) {
         open = new Set()
@@ -357,11 +358,10 @@ export class ConnectionWrites {
           if (sequence > state.position) state.position = sequence
           if (state.ids.size === 0) return true
           // An item is written by one request, so it is either all or none of ours.
-          let own = true
-          for (const id of options.entryIds(item)) {
-            if (!state.ids.delete(Uuid.stringify(id))) own = false
-          }
-          return !own
+          const ids = options.entryIds(item).map(Uuid.stringify)
+          if (!ids.every((id) => state.ids.has(id))) return true
+          for (const id of ids) release(state.ids, id)
+          return false
         }),
         Stream.ensuring(Effect.sync(() => {
           open.delete(state)
@@ -373,8 +373,16 @@ export class ConnectionWrites {
 }
 
 interface ConnectionStream {
-  readonly ids: Set<string>
+  // Outstanding occurrences of this connection's writes, by entry id.
+  readonly ids: Map<string, number>
   position: number
+}
+
+const release = (ids: Map<string, number>, id: string): void => {
+  const count = ids.get(id)
+  if (count === undefined) return
+  if (count <= 1) ids.delete(id)
+  else ids.set(id, count - 1)
 }
 
 const makeStreamKey = (publicKey: string, storeId: StoreId): string => `${publicKey}/${storeId}`

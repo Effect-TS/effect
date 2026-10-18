@@ -77,7 +77,7 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
       if (request.batches.length === 0) return []
       const entryIds = request.batches.flatMap((batch) => batch.entryIds)
       return yield* storage.write(request.publicKey, request.storeId, request.batches).pipe(
-        Effect.flatMap((stored) => toWriteAcks(storage, request.publicKey, request.storeId, entryIds, stored)),
+        Effect.flatMap((stored) => toWriteAcks(storage, request.publicKey, request.storeId, request.batches, stored)),
         (write) => writes.track({ publicKey: request.publicKey, storeId: request.storeId, entryIds }, write),
         Effect.catchCause((_) =>
           Effect.fail(
@@ -106,33 +106,52 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
   })
 }))
 
-// Entries of skipped batches keep the sequences they were first stored at.
+// Acknowledges each entry occurrence in request order: at its position in the
+// batch this write stored, or, for a skipped batch, where it was first stored.
 const toWriteAcks = Effect.fnUntraced(function*(
   storage: Storage["Service"],
   publicKey: string,
   storeId: StoreId,
-  entryIds: ReadonlyArray<EntryId>,
+  batches: ReadonlyArray<EncryptedBatch>,
   stored: ReadonlyArray<EncryptedRemoteBatch>
 ) {
-  const sequences = new Map<string, number>()
-  for (const batch of stored) {
-    for (let i = 0; i < batch.entryIds.length; i++) {
-      sequences.set(Uuid.stringify(batch.entryIds[i]), batch.sequence + i)
+  const acks: Array<{ readonly entryId: EntryId; sequence: number | undefined }> = []
+  const skipped: Array<EntryId> = []
+  // Stored batches keep request order, and each batch has its own random iv.
+  let next = 0
+  for (const batch of batches) {
+    const storedBatch = stored[next]
+    if (storedBatch !== undefined && isSameBatch(storedBatch, batch)) {
+      next++
+      for (let i = 0; i < batch.entryIds.length; i++) {
+        acks.push({ entryId: batch.entryIds[i], sequence: storedBatch.sequence + i })
+      }
+      continue
+    }
+    for (const entryId of batch.entryIds) {
+      acks.push({ entryId, sequence: undefined })
+      skipped.push(entryId)
     }
   }
-  const skipped = entryIds.filter((id) => !sequences.has(Uuid.stringify(id)))
   if (skipped.length > 0) {
+    const sequences = new Map<string, number>()
     for (const ack of yield* storage.entrySequences(publicKey, storeId, skipped)) {
       sequences.set(Uuid.stringify(ack.entryId), ack.sequence)
     }
+    for (const ack of acks) {
+      if (ack.sequence === undefined) ack.sequence = sequences.get(Uuid.stringify(ack.entryId))
+    }
   }
-  const acks: Array<WriteAck> = []
-  for (const entryId of entryIds) {
-    const sequence = sequences.get(Uuid.stringify(entryId))
-    if (sequence !== undefined) acks.push({ entryId, sequence })
-  }
-  return acks
+  return acks.filter((ack): ack is WriteAck => ack.sequence !== undefined)
 })
+
+const isSameBatch = (a: EncryptedBatch, b: EncryptedBatch): boolean => {
+  if (a.entryIds.length !== b.entryIds.length || a.iv.byteLength !== b.iv.byteLength) return false
+  for (let i = 0; i < a.iv.byteLength; i++) {
+    if (a.iv[i] !== b.iv[i]) return false
+  }
+  return true
+}
 
 /**
  * Provides an encrypted event-log RPC server using `EventLogRemoteRpcs` and the
