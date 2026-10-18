@@ -383,7 +383,7 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
-  it.effect("derives replacement ids from their anchor entry, identically on every run", () =>
+  it.effect("gives replacements fresh ids in their anchor's millisecond", () =>
     Effect.gen(function*() {
       const first = yield* makeCompactionEntry({ id: "user-1", name: "before" })
       const last = yield* makeCompactionEntry({ id: "user-1", name: "after" })
@@ -393,29 +393,22 @@ describe("EventLog", () => {
       yield* Effect.gen(function*() {
         const registry = yield* EventLog.Registry
         const compactor = registry.compactors.get("UserCreated")!
-        const run = Effect.fnUntraced(function*() {
-          const output: Array<EventJournal.Entry> = []
-          yield* compactor.effect({
-            entries: [first, last],
-            write: (entry) =>
-              Effect.sync(() => {
-                output.push(entry)
-              })
-          })
-          return output
+        const output: Array<EventJournal.Entry> = []
+        yield* compactor.effect({
+          entries: [first, last],
+          write: (entry) =>
+            Effect.sync(() => {
+              output.push(entry)
+            })
         })
-        const [one, two] = [yield* run(), yield* run()]
 
-        assert.deepStrictEqual(
-          two.map((entry) =>
-            entry.idString
-          ),
-          one.map((entry) => entry.idString)
-        )
-        // Both replacements are anchored to `first`: the first reuses its id,
-        // the second sorts after it.
-        assert.strictEqual(one[0].idString, first.idString)
-        assert.strictEqual(EventJournal.EntryIdOrder(one[0].id, one[1].id), -1)
+        assert.strictEqual(output.length, 2)
+        for (const entry of output) {
+          assert.strictEqual(entry.createdAtMillis, first.createdAtMillis)
+          assert.notStrictEqual(entry.idString, first.idString)
+          assert.notStrictEqual(entry.idString, last.idString)
+        }
+        assert.notStrictEqual(output[0].idString, output[1].idString)
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
