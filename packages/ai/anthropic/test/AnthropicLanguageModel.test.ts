@@ -1663,47 +1663,46 @@ describe("AnthropicLanguageModel", () => {
     const ephemeral = { type: "ephemeral" } as const
     const cached = { anthropic: { cacheControl: ephemeral } }
 
-    const getAssistantContent = (prompt: Prompt.RawInput) =>
-      Effect.gen(function*() {
-        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              capturedRequest = request
-              return Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model: "claude-sonnet-4-20250514",
-                content: [{ type: "text", text: "Done" }],
-                stop_reason: "end_turn",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 1,
-                  output_tokens: 1,
-                  service_tier: null
-                }
-              }))
-            })
-          ))
-        )
+    const getAssistantContent = Effect.fnUntraced(function*(prompt: Prompt.RawInput) {
+      let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+      const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+        Layer.provide(Layer.succeed(
+          HttpClient.HttpClient,
+          makeHttpClient((request) => {
+            capturedRequest = request
+            return Effect.succeed(jsonResponse(request, {
+              id: "msg_test_1",
+              type: "message",
+              role: "assistant",
+              model: "claude-sonnet-4-20250514",
+              content: [{ type: "text", text: "Done" }],
+              stop_reason: "end_turn",
+              stop_sequence: null,
+              usage: {
+                cache_creation: null,
+                cache_creation_input_tokens: null,
+                cache_read_input_tokens: null,
+                inference_geo: null,
+                input_tokens: 1,
+                output_tokens: 1,
+                service_tier: null
+              }
+            }))
+          })
+        ))
+      )
 
-        yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
-          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
-          Effect.provide(layer)
-        )
+      yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+        Effect.provide(layer)
+      )
 
-        if (capturedRequest === undefined) {
-          return yield* Effect.die(new Error("Expected a captured request"))
-        }
-        const body = yield* getRequestBody(capturedRequest)
-        return body.messages.find((message: any) => message.role === "assistant").content as Array<any>
-      })
+      if (capturedRequest === undefined) {
+        return yield* Effect.die(new Error("Expected a captured request"))
+      }
+      const body = yield* getRequestBody(capturedRequest)
+      return body.messages.find((message: any) => message.role === "assistant").content as Array<any>
+    })
 
     const thinking = {
       type: "reasoning",
