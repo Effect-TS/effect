@@ -1720,11 +1720,10 @@ export interface InitialValueOptions {
  */
 export const initialValue: {
   <A>(initialValue: A): (self: Atom<A>) => readonly [Atom<A>, A]
-  <A>(initialValue: A, options: InitialValueOptions): (self: Atom<A>) => readonly [Atom<A>, A, InitialValueOptions]
   <A>(self: Atom<A>, initialValue: A): readonly [Atom<A>, A]
   <A>(self: Atom<A>, initialValue: A, options: InitialValueOptions): readonly [Atom<A>, A, InitialValueOptions]
 } = dual(
-  (args) => args.length === 3 || (args.length === 2 && isAtom(args[0])),
+  (args) => args.length >= 2,
   <A>(self: Atom<A>, initialValue: A, options?: InitialValueOptions) =>
     options === undefined ? [self, initialValue] : [self, initialValue, options]
 )

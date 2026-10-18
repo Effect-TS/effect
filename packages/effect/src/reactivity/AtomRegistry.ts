@@ -663,6 +663,10 @@ class NodeImpl<A> {
   preserveInitialValueOnBuild = false
   // skip the first effect or stream run, keeping the seeded value
   keepInitialValue = false
+  // the parents, and their build counts, of the build that kept the seed
+  // without reaching the effect, such as one waiting for a runtime
+  keptParents: Array<readonly [NodeImpl<any>, number]> | undefined
+  builds = 0
   invalidatedDuringBuild = false
   failed = false
 
@@ -731,6 +735,7 @@ class NodeImpl<A> {
     // build that failed, or to one that is running and is now superseded
     this.disposeLifetime()
     this.invalidatedDuringBuild = false
+    this.builds++
     const lifetime = makeLifetime(this)
     this.lifetime = lifetime
     let value: A
@@ -749,6 +754,9 @@ class NodeImpl<A> {
     if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
       if (this.preserveInitialValueOnBuild) {
         this.preserveInitialValueOnBuild = false
+        if (this.keepInitialValue) {
+          this.keptParents = Array.from(this.parents, (parent) => [parent, parent.builds] as const)
+        }
         this.failed = false
         this.state = NodeState.valid
       } else {
@@ -986,7 +994,9 @@ class NodeImpl<A> {
 
 /**
  * Whether the build should keep the node's seeded value instead of running its
- * effect or stream. Consumed by the first run, so later rebuilds run it.
+ * effect or stream. Consumed by the first run, so later rebuilds run it. A
+ * parent rebuilt since the seed was kept, such as a reconfigured runtime, is a
+ * real change and runs it.
  *
  * @internal
  */
@@ -994,8 +1004,11 @@ export const consumeKeepInitialValue = (ctx: Atom.AtomContext): boolean => {
   const lifetime = ctx as Lifetime<any>
   const node = lifetime.node
   if (node === undefined || !node.keepInitialValue) return false
+  const keptParents = node.keptParents
   node.keepInitialValue = false
-  return !lifetime.isFn && !Result.isInitial(node._value)
+  node.keptParents = undefined
+  return !lifetime.isFn && !Result.isInitial(node._value) &&
+    (keptParents === undefined || keptParents.every(([parent, builds]) => parent.builds === builds))
 }
 
 interface Lifetime<A> extends Atom.AtomContext {
