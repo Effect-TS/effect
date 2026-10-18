@@ -1,10 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Fiber, Layer, Queue, type Scope } from "effect"
+import { Context, Deferred, Effect, Fiber, Layer, Queue, type Scope, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
 import * as EventLogRemote from "effect/eventlog/EventLogRemote"
+import * as EventLogServer from "effect/eventlog/EventLogServer"
 import * as EventLogServerEncrypted from "effect/eventlog/EventLogServerEncrypted"
 import * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
 import * as EventLogSessionAuth from "effect/eventlog/EventLogSessionAuth"
@@ -293,6 +294,60 @@ const makeServer = Effect.fnUntraced(function*(encrypted: boolean) {
 })
 
 describe("EventLogRemote write acknowledgements", () => {
+  it.effect("keeps concurrent overlapping writes suppressed after the first write completes", () =>
+    Effect.gen(function*() {
+      const writes = new EventLogServer.ConnectionWrites()
+      const options = { publicKey: "writer", storeId: defaultStoreId }
+      type Item = { entryIds: ReadonlyArray<EventJournal.EntryId>; sequence: number }
+      const input = yield* Queue.make<Item>()
+      const output = yield* Queue.make<Item>()
+      yield* writes.filter({
+        ...options,
+        entryIds: (item: Item) => item.entryIds,
+        sequence: (item) => item.sequence
+      }, Stream.fromQueue(input)).pipe(
+        Stream.runForEach((item) => Queue.offer(output, item)),
+        Effect.forkScoped
+      )
+      const marker = (sequence: number): Item => ({ entryIds: [EventJournal.makeEntryIdUnsafe()], sequence })
+      yield* Queue.offer(input, marker(0))
+      yield* Queue.take(output)
+
+      const a = EventJournal.makeEntryIdUnsafe()
+      const b = EventJournal.makeEntryIdUnsafe()
+      const c = EventJournal.makeEntryIdUnsafe()
+      const started = yield* Queue.make<void>()
+      const firstDone = yield* Deferred.make<ReadonlyArray<EventLogMessage.WriteAck>>()
+      const secondDone = yield* Deferred.make<ReadonlyArray<EventLogMessage.WriteAck>>()
+      const first = yield* Effect.suspend(() =>
+        writes.track(
+          { ...options, entryIds: [a, b] },
+          Queue.offer(started, undefined).pipe(Effect.andThen(Deferred.await(firstDone)))
+        )
+      ).pipe(Effect.forkScoped)
+      const second = yield* Effect.suspend(() =>
+        writes.track(
+          { ...options, entryIds: [a, c] },
+          Queue.offer(started, undefined).pipe(Effect.andThen(Deferred.await(secondDone)))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Queue.takeN(started, 2)
+
+      yield* Queue.offer(input, { entryIds: [a, b], sequence: 2 })
+      const firstMarker = marker(3)
+      yield* Queue.offer(input, firstMarker)
+      assert.deepStrictEqual(yield* Queue.take(output), firstMarker)
+      yield* Deferred.succeed(firstDone, [{ entryId: a, sequence: 1 }, { entryId: b, sequence: 2 }])
+      yield* Fiber.join(first)
+
+      yield* Queue.offer(input, { entryIds: [a, c], sequence: 5 })
+      const secondMarker = marker(6)
+      yield* Queue.offer(input, secondMarker)
+      assert.deepStrictEqual(yield* Queue.take(output), secondMarker)
+      yield* Deferred.succeed(secondDone, [{ entryId: a, sequence: 4 }, { entryId: c, sequence: 5 }])
+      yield* Fiber.join(second)
+    }))
+
   for (const encrypted of [true, false]) {
     it.effect(`${encrypted ? "encrypted" : "unencrypted"}: ordered duplicate acks, chunk completion and connection-scoped echoes`, () =>
       Effect.gen(function*() {
