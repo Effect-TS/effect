@@ -241,6 +241,33 @@ describe("EventRow", () => {
       assert.deepStrictEqual(actual, cases.map(([name, , , calls]) => [name, calls] as const))
     }))
 
+  it.effect("replicas decode patches without filling in defaults for unwritten fields", () =>
+    Effect.gen(function*() {
+      const Task = EventRow.make("task", {
+        key: "id",
+        schema: Schema.Struct({
+          id: Schema.String,
+          name: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default"))),
+          done: Schema.Boolean
+        })
+      })
+      const codec = EventGroup.empty.add(Task).events.task.payloadSchemaBinary
+      const payloads = [Task.patch("t1", { done: true }), Task.patch("t1", {})]
+      const replayed = yield* Effect.forEach(payloads, (payload) =>
+        Schema.encodeUnknownEffect(codec)(payload).pipe(Effect.flatMap(Schema.decodeUnknownEffect(codec))))
+      assert.deepStrictEqual(replayed, payloads)
+    }))
+
+  it.effect("passes only the row's schema fields to callbacks", () =>
+    Effect.gen(function*() {
+      // Replicas decode these payloads without the extra keys, so a local
+      // write must not see them either. Variables bypass excess property checks.
+      const fields = { id: "other", completed: true }
+      const row = { ...E, note: "not in the schema" }
+      const actual = [yield* replay(Grocery.patch("g1", fields), []), yield* replay(Grocery.set(row), [])]
+      assert.deepStrictEqual(actual, [[["patch", "g1", { completed: true }]], [["set", E]]])
+    }))
+
   it.effect.prop(
     "replicas converge to the fold of every entry in id order",
     { commands: Schema.Array(Command).check(Schema.isMaxLength(24)) },
