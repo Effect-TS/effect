@@ -75,8 +75,10 @@ This import enhances the standard `it` function from `vitest` with several power
 | `it.flakyTest` | Retries an Effect that might occasionally fail until it succeeds or reaches the configured timeout. |
 
 Property tests shrink callbacks that return `false`, throw, or complete with a non-interruption Effect failure. This
-includes failed assertions, typed failures, and defects. Effect interruption still interrupts the test. Returning
-normally with any value other than `false`, including `void`, passes for that generated input.
+includes failed assertions, typed failures, and defects. Effect interruption still interrupts the test.
+Synchronous `it.prop` callbacks must return a boolean or `void`: `true` and `undefined` pass, while `false`
+falsifies the property. Other return values, including Effects and Promises, are rejected. Use `it.effect.prop`
+for Effect callbacks; their successful results pass unless the value is `false`.
 
 The Vitest `timeout` interrupts the Effect fiber running property generation, evaluation, and shrinking. Effect
 finalizers run during the interruption, which is reported as a test timeout rather than a property falsification. As
