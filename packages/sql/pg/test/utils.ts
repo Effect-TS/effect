@@ -103,7 +103,7 @@ export const releasePgContainer = (container: {
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
     Effect.tryPromise({
-      try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:alpine").start()),
+      try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:14-alpine").start()),
       catch: (cause) => new ContainerError({ cause })
     }).pipe(Effect.tap((container) => marker(container.getId(), "container-started"))),
     releasePgContainer

@@ -13,6 +13,28 @@ import * as Layer from "effect/Layer"
 import { OpenRouterClient } from "./OpenRouterClient.ts"
 import type * as OpenRouterSchema from "./OpenRouterSchema.ts"
 
+declare module "effect/ai/DecisionModel" {
+  /**
+   * OpenRouter metadata returned with a decision response.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.6
+   */
+  export interface DecideResponseMetadata {
+    readonly openrouter?: {
+      /**
+       * Credits charged for the request.
+       */
+      readonly cost?: number
+      /**
+       * Upstream provider that served the request.
+       */
+      readonly provider?: string
+    }
+  }
+}
+
 /**
  * Request options that override model defaults at call time.
  *
@@ -43,7 +65,8 @@ export const model = (
 
 /**
  * Creates a decision service that requires full choice and score distributions.
- * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
+ * Score indices map to criteria labels. Reported `cost` and the serving
+ * provider are returned under `metadata.openrouter`.
  * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
  * @stability unstable
@@ -127,7 +150,15 @@ export const make = Effect.fnUntraced(function*(options: {
       }
       return {
         answers,
-        usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
+        usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
+        id: response.id,
+        modelId: response.model,
+        metadata: {
+          openrouter: {
+            ...(response.usage.cost === undefined ? undefined : { cost: response.usage.cost }),
+            ...(response.provider === undefined ? undefined : { provider: response.provider })
+          }
+        }
       }
     })
   })

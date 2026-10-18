@@ -3560,31 +3560,23 @@ export const zipWithArray: {
       ]
     })
 
-    type State =
-      | { _tag: "PullBoth" }
-      | { _tag: "PullLeft"; rightArray: Arr.NonEmptyReadonlyArray<AR> }
-      | { _tag: "PullRight"; leftArray: Arr.NonEmptyReadonlyArray<AL> }
-    let state: State = { _tag: "PullBoth" }
+    let leftArray: Arr.NonEmptyReadonlyArray<AL> | undefined
+    let rightArray: Arr.NonEmptyReadonlyArray<AR> | undefined
 
     const pull: Effect.Effect<
       Arr.NonEmptyReadonlyArray<A>,
       EL | ER | Cause.Done,
       RL | RR
     > = Effect.gen(function*() {
-      const [left, right] = state._tag === "PullBoth"
-        ? yield* pullBoth
-        : state._tag === "PullLeft"
-        ? [yield* pullLeft, state.rightArray]
-        : [state.leftArray, yield* pullRight]
-      const result = f(left, right)
-      if (Arr.isReadonlyArrayNonEmpty(result[1])) {
-        state = { _tag: "PullRight", leftArray: result[1] }
-      } else if (Arr.isReadonlyArrayNonEmpty(result[2])) {
-        state = { _tag: "PullLeft", rightArray: result[2] }
-      } else {
-        state = { _tag: "PullBoth" }
-      }
-      return result[0]
+      const [left, right] = leftArray
+        ? [leftArray, rightArray ?? (yield* pullRight)]
+        : rightArray
+        ? [yield* pullLeft, rightArray]
+        : yield* pullBoth
+      const [output, leftoverLeft, leftoverRight] = f(left, right)
+      leftArray = Arr.isReadonlyArrayNonEmpty(leftoverLeft) ? leftoverLeft : undefined
+      rightArray = Arr.isReadonlyArrayNonEmpty(leftoverRight) ? leftoverRight : undefined
+      return output
     })
 
     return pull
@@ -9815,10 +9807,10 @@ export const decodeText: <
     <E, R>(self: Stream<Uint8Array, E, R>, options?: {
       readonly encoding?: string | undefined
     }): Stream<string, E, R> =>
-      suspend(() => {
-        const decoder = new TextDecoder(options?.encoding)
-        return map(self, (chunk) => decoder.decode(chunk, { stream: true }))
-      })
+      self.channel.pipe(
+        Channel.pipeTo(Channel.decodeText(options?.encoding)),
+        fromChannel
+      )
   )
 
 /**
@@ -11606,15 +11598,18 @@ export const toReadableStreamWith: {
     return new ReadableStream<A>({
       start(controller) {
         fiber = Effect.runFork(Effect.provideContext(
-          runForEachArray(self, (chunk) =>
-            latch.whenOpen(Effect.sync(() => {
-              latch.closeUnsafe()
-              for (let i = 0; i < chunk.length; i++) {
-                controller.enqueue(chunk[i])
-              }
-              currentResolve!()
-              currentResolve = undefined
-            }))),
+          Channel.runForEach(
+            Channel.transformPull(self.channel, (pull) => Effect.succeed(latch.whenOpen(pull))),
+            (chunk) =>
+              Effect.sync(() => {
+                latch.closeUnsafe()
+                for (let i = 0; i < chunk.length; i++) {
+                  controller.enqueue(chunk[i])
+                }
+                currentResolve!()
+                currentResolve = undefined
+              })
+          ),
           context
         ))
         fiber.addObserver((exit) => {

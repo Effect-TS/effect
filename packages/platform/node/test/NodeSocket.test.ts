@@ -7,6 +7,7 @@ import type * as NetAddress from "effect/net/NetAddress"
 import * as Scope from "effect/Scope"
 import { Socket } from "effect/socket"
 import * as Stream from "effect/Stream"
+import { TestClock } from "effect/testing"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
 import { Duplex, PassThrough } from "node:stream"
@@ -662,6 +663,60 @@ describe("Socket", { concurrent: false }, () => {
 
   describe("WebSocket", { concurrent: false }, () => {
     const url = `ws://localhost:1234`
+
+    it.effect.each(["timeout", "interruption"] as const)(
+      "safely closes a pending ws handshake on %s",
+      (mode) =>
+        Effect.gen(function*() {
+          const accepted = yield* Deferred.make<void>()
+          const connections = new Set<Net.Socket>()
+          const server = yield* Effect.acquireRelease(
+            Effect.sync(() =>
+              Net.createServer((connection) => {
+                connections.add(connection)
+                Deferred.doneUnsafe(accepted, Effect.void)
+              })
+            ),
+            (server) =>
+              Effect.promise(() => {
+                for (const connection of connections) connection.destroy()
+                return new Promise<void>((resolve) => server.close(() => resolve()))
+              })
+          )
+          yield* Effect.promise(() =>
+            new Promise<void>((resolve, reject) => {
+              server.once("error", reject)
+              server.listen(0, "127.0.0.1", resolve)
+            })
+          )
+          const address = server.address()
+          assert.isTrue(typeof address === "object" && address !== null)
+          if (typeof address !== "object" || address === null) return
+
+          const reader = yield* Effect.gen(function*() {
+            const socket = yield* Socket.makeWebSocket(`ws://127.0.0.1:${address.port}`, { openTimeout: 100 })
+            yield* socket.reader
+          }).pipe(
+            Effect.scoped,
+            Effect.provide(NodeSocket.layerWebSocketConstructorWS),
+            Effect.forkChild
+          )
+          // Accept TCP without ever completing the WebSocket upgrade.
+          yield* Deferred.await(accepted)
+          if (mode === "timeout") {
+            yield* TestClock.adjust(100)
+            const error = Option.getOrThrow(Exit.findErrorOption(yield* Fiber.await(reader)))
+            assert.strictEqual(error.reason._tag, "SocketOpenError")
+            if (error.reason._tag === "SocketOpenError") assert.strictEqual(error.reason.kind, "Timeout")
+          } else {
+            yield* Fiber.interrupt(reader)
+            assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(reader)))
+          }
+          // ws emits the handshake-abort error asynchronously after close().
+          // Leave it unhandled by the test so Vitest detects a lifecycle regression.
+          yield* Effect.promise(() => new Promise<void>((resolve) => setImmediate(resolve)))
+        })
+    )
 
     const makeServer = Effect.acquireRelease(
       Effect.sync(() => new WS(url)),

@@ -5,6 +5,34 @@ import * as Layer from "effect/Layer"
 import { TestCrypto } from "effect/testing"
 
 describe("TestCrypto", () => {
+  it.effect.each(["make", "layer"] as const)("restarts the sequence on independent %s builds", (api) => {
+    const baseCrypto = Crypto.make({
+      randomBytes: () => {
+        throw new Error("base randomBytes should not be called")
+      },
+      digest: (_algorithm, data) => Effect.succeed(data)
+    })
+    const read = Effect.gen(function*() {
+      const crypto = yield* Crypto.Crypto
+      return yield* Effect.all([crypto.randomBytes(4), crypto.randomBytes(4)])
+    })
+    const build = (api === "make"
+      ? TestCrypto.make("my-seed").pipe(
+        Effect.flatMap((crypto) => read.pipe(Effect.provideService(Crypto.Crypto, crypto)))
+      )
+      : read.pipe(Effect.provide(TestCrypto.layer("my-seed")))).pipe(
+        Effect.provideService(Crypto.Crypto, baseCrypto)
+      )
+
+    return Effect.gen(function*() {
+      const first = yield* build
+      const second = yield* build
+
+      assert.notDeepEqual(first[0], first[1])
+      assert.deepStrictEqual(second, first)
+    })
+  })
+
   it.effect("provides deterministic random operations and delegates digests", () => {
     const baseCrypto = Crypto.make({
       randomBytes: () => {

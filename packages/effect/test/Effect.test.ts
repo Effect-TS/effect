@@ -689,6 +689,30 @@ describe("Effect", () => {
   })
 
   describe("effectify", () => {
+    it.effect("preserves a synchronous throw after callback success as a defect", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const effectified = Effect.effectify((cb: (error: Error | null, value?: string) => void) => {
+          cb(null, "value")
+          throw defect
+        })
+        assertExitDefect(yield* Effect.exit(effectified()), defect)
+      }))
+
+    it.effect("maps a synchronous throw after callback failure with onSyncError", () =>
+      Effect.gen(function*() {
+        const defect = new Error("boom")
+        const effectified = Effect.effectify(
+          (cb: (error: Error | null, value?: string) => void) => {
+            cb(new Error("callback"))
+            throw defect
+          },
+          (error) => error,
+          (error) => error
+        )
+        assertExitFailure(yield* Effect.exit(effectified()), Cause.fail(defect))
+      }))
+
     it.effect("turns a throwing onError mapper in an async callback into a defect", () =>
       Effect.gen(function*() {
         let callback!: (error: Error | null, value?: string) => void
@@ -853,6 +877,15 @@ describe("Effect", () => {
         }
       }))
 
+    it.effect("elects typed failures when a concurrent sibling finalizer dies", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.all([
+          Effect.never.pipe(Effect.ensuring(Effect.die("cleanup defect"))),
+          Effect.fail("error")
+        ], { concurrency: "unbounded" }).pipe(Effect.exit)
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("error"), Cause.die("cleanup defect"))))
+      }))
+
     it.effect("unbounded fail", () =>
       Effect.gen(function*() {
         const done: Array<number> = []
@@ -987,6 +1020,30 @@ describe("Effect", () => {
   })
 
   describe("all", () => {
+    it.effect("record preserves input key order with concurrency 2", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.all({
+          a: Effect.sleep(20).pipe(Effect.as(1)),
+          b: Effect.succeed(2)
+        }, { concurrency: 2 }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(20)
+        const results = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(Object.keys(results), ["a", "b"])
+        assert.deepStrictEqual(results, { a: 1, b: 2 })
+      }))
+
+    it.effect("record result mode preserves input key order with unbounded concurrency", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.all({
+          a: Effect.sleep(20).pipe(Effect.as(1)),
+          b: Effect.fail("boom")
+        }, { concurrency: "unbounded", mode: "result" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(20)
+        const results = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(Object.keys(results), ["a", "b"])
+        assert.deepStrictEqual(results, { a: Result.succeed(1), b: Result.fail("boom") })
+      }))
+
     it.effect("tuple", () =>
       Effect.gen(function*() {
         const results = (yield* Effect.all([
@@ -1282,6 +1339,17 @@ describe("Effect", () => {
   })
 
   describe("filter", () => {
+    it.effect("preserves input order with concurrency 2", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.filter(
+          [1, 2, 3],
+          (n) => n === 1 ? Effect.sleep(20).pipe(Effect.as(true)) : Effect.succeed(n === 2),
+          { concurrency: 2 }
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(20)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [1, 2])
+      }))
+
     it.live("odd numbers", () =>
       Effect.gen(function*() {
         const results = yield* Effect.filter([1, 2, 3, 4, 5], (value) => Effect.succeed(value % 2 === 1))
@@ -1374,6 +1442,12 @@ describe("Effect", () => {
       const result = yield* Fiber.join(fiber)
       assert.strictEqual(result, 100)
       assert.deepStrictEqual(interrupted, [500, 300, 200])
+    }))
+
+  it.effect("raceAll elects typed failures when all racers fail and one dies", () =>
+    Effect.gen(function*() {
+      const exit = yield* Effect.raceAll([Effect.fail("error"), Effect.die("defect")]).pipe(Effect.exit)
+      assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("error"), Cause.die("defect"))))
     }))
 
   it.effect("raceAllFirst", () =>
@@ -1642,7 +1716,7 @@ describe("Effect", () => {
         })
         const exit = yield* Effect.exit(Effect.retry(source, Schedule.recurs(1)))
         assert.strictEqual(attempts, 1)
-        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("error"), Cause.die("cleanup failed"))))
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("error"), Cause.die("cleanup failed"))))
       }))
 
     it.live("nothing on success", () =>
@@ -2853,6 +2927,24 @@ describe("Effect", () => {
   })
 
   describe("forkIn", () => {
+    for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
+      it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
+        Effect.gen(function*() {
+          const scope = yield* Scope.make()
+          yield* Scope.close(scope, Exit.void)
+          let ran = false
+          const fiber = yield* Effect.forkIn(
+            Effect.sync(() => {
+              ran = true
+            }),
+            scope,
+            options
+          )
+          const exit = yield* Fiber.await(fiber)
+          assert.deepStrictEqual([ran, Exit.hasInterrupts(exit)], [false, true])
+        }))
+    }
+
     it.effect("is interrupted when scope is closed", () =>
       Effect.gen(function*() {
         let interrupted = false
@@ -2871,6 +2963,23 @@ describe("Effect", () => {
   })
 
   describe("forkScoped", () => {
+    for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
+      it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
+        Effect.gen(function*() {
+          const scope = yield* Scope.make()
+          yield* Scope.close(scope, Exit.void)
+          let ran = false
+          const fiber = yield* Effect.forkScoped(
+            Effect.sync(() => {
+              ran = true
+            }),
+            options
+          ).pipe(Scope.provide(scope))
+          const exit = yield* Fiber.await(fiber)
+          assert.deepStrictEqual([ran, Exit.hasInterrupts(exit)], [false, true])
+        }))
+    }
+
     it.effect("is interrupted when scope is closed", () =>
       Effect.gen(function*() {
         let interrupted = false
@@ -2935,7 +3044,7 @@ describe("Effect", () => {
         const result = yield* Effect.fail("body failure").pipe(Effect.onExit(throwing), Effect.exit)
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail("body failure"), Cause.die("finalizer defect")))
+          Exit.failCause(Cause.combine(Cause.die("body failure"), Cause.die("finalizer defect")))
         )
       }))
 
@@ -3015,7 +3124,7 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(
           result,
-          Cause.combine(Cause.combine(Cause.fail(ExampleError), Cause.die(e2)), Cause.die(e3))
+          Cause.combine(Cause.combine(Cause.die(ExampleError), Cause.die(e2)), Cause.die(e3))
         )
       }))
 
@@ -3049,7 +3158,7 @@ describe("Effect", () => {
         }).pipe(Effect.scoped, Effect.exit)
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("finalizer failure")))
+          Exit.failCause(Cause.combine(Cause.die("usage failure"), Cause.die("finalizer failure")))
         )
       }))
 
@@ -4504,7 +4613,7 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer failure")))
+          Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer failure")))
         )
       }))
 
@@ -4597,7 +4706,7 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(
           result,
-          Exit.failCause(Cause.combine(Cause.fail(error), Cause.die("finalizer failure")))
+          Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer failure")))
         )
       }))
   })

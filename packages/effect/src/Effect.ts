@@ -8756,8 +8756,8 @@ export const requestUnsafe: <A extends Request.Any>(
  * You can use the `forkChild` method whenever you want to execute an effect in a
  * new fiber, concurrently and without "blocking" the fiber executing other
  * effects. Using fibers can be tricky, so instead of using this method
- * directly, consider other higher-level methods, such as `raceWith`,
- * `zipPar`, and so forth.
+ * directly, consider higher-level methods such as `Effect.race`,
+ * `Effect.raceFirst`, or `Effect.all` with a concurrency option.
  *
  * The fiber returned by this method has methods to interrupt the fiber and to
  * wait for it to finish executing the effect. See `Fiber` for more
@@ -8895,9 +8895,14 @@ export const forkScoped: <
   : <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber<A, E>, never, R | Scope> = internal.forkScoped
 
 /**
- * Forks the effect into a new fiber attached to the global scope. Because the
- * new fiber is attached to the global scope, when the fiber executing the
- * returned effect terminates, the forked fiber will continue running.
+ * Forks the effect into a new fiber with no parent and no scope, so its lifetime
+ * is independent of the forking fiber.
+ *
+ * **Details**
+ *
+ * The detached fiber inherits the forking fiber's context. It continues running
+ * until it completes or is explicitly interrupted through the returned handle,
+ * even after the forking fiber terminates.
  *
  * **Example** (Forking a detached fiber)
  *
@@ -9055,11 +9060,11 @@ export interface RunOptions {
  * import { Effect, Fiber } from "effect"
  * const output: Array<unknown> = []
  *
- * //      ┌─── Effect<number, never, never>
+ * //      ┌─── Effect<string, never, never>
  * //      ▼
  * const program = Effect.sync(() => { output.push("running...") }).pipe(Effect.as("done"))
  *
- * //      ┌─── RuntimeFiber<number, never>
+ * //      ┌─── Fiber<string, never>
  * //      ▼
  * const fiber = Effect.runFork(program)
  *
@@ -15420,16 +15425,26 @@ export const effectify: {
   (<A>(fn: Function, onError?: (e: any, args: any) => any, onSyncError?: (e: any, args: any) => any) =>
   (...args: Array<any>) =>
     callback<A, globalThis.Error>((resume) => {
+      let synchronous = true
+      let pending: Effect<A, globalThis.Error> | undefined
       try {
         fn(...args, (err: globalThis.Error | null, result: A) => {
-          if (err) {
-            resume(onError ? suspend(() => fail(onError(err, args))) : fail(err))
+          const effect = err
+            ? onError ? suspend(() => fail(onError(err, args))) : fail(err)
+            : succeed(result)
+          if (synchronous) {
+            // Keep the first callback result until registration succeeds.
+            pending ??= effect
           } else {
-            resume(succeed(result))
+            resume(effect)
           }
         })
       } catch (err) {
-        resume(onSyncError ? fail(onSyncError(err, args)) : die(err))
+        pending = onSyncError ? fail(onSyncError(err, args)) : die(err)
+      }
+      synchronous = false
+      if (pending) {
+        resume(pending)
       }
     })) as any
 

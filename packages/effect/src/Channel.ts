@@ -488,7 +488,7 @@ const asyncQueue = <A, E = never, R = never>(
     Effect.tap((queue) =>
       Scope.provide(f(queue), scope).pipe(
         Effect.catchCause((cause) => Queue.failCause(queue, cause)),
-        Effect.forkIn(scope)
+        Effect.forkIn(scope, { startImmediately: true })
       )
     )
   )
@@ -1749,6 +1749,7 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
   readonly writable: WritableStream<A>
   readonly onError: (error: unknown) => E
   readonly closeOnDone?: boolean | undefined
+  readonly onAbort?: ((cause: Cause.Cause<IE | E>) => void) | undefined
 }): Pull.Pull<never, IE | E, unknown> =>
   Effect.acquireUseRelease(
     Effect.sync(() => options.writable.getWriter()),
@@ -1779,10 +1780,11 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
         : loop
       return Effect.onError(
         withClose,
-        (cause) =>
-          Pull.isDoneCause(cause)
-            ? Effect.void
-            : Effect.promise(() => writer.abort(cause).catch(constVoid))
+        (cause) => {
+          if (Pull.isDoneCause(cause)) return Effect.void
+          options.onAbort?.(cause as Cause.Cause<IE | E>)
+          return Effect.promise(() => writer.abort(cause).catch(constVoid))
+        }
       )
     },
     (writer) => Effect.sync(() => writer.releaseLock())
@@ -1873,7 +1875,12 @@ export const fromTransformStream = <IE, I, O, E>(options: {
       pull: upstream,
       writable: transform.writable,
       onError: options.onError,
-      closeOnDone: options.closeOnDone
+      closeOnDone: options.closeOnDone,
+      // Aborting errors the readable, so record the failure first. Otherwise a
+      // pending read reports the abort reason instead.
+      onAbort: (cause) => {
+        exit.current = Exit.failCause(cause)
+      }
     }).pipe(
       Effect.catchCause((cause) => {
         if (!Pull.isDoneCause(cause)) {
@@ -2247,7 +2254,7 @@ const mapEffectConcurrent = <
       const pull = yield* toTransform(self)(upstream, scope)
       const concurrencyN = options.concurrency === "unbounded"
         ? Number.MAX_SAFE_INTEGER
-        : options.concurrency
+        : Math.min(options.concurrency, Number.MAX_SAFE_INTEGER)
       const queue = yield* Queue.bounded<OutElem2, OutErr | EX | Cause.Done<OutDone>>(0)
       yield* Scope.addFinalizer(forkedScope, Queue.shutdown(queue))
 
@@ -6862,8 +6869,9 @@ export const splitLines = <Err, Done>(): Channel<
  * **Details**
  *
  * Input chunks are decoded with streaming enabled so multi-byte characters may
- * span `Uint8Array` boundaries. The optional `encoding` and `options` are
- * passed to `TextDecoder`.
+ * span `Uint8Array` boundaries. On normal completion, incomplete trailing
+ * characters become U+FFFD or, with `fatal: true`, a defect. The optional
+ * `encoding` and `options` are passed to `TextDecoder`.
  *
  * @stability stable
  * @category decoding
@@ -6884,7 +6892,15 @@ export const decodeText = <Err, Done>(
     Effect.sync(() => {
       const decoder = new TextDecoder(encoding, options)
       const streamOptions = { stream: true }
-      return Effect.map(upstream, Arr.map((line) => decoder.decode(line, streamOptions)))
+      let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<string>, Err, Done> = upstream.pipe(
+        Effect.map(Arr.map((bytes) => decoder.decode(bytes, streamOptions))),
+        Pull.catchDone((leftover) => {
+          pull = Cause.done(leftover as Done)
+          const last = decoder.decode()
+          return last.length > 0 ? Effect.succeed(Arr.of(last)) : pull
+        })
+      )
+      return Effect.suspend(() => pull)
     })
   )
 

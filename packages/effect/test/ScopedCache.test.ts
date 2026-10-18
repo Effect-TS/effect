@@ -1112,6 +1112,45 @@ describe("ScopedCache", () => {
     })
 
     describe("invalidateAll", () => {
+      it.effect.each(["invalidateAll", "owner scope closure"] as const)(
+        "%s releases every entry and propagates all release defects",
+        (operation) =>
+          Effect.gen(function*() {
+            const owner = yield* Scope.make()
+            const released: Array<string> = []
+            const cache = yield* ScopedCache.make({
+              capacity: 10,
+              lookup: (key: string) =>
+                Effect.acquireRelease(
+                  Effect.succeed(key),
+                  () =>
+                    Effect.gen(function*() {
+                      released.push(key)
+                      if (key !== "healthy") {
+                        return yield* Effect.die("release " + key)
+                      }
+                    })
+                )
+            }).pipe(Scope.provide(owner))
+
+            yield* ScopedCache.get(cache, "a")
+            yield* ScopedCache.get(cache, "b")
+            yield* ScopedCache.get(cache, "healthy")
+
+            const exit = yield* Effect.exit(
+              operation === "invalidateAll" ? ScopedCache.invalidateAll(cache) : Scope.close(owner, Exit.void)
+            )
+            assert.deepStrictEqual(released.sort(), ["a", "b", "healthy"])
+            assert.strictEqual(yield* ScopedCache.size(cache), 0)
+            yield* Scope.close(owner, Exit.void)
+            assert(Exit.isFailure(exit))
+            assert.deepStrictEqual(
+              exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag).sort(),
+              ["release a", "release b"]
+            )
+          })
+      )
+
       it.effect.each([false, true])(
         "retains ownership of entries refreshed by finalizers (yield: %s)",
         (yieldBeforeRefresh) =>
@@ -1235,7 +1274,7 @@ describe("ScopedCache", () => {
           yield* ScopedCache.get(cache, "test3")
           assert.strictEqual(cleanupTracker.cleanedUp.length, 0)
 
-          yield* ScopedCache.invalidateAll(cache)
+          assert.isUndefined(yield* ScopedCache.invalidateAll(cache))
           assert.strictEqual(cleanupTracker.cleanedUp.length, 3)
           assert.deepStrictEqual(cleanupTracker.cleanedUp.sort(), ["test1", "test2", "test3"])
         }))

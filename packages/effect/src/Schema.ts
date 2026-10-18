@@ -125,8 +125,8 @@ export type ConstructorDefault = "no-default" | "with-default"
  *
  * **When to use**
  *
- * Use when passing `disableChecks: true` to skip validation when you trust the
- * data. Pass `parseOptions` to control parsing behavior.
+ * Use when passing `disableChecks: true` to skip filters and checks while still
+ * parsing types and structure. Pass `parseOptions` to control parsing behavior.
  *
  * @see {@link BottomWithoutNew.makeEffect}
  * @see {@link BottomWithoutNew.make}
@@ -141,7 +141,8 @@ export interface MakeOptions {
    */
   readonly parseOptions?: SchemaAST.ParseOptions | undefined
   /**
-   * Whether to disable validation for the schema.
+   * Whether to skip filters and checks. Types and structure are still parsed,
+   * and constructor defaults still apply.
    */
   readonly disableChecks?: boolean | undefined
 
@@ -9941,7 +9942,9 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * @category schemas
  * @since 4.0.0
  */
-export const FormData: FormData = instanceOf(globalThis.FormData, {
+// Read the global inside the guard: resolving globalThis.FormData at module
+// scope loads undici on Node.
+export const FormData: FormData = declare((u): u is globalThis.FormData => u instanceof globalThis.FormData, {
   representation: {
     id: "effect/schema/FormData",
     payload: null
@@ -16152,16 +16155,19 @@ function makeClass<
   return out
 }
 
+/**
+ * Constructs a class instance from fields that were already validated against
+ * the class struct, without running the constructor's schema pass.
+ *
+ * @internal
+ */
+export function makeClassTrusted<Self>(self: new(input: any, options?: MakeOptions) => Self, fields: object): Self {
+  return new self(fields, { "~payload": { token: payloadToken, value: fields } })
+}
+
 function getClassTransformation(self: new(...args: ReadonlyArray<any>) => any) {
   return new SchemaTransformation.Transformation<any, any, never, never>(
-    SchemaGetter.transform((input) =>
-      new self(input, {
-        "~payload": {
-          token: payloadToken,
-          value: input
-        }
-      })
-    ),
+    SchemaGetter.transform((input) => makeClassTrusted(self, input)),
     SchemaGetter.passthrough()
   )
 }
@@ -16245,7 +16251,9 @@ function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Stru
  *
  * **Gotchas**
  *
- * Passing `disableChecks` in the options skips constructor validation.
+ * Passing `disableChecks: true` skips filters and checks, not parsing of types
+ * and structure. Wrong types and shapes are still rejected, and constructor
+ * defaults still apply.
  *
  * **Example** (Defining a basic class)
  *

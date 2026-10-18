@@ -56,11 +56,12 @@ import type * as Record from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Http from "node:http"
+import type * as Http from "node:http"
 import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import { http } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
 import * as NodeMultipart from "./NodeMultipart.ts"
@@ -265,7 +266,7 @@ export const makeUpgradeHandler = <
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
         if (nodeResponse_ === undefined) {
-          nodeResponse_ = new Http.ServerResponse(nodeRequest)
+          nodeResponse_ = new http.ServerResponse(nodeRequest)
           if (request.upgraded || socket.destroyed) {
             // End without assigning the socket so handleResponse skips HTTP writes.
             nodeResponse_.end()
@@ -534,7 +535,7 @@ export const layerTest: Layer.Layer<
       Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
     )
   ),
-  Layer.provideMerge(layer(Http.createServer, { port: 0 }))
+  Layer.provideMerge(layer(http.createServer, { port: 0 }))
 )
 
 // -----------------------------------------------------------------------------
@@ -569,8 +570,25 @@ const handleResponse = (
     headers["set-cookie"] = toSet
   }
 
+  try {
+    return writeResponse(request, response, nodeResponse, headers)
+  } catch (defect) {
+    // `writeHead` throws synchronously on headers Node rejects and on statuses outside 200-599
+    return Effect.andThen(
+      cancelResponseBody(response.body),
+      handleCause(nodeResponse, response)(Cause.die(defect))
+    )
+  }
+}
+
+const writeResponse = (
+  request: HttpServerRequest,
+  response: HttpServerResponse,
+  nodeResponse: Http.ServerResponse,
+  headers: Record<string, string | Array<string>>
+): Effect.Effect<unknown, HttpServerError> => {
   if (request.method === "HEAD") {
-    nodeResponse.writeHead(response.status, response.statusText, headers)
+    writeHead(nodeResponse, response, headers)
     return Effect.andThen(
       cancelResponseBody(response.body),
       Effect.callback<void>((resume) => {
@@ -589,12 +607,12 @@ const handleResponse = (
   const body = response.body
   switch (body._tag) {
     case "Empty": {
-      nodeResponse.writeHead(response.status, response.statusText, headers)
+      writeHead(nodeResponse, response, headers)
       nodeResponse.end()
       return Effect.void
     }
     case "Raw": {
-      nodeResponse.writeHead(response.status, response.statusText, headers)
+      writeHead(nodeResponse, response, headers)
       if (
         typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
         typeof body.body.pipe === "function"
@@ -620,7 +638,7 @@ const handleResponse = (
       })
     }
     case "Uint8Array": {
-      nodeResponse.writeHead(response.status, response.statusText, headers)
+      writeHead(nodeResponse, response, headers)
       // If the body is less than 1MB, we skip the callback
       if (body.contentLength < 1024 * 1024) {
         // Writing text directly lets Node flush headers and body together.
@@ -632,38 +650,36 @@ const handleResponse = (
       })
     }
     case "FormData": {
-      return Effect.suspend(() => {
-        const r = new globalThis.Response(body.formData)
-        nodeResponse.writeHead(response.status, response.statusText, {
-          ...headers,
-          ...Object.fromEntries(r.headers)
-        })
-        return Effect.callback<void, HttpServerError>((resume, signal) => {
-          Readable.fromWeb(r.body as any, { signal })
-            .pipe(nodeResponse)
-            .on("error", (cause) => {
-              resume(Effect.fail(
-                new HttpServerError({
-                  reason: new ResponseError({
-                    request,
-                    response,
-                    description: "Error writing FormData response",
-                    cause
-                  })
-                })
-              ))
-            })
-            .once("finish", () => {
-              resume(Effect.void)
-            })
-        }).pipe(
-          Effect.interruptible,
-          Effect.tapCause(handleCause(nodeResponse, response))
-        )
+      const r = new globalThis.Response(body.formData)
+      writeHead(nodeResponse, response, {
+        ...headers,
+        ...Object.fromEntries(r.headers)
       })
+      return Effect.callback<void, HttpServerError>((resume, signal) => {
+        Readable.fromWeb(r.body as any, { signal })
+          .pipe(nodeResponse)
+          .on("error", (cause) => {
+            resume(Effect.fail(
+              new HttpServerError({
+                reason: new ResponseError({
+                  request,
+                  response,
+                  description: "Error writing FormData response",
+                  cause
+                })
+              })
+            ))
+          })
+          .once("finish", () => {
+            resume(Effect.void)
+          })
+      }).pipe(
+        Effect.interruptible,
+        Effect.tapCause(handleCause(nodeResponse, response))
+      )
     }
     case "Stream": {
-      nodeResponse.writeHead(response.status, response.statusText, headers)
+      writeHead(nodeResponse, response, headers)
       const drainLatch = Latch.makeUnsafe()
       nodeResponse.on("drain", () => drainLatch.openUnsafe())
       return body.stream.pipe(
@@ -684,6 +700,24 @@ const handleResponse = (
   }
 }
 
+// On HTTP/1.1 Node sends a 1xx as an interim response, so the client never gets a final one
+const isFinalStatus = (status: number): boolean => status >= 200 && status <= 599
+
+const internalServerError = Response.empty({ status: 500 })
+
+const invalidStatusError = (status: number) => new RangeError(`Invalid final response status: ${status}`)
+
+const writeHead = (
+  nodeResponse: Http.ServerResponse,
+  response: HttpServerResponse,
+  headers: Record<string, string | Array<string>>
+): void => {
+  if (!isFinalStatus(response.status)) {
+    throw invalidStatusError(response.status)
+  }
+  nodeResponse.writeHead(response.status, response.statusText, headers)
+}
+
 const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<void> => {
   const stream = body._tag === "Raw" ? body.body : undefined
   if (stream instanceof Readable) {
@@ -699,12 +733,22 @@ const handleCause = (
 <E>(originalCause: Cause.Cause<E>) =>
   Effect.flatMap(causeResponse(originalCause), ([response, cause]) => {
     const headersSent = nodeResponse.headersSent
+    let abort = headersSent
     if (!headersSent) {
-      nodeResponse.writeHead(response.status, response.statusText)
+      if (!isFinalStatus(response.status)) {
+        cause = Cause.combine(cause, Cause.die(invalidStatusError(response.status)))
+        response = internalServerError
+      }
+      try {
+        nodeResponse.writeHead(response.status, response.statusText)
+      } catch {
+        // HTTP/2 keeps the headers of a rejected `writeHead`, so the fallback can throw too
+        abort = true
+      }
     }
     if (!nodeResponse.writableEnded) {
       // Ending a started response normally would make a partial body look complete
-      if (headersSent) nodeResponse.destroy()
+      if (abort) nodeResponse.destroy()
       else nodeResponse.end()
     }
     return Effect.failCause(

@@ -511,9 +511,10 @@ export const makeHttp: {
  *
  * **Gotchas**
  *
- * `GraphQLResolver` resolves each lookup's URL once, before middleware run and
- * before the batched request exists, then sends each batch to the URL it was
- * grouped by. A single call resolves it in the transport, after middleware.
+ * `GraphQLResolver` resolves each lookup's URL once, in the calling fiber,
+ * before middleware run and before the batched request exists, then sends
+ * each batch to the URL it was grouped by. A single call resolves it in the
+ * transport, after middleware.
  * So the URL must depend only on the context and the operation, and
  * middleware must not change `kind` or `operationName` or provide services
  * the URL reads.

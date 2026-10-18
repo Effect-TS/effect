@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as FiberMap from "../FiberMap.ts"
@@ -25,6 +26,7 @@ import { Reactivity } from "../reactivity/Reactivity.ts"
 import * as ReactivityLayer from "../reactivity/Reactivity.ts"
 import type * as Record from "../Record.ts"
 import * as Redacted from "../Redacted.ts"
+import { CurrentLogAnnotations } from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
@@ -60,6 +62,27 @@ export class EventLog extends Context.Service<EventLog, {
     Event.SuccessWithTag<EventGroup.Events<Groups>, Tag>,
     Event.ErrorWithTag<EventGroup.Events<Groups>, Tag> | EventJournalError
   >
+  /**
+   * Write several events under one journal lock and one `HandlerTransaction`,
+   * returning each handler's result in input order. If any handler fails,
+   * none of the events are committed.
+   */
+  readonly writeMany: <
+    Groups extends EventGroup.Any,
+    // Pairs each event tag with its own payload.
+    Item extends {
+      readonly [Tag in Event.Tag<EventGroup.Events<Groups>>]: {
+        readonly event: Tag
+        readonly payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
+      }
+    }[Event.Tag<EventGroup.Events<Groups>>]
+  >(options: {
+    readonly schema: EventLogSchema<Groups>
+    readonly events: Arr.NonEmptyReadonlyArray<Item>
+  }) => Effect.Effect<
+    Arr.NonEmptyArray<Event.SuccessWithTag<EventGroup.Events<Groups>, Item["event"]>>,
+    Event.ErrorWithTag<EventGroup.Events<Groups>, Item["event"]> | EventJournalError
+  >
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
 }>()("effect/eventlog/EventLog") {}
@@ -84,7 +107,9 @@ export class Registry extends Context.Service<Registry, {
     readonly events: ReadonlyArray<string>
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
-      readonly write: (entry: Entry) => Effect.Effect<void>
+      // Pass an input entry as source to anchor replacements during remote replay.
+      // Without it, matching IDs retain their position; new IDs use the group start.
+      readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }) => Effect.Effect<void, never, Scope.Scope>
 
@@ -92,7 +117,7 @@ export class Registry extends Context.Service<Registry, {
     readonly events: ReadonlySet<string>
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
-      readonly write: (entry: Entry) => Effect.Effect<void>
+      readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }>
 
@@ -120,7 +145,7 @@ export const layerRegistry = Layer.effect(
       readonly events: ReadonlySet<string>
       readonly effect: (options: {
         readonly entries: ReadonlyArray<Entry>
-        readonly write: (entry: Entry) => Effect.Effect<void>
+        readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
       }) => Effect.Effect<void>
     }>()
 
@@ -438,6 +463,68 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
   defaultValue: constant(StoreId.make("default"))
 }) {}
 
+/**
+ * Context reference for a transaction that wraps the event handlers of each
+ * batch replayed from a remote and of each local `write` or `writeMany`.
+ *
+ * **When to use**
+ *
+ * Use when handlers project into a store with transactions, such as
+ * `sql.withTransaction` or an IndexedDB transaction over the projection
+ * tables, so a batch of N events commits once instead of N times.
+ *
+ * **Details**
+ *
+ * The journal performs no I/O while the transaction is open: it reads replay
+ * conflicts before the transaction starts and commits the batch after it
+ * completes. Defaults to running the handlers without a transaction.
+ *
+ * If the transaction fails, the journal commits nothing from the batch. For a
+ * replayed batch, the remote is subscribed again after a backoff of up to 10
+ * seconds and the batch is delivered again, so later batches from that remote
+ * wait until it succeeds; local writes and other remotes are not blocked. A
+ * local write fails with the error and is not retried.
+ *
+ * **Gotchas**
+ *
+ * - During replay, errors returned by a handler are logged and skipped. They
+ *   do not fail the transaction, and the entry is still committed to the
+ *   journal.
+ * - In a local write, an error returned by a handler fails the transaction
+ *   and the write, and the journal commits none of its events.
+ * - Failures that abort the underlying transaction fail the whole batch, even
+ *   when replay catches the handler's error. In IndexedDB, any failed request
+ *   that is not prevented aborts the whole transaction, and in PostgreSQL so
+ *   does a failed statement outside a savepoint. A replayed batch is then
+ *   retried as above, so a failure that repeats on every attempt stops sync
+ *   from that remote until it is fixed.
+ * - Replay handlers must tolerate running more than once for the same entry.
+ * - Unless the transaction and the journal share a database connection, the
+ *   transaction commits before the journal does, and the two commits are not
+ *   atomic. A crash between them replays a remote batch on restart, but a
+ *   local write is lost from the journal while its projection changes remain.
+ * - An IndexedDB transaction commits once it has no pending requests and
+ *   control returns to the event loop. A custom wrapper must stop the fiber
+ *   from yielding to the scheduler while it is open, by providing
+ *   `References.PreventSchedulerYield` as `withTransaction` from
+ *   `@effect/platform-browser` does. Otherwise it can commit partway through a
+ *   batch, and the remaining handlers fail. During replay those errors are
+ *   logged and skipped, leaving the projection silently out of date.
+ * - The transaction stays open for the whole batch, so other read-write
+ *   transactions on the same tables wait for it.
+ * - The transaction must not change the error or success of the wrapped
+ *   effect. Convert its own failures into defects.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.6
+ */
+export class HandlerTransaction extends Context.Reference<
+  <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+>("effect/eventlog/EventLog/HandlerTransaction", {
+  defaultValue: constant(identity)
+}) {}
+
 const RedactedUint8Array = Schema.Uint8ArrayFromBase64.pipe(
   Schema.decodeTo(Schema.Redacted(Schema.Uint8Array), {
     decode: SchemaGetter.transform((value) => Redacted.make(value)),
@@ -582,28 +669,19 @@ export const group = <Events extends Event.Any, Return>(
     })
   ) as any
 
-/**
- * Registers a compaction handler for an event group.
- *
- * **Details**
- *
- * During remote replay, matching entries are decoded, grouped by primary key, and
- * passed to the compaction effect, which may write replacement entries.
- *
- * @stability unstable
- * @category compaction
- * @since 4.0.0
- */
-export const groupCompaction = <Events extends Event.Any, R>(
+const registerBatchCompaction = <Events extends Event.Any, R>(
   group: EventGroup.EventGroup<Events>,
   effect: (options: {
-    readonly primaryKey: string
-    readonly entries: ReadonlyArray<Entry>
-    readonly events: ReadonlyArray<Event.TaggedPayload<Events>>
-    readonly write: <Tag extends Event.Tag<Events>>(
+    readonly entries: ReadonlyArray<{
+      readonly entry: Entry
+      readonly event: Event.TaggedPayload<Events> | undefined
+    }>
+    readonly writeFrom: <Tag extends Event.Tag<Events>>(
+      source: Entry,
       tag: Tag,
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
+    readonly forward: (entry: Entry) => Effect.Effect<void>
   }) => Effect.Effect<void, never, R>
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   Layer.effectDiscard(
@@ -619,70 +697,168 @@ export const groupCompaction = <Events extends Event.Any, R>(
             Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input))
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
-          const writePayload = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
-            timestamp: number,
+          const writeFrom = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
+            source: Entry,
             tag: Tag,
             payload: Event.PayloadWithTag<Events, Tag>
           ): Effect.fn.Return<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]> {
             const event = Object.hasOwn(group.events, tag) ? group.events[tag] : undefined!
             const entry = new Entry({
-              id: makeEntryIdUnsafe({ msecs: timestamp }),
+              id: makeEntryIdUnsafe({ msecs: source.createdAtMillis }),
               event: tag,
               payload: yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)(payload).pipe(
                 Effect.orDie
               ) as any,
               primaryKey: event.primaryKey(payload)
             }, { disableChecks: true })
-            yield* write(entry)
+            yield* write(entry, source)
           })
+          const forward = (entry: Entry) => write(entry)
 
-          const byPrimaryKey = new Map<
-            string,
-            {
-              readonly entries: Array<Entry>
-              readonly taggedPayloads: Array<Event.TaggedPayload<Events>>
-            }
-          >()
+          const batch: Array<{
+            readonly entry: Entry
+            readonly event: Event.TaggedPayload<Events> | undefined
+          }> = []
           for (const entry of entries) {
             if (!isEventTag(entry.event)) {
               continue
             }
-            const decoded = yield* Effect.result(decodePayload(entry.event, entry.payload))
-            if (Result.isFailure(decoded)) {
-              // Preserve opaque entries for replay or forwarding without compacting them.
-              yield* write(entry)
-              continue
-            }
-            const payload = decoded.success
-            const record = byPrimaryKey.get(entry.primaryKey)
-            const taggedPayload = { _tag: entry.event, payload } as unknown as Event.TaggedPayload<Events>
-            if (record) {
-              record.entries.push(entry)
-              record.taggedPayloads.push(taggedPayload)
-            } else {
-              byPrimaryKey.set(entry.primaryKey, {
-                entries: [entry],
-                taggedPayloads: [taggedPayload]
-              })
-            }
+            const payload = yield* Effect.result(decodePayload(entry.event, entry.payload))
+            batch.push({
+              entry,
+              event: Result.isFailure(payload)
+                ? undefined
+                : { _tag: entry.event, payload: payload.success } as unknown as Event.TaggedPayload<Events>
+            })
           }
 
-          for (const [primaryKey, { entries, taggedPayloads }] of byPrimaryKey) {
-            yield* Effect.orDie(
-              effect({
-                primaryKey,
-                entries,
-                events: taggedPayloads,
-                write(tag, payload) {
-                  return Effect.orDie(writePayload(entries[0].createdAtMillis, tag, payload))
-                }
-              }).pipe(
-                Effect.updateContext((input) => Context.merge(services, input))
-              )
-            ) as any
-          }
+          yield* Effect.orDie(
+            effect({ entries: batch, writeFrom, forward }).pipe(
+              Effect.updateContext((input) => Context.merge(services, input))
+            )
+          ) as any
         })
       })
+    })
+  )
+
+/**
+ * Registers a batch compaction handler for an event group.
+ *
+ * **When to use**
+ *
+ * Use when an event under one primary key affects entries under other keys.
+ *
+ * **Details**
+ *
+ * The compaction effect receives every entry for the group in batch order, with
+ * its decoded event or `event: undefined` if the payload cannot be decoded.
+ *
+ * Only entries that the effect outputs are kept:
+ *
+ * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
+ *   and primary key, at its original position in the batch.
+ * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
+ *   to the first entry in the batch.
+ *
+ * Entries that are neither forwarded nor replaced are dropped, including entries
+ * that could not be decoded.
+ *
+ * @see {@link groupCompaction} for compaction grouped by primary key
+ *
+ * @stability unstable
+ * @category compaction
+ * @since 4.0.0
+ */
+export const groupBatchCompaction = <Events extends Event.Any, R>(
+  group: EventGroup.EventGroup<Events>,
+  effect: (options: {
+    readonly entries: ReadonlyArray<{
+      readonly entry: Entry
+      readonly event: Event.TaggedPayload<Events> | undefined
+    }>
+    readonly write: <Tag extends Event.Tag<Events>>(
+      tag: Tag,
+      payload: Event.PayloadWithTag<Events, Tag>
+    ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
+    readonly forward: (entry: Entry) => Effect.Effect<void>
+  }) => Effect.Effect<void, never, R>
+): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
+  registerBatchCompaction(group, ({ entries, writeFrom, forward }) =>
+    effect({
+      entries,
+      write: (tag, payload) => writeFrom(entries[0].entry, tag, payload),
+      forward
+    }))
+
+/**
+ * Registers a compaction handler for an event group.
+ *
+ * **Details**
+ *
+ * During remote replay, decoded entries are grouped by primary key and passed to
+ * the compaction effect, which outputs the entries to keep:
+ *
+ * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
+ *   and primary key, at its original position in the batch.
+ * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
+ *   to the first decoded entry for the primary key.
+ *
+ * Entries that are neither forwarded nor replaced are dropped. Entries that
+ * cannot be decoded are not passed to the effect and are kept unchanged.
+ *
+ * @see {@link groupBatchCompaction} for compaction across primary keys
+ *
+ * @stability unstable
+ * @category compaction
+ * @since 4.0.0
+ */
+export const groupCompaction = <Events extends Event.Any, R>(
+  group: EventGroup.EventGroup<Events>,
+  effect: (options: {
+    readonly primaryKey: string
+    readonly entries: ReadonlyArray<Entry>
+    readonly events: ReadonlyArray<Event.TaggedPayload<Events>>
+    readonly write: <Tag extends Event.Tag<Events>>(
+      tag: Tag,
+      payload: Event.PayloadWithTag<Events, Tag>
+    ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
+    readonly forward: (entry: Entry) => Effect.Effect<void>
+  }) => Effect.Effect<void, never, R>
+): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
+  registerBatchCompaction(
+    group,
+    Effect.fnUntraced(function*({ entries, writeFrom, forward }) {
+      const byPrimaryKey = new Map<
+        string,
+        {
+          readonly entries: Array<Entry>
+          readonly events: Array<Event.TaggedPayload<Events>>
+        }
+      >()
+      for (const { entry, event } of entries) {
+        if (event === undefined) {
+          yield* forward(entry)
+          continue
+        }
+        const record = byPrimaryKey.get(entry.primaryKey)
+        if (record) {
+          record.entries.push(entry)
+          record.events.push(event)
+        } else {
+          byPrimaryKey.set(entry.primaryKey, { entries: [entry], events: [event] })
+        }
+      }
+
+      for (const [primaryKey, { entries, events }] of byPrimaryKey) {
+        yield* effect({
+          primaryKey,
+          entries,
+          events,
+          write: (tag, payload) => writeFrom(entries[0], tag, payload),
+          forward
+        })
+      }
     })
   )
 
@@ -726,7 +902,8 @@ export const groupReactivity = <Events extends Event.Any>(
  *
  * The returned handler decodes the entry and conflicts with the registered event
  * schema, runs the matching handler with the supplied identity and store id, logs
- * failures, and invalidates configured reactivity keys.
+ * failures, and invalidates configured reactivity keys. Invalidations are
+ * deferred until the end of an enclosing `Reactivity.withBatch`.
  *
  * @stability unstable
  * @category handlers
@@ -742,52 +919,109 @@ export const makeReplayFromRemote = (options: {
     readonly service: string
     readonly effect: string
   }
-}) =>
-  Effect.fnUntraced(
-    function*({ conflicts, entry }: {
-      readonly entry: Entry
-      readonly conflicts: ReadonlyArray<Entry>
-    }): Effect.fn.Return<void, Schema.SchemaError> {
+}) => {
+  const replayBatch = makeReplayBatchFromRemote(options)
+  return (input: ReplayInput) => replayBatch([input])
+}
+
+type ReplayInput = {
+  readonly entry: Entry
+  readonly conflicts: ReadonlyArray<Entry>
+}
+
+type DecodedConflict = { entry: Entry; payload: unknown }
+
+type ReplayBatch = {
+  readonly context: Context.Context<never>
+  readonly handlerContexts: Map<Handlers.Item<any>, Context.Context<any>>
+  readonly decodedConflicts: Map<Entry, DecodedConflict>
+}
+
+/**
+ * Replays a batch, merging each handler's context with the batch context once
+ * and decoding each conflict entry shared by several entries once. The batch
+ * state is created per execution, so transaction retries start fresh.
+ */
+const makeReplayBatchFromRemote = (options: Parameters<typeof makeReplayFromRemote>[0]) => {
+  const replayEntry = makeReplayEntryFromRemote(options)
+  return (batch: ReadonlyArray<ReplayInput>) =>
+    Effect.contextWith((context: Context.Context<never>) => {
+      const state: ReplayBatch = { context, handlerContexts: new Map(), decodedConflicts: new Map() }
+      return Effect.forEach(batch, (input) => replayEntry(input, state), { discard: true })
+    })
+}
+
+// An entry's context is the batch context plus its log annotations, so only
+// the annotations need to be copied into the merged handler context.
+const withEntryAnnotations = (context: Context.Context<any>, entryContext: Context.Context<any>) =>
+  Context.add(context, CurrentLogAnnotations, Context.get(entryContext, CurrentLogAnnotations))
+
+const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemote>[0]) => {
+  // Decoders depend only on the event schema, so they are shared across batches.
+  const decoders = new WeakMap<
+    Handlers.Item<any>,
+    (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
+  >()
+  const decoderFor = (handler: Handlers.Item<any>) => {
+    let decoder = decoders.get(handler)
+    if (decoder === undefined) {
+      decoder = Schema.decodeUnknownEffect(handler.event.payloadSchemaBinary)
+      decoders.set(handler, decoder)
+    }
+    return decoder
+  }
+  const contextFor = (batch: ReplayBatch, handler: Handlers.Item<any>) => {
+    let context = batch.handlerContexts.get(handler)
+    if (context === undefined) {
+      context = Context.merge(handler.context, batch.context)
+      batch.handlerContexts.set(handler, context)
+    }
+    return context
+  }
+
+  return Effect.fnUntraced(
+    function*(
+      { conflicts, entry }: ReplayInput,
+      batch: ReplayBatch
+    ): Effect.fn.Return<void, Schema.SchemaError> {
       const handler = options.handlers.get(entry.event) as Handlers.Item<any> | undefined
       if (!handler) {
         return yield* Effect.logDebug(`Event handler not found for: "${entry.event}"`)
       }
 
-      const decodePayload = Schema.decodeUnknownEffect(handler.event.payloadSchemaBinary)
-      const decodedConflicts: Array<{ entry: Entry; payload: unknown }> = new Array(conflicts.length)
+      const decodePayload = decoderFor(handler)
+      const context = contextFor(batch, handler)
+      const conflictPayloads: Array<DecodedConflict> = new Array(conflicts.length)
       for (let i = 0; i < conflicts.length; i++) {
-        decodedConflicts[i] = {
-          entry: conflicts[i],
-          payload: yield* decodePayload(conflicts[i].payload).pipe(
-            Effect.updateContext((input) => Context.merge(handler.context, input))
-          ) as any
+        const conflict = conflicts[i]
+        let decoded = batch.decodedConflicts.get(conflict)
+        if (!decoded) {
+          decoded = {
+            entry: conflict,
+            payload: yield* decodePayload(conflict.payload).pipe(
+              Effect.updateContext((input) => withEntryAnnotations(context, input))
+            ) as any
+          }
+          batch.decodedConflicts.set(conflict, decoded)
         }
+        conflictPayloads[i] = decoded
       }
 
+      // Conflicts decode with the caller's Identity; the payload and handler use the log's.
       yield* decodePayload(entry.payload).pipe(
         Effect.flatMap((payload) =>
           handler.handler({
             storeId: options.storeId,
             payload,
             entry,
-            conflicts: decodedConflicts
+            conflicts: conflictPayloads
           })
         ),
-        Effect.provideService(Identity, options.identity),
-        Effect.updateContext((input) => Context.merge(handler.context, input)),
+        Effect.updateContext((input) => Context.add(withEntryAnnotations(context, input), Identity, options.identity)),
         Effect.asVoid
       ) as any
 
-      const keys = Object.hasOwn(options.reactivityKeys, entry.event)
-        ? options.reactivityKeys[entry.event]
-        : undefined
-      if (keys) {
-        for (const key of keys) {
-          options.reactivity.invalidateUnsafe({
-            [key]: [entry.primaryKey]
-          })
-        }
-      }
+      yield* invalidateEntry(options.reactivity, options.reactivityKeys, entry)
     },
     Effect.catchCause(Effect.logError),
     (effect, { entry }) =>
@@ -796,6 +1030,17 @@ export const makeReplayFromRemote = (options: {
         entryId: entry.idString
       })
   )
+}
+
+const invalidateEntry = (
+  reactivity: Reactivity,
+  reactivityKeys: Record<string, ReadonlyArray<string>>,
+  entry: Entry
+): Effect.Effect<void> => {
+  const keys = Object.hasOwn(reactivityKeys, entry.event) ? reactivityKeys[entry.event] : undefined
+  if (!keys) return Effect.void
+  return Effect.forEach(keys, (key) => reactivity.invalidate({ [key]: [entry.primaryKey] }), { discard: true })
+}
 
 const remoteRetrySchedule = Schedule.min([
   Schedule.exponential(200, 1.5),
@@ -809,7 +1054,8 @@ const make = Effect.gen(function*() {
   const registry = yield* Registry
 
   const reactivity = yield* Reactivity
-  const replayFromRemote = makeReplayFromRemote({
+  const handlerTransaction = yield* HandlerTransaction
+  const replayFromRemote = makeReplayBatchFromRemote({
     handlers: registry.handlers,
     storeId,
     identity,
@@ -822,78 +1068,75 @@ const make = Effect.gen(function*() {
   })
 
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
-    Effect.sync(() => {
-      for (const entry of entries) {
-        const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-          ? registry.reactivityKeys[entry.event]
-          : undefined
-        if (!keys) {
-          continue
-        }
-        for (const key of keys) {
-          reactivity.invalidateUnsafe({
-            [key]: [entry.primaryKey]
-          })
-        }
-      }
-    })
+    Effect.forEach(entries, (entry) => invalidateEntry(reactivity, registry.reactivityKeys, entry), { discard: true })
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      const startSequence = yield* journal.nextRemoteSequence(remote.id)
-
       yield* Effect.gen(function*() {
-        const changes = yield* remote.changes({ identity, startSequence, storeId })
+        const startSequence = yield* journal.nextRemoteSequence(remote.id)
+        const changes = yield* remote.changes({
+          identity,
+          startSequence,
+          storeId,
+          knownEntries: journal.entriesById
+        })
         while (true) {
           const entries = yield* Queue.takeAll(changes)
           yield* journal.writeFromRemote({
             remoteId: remote.id,
-            entries: entries.flat(),
+            entries,
             compact: registry.compactors.size > 0
               ? Effect.fnUntraced(function*(remoteEntries) {
-                const finalEntries: Array<Entry> = []
+                const finalEntries: Array<Array<Entry>> = remoteEntries.map(() => [])
+                const sourcePositions = new Map<string, number>()
                 const compactable = new Map<
                   (options: {
                     readonly entries: ReadonlyArray<Entry>
-                    readonly write: (entry: Entry) => Effect.Effect<void>
+                    readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
                   }) => Effect.Effect<void>,
-                  Array<Entry>
+                  { readonly entries: Array<Entry>; readonly position: number }
                 >()
 
                 for (let i = 0; i < remoteEntries.length; i++) {
                   const remoteEntry = remoteEntries[i]
                   const entry = remoteEntry.entry
+                  sourcePositions.set(entry.idString, i)
                   const compactor = registry.compactors.get(entry.event)
                   if (!compactor) {
-                    finalEntries.push(entry)
+                    finalEntries[i].push(entry)
                     continue
                   }
-                  let arr = compactable.get(compactor.effect)
-                  if (!arr) {
-                    arr = []
-                    compactable.set(compactor.effect, arr)
+                  let group = compactable.get(compactor.effect)
+                  if (!group) {
+                    group = { entries: [], position: i }
+                    compactable.set(compactor.effect, group)
                   }
-                  arr.push(entry)
+                  group.entries.push(entry)
                 }
 
-                for (const [compact, entries] of compactable) {
+                for (const [compact, { entries, position }] of compactable) {
                   yield* compact({
                     entries,
-                    write(entry) {
+                    write(entry, source) {
                       return Effect.sync(() => {
-                        finalEntries.push(entry)
+                        // Anchor replacements to their source, preserving write order
+                        // without sorting generated IDs. Forwarded entries stay in place.
+                        const index = sourcePositions.get((source ?? entry).idString) ?? position
+                        finalEntries[index].push(entry)
                       })
                     }
                   })
                 }
 
-                return finalEntries.sort(Entry.Order)
+                return finalEntries.flat()
               })
               : undefined,
-            effect: replayFromRemote
+            effect: (batch) => handlerTransaction(replayFromRemote(batch))
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
-            journal.withLock(storeId)
+            journal.withLock(storeId),
+            // Outside the lock, so queries re-run after the journal transaction commits.
+            reactivity.withBatch
           )
         }
       }).pipe(
@@ -907,7 +1150,19 @@ const make = Effect.gen(function*() {
         Effect.forkScoped
       )
 
-      const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write({ identity, entries, storeId }))
+      const write = journal.withRemoteUncommited(
+        remote.id,
+        (entries) =>
+          remote.write({ identity, entries, storeId }).pipe(
+            Effect.flatMap((acks) =>
+              acks === undefined || acks.length === 0
+                ? Effect.void
+                : journal.writeRemoteAcks({ remoteId: remote.id, acks, firstSequence: remote.firstSequence }).pipe(
+                  journal.withLock(storeId)
+                )
+            )
+          )
+      )
       const writeUntilSuccess = write.pipe(
         Effect.tapCause(Effect.logDebug),
         Effect.retry(remoteRetrySchedule)
@@ -932,60 +1187,49 @@ const make = Effect.gen(function*() {
     Effect.orDie
   )
 
-  const writeHandler = Effect.fnUntraced(function*(handler: Handlers.Item<any>, options: {
-    readonly schema: EventLogSchema<any>
-    readonly event: string
-    readonly payload: unknown
-  }) {
-    const payload = yield* Schema.encodeUnknownEffect(handler.event.payloadSchemaBinary)(options.payload).pipe(
-      Effect.orDie
-    )
-    return yield* journal.withLock(storeId)(journal.write({
-      event: options.event,
-      primaryKey: handler.event.primaryKey(options.payload as never),
-      payload,
-      effect: (entry) =>
-        handler.handler({
-          storeId,
-          payload: options.payload,
-          entry,
-          conflicts: []
-        }).pipe(
-          Effect.updateContext((input) => Context.merge(handler.context, input)),
-          Effect.provideService(Identity, identity),
-          Effect.tap(() => {
-            const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
-              ? registry.reactivityKeys[entry.event]
-              : undefined
-            if (keys) {
-              for (const key of keys) {
-                reactivity.invalidateUnsafe({
-                  [key]: [entry.primaryKey]
-                })
-              }
-            }
-            return Effect.void
-          })
-        )
-    }))
-  })
-
-  const eventLogWrite = (options: {
-    readonly schema: EventLogSchema<any>
-    readonly event: string
-    readonly payload: unknown
-  }) => {
-    const handler = registry.handlers.get(options.event) as Handlers.Item<any> | undefined
-    if (handler === undefined) {
-      return Effect.die(`Event handler not found for: "${options.event}"`)
-    }
-    return writeHandler(handler, options)
-  }
+  const writeEvents = (
+    events: Arr.NonEmptyReadonlyArray<{ readonly event: string; readonly payload: unknown }>
+  ): Effect.Effect<Arr.NonEmptyArray<unknown>, unknown> =>
+    Effect.forEach(events, ({ event, payload }) => {
+      const handler = registry.handlers.get(event) as Handlers.Item<any> | undefined
+      if (handler === undefined) {
+        return Effect.die(`Event handler not found for: "${event}"`)
+      }
+      return Schema.encodeUnknownEffect(handler.event.payloadSchemaBinary)(payload).pipe(
+        Effect.orDie,
+        Effect.map((encoded) => ({
+          handler,
+          payload,
+          entry: { event, primaryKey: handler.event.primaryKey(payload as never), payload: encoded as Uint8Array }
+        }))
+      )
+    }).pipe(
+      Effect.flatMap((writes) =>
+        journal.withLock(storeId)(journal.writeMany({
+          entries: Arr.map(writes, (write) => write.entry),
+          effect: (written) =>
+            handlerTransaction(Effect.forEach(written, (entry, i) => {
+              const { handler, payload } = writes[i]
+              return handler.handler({ storeId, payload, entry, conflicts: [] }).pipe(
+                Effect.updateContext((input) => Context.merge(handler.context, input)),
+                Effect.provideService(Identity, identity),
+                Effect.tap(() => invalidateEntry(reactivity, registry.reactivityKeys, entry))
+              )
+            }))
+        }))
+      ),
+      // Outside the lock, so queries re-run after the handler transaction and
+      // the journal commit.
+      reactivity.withBatch
+    ) as Effect.Effect<Arr.NonEmptyArray<unknown>, unknown>
 
   yield* registry.handleRemote(runRemote)
 
   return EventLog.of({
-    write: eventLogWrite as EventLog["Service"]["write"],
+    write: ((options: { readonly event: string; readonly payload: unknown }) =>
+      Effect.map(writeEvents([options]), Arr.headNonEmpty)) as EventLog["Service"]["write"],
+    writeMany: ((options: { readonly events: Arr.NonEmptyReadonlyArray<any> }) =>
+      writeEvents(options.events)) as EventLog["Service"]["writeMany"],
     entries: journal.entries,
     destroy: journal.destroy
   })
