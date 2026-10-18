@@ -1806,6 +1806,11 @@ export const as: {
 /**
  * Maps both the failure and success channels of a stream.
  *
+ * **Details**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Mapping both the failure and success channels of a stream)
  *
  * ```ts import.meta.vitest
@@ -4903,6 +4908,12 @@ export const catchCause: {
  *
  * Typed failures and interruptions are not caught.
  *
+ * **Gotchas**
+ *
+ * `catchDefect` recovers any cause that contains a defect, including causes
+ * that also contain typed errors. Typed error handlers such as `catch` skip
+ * those causes, so defects always take precedence.
+ *
  * **Example** (Recovering from a defect)
  *
  * ```ts import.meta.vitest
@@ -4999,6 +5010,13 @@ const catch_: {
 export {
   /**
    * Switches over to the stream produced by the provided function if this one fails.
+   *
+   * **Gotchas**
+   *
+   * Defects take precedence over typed errors. If the cause also contains a
+   * defect, the handler does not run and the failure is propagated with every
+   * typed error converted to a defect. An interruption alongside a typed error
+   * does not prevent recovery.
    *
    * **Example** (Catching stream failures)
    *
@@ -5216,6 +5234,12 @@ export const tapDefect: {
  * stream. Non-matching failures propagate downstream, so the error type is
  * preserved unless the filter narrows it.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * **Example** (Catching matching failures)
  *
  * ```ts import.meta.vitest
@@ -5307,6 +5331,12 @@ export const catchIf: {
  * Successful filter results are passed to `f`. Failed filter results go to
  * `orElse` when provided; otherwise the filter failure is re-failed.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * @see {@link catchIf} for predicate or refinement based recovery
  * @see {@link catchTag} for `_tag` based recovery from one tagged error
  * @see {@link catchTags} for `_tag` based recovery from multiple tagged errors
@@ -5365,6 +5395,12 @@ export const catchFilter: {
  *
  * Use when you need to handle a specific error case from a stream whose error
  * type is a tagged union with a readonly `_tag` field.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching tagged failures)
  *
@@ -5473,6 +5509,12 @@ export const catchTag: {
 
 /**
  * Switches to a recovery stream based on matching `_tag` handlers.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching tagged failures with handlers)
  *
@@ -5595,6 +5637,12 @@ export const catchTags: {
  * **Details**
  *
  * The handler receives the unwrapped reason.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching a tagged error reason)
  *
@@ -5730,6 +5778,12 @@ export const catchReason: {
 
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching tagged error reasons)
  *
@@ -5959,6 +6013,11 @@ export const unwrapReason: {
 /**
  * Transforms the errors emitted by this stream using `f`.
  *
+ * **Details**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Mapping stream errors)
  *
  * ```ts import.meta.vitest
@@ -6133,6 +6192,12 @@ export const orElseIfEmpty: {
 /**
  * Returns a stream that emits a fallback value when this stream fails.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * **Example** (Recovering with a fallback value)
  *
  * ```ts import.meta.vitest
@@ -6205,6 +6270,13 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  *
  * The `log` option controls whether the failure is logged before the stream
  * terminates.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the failure is not ignored and is propagated with every typed error
+ * converted to a defect. An interruption alongside a typed error does not
+ * prevent the error from being ignored.
  *
  * **Example** (Ignoring stream failures)
  *
@@ -6322,6 +6394,12 @@ export const ignoreCause: <
  *
  * The schedule is reset as soon as the first element passes through the
  * stream again.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. A failure whose cause contains a
+ * defect is not retried and is propagated with every typed error converted to a
+ * defect. A typed error alongside an interruption is retried.
  *
  * **Example** (Retrying stream failures)
  *

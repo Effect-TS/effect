@@ -189,6 +189,15 @@ export const causeElectDefects = <E>(self: Cause.Cause<E>): Cause.Cause<E> =>
     )
     : self
 
+/**
+ * Selects the first typed error unless a defect is present, in which case
+ * every `Fail` is elected to `Die`. Interrupts do not block typed recovery.
+ *
+ * @internal
+ */
+export const findRecoverableError = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
+  hasDies(self) ? Result.fail(causeElectDefects(self) as Cause.Cause<never>) : findError(self)
+
 /** @internal */
 export const findDie = <E>(self: Cause.Cause<E>): Result.Result<Cause.Die, Cause.Cause<E>> => {
   const reason = self.reasons.find(isDieReason)
@@ -1972,8 +1981,8 @@ export const catchEager: {
   ): Effect.Effect<A | B, E2, R | R2> => {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return self as Exit.Exit<A>
-      const error = findError(self.cause)
-      if (Result.isFailure(error)) return self as Exit.Exit<never>
+      const error = findRecoverableError(self.cause)
+      if (Result.isFailure(error)) return exitFailCause(error.failure)
       return f(error.success)
     }
     return catch_(self, f)
@@ -2069,9 +2078,7 @@ export const exitMapError: {
   2,
   <A, E, E2>(self: Exit.Exit<A, E>, f: (a: NoInfer<E>) => E2): Exit.Exit<A, E2> => {
     if (self._tag === "Success") return self as Exit.Exit<A>
-    const error = findError(self.cause)
-    if (Result.isFailure(error)) return self as Exit.Exit<never>
-    return exitFail(f(error.success))
+    return exitFailCause(causeMap(self.cause, f))
   }
 )
 
@@ -2091,9 +2098,7 @@ export const exitMapBoth: {
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
   ): Exit.Exit<A2, E2> => {
     if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
-    const error = findError(self.cause)
-    if (Result.isFailure(error)) return self as Exit.Exit<never>
-    return exitFail(options.onFailure(error.success))
+    return exitFailCause(causeMap(self.cause, options.onFailure))
   }
 )
 
@@ -2701,7 +2706,7 @@ export const catch_: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: NoInfer<E>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => catchCauseFilter(self, findError as any, (e: any) => f(e)) as any
+  ): Effect.Effect<A | B, E2, R | R2> => catchCauseFilter(self, findRecoverableError as any, (e: any) => f(e)) as any
 )
 
 /** @internal */
@@ -2933,7 +2938,7 @@ export const catchIf: {
     orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
     catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-      const error = findError(cause)
+      const error = findRecoverableError(cause)
       if (Result.isFailure(error)) return failCause(error.failure)
       if (!predicate(error.success)) {
         return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
@@ -2966,7 +2971,7 @@ export const catchFilter: {
     orElse?: ((e: X) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
     catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-      const error = findError(cause)
+      const error = findRecoverableError(cause)
       if (Result.isFailure(error)) return failCause(error.failure)
       const result = filter(error.success)
       if (Result.isFailure(result)) {
@@ -3400,7 +3405,7 @@ export const mapError: {
   <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
     f: (e: E) => E2
-  ): Effect.Effect<A, E2, R> => catch_(self, (error) => failSync(() => f(error)))
+  ): Effect.Effect<A, E2, R> => catchCause(self, (cause) => failCause(causeMap(cause, f)))
 )
 
 /** @internal */
@@ -3416,8 +3421,8 @@ export const mapBoth: {
   self: Effect.Effect<A, E, R>,
   options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
 ): Effect.Effect<A2, E2, R> =>
-  matchEffect(self, {
-    onFailure: (e) => failSync(() => options.onFailure(e)),
+  matchCauseEffect(self, {
+    onFailure: (cause) => failCause(causeMap(cause, options.onFailure)),
     onSuccess: (a) => sync(() => options.onSuccess(a))
   }))
 
@@ -3496,9 +3501,9 @@ export const ignore: <
       const logEffect = logWithLevel(options.log === true ? undefined : options.log)
       return matchCauseEffect(self, {
         onFailure(cause) {
-          const failure = findFail(cause)
-          return Result.isFailure(failure)
-            ? failCause(failure.failure)
+          const error = findRecoverableError(cause)
+          return Result.isFailure(error)
+            ? failCause(error.failure)
             : options.message === undefined
             ? logEffect(cause)
             : logEffect(options.message, cause)
@@ -3636,11 +3641,11 @@ const makeMatch = (
   return MatchImpl
 }
 const MatchImpl = makeMatch("Match", function(cause, fiber) {
-  const fail = cause.reasons.find(isFailReason)
-  if (fail === undefined) return failCause(cause) as any
+  const error = findRecoverableError(cause)
+  if (Result.isFailure(error)) return failCause(error.failure) as any
   const handlers = this.payload
   return fiber.succeedWith(
-    continuationMarksStack ? handlers.onFailure(fail.error) : internalCall(() => handlers.onFailure(fail.error))
+    continuationMarksStack ? handlers.onFailure(error.success) : internalCall(() => handlers.onFailure(error.success))
   )
 })
 const MatchCauseImpl = makeMatch("MatchCause", function(cause, fiber) {
@@ -3700,10 +3705,10 @@ export const matchEffect: {
   ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> =>
     matchCauseEffect(self, {
       onFailure: (cause) => {
-        const fail = cause.reasons.find(isFailReason)
-        return fail
-          ? options.onFailure(fail.error)
-          : failCause(cause as Cause.Cause<never>)
+        const error = findRecoverableError(cause)
+        return Result.isFailure(error)
+          ? failCause(error.failure)
+          : options.onFailure(error.success)
       },
       onSuccess: options.onSuccess
     })
@@ -3757,8 +3762,8 @@ export const matchEager: {
   ): Effect.Effect<A2 | A3, never, R> => {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
-      const error = findError(self.cause)
-      if (Result.isFailure(error)) return self as Exit.Exit<never>
+      const error = findRecoverableError(self.cause)
+      if (Result.isFailure(error)) return exitFailCause(error.failure)
       return exitSucceed(options.onFailure(error.success))
     }
     return match(self, options)
