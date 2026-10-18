@@ -1,5 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import * as NodeClient from "@effect/platform-node/NodeHttpClient"
+import Undici from "@effect/platform-node/Undici"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
@@ -18,7 +19,10 @@ import {
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import { mkdtempSync, openAsBlob, rmSync, truncateSync, writeFileSync } from "node:fs"
 import * as Http from "node:http"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -201,13 +205,19 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         assert.deepStrictEqual(yield* response.json, { a: 1 })
       }).pipe(Effect.provide(localServerTestLayer)))
 
-    if (name === "undici") {
-      it.live("sends form data request bodies as multipart", () =>
+    if (name !== "fetch") {
+      it.live.each([
+        { source: "global", FormData: globalThis.FormData },
+        { source: "undici", FormData: Undici.FormData }
+      ])("sends $source form data request bodies as multipart", ({ FormData }) =>
         Effect.gen(function*() {
           const formData = new FormData()
           formData.append("title", "effect")
           formData.append("file", new Blob(["file contents"], { type: "text/plain" }), "notes.txt")
-          const response = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
+          const response = yield* HttpClient.post("/multipart", {
+            body: HttpBody.formData(formData as globalThis.FormData),
+            headers: { "content-type": "multipart/form-data; boundary=caller-boundary" }
+          }).pipe(
             Effect.timeout("2 seconds")
           )
           assert.deepStrictEqual(yield* response.json, [
@@ -216,6 +226,29 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
           ])
         }).pipe(Effect.provide(localServerTestLayer)))
 
+      it.live("returns TransportError when a form data file cannot be read", () =>
+        Effect.gen(function*() {
+          const directory = yield* Effect.acquireRelease(
+            Effect.sync(() => mkdtempSync(join(tmpdir(), "effect-form-data-"))),
+            (directory) => Effect.sync(() => rmSync(directory, { recursive: true, force: true }))
+          )
+          const path = join(directory, "notes.txt")
+          writeFileSync(path, "file contents")
+          const blob = yield* Effect.promise(() => openAsBlob(path, { type: "text/plain" }))
+          const formData = new FormData()
+          formData.append("file", blob, "notes.txt")
+          truncateSync(path, 0)
+
+          const error = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
+            Effect.timeout("2 seconds"),
+            Effect.flip
+          )
+          assert(error._tag === "HttpClientError", `Expected HttpClientError, got ${error._tag}`)
+          assert.strictEqual(error.reason._tag, "TransportError")
+        }).pipe(Effect.provide(localServerTestLayer)))
+    }
+
+    if (name === "undici") {
       it.effect.each(formDataResponses)("parses $name response form data", ({ path }) =>
         Effect.gen(function*() {
           const response = yield* HttpClient.get(path)
