@@ -9854,7 +9854,7 @@ class JsonContentRepresentation {
     this.#ast = ast
   }
   get schemas(): ReadonlyArray<SchemaAST.AST> {
-    return this.#schemas ??= [SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(SchemaAST.toEncoded(this.#ast)))]
+    return this.#schemas ??= [SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(this.#ast))]
   }
 }
 

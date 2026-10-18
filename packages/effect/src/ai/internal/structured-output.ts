@@ -315,12 +315,9 @@ function optionalToNullable(type: SchemaAST.AST): SchemaAST.AST {
   )
 }
 
-function prepareChecks(checks: SchemaAST.Checks | undefined): SchemaAST.Checks | undefined {
-  return checks === undefined ? undefined : prepareCheckList(checks)
-}
-
 // Returns the input array when nothing changes, so unchanged ASTs keep their identity.
-function prepareCheckList(checks: SchemaAST.Checks): SchemaAST.Checks | undefined {
+function prepareChecks(checks: SchemaAST.Checks | undefined): SchemaAST.Checks | undefined {
+  if (checks === undefined) return undefined
   let out: Array<SchemaAST.Check<any>> | undefined
   for (let index = 0; index < checks.length; index++) {
     const check = checks[index]
@@ -344,7 +341,7 @@ function prepareCheck(check: SchemaAST.Check<any>): SchemaAST.Check<any> | undef
     }
     case "FilterGroup": {
       // A group emptied by the removal above is dropped with its annotations.
-      const checks = prepareCheckList(check.checks)
+      const checks = prepareChecks(check.checks)
       if (checks === undefined) return undefined
       return checks === check.checks
         ? check
