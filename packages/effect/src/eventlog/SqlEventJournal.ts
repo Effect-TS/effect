@@ -454,7 +454,7 @@ export const make = (options?: {
         Effect.gen(function*() {
           yield* lockWriters
           yield* Effect.flatMap(latestEntryIds, EventJournal.observeEntryIds)
-          const committed = EventJournal.makeEntries(entries)
+          const committed = yield* EventJournal.makeEntries(entries)
           const result = yield* restore(effect(committed)).pipe(
             Effect.mapError((error) => new CallbackFailure(error))
           )
@@ -466,6 +466,8 @@ export const make = (options?: {
           Effect.mapError((error) =>
             error instanceof CallbackFailure
               ? error.error
+              : error instanceof EventJournal.EventJournalError
+              ? error
               : new EventJournal.EventJournalError({ cause: error, method: "writeMany" })
           ),
           Effect.flatMap(({ committed, result }) => Effect.as(PubSub.publishAll(pubsub, committed), result))

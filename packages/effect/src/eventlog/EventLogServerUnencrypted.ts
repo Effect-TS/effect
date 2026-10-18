@@ -854,8 +854,18 @@ export const make = Effect.gen(function*() {
           return yield* Effect.die(`Event schema not found for: "${options.event}"`)
         }
 
+        const id = yield* Effect.try({
+          try: () => makeEntryIdUnsafe(),
+          catch: () =>
+            new EventLogServerStoreError({
+              reason: "PersistenceFailure",
+              publicKey: publicKey,
+              storeId: options.storeId,
+              message: "Failed to generate an entry id"
+            })
+        })
         const entry = new EventJournal.Entry({
-          id: makeEntryIdUnsafe(),
+          id,
           event: options.event,
           primaryKey: schemaEvent.primaryKey(options.payload),
           payload: yield* Schema.encodeUnknownEffect(schemaEvent.payloadSchemaBinary)(options.payload).pipe(

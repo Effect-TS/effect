@@ -298,6 +298,7 @@ export const EntryId = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayB
  */
 export const EntryIdOrder: Order.Order<EntryId> = entryIdOrder
 
+const maxEntryIdMillis = 2 ** 48 - 1
 let lastEntryIdMillis = 0
 let entryIdCounter = 0
 
@@ -326,7 +327,14 @@ let entryIdCounter = 0
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
- * Ids created with an explicit `msecs` are not part of the sequence.
+ * Throws a `RangeError` once the sequence passes the last UUID v7 millisecond,
+ * which only an observed id at the end of the range can cause. Every later
+ * call throws too, because any id it could return would sort before an entry
+ * already seen. The journals fail local writes with an `EventJournalError`
+ * instead.
+ *
+ * Ids created with an explicit `msecs` are not part of the sequence, and clamp
+ * to the UUID v7 range.
  *
  * @stability unstable
  * @category unsafe
@@ -343,6 +351,10 @@ export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId => 
   } else if (++entryIdCounter > 0xfff) {
     lastEntryIdMillis++
     entryIdCounter = 0
+  }
+  // The sequence only moves forward, so once exhausted it stays exhausted.
+  if (lastEntryIdMillis > maxEntryIdMillis) {
+    throw new RangeError("The entry id clock has passed the last UUID v7 millisecond")
   }
   const bytes = Uuid.v7Bytes(lastEntryIdMillis)
   // The counter replaces the 12 random `rand_a` bits after the version.
@@ -537,14 +549,18 @@ export const makeEntries = (
   entries: Arr.NonEmptyReadonlyArray<
     { readonly event: string; readonly primaryKey: string; readonly payload: Uint8Array }
   >
-): Arr.NonEmptyArray<Entry> =>
-  Arr.map(entries, ({ event, payload, primaryKey }) =>
-    new Entry({
-      id: makeEntryIdUnsafe(),
-      event,
-      primaryKey,
-      payload
-    }, { disableChecks: true }))
+): Effect.Effect<Arr.NonEmptyArray<Entry>, EventJournalError> =>
+  Effect.try({
+    try: () =>
+      Arr.map(entries, ({ event, payload, primaryKey }) =>
+        new Entry({
+          id: makeEntryIdUnsafe(),
+          event,
+          primaryKey,
+          payload
+        }, { disableChecks: true })),
+    catch: (cause) => new EventJournalError({ method: "writeMany", cause })
+  })
 
 /**
  * Creates an in-memory `EventJournal` service.
@@ -589,7 +605,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
 
   const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
     Effect.acquireUseRelease(
-      Effect.sync(() => makeEntries(entries)),
+      makeEntries(entries),
       effect,
       (entries, exit) =>
         Effect.suspend(() => {
@@ -833,9 +849,9 @@ export const makeIndexedDb = (options?: {
       Effect.uninterruptibleMask((restore) =>
         latestEntryId.pipe(
           Effect.flatMap(observeEntryIds),
-          Effect.flatMap(() => {
-            const committed = makeEntries(entries)
-            return restore(effect(committed)).pipe(
+          Effect.flatMap(() => makeEntries(entries)),
+          Effect.flatMap((committed) =>
+            restore(effect(committed)).pipe(
               Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
                 const tx = db.transaction(["entries", "entrySequence"], "readwrite")
                 const store = tx.objectStore("entries")
@@ -848,7 +864,7 @@ export const makeIndexedDb = (options?: {
               })),
               Effect.tap(PubSub.publishAll(pubsub, committed))
             )
-          })
+          )
         )
       )
 
