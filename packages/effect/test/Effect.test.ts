@@ -4035,6 +4035,10 @@ describe("Effect", () => {
     const error = new MixedError()
     const defect = new Error("boom")
     const recovered = Effect.succeed("recovered")
+    const failOnce = (self: Effect.Effect<never, MixedError>) => {
+      let attempts = 0
+      return Effect.suspend(() => attempts++ === 0 ? self : Effect.succeed("retried"))
+    }
     const recoveries: Record<string, (self: Effect.Effect<never, MixedError>) => Effect.Effect<unknown, unknown>> = {
       catch: (self) => Effect.catch(self, () => recovered),
       catchEager: (self) => Effect.catchEager(self, () => recovered),
@@ -4049,7 +4053,9 @@ describe("Effect", () => {
       ignore: (self) => Effect.ignore(self),
       ignoreLogged: (self) => Effect.ignore(self, { log: "Debug" }),
       option: Effect.option,
-      result: Effect.result
+      result: Effect.result,
+      retry: (self) => Effect.retry(failOnce(self), { times: 1 }),
+      eventually: (self) => Effect.eventually(failOnce(self))
     }
     const reasonsOf = (exit: Exit.Exit<unknown, unknown>) =>
       Exit.isSuccess(exit) ? exit : exit.cause.reasons.map((reason) =>

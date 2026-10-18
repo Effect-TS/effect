@@ -1409,6 +1409,10 @@ describe("Stream", () => {
       const error = new MixedError()
       const defect = new Error("boom")
       const recovered = Stream.succeed("recovered")
+      const failOnce = (self: Stream.Stream<string, MixedError>) => {
+        let attempts = 0
+        return Stream.suspend(() => attempts++ === 0 ? self : Stream.succeed("retried"))
+      }
       const recoveries: Record<string, (self: Stream.Stream<string, MixedError>) => Stream.Stream<unknown, unknown>> = {
         catch: (self) => Stream.catch(self, () => recovered),
         catchTag: (self) => Stream.catchTag(self, "MixedError", () => recovered),
@@ -1417,7 +1421,8 @@ describe("Stream", () => {
         catchFilter: (self) => Stream.catchFilter(self, Result.succeed, () => recovered),
         orElseSucceed: (self) => Stream.orElseSucceed(self, () => "recovered"),
         ignore: (self) => Stream.ignore(self),
-        result: Stream.result
+        result: Stream.result,
+        retry: (self) => Stream.retry(failOnce(self), Schedule.recurs(1))
       }
       const failWith = (...reasons: Array<Cause.Reason<MixedError>>) =>
         Stream.make("a").pipe(Stream.concat(Stream.failCause(Cause.fromReasons(reasons))))

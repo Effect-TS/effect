@@ -810,6 +810,10 @@ describe("Channel", () => {
     const error = new MixedError()
     const defect = new Error("boom")
     const recovered = Channel.succeed("recovered")
+    const failOnce = (self: Channel.Channel<never, MixedError, never>) => {
+      let attempts = 0
+      return Channel.suspend(() => attempts++ === 0 ? self : Channel.succeed("retried"))
+    }
     const recoveries: Record<
       string,
       (self: Channel.Channel<never, MixedError, never>) => Channel.Channel<unknown, unknown, unknown>
@@ -818,7 +822,8 @@ describe("Channel", () => {
       catchTag: (self) => Channel.catchTag(self, "MixedError", () => recovered),
       catchIf: (self) => Channel.catchIf(self, () => true, () => recovered),
       catchFilter: (self) => Channel.catchFilter(self, Result.succeed, () => recovered),
-      ignore: (self) => Channel.ignore(self)
+      ignore: (self) => Channel.ignore(self),
+      retry: (self) => Channel.retry(failOnce(self), Schedule.recurs(1))
     }
     const failWith = (...reasons: Array<Cause.Reason<MixedError>>) => Channel.failCause(Cause.fromReasons(reasons))
     const reasonsOf = (exit: Exit.Exit<unknown, unknown>) =>
