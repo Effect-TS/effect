@@ -366,19 +366,17 @@ const make = Effect.gen(function*() {
     // Shard releases fork into a child scope that closes after the shutdown
     // handoff, as forks into the closing sharding scope never run.
     const releaseScope = yield* Scope.fork(shardingScope)
-    const pendingEntityInterrupts = new Map<Fiber.Fiber<void>, { shardId: ShardId; entityType: string }>()
     // Interrupt the shards' entities on every entity manager that is open
     const forkInterruptShards = Effect.fnUntraced(function*(shardIds: Iterable<ShardId>, force: boolean) {
       const fibers = Arr.empty<Fiber.Fiber<void>>()
       for (const shardId of shardIds) {
-        for (const [entityType, state] of entityManagers) {
+        for (const state of entityManagers.values()) {
           if (state.status === "closed") continue
-          const fiber = yield* Effect.forkIn(state.manager.interruptShard(shardId, { force }), releaseScope, {
-            startImmediately: true
-          })
-          pendingEntityInterrupts.set(fiber, { shardId, entityType })
-          fiber.addObserver(() => pendingEntityInterrupts.delete(fiber))
-          fibers.push(fiber)
+          fibers.push(
+            yield* Effect.forkIn(state.manager.interruptShard(shardId, { force }), releaseScope, {
+              startImmediately: true
+            })
+          )
         }
       }
       return fibers
@@ -475,10 +473,9 @@ const make = Effect.gen(function*() {
     // Names the shards and the entity types and singletons still stopping
     const warnForcedReleasePending = (shardIds: ReadonlyArray<ShardId>) =>
       Effect.suspend(() => {
-        const includesShard = (shardId: ShardId) => shardIds.some((pending) => Equal.equals(pending, shardId))
-        const entityTypes = new Set<string>()
-        for (const { entityType, shardId } of pendingEntityInterrupts.values()) {
-          if (includesShard(shardId)) entityTypes.add(entityType)
+        const entityTypes = Arr.empty<string>()
+        for (const [entityType, state] of entityManagers) {
+          if (shardIds.some((shardId) => state.manager.hasServersUnsafe(shardId))) entityTypes.push(entityType)
         }
         const singletonNames = new Set<string>()
         for (const shardId of shardIds) {
@@ -487,7 +484,7 @@ const make = Effect.gen(function*() {
           }
         }
         MutableHashMap.forEach(stoppingSingletons, (_, address) => {
-          if (includesShard(address.shardId)) singletonNames.add(address.name)
+          if (shardIds.some((shardId) => Equal.equals(shardId, address.shardId))) singletonNames.add(address.name)
         })
         return Effect.logWarning(
           "Forced shard release is still pending; reacquisition is blocked until release completes"
@@ -495,7 +492,7 @@ const make = Effect.gen(function*() {
           module: "effect/cluster/Sharding",
           runner: selfAddress,
           shardIds: shardIds.map(String),
-          entityTypes: [...entityTypes],
+          entityTypes,
           singletonNames: [...singletonNames]
         }))
       })
