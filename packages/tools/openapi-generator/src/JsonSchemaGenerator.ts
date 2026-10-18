@@ -28,6 +28,7 @@ type Source = "openapi-3.0" | "openapi-3.1"
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
+  readonly includeSchemas?: ReadonlyArray<string> | undefined
 }
 
 interface HttpApiMultipartSchemaRefs {
@@ -116,8 +117,8 @@ function makeWithRepresentation() {
       }
     }
 
-    const codes = generated.codeDocument.codes.map((code, i) =>
-      renderSchemaTypeAndRuntime(generated.nameMap[i], code, typeOnly, options)
+    const codes = generated.nameMap.map((name, i) =>
+      renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
     )
 
     return renderImportArtifacts(generated.codeDocument, !typeOnly) +
@@ -168,8 +169,8 @@ function makeWithRepresentation() {
       recursives.push(renderSchemaTypeAndRuntime($ref, code, false, options))
     }
 
-    const codes = generated.codeDocument.codes.map((code, i) =>
-      renderSchemaTypeAndRuntime(generated.nameMap[i], code, false, options)
+    const codes = generated.nameMap.map((name, i) =>
+      renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], false, options)
     )
 
     return renderImportArtifacts(generated.codeDocument, true) +
@@ -198,6 +199,13 @@ function makeWithRepresentation() {
     for (const [name, js] of Object.entries(store)) {
       nameMap.push(name)
       schemas.push(fromSchemaOpenApi(source, js).schema)
+    }
+    // Unnamed roots, so included components are emitted as definitions without an alias
+    for (const name of options?.includeSchemas ?? []) {
+      if (!Object.hasOwn(components, name)) {
+        throw new Error(`Included schema ${name} is not a component`)
+      }
+      schemas.push(fromSchemaOpenApi(source, { $ref: `#/components/schemas/${name}` }).schema)
     }
 
     if (!Arr.isArrayNonEmpty(schemas)) {
