@@ -171,11 +171,11 @@ ORDER BY migration_id`,
     })
 
     const insertMigrations = (
-      rows: ReadonlyArray<[id: number, name: string]>
+      rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
       sql`INSERT INTO ${sql(table)} ${
         sql.insert(
-          rows.map(([migration_id, name]) => ({ migration_id, name }))
+          Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
         )
       }`.withoutTransform
 
@@ -277,9 +277,9 @@ ORDER BY migration_id`,
         ])
       }
 
-      if (required.length > 0) {
+      if (Arr.isArrayNonEmpty(required)) {
         yield* pipe(
-          insertMigrations(required.map(([id, name]) => [id, name])),
+          insertMigrations(Arr.map(required, ([id, name]) => [id, name])),
           Effect.mapError((error): MigrationError | SqlError =>
             isConstraintConflict(error)
               ? new MigrationError({
