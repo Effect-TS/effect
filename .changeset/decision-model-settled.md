@@ -1,7 +1,7 @@
 ---
-"effect": minor
-"@effect/ai-openai": minor
-"@effect/ai-openrouter": minor
+"effect": patch
+"@effect/ai-openai": patch
+"@effect/ai-openrouter": patch
 ---
 
 Add `DecisionModel.decideSettled` to retain valid answers alongside per-decision `Result` failures (`Missing`, `Refused`, `NoDistribution`, or `Invalid`). Provider failures still fail the effect; `decide` remains all-or-nothing.
