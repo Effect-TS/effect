@@ -178,23 +178,34 @@ it.layer(TestLayer, { timeout: "30 seconds" })("SqlEventJournal", (it) => {
           next_sequence INT NOT NULL
         )`
       yield* sql`INSERT INTO concurrent_open_remotes_cursors ${sql.insert({ remote_id: remoteA, next_sequence: 9 })}`
-      const locked = yield* Deferred.make<number>()
+      const warmed = yield* Deferred.make<void>()
+      const startWaiting = yield* Deferred.make<void>()
+      const migrated = yield* Deferred.make<number>()
       const release = yield* Deferred.make<void>()
-      // Index creation needs this table, so both opens stall mid-migration.
-      yield* sql`LOCK TABLE concurrent_open_entries IN ACCESS EXCLUSIVE MODE`.pipe(
-        Effect.andThen(backendPid),
-        Effect.flatMap((pid) => Deferred.succeed(locked, pid)),
-        Effect.andThen(Deferred.await(release)),
+      const waiting = yield* Effect.gen(function*() {
+        // Pin this backend and cache both old names before the other opener changes them.
+        const [before] = yield* sql<{ legacy: string | null; sources: string | null }>`
+          SELECT to_regclass('concurrent_open_remotes')::text AS legacy,
+                 to_regclass('concurrent_open_entries_sources')::text AS sources
+        `
+        assert.strictEqual(before.legacy, "concurrent_open_remotes")
+        assert.isNull(before.sources)
+        yield* Deferred.succeed(warmed, undefined)
+        yield* Deferred.await(startWaiting)
+        return yield* SqlEventJournal.make(options)
+      }).pipe(sql.withTransaction, Effect.forkChild)
+      yield* Deferred.await(warmed)
+      const first = yield* SqlEventJournal.make(options).pipe(
+        Effect.tap(() => backendPid.pipe(Effect.flatMap((pid) => Deferred.succeed(migrated, pid)))),
+        Effect.tap(Deferred.await(release)),
         sql.withTransaction,
         Effect.forkChild
       )
-      const holder = yield* Deferred.await(locked)
-      const opens = yield* Effect.forkChild(
-        Effect.all([SqlEventJournal.make(options), SqlEventJournal.make(options)], { concurrency: 2 })
-      )
-      yield* waitUntilBlockedBy(holder, 2)
+      const holder = yield* Deferred.await(migrated)
+      yield* Deferred.succeed(startWaiting, undefined)
+      yield* waitUntilBlockedBy(holder, 1, waiting)
       yield* Deferred.succeed(release, undefined)
-      const journals = yield* Fiber.join(opens)
+      const journals = [yield* Fiber.join(first), yield* Fiber.join(waiting)]
       for (const journal of journals) {
         assert.strictEqual(yield* journal.nextRemoteSequence(remoteA), 9)
         assert.strictEqual(yield* journal.nextRemoteSequence(remoteB), 8)
