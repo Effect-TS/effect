@@ -81,33 +81,6 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   }
 
   /**
-   * Get the path prefixes to generate, or `undefined` to generate every path.
-   *
-   * @since 4.0.0
-   */
-  get includePathList(): ReadonlyArray<string> | undefined {
-    return this.includePaths
-  }
-
-  /**
-   * Get the component schemas to generate even when no operation references them.
-   *
-   * @since 4.0.0
-   */
-  get includeSchemaList(): ReadonlyArray<string> | undefined {
-    return this.includeSchemas
-  }
-
-  /**
-   * Whether to replace each operation's explicit error responses with one `4XX` response.
-   *
-   * @since 4.0.0
-   */
-  get shouldCollapseErrorResponses(): boolean {
-    return this.collapseErrorResponses ?? false
-  }
-
-  /**
    * Get the list of text replacements to apply.
    *
    * @since 4.0.0

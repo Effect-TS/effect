@@ -563,48 +563,43 @@ export const layer: Layer.Layer<
     }
     return {
       ...spec as Record<string, Schema.Json>,
-      paths: Object.fromEntries(
-        Object.entries(paths).filter(([path]) => prefixes.some((prefix) => path.startsWith(prefix)))
-      )
+      paths: Record.filter(paths, (_, path) => prefixes.some((prefix) => path.startsWith(prefix)))
     }
   }
 
-  // Replaces each operation's 4xx and 5xx responses with one `4XX` response that uses
-  // the error envelope component they share. Statuses that narrow the envelope inline are
-  // dropped, so any envelope decodes and the status code decides the error.
+  // Replaces an operation's 4xx and 5xx responses with one `4XX` response that uses the error
+  // envelope component they share. Statuses that narrow the envelope inline are dropped, so any
+  // envelope decodes and the status code decides the error.
+  const collapseOperationErrors = (operation: Schema.Json, method: string, path: string): Schema.Json => {
+    const { responses } = operation as { readonly responses?: Record<string, Schema.Json> }
+    if (responses === undefined) return operation
+    const errors = Object.keys(responses).filter((status) => /^[45]/.test(status))
+    if (errors.length === 0) return operation
+    const refs = new Set(
+      errors
+        .map((status) => (responses[status] as any)?.content?.["application/json"]?.schema?.$ref)
+        .filter(Predicate.isString)
+    )
+    if (refs.size !== 1) {
+      throw new Error(`Expected one shared error envelope for ${method.toUpperCase()} ${path}, found ${refs.size}`)
+    }
+    return {
+      ...operation as Record<string, Schema.Json>,
+      responses: {
+        ...Record.filter(responses, (_, status) => !errors.includes(status)),
+        "4XX": { description: "Error", content: { "application/json": { schema: { $ref: [...refs][0] } } } }
+      }
+    }
+  }
+
   const collapseErrorResponses = (spec: Schema.Json): Schema.Json => {
-    const paths = (spec as { readonly paths?: Record<string, Record<string, Schema.Json>> }).paths ?? {}
+    const { paths } = spec as { readonly paths?: Record<string, Record<string, Schema.Json>> }
+    if (paths === undefined) return spec
     return {
       ...spec as Record<string, Schema.Json>,
-      paths: Object.fromEntries(
-        Object.entries(paths).map(([path, item]) => [
-          path,
-          Object.fromEntries(
-            Object.entries(item).map(([method, operation]) => {
-              const responses = (operation as { readonly responses?: Record<string, Schema.Json> }).responses
-              if (responses === undefined) return [method, operation]
-              const errors = Object.keys(responses).filter((status) => /^[45]/.test(status))
-              if (errors.length === 0) return [method, operation]
-              const refs = new Set(errors.flatMap((status) => {
-                const ref = (responses[status] as any)?.content?.["application/json"]?.schema?.$ref
-                return typeof ref === "string" ? [ref] : []
-              }))
-              if (refs.size !== 1) {
-                throw new Error(
-                  `Expected one shared error envelope for ${method.toUpperCase()} ${path}, found ${refs.size}`
-                )
-              }
-              const kept = Object.fromEntries(Object.entries(responses).filter(([status]) => !errors.includes(status)))
-              return [method, {
-                ...operation as Record<string, Schema.Json>,
-                responses: {
-                  ...kept,
-                  "4XX": { description: "Error", content: { "application/json": { schema: { $ref: [...refs][0] } } } }
-                }
-              }]
-            })
-          )
-        ])
+      paths: Record.map(
+        paths,
+        (item, path) => Record.map(item, (operation, method) => collapseOperationErrors(operation, method, path))
       )
     }
   }
@@ -614,16 +609,13 @@ export const layer: Layer.Layer<
     spec: unknown
   ) {
     // Apply patches if any are configured, then keep only the included paths
-    const filteredSpec = filterPaths(
-      yield* applyPatches(provider, spec as Schema.Json),
-      provider.config.includePathList
-    )
-    const patchedSpec = provider.config.shouldCollapseErrorResponses
-      ? yield* Effect.try({
-        try: () => collapseErrorResponses(filteredSpec),
+    let patchedSpec = filterPaths(yield* applyPatches(provider, spec as Schema.Json), provider.config.includePaths)
+    if (provider.config.collapseErrorResponses) {
+      patchedSpec = yield* Effect.try({
+        try: () => collapseErrorResponses(patchedSpec),
         catch: (cause) => new GenerationError({ provider: provider.name, cause })
       })
-      : filteredSpec
+    }
 
     const excludeAnnotations = provider.config.excludeAnnotationsList
     const disableAdditionalProperties = provider.config.shouldDisableAdditionalProperties
@@ -642,7 +634,7 @@ export const layer: Layer.Layer<
       .generate(patchedSpec as unknown as Parameters<typeof openApiGen.generate>[0], {
         name: provider.config.clientName,
         format: provider.config.isTypeOnly ? "httpclient-type-only" : "httpclient",
-        includeSchemas: provider.config.includeSchemaList,
+        includeSchemas: provider.config.includeSchemas,
         onEnter
       })
       .pipe(
