@@ -49,6 +49,28 @@ describe("AnthropicClient", () => {
       body: { error: { message: "gateway rate limit" } }
     }))))
 
+  it.effect("maps a 429 Anthropic error envelope with a non-rate-limit type and preserves retry-after", () =>
+    Effect.gen(function*() {
+      const client = yield* AnthropicClient.AnthropicClient
+      const error = yield* client.createMessage({
+        payload: {
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hello" }]
+        }
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(error.reason._tag, "RateLimitError")
+      if (error.reason._tag !== "RateLimitError") return
+      assert.strictEqual(Duration.toMillis(error.reason.retryAfter!), 3000)
+      assert.strictEqual(error.reason.http?.response?.status, 429)
+    }).pipe(Effect.provide(makeTestLayer({
+      _tag: "Json",
+      status: 429,
+      headers: { "retry-after": "3" },
+      body: { type: "error", error: { type: "api_error", message: "gateway message" }, request_id: "req-test" }
+    }))))
+
   it.effect("redacts the API key in AI error context", () =>
     Effect.gen(function*() {
       const client = yield* AnthropicClient.AnthropicClient
