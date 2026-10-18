@@ -39,6 +39,7 @@ import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Http2 from "node:http2"
 import * as Net from "node:net"
+import { Readable } from "node:stream"
 import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
@@ -856,6 +857,30 @@ describe("HttpServer", () => {
         assert.deepStrictEqual(answer, { _tag: "Closed" })
         assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
       }))
+
+    it.live.each(
+      [
+        { method: "GET", status: 103 },
+        { method: "GET", status: 600 },
+        { method: "HEAD", status: 600 }
+      ] as const
+    )(
+      "answers a $method response with status $status with a 500 and destroys the raw body",
+      ({ method, status }) =>
+        Effect.gen(function*() {
+          const body = Readable.from(["ok"])
+          const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+          yield* HttpServer.serve(
+            Effect.succeed(HttpServerResponse.raw(body, { status })),
+            (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+          ).pipe(Layer.build)
+
+          const response = yield* HttpClient.execute(HttpClientRequest.make(method)("/"))
+          assert.strictEqual(response.status, 500)
+          assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+          assert.isTrue(body.destroyed)
+        }).pipe(Effect.timeout("2 seconds"), Effect.provide(NodeHttpServer.layerTest))
+    )
   })
 
   it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {

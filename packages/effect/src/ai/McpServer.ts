@@ -424,214 +424,210 @@ export class McpServer extends Context.Service<McpServer, {
       get tools() {
         return tools
       },
-      addTool: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
-          if (existingIndex === -1) {
-            tools.push(options)
-          } else {
-            tools[existingIndex] = options
-          }
-          const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-          yield* internalCore.tools.register({
-            descriptor: new McpTool({
-              ...options.tool,
-              title: options.tool.title ?? options.tool.annotations?.title
-            }),
-            isVisible: (profile) =>
-              enabledWhen === undefined || enabledWhen(
-                {
-                  protocolVersion: profile.protocolVersion,
-                  capabilities: profile.clientCapabilities,
-                  clientInfo: profile.clientInfo
-                }
-              ),
-            handle: (call, invocation) =>
-              provideInvocationContext(options.handle(call.arguments), invocation).pipe(
-                Effect.catchTags({
-                  InternalError: (error) =>
-                    Effect.fail(
-                      new McpCore.ToolExecutionError({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    ),
-                  InvalidParams: (error) =>
-                    Effect.fail(
-                      new (invocation.requestContext.requestState === undefined &&
-                          invocation.requestContext.inputResponses === undefined
-                        ? McpCore.InvalidToolInput
-                        : McpCore.InvalidToolContinuation)({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    )
-                }),
-                Effect.map((result) =>
-                  Predicate.isTagged(result, "InputRequired")
-                    ? McpCore.OperationOutcome.InputRequired(result)
-                    : McpCore.OperationOutcome.Complete(result)
-                )
+      addTool: Effect.fnUntraced(function*(options) {
+        const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
+        if (existingIndex === -1) {
+          tools.push(options)
+        } else {
+          tools[existingIndex] = options
+        }
+        const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+        yield* internalCore.tools.register({
+          descriptor: new McpTool({
+            ...options.tool,
+            title: options.tool.title ?? options.tool.annotations?.title
+          }),
+          isVisible: (profile) =>
+            enabledWhen === undefined || enabledWhen(
+              {
+                protocolVersion: profile.protocolVersion,
+                capabilities: profile.clientCapabilities,
+                clientInfo: profile.clientInfo
+              }
+            ),
+          handle: (call, invocation) =>
+            provideInvocationContext(options.handle(call.arguments), invocation).pipe(
+              Effect.catchTags({
+                InternalError: (error) =>
+                  Effect.fail(
+                    new McpCore.ToolExecutionError({
+                      name: options.tool.name,
+                      message: error.message
+                    })
+                  ),
+                InvalidParams: (error) =>
+                  Effect.fail(
+                    new (invocation.requestContext.requestState === undefined &&
+                        invocation.requestContext.inputResponses === undefined
+                      ? McpCore.InvalidToolInput
+                      : McpCore.InvalidToolContinuation)({
+                      name: options.tool.name,
+                      message: error.message
+                    })
+                  )
+              }),
+              Effect.map((result) =>
+                Predicate.isTagged(result, "InputRequired")
+                  ? McpCore.OperationOutcome.InputRequired(result)
+                  : McpCore.OperationOutcome.Complete(result)
               )
-          })
-          yield* notifications.client["notifications/tools/list_changed"]({})
-        }),
-      callTool: (request) =>
-        Effect.gen(function*() {
-          const client = yield* McpServerClient
-          const result = yield* internalCore.tools.call(
-            request,
-            McpProtocolInternal.invocationFromClient(client)
-          ).pipe(
-            Effect.mapError((error) =>
-              new InvalidParams({
-                message: error._tag === "ToolNotFound"
-                  ? `Tool '${error.name}' not found`
-                  : error.message
-              })
             )
+        })
+        yield* notifications.client["notifications/tools/list_changed"]({})
+      }),
+      callTool: Effect.fnUntraced(function*(request) {
+        const client = yield* McpServerClient
+        const result = yield* internalCore.tools.call(
+          request,
+          McpProtocolInternal.invocationFromClient(client)
+        ).pipe(
+          Effect.mapError((error) =>
+            new InvalidParams({
+              message: error._tag === "ToolNotFound"
+                ? `Tool '${error.name}' not found`
+                : error.message
+            })
           )
-          if (result._tag === "InputRequired") {
-            return yield* new InvalidParams({ message: "Client input is not supported by this MCP protocol" })
-          }
-          return result.value
-        }),
+        )
+        if (result._tag === "InputRequired") {
+          return yield* new InvalidParams({ message: "Client input is not supported by this MCP protocol" })
+        }
+        return result.value
+      }),
       get resources() {
         return resources
       },
       get resourceTemplates() {
         return resourceTemplates
       },
-      addResource: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
-          if (existingIndex === -1) {
-            resources.push(options)
-          } else {
-            resources[existingIndex] = options
-          }
-          yield* internalCore.resources.register({
-            descriptor: options.resource,
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
-            read: (invocation) => provideInvocationContext(options.handle, invocation)
-          })
-          yield* notifications.client["notifications/resources/list_changed"]({})
-        }),
-      addResourceTemplate: ({ annotations, completions, handle, routerPath, template }) =>
-        Effect.gen(function*() {
-          const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
-            current.uriTemplate === template.uriTemplate
+      addResource: Effect.fnUntraced(function*(options) {
+        const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
+        if (existingIndex === -1) {
+          resources.push(options)
+        } else {
+          resources[existingIndex] = options
+        }
+        yield* internalCore.resources.register({
+          descriptor: options.resource,
+          isVisible: (profile) => {
+            const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+            return enabledWhen === undefined || enabledWhen({
+              protocolVersion: profile.protocolVersion,
+              capabilities: profile.clientCapabilities,
+              clientInfo: profile.clientInfo
+            })
+          },
+          read: (invocation) => provideInvocationContext(options.handle, invocation)
+        })
+        yield* notifications.client["notifications/resources/list_changed"]({})
+      }),
+      addResourceTemplate: Effect.fnUntraced(function*({ annotations, completions, handle, routerPath, template }) {
+        const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
+          current.uriTemplate === template.uriTemplate
+        )
+        if (existingIndex === -1) {
+          resourceTemplates.push({ template, annotations })
+        } else {
+          resourceTemplates[existingIndex] = { template, annotations }
+        }
+        const templateMatcher = makeUriMatcher<true>()
+        templateMatcher.add(routerPath, true)
+        yield* internalCore.resources.registerTemplate({
+          descriptor: template,
+          isVisible: (profile) => {
+            const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
+            return enabledWhen === undefined || enabledWhen({
+              protocolVersion: profile.protocolVersion,
+              capabilities: profile.clientCapabilities,
+              clientInfo: profile.clientInfo
+            })
+          },
+          match: (uri) => {
+            const match = templateMatcher.find(uri)
+            if (match === undefined) {
+              return undefined
+            }
+            const params: Array<string> = []
+            for (const key of Object.keys(match.params)) {
+              params[Number(key)] = match.params[key]!
+            }
+            return params
+          },
+          read: (uri, params, invocation) => provideInvocationContext(handle(uri, Array.from(params)), invocation)
+        })
+        for (const [param, handle] of Object.entries(completions)) {
+          yield* internalCore.completions.register(
+            `resource/${template.uriTemplate}/${param}`,
+            (request, invocation) =>
+              provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
+                Effect.map((result) => ({
+                  values: result.completion.values,
+                  total: result.completion.total,
+                  hasMore: result.completion.hasMore,
+                  metadata: result._meta
+                }))
+              )
           )
-          if (existingIndex === -1) {
-            resourceTemplates.push({ template, annotations })
-          } else {
-            resourceTemplates[existingIndex] = { template, annotations }
-          }
-          const templateMatcher = makeUriMatcher<true>()
-          templateMatcher.add(routerPath, true)
-          yield* internalCore.resources.registerTemplate({
-            descriptor: template,
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
-            match: (uri) => {
-              const match = templateMatcher.find(uri)
-              if (match === undefined) {
-                return undefined
-              }
-              const params: Array<string> = []
-              for (const key of Object.keys(match.params)) {
-                params[Number(key)] = match.params[key]!
-              }
-              return params
-            },
-            read: (uri, params, invocation) => provideInvocationContext(handle(uri, Array.from(params)), invocation)
-          })
-          for (const [param, handle] of Object.entries(completions)) {
-            yield* internalCore.completions.register(
-              `resource/${template.uriTemplate}/${param}`,
-              (request, invocation) =>
-                provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
-                  Effect.map((result) => ({
-                    values: result.completion.values,
-                    total: result.completion.total,
-                    hasMore: result.completion.hasMore,
-                    metadata: result._meta
-                  }))
-                )
-            )
-          }
-          yield* notifications.client["notifications/resources/list_changed"]({})
-        }),
-      findResource: (uri) =>
-        Effect.gen(function*() {
-          const client = yield* McpServerClient
-          return yield* internalCore.resources.read(
-            uri,
-            McpProtocolInternal.invocationFromClient(client)
-          ).pipe(
-            Effect.catchTag("ResourceNotFound", (error) =>
-              Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })))
+        }
+        yield* notifications.client["notifications/resources/list_changed"]({})
+      }),
+      findResource: Effect.fnUntraced(function*(uri) {
+        const client = yield* McpServerClient
+        return yield* internalCore.resources.read(
+          uri,
+          McpProtocolInternal.invocationFromClient(client)
+        ).pipe(
+          Effect.catchTag(
+            "ResourceNotFound",
+            (error) => Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` }))
           )
-        }),
+        )
+      }),
       get prompts() {
         return prompts
       },
-      addPrompt: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = prompts.findIndex(({ prompt }) => prompt.name === options.prompt.name)
-          if (existingIndex === -1) {
-            prompts.push(options)
-          } else {
-            prompts[existingIndex] = options
-          }
-          yield* internalCore.prompts.register({
-            descriptor: options.prompt,
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
-            get: (params, invocation) =>
-              provideInvocationContext(options.handle(params), invocation).pipe(
-                Effect.map((result) =>
-                  Predicate.isTagged(result, "InputRequired")
-                    ? McpCore.OperationOutcome.InputRequired(result)
-                    : McpCore.OperationOutcome.Complete(result)
-                )
+      addPrompt: Effect.fnUntraced(function*(options) {
+        const existingIndex = prompts.findIndex(({ prompt }) => prompt.name === options.prompt.name)
+        if (existingIndex === -1) {
+          prompts.push(options)
+        } else {
+          prompts[existingIndex] = options
+        }
+        yield* internalCore.prompts.register({
+          descriptor: options.prompt,
+          isVisible: (profile) => {
+            const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+            return enabledWhen === undefined || enabledWhen({
+              protocolVersion: profile.protocolVersion,
+              capabilities: profile.clientCapabilities,
+              clientInfo: profile.clientInfo
+            })
+          },
+          get: (params, invocation) =>
+            provideInvocationContext(options.handle(params), invocation).pipe(
+              Effect.map((result) =>
+                Predicate.isTagged(result, "InputRequired")
+                  ? McpCore.OperationOutcome.InputRequired(result)
+                  : McpCore.OperationOutcome.Complete(result)
               )
-          })
-          for (const [param, handle] of Object.entries(options.completions)) {
-            yield* internalCore.completions.register(
-              `prompt/${options.prompt.name}/${param}`,
-              (request, invocation) =>
-                provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
-                  Effect.map((result) => ({
-                    values: result.completion.values,
-                    total: result.completion.total,
-                    hasMore: result.completion.hasMore,
-                    metadata: result._meta
-                  }))
-                )
             )
-          }
-          yield* notifications.client["notifications/prompts/list_changed"]({})
-        }),
+        })
+        for (const [param, handle] of Object.entries(options.completions)) {
+          yield* internalCore.completions.register(
+            `prompt/${options.prompt.name}/${param}`,
+            (request, invocation) =>
+              provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
+                Effect.map((result) => ({
+                  values: result.completion.values,
+                  total: result.completion.total,
+                  hasMore: result.completion.hasMore,
+                  metadata: result._meta
+                }))
+              )
+          )
+        }
+        yield* notifications.client["notifications/prompts/list_changed"]({})
+      }),
       getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
         const client = yield* McpServerClient
         const outcome = yield* internalCore.prompts.get(

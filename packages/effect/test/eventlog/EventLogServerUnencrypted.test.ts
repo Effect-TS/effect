@@ -162,6 +162,58 @@ it.effect("compactBacklog keeps forwarded entries in batch order", () =>
     assert.deepStrictEqual(compacted.map(fields), remoteEntries.map(fields))
   }))
 
+for (const fallback of [false, true]) {
+  it.effect(
+    `compactBacklog handles large groups with ${fallback ? "fallback" : "projection"}`,
+    () =>
+      Effect.gen(function*() {
+        // Exceeds the argument limit of the former spread-based append.
+        const count = 150_000
+        const payload = new Uint8Array()
+        const remoteEntries = Array.from({ length: count }, (_, index) =>
+          new EventJournal.RemoteEntry({
+            remoteSequence: index + 1,
+            entry: new EventJournal.Entry({
+              id: EventJournal.makeEntryIdUnsafe({ msecs: index }),
+              event: event.tag,
+              primaryKey: "large-group",
+              payload
+            }, { disableChecks: true })
+          }, { disableChecks: true }))
+        const registry = yield* EventLog.Registry
+        yield* registry.registerCompaction({
+          events: [event.tag],
+          effect: ({ entries, write }) =>
+            Effect.gen(function*() {
+              for (let index = fallback ? 0 : 1; index < entries.length; index++) {
+                yield* write(entries[index])
+              }
+              // More outputs than inputs cannot be projected onto remote sequences.
+              if (fallback) yield* write(entries[0])
+            })
+        })
+
+        const compacted = yield* EventLogServerUnencrypted.compactBacklog({
+          remoteEntries,
+          compactors: registry.compactors
+        })
+
+        assert.strictEqual(compacted.length, fallback ? count : count - 1)
+        let mismatches = 0
+        for (let index = 0; index < compacted.length; index++) {
+          if (
+            compacted[index].entry !== remoteEntries[fallback ? index : index + 1].entry ||
+            compacted[index].remoteSequence !== (!fallback && index === compacted.length - 1 ? count : index + 1)
+          ) {
+            mismatches++
+          }
+        }
+        assert.strictEqual(mismatches, 0)
+      }).pipe(Effect.provide(EventLog.layerRegistry)),
+    { timeout: 30_000, concurrent: false }
+  )
+}
+
 const makeAuthClient = (options: {
   readonly storage: EventLogServerUnencrypted.Storage["Service"]
   readonly authorization: EventLogServerUnencrypted.EventLogServerAuthorization["Service"]

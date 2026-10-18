@@ -158,8 +158,8 @@ export declare namespace Vitest {
      *
      * **Details**
      *
-     * Returning `false` or throwing falsifies the property and triggers shrinking. A callback that returns normally
-     * without returning `false` passes for that generated input.
+     * Returning `false` or throwing falsifies the property and triggers shrinking. Returning `true` or `undefined`
+     * passes for that generated input. Other return values are rejected; use `it.effect.prop` for Effect callbacks.
      *
      * The Vitest timeout interrupts the Effect fiber running generation and shrinking.
      *
@@ -177,7 +177,7 @@ export declare namespace Vitest {
           [K in keyof Arbs]: ArbitraryValue<Arbs[K]>
         },
         ctx: V.TestContext
-      ) => void,
+      ) => boolean | void,
       timeout?:
         | number
         | V.TestOptions & {

@@ -85,13 +85,19 @@ export const pullIntoWritable = <A, IE, E>(options: {
   readonly endOnDone?: boolean | undefined
   readonly encoding?: BufferEncoding | undefined
 }): Pull.Pull<never, IE | E, unknown> =>
-  Effect.suspend(() => {
+  Effect.withFiber((fiber) => {
+    const dispatcher = fiber.currentDispatcher
     const completion = Deferred.makeUnsafe<void>()
     const failure = Deferred.makeUnsafe<never, E>()
     const onError = (error: unknown) => Deferred.doneUnsafe(failure, Effect.failSync(() => options.onError(error)))
+    let errorEmitted = false
+    const onStreamError = (error: unknown) => {
+      errorEmitted = true
+      onError(error)
+    }
     // finished() only reports once, so keep listening for errors from writes
     // made after the writable has finished.
-    options.writable.on("error", onError)
+    options.writable.on("error", onStreamError)
     const cleanup = finished(options.writable, { readable: false }, (error) => {
       if (error) {
         onError(error)
@@ -104,15 +110,33 @@ export const pullIntoWritable = <A, IE, E>(options: {
         let i = 0
         return Effect.callback<void, E>((resume) => {
           let cancelled = false
+          // Let Node finish auto-destruction before attempting another write.
+          const onFinish = () => dispatcher.scheduleTask(loop, 0)
           const loop = () => {
+            options.writable.off("drain", loop)
+            options.writable.off("finish", onFinish)
             for (; i < chunk.length;) {
               if (cancelled) {
                 return
               }
-              const success = options.writable.write(chunk[i++], options.encoding as any)
+              const success = options.writable.write(chunk[i++], options.encoding as any, (error) => {
+                if (!error) return
+                if (options.writable.closed) {
+                  // Closed streams can reject writes through the callback only;
+                  // there is no pending destruction to wait for.
+                  onError(error)
+                } else {
+                  // Let Node initiate auto-destruction before failure cleanup
+                  // checks whether an error event is still pending.
+                  dispatcher.scheduleTask(() => onError(error), 0)
+                }
+              })
               if (!success) {
                 if (!cancelled) {
                   options.writable.once("drain", loop)
+                  // A normally finished writable will never emit drain. Resume
+                  // the loop so any remaining writes can report their errors.
+                  options.writable.once("finish", onFinish)
                 }
                 return
               }
@@ -125,6 +149,7 @@ export const pullIntoWritable = <A, IE, E>(options: {
           return Effect.sync(() => {
             cancelled = true
             options.writable.off("drain", loop)
+            options.writable.off("finish", onFinish)
           })
         })
       }),
@@ -138,7 +163,20 @@ export const pullIntoWritable = <A, IE, E>(options: {
       Effect.raceFirst(Deferred.await(failure)),
       Effect.ensuring(Effect.sync(() => {
         cleanup()
-        options.writable.off("error", onError)
+        const removeErrorListener = () => {
+          options.writable.off("error", onStreamError)
+          options.writable.off("error", removeErrorListener)
+          options.writable.off("close", removeErrorListener)
+        }
+        if (options.writable.errored && !options.writable.closed && !errorEmitted) {
+          // A write callback can fail before asynchronous _destroy completes.
+          // Keep handling Node's pending error until it is emitted (or closed),
+          // without delaying failure for callback-only errors on closed streams.
+          options.writable.once("error", removeErrorListener)
+          options.writable.once("close", removeErrorListener)
+        } else {
+          removeErrorListener()
+        }
       }))
     )
   })

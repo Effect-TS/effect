@@ -876,24 +876,23 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     })
   )
 
-  const scanKeys = (pattern: string) =>
-    Effect.gen(function*() {
-      const keys: Array<string> = []
-      let cursor = "0"
-      do {
-        const [next, batch] = yield* redis.send<[string, Array<string>]>(
-          "SCAN",
-          cursor,
-          "MATCH",
-          pattern,
-          "COUNT",
-          "100"
-        )
-        cursor = next
-        for (const key of batch) keys.push(key)
-      } while (cursor !== "0")
-      return keys
-    })
+  const scanKeys = Effect.fnUntraced(function*(pattern: string) {
+    const keys: Array<string> = []
+    let cursor = "0"
+    do {
+      const [next, batch] = yield* redis.send<[string, Array<string>]>(
+        "SCAN",
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        "100"
+      )
+      cursor = next
+      for (const key of batch) keys.push(key)
+    } while (cursor !== "0")
+    return keys
+  })
 
   return PersistedQueueStore.of({
     offer: ({ delay, element, id, isCustomId, name }) => {
@@ -1007,8 +1006,8 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           })
         )
       }),
-    cleanup: ({ failedTimeToLive, timeToLive }) =>
-      Effect.gen(function*() {
+    cleanup: Effect.fnUntraced(
+      function*({ failedTimeToLive, timeToLive }) {
         const now = clock.currentTimeMillisUnsafe()
         const idsKeys = yield* scanKeys(`${prefix}*:ids`)
         const cutoff = now - Duration.toMillis(timeToLive)
@@ -1030,14 +1029,14 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             { concurrency: 16, discard: true }
           )
         }
-      }).pipe(
-        Effect.mapError(({ cause }) =>
-          new PersistedQueueError({
-            message: "Failed to clean up persisted queue",
-            cause
-          })
-        )
+      },
+      Effect.mapError(({ cause }) =>
+        new PersistedQueueError({
+          message: "Failed to clean up persisted queue",
+          cause
+        })
       )
+    )
   })
 })
 
@@ -1905,22 +1904,22 @@ export const makeStoreSql: (
       )
       return loop
     },
-    cleanup: ({ failedTimeToLive, timeToLive }) =>
-      Effect.gen(function*() {
+    cleanup: Effect.fnUntraced(
+      function*({ failedTimeToLive, timeToLive }) {
         yield* cleanupState("completed", timeToLive)
         if (failedTimeToLive !== undefined) {
           yield* cleanupState("failed", failedTimeToLive)
         }
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Effect.fail(
-            new PersistedQueueError({
-              message: "Failed to clean up persisted queue",
-              cause
-            })
-          )
+      },
+      Effect.catchCause((cause) =>
+        Effect.fail(
+          new PersistedQueueError({
+            message: "Failed to clean up persisted queue",
+            cause
+          })
         )
       )
+    )
   })
 })
 
@@ -2038,46 +2037,43 @@ const sqlMigrations = (tableName: string) =>
       const takeIndex = sql(`idx_${tableName}_take`)
 
       yield* sql.onDialectOrElse({
-        pg: () =>
-          Effect.gen(function*() {
-            yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
-            yield* sql`ALTER TABLE ${tableNameSql}
+        pg: Effect.fnUntraced(function*() {
+          yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
+          yield* sql`ALTER TABLE ${tableNameSql}
               ADD COLUMN state VARCHAR(10),
               ADD COLUMN visible_at TIMESTAMP`
-            yield* sql`UPDATE ${tableNameSql}
+          yield* sql`UPDATE ${tableNameSql}
               SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                   visible_at = updated_at`
-            yield* sql`ALTER TABLE ${tableNameSql}
+          yield* sql`ALTER TABLE ${tableNameSql}
               ALTER COLUMN sequence TYPE BIGINT,
               ALTER COLUMN id TYPE VARCHAR(255),
               ALTER COLUMN queue_name TYPE VARCHAR(255),
               ALTER COLUMN state SET NOT NULL,
               ALTER COLUMN visible_at SET NOT NULL,
               DROP COLUMN completed`
-          }),
-        mysql: () =>
-          Effect.gen(function*() {
-            yield* sql`DROP INDEX ${takeIndex} ON ${tableNameSql}`
-            yield* sql`ALTER TABLE ${tableNameSql}
+        }),
+        mysql: Effect.fnUntraced(function*() {
+          yield* sql`DROP INDEX ${takeIndex} ON ${tableNameSql}`
+          yield* sql`ALTER TABLE ${tableNameSql}
               MODIFY COLUMN id VARCHAR(255) NOT NULL,
               MODIFY COLUMN queue_name VARCHAR(255) NOT NULL,
               MODIFY COLUMN element MEDIUMTEXT NOT NULL,
               MODIFY COLUMN last_failure MEDIUMTEXT NULL,
               ADD COLUMN state VARCHAR(10) NULL,
               ADD COLUMN visible_at DATETIME NULL`
-            yield* sql`UPDATE ${tableNameSql}
+          yield* sql`UPDATE ${tableNameSql}
               SET state = CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                   visible_at = updated_at`
-            yield* sql`ALTER TABLE ${tableNameSql}
+          yield* sql`ALTER TABLE ${tableNameSql}
               MODIFY COLUMN state VARCHAR(10) NOT NULL,
               MODIFY COLUMN visible_at DATETIME NOT NULL,
               DROP COLUMN completed`
-          }),
-        mssql: () =>
-          Effect.gen(function*() {
-            const upgradedTableName = `${tableName}_upgrade`
-            const upgradedTable = sql(upgradedTableName)
-            yield* sql`CREATE TABLE ${upgradedTable} (
+        }),
+        mssql: Effect.fnUntraced(function*() {
+          const upgradedTableName = `${tableName}_upgrade`
+          const upgradedTable = sql(upgradedTableName)
+          yield* sql`CREATE TABLE ${upgradedTable} (
               sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
               id NVARCHAR(255) NOT NULL,
               queue_name NVARCHAR(255) NOT NULL,
@@ -2091,7 +2087,7 @@ const sqlMigrations = (tableName: string) =>
               created_at DATETIME2 NOT NULL,
               updated_at DATETIME2 NOT NULL
             )`
-            yield* sql`SET IDENTITY_INSERT ${upgradedTable} ON;
+          yield* sql`SET IDENTITY_INSERT ${upgradedTable} ON;
               INSERT INTO ${upgradedTable}
               (sequence, id, queue_name, element, state, attempts, last_failure, visible_at,
                 acquired_at, acquired_by, created_at, updated_at)
@@ -2100,19 +2096,18 @@ const sqlMigrations = (tableName: string) =>
                 attempts, last_failure, updated_at, acquired_at, acquired_by, created_at, updated_at
               FROM ${tableNameSql};
               SET IDENTITY_INSERT ${upgradedTable} OFF`
-            yield* sql`DROP TABLE ${tableNameSql}`
-            yield* sql`EXEC sp_rename ${upgradedTableName}, ${tableName}`
-            yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
-            yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
-          }),
+          yield* sql`DROP TABLE ${tableNameSql}`
+          yield* sql`EXEC sp_rename ${upgradedTableName}, ${tableName}`
+          yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+          yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+        }),
         // sqlite rebuilds the table because altering or dropping constrained
         // columns is not portable across supported SQLite versions.
-        orElse: () =>
-          Effect.gen(function*() {
-            const upgradedTableName = `${tableName}_upgrade`
-            const upgradedTable = sql(upgradedTableName)
-            yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
-            yield* sql`CREATE TABLE ${upgradedTable} (
+        orElse: Effect.fnUntraced(function*() {
+          const upgradedTableName = `${tableName}_upgrade`
+          const upgradedTable = sql(upgradedTableName)
+          yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
+          yield* sql`CREATE TABLE ${upgradedTable} (
               sequence INTEGER PRIMARY KEY AUTOINCREMENT,
               id TEXT NOT NULL,
               queue_name TEXT NOT NULL,
@@ -2126,18 +2121,18 @@ const sqlMigrations = (tableName: string) =>
               created_at DATETIME NOT NULL,
               updated_at DATETIME NOT NULL
             )`
-            yield* sql`INSERT INTO ${upgradedTable}
+          yield* sql`INSERT INTO ${upgradedTable}
               (sequence, id, queue_name, element, state, attempts, last_failure, visible_at,
                 acquired_at, acquired_by, created_at, updated_at)
               SELECT sequence, id, queue_name, element,
                 CASE WHEN completed THEN 'completed' ELSE 'pending' END,
                 attempts, last_failure, updated_at, acquired_at, acquired_by, created_at, updated_at
               FROM ${tableNameSql}`
-            yield* sql`DROP TABLE ${tableNameSql}`
-            yield* sql`ALTER TABLE ${upgradedTable} RENAME TO ${tableNameSql}`
-            yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
-            yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
-          })
+          yield* sql`DROP TABLE ${tableNameSql}`
+          yield* sql`ALTER TABLE ${upgradedTable} RENAME TO ${tableNameSql}`
+          yield* sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
+          yield* sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
+        })
       })
 
       // partial index where supported, so pollers never scan completed rows

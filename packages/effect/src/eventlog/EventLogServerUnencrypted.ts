@@ -458,8 +458,20 @@ const constEmptyPrivateKey = Redacted.make(new Uint8Array(32))
 
 const makeServerWriteIdentityPublicKey = (storeId: StoreId): string => `effect-eventlog-server-write:${storeId}`
 
-const entriesAfter = (journal: Array<RemoteEntry>, startSequence: number): ReadonlyArray<RemoteEntry> =>
-  journal.filter((entry) => entry.remoteSequence >= startSequence)
+// The memory journal is append-only with strictly increasing sequences.
+const entriesAfter = (journal: Array<RemoteEntry>, startSequence: number): ReadonlyArray<RemoteEntry> => {
+  let low = 0
+  let high = journal.length
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    if (journal[mid].remoteSequence >= startSequence) {
+      high = mid
+    } else {
+      low = mid + 1
+    }
+  }
+  return journal.slice(low)
+}
 
 class KeyIndex<A> {
   private readonly byEvent = new Map<string, Map<string, Array<A>>>()
@@ -650,11 +662,9 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
       remoteEntries: remoteGroup
     })
 
-    if (projected === undefined) {
-      compactedRemoteEntries.push(...remoteGroup)
-      continue
+    for (const entry of projected ?? remoteGroup) {
+      compactedRemoteEntries.push(entry)
     }
-    compactedRemoteEntries.push(...projected)
   }
 
   return compactedRemoteEntries
