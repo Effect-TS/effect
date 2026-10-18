@@ -47,7 +47,7 @@ import * as InternalUtilities from "./internal/utilities.ts"
  * @category models
  * @since 4.0.0
  */
-export type Model = (typeof Generated.Model)["members"][1]["Encoded"]
+export type Model = Extract<(typeof Generated.Model)["members"][number], { readonly literal: string }>["literal"]
 
 // =============================================================================
 // Configuration
@@ -755,7 +755,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
       if (betas.size > 0) {
-        params["anthropic-beta"] = Array.from(betas).join(",")
+        params["anthropic-beta"] = Array.from(betas)
       }
       const {
         disableParallelToolCalls: _,

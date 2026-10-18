@@ -7,30 +7,8 @@
   "required": ["spec", "output"],
   "properties": {
     "spec": {
-      "description": "OpenAPI specification source - URL, file path, or structured resolver config",
-      "oneOf": [
-        {
-          "type": "string",
-          "description": "URL or file path to the OpenAPI specification"
-        },
-        {
-          "type": "object",
-          "description": "Stainless stats resolver - fetches stats.yml and extracts openapi_spec_url",
-          "required": ["type", "statsUrl"],
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "const": "stainless-stats",
-              "description": "Resolver type"
-            },
-            "statsUrl": {
-              "type": "string",
-              "format": "uri",
-              "description": "URL to Stainless .stats.yml file containing openapi_spec_url"
-            }
-          }
-        }
-      ]
+      "type": "string",
+      "description": "URL or file path to the OpenAPI specification (JSON or YAML, optionally gzipped with a .gz suffix)"
     },
     "output": {
       "type": "string",
@@ -52,6 +30,13 @@
     "patches": {
       "type": "array",
       "description": "JSON Patch documents to apply to the spec before generation. Each item can be a file path or inline JSON array.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "includePaths": {
+      "type": "array",
+      "description": "Path prefixes to generate. Paths that match none of the prefixes are dropped after patches are applied. Defaults to every path.",
       "items": {
         "type": "string"
       }

@@ -254,7 +254,7 @@ export const make = Effect.fnUntraced(
       httpClient,
       Effect.flatMap((response) => {
         if (
-          response.status < 400 || response.status >= 500 ||
+          response.status < 400 ||
           !response.request.url.endsWith("/v1/messages?beta=true")
         ) {
           return Effect.succeed(response)
@@ -262,7 +262,7 @@ export const make = Effect.fnUntraced(
         return Effect.flatMap(Effect.option(response.json), (body) => {
           if (
             body._tag === "Some" &&
-            Schema.decodeUnknownOption(Generated.BetaMessagesPost4XX)(body.value)._tag === "Some"
+            Schema.decodeUnknownOption(Generated.BetaErrorResponse)(body.value)._tag === "Some"
           ) {
             return Effect.succeed(response)
           }
@@ -318,10 +318,9 @@ export const make = Effect.fnUntraced(
     > =>
       client.betaMessagesPost({ ...options, config: { includeResponse: true } }).pipe(
         Effect.catchTags({
-          BetaMessagesPost4XX: (error) => Effect.fail(Errors.mapClientError(error, "createMessage")),
           HttpClientError: (error) => Errors.mapHttpClientError(error, "createMessage"),
           SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createMessage"))
-        }),
+        }, (error) => Effect.fail(Errors.mapClientError(error, "createMessage"))),
         withRedactedHeaders
       )
 

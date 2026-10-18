@@ -556,12 +556,25 @@ export const layer: Layer.Layer<
     )
   })
 
+  const filterPaths = (spec: Schema.Json, prefixes: ReadonlyArray<string> | undefined): Schema.Json => {
+    const { paths } = spec as { readonly paths?: Record<string, Schema.Json> }
+    if (prefixes === undefined || paths === undefined) {
+      return spec
+    }
+    return {
+      ...spec as Record<string, Schema.Json>,
+      paths: Object.fromEntries(
+        Object.entries(paths).filter(([path]) => prefixes.some((prefix) => path.startsWith(prefix)))
+      )
+    }
+  }
+
   const generate = Effect.fn("generate")(function*(
     provider: DiscoveredProvider,
     spec: unknown
   ) {
-    // Apply patches if any are configured
-    const patchedSpec = yield* applyPatches(provider, spec as Schema.Json)
+    // Apply patches if any are configured, then keep only the included paths
+    const patchedSpec = filterPaths(yield* applyPatches(provider, spec as Schema.Json), provider.config.includePathList)
 
     const excludeAnnotations = provider.config.excludeAnnotationsList
     const disableAdditionalProperties = provider.config.shouldDisableAdditionalProperties
