@@ -443,6 +443,44 @@ describe("RpcClient", () => {
       })
   )
 
+  it.effect("does not deliver an earlier socket defect to a client registered during delivery", () =>
+    Effect.gen(function*() {
+      const frames = yield* Queue.unbounded<string>()
+      const received = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provideService(RpcSerialization.RpcSerialization, RpcSerialization.json)
+      )
+      yield* protocol.run(1, (message) =>
+        Effect.gen(function*() {
+          if (message._tag !== "Defect") return
+          yield* protocol.run(2, (response) => Queue.offer(received, response)).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* protocol.send(2, { _tag: "Request", id: "new", tag: "Ping", payload: undefined, headers: [] }).pipe(
+            Effect.orDie
+          )
+          yield* Queue.offer(
+            frames,
+            JSON.stringify({ _tag: "Exit", requestId: "new", exit: { _tag: "Success", value: "ok" } })
+          )
+        })).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* Queue.offer(frames, JSON.stringify({ _tag: "Defect", defect: "boom" }))
+      assert.deepStrictEqual(yield* Queue.take(received), {
+        _tag: "Exit",
+        requestId: "new",
+        exit: { _tag: "Success", value: "ok" }
+      })
+    }))
+
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
