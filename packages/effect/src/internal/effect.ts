@@ -97,7 +97,8 @@ import {
   TracerEnabled,
   TracerSpanAnnotations,
   TracerSpanLinks,
-  TracerTimingEnabled
+  TracerTimingEnabled,
+  UnhandledLogLevel
 } from "./references.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
@@ -3483,18 +3484,28 @@ export const eventually = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect
   catch_(self, (_) => flatMap(yieldNow, () => eventually(self)))
 
 /** @internal */
+export const ignoreCauseLogger = (log: true | LogLevel.Severity | "Unhandled") =>
+  log === "Unhandled"
+    ? (...message: ReadonlyArray<any>): Effect.Effect<void> =>
+      withFiber((fiber) => {
+        const level = fiber.getRef(UnhandledLogLevel)
+        return level === undefined ? void_ : logWithLevel(level)(...message)
+      })
+    : logWithLevel(log === true ? undefined : log)
+
+/** @internal */
 export const ignore: <
   Arg extends Effect.Effect<any, any, any> | {
-    readonly log?: boolean | LogLevel.Severity | undefined
+    readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined = {
-    readonly log?: boolean | LogLevel.Severity | undefined
+    readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   }
 >(
   effectOrOptions: Arg,
   options?: {
-    readonly log?: boolean | LogLevel.Severity | undefined
+    readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined
 ) => [Arg] extends [Effect.Effect<infer _A, infer _E, infer _R>] ? Effect.Effect<void, never, _R>
@@ -3503,14 +3514,14 @@ export const ignore: <
     <A, E, R>(
       self: Effect.Effect<A, E, R>,
       options?: {
-        readonly log?: boolean | LogLevel.Severity | undefined
+        readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
         readonly message?: string | undefined
       } | undefined
     ): Effect.Effect<void, never, R> => {
       if (!options?.log) {
         return matchEffect(self, { onFailure: (_) => void_, onSuccess: (_) => void_ })
       }
-      const logEffect = logWithLevel(options.log === true ? undefined : options.log)
+      const logEffect = ignoreCauseLogger(options.log)
       return matchCauseEffect(self, {
         onFailure(cause) {
           const error = findRecoverableError(cause)
@@ -3528,16 +3539,16 @@ export const ignore: <
 /** @internal */
 export const ignoreCause: <
   Arg extends Effect.Effect<any, any, any> | {
-    readonly log?: boolean | LogLevel.Severity | undefined
+    readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined = {
-    readonly log?: boolean | LogLevel.Severity | undefined
+    readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   }
 >(
   effectOrOptions: Arg,
   options?: {
-    readonly log?: boolean | LogLevel.Severity | undefined
+    readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined
 ) => [Arg] extends [Effect.Effect<infer _A, infer _E, infer _R>] ? Effect.Effect<void, never, _R>
@@ -3546,14 +3557,14 @@ export const ignoreCause: <
     <A, E, R>(
       self: Effect.Effect<A, E, R>,
       options?: {
-        readonly log?: boolean | LogLevel.Severity | undefined
+        readonly log?: boolean | LogLevel.Severity | "Unhandled" | undefined
         readonly message?: string | undefined
       } | undefined
     ): Effect.Effect<void, never, R> => {
       if (!options?.log) {
         return matchCauseEffect(self, { onFailure: (_) => void_, onSuccess: (_) => void_ })
       }
-      const logEffect = logWithLevel(options.log === true ? undefined : options.log)
+      const logEffect = ignoreCauseLogger(options.log)
       return matchCauseEffect(self, {
         onFailure: (cause) => options.message === undefined ? logEffect(cause) : logEffect(options.message, cause),
         onSuccess: (_) => void_
