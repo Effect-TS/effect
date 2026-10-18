@@ -505,6 +505,32 @@ describe("Atom", { concurrent: false }, () => {
     assert(Effect.isEffect(result.value.get))
   })
 
+  it("runtime atom with keepInitialValue keeps its seed when an async runtime resolves", async () => {
+    const runtime = Atom.runtime(Layer.effectDiscard(Effect.sleep(10)))
+    let runs = 0
+    const atom = runtime.atom(Effect.sync(() => ++runs))
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { keepInitialValue: true })]
+    })
+    try {
+      r.mount(atom)
+      await vitest.advanceTimersByTimeAsync(10)
+
+      let result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 0)
+      assert.strictEqual(runs, 0)
+
+      r.refresh(atom)
+      result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 1)
+      assert.strictEqual(runs, 1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("effect initial", async () => {
     const count = Atom.make(
       Effect.succeed(1).pipe(Effect.delay(100)),
@@ -1421,6 +1447,30 @@ describe("Atom", { concurrent: false }, () => {
     r.dispose()
   })
 
+  it("initialValues keepInitialValue keeps an effect seed until a reactivity key is invalidated", () => {
+    let runs = 0
+    const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.withReactivity(["count"]))
+    const invalidate = counterRuntime.fn(() => Effect.void, { reactivityKeys: ["count"] })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { keepInitialValue: true })]
+    })
+    try {
+      r.mount(atom)
+      let result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 0)
+      assert.strictEqual(runs, 0)
+
+      r.set(invalidate, void 0)
+      result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 1)
+      assert.strictEqual(runs, 1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("does not queue an initialValues notification without listeners", () => {
     const state = Atom.make(0)
     const seen: Array<number> = []
@@ -2269,6 +2319,29 @@ describe("Atom", { concurrent: false }, () => {
     assert.strictEqual(result.value, 2)
     assert.strictEqual(runs, 2)
     unmount2()
+  })
+
+  test.each([
+    { age: 0, expected: 0 },
+    { age: 1_000, expected: 1 }
+  ])(`swr revalidates a kept initial value by staleTime (seed age: $age)`, async ({ age, expected }) => {
+    let runs = 0
+    const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.swr({ staleTime: 1_000 }))
+    const seed = AsyncResult.success(0, { timestamp: Date.now() - age })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, seed, { keepInitialValue: true })]
+    })
+    try {
+      r.mount(atom)
+      await Effect.runPromise(Effect.yieldNow)
+
+      const result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, expected)
+      assert.strictEqual(runs, expected)
+    } finally {
+      r.dispose()
+    }
   })
 
   test(`swr cancels queued revalidation when unmounted`, async () => {
