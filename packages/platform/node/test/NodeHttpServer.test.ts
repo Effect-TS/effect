@@ -857,52 +857,31 @@ describe("HttpServer", () => {
         assert.deepStrictEqual(answer, { _tag: "Closed" })
         assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
       }))
+
+    it.live.each(
+      [
+        { method: "GET", status: 103 },
+        { method: "GET", status: 600 },
+        { method: "HEAD", status: 600 }
+      ] as const
+    )(
+      "answers a $method response with status $status with a 500 and destroys the raw body",
+      ({ method, status }) =>
+        Effect.gen(function*() {
+          const body = Readable.from(["ok"])
+          const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+          yield* HttpServer.serve(
+            Effect.succeed(HttpServerResponse.raw(body, { status })),
+            (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+          ).pipe(Layer.build)
+
+          const response = yield* HttpClient.execute(HttpClientRequest.make(method)("/"))
+          assert.strictEqual(response.status, 500)
+          assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+          assert.isTrue(body.destroyed)
+        }).pipe(Effect.timeout("2 seconds"), Effect.provide(NodeHttpServer.layerTest))
+    )
   })
-
-  it.live.each([103, 600])(
-    "answers a handler response with status %i with a 500 and reports the failure",
-    (status) =>
-      Effect.gen(function*() {
-        const server = Http.createServer()
-        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-        yield* HttpServer.serve(
-          Effect.succeed(HttpServerResponse.empty({ status })),
-          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-        ).pipe(
-          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
-          Layer.build
-        )
-
-        const answer = yield* requestStatus(tcpPort(server), "GET").pipe(Effect.timeout("2 seconds"))
-        assert.strictEqual(answer, 500)
-        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
-      })
-  )
-
-  it.live.each(["GET", "HEAD"])(
-    "destroys a raw Readable when rejecting a %s response status",
-    (method) =>
-      Effect.gen(function*() {
-        const body = yield* Effect.acquireRelease(
-          Effect.sync(() => Readable.from(["ok"])),
-          (body) => Effect.sync(() => body.destroy())
-        )
-        const server = Http.createServer()
-        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-        yield* HttpServer.serve(
-          Effect.succeed(HttpServerResponse.raw(body, { status: 600 })),
-          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-        ).pipe(
-          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
-          Layer.build
-        )
-
-        const status = yield* requestStatus(tcpPort(server), method).pipe(Effect.timeout("2 seconds"))
-        assert.strictEqual(status, 500)
-        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
-        assert.isTrue(body.destroyed)
-      })
-  )
 
   it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
     const requestStarted = Latch.makeUnsafe()
