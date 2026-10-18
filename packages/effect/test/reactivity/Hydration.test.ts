@@ -80,6 +80,29 @@ describe("Hydration", () => {
     }
   })
 
+  it("notifies subscribers of an atom the registry already holds", () => {
+    const atom = Atom.make(0).pipe(Atom.serializable({ key: "existing-count", schema: Schema.Number }))
+    const doubled = Atom.map(atom, (n) => n * 2)
+    const registry = AtomRegistry.make()
+    try {
+      registry.mount(doubled)
+      const heard: Array<number> = []
+      registry.subscribe(atom, (n) => heard.push(n))
+
+      Hydration.hydrate(registry, [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "existing-count",
+        value: 5,
+        dehydratedAt: 0
+      }])
+
+      assert.deepStrictEqual(heard, [5])
+      assert.strictEqual(registry.get(doubled), 10)
+    } finally {
+      registry.dispose()
+    }
+  })
+
   it("falls back on the first read of invalid immediate hydration", () => {
     const atom = Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number }))
     const registry = AtomRegistry.make()

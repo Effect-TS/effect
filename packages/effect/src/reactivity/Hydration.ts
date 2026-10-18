@@ -170,6 +170,11 @@ export const hydrate = (
   for (const datom of (dehydratedState as Iterable<DehydratedAtomValue>)) {
     registry.setSerializable(datom.key, datom.value)
 
+    // If the registry already holds the atom, apply the entry now so its
+    // subscribers are notified instead of waiting for the next access
+    const existing = registry.getNodes().get(datom.key)
+    if (existing !== undefined) registry.ensureNode(existing.atom)
+
     // If there's a resultPromise, it means this was in Initial state when dehydrated
     // and we should wait for it to resolve to a non-Initial state, then update the registry
     if (!datom.resultPromise) continue
