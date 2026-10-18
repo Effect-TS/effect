@@ -248,7 +248,7 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(EventJournal.EntryIdOrder(imported, local.id), -1)
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 
-  it("keeps local writes working after an enclosing transaction rolls back an import at the maximum timestamp", async () => {
+  it("keeps local writes working after an enclosing transaction rolls back an import at the maximum timestamp and a write after it", async () => {
     const { Effect, EventJournal, Reactivity, SqlClient, SqlEventJournal, SqliteClient } = IsolatedRolledBackImport
     const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
     id[6] = 0x7f
@@ -260,12 +260,18 @@ describe("SqlEventJournal", () => {
       Effect.gen(function*() {
         const sql = yield* SqliteClient.make({ filename: ":memory:" })
         const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
-        // The import itself succeeds; the transaction around it then fails.
+        // The import itself succeeds, and a local write in the same transaction
+        // reads it before it commits. The transaction around both then fails.
         const rolledBack = yield* journal.writeFromRemote({
           remoteId: EventJournal.makeRemoteIdUnsafe(),
           entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
           effect: () => Effect.void
-        }).pipe(Effect.andThen(Effect.fail("rolled back")), sql.withTransaction, Effect.exit)
+        }).pipe(
+          Effect.andThen(Effect.exit(journal.write({ ...localEntry("key"), effect: Effect.succeed }))),
+          Effect.andThen(Effect.fail("rolled back")),
+          sql.withTransaction,
+          Effect.exit
+        )
         const written = yield* Effect.exit(journal.write({ ...localEntry("key"), effect: Effect.succeed }))
         return { rolledBack, written, entries: (yield* journal.entries).map((entry) => entry.idString) }
       }).pipe(Effect.scoped, Effect.provide(Reactivity.layer))
@@ -274,6 +280,30 @@ describe("SqlEventJournal", () => {
     if (written._tag === "Failure") return assert.fail("the local write failed after the import was rolled back")
     assert.deepStrictEqual(entries, [written.value.idString])
   })
+
+  it.effect("orders a local write after an import earlier in the same transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      // Ahead of this process's clock, with saturated `rand_a` bits.
+      const id = EventJournal.makeEntryIdUnsafe({
+        msecs: EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      })
+      id[6] = 0x7f
+      id[7] = 0xff
+      const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+        disableChecks: true
+      })
+      const local = yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+        effect: () => Effect.void
+      }).pipe(
+        Effect.andThen(journal.write({ ...localEntry("key"), effect: Effect.succeed })),
+        sql.withTransaction
+      )
+      assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("rolls back a failed same-client handler transaction with the journal and redelivers the batch", () =>
     Effect.gen(function*() {
