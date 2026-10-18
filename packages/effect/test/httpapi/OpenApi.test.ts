@@ -194,6 +194,68 @@ describe("OpenApi", () => {
     ])
   })
 
+  it("projects shared checked parameters without changing JSON body references", () => {
+    const Value = Schema.UndefinedOr(Schema.String)
+      .check(Schema.makeFilter<string | undefined>((value) => value === undefined || value.length >= 2, {
+        toJsonSchema: () => ({ minLength: 2 })
+      }))
+      .annotate({ identifier: "Value", description: "Shared value" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/items", {
+          query: { value: Schema.optional(Value) },
+          payload: Schema.Struct({ value: Value })
+        })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/items"]?.post?.parameters, [
+      {
+        name: "value",
+        in: "query",
+        required: false,
+        schema: { anyOf: [{ type: "string" }], minLength: 2, description: "Shared value" }
+      }
+    ])
+    assert.deepStrictEqual(spec.paths["/items"]?.post?.requestBody?.content["application/json"]?.schema, {
+      type: "object",
+      properties: { value: { $ref: "#/components/schemas/Value" } },
+      required: ["value"],
+      additionalProperties: false
+    })
+    assert.deepStrictEqual(spec.components.schemas.Value, {
+      anyOf: [{ type: "string" }, { type: "null" }],
+      minLength: 2,
+      description: "Shared value"
+    })
+  })
+
+  it("preserves recursive component links in optional parameters", () => {
+    interface Node {
+      readonly children: ReadonlyArray<Node>
+    }
+    const Node: Schema.Codec<Node> = Schema.Struct({
+      children: Schema.Array(Schema.suspend(() => Node))
+    }).annotate({ identifier: "Node" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("list", "/list", { query: { node: Schema.optional(Node) } })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/list"]?.get?.parameters, [
+      { name: "node", in: "query", required: false, schema: { $ref: "#/components/schemas/Node" } }
+    ])
+    assert.deepStrictEqual(spec.components.schemas.Node, {
+      type: "object",
+      properties: { children: { type: "array", items: { $ref: "#/components/schemas/Node" } } },
+      required: ["children"],
+      additionalProperties: false
+    })
+  })
+
   it("preserves JSON null encoding for optional body properties", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
