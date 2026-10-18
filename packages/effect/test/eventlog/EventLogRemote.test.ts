@@ -245,15 +245,11 @@ const encryptedServer: ServerCase = {
   makeRemote: EventLogRemote.makeEncrypted,
   encodeWrite: Effect.fnUntraced(function*(identity, entries) {
     const encryption = yield* EventLogEncryption.EventLogEncryption
-    const encrypted = yield* encryption.encrypt(identity, entries)
+    const batches = yield* encryption.encrypt(identity, defaultStoreId, entries)
     return yield* new EventLogMessage.WriteEntries({
       publicKey: identity.publicKey,
       storeId: defaultStoreId,
-      encryptedEntries: encrypted.map(({ encryptedEntry, iv }, i) => ({
-        entryId: entries[i].id,
-        iv,
-        encryptedEntry
-      }))
+      batches
     }).encoded
   })
 }
@@ -408,11 +404,12 @@ describe("EventLogRemote write acknowledgements", () => {
         yield* Queue.take(readerChanges)
 
         const first = makeEntry()
-        const firstResponse = yield* writer.writeSingle([first])
+        const sibling = makeEntry()
+        const firstResponse = yield* writer.writeSingle([first, sibling])
         const second = makeEntry({ payloadSize: EventLogMessage.ChunkedMessage.chunkSize })
-        // `first` is sent again, as after a lost acknowledgement.
-        const secondResponse = yield* writer.writeChunked([first, second])
-        const delivered = yield* Queue.takeN(readerChanges, 2)
+        // Retry the first batch alongside a new batch after a lost acknowledgement.
+        const secondResponse = yield* writer.writeChunked([first, sibling, second])
+        const delivered = yield* Queue.takeN(readerChanges, 3)
         const fromReader = makeEntry()
         yield* reader.writeSingle([fromReader])
         const nextForWriter = yield* Queue.take(writerChanges)
@@ -428,16 +425,20 @@ describe("EventLogRemote write acknowledgements", () => {
           firstResponse,
           secondResponse,
           nextForWriter: nextForWriter.entry.idString,
-          replay: (yield* Queue.takeN(replay, 3)).map(({ entry }) => entry.idString)
+          replay: (yield* Queue.takeN(replay, 4)).map(({ entry }) => entry.idString)
         }, {
-          delivered: [first.idString, second.idString],
-          firstResponse: [{ entryId: first.id, sequence: delivered[0].remoteSequence }],
+          delivered: [first.idString, sibling.idString, second.idString],
+          firstResponse: [
+            { entryId: first.id, sequence: delivered[0].remoteSequence },
+            { entryId: sibling.id, sequence: delivered[1].remoteSequence }
+          ],
           secondResponse: [
             { entryId: first.id, sequence: delivered[0].remoteSequence },
-            { entryId: second.id, sequence: delivered[1].remoteSequence }
+            { entryId: sibling.id, sequence: delivered[1].remoteSequence },
+            { entryId: second.id, sequence: delivered[2].remoteSequence }
           ],
           nextForWriter: fromReader.idString,
-          replay: [seed.idString, first.idString, second.idString]
+          replay: [seed.idString, first.idString, sibling.idString, second.idString]
         })
       }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
   }
