@@ -17,7 +17,7 @@ import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import * as Transferable from "../workers/Transferable.ts"
-import { Entry, EntryId, RemoteEntry } from "./EventJournal.ts"
+import { type Entry, EntryFields, entryFromFields, EntryId, RemoteEntry } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
 import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecretDerivation.ts"
 
@@ -124,7 +124,7 @@ const equalBytes = (a: Uint8Array, b: Uint8Array): boolean => {
   return true
 }
 
-const BatchFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(Entry))
+const BatchFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(EntryFields))
 const encodeBatch = Schema.encodeEffect(BatchFromSchemaBinary)
 const decodeBatch = Schema.decodeEffect(BatchFromSchemaBinary)
 
@@ -211,7 +211,8 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
         const result: Array<RemoteEntry> = []
         for (let i = 0; i < batches.length; i++) {
           const batch = batches[i]
-          const entries = yield* Effect.orDie(decodeBatch(new Uint8Array(decrypted[i])))
+          const fields = yield* Effect.orDie(decodeBatch(new Uint8Array(decrypted[i])))
+          const entries = fields.map(entryFromFields)
           if (
             entries.length !== batch.entryIds.length ||
             entries.some((entry, j) => !equalBytes(entry.id, batch.entryIds[j]))

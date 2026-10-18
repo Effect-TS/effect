@@ -89,6 +89,33 @@ describe("EventJournal", () => {
         nextSequence: 3
       })
     }))
+
+  it.effect("entriesById preserves order, repeated ids and missing entries", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const entries: Array<EventJournal.Entry> = []
+      for (const primaryKey of ["first", "second"]) {
+        entries.push(
+          yield* journal.write({
+            event: "Repro",
+            primaryKey,
+            payload: new Uint8Array([entries.length + 1]),
+            effect: Effect.succeed
+          })
+        )
+      }
+      const [first, second] = entries
+      const missing = EventJournal.makeEntryIdUnsafe()
+      const found = yield* journal.entriesById([
+        second.id.slice() as EventJournal.EntryId,
+        missing,
+        first.id.slice() as EventJournal.EntryId,
+        second.id.slice() as EventJournal.EntryId
+      ])
+      assert.deepStrictEqual(found, [second, undefined, first, second])
+      assert.deepStrictEqual(yield* journal.entriesById([]), [])
+    }))
+
   it("formats schema-accepted ids identically to the original UUID formatter", () => {
     const ids: Array<Uint8Array> = [new Uint8Array(16), new Uint8Array(16).fill(0xff)]
     for (let length = 0; length < 16; length++) {

@@ -11,14 +11,16 @@
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
 import type { Brand } from "../Brand.ts"
+import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import * as Transferable from "../workers/Transferable.ts"
-import { Entry, RemoteEntry, RemoteId } from "./EventJournal.ts"
+import { Entry, EntryFields, entryFromFields, RemoteEntry, RemoteId } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
 import { EncryptedBatch, EncryptedRemoteBatch } from "./EventLogEncryption.ts"
 
@@ -324,11 +326,24 @@ export class WriteEntriesUnencrypted
 {
   static FromSchemaBinary = SchemaBinary.toCodec(WriteEntriesUnencrypted)
   static encode = Schema.encodeEffect(this.FromSchemaBinary)
-  static decode = Schema.decodeEffect(this.FromSchemaBinary)
+  static decode = (
+    data: Uint8Array<ArrayBuffer>,
+    options?: SchemaAST.ParseOptions
+  ): Effect.Effect<WriteEntriesUnencrypted, Schema.SchemaError> =>
+    Effect.map(
+      decodeWriteEntriesUnencryptedFields(data, options),
+      (fields) =>
+        Schema.makeClassTrusted(WriteEntriesUnencrypted, { ...fields, entries: fields.entries.map(entryFromFields) })
+    )
   get encoded() {
     return WriteEntriesUnencrypted.encode(this)
   }
 }
+
+const decodeWriteEntriesUnencryptedFields = Schema.decodeEffect(SchemaBinary.toCodec(Schema.Struct({
+  ...WriteEntriesUnencrypted.fields,
+  entries: Schema.Array(EntryFields)
+})))
 
 /**
  * RPC used to send an encoded write payload that fits in one message.

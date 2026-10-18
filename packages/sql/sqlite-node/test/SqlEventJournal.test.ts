@@ -100,6 +100,33 @@ describe("SqlEventJournal", () => {
         nextSequence: 3
       })
     }))
+
+  it.effect("entriesById preserves order, repeated ids and missing entries", () =>
+    Effect.gen(function*() {
+      const journal = yield* makeJournal
+      const entries: Array<EventJournal.Entry> = []
+      for (const primaryKey of ["first", "second"]) {
+        entries.push(
+          yield* journal.write({
+            event: "Repro",
+            primaryKey,
+            payload: new Uint8Array([entries.length + 1]),
+            effect: Effect.succeed
+          })
+        )
+      }
+      const [first, second] = entries
+      const missing = EventJournal.makeEntryIdUnsafe()
+      const found = yield* journal.entriesById([
+        second.id.slice() as EventJournal.EntryId,
+        missing,
+        first.id.slice() as EventJournal.EntryId,
+        second.id.slice() as EventJournal.EntryId
+      ])
+      assert.deepStrictEqual(found, [second, undefined, first, second])
+      assert.deepStrictEqual(yield* journal.entriesById([]), [])
+    }))
+
   it.effect("replay invalidation observes committed entries from another connection", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
@@ -272,8 +299,103 @@ describe("SqlEventJournal", () => {
       )
     }))
 
+  it.effect("journal queries use indexes", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const plan = (query: string) =>
+        sql.unsafe<{ detail: string }>(`EXPLAIN QUERY PLAN ${query}`).pipe(
+          Effect.map((rows) => rows.map((row) => row.detail.replace(/INDEX \S+/, "INDEX <index>")))
+        )
+      assert.deepStrictEqual({
+        conflicts: yield* plan(
+          "SELECT * FROM effect_event_journal WHERE event IN ('a', 'b') AND primary_key IN ('a', 'b') AND timestamp > 0"
+        ),
+        entries: yield* plan("SELECT * FROM effect_event_journal ORDER BY timestamp ASC"),
+        nextRemoteSequence: yield* plan("SELECT MAX(sequence) FROM effect_event_remotes WHERE remote_id = x'00'")
+      }, {
+        conflicts: ["SEARCH effect_event_journal USING INDEX <index> (event=? AND primary_key=? AND timestamp>?)"],
+        entries: ["SCAN effect_event_journal USING INDEX <index>"],
+        nextRemoteSequence: ["SEARCH effect_event_remotes USING COVERING INDEX <index> (remote_id=?)"]
+      })
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("opens and keeps working on a database created before upload checkpoints", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      // The schema as created by the first release of SqlEventJournal.
+      yield* sql`
+        CREATE TABLE effect_event_journal (
+          id BLOB PRIMARY KEY,
+          event TEXT NOT NULL,
+          primary_key TEXT NOT NULL,
+          payload BLOB NOT NULL,
+          timestamp INTEGER NOT NULL
+        )`
+      yield* sql`
+        CREATE TABLE effect_event_remotes (
+          remote_id BLOB NOT NULL,
+          entry_id BLOB NOT NULL,
+          sequence INT NOT NULL,
+          PRIMARY KEY (remote_id, entry_id)
+        )`
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const local = entry(1000, "Repro", "local")
+      const imported = entry(2000, "Repro", "imported")
+      for (const { event, id, primaryKey, payload, createdAtMillis } of [local, imported]) {
+        yield* sql`INSERT INTO effect_event_journal ${
+          sql.insert({ id, event, primary_key: primaryKey, payload, timestamp: createdAtMillis })
+        }`
+      }
+      yield* sql`INSERT INTO effect_event_remotes ${
+        sql.insert({ remote_id: remoteId, entry_id: imported.id, sequence: 0 })
+      }`
+
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      const upload = (remoteId: EventJournal.RemoteId) =>
+        journal.withRemoteUncommited(remoteId, (entries) => Effect.succeed(entries.map((entry) => entry.idString)))
+      assert.deepStrictEqual({
+        remote: yield* upload(remoteId),
+        otherRemote: yield* upload(EventJournal.makeRemoteIdUnsafe())
+      }, {
+        remote: Option.some([local.idString]),
+        otherRemote: Option.some([local.idString, imported.idString])
+      })
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
     describe(name, () => {
+      it.effect("withRemoteUncommited uploads each entry once, retries failures and forwards older imports", () =>
+        Effect.gen(function*() {
+          const journal = yield* make
+          const remoteId = EventJournal.makeRemoteIdUnsafe()
+          const upload = journal.withRemoteUncommited(
+            remoteId,
+            (entries) => Effect.succeed(entries.map((entry) => entry.idString))
+          )
+          const a = yield* journal.write({ ...localEntry("a"), effect: Effect.succeed })
+          const failed = yield* Effect.exit(journal.withRemoteUncommited(remoteId, () => Effect.fail("upload failed")))
+          const retried = yield* upload
+          // No echo from the remote: a successful upload alone must advance it.
+          const b = yield* journal.write({ ...localEntry("b"), effect: Effect.succeed })
+          const next = yield* upload
+          const older = entry(a.createdAtMillis - 1)
+          yield* journal.writeFromRemote({
+            remoteId: EventJournal.makeRemoteIdUnsafe(),
+            entries: remoteEntries([older]),
+            effect: () => Effect.void
+          })
+          const forwarded = yield* upload
+          const idle = yield* upload
+          assert.deepStrictEqual({ failed: Exit.isFailure(failed), retried, next, forwarded, idle }, {
+            failed: true,
+            retried: Option.some([a.idString]),
+            next: Option.some([b.idString]),
+            forwarded: Option.some([older.idString]),
+            idle: Option.none()
+          })
+        }))
+
       it.effect("writeMany commits and publishes a batch in order only when its callback succeeds", () =>
         Effect.gen(function*() {
           const journal = yield* make
