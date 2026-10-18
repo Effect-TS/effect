@@ -6,8 +6,8 @@ import type { Entry } from "../EventJournal.ts"
  * them: same event and primary key, strictly greater id.
  *
  * The batch is sorted by `order` (`Entry.Order`), so it is applied in the same
- * order on every replica. Add the stored entries that may conflict, in id
- * order, then call `toBatch`.
+ * order on every replica. Add the stored entries that may conflict, then call
+ * `toBatch` to sort and filter them.
  */
 export class ConflictIndex {
   /** The incoming entries in id order. */
@@ -54,6 +54,9 @@ export class ConflictIndex {
   }
 
   toBatch(): Array<{ readonly entry: Entry; readonly conflicts: ReadonlyArray<Entry> }> {
+    for (const group of this.groups()) {
+      group.entries.sort(this.order)
+    }
     return this.batch.map((entry) => ({
       entry,
       conflicts: this.stored.get(entry.event)!.get(entry.primaryKey)!.entries.filter((stored) =>
