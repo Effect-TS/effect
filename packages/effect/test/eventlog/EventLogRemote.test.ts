@@ -410,6 +410,14 @@ describe("EventLogRemote write acknowledgements", () => {
         // Retry the first batch alongside a new batch after a lost acknowledgement.
         const secondResponse = yield* writer.writeChunked([first, sibling, second])
         const delivered = yield* Queue.takeN(readerChanges, 3)
+        // Re-store a batch containing both a known entry and a new one.
+        const partial = makeEntry()
+        yield* writer.writeSingle([sibling, partial])
+        const partialDelivery = yield* Queue.takeN(readerChanges, serverCase.name === "encrypted" ? 2 : 1)
+        assert.deepStrictEqual(
+          partialDelivery.map(({ entry }) => entry.idString),
+          serverCase.name === "encrypted" ? [sibling.idString, partial.idString] : [partial.idString]
+        )
         const fromReader = makeEntry()
         yield* reader.writeSingle([fromReader])
         const nextForWriter = yield* Queue.take(writerChanges)
