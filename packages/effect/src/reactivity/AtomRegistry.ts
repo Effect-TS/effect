@@ -396,6 +396,7 @@ class RegistryImpl implements AtomRegistry {
 
   readonly nodes = new Map<Atom.Atom<any> | string, NodeImpl<any>>()
   readonly preloadedSerializable = new Map<string, unknown>()
+  readonly hydratedWithUnknownDependencies = new Set<NodeImpl<any>>()
   readonly timeoutBuckets = new Map<number, readonly [nodes: Set<NodeImpl<any>>, handle: number]>()
   readonly nodeTimeoutBucket = new Map<NodeImpl<any>, number>()
   disposed = false
@@ -409,7 +410,7 @@ class RegistryImpl implements AtomRegistry {
   }
 
   set<R, W>(atom: Atom.Writable<R, W>, value: W): void {
-    atom.write(this.ensureNode(atom).writeContext, value)
+    this.write(() => atom.write(this.ensureNode(atom).writeContext, value))
   }
 
   setSerializable(key: string, encoded: unknown): void {
@@ -419,13 +420,60 @@ class RegistryImpl implements AtomRegistry {
   modify<R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]): A {
     const node = this.ensureNode(atom)
     const result = f(node.value())
-    atom.write(node.writeContext, result[1])
+    this.write(() => atom.write(node.writeContext, result[1]))
     return result[0]
   }
 
   update<R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W): void {
     const node = this.ensureNode(atom)
-    atom.write(node.writeContext, f(node.value()))
+    const value = f(node.value())
+    this.write(() => atom.write(node.writeContext, value))
+  }
+
+  #writeDepth = 0
+  write(f: () => void): void {
+    this.#writeDepth++
+    let failure: unknown = noFailure
+    try {
+      f()
+    } catch (error) {
+      failure = error
+    }
+    // the depth stays up while invalidating, so a write made by a rebuilt
+    // atom does not start another pass over the same atoms
+    if (this.#writeDepth === 1) {
+      // what `f` wrote before it failed is committed, so it still invalidates
+      try {
+        this.invalidateHydratedWithUnknownDependencies()
+      } catch (error) {
+        if (failure === noFailure) failure = error
+      }
+    }
+    this.#writeDepth--
+    if (failure !== noFailure) throw failure
+  }
+
+  invalidateHydratedWithUnknownDependencies(): void {
+    if (this.hydratedWithUnknownDependencies.size === 0) return
+    const nodes: Array<NodeImpl<any>> = []
+    const visited = new Set<NodeImpl<any>>()
+    // parents go first, so an atom is not rebuilt before an atom it reads
+    const visit = (node: NodeImpl<any>): void => {
+      if (visited.has(node)) return
+      visited.add(node)
+      for (const parent of node.parents) visit(parent)
+      if (this.hydratedWithUnknownDependencies.has(node)) nodes.push(node)
+    }
+    for (const node of this.hydratedWithUnknownDependencies) visit(node)
+    runAll(nodes, (node) => {
+      // skip an atom already rebuilt by an earlier one in this pass
+      if (!this.hydratedWithUnknownDependencies.delete(node)) return
+      if (node.pendingRuntime !== undefined) {
+        node.endHydration()
+      } else {
+        node.invalidate()
+      }
+    })
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
@@ -664,6 +712,8 @@ class NodeImpl<A> {
   preserveInitialValueOnBuild = false
   invalidatedDuringBuild = false
   failed = false
+  hydrating = false
+  pendingRuntime: Atom.Atom<any> | undefined
 
   // Every parent that holds this node as a child. A stale node keeps the
   // parents of its last build, so they are not released and their next change
@@ -747,12 +797,14 @@ class NodeImpl<A> {
     }
     if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
       if (this.preserveInitialValueOnBuild) {
-        this.preserveInitialValueOnBuild = false
         this.failed = false
         this.state = NodeState.valid
       } else {
         this.setValue(value)
       }
+    }
+    if (this.lifetime === lifetime) {
+      this.preserveInitialValueOnBuild = false
     }
     if (lifetime.failure !== noFailure) throw lifetime.failure
   }
@@ -821,8 +873,15 @@ class NodeImpl<A> {
     return Option.some(this._value)
   }
 
+  endHydration(): void {
+    this.hydrating = false
+    this.pendingRuntime = undefined
+  }
+
   setInitialValue(value: A): void {
     if ((this.state & NodeFlags.initialized) === 0) {
+      // an Initial does not suppress its effect or stream
+      this.hydrating = !(Result.isAsyncResult(value) && Result.isInitial(value))
       this.preserveInitialValueOnBuild = true
       this.state = NodeState.stale
       this._value = value
@@ -832,6 +891,8 @@ class NodeImpl<A> {
       return
     }
 
+    // a value set after the first read replaces the one being kept
+    this.endHydration()
     this.setValue(value)
   }
 
@@ -874,7 +935,12 @@ class NodeImpl<A> {
     }
   }
 
-  invalidate(): void {
+  invalidate(parent?: NodeImpl<any>): void {
+    if (parent === undefined || parent.atom !== this.pendingRuntime) {
+      this.preserveInitialValueOnBuild = false
+      this.endHydration()
+      this.registry.hydratedWithUnknownDependencies.delete(this)
+    }
     if (this.state === NodeState.valid) {
       this.state = NodeState.stale
       try {
@@ -912,7 +978,7 @@ class NodeImpl<A> {
     for (const child of Array.from(this.children)) {
       if (!child.affectedBy(this)) continue
       try {
-        child.invalidate()
+        child.invalidate(this)
       } catch (error) {
         if (failure === noFailure) failure = error
       }
@@ -951,6 +1017,7 @@ class NodeImpl<A> {
     const observed = this.isObserved
     this.state = NodeState.removed
     this.listeners.clear()
+    this.registry.hydratedWithUnknownDependencies.delete(this)
     try {
       this.disposeLifetime()
     } finally {
@@ -992,6 +1059,28 @@ interface Lifetime<A> extends Atom.AtomContext {
   finalizers: Array<() => void> | undefined
   disposed: boolean
   readonly dispose: () => void
+}
+
+/** @internal */
+export const consumeHydration = (ctx: Atom.AtomContext): boolean => {
+  const node = (ctx as Lifetime<any>).node
+  const hydrating = node.hydrating
+  node.endHydration()
+  if (hydrating) {
+    node.registry.hydratedWithUnknownDependencies.add(node)
+  }
+  return hydrating
+}
+
+/** @internal */
+export const pendingHydrationRuntime = (ctx: Atom.AtomContext, runtime: Atom.Atom<any>): void => {
+  const node = (ctx as Lifetime<any>).node
+  if (node.hydrating && node.preserveInitialValueOnBuild && Result.isInitial(ctx(runtime))) {
+    node.pendingRuntime = runtime
+    node.registry.hydratedWithUnknownDependencies.add(node)
+  } else {
+    node.endHydration()
+  }
 }
 
 const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn" | "reads" | "failure"> = {
@@ -1118,6 +1207,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
   setSelf<A>(this: Lifetime<any>, a: A): void {
     if (this.disposed) return
+    this.node.endHydration()
     this.node.setValue(a as any)
   },
 
