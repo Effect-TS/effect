@@ -967,17 +967,16 @@ export const migrations = (options?: {
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
-        pg: () =>
-          Effect.gen(function*() {
-            yield* sql`
+        pg: Effect.fnUntraced(function*() {
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
               ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
             `
-            yield* sql`
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
               ON ${messagesTableSql} (request_id)
             `
-          }),
+        }),
         orElse: () =>
           // sqlite
           Effect.all([
