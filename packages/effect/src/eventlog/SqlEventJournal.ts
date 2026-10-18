@@ -263,9 +263,16 @@ export const make = (options?: {
       Request: EntryRowArray,
       execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
     })
+    // A known entry received again at a later sequence moves its row forward, so
+    // `nextRemoteSequence` passes it.
     const insertRemotes = SqlSchema.void({
       Request: RemoteRowArray,
-      execute: (entries) => sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+      execute: (entries) =>
+        sql`
+          INSERT INTO ${remotesTableSql} ${sql.insert(entries)}
+          ON CONFLICT (remote_id, entry_id) DO UPDATE SET sequence = excluded.sequence
+          WHERE excluded.sequence > ${remotesTableSql}.sequence
+        `
     })
     // Serialize writers so checkpoints cannot skip out-of-order commits.
     // Lock before callbacks in both paths to avoid projection-row deadlocks.
@@ -287,11 +294,18 @@ export const make = (options?: {
       EventJournal.EventJournalError | Schema.SchemaError | SqlError.SqlError
     > {
       const entries = options.entries.map((remoteEntry) => remoteEntry.entry)
-      const remoteRows = options.entries.map((remoteEntry) => ({
-        remote_id: options.remoteId,
-        entry_id: remoteEntry.entry.id,
-        sequence: remoteEntry.remoteSequence
-      }))
+      // One row per entry with its highest sequence: an upsert can't touch a row twice.
+      const remoteRowsById = new Map<string, typeof RemoteRow.Type>()
+      for (const remoteEntry of options.entries) {
+        const existing = remoteRowsById.get(remoteEntry.entry.idString)
+        if (existing !== undefined && existing.sequence >= remoteEntry.remoteSequence) continue
+        remoteRowsById.set(remoteEntry.entry.idString, {
+          remote_id: options.remoteId,
+          entry_id: remoteEntry.entry.id,
+          sequence: remoteEntry.remoteSequence
+        })
+      }
+      const remoteRows = Array.from(remoteRowsById.values())
 
       yield* lockWriters
 
@@ -313,7 +327,14 @@ export const make = (options?: {
           )
         )
       }
-      const uncommitted = options.entries.filter((entry) => !existingIds.has(entry.entry.idString))
+      // Overlapping batches can repeat an entry; the first copy wins.
+      const incomingIds = new Set<string>()
+      const uncommitted = options.entries.filter((entry) => {
+        const idString = entry.entry.idString
+        if (existingIds.has(idString) || incomingIds.has(idString)) return false
+        incomingIds.add(idString)
+        return true
+      })
       const duplicateEntries = options.entries
         .filter((entry) => existingIds.has(entry.entry.idString))
         .map((entry) => entry.entry)
@@ -348,10 +369,11 @@ export const make = (options?: {
         yield* options.effect(index.toBatch())
       }
 
-      // Persist after replay so conflict queries exclude the incoming batch.
-      if (entries.length > 0) {
-        yield* insertEntries(entries.map(toEntryRow))
-        yield* insertSequence(entries)
+      // Keep the incoming batch out of conflict queries and persist only after
+      // compaction and every callback have succeeded.
+      if (uncommitted.length > 0) {
+        yield* insertEntries(uncommitted.map((remoteEntry) => toEntryRow(remoteEntry.entry)))
+        yield* insertSequence(uncommitted.map((remoteEntry) => remoteEntry.entry))
       }
       if (remoteRows.length > 0) {
         yield* insertRemotes(remoteRows)

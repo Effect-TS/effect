@@ -22,7 +22,7 @@ import type * as SchemaAST from "../SchemaAST.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import { Entry, EntryFields, entryFromFields, RemoteEntry, RemoteId } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
-import { EncryptedEntry, EncryptedRemoteEntry } from "./EventLogEncryption.ts"
+import { EncryptedBatch, EncryptedRemoteBatch } from "./EventLogEncryption.ts"
 
 /**
  * Type-level identifier used to brand event-log store ids.
@@ -290,8 +290,8 @@ export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
  *
  * **Details**
  *
- * It includes the client public key, target store id, and encrypted entries
- * with their AES-GCM initialization vectors.
+ * It includes the client public key, target store id, and the entries
+ * encrypted as batches.
  *
  * @stability unstable
  * @category protocols
@@ -300,7 +300,7 @@ export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
 export class WriteEntries extends Schema.Class<WriteEntries>("effect/eventlog/EventLogRemote/WriteEntries")({
   publicKey: Schema.String,
   storeId: StoreId,
-  encryptedEntries: Schema.Array(EncryptedEntry)
+  batches: Schema.Array(EncryptedBatch)
 }) {
   static FromSchemaBinary = SchemaBinary.toCodec(WriteEntries)
   static encode = Schema.encodeEffect(this.FromSchemaBinary)
@@ -382,7 +382,7 @@ export class ChangesRpc extends Rpc.make("EventLog.Changes", {
   error: EventLogProtocolError,
   stream: true
 }).middleware(EventLogAuthentication) {
-  static EncryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(EncryptedRemoteEntry))
+  static EncryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(EncryptedRemoteBatch))
   static UnencryptedFromSchemaBinary = SchemaBinary.toCodec(Schema.NonEmptyArray(RemoteEntry))
   static encodeEncrypted = Schema.encodeEffect(ChangesRpc.EncryptedFromSchemaBinary)
   static decodeEncrypted = Schema.decodeEffect(ChangesRpc.EncryptedFromSchemaBinary)

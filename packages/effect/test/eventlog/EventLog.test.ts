@@ -1000,14 +1000,16 @@ describe("EventLog", () => {
             known
           ]
           if (mode === "chunked") entries.push(yield* makeCompactionEntry({ id: "new-2" }))
-          const encrypted = yield* encryption.encrypt(identity, entries)
+          const storeId = EventLogMessage.StoreId.make("default")
+          const encrypted = (yield* Effect.forEach(entries, (entry) => encryption.encrypt(identity, storeId, [entry])))
+            .flat()
 
           yield* EventLogRemote.makeEncrypted.pipe(
             Effect.provideService(EventLogRemote.EventLogRemoteClient, client),
             Effect.provideService(EventLogEncryption.EventLogEncryption, encryption)
           )
           const data = yield* EventLogMessage.ChangesRpc.encodeEncrypted(
-            Array.map(entries, (entry, sequence) => ({ sequence, entryId: entry.id, ...encrypted[sequence] }))
+            Array.map(entries, (_, sequence) => ({ sequence, ...encrypted[sequence] }))
           )
           if (mode === "chunked") {
             const middle = Math.floor(data.byteLength / 2)
@@ -1036,30 +1038,6 @@ describe("EventLog", () => {
         }).pipe(Effect.provide(layer))
       })
   )
-
-  it.effect("encrypts and decrypts entries with a distinct IV per entry", () =>
-    Effect.gen(function*() {
-      const encryption = yield* EventLogEncryption.EventLogEncryption
-      const identity = yield* encryption.generateIdentity
-      const entries = ["user-1", "user-2"].map((primaryKey, index) =>
-        new EventJournal.Entry({
-          id: EventJournal.makeEntryIdUnsafe(),
-          event: "UserCreated",
-          primaryKey,
-          payload: new Uint8Array([index])
-        }, { disableChecks: true })
-      )
-      const encrypted = yield* encryption.encrypt(identity, entries)
-      assert.notDeepEqual(encrypted[0].iv, encrypted[1].iv)
-      const decrypted = yield* encryption.decrypt(
-        identity,
-        encrypted.map((entry, index) => ({ ...entry, sequence: index, entryId: entries[index].id }))
-      )
-      assert.deepStrictEqual(
-        decrypted.map((remote) => remote.entry.idString),
-        entries.map((entry) => entry.idString)
-      )
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
   it.effect("publishes local journal changes through a scoped subscription", () =>
     Effect.gen(function*() {
