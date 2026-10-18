@@ -878,12 +878,11 @@ describe("McpServer protocol adapters", () => {
             handle: () =>
               McpServer.registerToolkit(sessionToolkit).pipe(
                 Effect.provide(sessionToolkit.toLayer({
-                  "session-owner": () =>
-                    Effect.gen(function*() {
-                      const request = yield* McpSchema.McpRequestContext
-                      const session = yield* Effect.serviceOption(McpSchema.McpServerClient)
-                      return { client: request.clientInfo!.name, hasSession: Option.isSome(session) }
-                    })
+                  "session-owner": Effect.fnUntraced(function*() {
+                    const request = yield* McpSchema.McpRequestContext
+                    const session = yield* Effect.serviceOption(McpSchema.McpServerClient)
+                    return { client: request.clientInfo!.name, hasSession: Option.isSome(session) }
+                  })
                 })),
                 Effect.provideService(McpServer.McpServer, server),
                 Effect.as(new McpSchema.CallToolResult({ content: [] }))

@@ -12,6 +12,7 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as Bytes from "../Bytes.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
@@ -1261,7 +1262,7 @@ export const makeProtocolWithHttpEffect: (
       () => Effect.succeed([])
     ))
     if (queue.state._tag === "Done") {
-      return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk), {
+      return HttpServerResponse.uint8Array(initialChunk.length === 1 ? initialChunk[0] : Bytes.concat(initialChunk), {
         contentType: serialization.contentType
       })
     }
@@ -1302,19 +1303,6 @@ export const makeProtocolWithHttpEffect: (
 
   return { protocol, httpEffect } as const
 })
-
-const mergeUint8Arrays = (arrays: ReadonlyArray<Uint8Array>) => {
-  if (arrays.length === 0) return new Uint8Array(0)
-  if (arrays.length === 1) return arrays[0]
-  const length = arrays.reduce((acc, arr) => acc + arr.length, 0)
-  const result = new Uint8Array(length)
-  let offset = 0
-  for (const arr of arrays) {
-    result.set(arr, offset)
-    offset += arr.length
-  }
-  return result
-}
 
 /**
  * Creates an HTTP server `Protocol` and registers its request handler as a POST

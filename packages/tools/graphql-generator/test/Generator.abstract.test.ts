@@ -5,16 +5,15 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import { assertNoErrors, generateIn, importGenerated } from "./utils/generator.ts"
 
-const decoderFor = (schema: string, document: string) =>
-  Effect.gen(function*() {
-    const generated = yield* generateIn(
-      { "schema.graphql": schema, "src/ops.graphql": document },
-      { schema: "./schema.graphql", documents: ["src/*.graphql"] }
-    )
-    assertNoErrors(generated)
-    const ops = yield* importGenerated(generated, "src/ops.graphql.ts")
-    return Schema.decodeUnknownSync(ops.Q.result)
-  })
+const decoderFor = Effect.fnUntraced(function*(schema: string, document: string) {
+  const generated = yield* generateIn(
+    { "schema.graphql": schema, "src/ops.graphql": document },
+    { schema: "./schema.graphql", documents: ["src/*.graphql"] }
+  )
+  assertNoErrors(generated)
+  const ops = yield* importGenerated(generated, "src/ops.graphql.ts")
+  return Schema.decodeUnknownSync(ops.Q.result)
+})
 
 describe("Generator abstract members", () => {
   it.effect("a fragment on the only possible type of an interface keeps its own member", () =>

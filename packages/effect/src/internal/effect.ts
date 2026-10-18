@@ -1181,9 +1181,10 @@ const callbackOptions: <A, E = never, R = never>(
       }, controller?.signal)
       if (yielded !== false) return yielded
       yielded = true
-      fiber._yielded = () => {
+      // V8 pretenures closures assigned to a property; a method argument avoids that and survives minification
+      fiber.yieldWith(() => {
         resumed = true
-      }
+      })
       if (controller === undefined && onCancel === undefined) {
         return Yield
       }

@@ -185,33 +185,32 @@ const liveSleep = (millis: number) =>
 const liveTimeout = (millis: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.raceFirst(effect, liveSleep(millis).pipe(Effect.andThen(Effect.die(new Error("timed out")))))
 
-const startProcessGroup = (
+const startProcessGroup = Effect.fnUntraced(function*(
   mode: "exit-on-signal" | "ignore-signal",
   options?: ChildProcess.CommandOptions,
   delays: { readonly leader: number; readonly descendant: number } = { leader: 0, descendant: 200 }
-) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const directory = yield* fs.makeTempDirectoryScoped()
-    const marker = `${directory}/marker`
-    const scope = yield* Scope.fork(yield* Effect.scope)
-    const handle = yield* Scope.provide(scope)(ChildProcess.make(
-      process.execPath,
-      [processGroupFixture, "leader", mode, marker, String(delays.leader), String(delays.descendant)],
-      { stdin: "ignore", ...options }
-    ))
-    const ready = yield* Deferred.make<number>()
-    yield* handle.stdout.pipe(
-      Stream.decodeText,
-      Stream.splitLines,
-      Stream.runForEach((line) =>
-        line.startsWith("READY ") ? Deferred.succeed(ready, Number(line.slice("READY ".length))) : Effect.void
-      ),
-      Effect.forkScoped
-    )
-    const descendantPid = yield* Deferred.await(ready).pipe(liveTimeout(5_000))
-    return { handle, descendantPid, marker, scope }
-  })
+) {
+  const fs = yield* FileSystem.FileSystem
+  const directory = yield* fs.makeTempDirectoryScoped()
+  const marker = `${directory}/marker`
+  const scope = yield* Scope.fork(yield* Effect.scope)
+  const handle = yield* Scope.provide(scope)(ChildProcess.make(
+    process.execPath,
+    [processGroupFixture, "leader", mode, marker, String(delays.leader), String(delays.descendant)],
+    { stdin: "ignore", ...options }
+  ))
+  const ready = yield* Deferred.make<number>()
+  yield* handle.stdout.pipe(
+    Stream.decodeText,
+    Stream.splitLines,
+    Stream.runForEach((line) =>
+      line.startsWith("READY ") ? Deferred.succeed(ready, Number(line.slice("READY ".length))) : Effect.void
+    ),
+    Effect.forkScoped
+  )
+  const descendantPid = yield* Deferred.await(ready).pipe(liveTimeout(5_000))
+  return { handle, descendantPid, marker, scope }
+})
 
 const killDescendant = (pid: number) =>
   Effect.sync(() => {
@@ -220,21 +219,19 @@ const killDescendant = (pid: number) =>
     } catch {}
   })
 
-const assertHeartbeatStopped = (marker: string) =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const sizeAfterKill = (yield* fs.stat(marker)).size
-    yield* liveSleep(100)
-    const finalSize = (yield* fs.stat(marker)).size
-    assert.strictEqual(finalSize, sizeAfterKill)
-  })
+const assertHeartbeatStopped = Effect.fnUntraced(function*(marker: string) {
+  const fs = yield* FileSystem.FileSystem
+  const sizeAfterKill = (yield* fs.stat(marker)).size
+  yield* liveSleep(100)
+  const finalSize = (yield* fs.stat(marker)).size
+  assert.strictEqual(finalSize, sizeAfterKill)
+})
 
-const timed = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.gen(function*() {
-    const start = Date.now()
-    yield* effect
-    return Date.now() - start
-  })
+const timed = Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
+  const start = Date.now()
+  yield* effect
+  return Date.now() - start
+})
 
 describe.skipIf(process.platform === "win32")("process group cleanup", () => {
   it.live("scope release cleans descendants after the leader exits successfully", () =>

@@ -8,13 +8,12 @@ describe("Queue", () => {
     const withYield = <A, E>(effect: Effect.Effect<A, E>) =>
       Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, 3)
 
-    const assertCompletes = (fiber: Fiber.Fiber<unknown, unknown>) =>
-      Effect.gen(function*() {
-        for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
-        const done = fiber.pollUnsafe() !== undefined
-        yield* Fiber.interrupt(fiber)
-        assert.isTrue(done, "lost wake-up")
-      })
+    const assertCompletes = Effect.fnUntraced(function*(fiber: Fiber.Fiber<unknown, unknown>) {
+      for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      const done = fiber.pollUnsafe() !== undefined
+      yield* Fiber.interrupt(fiber)
+      assert.isTrue(done, "lost wake-up")
+    })
 
     it.effect("offerAll does not park beside available capacity", () =>
       Effect.gen(function*() {

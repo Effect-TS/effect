@@ -6192,6 +6192,14 @@ Expected a value between -2147483648 and 2147483647`
     })
   })
 
+  it("FormData guard", () => {
+    const is = Schema.is(Schema.FormData)
+    assertTrue(is(new FormData()))
+    for (const value of [undefined, null, {}, [], { append() {}, entries() {} }]) {
+      assertFalse(is(value))
+    }
+  })
+
   it("fromFormData", async () => {
     const schema = Schema.fromFormData(Schema.Struct({
       a: Schema.NonEmptyString,
