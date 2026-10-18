@@ -13,7 +13,7 @@
  * documents against a DTD or schema, and reports names as written, without
  * resolving namespaces.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.6
  */
 import * as Arr from "../Array.ts"
@@ -44,7 +44,7 @@ const XmlErrorTypeId = "~effect/encoding/Xml/XmlError"
  * `column` where the problem was found, also appended to `message`. Columns
  * count UTF-16 code units, and lines end at LF, CR or CRLF.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.6
  */
@@ -57,7 +57,7 @@ export class XmlError extends Data.TaggedError("XmlError")<{
   /**
    * Marks this value as an XML error for runtime guards.
    *
-   * @stability unstable
+   * @stability experimental
    * @since 4.0.6
    */
   readonly [XmlErrorTypeId] = XmlErrorTypeId
@@ -66,7 +66,7 @@ export class XmlError extends Data.TaggedError("XmlError")<{
 /**
  * Checks whether a value is an `XmlError`.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.6
  */
@@ -80,7 +80,7 @@ export const isXmlError = (u: unknown): u is XmlError => Predicate.hasProperty(u
  *
  * `encoding` and `standalone` are present only when the declaration sets them.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -100,7 +100,7 @@ export interface Declaration {
  * external DTD; the DTD is never read. Whitespace in `publicId` is collapsed
  * to single spaces and trimmed. The internal subset is not reported.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -126,7 +126,7 @@ export interface Doctype {
  * `Object.prototype` on the copy. A self-closing tag such as `<br/>` is
  * decoded as a `StartElement` followed by an `EndElement`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -139,7 +139,7 @@ export interface StartElement {
 /**
  * Event for an end tag.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -157,7 +157,7 @@ export interface EndElement {
  * event that ends at the next tag, comment or processing instruction, however
  * the input is chunked. Line endings are normalized to `\n`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -169,7 +169,7 @@ export interface Text {
 /**
  * Event for a comment, holding the text between `<!--` and `-->`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -186,7 +186,7 @@ export interface Comment {
  *
  * `data` is the text after the target, without leading whitespace.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -199,7 +199,7 @@ export interface ProcessingInstruction {
 /**
  * Event produced by the decoders and consumed by the encoders.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -221,7 +221,7 @@ export type Event =
  * Adjacent text is merged into one string; comments and processing
  * instructions are dropped.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -246,7 +246,7 @@ export interface Element {
  * Memory per token and for open element names is bounded by `maxTokenSize`.
  * Invalid options throw when the channel is created.
  *
- * @stability unstable
+ * @stability experimental
  * @category configuration
  * @since 4.0.6
  */
@@ -265,7 +265,7 @@ export interface DecodeOptions {
  * Defaults to 16 MiB; `Infinity` disables the limit. Invalid options throw when
  * the channel is created.
  *
- * @stability unstable
+ * @stability experimental
  * @category configuration
  * @since 4.0.6
  */
@@ -327,7 +327,7 @@ export interface ElementsOptions {
  * @see {@link elements} for collecting repeated elements into trees
  * @see {@link encodeString} for the inverse operation
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.6
  */
@@ -361,7 +361,7 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
  *
  * @see {@link decodeString} for text input and the shared gotchas
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.6
  */
@@ -431,7 +431,7 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  *
  * @see {@link decode} for producing events from bytes
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.6
  */
@@ -504,7 +504,7 @@ export const elements = <IE = never, Done = unknown>(
  * @see {@link encode} for UTF-8 byte output
  * @see {@link decodeString} for the inverse operation
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.0.6
  */
@@ -531,7 +531,7 @@ export const encodeString = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * @see {@link encodeString} for text output and the shared gotchas
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.0.6
  */
