@@ -2081,9 +2081,7 @@ export const exitMapError: {
   2,
   <A, E, E2>(self: Exit.Exit<A, E>, f: (a: NoInfer<E>) => E2): Exit.Exit<A, E2> => {
     if (self._tag === "Success") return self as Exit.Exit<A>
-    const error = findError(self.cause)
-    if (Result.isFailure(error)) return self as Exit.Exit<never>
-    return exitFail(f(error.success))
+    return exitFailCause(causeMap(self.cause, f))
   }
 )
 
@@ -2103,9 +2101,7 @@ export const exitMapBoth: {
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
   ): Exit.Exit<A2, E2> => {
     if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
-    const error = findError(self.cause)
-    if (Result.isFailure(error)) return self as Exit.Exit<never>
-    return exitFail(options.onFailure(error.success))
+    return exitFailCause(causeMap(self.cause, options.onFailure))
   }
 )
 
@@ -3412,7 +3408,7 @@ export const mapError: {
   <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
     f: (e: E) => E2
-  ): Effect.Effect<A, E2, R> => catch_(self, (error) => failSync(() => f(error)))
+  ): Effect.Effect<A, E2, R> => catchCause(self, (cause) => failCause(causeMap(cause, f)))
 )
 
 /** @internal */
@@ -3428,8 +3424,8 @@ export const mapBoth: {
   self: Effect.Effect<A, E, R>,
   options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
 ): Effect.Effect<A2, E2, R> =>
-  matchEffect(self, {
-    onFailure: (e) => failSync(() => options.onFailure(e)),
+  matchCauseEffect(self, {
+    onFailure: (cause) => failCause(causeMap(cause, options.onFailure)),
     onSuccess: (a) => sync(() => options.onSuccess(a))
   }))
 

@@ -6032,7 +6032,11 @@ export const mapError: {
 } = dual(2, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutErr2>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
   f: (err: OutErr) => OutErr2
-): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> => catch_(self, (err) => fail(f(err))))
+): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> =>
+  transformPull(
+    self,
+    (pull) => Effect.succeed(Effect.mapError(pull, (err) => Cause.isDone(err) ? err : f(err)))
+  ))
 
 /**
  * Converts all errors in the channel to defects (unrecoverable failures).
