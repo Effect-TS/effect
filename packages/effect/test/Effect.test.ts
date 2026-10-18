@@ -3327,7 +3327,7 @@ describe("Effect", () => {
   })
 
   describe("Effect.ignore", () => {
-    type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity; readonly message?: string }
+    type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity | "Unhandled"; readonly message?: string }
 
     const makeTestLogger = () => {
       const capturedLogs: Array<{
@@ -3342,7 +3342,11 @@ describe("Effect", () => {
     }
 
     const runIgnore = Effect.fnUntraced(
-      function*(options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") {
+      function*(
+        options?: IgnoreOptions,
+        currentLogLevel: LogLevel.Severity = "Info",
+        unhandledLogLevel?: LogLevel.Severity
+      ) {
         const { capturedLogs, testLogger } = makeTestLogger()
         const program = options === undefined
           ? Effect.fail("boom").pipe(Effect.ignore)
@@ -3350,7 +3354,8 @@ describe("Effect", () => {
         yield* program.pipe(
           Effect.provide(Logger.layer([testLogger])),
           Effect.provideService(References.MinimumLogLevel, "Trace"),
-          Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+          Effect.provideService(References.CurrentLogLevel, currentLogLevel),
+          Effect.provideService(References.UnhandledLogLevel, unhandledLogLevel)
         )
         return capturedLogs
       }
@@ -3384,6 +3389,21 @@ describe("Effect", () => {
         assertCauseFail(logs[0].cause, "boom")
       }))
 
+    it.effect("logs with the unhandled level and provided message when log is Unhandled", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnore({ log: "Unhandled", message: "Ignoring failure" }, "Info", "Warn")
+        assert.strictEqual(logs.length, 1)
+        assert.strictEqual(logs[0].logLevel, "Warn")
+        assert.deepStrictEqual(logs[0].message, ["Ignoring failure"])
+        assertCauseFail(logs[0].cause, "boom")
+      }))
+
+    it.effect("does not log when the unhandled level is undefined", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnore({ log: "Unhandled" }, "Info", undefined)
+        assert.strictEqual(logs.length, 0)
+      }))
+
     it.effect("prepends the provided message when logging", () =>
       Effect.gen(function*() {
         const logs = yield* runIgnore({ log: true, message: "Ignoring failure" })
@@ -3394,7 +3414,7 @@ describe("Effect", () => {
   })
 
   describe("Effect.ignoreCause", () => {
-    type IgnoreCauseOptions = { readonly log?: boolean | LogLevel.Severity; readonly message?: string }
+    type IgnoreCauseOptions = { readonly log?: boolean | LogLevel.Severity | "Unhandled"; readonly message?: string }
 
     const makeTestLogger = () => {
       const capturedLogs: Array<{
@@ -3409,7 +3429,11 @@ describe("Effect", () => {
     }
 
     const runIgnoreCause = Effect.fnUntraced(
-      function*(options?: IgnoreCauseOptions, currentLogLevel: LogLevel.Severity = "Info") {
+      function*(
+        options?: IgnoreCauseOptions,
+        currentLogLevel: LogLevel.Severity = "Info",
+        unhandledLogLevel?: LogLevel.Severity
+      ) {
         const { capturedLogs, testLogger } = makeTestLogger()
         const program = options === undefined
           ? Effect.fail("boom").pipe(Effect.ignoreCause)
@@ -3417,7 +3441,8 @@ describe("Effect", () => {
         yield* program.pipe(
           Effect.provide(Logger.layer([testLogger])),
           Effect.provideService(References.MinimumLogLevel, "Trace"),
-          Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+          Effect.provideService(References.CurrentLogLevel, currentLogLevel),
+          Effect.provideService(References.UnhandledLogLevel, unhandledLogLevel)
         )
         return capturedLogs
       }
@@ -3461,6 +3486,21 @@ describe("Effect", () => {
         assert.strictEqual(logs.length, 1)
         assert.strictEqual(logs[0].logLevel, "Error")
         assertCauseFail(logs[0].cause, "boom")
+      }))
+
+    it.effect("logs with the unhandled level and provided message when log is Unhandled", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnoreCause({ log: "Unhandled", message: "Ignoring cause" }, "Info", "Warn")
+        assert.strictEqual(logs.length, 1)
+        assert.strictEqual(logs[0].logLevel, "Warn")
+        assert.deepStrictEqual(logs[0].message, ["Ignoring cause"])
+        assertCauseFail(logs[0].cause, "boom")
+      }))
+
+    it.effect("does not log when the unhandled level is undefined", () =>
+      Effect.gen(function*() {
+        const logs = yield* runIgnoreCause({ log: "Unhandled" }, "Info", undefined)
+        assert.strictEqual(logs.length, 0)
       }))
 
     it.effect("prepends the provided message when logging", () =>
