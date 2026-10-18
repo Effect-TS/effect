@@ -429,18 +429,9 @@ describe("assignProperties fast path", () => {
     })
 
     it("KNOWN LIMITATION: a Proxy whose getOwnPropertyDescriptor(\"__proto__\") trap answers inconsistently across the two calls above can still pollute self's prototype", () => {
-      // This is a deliberate gap, not a regression nobody noticed: the fast path's guard asks
-      // `source` about "__proto__" once (see the test above) and then, on a cache miss, hands
-      // `source` to `Object.assign`, which asks again on its own. An ORDINARY object can never
-      // answer those two queries differently, so every real call site here (Data.Class, Data.Error/
-      // TaggedError, Request, Persistable, OpenApi - all of which pass plain objects or JSON.parse
-      // output) is unaffected. Only a deliberately adversarial Proxy whose trap is non-idempotent for
-      // this one key can trigger it; "__proto__" is not a real own property of any realistic proxy
-      // target, so the Proxy invariants do not forbid this. This test exists so that a future change
-      // to the fast path is forced to notice this case rather than silently reintroducing or widening
-      // it. See `packages/effect/src/internal/record.ts` and the PR description for the full
-      // discussion of why this was not closed (every fix attempted introduced a worse, ordinary-case
-      // regression: wrong key order or a different thrown error under a frozen target).
+      // Deliberate gap: no ordinary source (every real call site here) can answer the guard's
+      // check and Object.assign's own check differently. Only an adversarial Proxy can. Pinned
+      // so a future change can't silently widen it; see record.ts and the PR for why it stands.
       let gopdCalls = 0
       const target = { a: 1 }
       const flakyProxy = new Proxy(target, {
