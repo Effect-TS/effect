@@ -200,6 +200,14 @@ const Keeper = Schema.Struct({ x: Protobuf.Int32.pipe(Protobuf.field(1)), unknow
 
 const RootChoice = Schema.Union([Schema.String.pipe(Protobuf.field(1)), Protobuf.Int32.pipe(Protobuf.field(2))])
 
+const Labeled = Schema.Struct({ label: Schema.String.pipe(Protobuf.field(1)), point: Point.pipe(Protobuf.field(2)) })
+
+const Choice = Schema.Struct({
+  choice: Schema.Union([Labeled.pipe(Protobuf.field(1)), Schema.String.pipe(Protobuf.field(2))])
+})
+
+const Rested = Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Protobuf.Int32])
+
 const zeroScalars = {
   fDouble: 0,
   fFloat: 0,
@@ -439,6 +447,12 @@ describe("Protobuf", () => {
         "0a027632 1003 1a05677265656e"
       ],
       [
+        "numeric literal unions beyond int32, as double",
+        Schema.Struct({ ratio: Schema.Literals([1, 2.5]).pipe(Protobuf.field(1)) }),
+        { ratio: 2.5 },
+        "090000000000000440"
+      ],
+      [
         "a struct with rest, as a map",
         Schema.StructWithRest(Schema.Struct({ name: Schema.String.pipe(Protobuf.field(1)) }), [
           Schema.Record(Schema.TemplateLiteral(["x-", Schema.String]), Protobuf.Int32.pipe(Protobuf.field(2)))
@@ -496,13 +510,72 @@ describe("Protobuf", () => {
         x: 5,
         unknownFields: bytes("1801 2a0161 3b08013c")
       }],
-      ["no unknown fields as empty bytes", Keeper, "0805", { x: 5, unknownFields: new Uint8Array(0) }]
+      ["no unknown fields as empty bytes", Keeper, "0805", { x: 5, unknownFields: new Uint8Array(0) }],
+      [
+        "unknown fields of merged occurrences",
+        Schema.Struct({ keeper: Keeper.pipe(Protobuf.field(1)) }),
+        "0a021801 0a00 0a021802",
+        { keeper: { x: 0, unknownFields: bytes("1801 1802") } }
+      ],
+      // A partial first occurrence fails the case's schema, and still merges.
+      ["merged occurrences of a oneof case", Choice, "0a030a0161 0a0412020801", {
+        choice: { label: "a", point: { x: 1, y: 0 } }
+      }],
+      ["a oneof case after another case, unmerged", Choice, "0a030a0161 120162 0a0412020801", {
+        choice: { label: "", point: { x: 1, y: 0 } }
+      }],
+      [
+        "merged occurrences of a tuple",
+        Schema.Struct({ t: Rested.pipe(Protobuf.field(1)) }),
+        "0a030a0161 0a021001 0a021002",
+        {
+          t: ["a", 1, 2]
+        }
+      ],
+      [
+        "merged occurrences of well-known types and wrappers",
+        WellKnown,
+        "0a020805 0a0410c0843d 12020805 120410c0843d 1a030a0161 1a00 32100a0e0a0161120911000000000000f03f 32090a070a016212022001",
+        {
+          createdAt: DateTime.makeUnsafe(5001),
+          ttl: Duration.millis(5001),
+          maybeText: "a",
+          attributes: { a: 1, b: true }
+        }
+      ],
+      [
+        "a tuple property named like an Object.prototype member",
+        Schema.Struct({ constructor: Schema.Tuple([Schema.String]).pipe(Protobuf.field(1)) }),
+        "0a030a0161",
+        { constructor: ["a"] }
+      ],
+      [
+        "rest entries without overwriting declared properties",
+        Schema.StructWithRest(Schema.Struct({ name: Schema.String.pipe(Protobuf.field(1)) }), [
+          Schema.Record(Schema.String, Schema.String.pipe(Protobuf.field(2)))
+        ]),
+        "0a016e 12090a046e616d65120178 12060a0178120179",
+        { name: "n", x: "y" }
+      ]
     ]
     for (const [name, schema, hex, value] of cases) {
       it(name, () => {
         assert.deepStrictEqual(decode(schema, hex), value)
       })
     }
+  })
+
+  it("decodes rest elements beyond the argument limit of a spread", () => {
+    const rest = Array.from({ length: 200_000 }, () => 1)
+    const codec = Protobuf.toCodec(Rested)
+    assert.deepStrictEqual(Schema.decodeSync(codec)(Schema.encodeSync(codec)(["a", ...rest])), ["a", ...rest])
+  })
+
+  it("copies bytes fields out of a Node.js Buffer", () => {
+    const input = Buffer.from(bytes("7a020102"))
+    const decoded = Schema.decodeUnknownSync(Protobuf.toCodec(Scalars))(input)
+    input[2] = 0xff
+    assert.deepStrictEqual(decoded.fBytes, new Uint8Array([1, 2]))
   })
 
   // An assignment to `__proto__` replaces the prototype, so these keys must be
@@ -608,7 +681,9 @@ describe("Protobuf", () => {
       ["a stray end group tag", Point, "3c", /unexpected end group tag for field 7/],
       ["a field overrunning its message", Wide, "12010801", /field overruns its message\n  at \["point"\]/],
       ["an unsafe 64-bit number", Numbers, "1080808080808080 10", /uint64 value 9007199254740992 is outside the safe/],
-      ["an unknown enum number", Status, "0807", /Expected "unspecified" \| "active" \| "suspended"\n  at \["state"\]/]
+      ["an unknown enum number", Status, "0807", /Expected "unspecified" \| "active" \| "suspended"\n  at \["state"\]/],
+      ["a truncated tag after a field, without its path", Wide, "0a0178 ff", /^premature end of input$/],
+      ["a malformed Void root", Schema.Void, "ff", /^premature end of input$/]
     ]
     for (const [name, schema, hex, message] of cases) {
       it(name, () => {
@@ -622,6 +697,14 @@ describe("Protobuf", () => {
     assert.throws(() => encode(Big, { n: 1n << 63n }), /expected a protobuf int64\n  at \["n"\]/)
     const Ttl = Schema.Struct({ ttl: Protobuf.Duration.pipe(Protobuf.field(1)) })
     assert.throws(() => encode(Ttl, { ttl: Duration.infinity }), /expected a finite duration\n  at \["ttl"\]/)
+  })
+
+  it("fails to encode nesting that decoding rejects", () => {
+    let list: Schema.Json = 1
+    // Each JSON array is two levels: a Value and its ListValue.
+    for (let i = 0; i < 256; i++) list = [list]
+    assert.deepStrictEqual(decode(Protobuf.Value, encode(Protobuf.Value, list)), list)
+    assert.throws(() => encode(Protobuf.Value, [list]), /nesting deeper than 512/)
   })
 
   describe("rejects layouts when the codec is created", () => {
@@ -662,6 +745,23 @@ describe("Protobuf", () => {
         "a numbered null",
         Schema.Struct({ a: Schema.Null.pipe(Protobuf.field(1)) }),
         /is Null, which has no wire representation/
+      ],
+      [
+        "a numbered nullish oneof member",
+        Schema.Struct({
+          a: Schema.Union([Schema.String.pipe(Protobuf.field(1)), Schema.Null.pipe(Protobuf.field(2))])
+        }),
+        /has a numbered nullish member/
+      ],
+      [
+        "a packed singular field",
+        Schema.Struct({ a: Protobuf.Int32.pipe(Protobuf.field(1, { packed: true })) }),
+        /only repeated fields can be packed/
+      ],
+      [
+        "presence on a repeated field",
+        Schema.Struct({ a: Schema.Array(Protobuf.Int32).pipe(Protobuf.field(1, { presence: "always" })) }),
+        /only singular fields take presence "always"/
       ],
       [
         "a packed string array",

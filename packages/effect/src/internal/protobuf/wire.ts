@@ -419,7 +419,8 @@ export class Reader {
 
   bytes(): Uint8Array<ArrayBuffer> {
     const end = this.delimited()
-    const out = this.buf.slice(this.pos, end) as Uint8Array<ArrayBuffer>
+    // A plain copy, also of a Node.js `Buffer`, whose `slice` is a view.
+    const out = new Uint8Array(this.buf.subarray(this.pos, end))
     this.pos = end
     return out
   }

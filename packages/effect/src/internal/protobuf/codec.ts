@@ -60,7 +60,7 @@ function matchCase(oneof: Oneof, value: unknown): Case | undefined {
       : undefined
   }
   for (const c of oneof.cases) {
-    if (c.guard!(value)) return c
+    if (c.guard(value)) return c
   }
   return undefined
 }
@@ -85,7 +85,15 @@ export function makeCodec(root: Root): Codec {
     case "Void":
       return {
         encode: () => new Writer().finish(),
-        decode: () => root.value
+        // An empty message: its fields are skipped, but must be well-formed.
+        decode: (bytes) => {
+          const r = new Reader(bytes)
+          while (r.pos < bytes.length) {
+            const tag = readTag(r)
+            r.skip(tag & 7, tag >>> 3, 0)
+          }
+          return root.value
+        }
       }
     case "Message": {
       const encoder = encoderFor(root.message)
@@ -96,17 +104,17 @@ export function makeCodec(root: Root): Codec {
           encodeMessage(encoder, value, w)
           return w.finish()
         },
-        decode: (bytes) => decodeMessage(decoder, new Reader(bytes), bytes.length, undefined, 0, undefined)
+        decode: (bytes) => decodeRoot(decoder, bytes)
       }
     }
     case "Wkt":
       return {
         encode: (value) => {
           const w = new Writer()
-          encodeWkt(root.wkt, value, w)
+          encodeWkt(root.wkt, value, w, 0)
           return w.finish()
         },
-        decode: (bytes) => decodeWkt(root.wkt, new Reader(bytes), bytes.length, 0)
+        decode: (bytes) => decodeWkt(root.wkt, new Reader(bytes), bytes.length, 0, undefined)
       }
     case "Wrapper":
       return {
@@ -115,10 +123,8 @@ export function makeCodec(root: Root): Codec {
           encodeWrapper(root.scalar, value, w)
           return w.finish()
         },
-        decode: (bytes) => decodeWrapper(root.scalar, new Reader(bytes), bytes.length, 0)
+        decode: (bytes) => decodeWrapper(root.scalar, new Reader(bytes), bytes.length, 0, undefined)
       }
-    default:
-      throw new WireError("unexpected root")
   }
 }
 
@@ -170,7 +176,12 @@ function slotValue(message: Message, container: unknown, key: PropertyKey): unkn
   }
 }
 
+// The depth of the message being encoded, limited like the decoder limits it
+// so that whatever is written can be read back.
+let encodeDepth = -1
+
 function encodeMessage(encoder: MessageEncoder, value: unknown, w: Writer): void {
+  if (encodeDepth >= MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
   const message = encoder.message
   if (message.shape === "struct" && !Predicate.isObject(value)) {
     throw new WireError(`expected an object for ${message.name}`, value)
@@ -179,6 +190,7 @@ function encodeMessage(encoder: MessageEncoder, value: unknown, w: Writer): void
     throw new WireError(`expected an array for ${message.name}`, value)
   }
   let key: PropertyKey | undefined
+  encodeDepth++
   try {
     // The case of each oneof, so that it is written in field-number order.
     let cases: Array<Case | undefined> | undefined
@@ -208,6 +220,8 @@ function encodeMessage(encoder: MessageEncoder, value: unknown, w: Writer): void
     }
   } catch (e) {
     rethrowAt(e, key)
+  } finally {
+    encodeDepth--
   }
 }
 
@@ -439,7 +453,7 @@ function valueWriter(number: number, type: ValueLayout, delimited: boolean): Val
       return (value, w) => {
         w.varint32(tag)
         const start = w.begin()
-        encodeWkt(type.wkt, value, w)
+        encodeWkt(type.wkt, value, w, encodeDepth + 1)
         w.end(start)
       }
     case "Wrapper":
@@ -491,7 +505,7 @@ function singularStructWriter(field: Field): SlotWriter | undefined {
         case "int32":
           return (container, w) => {
             const v = (container as Record<PropertyKey, unknown>)[key]
-            if (v === undefined || v === null || (skipZero && (v === 0 || v === BIGINT_ZERO))) return
+            if (v === undefined || v === null || (skipZero && v === 0)) return
             if (typeof v !== "number" || !isInt32(v)) expected("int32", v)
             w.varint32(tag)
             w.int32(v)
@@ -499,7 +513,7 @@ function singularStructWriter(field: Field): SlotWriter | undefined {
         case "uint32":
           return (container, w) => {
             const v = (container as Record<PropertyKey, unknown>)[key]
-            if (v === undefined || v === null || (skipZero && (v === 0 || v === BIGINT_ZERO))) return
+            if (v === undefined || v === null || (skipZero && v === 0)) return
             if (typeof v !== "number" || !isUint32(v)) expected("uint32", v)
             w.varint32(tag)
             w.varint32(v)
@@ -575,7 +589,11 @@ function isScalarZero(type: ScalarLayout, value: unknown): boolean {
       // -0 is written, as other implementations do
       return value === 0 && 1 / value > 0
     default:
-      return value === 0 || value === BIGINT_ZERO
+      // A 64-bit integer is a bigint, or also a number when it is represented
+      // as one, as `split64` accepts.
+      return is64Bit(type.scalar)
+        ? value === BIGINT_ZERO || (type.asNumber && value === 0)
+        : value === 0
   }
 }
 
@@ -691,7 +709,10 @@ function mapKeyFromString(type: ScalarLayout, key: string): unknown {
   throw new WireError(`expected a protobuf ${type.scalar} map key`, key)
 }
 
-function encodeWkt(wkt: WktName, value: unknown, w: Writer): void {
+// `depth` counts nesting like the decoder: the well-known type itself, and two
+// levels per JSON object or array.
+function encodeWkt(wkt: WktName, value: unknown, w: Writer, depth: number): void {
+  if (depth > MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
   switch (wkt) {
     case "timestamp":
     case "date": {
@@ -713,13 +734,13 @@ function encodeWkt(wkt: WktName, value: unknown, w: Writer): void {
       return
     }
     case "value":
-      encodeJsonValue(value, w)
+      encodeJsonValue(value, w, depth)
       return
     case "struct":
-      encodeJsonStruct(value, w)
+      encodeJsonStruct(value, w, depth)
       return
     case "listValue":
-      encodeJsonList(value, w)
+      encodeJsonList(value, w, depth)
       return
   }
 }
@@ -736,7 +757,8 @@ function writeSecondsNanos(seconds: bigint, nanos: number, w: Writer): void {
   }
 }
 
-function encodeJsonValue(value: unknown, w: Writer): void {
+function encodeJsonValue(value: unknown, w: Writer, depth: number): void {
+  if (depth > MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
   switch (typeof value) {
     case "number":
       w.tag(2, WIRE_I64)
@@ -759,8 +781,8 @@ function encodeJsonValue(value: unknown, w: Writer): void {
       const isList = Array.isArray(value)
       w.tag(isList ? 6 : 5, WIRE_LEN)
       const start = w.begin()
-      if (isList) encodeJsonList(value, w)
-      else encodeJsonStruct(value, w)
+      if (isList) encodeJsonList(value, w, depth + 1)
+      else encodeJsonStruct(value, w, depth + 1)
       w.end(start)
       return
     }
@@ -768,7 +790,7 @@ function encodeJsonValue(value: unknown, w: Writer): void {
   throw new WireError("expected a JSON value", value)
 }
 
-function encodeJsonStruct(value: unknown, w: Writer): void {
+function encodeJsonStruct(value: unknown, w: Writer, depth: number): void {
   if (!Predicate.isObject(value) || Array.isArray(value)) throw new WireError("expected a JSON object", value)
   const record = value as Record<string, unknown>
   for (const key of Object.keys(record)) {
@@ -779,7 +801,7 @@ function encodeJsonStruct(value: unknown, w: Writer): void {
     w.tag(2, WIRE_LEN)
     const start = w.begin()
     try {
-      encodeJsonValue(record[key], w)
+      encodeJsonValue(record[key], w, depth + 1)
     } catch (e) {
       rethrowAt(e, key)
     }
@@ -788,13 +810,13 @@ function encodeJsonStruct(value: unknown, w: Writer): void {
   }
 }
 
-function encodeJsonList(value: unknown, w: Writer): void {
+function encodeJsonList(value: unknown, w: Writer, depth: number): void {
   if (!Array.isArray(value)) throw new WireError("expected a JSON array", value)
   for (let i = 0; i < value.length; i++) {
     w.tag(1, WIRE_LEN)
     const start = w.begin()
     try {
-      encodeJsonValue(value[i], w)
+      encodeJsonValue(value[i], w, depth + 1)
     } catch (e) {
       rethrowAt(e, i)
     }
@@ -886,8 +908,8 @@ function decoderFor(message: Message): MessageDecoder {
     // A `__proto__` property that is not in the template is defined before it
     // is read or written, which would otherwise reach the prototype.
     const read = key === "__proto__" && !Object.hasOwn(decoder.template ?? {}, key)
-      ? ownFirst(slotReader(slot))
-      : slotReader(slot)
+      ? ownFirst(slotReader(message, slot))
+      : slotReader(message, slot)
     entries.set(number, { read, key })
     if (number > max) max = number
   }
@@ -925,6 +947,26 @@ function freshZero(field: Field): unknown {
   return field.kind === "repeated" ? [] : field.kind === "map" ? {} : zeroValue(field.type)
 }
 
+// Unknown fields of messages that occurred several times, joined once when the
+// outermost decode is done, so that merging occurrences stays linear.
+let mergedUnknown: Map<Record<PropertyKey, unknown>, { key: PropertyKey; chunks: Array<Uint8Array> }> | undefined
+
+function decodeRoot(decoder: MessageDecoder, bytes: Uint8Array): unknown {
+  const outer = mergedUnknown
+  mergedUnknown = undefined
+  try {
+    const out = decodeMessage(decoder, new Reader(bytes), bytes.length, undefined, 0, undefined)
+    // Set while decoding, which narrowing does not see.
+    const merged = mergedUnknown as typeof outer
+    if (merged !== undefined) {
+      for (const [acc, { chunks, key }] of merged) setOwn(acc, key, concatBytes(chunks))
+    }
+    return out
+  } finally {
+    mergedUnknown = outer
+  }
+}
+
 // Decodes a message up to `end`, or up to the end group tag of field `group`.
 // A message that occurred before is merged into: `previous` is its value.
 function decodeMessage(
@@ -949,6 +991,7 @@ function decodeMessage(
   let key: PropertyKey | undefined
   try {
     while (true) {
+      key = undefined
       if (r.pos >= end) {
         if (group !== undefined) throw new WireError("premature end of input")
         break
@@ -971,7 +1014,6 @@ function decodeMessage(
       }
       const entry = map === undefined ? table[number] : map.get(number)
       if (entry === undefined) {
-        key = undefined
         r.skip(wireType, number, depth)
         if (message.unknown !== undefined) (unknown ??= []).push(r.buf.subarray(start, r.pos))
         continue
@@ -986,7 +1028,8 @@ function decodeMessage(
   if (template === undefined) {
     for (const [k, literal] of message.literals) acc[k] = literal
     for (const field of message.fields) {
-      if (!(field.key in acc)) fillAbsent(acc, field.key, field.absent, field)
+      // The rest elements of a tuple are the array itself.
+      if (field.key !== TUPLE_REST && !(field.key in acc)) fillAbsent(acc, field.key, field.absent, field)
     }
     for (const oneof of message.oneofs) {
       if (!(oneof.key in acc)) fillAbsent(acc, oneof.key, oneof.absent, undefined)
@@ -1001,30 +1044,38 @@ function decodeMessage(
   if (message.unknown !== undefined) {
     const k = message.unknown.key
     const before = ownValue(acc, k)
-    if (unknown !== undefined) {
-      setOwn(acc, k, concatBytes(before instanceof Uint8Array ? [before, ...unknown] : unknown))
-    } else if (before === undefined && !message.unknown.optional) {
-      setOwn(acc, k, new Uint8Array(0))
+    if (unknown === undefined) {
+      if (before === undefined && !message.unknown.optional) setOwn(acc, k, new Uint8Array(0))
+    } else if (before instanceof Uint8Array) {
+      // An occurrence merged into an earlier one.
+      const merged = mergedUnknown ??= new Map()
+      let entry = merged.get(acc)
+      if (entry === undefined) merged.set(acc, entry = { key: k, chunks: [before] })
+      for (let i = 0; i < unknown.length; i++) entry.chunks.push(unknown[i])
+    } else {
+      setOwn(acc, k, concatBytes(unknown))
     }
   }
   return template === undefined ? materialize(message, acc) : acc
 }
 
-// The slots of a message being decoded, keyed like the message's slots.
+// The slots of a message being decoded, keyed like the message's slots. A
+// tuple is decoded in place: element `i` at index `i`, and the rest elements
+// pushed after the elements.
 function accumulator(message: Message, previous: unknown): Record<PropertyKey, unknown> {
-  if (previous === undefined) return {}
   switch (message.shape) {
     case "struct":
-      return previous as Record<PropertyKey, unknown>
+      return previous === undefined ? {} : previous as Record<PropertyKey, unknown>
     case "tuple": {
-      const array = previous as ReadonlyArray<unknown>
-      const acc: Record<PropertyKey, unknown> = {}
-      for (let i = 0; i < Math.min(message.elements, array.length); i++) acc[i] = array[i]
-      acc[TUPLE_REST] = array.slice(message.elements)
-      return acc
+      if (Array.isArray(previous) && previous.length >= message.elements) return previous as any
+      const array: Array<unknown> = new Array(message.elements)
+      if (Array.isArray(previous)) {
+        for (let i = 0; i < previous.length; i++) array[i] = previous[i]
+      }
+      return array as any
     }
     case "box":
-      return { [BOX_VALUE]: previous }
+      return previous === undefined ? {} : { [BOX_VALUE]: previous }
   }
 }
 
@@ -1033,11 +1084,11 @@ function materialize(message: Message, acc: Record<PropertyKey, unknown>): unkno
     case "struct":
       return acc
     case "tuple": {
-      const out: Array<unknown> = []
-      for (let i = 0; i < message.elements && i in acc; i++) out.push(acc[i])
-      const rest = acc[TUPLE_REST]
-      if (out.length === message.elements && Array.isArray(rest)) out.push(...rest)
-      return out
+      // An absent element ends the tuple, without the rest elements.
+      for (let i = 0; i < message.elements; i++) {
+        if (!(i in acc)) return (acc as unknown as Array<unknown>).slice(0, i)
+      }
+      return acc
     }
     case "box":
       return acc[BOX_VALUE]
@@ -1081,7 +1132,7 @@ function fillAbsent(
   }
 }
 
-function slotReader(slot: Slot): SlotReader {
+function slotReader(message: Message, slot: Slot): SlotReader {
   if (slot._tag === "Case") return caseReader(slot)
   switch (slot.kind) {
     case "singular":
@@ -1100,20 +1151,33 @@ function slotReader(slot: Slot): SlotReader {
       }
     }
     case "rest":
-      return entryReader(slot)
+      // Keys of declared properties, and of earlier index signatures, are
+      // never written to this field, and would overwrite those properties.
+      return entryReader(slot, (k) => message.declared.has(k) || claimedBefore(message, slot, k))
   }
 }
+
+// The case each decoded oneof value was read as. A later occurrence of the same
+// case merges into it, even when it is incomplete and fails the case's guard.
+const decodedCases = new WeakMap<object, Case>()
 
 function caseReader(slot: Case): SlotReader {
   const oneof = slot.oneof
   const key = oneof.key
   const unwrap = slot.unwrap
+  const merges = mergesOccurrences(slot.type)
   const readValue = valueReader(slot.type)
   return (acc, r, wireType, depth, number) => {
-    const before = present(oneof.absent, acc[key])
-    const merge = before !== undefined && matchCase(oneof, before) === slot
-      ? (unwrap === undefined ? before : unwrapCase(unwrap.key, before))
-      : undefined
+    let merge: unknown = undefined
+    if (merges) {
+      const before = present(oneof.absent, earlier(acc, key))
+      const c = typeof before === "object" && before !== null
+        ? decodedCases.get(before)
+        : before === undefined
+        ? undefined
+        : matchCase(oneof, before)
+      if (c === slot) merge = unwrap === undefined ? before : unwrapCase(unwrap.key, before)
+    }
     let value = readValue(r, wireType, merge, depth, number)
     if (unwrap !== undefined) {
       const member: Record<string, unknown> = {}
@@ -1121,18 +1185,30 @@ function caseReader(slot: Case): SlotReader {
       member[unwrap.key] = value
       value = member
     }
+    if (merges && typeof value === "object" && value !== null) decodedCases.set(value, slot)
     acc[key] = oneof.absent === "none" ? Option.some(value) : value
   }
+}
+
+// Messages, including well-known types and wrappers, merge with an earlier
+// occurrence; other values replace it.
+function mergesOccurrences(type: ValueLayout): boolean {
+  return type._tag === "Message" || type._tag === "Wkt" || type._tag === "Wrapper"
+}
+
+// The value of an earlier occurrence, which is never an inherited property such
+// as `constructor`.
+function earlier(acc: Record<PropertyKey, unknown>, key: PropertyKey): unknown {
+  return Object.hasOwn(acc, key) ? acc[key] : undefined
 }
 
 function singularReader(field: Field): SlotReader {
   const key = field.key
   const absent = field.absent
   const readValue = valueReader(field.type)
-  // Only messages merge with an earlier occurrence.
-  if (field.type._tag === "Message") {
+  if (mergesOccurrences(field.type)) {
     return (acc, r, wireType, depth, number) => {
-      const value = readValue(r, wireType, present(absent, acc[key]), depth, number)
+      const value = readValue(r, wireType, present(absent, earlier(acc, key)), depth, number)
       acc[key] = absent === "none" ? Option.some(value) : value
     }
   }
@@ -1197,6 +1273,23 @@ function repeatedReader(field: Field): SlotReader {
   const absent = field.absent
   const readValue = valueReader(field.type)
   const readPacked = isPackable(field.type) ? packedReader(field.type) : undefined
+  if (key === TUPLE_REST) {
+    // The rest elements of a tuple, pushed onto the tuple itself.
+    return (acc, r, wireType, depth, number) => {
+      const list = acc as unknown as Array<unknown>
+      try {
+        if (wireType === WIRE_LEN && readPacked !== undefined) {
+          const end = r.delimited()
+          readPacked(r, end, list)
+          if (r.pos !== end) throw new WireError("packed element overruns its field")
+        } else {
+          list.push(readValue(r, wireType, undefined, depth, number))
+        }
+      } catch (e) {
+        rethrowAt(e, list.length)
+      }
+    }
+  }
   if (absent !== "none") {
     // The list is stored once, on the first occurrence.
     return (acc, r, wireType, depth, number) => {
@@ -1233,8 +1326,8 @@ function repeatedReader(field: Field): SlotReader {
   }
 }
 
-// Reads a map entry into `target`.
-function entryReader(field: Field): SlotReader {
+// Reads a map entry into `target`, unless `skip` rejects its key.
+function entryReader(field: Field, skip?: (key: string) => boolean): SlotReader {
   const mapKey = field.mapKey!
   const keyZero = zeroScalar(mapKey)
   const readKey = valueReader(mapKey)
@@ -1247,11 +1340,13 @@ function entryReader(field: Field): SlotReader {
     while (r.pos < end) {
       const tag = readTag(r)
       if (tag >>> 3 === 1) k = readKey(r, tag & 7, undefined, depth, 1)
-      else if (tag >>> 3 === 2) value = readValue(r, tag & 7, undefined, depth, 2)
+      else if (tag >>> 3 === 2) value = readValue(r, tag & 7, value, depth, 2)
       else r.skip(tag & 7, tag >>> 3, depth)
     }
     if (r.pos !== end) throw new WireError("map entry overruns its field")
-    setOwn(target, String(k ?? keyZero), value === undefined ? zeroValue(field.type) : value)
+    const key = String(k ?? keyZero)
+    if (skip !== undefined && skip(key)) return
+    setOwn(target, key, value === undefined ? zeroValue(field.type) : value)
   }
 }
 
@@ -1315,20 +1410,27 @@ function valueReader(type: ValueLayout): ValueReader {
       }
     }
     case "Wkt":
-      return (r, wireType, _, depth) => {
+      return (r, wireType, previous, depth) => {
         expectWireType(wireType, WIRE_LEN)
-        return decodeWkt(type.wkt, r, r.delimited(), depth + 1)
+        return decodeWkt(type.wkt, r, r.delimited(), depth + 1, previous)
       }
     case "Wrapper":
-      return (r, wireType, _, depth) => {
+      return (r, wireType, previous, depth) => {
         expectWireType(wireType, WIRE_LEN)
-        return decodeWrapper(type.scalar, r, r.delimited(), depth + 1)
+        return decodeWrapper(type.scalar, r, r.delimited(), depth + 1, previous)
       }
   }
 }
 
 function mergeTarget(message: Message, previous: unknown): unknown {
-  return message.shape !== "struct" || Predicate.isObject(previous) ? previous : undefined
+  switch (message.shape) {
+    case "struct":
+      return Predicate.isObject(previous) ? previous : undefined
+    case "tuple":
+      return Array.isArray(previous) ? previous : undefined
+    case "box":
+      return previous
+  }
 }
 
 // Unknown numbers pass through for the schema to judge.
@@ -1569,8 +1671,8 @@ function outsideSafeRange(type: ScalarLayout, n: bigint): never {
   throw new WireError(`${type.scalar} value ${n} is outside the safe integer range`)
 }
 
-function decodeWrapper(scalar: ScalarLayout, r: Reader, end: number, depth: number): unknown {
-  let value = zeroScalar(scalar)
+function decodeWrapper(scalar: ScalarLayout, r: Reader, end: number, depth: number, previous: unknown): unknown {
+  let value = previous === undefined ? zeroScalar(scalar) : previous
   while (r.pos < end) {
     const tag = readTag(r)
     if (tag >>> 3 === 1) value = decodeScalarField(scalar, tag & 7, r)
@@ -1580,7 +1682,9 @@ function decodeWrapper(scalar: ScalarLayout, r: Reader, end: number, depth: numb
   return value
 }
 
-function decodeWkt(wkt: WktName, r: Reader, end: number, depth: number): unknown {
+// Decodes a well-known type, merged into `previous`, the value of an earlier
+// occurrence.
+function decodeWkt(wkt: WktName, r: Reader, end: number, depth: number, previous: unknown): unknown {
   if (depth > MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
   let out: unknown
   switch (wkt) {
@@ -1589,6 +1693,20 @@ function decodeWkt(wkt: WktName, r: Reader, end: number, depth: number): unknown
     case "duration": {
       let seconds = BIGINT_ZERO
       let nanos = 0
+      if (previous !== undefined) {
+        if (wkt === "duration") {
+          const total = Duration_.toNanosUnsafe(previous as Duration_.Duration)
+          seconds = total / BIGINT_NANOS_PER_SECOND
+          nanos = Number(total - seconds * BIGINT_NANOS_PER_SECOND)
+        } else {
+          const millis = wkt === "timestamp"
+            ? DateTime.toEpochMillis(previous as DateTime.Utc)
+            : (previous as Date).getTime()
+          const s = Math.floor(millis / 1000)
+          seconds = BigInt(s)
+          nanos = (millis - s * 1000) * 1_000_000
+        }
+      }
       while (r.pos < end) {
         const tag = readTag(r)
         if (tag === 8) {
@@ -1605,13 +1723,13 @@ function decodeWkt(wkt: WktName, r: Reader, end: number, depth: number): unknown
       break
     }
     case "value":
-      out = decodeJsonValue(r, end, depth)
+      out = decodeJsonValue(r, end, depth, previous)
       break
     case "struct":
-      out = decodeJsonStruct(r, end, depth)
+      out = decodeJsonStruct(r, end, depth, previous)
       break
     case "listValue":
-      out = decodeJsonList(r, end, depth)
+      out = decodeJsonList(r, end, depth, previous)
       break
   }
   if (r.pos !== end) throw new WireError("field overruns its message")
@@ -1639,9 +1757,11 @@ function joinDuration(seconds: bigint, nanos: number): Duration_.Duration {
     : Duration_.nanos(total)
 }
 
-function decodeJsonValue(r: Reader, end: number, depth: number): unknown {
+// JSON values merge like the messages they are: an object into an object, an
+// array into an array, and any other value replaces the earlier one.
+function decodeJsonValue(r: Reader, end: number, depth: number, previous: unknown): unknown {
   if (depth > MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
-  let value: unknown = null
+  let value: unknown = previous === undefined ? null : previous
   while (r.pos < end) {
     const tag = readTag(r)
     switch (tag) {
@@ -1660,10 +1780,10 @@ function decodeJsonValue(r: Reader, end: number, depth: number): unknown {
         value = r.lo !== 0 || r.hi !== 0
         break
       case 42: // struct_value
-        value = decodeJsonStruct(r, r.delimited(), depth + 1)
+        value = decodeJsonStruct(r, r.delimited(), depth + 1, value)
         break
       case 50: // list_value
-        value = decodeJsonList(r, r.delimited(), depth + 1)
+        value = decodeJsonList(r, r.delimited(), depth + 1, value)
         break
       default:
         r.skip(tag & 7, tag >>> 3, depth)
@@ -1673,8 +1793,8 @@ function decodeJsonValue(r: Reader, end: number, depth: number): unknown {
   return value
 }
 
-function decodeJsonStruct(r: Reader, end: number, depth: number): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
+function decodeJsonStruct(r: Reader, end: number, depth: number, previous: unknown): Record<string, unknown> {
+  const out = Predicate.isObject(previous) ? previous as Record<string, unknown> : {}
   while (r.pos < end) {
     const tag = readTag(r)
     if (tag !== 10) {
@@ -1683,25 +1803,25 @@ function decodeJsonStruct(r: Reader, end: number, depth: number): Record<string,
     }
     const entryEnd = r.delimited()
     let key = ""
-    let value: unknown = null
+    let value: unknown = undefined
     while (r.pos < entryEnd) {
       const entryTag = readTag(r)
       if (entryTag === 10) key = r.string()
-      else if (entryTag === 18) value = decodeJsonValue(r, r.delimited(), depth + 1)
+      else if (entryTag === 18) value = decodeJsonValue(r, r.delimited(), depth + 1, value)
       else r.skip(entryTag & 7, entryTag >>> 3, depth)
     }
     if (r.pos !== entryEnd) throw new WireError("map entry overruns its field")
-    setOwn(out, key, value)
+    setOwn(out, key, value === undefined ? null : value)
   }
   if (r.pos !== end) throw new WireError("field overruns its message")
   return out
 }
 
-function decodeJsonList(r: Reader, end: number, depth: number): Array<unknown> {
-  const out: Array<unknown> = []
+function decodeJsonList(r: Reader, end: number, depth: number, previous: unknown): Array<unknown> {
+  const out = Array.isArray(previous) ? previous : []
   while (r.pos < end) {
     const tag = readTag(r)
-    if (tag === 10) out.push(decodeJsonValue(r, r.delimited(), depth + 1))
+    if (tag === 10) out.push(decodeJsonValue(r, r.delimited(), depth + 1, undefined))
     else r.skip(tag & 7, tag >>> 3, depth)
   }
   if (r.pos !== end) throw new WireError("field overruns its message")
@@ -1736,7 +1856,7 @@ function zeroValue(type: ValueLayout): unknown {
     case "Message":
       return decodeMessage(decoderFor(type.message), new Reader(EMPTY), 0, undefined, 0, undefined)
     case "Wkt":
-      return decodeWkt(type.wkt, new Reader(EMPTY), 0, 0)
+      return decodeWkt(type.wkt, new Reader(EMPTY), 0, 0, undefined)
     case "Wrapper":
       return zeroScalar(type.scalar)
     case "Constant":

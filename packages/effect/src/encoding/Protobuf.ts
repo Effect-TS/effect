@@ -16,13 +16,14 @@
  * | `Enum` with numeric members, numeric `Literals`               | `enum`                                                   |
  * | string or boolean `Literals`                                  | `string` or `bool`; {@link enumNumbers} makes an `enum`  |
  * | `Array(A)`                                                    | `repeated A`, packed for numeric types                   |
- * | `Record(K, A)`                                                | `map<K, A>`                                              |
+ * | `Record(K, A)`                                                | `map<K, A>`; a `Number` key is `int32`                   |
  * | `Tuple`                                                       | a message with element `i` at field `i + 1`              |
  * | `StructWithRest`                                              | a message with a `map` per index signature               |
  * | required scalar property                                      | implicit presence                                        |
  * | `optionalKey`, `optional`, `NullOr`, `UndefinedOr`, `Option`  | explicit presence (`optional`)                           |
  * | unnumbered `Literal` property                                 | constant, not on the wire                                |
  * | `Union` property                                              | `oneof`                                                  |
+ * | `Symbol` (registered with `Symbol.for`)                       | `string`, its key                                        |
  * | `DateTimeUtc`, `Date`                                         | `google.protobuf.Timestamp`                              |
  * | `Duration`                                                    | `google.protobuf.Duration`                               |
  * | `Json`, `Unknown`                                             | `google.protobuf.Value`                                  |
@@ -32,6 +33,13 @@
  * its zero value is not written, and an absent field decodes to the zero
  * value, which the schema then validates. A required message property that is
  * absent fails to decode.
+ *
+ * Protobuf has one kind of absence, so some values do not survive a round
+ * trip when several kinds of absence are combined: an `optionalKey(Option(A))`
+ * property that is left out decodes to `Option.none()`, an
+ * `optionalKey(NullOr(A))` property holding `null` decodes as left out, and an
+ * empty array or record in `NullOr(Array(A))` or `NullOr(Record(K, A))`
+ * decodes to `null`.
  *
  * A union property becomes a `oneof`. Each member either carries its own field
  * number, or is a tagged struct whose only non-literal property is numbered.
@@ -47,7 +55,10 @@
  * Fields are written in field-number order. Decoding skips unknown fields,
  * keeping them only in an {@link UnknownFields} property, accepts packed and
  * unpacked repeated fields, accepts both encodings of a message field, and
- * merges repeated occurrences of a message field.
+ * merges repeated occurrences of a message field, including well-known types
+ * and wrappers. A known field sent with a wire type that does not match its
+ * type fails to decode. Decoding a `Symbol` registers it with `Symbol.for`,
+ * which keeps it for the lifetime of the process.
  *
  * @stability unstable
  * @since 4.0.6
@@ -55,7 +66,22 @@
 import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
 import { makeCodec } from "../internal/protobuf/codec.ts"
-import { ENUM_KEY, FIELD_KEY, type FieldAnnotation, MAP_KEY_KEY, MAX_FIELD_NUMBER, type Root, SCALAR_KEY, type ScalarName, UNKNOWN_KEY, WKT_KEY, WRAPPER_ANNOTATIONS, compileRoot, isUnsigned, toProtobufAST } from "../internal/protobuf/layout.ts"
+import {
+  compileRoot,
+  ENUM_KEY,
+  FIELD_KEY,
+  type FieldAnnotation,
+  isUnsigned,
+  MAP_KEY_KEY,
+  MAX_FIELD_NUMBER,
+  type Root,
+  SCALAR_KEY,
+  type ScalarName,
+  toProtobufAST,
+  UNKNOWN_KEY,
+  WKT_KEY,
+  WRAPPER_ANNOTATIONS
+} from "../internal/protobuf/layout.ts"
 import { BIGINT_ZERO, INT64_MAX, INT64_MIN, UINT64_MAX, WireError } from "../internal/protobuf/wire.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
@@ -72,14 +98,15 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
 export interface FieldOptions {
   /**
    * Writes a repeated numeric field packed (`true`) or as one record per
-   * element (`false`, the proto2 default).
+   * element (`false`, the proto2 default). Other fields reject it.
    *
    * @default true
    */
   readonly packed?: boolean | undefined
   /**
    * Writes a singular scalar or enum field even when it holds its zero value,
-   * as proto2 `required` fields are.
+   * as proto2 `required` fields are. A missing field still decodes to the zero
+   * value. Repeated, map, and oneof fields reject it.
    */
   readonly presence?: "always" | undefined
   /**
@@ -618,8 +645,8 @@ const codecCache = new WeakMap<Schema.Constraint, toCodec<any>>()
  *   number, throw when the codec is created.
  * - Malformed input fails to decode with a `Schema.SchemaError`, as does a
  *   value the schema rejects, such as an unknown enum number.
- * - Unknown fields are skipped and not kept, so re-encoding a decoded value
- *   drops them.
+ * - Unknown fields are skipped, so re-encoding a decoded value drops them,
+ *   unless the message keeps them in an {@link UnknownFields} property.
  *
  * **Example** (Encoding and decoding a message)
  *

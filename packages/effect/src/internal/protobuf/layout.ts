@@ -213,8 +213,9 @@ export type ValueLayout =
  * - `"none"`: `Option.none()`
  * - `"required"`: left out, for the schema to report
  * - `"constant"`: the field's constant
+ *
+ * @internal
  */
-/** @internal */
 export type Absent = "zero" | "omit" | "null" | "undefined" | "none" | "required" | "constant"
 
 /** @internal */
@@ -257,7 +258,7 @@ export interface Case {
   // Set when the member is a tagged struct: the case value is the property at
   // `key`, and the literals are restored on decode.
   readonly unwrap: { readonly key: string; readonly literals: ReadonlyArray<readonly [string, unknown]> } | undefined
-  readonly guard: ((value: unknown) => boolean) | undefined
+  readonly guard: (value: unknown) => boolean
   readonly delimited: boolean
 }
 
@@ -290,7 +291,13 @@ export const BOX_VALUE = Symbol("Protobuf/box")
 export const TUPLE_REST = Symbol("Protobuf/rest")
 
 /** @internal */
-export type Root = ValueLayout | { readonly _tag: "Void"; readonly value: null | undefined }
+export type Root = MessageLayout | WktLayout | WrapperLayout | VoidLayout
+
+// A nullish root: an empty message.
+interface VoidLayout {
+  readonly _tag: "Void"
+  readonly value: null | undefined
+}
 
 interface Resolved {
   readonly ast: SchemaAST.AST
@@ -526,6 +533,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       if (annotation === undefined) {
         throw layoutError(`${where} has no field number; annotate the record value with Protobuf.field(n)`)
       }
+      checkOptions(annotation, "map", where)
       addSlot(message, {
         ...mapField(signature, where),
         key: TUPLE_REST,
@@ -649,6 +657,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         return undefined
       }
       if (isNullish(ast)) throw layoutError(`${where} is ${ast._tag}, which has no wire representation`)
+      checkOptions(annotation, "singular", where)
       return {
         _tag: "Field",
         key,
@@ -679,6 +688,11 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       while (ast._tag === "Union") {
         const types = flattenUnion(ast)
         const rest = types.filter((member) => !isNullish(resolveEncoded(member).ast))
+        for (const member of types) {
+          if (!rest.includes(member) && getFieldAnnotation(member) !== undefined) {
+            throw layoutError(`${where} has a numbered nullish member; it makes the field optional and takes no number`)
+          }
+        }
         if (rest.length < types.length) {
           absent ??= types.some((member) => resolveEncoded(member).ast._tag === "Null") ? "null" : "undefined"
           if (rest.length === 1) {
@@ -706,9 +720,12 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     }
     const number = annotation.number
     const wkt = resolved.annotations[WKT_KEY]
+    // The fixed annotations of tuple elements apply to any element.
+    const options = fixed === undefined ? annotation : undefined
 
     if (wkt === undefined && ast._tag === "Arrays" && isUniformArray(ast)) {
       const element = compileValue(resolveEncoded(ast.rest[0]), `${where} (element)`)
+      if (options !== undefined) checkOptions(options, "repeated", where)
       if (annotation.packed === true && !isPackable(element)) throw layoutError(`${where} cannot be packed`)
       checkDelimited(annotation, element, where)
       return repeatedField(key, number, element, absent ?? "zero", annotation)
@@ -717,10 +734,12 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       wkt === undefined && ast._tag === "Objects" && ast.propertySignatures.length === 0 &&
       ast.indexSignatures.length === 1
     ) {
+      if (options !== undefined) checkOptions(options, "map", where)
       return { ...mapField(ast.indexSignatures[0], where), key, number, absent: absent ?? "zero" }
     }
 
     const value = literals === undefined ? compileValue(resolved, where) : literalValue(literals, resolved, where)
+    if (options !== undefined) checkOptions(options, "singular", where)
     checkDelimited(annotation, value, where)
     return {
       _tag: "Field",
@@ -736,6 +755,16 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       always: annotation.presence === "always",
       packed: false,
       delimited: annotation.encoding === "delimited"
+    }
+  }
+
+  // Options that do not apply to a field are rejected rather than ignored.
+  function checkOptions(annotation: FieldAnnotation, kind: "singular" | "repeated" | "map" | "case", where: string) {
+    if (annotation.packed !== undefined && kind !== "repeated") {
+      throw layoutError(`${where} is not a repeated field; only repeated fields can be packed`)
+    }
+    if (annotation.presence !== undefined && kind !== "singular") {
+      throw layoutError(`${where} is not a singular field; only singular fields take presence "always"`)
     }
   }
 
@@ -758,6 +787,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       const annotation = getFieldAnnotation(member)
       if (annotation !== undefined) {
         const type = compileCaseValue(resolved, where)
+        checkOptions(annotation, "case", where)
         checkDelimited(annotation, type, where)
         oneof.cases.push({
           _tag: "Case",
@@ -782,6 +812,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         const annotation = wire.length === 1 ? getFieldAnnotation(wire[0].type) : undefined
         if (annotation !== undefined && typeof wire[0].name === "string") {
           const type = compileCaseValue(resolveEncoded(wire[0].type), where)
+          checkOptions(annotation, "case", where)
           checkDelimited(annotation, type, where)
           oneof.cases.push({
             _tag: "Case",
@@ -906,7 +937,10 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         return { _tag: "Enum", wireType: WIRE_VARINT, toNumber: undefined, fromNumber: undefined }
       }
       const kind = typeof literals[0]
-      if (literals.every((literal) => typeof literal === kind)) return literalScalar(literals[0])
+      if (literals.every((literal) => typeof literal === kind)) {
+        // Numbers that are not all 32-bit integers share `double`.
+        return kind === "number" ? scalarLayout("double") : literalScalar(literals[0])
+      }
       throw layoutError(`${where} is a union of literals of different types; annotate it with Protobuf.enumNumbers`)
     }
     const toNumber = new Map<unknown, number>()
