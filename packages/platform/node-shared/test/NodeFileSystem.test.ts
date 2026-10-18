@@ -46,13 +46,17 @@ const startWatch = <E, R>(
     return fiber
   })
 
-// A file system built with `FileSystem.make` without a `glob` derives one from
-// `readDirectory`, `stat`, and `readLink` alone.
+// A file system whose listings report every entry as `"Unknown"`, so `glob`
+// learns entry types from `stat` and `readLink` alone.
 const untypedLayer = Layer.effect(
   FileSystem.FileSystem,
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    return FileSystem.make({ ...fs, glob: undefined })
+    return FileSystem.make({
+      ...fs,
+      readDirectoryEntries: (path) =>
+        Effect.map(fs.readDirectory(path), (names) => names.map((name) => ({ name, type: "Unknown" as const })))
+    })
   })
 ).pipe(Layer.provide(NodeFileSystem.layer))
 

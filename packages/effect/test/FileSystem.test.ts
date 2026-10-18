@@ -21,8 +21,8 @@ const info = (type: FileSystem.File.Type): FileSystem.File.Info => ({
 const failure = (_tag: PlatformError.SystemErrorTag, method: string, path: string) =>
   PlatformError.systemError({ _tag, module: "FileSystem", method, pathOrDescriptor: path })
 
-// Each directory holds the file `x.ts`, and `glob` is derived by
-// `FileSystem.make`, so entry types come from `stat` and `readLink`.
+// Each directory holds the file `x.ts`. Listings report every entry as
+// `"Unknown"`, so `glob` learns entry types from `stat` and `readLink`.
 const makeFileSystem = (overrides: {
   readonly directories?: Record<string, ReadonlyArray<string>>
   readonly readDirectory?: (path: string) => Effect.Effect<Array<string>, PlatformError.PlatformError> | undefined
@@ -30,14 +30,16 @@ const makeFileSystem = (overrides: {
   readonly readLink?: (path: string) => Effect.Effect<string, PlatformError.PlatformError>
 }) => {
   const directories = overrides.directories ?? { ".": ["a"], "a": ["x.ts"] }
+  const readDirectory = (path: string) =>
+    overrides.readDirectory?.(path) ??
+      (path in directories
+        ? Effect.succeed([...directories[path]])
+        : Effect.fail(failure("NotFound", "readDirectory", path)))
   return FileSystem.make({
     ...FileSystem.makeNoop({}),
-    glob: undefined,
-    readDirectory: (path) =>
-      overrides.readDirectory?.(path) ??
-        (path in directories
-          ? Effect.succeed([...directories[path]])
-          : Effect.fail(failure("NotFound", "readDirectory", path))),
+    readDirectory,
+    readDirectoryEntries: (path) =>
+      Effect.map(readDirectory(path), (names) => names.map((name) => ({ name, type: "Unknown" as const }))),
     stat: (path) =>
       overrides.stat?.(path) ??
         (path in directories

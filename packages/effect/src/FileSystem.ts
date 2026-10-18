@@ -272,6 +272,22 @@ export interface FileSystem {
     }
   ) => Effect.Effect<Array<string>, PlatformError>
   /**
+   * Lists a directory with the type of each entry.
+   *
+   * **Details**
+   *
+   * Returns the same bare names as `readDirectory(path)`, excluding `.` and
+   * `..`, in no particular order. Types describe entries, not symlink targets.
+   * `"Unknown"` is allowed when the listing cannot determine the type, and
+   * `glob` then falls back to `stat`.
+   *
+   * **Gotchas**
+   *
+   * Wrappers that change `readDirectory`, such as by prefixing paths, must
+   * apply the same change here for `glob` to list the correct directory.
+   */
+  readonly readDirectoryEntries: (path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>
+  /**
    * Read the contents of a file.
    */
   readonly readFile: (
@@ -506,7 +522,7 @@ export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Servi
  * A directory entry with its type, independent of any symlink target.
  * `"Unknown"` means the listing could not determine the type.
  *
- * @see {@link makeGlob}, which reads these entries from a typed listing
+ * @see {@link FileSystem} `readDirectoryEntries`, which returns these entries
  *
  * @stability unstable
  * @category models
@@ -529,9 +545,10 @@ export interface DirectoryEntry {
  * **Details**
  *
  * This function takes a partial FileSystem implementation and automatically provides
- * default implementations for `exists`, `readFileString`, `stream`, `sink`, and
- * `writeFileString` methods based on the provided core methods. When `glob` is
- * omitted, it is derived with {@link makeGlob}.
+ * default implementations for `exists`, `glob`, `readFileString`, `stream`, `sink`,
+ * and `writeFileString` methods based on the provided core methods. `glob` walks
+ * the tree with `readDirectoryEntries`, using `stat` and `readLink` for entries
+ * whose type is `"Unknown"`.
  *
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
@@ -541,16 +558,12 @@ export interface DirectoryEntry {
  * @since 4.0.0
  */
 export const make = (
-  impl:
-    & Omit<FileSystem, typeof TypeId | "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
-    & {
-      readonly glob?: FileSystem["glob"] | undefined
-    }
+  impl: Omit<FileSystem, typeof TypeId | "exists" | "glob" | "readFileString" | "stream" | "sink" | "writeFileString">
 ): FileSystem =>
   FileSystem.of({
     ...impl,
     [TypeId]: TypeId,
-    glob: impl.glob ?? makeGlob(impl),
+    glob: Glob.make(impl),
     exists: (path) =>
       pipe(
         impl.access(path),
@@ -626,33 +639,6 @@ export const make = (
         (_) => impl.writeFile(path, _, options)
       )
   })
-
-/**
- * Builds a `glob` from `readDirectory`, `stat`, and `readLink`.
- *
- * **Details**
- *
- * The walk takes each entry's type from `readDirectoryEntries` when it is
- * supplied, and otherwise calls `stat` (and `readLink` under `**`) on the
- * entries whose type it needs. `readDirectoryEntries` must return the same
- * bare names as `readDirectory`, with types that describe the entries
- * themselves rather than their symlink targets; `"Unknown"` entries fall back
- * to `stat`.
- *
- * {@link make} calls this when `glob` is omitted. Pass the result as `glob` to
- * supply typed listings, as the Node and Deno file systems do.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const makeGlob = (
-  impl: Pick<FileSystem, "readDirectory" | "stat" | "readLink"> & {
-    readonly readDirectoryEntries?:
-      | ((path: string) => Effect.Effect<ReadonlyArray<DirectoryEntry>, PlatformError>)
-      | undefined
-  }
-): FileSystem["glob"] => Glob.makeGlob(impl)
 
 const notFound = (method: string, path: string) =>
   systemError({
@@ -763,6 +749,9 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
     },
     readDirectory(path) {
       return Effect.fail(notFound("readDirectory", path))
+    },
+    readDirectoryEntries(path) {
+      return Effect.fail(notFound("readDirectoryEntries", path))
     },
     readFile(path) {
       return Effect.fail(notFound("readFile", path))

@@ -627,6 +627,23 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
   )
 
+  it("readDirectoryEntries reports the type of each entry itself", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const dir = yield* fs.makeTempDirectoryScoped()
+        yield* fs.makeDirectory(`${dir}/directory`)
+        yield* fs.writeFileString(`${dir}/file`, "")
+        yield* fs.symlink(`${dir}/directory`, `${dir}/link`)
+        const entries = yield* fs.readDirectoryEntries(dir)
+        expect([...entries].sort((a, b) => a.name.localeCompare(b.name))).toEqual([
+          { name: "directory", type: "Directory" },
+          { name: "file", type: "File" },
+          { name: "link", type: "SymbolicLink" }
+        ])
+      }).pipe(Effect.scoped)
+    ))
+
   testGlob(layer)
 }
 
