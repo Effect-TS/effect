@@ -67,6 +67,7 @@ describe("JsonArray", () => {
       Effect.gen(function*() {
         const error = yield* decodeError(["[\"😀\",", " {\"a\": x}]"])
         assert.deepStrictEqual([error.kind, error.offset], ["Syntax", 7])
+        assert.instanceOf(error.cause, SyntaxError)
       }))
 
     it.effect("selects an array through an RFC 6901 pointer", () =>
@@ -116,7 +117,11 @@ describe("JsonArray", () => {
           ["[".repeat(100000), {}]
         ]
         for (const [text, options] of cases) {
-          assert.strictEqual((yield* decodeError([text], options)).kind, "Limit")
+          const error = yield* decodeError([text], options)
+          assert.strictEqual(error.kind, "Limit")
+          if (options.pointer) {
+            assert.include(error.message, "Value outside the selected array at \"/x\"")
+          }
         }
       }))
 
@@ -196,6 +201,11 @@ describe("JsonArray", () => {
           assert.isTrue(JsonArray.isJsonArrayError(error))
           assert.strictEqual(error.kind, "Encode")
           assert.isUndefined(error.offset)
+          if (typeof input === "bigint") {
+            assert.instanceOf(error.cause, TypeError)
+          } else {
+            assert.isUndefined(error.cause)
+          }
         }
       }))
   })
