@@ -388,7 +388,6 @@ export const make = (options?: {
       const duplicateEntries = options.entries
         .filter((entry) => existingIds.has(entry.entry.idString))
         .map((entry) => entry.entry)
-      yield* EventJournal.observeEntryIds(uncommitted.map((remoteEntry) => remoteEntry.entry.id))
       const compacted = options.compact
         ? yield* options.compact(uncommitted)
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
@@ -433,6 +432,11 @@ export const make = (options?: {
       if (options.entries.length > 0) {
         yield* writeCursor(options.remoteId, EventJournal.nextSequenceAfter(options.entries))
       }
+      // Only once the outermost transaction commits. A local write in between
+      // still reads the committed ids from the database. Clients whose
+      // transactions don't buffer `afterCommit`, such as `@effect/sql-sqlite-do`,
+      // run this before an enclosing transaction commits or rolls back.
+      yield* sql.afterCommit(EventJournal.observeEntryIds(uncommitted.map((remoteEntry) => remoteEntry.entry.id)))
 
       return {
         duplicateEntries

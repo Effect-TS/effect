@@ -366,39 +366,50 @@ export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId => 
 // Observed ids further ahead of the local clock than this are logged.
 const maxClockSkewMillis = 24 * 60 * 60 * 1000
 
+// Advances the local entry id clock past the latest of `ids`, so the next local
+// id sorts after all of them. Returns that id when the clock moved to a later
+// millisecond.
+const advanceEntryIdClock = (ids: Iterable<EntryId>): EntryId | undefined => {
+  let latest: EntryId | undefined
+  for (const id of ids) {
+    if (latest === undefined || EntryIdOrder(id, latest) === 1) latest = id
+  }
+  if (latest === undefined) return undefined
+  const millis = entryIdMillis(latest)
+  // The counter takes the place of `rand_a`, so continuing from the observed
+  // `rand_a` sorts the next local id after it.
+  const counter = ((latest[6] & 0x0f) << 8) | latest[7]
+  if (millis < lastEntryIdMillis || (millis === lastEntryIdMillis && counter <= entryIdCounter)) {
+    return undefined
+  }
+  const advanced = millis > lastEntryIdMillis
+  lastEntryIdMillis = millis
+  entryIdCounter = counter
+  return advanced ? latest : undefined
+}
+
+// Logs a warning when the clock moved more than 24 hours ahead of the local clock.
+const warnIfAhead = (advanced: EntryId | undefined): Effect.Effect<void> =>
+  advanced === undefined ? Effect.void : Effect.flatMap(DateTime.now, (now) => {
+    const ahead = entryIdMillis(advanced) - now.epochMilliseconds
+    if (ahead <= maxClockSkewMillis) return Effect.void
+    return Effect.logWarning(
+      `Observed an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
+    ).pipe(Effect.annotateLogs({ service: "EventJournal", entryId: Uuid.stringify(advanced) }))
+  })
+
 /**
- * Advances the local entry id clock past committed entry ids from another
- * source, so the next local id sorts after all of them. Logs a warning when
- * this moves the clock more than 24 hours ahead of the local clock.
+ * Advances the local entry id clock past committed entry ids, so the next local
+ * id sorts after all of them. Logs a warning when this moves the clock more
+ * than 24 hours ahead of the local clock.
+ *
+ * Call it only once the entries are committed: a rejected or rolled-back
+ * import must not move the clock.
  *
  * @internal
  */
 export const observeEntryIds = (ids: Iterable<EntryId>): Effect.Effect<void> =>
-  Effect.suspend(() => {
-    let latest: EntryId | undefined
-    for (const id of ids) {
-      if (latest === undefined || EntryIdOrder(id, latest) === 1) latest = id
-    }
-    if (latest === undefined) return Effect.void
-    const millis = entryIdMillis(latest)
-    // The counter takes the place of `rand_a`, so continuing from the observed
-    // `rand_a` sorts the next local id after it.
-    const counter = ((latest[6] & 0x0f) << 8) | latest[7]
-    if (millis < lastEntryIdMillis || (millis === lastEntryIdMillis && counter <= entryIdCounter)) {
-      return Effect.void
-    }
-    const advanced = millis > lastEntryIdMillis
-    lastEntryIdMillis = millis
-    entryIdCounter = counter
-    if (!advanced) return Effect.void
-    return Effect.flatMap(DateTime.now, (now) => {
-      const ahead = millis - now.epochMilliseconds
-      if (ahead <= maxClockSkewMillis) return Effect.void
-      return Effect.logWarning(
-        `Observed an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
-      ).pipe(Effect.annotateLogs({ service: "EventJournal", entryId: Uuid.stringify(latest) }))
-    })
-  })
+  Effect.suspend(() => warnIfAhead(advanceEntryIdClock(ids)))
 
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.
@@ -647,7 +658,6 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           uncommittedRemotes.push(remoteEntry)
         }
       }
-      yield* observeEntryIds(uncommittedRemotes.map((remoteEntry) => remoteEntry.entry.id))
 
       const compacted = options.compact
         ? yield* options.compact(uncommittedRemotes)
@@ -680,6 +690,9 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         }
       })
       journalSorted = true
+      // In the same step as the commit, so no local id is generated in between.
+      const advanced = advanceEntryIdClock(imported.map((entry) => entry.id))
+      yield* warnIfAhead(advanced)
       return {
         duplicateEntries
       }
@@ -920,7 +933,6 @@ export const makeIndexedDb = (options?: {
           onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
-        yield* observeEntryIds(uncommittedRemotes.map((remoteEntry) => remoteEntry.entry.id))
 
         const compacted = options.compact
           ? yield* options.compact(uncommittedRemotes)
@@ -969,6 +981,8 @@ export const makeIndexedDb = (options?: {
           onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
+        // A local write in between still reads the committed ids from the store.
+        yield* observeEntryIds(uncommittedRemotes.map((remoteEntry) => remoteEntry.entry.id))
         return {
           duplicateEntries
         }
