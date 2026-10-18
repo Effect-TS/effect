@@ -749,19 +749,23 @@ function makePropertiesRepresentation(
 // An optional HTTP property is omitted rather than sent as `undefined`, and `required: false` already says so.
 function omitUndefined(
   representation: SchemaRepresentation.Representation,
-  references: SchemaRepresentation.References
-): SchemaRepresentation.Representation {
-  const resolved = resolveRepresentation(representation, references)
-  return resolved._tag === "Union"
-    ? omitUndefinedMembers(resolved, references, new Set([resolved])) ?? representation
-    : representation
-}
-
-function omitUndefinedMembers(
-  union: SchemaRepresentation.Union,
   references: SchemaRepresentation.References,
-  seen: ReadonlySet<SchemaRepresentation.Union>
-): SchemaRepresentation.Representation | undefined {
+  seen: ReadonlySet<SchemaRepresentation.Representation> = new Set()
+): SchemaRepresentation.Representation {
+  if (seen.has(representation)) return representation
+  const next = new Set(seen).add(representation)
+  if (representation._tag === "Reference") {
+    const target = references[representation.$ref]
+    if (target === undefined) return representation
+    const omitted = omitUndefined(target, references, next)
+    return omitted === target ? representation : omitted
+  }
+  if (representation._tag === "Suspend") {
+    const thunk = omitUndefined(representation.thunk, references, next)
+    return thunk === representation.thunk ? representation : { ...representation, thunk }
+  }
+  if (representation._tag !== "Union") return representation
+  const union = representation
   let changed = false
   const types: Array<SchemaRepresentation.Representation> = []
   for (const type of union.types) {
@@ -770,13 +774,11 @@ function omitUndefinedMembers(
       changed = true
       continue
     }
-    const omitted = resolved._tag === "Union" && !seen.has(resolved)
-      ? omitUndefinedMembers(resolved, references, new Set(seen).add(resolved))
-      : undefined
-    if (omitted !== undefined) changed = true
-    types.push(omitted ?? type)
+    const omitted = omitUndefined(type, references, next)
+    if (omitted !== type) changed = true
+    types.push(omitted)
   }
-  if (!changed || types.length === 0) return undefined
+  if (!changed || types.length === 0) return representation
   if (types.length > 1 || union.checks.length > 0) return { ...union, types }
   const [type] = types
   if (union.annotations === undefined) return type
