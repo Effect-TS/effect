@@ -253,6 +253,19 @@ describe("Xml", () => {
         assert.deepStrictEqual(yield* failure(decodeString([nested], { maxDepth: 2 })), ["Limit", 1, 7])
       }))
 
+    it.effect("bounds aggregate open names and releases them on close", () =>
+      Effect.gen(function*() {
+        const xml = "<aaaa><bbbb><cccc></cccc><dddd></dddd></bbbb><eeee></eeee></aaaa>"
+        for (const chunks of splits(xml)) {
+          assert.strictEqual((yield* decodeString(chunks, { maxTokenSize: 12 })).length, 10)
+        }
+        const oversized = "<aaaa><bbbb><cccc><dddd></dddd></cccc></bbbb></aaaa>"
+        for (const chunks of splits(oversized)) {
+          const error = yield* Effect.flip(decodeString(chunks, { maxTokenSize: 12 }))
+          assert.strictEqual(error.kind, "Limit")
+        }
+      }))
+
     it("rejects invalid options at construction", () => {
       for (const value of [0, Number.NaN]) {
         assert.throws(() => Xml.decodeString({ maxTokenSize: value }))
@@ -265,8 +278,32 @@ describe("Xml", () => {
   })
 
   describe("encode", () => {
+    it.effect("delivers a complete start tag before pulling the next event", () =>
+      Effect.gen(function*() {
+        const pulls = yield* Ref.make(0)
+        const output = yield* Stream.fromIterable([start("stream", { xmlns: "jabber:client" }), end("stream")], {
+          chunkSize: 1
+        }).pipe(
+          Stream.tap(() => Ref.update(pulls, (n) => n + 1)),
+          Stream.pipeThroughChannel(Xml.encodeString()),
+          Stream.take(1),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(output, ["<stream xmlns=\"jabber:client\">"])
+        assert.strictEqual(yield* Ref.get(pulls), 1)
+      }))
+
     it.effect("writes events as escaped XML", () =>
       Effect.gen(function*() {
+        const empty = [start("a"), start("b"), end("b"), end("a")]
+        assert.strictEqual(yield* encodeString(empty), "<a><b></b></a>")
+        assert.deepStrictEqual(
+          yield* Stream.fromIterable(empty, { chunkSize: 1 }).pipe(
+            Stream.pipeThroughChannel(Xml.encodeString()),
+            Stream.runCollect
+          ),
+          ["<a>", "<b>", "</b>", "</a>"]
+        )
         const escaped = [start("a", { b: "<&>\"'\t\n\r" }), text("<&> ]]> \"' \t\n\r"), end("a")]
         const xml = "<a b=\"&lt;&amp;>&quot;'&#9;&#10;&#13;\">&lt;&amp;&gt; ]]&gt; \"' \t\n&#13;</a>"
         assert.strictEqual(yield* encodeString(escaped), xml)
@@ -326,7 +363,7 @@ describe("Xml", () => {
           )
           assert.strictEqual(
             yield* events.pipe(Stream.pipeThroughChannel(Xml.encodeString()), Stream.mkString),
-            `<?xml version="1.0" encoding="${encoding}"?><a/>`
+            `<?xml version="1.0" encoding="${encoding}"?><a></a>`
           )
           const result = yield* events.pipe(
             Stream.pipeThroughChannel(Xml.encode()),
