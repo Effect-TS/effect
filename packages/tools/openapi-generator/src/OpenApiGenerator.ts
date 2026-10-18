@@ -114,6 +114,10 @@ export interface OpenApiGenerateOptions {
    */
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   /**
+   * Component schemas to generate even when no operation references them.
+   */
+  readonly includeSchemas?: ReadonlyArray<string> | undefined
+  /**
    * Callback to receive non-fatal generation warnings.
    */
   readonly onWarning?: ((warning: OpenApiGeneratorWarning) => void) | undefined
@@ -173,7 +177,11 @@ export const make = Effect.gen(function*() {
       // TODO: make a CLI option ?
       const importName = "Schema"
       const source = getDialect(spec)
-      const schemaOptions = { onEnter: options.onEnter, multipartSchemaRefs: multipart.refs }
+      const schemaOptions = {
+        onEnter: options.onEnter,
+        multipartSchemaRefs: multipart.refs,
+        includeSchemas: options.includeSchemas
+      }
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(source, multipart.definitions, schemaOptions)
         : generator.generate(source, multipart.definitions, options.format === "httpclient-type-only", schemaOptions)
