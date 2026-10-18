@@ -916,8 +916,7 @@ const prepareMessages = Effect.fnUntraced(
             }
           }
 
-          // `tool_calls` cannot carry `cache_control`, so a message-level
-          // breakpoint goes on the last text part
+          // Tool calls cannot carry cache breakpoints; use the last text part.
           const messageCacheControl = getCacheControl(message)
           const content = textParts.map<typeof Generated.ChatContentText.Encoded>((part, i) => {
             const cache_control = getCacheControl(part) ?? (i === textParts.length - 1 ? messageCacheControl : null)
@@ -947,7 +946,6 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let i = 0; i < results.length; i++) {
             const part = results[i]
-            // `JSON.stringify` returns `undefined` for a void result
             const text = typeof part.result === "string" ? part.result : JSON.stringify(part.result)
             const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
 
