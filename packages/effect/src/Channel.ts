@@ -12,7 +12,6 @@
  */
 // @effect-diagnostics returnEffectInGen:off
 import * as Arr from "./Array.ts"
-import * as Bytes from "./Bytes.ts"
 import * as Cause from "./Cause.ts"
 import * as Chunk from "./Chunk.ts"
 import * as Context from "./Context.ts"
@@ -8299,15 +8298,31 @@ export const mkUint8Array = <OutErr, OutDone, Env>(
   Effect.map(
     runFold(
       self,
-      (): Array<Uint8Array> => [],
+      (): {
+        bytes: number
+        readonly arrays: Array<Uint8Array>
+      } => ({
+        bytes: 0,
+        arrays: []
+      }),
       (acc, chunk) => {
         for (let i = 0; i < chunk.length; i++) {
-          acc.push(chunk[i])
+          acc.bytes += chunk[i].length
+          acc.arrays.push(chunk[i])
         }
         return acc
       }
     ),
-    Bytes.concat
+    ({ arrays, bytes }) => {
+      const result = new Uint8Array(bytes)
+      let offset = 0
+      for (let i = 0; i < arrays.length; i++) {
+        const array = arrays[i]
+        result.set(array, offset)
+        offset += array.length
+      }
+      return result
+    }
   )
 
 /**
