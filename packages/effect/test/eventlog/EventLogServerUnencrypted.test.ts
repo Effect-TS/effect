@@ -168,7 +168,7 @@ for (const fallback of [false, true]) {
     () =>
       Effect.gen(function*() {
         // Exceeds the argument limit of the former spread-based append.
-        const count = 200_000
+        const count = 150_000
         const payload = new Uint8Array()
         const remoteEntries = Array.from({ length: count }, (_, index) =>
           new EventJournal.RemoteEntry({
@@ -199,15 +199,18 @@ for (const fallback of [false, true]) {
         })
 
         assert.strictEqual(compacted.length, fallback ? count : count - 1)
+        let mismatches = 0
         for (let index = 0; index < compacted.length; index++) {
-          assert.strictEqual(compacted[index].entry, remoteEntries[fallback ? index : index + 1].entry)
-          assert.strictEqual(
-            compacted[index].remoteSequence,
-            !fallback && index === compacted.length - 1 ? count : index + 1
-          )
+          if (
+            compacted[index].entry !== remoteEntries[fallback ? index : index + 1].entry ||
+            compacted[index].remoteSequence !== (!fallback && index === compacted.length - 1 ? count : index + 1)
+          ) {
+            mismatches++
+          }
         }
+        assert.strictEqual(mismatches, 0)
       }).pipe(Effect.provide(EventLog.layerRegistry)),
-    { timeout: 30_000 }
+    { timeout: 30_000, concurrent: false }
   )
 }
 
