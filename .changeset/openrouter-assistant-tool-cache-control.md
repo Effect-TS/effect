@@ -2,4 +2,4 @@
 "@effect/ai-openrouter": patch
 ---
 
-Send `cache_control` on assistant text and tool results. Assistant content and tool results were always sent as plain strings, so a cache breakpoint set on an assistant or tool message, or on one of their parts, never reached OpenRouter. When a breakpoint is set, the content is now sent as text parts carrying it: on the marked part, or for a message-level breakpoint, on the last text part (assistant) or the last tool result (tool). An assistant turn with no text has nowhere to put one, since `tool_calls` cannot carry `cache_control`.
+Send `cache_control` on assistant text and tool results. Both were always serialized as plain strings, so cache breakpoints on assistant or tool messages and their parts never reached OpenRouter. Marked content is now sent as text parts carrying the breakpoint; a message-level breakpoint goes on the last assistant text part or the last tool result. An assistant turn without text still cannot carry one, since `tool_calls` have no `cache_control`.

@@ -857,7 +857,6 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "assistant": {
-          let text = ""
           let reasoning = ""
           const textParts: Array<Prompt.TextPart> = []
           const toolCalls: Array<typeof Generated.ChatToolCall.Encoded> = []
@@ -865,7 +864,6 @@ const prepareMessages = Effect.fnUntraced(
           for (const part of message.content) {
             switch (part.type) {
               case "text": {
-                text += part.text
                 if (part.text.length > 0) {
                   textParts.push(part)
                 }
@@ -918,8 +916,8 @@ const prepareMessages = Effect.fnUntraced(
             }
           }
 
-          // Only text parts can carry a breakpoint here: `tool_calls` have no
-          // `cache_control`, so a message-level breakpoint goes on the last text part.
+          // `tool_calls` cannot carry `cache_control`, so a message-level
+          // breakpoint goes on the last text part
           const messageCacheControl = getCacheControl(message)
           const content = textParts.map<typeof Generated.ChatContentText.Encoded>((part, i) => {
             const cache_control = getCacheControl(part) ?? (i === textParts.length - 1 ? messageCacheControl : null)
@@ -932,7 +930,9 @@ const prepareMessages = Effect.fnUntraced(
 
           messages.push({
             role: "assistant",
-            content: content.some((part) => Predicate.isNotNullish(part.cache_control)) ? content : text,
+            content: content.some((part) => Predicate.isNotNullish(part.cache_control))
+              ? content
+              : content.map((part) => part.text).join(""),
             reasoning: reasoning.length > 0 ? reasoning : null,
             ...(Predicate.isNotNull(reasoningDetails) ? { reasoning_details: reasoningDetails } : undefined),
             ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
@@ -947,6 +947,7 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let i = 0; i < results.length; i++) {
             const part = results[i]
+            // `JSON.stringify` returns `undefined` for a void result
             const text = typeof part.result === "string" ? part.result : JSON.stringify(part.result)
             const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
 
