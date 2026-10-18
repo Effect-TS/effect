@@ -10,7 +10,6 @@
  * @stability stable
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.ts"
 import { Clock } from "./Clock.ts"
 import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
@@ -23,7 +22,6 @@ import * as internal from "./internal/effect.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
-import { UnhandledLogLevel } from "./References.ts"
 import * as Scope from "./Scope.ts"
 import * as Semaphore from "./Semaphore.ts"
 
@@ -1063,7 +1061,10 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
       const use = Effect.flatMap(Effect.exit(impl[Acquire]), (exit) => {
         const item: PoolItem<A, E> = {
           exit,
-          finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
+          finalizer: Effect.ignoreCause(Scope.close(scope, exit), {
+            log: "Unhandled",
+            message: "Unhandled error in pool finalizer"
+          }),
           refCount: 0,
           idleSince: impl[PoolClock].currentTimeMillisUnsafe(),
           disableReclaim: false,
@@ -1187,15 +1188,3 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
     reclaim: (_) => Effect.undefined
   })
 })
-
-const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
-  Effect.withFiber<void>((fiber) => {
-    const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
-    if (unhandledLogLevel) {
-      return Effect.logWithLevel(unhandledLogLevel)(
-        "Unhandled error in pool finalizer",
-        cause
-      )
-    }
-    return Effect.void
-  })
