@@ -154,11 +154,10 @@ describe("OpenApi", () => {
           query: {
             cursor: Schema.optional(Schema.NullOr(Schema.String)),
             search: Schema.optional(Schema.String).annotate({ description: "Search text" }),
-            sort: Schema.optional(Schema.String).annotate({ identifier: "Sort" }),
-            order: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("asc")))
+            sort: Schema.optional(Schema.String).annotate({ identifier: "Sort" })
           },
           headers: {
-            "x-trace-id": Schema.optional(Schema.String)
+            "x-trace-id": Schema.optional(Schema.FiniteFromString)
           }
         })
       )
@@ -173,9 +172,45 @@ describe("OpenApi", () => {
         schema: { anyOf: [{ type: "string", enum: ["null"] }, { type: "string" }] }
       },
       { name: "search", in: "query", required: false, schema: { type: "string", description: "Search text" } },
-      { name: "sort", in: "query", required: false, schema: { type: "string" } },
-      { name: "order", in: "query", required: false, schema: { type: "string" } }
+      { name: "sort", in: "query", required: false, schema: { type: "string" } }
     ])
+  })
+
+  it("preserves annotations on optional suspended parameters", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("list", "/list", {
+          query: {
+            value: Schema.optional(
+              Schema.suspend(() => Schema.UndefinedOr(Schema.String)).annotate({ description: "value" })
+            )
+          }
+        })
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [
+      { name: "value", in: "query", required: false, schema: { type: "string", description: "value" } }
+    ])
+  })
+
+  it("preserves JSON null encoding for optional body properties", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/items", {
+          payload: Schema.Struct({ value: Schema.optional(Schema.String) })
+        })
+      )
+    )
+
+    assert.deepStrictEqual(
+      OpenApi.fromApi(Api).paths["/items"]?.post?.requestBody?.content["application/json"]?.schema,
+      {
+        type: "object",
+        properties: { value: { anyOf: [{ type: "string" }, { type: "null" }] } },
+        additionalProperties: false
+      }
+    )
   })
 
   it("does not apply JSON codecs to parameters when codecs are disabled", () => {
