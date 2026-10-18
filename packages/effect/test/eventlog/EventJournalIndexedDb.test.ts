@@ -98,10 +98,10 @@ const transactionDone = (tx: IDBTransaction) =>
     tx.onerror = tx.onabort = () => resume(Effect.fail(tx.error))
   })
 
-// Creates a database with the schema written by an earlier `makeIndexedDb`:
-// version 2 before the conflict index, version 3 before entry sources.
-const openLegacy = (database: string, version: 2 | 3) => {
-  const request = indexedDB.open(database, version)
+// Creates a database with the version 1 schema written by `makeIndexedDb`
+// before insertion sequences, the conflict index and entry sources.
+const openVersion1 = (database: string) => {
+  const request = indexedDB.open(database, 1)
   request.onupgradeneeded = () => {
     const db = request.result
     const entries = db.createObjectStore("entries", { keyPath: "id" })
@@ -112,8 +112,6 @@ const openLegacy = (database: string, version: 2 | 3) => {
     remotes.createIndex("sequence", ["remoteId", "sequence"], { unique: true })
     const remoteEntryId = db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] })
     remoteEntryId.createIndex("id", "remoteId", { unique: true })
-    db.createObjectStore("entrySequence", { autoIncrement: true })
-    if (version === 3) entries.createIndex("conflict", ["event", "primaryKey", "id"])
   }
   return idbRequest(request)
 }
@@ -509,15 +507,15 @@ describe("EventJournal.makeIndexedDb", () => {
       })
     }))
 
-  it.effect("upgrades a version 2 database to the current version without losing entries or remote state", () =>
+  it.effect("upgrades a version 1 database to the current version without losing entries or remote state", () =>
     Effect.gen(function*() {
       const database = uniqueName("journal")
       const source = EventJournal.makeRemoteIdUnsafe()
       const upload = EventJournal.makeRemoteIdUnsafe()
       const stored = [entry(1000, { payload: [1] }), entry(2000, { payload: [2] }), entry(3000, { payload: [3] })]
 
-      const v2 = yield* openLegacy(database, 2)
-      const tx = v2.transaction(["entries", "entrySequence", "remotes", "remoteEntryId"], "readwrite")
+      const v1 = yield* openVersion1(database)
+      const tx = v1.transaction(["entries", "remotes", "remoteEntryId"], "readwrite")
       for (const item of stored) {
         tx.objectStore("entries").put({
           id: item.id,
@@ -525,7 +523,6 @@ describe("EventJournal.makeIndexedDb", () => {
           primaryKey: item.primaryKey,
           payload: item.payload
         })
-        tx.objectStore("entrySequence").add(item.id as IDBValidKey)
       }
       // The first two came from `source`; `upload` has sent the first one.
       stored.slice(0, 2).forEach((item, sequence) =>
@@ -533,7 +530,7 @@ describe("EventJournal.makeIndexedDb", () => {
       )
       tx.objectStore("remoteEntryId").put({ remoteId: upload, sequence: 1 })
       yield* transactionDone(tx)
-      v2.close()
+      v1.close()
 
       const journal = yield* EventJournal.makeIndexedDb({ database })
       const entries = (yield* journal.entries).map(describeEntry)
@@ -564,7 +561,7 @@ describe("EventJournal.makeIndexedDb", () => {
         uncommitted,
         batches: batches.map(describeBatch)
       }, {
-        version: 4,
+        version: 2,
         conflictIndex: true,
         entries: stored.map(describeEntry),
         nextSequence: 2,
@@ -586,8 +583,8 @@ describe("EventJournal.makeIndexedDb", () => {
       // Written offline; no remote has it.
       const pending = entry(5000, { primaryKey: "pending" })
 
-      const v3 = yield* openLegacy(database, 3)
-      const tx = v3.transaction(["entries", "entrySequence", "remotes", "remoteEntryId"], "readwrite")
+      const v1 = yield* openVersion1(database)
+      const tx = v1.transaction(["entries", "remotes", "remoteEntryId"], "readwrite")
       for (const item of [uploaded, fromA, acked, fromB, pending]) {
         tx.objectStore("entries").put({
           id: item.id,
@@ -595,14 +592,13 @@ describe("EventJournal.makeIndexedDb", () => {
           primaryKey: item.primaryKey,
           payload: item.payload
         })
-        tx.objectStore("entrySequence").add(item.id as IDBValidKey)
       }
       tx.objectStore("remotes").put({ remoteId: remoteA, entryId: fromA.id, sequence: 0 })
       tx.objectStore("remotes").put({ remoteId: remoteA, entryId: acked.id, sequence: 1 })
       tx.objectStore("remotes").put({ remoteId: remoteB, entryId: fromB.id, sequence: 3 })
       tx.objectStore("remoteEntryId").put({ remoteId: remoteA, sequence: 1 })
       yield* transactionDone(tx)
-      v3.close()
+      v1.close()
 
       const deleteObjectStore = IDBDatabase.prototype.deleteObjectStore
       IDBDatabase.prototype.deleteObjectStore = () => {
@@ -652,7 +648,7 @@ describe("EventJournal.makeIndexedDb", () => {
         interrupted: true,
         migrated: expected,
         reopened: expected,
-        version: 4,
+        version: 2,
         stores: ["entries", "entrySequence", "entrySource", "remoteEntryId"],
         nextB: 5,
         // Never back to the source, and nothing at or below a checkpoint.

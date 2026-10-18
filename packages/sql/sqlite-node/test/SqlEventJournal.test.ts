@@ -369,7 +369,7 @@ describe("SqlEventJournal", () => {
       const fs = yield* FileSystem.FileSystem
       const filename = (yield* fs.makeTempDirectoryScoped()) + "/journal.db"
       const sql = yield* SqliteClient.make({ filename })
-      // The schema as created by the release with upload checkpoints and acknowledgements.
+      // A journal written by an unreleased build with upload checkpoints and cursors.
       yield* sql`
         CREATE TABLE effect_event_journal (
           id BLOB PRIMARY KEY,
