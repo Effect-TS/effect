@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add `forward` to `EventLog.groupCompaction` so a compactor can keep an entry unchanged, with its original id and its position in the batch. Add `EventLog.groupBatchCompaction`, which passes every entry of the group's batch to one compactor call in order, including entries that cannot be decoded. `EventLogServerUnencrypted.compactBacklog` now orders compacted entries by their source position, matching client replay.
+Add `EventLog.groupBatchCompaction` for compaction across primary keys, with explicit forwarding or dropping of undecodable entries. Both compaction APIs now provide `forward(entry)` to preserve entries unchanged at their original batch positions. Align server compaction output ordering with client replay.

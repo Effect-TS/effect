@@ -585,15 +585,11 @@ const toCompactedRemoteEntries = (options: {
  * entries when the replacement count can be mapped back to increasing remote
  * sequence numbers; otherwise the original entries are kept.
  *
- * Compacted entries keep the positions the client replay uses: each output is
- * ordered by the position of its source entry within the run, or of the entry
- * itself when it was written without a source. Output whose position is unknown
- * goes to the start of the run, and outputs at the same position keep their
- * write order.
+ * Outputs are ordered by the position of `source ?? entry` within the run, as in
+ * client replay. Unknown positions go to the start; ties keep write order.
  *
- * Client replay passes all of a batch's entries for a compactor in one call,
- * while `compactBacklog` calls the compactor once per contiguous run, so a
- * compactor may see a different grouping of the same entries on the server.
+ * Client replay groups the whole batch per compactor; the server calls each
+ * compactor per contiguous run, so batch boundaries can differ.
  *
  * @stability unstable
  * @category compaction
@@ -644,7 +640,6 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
       entries,
       write(entry, source) {
         return Effect.sync(() => {
-          // Outputs land at their source's position, as in client replay.
           compacted[positions.get((source ?? entry).idString) ?? 0].push(entry)
         })
       }

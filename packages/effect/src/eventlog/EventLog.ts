@@ -713,7 +713,6 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
             }, { disableChecks: true })
             yield* write(entry, source)
           })
-          // Without a source, the entry keeps its id and its position in the batch.
           const forward = (entry: Entry) => write(entry)
 
           const batch: Array<{
@@ -748,15 +747,12 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
  *
  * **When to use**
  *
- * Use when a compactor needs to see the whole batch, for example when an event
- * under one primary key affects entries under other keys, or when kept entries
- * must replay with their original ids and positions.
+ * Use when an event under one primary key affects entries under other keys.
  *
  * **Details**
  *
- * During remote replay, the compaction effect receives every entry for the group
- * in batch order, together with its decoded event. An entry whose payload cannot
- * be decoded is listed at its position with `event: undefined`.
+ * The compaction effect receives every entry for the group in batch order, with
+ * its decoded event or `event: undefined` if the payload cannot be decoded.
  *
  * Only entries that the effect outputs are kept:
  *
@@ -806,7 +802,7 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
  * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
  *   and primary key, at its original position in the batch.
  * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
- *   to the first entry for the primary key.
+ *   to the first decoded entry for the primary key.
  *
  * Entries that are neither forwarded nor replaced are dropped. Entries that
  * cannot be decoded are not passed to the effect and are kept unchanged.
@@ -842,7 +838,6 @@ export const groupCompaction = <Events extends Event.Any, R>(
       >()
       for (const { entry, event } of entries) {
         if (event === undefined) {
-          // Preserve opaque entries for replay or forwarding without compacting them.
           yield* forward(entry)
           continue
         }
