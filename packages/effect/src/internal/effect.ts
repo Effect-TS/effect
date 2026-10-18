@@ -170,18 +170,6 @@ export const findError = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause
 /** @internal */
 export const findErrorOption = Filter.toOption(findError)
 
-/**
- * Selects the typed error that recovery operators hand to their handlers.
- *
- * Defects take precedence: when the cause contains a `Die`, no error is
- * selected and every `Fail` is converted to a `Die` in the remaining cause.
- * Interrupts beside a `Fail` do not block recovery.
- *
- * @internal
- */
-export const findRecoverableError = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
-  hasDies(self) ? Result.fail(causeElectDefects(self) as Cause.Cause<never>) : findError(self)
-
 /** @internal */
 export const hasDies = <E>(self: Cause.Cause<E>): boolean => self.reasons.some(isDieReason)
 
@@ -200,6 +188,18 @@ export const causeElectDefects = <E>(self: Cause.Cause<E>): Cause.Cause<E> =>
       )
     )
     : self
+
+/**
+ * Selects the typed error that recovery operators hand to their handlers.
+ *
+ * Defects take precedence: when the cause contains a `Die`, no error is
+ * selected and every `Fail` is converted to a `Die` in the remaining cause.
+ * Interrupts beside a `Fail` do not block recovery.
+ *
+ * @internal
+ */
+export const findRecoverableError = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
+  hasDies(self) ? Result.fail(causeElectDefects(self) as Cause.Cause<never>) : findError(self)
 
 /** @internal */
 export const findDie = <E>(self: Cause.Cause<E>): Result.Result<Cause.Die, Cause.Cause<E>> => {
@@ -1985,7 +1985,7 @@ export const catchEager: {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return self as Exit.Exit<A>
       const error = findRecoverableError(self.cause)
-      if (Result.isFailure(error)) return exitFailCause(error.failure) as Exit.Exit<never>
+      if (Result.isFailure(error)) return exitFailCause(error.failure)
       return f(error.success)
     }
     return catch_(self, f)
@@ -3766,7 +3766,7 @@ export const matchEager: {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
       const error = findRecoverableError(self.cause)
-      if (Result.isFailure(error)) return exitFailCause(error.failure) as Exit.Exit<never>
+      if (Result.isFailure(error)) return exitFailCause(error.failure)
       return exitSucceed(options.onFailure(error.success))
     }
     return match(self, options)
