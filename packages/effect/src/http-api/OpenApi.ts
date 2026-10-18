@@ -746,45 +746,46 @@ function makePropertiesRepresentation(
   }
 }
 
-// An optional HTTP property is omitted rather than sent as `undefined`, and `required: false` already says so.
+// Optional HTTP properties are omitted rather than sent as `undefined`; `required: false` already documents that.
 function omitUndefined(
   representation: SchemaRepresentation.Representation,
   references: SchemaRepresentation.References,
-  seen: ReadonlySet<SchemaRepresentation.Representation> = new Set()
+  seen: ReadonlySet<string> = new Set()
 ): SchemaRepresentation.Representation {
-  if (seen.has(representation)) return representation
-  const next = new Set(seen).add(representation)
-  if (representation._tag === "Reference") {
-    const target = references[representation.$ref]
-    if (target === undefined) return representation
-    const omitted = omitUndefined(target, references, next)
-    return omitted === target ? representation : omitted
-  }
-  if (representation._tag === "Suspend") {
-    const thunk = omitUndefined(representation.thunk, references, next)
-    return thunk === representation.thunk ? representation : { ...representation, thunk }
-  }
-  if (representation._tag !== "Union") return representation
-  const union = representation
-  let changed = false
-  const types: Array<SchemaRepresentation.Representation> = []
-  for (const type of union.types) {
-    const resolved = resolveRepresentation(type, references)
-    if (resolved._tag === "Undefined") {
-      changed = true
-      continue
+  switch (representation._tag) {
+    case "Reference": {
+      const target = references[representation.$ref]
+      if (target === undefined || seen.has(representation.$ref)) return representation
+      const omitted = omitUndefined(target, references, new Set(seen).add(representation.$ref))
+      return omitted === target ? representation : omitted
     }
-    const omitted = omitUndefined(type, references, next)
-    if (omitted !== type) changed = true
-    types.push(omitted)
+    case "Suspend": {
+      const thunk = omitUndefined(representation.thunk, references, seen)
+      return thunk === representation.thunk ? representation : { ...representation, thunk }
+    }
+    case "Union": {
+      let changed = false
+      const types: Array<SchemaRepresentation.Representation> = []
+      for (const type of representation.types) {
+        if (resolveRepresentation(type, references)._tag === "Undefined") {
+          changed = true
+          continue
+        }
+        const omitted = omitUndefined(type, references, seen)
+        if (omitted !== type) changed = true
+        types.push(omitted)
+      }
+      if (!changed || types.length === 0) return representation
+      if (types.length > 1 || representation.checks.length > 0) return { ...representation, types }
+      const [type] = types
+      if (representation.annotations === undefined) return type
+      return type._tag === "Reference"
+        ? { ...representation, types }
+        : { ...type, annotations: { ...type.annotations, ...representation.annotations } }
+    }
+    default:
+      return representation
   }
-  if (!changed || types.length === 0) return representation
-  if (types.length > 1 || union.checks.length > 0) return { ...union, types }
-  const [type] = types
-  if (union.annotations === undefined) return type
-  return type._tag === "Reference"
-    ? { ...union, types }
-    : { ...type, annotations: { ...type.annotations, ...union.annotations } }
 }
 
 function resolveRepresentation(
