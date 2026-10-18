@@ -1661,6 +1661,158 @@ describe("AnthropicLanguageModel", () => {
       ))
   })
 
+  describe("assistant cache control", () => {
+    const ephemeral = { type: "ephemeral" } as const
+    const cached = { anthropic: { cacheControl: ephemeral } }
+
+    const getAssistantContent = (prompt: Prompt.RawInput) =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        if (capturedRequest === undefined) {
+          return yield* Effect.die(new Error("Expected a captured request"))
+        }
+        const body = yield* getRequestBody(capturedRequest)
+        return body.messages.find((message: any) => message.role === "assistant").content as Array<any>
+      })
+
+    const thinking = {
+      type: "reasoning",
+      text: "Thinking",
+      options: { anthropic: { info: { type: "thinking", signature: "sig" } } }
+    } as const
+
+    it.effect("puts a message breakpoint on the last of many parallel tool calls", () =>
+      Effect.gen(function*() {
+        const toolCalls = Array.from({ length: 12 }, (_, i) => ({
+          type: "tool-call" as const,
+          id: `toolu_${i}`,
+          name: "lookup",
+          params: { i }
+        }))
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Look everything up" },
+          { role: "assistant", content: toolCalls, options: cached },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.strictEqual(content.length, 12)
+        assert.deepStrictEqual(content.at(-1).cache_control, ephemeral)
+        assert.isTrue(content.slice(0, -1).every((block) => block.cache_control === undefined))
+      }))
+
+    it.effect("puts a part breakpoint on that part's block", () =>
+      Effect.gen(function*() {
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Answer", options: cached },
+              { type: "tool-call", id: "toolu_1", name: "lookup", params: {} }
+            ]
+          },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content.map((block) => block.cache_control), [ephemeral, undefined])
+      }))
+
+    it.effect("prefers a part breakpoint over the message breakpoint on the last block", () =>
+      Effect.gen(function*() {
+        const oneHour = { type: "ephemeral", ttl: "1h" } as const
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          {
+            role: "assistant",
+            content: [{ type: "text", text: "Answer", options: { anthropic: { cacheControl: oneHour } } }],
+            options: cached
+          },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content.map((block) => block.cache_control), [oneHour])
+      }))
+
+    it.effect("moves a message breakpoint off a trailing thinking block", () =>
+      Effect.gen(function*() {
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          { role: "assistant", content: [{ type: "text", text: "Answer" }, thinking], options: cached },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content.map((block) => block.type), ["text", "thinking"])
+        assert.deepStrictEqual(content.map((block) => block.cache_control), [ephemeral, undefined])
+      }))
+
+    it.effect("keeps a message breakpoint when the last part sends no block", () =>
+      Effect.gen(function*() {
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Answer" },
+              { type: "file", mediaType: "image/png", data: "aGVsbG8=" }
+            ],
+            options: cached
+          },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content.map((block) => block.cache_control), [ephemeral])
+      }))
+
+    it.effect("drops a part breakpoint whose only block is a thinking block", () =>
+      Effect.gen(function*() {
+        const content = yield* getAssistantContent([
+          { role: "user", content: "Question" },
+          {
+            role: "assistant",
+            content: [{ ...thinking, options: { anthropic: { ...thinking.options.anthropic, ...cached.anthropic } } }, {
+              type: "text",
+              text: "Answer"
+            }]
+          },
+          { role: "user", content: "Thanks" }
+        ])
+
+        assert.deepStrictEqual(content.map((block) => block.cache_control), [undefined, undefined])
+      }))
+  })
+
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
   // `providerName: "memory"`, and is a client-executed provider tool. These
   // tests cover the round-trip that was broken on beta.98 (see #2615):
