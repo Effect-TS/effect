@@ -154,6 +154,13 @@ describe("OpenApiPatch", () => {
         })
       }).pipe(Effect.provide(testLayer)))
 
+    it.effect("treats a move from the root to the root as a no-op (RFC 6902)", () =>
+      Effect.gen(function*() {
+        const patch = yield* OpenApiPatch.parsePatchInput("[{\"op\":\"move\",\"from\":\"\",\"path\":\"\"}]")
+        const result = yield* OpenApiPatch.applyPatches([{ source: "inline", patch }], { a: 1 })
+        assert.deepStrictEqual(result, { a: 1 })
+      }).pipe(Effect.provide(testLayer)))
+
     it.effect("applies single add patch", () =>
       Effect.gen(function*() {
         const document = { info: { title: "Test" } }
