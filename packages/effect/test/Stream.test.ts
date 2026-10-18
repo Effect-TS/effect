@@ -3617,6 +3617,47 @@ describe("Stream", () => {
 
           assert.deepStrictEqual(result, [[1, "a"], [2, "b"], [3, "c"]])
         }))
+
+      it.effect("pulls only the exhausted side after keeping both leftovers", () =>
+        Effect.gen(function*() {
+          for (const leftShorter of [false, true]) {
+            let leftPulls = 0
+            let rightPulls = 0
+            const pulls: Array<readonly [number, number]> = []
+            const left = (leftShorter
+              ? Stream.fromArrays([1, 2], [3, 4])
+              : Stream.fromArrays([1, 2, 3], [4])).pipe(
+                Stream.mapArrayEffect((array) =>
+                  Effect.sync(() => {
+                    leftPulls++
+                    return array
+                  })
+                )
+              )
+            const right = (leftShorter
+              ? Stream.fromArrays([10, 20, 30], [40])
+              : Stream.fromArrays([10, 20], [30, 40])).pipe(
+                Stream.mapArrayEffect((array) =>
+                  Effect.sync(() => {
+                    rightPulls++
+                    return array
+                  })
+                )
+              )
+            const result = yield* Stream.zipWithArray(left, right, (left, right) => {
+              pulls.push([leftPulls, rightPulls])
+              return [[[left[0], right[0]] as const], left.slice(1), right.slice(1)]
+            }).pipe(Stream.runCollect)
+
+            assert.deepStrictEqual(result, [[1, 10], [2, 20], [3, 30], [4, 40]])
+            assert.deepStrictEqual(pulls, [
+              [1, 1],
+              [1, 1],
+              leftShorter ? [2, 1] : [1, 2],
+              [2, 2]
+            ])
+          }
+        }))
     })
 
     describe("zip", () => {
