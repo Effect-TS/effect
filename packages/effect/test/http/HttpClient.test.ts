@@ -713,6 +713,27 @@ Missing key
     )
   })
 
+  describe("withScope", () => {
+    it.effect("aborts unread responses with cookie refs when the scope closes", () =>
+      Effect.gen(function*() {
+        const cookies = yield* Ref.make(Cookies.fromSetCookie("session=secret"))
+        let signal: AbortSignal | undefined
+        const client = HttpClient.make((request, _url, requestSignal) =>
+          Effect.sync(() => {
+            signal = requestSignal
+            return HttpClientResponse.fromWeb(request, new Response("unread"))
+          })
+        ).pipe(HttpClient.withCookiesRef(cookies), HttpClient.withScope)
+
+        yield* Effect.scoped(Effect.gen(function*() {
+          yield* client.get("https://origin.test/")
+          assert.isFalse(signal!.aborted)
+        }))
+
+        assert.isTrue(signal!.aborted)
+      }))
+  })
+
   describe("stream", () => {
     it.effect("aborts the request when the response stream ends early", () =>
       Effect.gen(function*() {
