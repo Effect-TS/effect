@@ -14,6 +14,7 @@
 import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -115,43 +116,28 @@ const toWriteAcks = Effect.fnUntraced(function*(
   batches: ReadonlyArray<EncryptedBatch>,
   stored: ReadonlyArray<EncryptedRemoteBatch>
 ) {
-  const acks: Array<{ readonly entryId: EntryId; sequence: number | undefined }> = []
-  const skipped: Array<EntryId> = []
   // Stored batches keep request order, and each batch has its own random iv.
   let next = 0
-  for (const batch of batches) {
-    const storedBatch = stored[next]
-    if (storedBatch !== undefined && isSameBatch(storedBatch, batch)) {
-      next++
-      for (let i = 0; i < batch.entryIds.length; i++) {
-        acks.push({ entryId: batch.entryIds[i], sequence: storedBatch.sequence + i })
-      }
-      continue
-    }
-    for (const entryId of batch.entryIds) {
-      acks.push({ entryId, sequence: undefined })
-      skipped.push(entryId)
-    }
-  }
+  const storedAt = batches.map((batch) => {
+    if (stored[next] === undefined || !Equal.equals(stored[next].iv, batch.iv)) return undefined
+    return stored[next++].sequence
+  })
+  const skipped = batches.flatMap((batch, i) => storedAt[i] === undefined ? batch.entryIds : [])
+  const firstStored = new Map<string, number>()
   if (skipped.length > 0) {
-    const sequences = new Map<string, number>()
     for (const ack of yield* storage.entrySequences(publicKey, storeId, skipped)) {
-      sequences.set(Uuid.stringify(ack.entryId), ack.sequence)
-    }
-    for (const ack of acks) {
-      if (ack.sequence === undefined) ack.sequence = sequences.get(Uuid.stringify(ack.entryId))
+      firstStored.set(Uuid.stringify(ack.entryId), ack.sequence)
     }
   }
-  return acks.filter((ack): ack is WriteAck => ack.sequence !== undefined)
+  const acks: Array<WriteAck> = []
+  batches.forEach((batch, b) =>
+    batch.entryIds.forEach((entryId, i) => {
+      const sequence = storedAt[b] === undefined ? firstStored.get(Uuid.stringify(entryId)) : storedAt[b] + i
+      if (sequence !== undefined) acks.push({ entryId, sequence })
+    })
+  )
+  return acks
 })
-
-const isSameBatch = (a: EncryptedBatch, b: EncryptedBatch): boolean => {
-  if (a.entryIds.length !== b.entryIds.length || a.iv.byteLength !== b.iv.byteLength) return false
-  for (let i = 0; i < a.iv.byteLength; i++) {
-    if (a.iv[i] !== b.iv[i]) return false
-  }
-  return true
-}
 
 /**
  * Provides an encrypted event-log RPC server using `EventLogRemoteRpcs` and the
