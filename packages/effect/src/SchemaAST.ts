@@ -3113,8 +3113,7 @@ export const Objects: new(
     ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const property = properties![index]
       return Effect.flatMap(Effect.exit(pending), (exit) => {
-        // Each execution gets its own output; `issues` is still undefined here
-        // because `errors: "all"` is routed to the fallback before suspending.
+        // Copy the parsed prefix per execution so reruns cannot overwrite earlier results.
         const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
         const terminal = stepProperty(state, property, exit)
         if (terminal) return terminal
