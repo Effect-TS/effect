@@ -300,6 +300,71 @@ describe("RpcClient", () => {
       assert.strictEqual(decodedReplies, 0)
     }))
 
+  it.effect.each(["encoding defect", "outgoing Interrupt"] as const)(
+    "releases socket routing after %s",
+    (failure) =>
+      Effect.gen(function*() {
+        const frames = yield* Queue.unbounded<string>()
+        const received: Array<{ clientId: number; message: RpcMessage.FromServerEncoded }> = []
+        const barrier = yield* Deferred.make<void>()
+        const socket = Socket.make({
+          reader: Effect.succeed({
+            pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+            upgrade: Socket.SocketUpgradeError.unsupported
+          }),
+          writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+        })
+        const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+          Effect.provideService(Socket.Socket, socket),
+          Effect.provideService(RpcSerialization.RpcSerialization, RpcSerialization.json)
+        )
+        for (const clientId of [1, 2]) {
+          yield* protocol.run(clientId, (message) =>
+            Effect.sync(() => received.push({ clientId, message })).pipe(
+              Effect.andThen(() =>
+                message._tag === "Exit" && message.requestId === "healthy"
+                  ? Deferred.succeed(barrier, void 0)
+                  : Effect.void
+              )
+            )).pipe(Effect.forkChild({ startImmediately: true }))
+        }
+        const defect = new Error("encoding failed")
+        const request = (id: string, payload?: unknown) => ({
+          _tag: "Request" as const,
+          id,
+          tag: "Ping",
+          payload,
+          headers: []
+        })
+        if (failure === "encoding defect") {
+          const exit = yield* protocol.send(
+            1,
+            request("old", {
+              toJSON() {
+                throw defect
+              }
+            })
+          ).pipe(Effect.exit)
+          assert(Exit.isFailure(exit))
+          assert.strictEqual(Cause.squash(exit.cause), defect)
+        } else {
+          yield* protocol.send(1, request("old"))
+          yield* protocol.send(1, { _tag: "Interrupt", requestId: "old" })
+        }
+        yield* protocol.send(2, request("healthy"))
+        const late = { _tag: "Exit", requestId: "old", exit: { _tag: "Success", value: "late" } } as const
+        const healthy = { _tag: "Exit", requestId: "healthy", exit: { _tag: "Success", value: "ok" } } as const
+        yield* Queue.offer(frames, JSON.stringify([late, healthy]))
+        // The ordered healthy reply makes missing late-reply broadcasts fail without hanging.
+        yield* Deferred.await(barrier)
+        assert.deepStrictEqual(received, [
+          { clientId: 1, message: late },
+          { clientId: 2, message: late },
+          { clientId: 2, message: healthy }
+        ])
+      })
+  )
+
   it.effect("clears socket routing before defect delivery and completes interrupted broadcasts", () =>
     Effect.gen(function*() {
       const frames = yield* Queue.unbounded<string>()
