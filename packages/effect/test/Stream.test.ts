@@ -1132,7 +1132,7 @@ describe("Stream", () => {
       }))
 
     describe("ignore", () => {
-      type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity }
+      type IgnoreOptions = { readonly log?: boolean | LogLevel.Severity | "Unhandled" }
 
       const makeTestLogger = () => {
         const capturedLogs: Array<{
@@ -1146,7 +1146,11 @@ describe("Stream", () => {
       }
 
       const runIgnore = Effect.fnUntraced(
-        function*(options?: IgnoreOptions, currentLogLevel: LogLevel.Severity = "Info") {
+        function*(
+          options?: IgnoreOptions,
+          currentLogLevel: LogLevel.Severity = "Info",
+          unhandledLogLevel?: LogLevel.Severity
+        ) {
           const { capturedLogs, testLogger } = makeTestLogger()
           const program = options === undefined
             ? Stream.fail("boom").pipe(Stream.ignore, Stream.runDrain)
@@ -1154,7 +1158,8 @@ describe("Stream", () => {
           yield* program.pipe(
             Effect.provide(Logger.layer([testLogger])),
             Effect.provideService(References.MinimumLogLevel, "Trace"),
-            Effect.provideService(References.CurrentLogLevel, currentLogLevel)
+            Effect.provideService(References.CurrentLogLevel, currentLogLevel),
+            Effect.provideService(References.UnhandledLogLevel, unhandledLogLevel)
           )
           return capturedLogs
         }
@@ -1185,6 +1190,14 @@ describe("Stream", () => {
           const logs = yield* runIgnore({ log: "Error" }, "Warn")
           assert.strictEqual(logs.length, 1)
           assert.strictEqual(logs[0].logLevel, "Error")
+          assertCauseFail(logs[0].cause, "boom")
+        }))
+
+      it.effect("logs with the unhandled level when log is Unhandled", () =>
+        Effect.gen(function*() {
+          const logs = yield* runIgnore({ log: "Unhandled" }, "Info", "Warn")
+          assert.strictEqual(logs.length, 1)
+          assert.strictEqual(logs[0].logLevel, "Warn")
           assertCauseFail(logs[0].cause, "boom")
         }))
     })
