@@ -2,6 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
+import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -35,6 +36,8 @@ const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
 describe("SqlEventJournal", () => {
+  ConflictsTest.suite(makeJournal)
+
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal

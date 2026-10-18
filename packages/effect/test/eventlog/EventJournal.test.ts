@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Equal, Hash, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
 const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
   new EventJournal.Entry({
@@ -23,6 +24,8 @@ const legacyStringify = (bytes: Uint8Array): string =>
   ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
 
 describe("EventJournal", () => {
+  ConflictsTest.suite(EventJournal.makeMemory)
+
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory

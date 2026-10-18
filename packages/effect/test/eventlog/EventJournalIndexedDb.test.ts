@@ -3,6 +3,7 @@ import "fake-indexeddb/auto"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
 let databaseId = 0
 const uniqueName = (prefix: string) => `${prefix}-${databaseId++}`
@@ -137,6 +138,8 @@ const countTransactions = (database: string) =>
   ).pipe(Effect.map(({ transactions }) => transactions))
 
 describe("EventJournal.makeIndexedDb", () => {
+  ConflictsTest.suite(Effect.suspend(() => EventJournal.makeIndexedDb({ database: uniqueName("conflicts") })))
+
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })

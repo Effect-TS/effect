@@ -178,7 +178,7 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           ])
         }))
 
-      it.effect("reports equal-timestamp conflicts by entry id order and batch start", () =>
+      it.effect("reports equal-timestamp conflicts only for stored entries with a greater id", () =>
         Effect.gen(function*() {
           const [lower, stored, higher] = [
             yield* makeEntry(1_000, "a"),
@@ -197,13 +197,12 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
             yield* write(batch)
             results.push(handled.map(({ conflicts }) => conflicts))
           }
-          // History is read from the batch's lowest entry id, so a stored entry
-          // with the same timestamp and a lower id conflicts with `higher` only
-          // when `lower` is in the same batch.
+          // `stored` has the same timestamp as `higher` but a lower id, so it
+          // never conflicts with `higher`, whatever else is in the batch.
           assert.deepStrictEqual(results, [
             [[stored.idString]],
             [[]],
-            [[stored.idString], [stored.idString]]
+            [[stored.idString], []]
           ])
         }))
 

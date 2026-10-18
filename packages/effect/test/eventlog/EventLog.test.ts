@@ -391,6 +391,42 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
+  it.effect("derives replacement ids from their anchor entry, identically on every run", () =>
+    Effect.gen(function*() {
+      const first = yield* makeCompactionEntry({ id: "user-1", name: "before" })
+      const last = yield* makeCompactionEntry({ id: "user-1", name: "after" })
+      const compaction = EventLog.groupCompaction(CurrentUserGroup, ({ events, write }) =>
+        Effect.forEach(events, (event) => write("UserCreated", event.payload), { discard: true }))
+
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        const compactor = registry.compactors.get("UserCreated")!
+        const run = Effect.fnUntraced(function*() {
+          const output: Array<EventJournal.Entry> = []
+          yield* compactor.effect({
+            entries: [first, last],
+            write: (entry) =>
+              Effect.sync(() => {
+                output.push(entry)
+              })
+          })
+          return output
+        })
+        const [one, two] = [yield* run(), yield* run()]
+
+        assert.deepStrictEqual(
+          two.map((entry) =>
+            entry.idString
+          ),
+          one.map((entry) => entry.idString)
+        )
+        // Both replacements are anchored to `first`: the first reuses its id,
+        // the second sorts after it.
+        assert.strictEqual(one[0].idString, first.idString)
+        assert.strictEqual(EventJournal.EntryIdOrder(one[0].id, one[1].id), -1)
+      }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+    }))
+
   it.effect("preserves all undecodable entries without invoking the group compactor", () =>
     Effect.gen(function*() {
       const entries = [
