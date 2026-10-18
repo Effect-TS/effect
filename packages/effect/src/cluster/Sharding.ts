@@ -277,8 +277,17 @@ const make = Effect.gen(function*() {
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
-  const updateShardsGauge = () =>
+  // shards still held by this runner while their entities stop and their locks
+  // are released
+  const releasingShards = MutableHashSet.empty<ShardId>()
+  // The releasing gauge reports to the metric registry and attributes the
+  // layer was built with.
+  const updateReleasingShardsGauge = () =>
+    ClusterMetrics.shardsReleasing.updateUnsafe(BigInt(MutableHashSet.size(releasingShards)), services)
+  const updateShardsGauge = () => {
     ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
+    updateReleasingShardsGauge()
+  }
   const activeShardsLatch = yield* Latch.make(false)
   // open once shutdown starts handing every shard off
   const handoffLatch = Latch.makeUnsafe(false)
@@ -346,7 +355,6 @@ const make = Effect.gen(function*() {
   // This should be shutdown last, when all entities have been shutdown, to
   // allow them to move to another runner.
 
-  const releasingShards = MutableHashSet.empty<ShardId>()
   // Keep startup fibers behind singleton initialization without moving resource
   // acquisition (and therefore changing the shutdown finalizer order).
   const singletonsReady = Latch.makeUnsafe(false)
@@ -358,6 +366,7 @@ const make = Effect.gen(function*() {
   const initialRunnerAddress = getRunnerAddress()
   if (initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
+    updateReleasingShardsGauge()
     yield* Scope.addFinalizerExit(shardingScope, () => {
       // the locks expire over time, so if this fails we ignore it
       return Effect.ignore(runnerStorage.releaseAll(selfAddress))
@@ -411,6 +420,7 @@ const make = Effect.gen(function*() {
       for (const shardId of shardIds) {
         MutableHashSet.remove(releasingShards, shardId)
         MutableHashSet.remove(forceReleasingShards, shardId)
+        updateReleasingShardsGauge()
         // During shutdown, parked waiters are interrupted: this runner will
         // never observe the reply. During a rebalance the waiters are resumed
         // with `EntityNotAssignedToRunner`, and the client falls back to
@@ -470,9 +480,15 @@ const make = Effect.gen(function*() {
     // normal path while it is pending, otherwise the bulk release wipes a lock
     // the runner already considers acquired.
     const forcedShardReleasePending = () => forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) > 0
+    // Repeat while pending, but no more often than every 30 seconds
+    const forcedReleaseWarningInterval = Duration.max(
+      Duration.fromInputUnsafe(config.shardLockExpiration),
+      Duration.seconds(30)
+    )
     // Names the shards and the entity types and singletons still stopping
-    const warnForcedReleasePending = (shardIds: ReadonlyArray<ShardId>) =>
+    const warnForcedReleasePending = (releaseShardIds: ReadonlyArray<ShardId>) =>
       Effect.suspend(() => {
+        const shardIds = releaseShardIds.filter((shardId) => MutableHashSet.has(releasingShards, shardId))
         const entityTypes = Arr.empty<string>()
         for (const [entityType, state] of entityManagers) {
           if (shardIds.some((shardId) => state.manager.hasServersUnsafe(shardId))) entityTypes.push(entityType)
@@ -505,8 +521,10 @@ const make = Effect.gen(function*() {
       return Effect.gen(function*() {
         // Observe independently: a timeout around release cannot interrupt
         // uninterruptible work, and must not allow locks to be reacquired.
-        const monitor = yield* Effect.sleep(config.shardLockExpiration).pipe(
-          Effect.andThen(warnForcedReleasePending(shardIds)),
+        const monitor = yield* warnForcedReleasePending(shardIds).pipe(
+          Effect.andThen(Effect.sleep(forcedReleaseWarningInterval)),
+          Effect.forever,
+          Effect.delay(config.shardLockExpiration),
           Effect.interruptible,
           Effect.forkIn(releaseScope)
         )
