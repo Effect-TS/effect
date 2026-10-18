@@ -522,6 +522,7 @@ Missing key
         )
 
         yield* client.get("https://origin.test/start")
+        yield* client.get("https://origin.test/independent")
 
         assert.deepStrictEqual(
           (yield* Ref.get(requests)).map((request) => [request.url, request.headers.cookie]),
@@ -529,7 +530,8 @@ Missing key
             ["https://origin.test/start", "session=secret"],
             ["https://redirect.test/start", undefined],
             ["https://redirect.test/next", undefined],
-            ["https://origin.test/end", undefined]
+            ["https://origin.test/end", undefined],
+            ["https://origin.test/independent", "session=updated"]
           ]
         )
       }))
