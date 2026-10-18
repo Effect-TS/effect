@@ -1,9 +1,17 @@
-import { Effect, Layer, SubscriptionRef } from "effect"
+import { Effect, Layer, Schema, SubscriptionRef } from "effect"
 import type { AsyncResult } from "effect/reactivity"
 import { Atom } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
 describe("Atom", () => {
+  describe("serializable", () => {
+    it("rejects Date values as JSON-encoded input", () => {
+      const atom = Atom.serializable(Atom.make(new Date()), { key: "date", schema: Schema.Date })
+
+      expect(atom[Atom.SerializableTypeId].decode).type.not.toBeCallableWith(new Date())
+    })
+  })
+
   describe("context", () => {
     it("returns a registry runtime factory by default", () => {
       expect(Atom.context()).type.toBe<Atom.RegistryRuntimeFactory>()
