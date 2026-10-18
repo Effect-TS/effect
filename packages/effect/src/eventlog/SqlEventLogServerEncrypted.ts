@@ -224,7 +224,7 @@ export const makeStorage = (options?: {
 
     // Returns how many of the ids were not stored yet. Stored ids keep their
     // first sequence.
-    const insertNewIds = (idsTableSql: Statement.Identifier, rows: ReadonlyArray<IdRow>) =>
+    const insertNewIds = (idsTableSql: Statement.Identifier, rows: Arr.NonEmptyReadonlyArray<IdRow>) =>
       sql.onDialectOrElse({
         mysql: () =>
           sql`INSERT IGNORE INTO ${idsTableSql} ${sql.insert(rows)}`.raw.pipe(
