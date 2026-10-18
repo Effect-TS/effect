@@ -3560,35 +3560,22 @@ export const zipWithArray: {
       ]
     })
 
-    type State =
-      | { _tag: "PullBoth" }
-      | { _tag: "PullLeft"; rightArray: Arr.NonEmptyReadonlyArray<AR> }
-      | { _tag: "PullRight"; leftArray: Arr.NonEmptyReadonlyArray<AL> }
-      | { _tag: "PullNone"; leftArray: Arr.NonEmptyReadonlyArray<AL>; rightArray: Arr.NonEmptyReadonlyArray<AR> }
-    let state: State = { _tag: "PullBoth" }
+    let leftArray: Arr.NonEmptyReadonlyArray<AL> | undefined
+    let rightArray: Arr.NonEmptyReadonlyArray<AR> | undefined
 
     const pull: Effect.Effect<
       Arr.NonEmptyReadonlyArray<A>,
       EL | ER | Cause.Done,
       RL | RR
     > = Effect.gen(function*() {
-      const [left, right] = state._tag === "PullBoth"
-        ? yield* pullBoth
-        : state._tag === "PullLeft"
-        ? [yield* pullLeft, state.rightArray]
-        : state._tag === "PullRight"
-        ? [state.leftArray, yield* pullRight]
-        : [state.leftArray, state.rightArray]
+      const [left, right] = leftArray
+        ? [leftArray, rightArray ?? (yield* pullRight)]
+        : rightArray
+        ? [yield* pullLeft, rightArray]
+        : yield* pullBoth
       const [output, leftoverLeft, leftoverRight] = f(left, right)
-      if (Arr.isReadonlyArrayNonEmpty(leftoverLeft)) {
-        state = Arr.isReadonlyArrayNonEmpty(leftoverRight)
-          ? { _tag: "PullNone", leftArray: leftoverLeft, rightArray: leftoverRight }
-          : { _tag: "PullRight", leftArray: leftoverLeft }
-      } else if (Arr.isReadonlyArrayNonEmpty(leftoverRight)) {
-        state = { _tag: "PullLeft", rightArray: leftoverRight }
-      } else {
-        state = { _tag: "PullBoth" }
-      }
+      leftArray = Arr.isReadonlyArrayNonEmpty(leftoverLeft) ? leftoverLeft : undefined
+      rightArray = Arr.isReadonlyArrayNonEmpty(leftoverRight) ? leftoverRight : undefined
       return output
     })
 
