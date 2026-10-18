@@ -227,7 +227,7 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
     }))
 
-  it.effect("ignores late replies after a failed send", () =>
+  it.effect("ignores late replies after terminal failures", () =>
     Effect.gen(function*() {
       let decodedReplies = 0
       const success = Schema.String.pipe(Schema.decodeTo(
@@ -241,26 +241,47 @@ describe("RpcClient", () => {
         })
       ))
       const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      let failSend = true
       const error = new RpcClientError({
         reason: new RpcClientDefect({ message: "send failed", cause: undefined })
       })
-      const client = yield* RpcClient.make(RpcGroup.make(Rpc.make("Ping", { success })), {
-        generateRequestId: () => RpcMessage.RequestId(0)
-      }).pipe(Effect.provideService(
+      const client = yield* RpcClient.make(RpcGroup.make(Rpc.make("Ping", { success }))).pipe(Effect.provideService(
         RpcClient.Protocol,
         RpcClient.Protocol.of({
           codecFor: RpcSerialization.json.codecFor,
           supportsAck: false,
           supportsTransferables: false,
           run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
-          send: () => Effect.fail(error)
+          send: (_clientId, message) =>
+            Queue.offer(sent, message).pipe(Effect.andThen(failSend ? Effect.fail(error) : Effect.void))
         })
       ))
       const handle = yield* Deferred.await(received)
       assert.strictEqual(yield* client.Ping().pipe(Effect.flip), error)
+      const failedRequestId = takeRequestId(yield* Queue.take(sent))
       // A retained request would still decode the late reply using its caller's context.
-      yield* handle({ _tag: "Exit", requestId: 0, exit: { _tag: "Success", value: "late" } })
+      yield* handle({ _tag: "Exit", requestId: failedRequestId, exit: { _tag: "Success", value: "late" } })
       assert.strictEqual(decodedReplies, 0)
+
+      failSend = false
+      for (
+        const terminal of [
+          { _tag: "Defect", defect: "connection defect" },
+          { _tag: "ClientProtocolError", error }
+        ] as const
+      ) {
+        const caller = yield* client.Ping().pipe(Effect.forkChild)
+        const requestId = takeRequestId(yield* Queue.take(sent))
+        yield* Effect.yieldNow
+        yield* handle(terminal)
+        const exit = caller.pollUnsafe()
+        assert(exit !== undefined, "terminal delivery must complete the caller before client shutdown")
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(Cause.squash(exit.cause), terminal._tag === "Defect" ? terminal.defect : error)
+        yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: "late" } })
+        assert.strictEqual(decodedReplies, 0, `${terminal._tag} must release the response decoder`)
+      }
     }))
 
   it.effect("releases socket routing after an encoding defect", () =>
