@@ -1625,28 +1625,35 @@ export const withCookiesRef: {
     makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(
-          self.postprocess(Effect.flatMap(request, (request) =>
-            Effect.flatMap(CookiesRefEnabled, (enabled) =>
-              enabled
-                ? Effect.map(Ref.get(ref), (cookies) => {
-                  if (Cookies.isEmpty(cookies)) return request
-                  const withCookies = HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
-                  const controller = scopedRequests.get(request)
-                  if (controller) scopedRequests.set(withCookies, controller)
-                  return withCookies
-                })
-                : Effect.succeed(request)))),
+          self.postprocess(Effect.flatMap(request, (request) => attachCookies(request, ref))),
           (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
         ),
       self.preprocess
     )
 )
 
-// The cookie ref is not origin-aware, so redirects must not reattach its cookies
-// after crossing an origin boundary.
+// Cookies are attached per exchange so redirect hops see cookies set by earlier
+// responses. The ref is not origin-aware, so `followRedirects` disables this for
+// the rest of a chain once it crosses origins.
 const CookiesRefEnabled = Context.Reference<boolean>("effect/http/HttpClient/CookiesRefEnabled", {
   defaultValue: constTrue
 })
+
+const attachCookies = (
+  request: HttpClientRequest.HttpClientRequest,
+  ref: Ref.Ref<Cookies.Cookies>
+): Effect.Effect<HttpClientRequest.HttpClientRequest> =>
+  Effect.withFiber((fiber) => {
+    if (!fiber.getRef(CookiesRefEnabled)) return Effect.succeed(request)
+    return Effect.map(Ref.get(ref), (cookies) => {
+      if (Cookies.isEmpty(cookies)) return request
+      const withCookies = HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
+      // `withScope` keyed its controller on the request this one replaces
+      const controller = scopedRequests.get(request)
+      if (controller) scopedRequests.set(withCookies, controller)
+      return withCookies
+    })
+  })
 
 /**
  * Attaches the lifetime of the `HttpClientRequest` to a `Scope`.
@@ -1714,17 +1721,14 @@ export const followRedirects: {
                 nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
                 nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
               }
-              if (url.origin !== new URL(response.request.url).origin) {
+              const crossOrigin = url.origin !== new URL(response.request.url).origin
+              if (crossOrigin) {
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
                 nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
-                return Effect.provideService(
-                  loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1),
-                  CookiesRefEnabled,
-                  false
-                )
               }
-              return loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
+              const next = loop(Effect.succeed(HttpClientRequest.setUrl(nextRequest, url)), redirects + 1)
+              return crossOrigin ? Effect.provideService(next, CookiesRefEnabled, false) : next
             }
           )
         })

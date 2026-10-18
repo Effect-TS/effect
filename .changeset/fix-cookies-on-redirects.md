@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `HttpClient.withCookiesRef` applied before `followRedirects` so cookies set by redirect responses are sent on subsequent same-origin hops. Cookie refs are not reapplied after a cross-origin redirect.
+Fix `HttpClient.withCookiesRef` composed with `followRedirects`: cookies set by a redirect response are now sent on the following same-origin hops, and the ref's cookies are not reattached after a cross-origin redirect.
