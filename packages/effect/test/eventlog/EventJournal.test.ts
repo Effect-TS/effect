@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Equal, Hash, Logger, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import { TestClock } from "effect/testing"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
 // `tail` fixes the random id bytes, so entries sharing a millisecond sort in a
@@ -329,25 +330,22 @@ describe("EventJournal", () => {
     assert.deepStrictEqual(idStrings(below), [])
   })
 
-  it("logs a warning when an imported id is more than 24 hours ahead of the clock", () => {
-    const journal = Effect.runSync(EventJournal.makeMemory)
-    const hour = 60 * 60 * 1000
-    const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
-    let warnings = 0
-    const logger = Logger.layer([Logger.make(({ logLevel }) => {
-      if (logLevel === "Warn") warnings++
-    })])
-    const now = vi.spyOn(Date, "now").mockReturnValue(millis - 25 * hour)
-    let warningsWithin24Hours = 0
-    try {
-      Effect.runSync(importEntry(journal, entry(millis - 2 * hour)).pipe(Effect.provide(logger)))
-      warningsWithin24Hours = warnings
-      Effect.runSync(importEntry(journal, entry(millis)).pipe(Effect.provide(logger)))
-    } finally {
-      now.mockRestore()
-    }
-    assert.deepStrictEqual({ warningsWithin24Hours, warnings }, { warningsWithin24Hours: 0, warnings: 1 })
-  })
+  it.effect("logs skew warnings relative to the supplied Clock service", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const hour = 60 * 60 * 1000
+      // Both imports advance the id clock and are over 24 hours ahead of wall time.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 48 * hour
+      yield* TestClock.setTime(millis - 25 * hour)
+      let warnings = 0
+      const logger = Logger.layer([Logger.make(({ logLevel }) => {
+        if (logLevel === "Warn") warnings++
+      })])
+      yield* importEntry(journal, entry(millis - 2 * hour)).pipe(Effect.provide(logger))
+      const warningsWithin24Hours = warnings
+      yield* importEntry(journal, entry(millis)).pipe(Effect.provide(logger))
+      assert.deepStrictEqual({ warningsWithin24Hours, warnings }, { warningsWithin24Hours: 0, warnings: 1 })
+    }))
 
   it.effect("orders imported entries by id and reports conflicts with greater ids per event and key", () =>
     Effect.gen(function*() {
