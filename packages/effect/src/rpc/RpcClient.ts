@@ -1102,13 +1102,11 @@ export const makeProtocolSocket = (options?: {
     let currentError: RpcClientError | undefined
 
     const broadcast = (response: FromServerEncoded) => {
-      if (response._tag === "Defect" || response._tag === "ClientProtocolError") {
-        requestClientMap.clear()
-        return Effect.forEach(Array.from(clientIds), (clientId) => writeResponse(clientId, response)).pipe(
-          Effect.uninterruptible
-        )
-      }
-      return Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+      const deliver = Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+      if (response._tag !== "Defect" && response._tag !== "ClientProtocolError") return deliver
+      // A terminal response ends every request; clear routing before callers can start new ones
+      requestClientMap.clear()
+      return Effect.uninterruptible(deliver)
     }
     const broadcastError = (error: RpcClientError) => {
       currentError = error
@@ -1235,10 +1233,8 @@ export const makeProtocolSocket = (options?: {
         if (currentError) {
           return Effect.fail(currentError)
         }
-        if (request._tag !== "Request") {
-          if (request._tag === "Interrupt") requestClientMap.delete(request.requestId)
-          return write(request)
-        }
+        if (request._tag === "Interrupt") requestClientMap.delete(request.requestId)
+        if (request._tag !== "Request") return write(request)
         requestClientMap.set(request.id, clientId)
         return Effect.onError(write(request), () => Effect.sync(() => requestClientMap.delete(request.id)))
       },
