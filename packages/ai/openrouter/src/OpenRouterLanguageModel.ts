@@ -921,22 +921,18 @@ const prepareMessages = Effect.fnUntraced(
           // Only text parts can carry a breakpoint here: `tool_calls` have no
           // `cache_control`, so a message-level breakpoint goes on the last text part.
           const messageCacheControl = getCacheControl(message)
-          const textCacheControls = textParts.map((part, i) =>
-            getCacheControl(part) ?? (i === textParts.length - 1 ? messageCacheControl : null)
-          )
+          const content = textParts.map<typeof Generated.ChatContentText.Encoded>((part, i) => {
+            const cache_control = getCacheControl(part) ?? (i === textParts.length - 1 ? messageCacheControl : null)
+            return {
+              type: "text",
+              text: part.text,
+              ...(Predicate.isNotNull(cache_control) ? { cache_control } : undefined)
+            }
+          })
 
           messages.push({
             role: "assistant",
-            content: textCacheControls.some(Predicate.isNotNull)
-              ? textParts.map((part, i) => {
-                const cache_control = textCacheControls[i]
-                return {
-                  type: "text" as const,
-                  text: part.text,
-                  ...(Predicate.isNotNull(cache_control) ? { cache_control } : undefined)
-                }
-              })
-              : text,
+            content: content.some((part) => Predicate.isNotNullish(part.cache_control)) ? content : text,
             reasoning: reasoning.length > 0 ? reasoning : null,
             ...(Predicate.isNotNull(reasoningDetails) ? { reasoning_details: reasoningDetails } : undefined),
             ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
