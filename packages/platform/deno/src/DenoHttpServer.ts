@@ -190,7 +190,6 @@ const makeResponse = Effect.fnUntraced(function*(
   }
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
-  response = HttpEffect.scopeTransferToStream(response)
   const body = response.body
   switch (body._tag) {
     case "Empty":
@@ -205,20 +204,20 @@ const makeResponse = Effect.fnUntraced(function*(
     case "FormData":
       return new Response(body.formData as any, fields)
     case "Stream": {
-      const stream = Stream.toReadableStreamWith(
-        Stream.unwrap(Effect.withFiber((fiber) => {
-          Fiber.runIn(fiber, scope)
-          return Effect.succeed(body.stream)
-        })),
-        context
+      // Validate the fields before the stream takes over the request scope, as only reading it would close the scope
+      // oxlint-disable-next-line no-new
+      new Response(new ReadableStream(), fields)
+      const stream = (HttpEffect.scopeTransferToStream(response).body as HttpBody.Stream).stream
+      return new Response(
+        Stream.toReadableStreamWith(
+          Stream.unwrap(Effect.withFiber((fiber) => {
+            Fiber.runIn(fiber, scope)
+            return Effect.succeed(stream)
+          })),
+          context
+        ),
+        fields
       )
-      try {
-        return new Response(stream, fields)
-      } catch (defect) {
-        // The stream owns the request scope, so cancel it to let the scope close
-        cancelStreamUnsafe(stream)
-        throw defect
-      }
     }
   }
 })
