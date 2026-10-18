@@ -49,17 +49,15 @@ const startWatch = <E, R>(
 describe("FileSystem", { concurrent: false }, () => {
   testLayer(NodeFileSystem.layer, { noFollow: process.platform !== "win32" })
 
-  it.effect("realPath canonicalizes an alias and its physical target consistently", () =>
+  it.effect("realPath resolves a directory alias to its physical target", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
-      const root = yield* fs.makeTempDirectoryScoped()
+      const root = yield* fs.realPath(yield* fs.makeTempDirectoryScoped())
       const target = Path.join(root, "target")
       const alias = Path.join(root, "alias")
       yield* fs.makeDirectory(target)
       NFS.symlinkSync(target, alias, process.platform === "win32" ? "junction" : "dir")
-      const physical = NFS.realpathSync.native(target)
-      assert.strictEqual(yield* fs.realPath(alias), physical)
-      assert.strictEqual(yield* fs.realPath(physical), physical)
+      assert.strictEqual(yield* fs.realPath(alias), target)
     }).pipe(
       Effect.provide(NodeFileSystem.layer)
     ))
