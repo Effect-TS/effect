@@ -318,15 +318,25 @@ export const make = (
     const withTransaction = Client.makeWithTransaction({
       transactionService: LibsqlTransaction,
       spanAttributes,
-      acquireConnection: Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
+      acquireConnection: Effect.suspend(() => {
         const scope = Scope.makeUnsafe()
-        yield* restore(semaphore.take(1))
-        yield* Scope.addFinalizer(scope, semaphore.release(1))
-        const conn = yield* connection.beginTransaction.pipe(
-          Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
+        let acquired: LibsqlConnectionImpl | undefined
+        return Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
+          yield* restore(semaphore.take(1))
+          yield* Scope.addFinalizer(scope, semaphore.release(1))
+          acquired = yield* connection.beginTransaction
+          return [scope, acquired] as const
+        })).pipe(
+          // An interruption pending during BEGIN can arrive as the mask exits,
+          // before makeWithTransaction receives the connection and its scope.
+          Effect.onError((cause) =>
+            Effect.ensuring(
+              acquired ? Effect.orDie(acquired.rollback) : Effect.void,
+              Scope.close(scope, Exit.failCause(cause))
+            )
+          )
         )
-        return [scope, conn] as const
-      })),
+      }),
       begin: () => Effect.void, // already begun in acquireConnection
       savepoint: (conn, id) => conn.executeRaw(`SAVEPOINT effect_sql_${id};`, []),
       releaseSavepoint: (conn, id) => conn.executeRaw(`RELEASE SAVEPOINT effect_sql_${id};`, []),

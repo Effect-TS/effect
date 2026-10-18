@@ -18,6 +18,7 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -620,11 +621,11 @@ export const make = (
     const withTransaction = Client.makeWithTransaction({
       transactionService,
       spanAttributes,
-      acquireConnection: Effect.gen(function*() {
-        const scope = Scope.makeUnsafe()
-        const conn = yield* Scope.provide(acquireConnection, scope)
-        return [scope, conn] as const
-      }),
+      acquireConnection: Effect.flatMap(Scope.make(), (scope) =>
+        Scope.provide(acquireConnection, scope).pipe(
+          Effect.map((conn) => [scope, conn] as const),
+          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
+        )),
       begin: (conn) => conn.begin,
       savepoint: (conn, id) => conn.savepoint(`effect_sql_${id}`),
       commit: (conn) => conn.commit,

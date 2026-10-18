@@ -261,8 +261,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       Scope.make(),
       (scope) =>
         Scope.provide(transactionAcquirer!, scope).pipe(
-          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),
-          Effect.map((conn) => [scope, conn] as const)
+          Effect.map((conn) => [scope, conn] as const),
+          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
         )
     ),
     begin: (conn) => control(conn, beginTransaction),
@@ -503,6 +503,10 @@ const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect
 export const makeWithTransaction = <I, S>(options: {
   readonly transactionService: Context.Key<I, readonly [conn: S, counter: number]>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+  /**
+   * Acquires at the caller's interruptibility. Must clean up any resources if
+   * acquisition fails or is interrupted before handing off the scope and connection.
+   */
   readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
   readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
@@ -536,7 +540,7 @@ export const makeWithTransaction = <I, S>(options: {
             const connOption = Context.getOption(services, options.transactionService)
             const conn = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
-              : options.acquireConnection
+              : restore(options.acquireConnection)
             const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
             const buffer: AfterCommitBuffer = {
               callbacks: [],
