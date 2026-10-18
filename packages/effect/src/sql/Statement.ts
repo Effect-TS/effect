@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Arr from "../Array.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -278,7 +279,7 @@ export const arrayHelper = (value: ReadonlyArray<unknown | Fragment>): ArrayHelp
  */
 export interface RecordInsertHelper {
   readonly _tag: "RecordInsertHelper"
-  readonly value: ReadonlyArray<Record<string, unknown>>
+  readonly value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
   /**
    * @internal
    */
@@ -305,7 +306,7 @@ const RecordInsertHelperProto = {
  * @since 4.0.0
  */
 export const recordInsertHelper = (
-  value: ReadonlyArray<Record<string, unknown>>
+  value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
 ): RecordInsertHelper =>
   Object.assign(Object.create(RecordInsertHelperProto), {
     value,
@@ -322,7 +323,7 @@ export const recordInsertHelper = (
  */
 export interface RecordUpdateHelper {
   readonly _tag: "RecordUpdateHelper"
-  readonly value: ReadonlyArray<Record<string, unknown>>
+  readonly value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
   readonly alias: string
   /**
    * @internal
@@ -345,7 +346,7 @@ const RecordUpdateHelperProto = {
  * @since 4.0.0
  */
 export const recordUpdateHelper = (
-  value: ReadonlyArray<Record<string, unknown>>,
+  value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>,
   alias: string
 ): RecordUpdateHelper =>
   Object.assign(Object.create(RecordUpdateHelperProto), {
@@ -502,7 +503,7 @@ export interface Constructor {
 
   readonly insert: {
     (
-      value: ReadonlyArray<Record<string, unknown>>
+      value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>
     ): RecordInsertHelper
     (value: Record<string, unknown>): RecordInsertHelper
   }
@@ -524,7 +525,7 @@ export interface Constructor {
    * transforms.
    */
   readonly updateValues: (
-    value: ReadonlyArray<Record<string, unknown>>,
+    value: Arr.NonEmptyReadonlyArray<Record<string, unknown>>,
     alias: string
   ) => RecordUpdateHelper
 
@@ -631,7 +632,7 @@ export const make = (
       in: in_,
       insert(value: any) {
         return recordInsertHelper(
-          Array.isArray(value) ? value : [value]
+          Array.isArray(value) ? value as Arr.NonEmptyArray<Record<string, unknown>> : [value]
         )
       },
       update(value: any, omit: any) {
