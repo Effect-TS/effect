@@ -2937,7 +2937,10 @@ class ReplayBuffer<A> {
     }
     this.tail = this.tail.next
     if (this.size === this.capacity) {
-      this.head = this.head.next!
+      const dropped = this.head
+      this.head = dropped.next!
+      dropped.next = null
+      dropped.value = AbsentValue
     } else {
       this.size += 1
     }

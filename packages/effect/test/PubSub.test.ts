@@ -552,6 +552,18 @@ describe("PubSub", () => {
       assert.strictEqual(replayWindow.take(), replayed)
     })
 
+    it("does not retain values through a dropped replay node", () => {
+      const pubsub = PubSub.makeAtomicUnbounded<object>({ replay: 1 })
+      const first = {}
+      pubsub.publish(first)
+      const droppedNode = (pubsub as unknown as { readonly replayBuffer: { readonly head: object } }).replayBuffer.head
+      const second = {}
+      pubsub.publish(second)
+
+      assert.isFalse(retains(droppedNode, first))
+      assert.isFalse(retains(droppedNode, second))
+    })
+
     it("preserves replay order across multiple slides", () => {
       const pubsub = PubSub.makeAtomicBounded<number>({ capacity: 4, replay: 3 })
       pubsub.publishAll([1, 2, 3, 4, 5])
