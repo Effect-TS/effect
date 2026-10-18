@@ -89,12 +89,13 @@ describe("Hydration", () => {
       const heard: Array<number> = []
       registry.subscribe(atom, (n) => heard.push(n))
 
-      Hydration.hydrate(registry, [{
+      const state: Array<Hydration.DehydratedAtomValue> = [{
         "~effect/reactivity/Hydration/DehydratedAtom": true,
         key: "existing-count",
         value: 5,
         dehydratedAt: 0
-      }])
+      }]
+      Hydration.hydrate(registry, state)
 
       assert.deepStrictEqual(heard, [5])
       assert.strictEqual(registry.get(doubled), 10)
