@@ -350,7 +350,8 @@ describe("Protobuf", () => {
         { a: [1, "x", null, true] },
         "2a210a1f0a0161121a32180a0911000000000000f03f0a031a01780a0208000a022001"
       ],
-      ["a Void root", Schema.Void, undefined, ""]
+      ["a Void root", Schema.Void, undefined, ""],
+      ["a null Value", WellKnown, { anything: null }, "3a020800"]
     ]
     for (const [name, schema, value, hex] of cases) {
       it(name, () => {
@@ -459,6 +460,17 @@ describe("Protobuf", () => {
         ]),
         { name: "n", "x-a": 1, "x-b": 0 },
         "0a016e 12070a03782d611001 12070a03782d621000"
+      ],
+      // `null` is absent only where the schema is a union with `Null`.
+      [
+        "null Values, which are present unless the property is nullable",
+        Schema.Struct({
+          required: Protobuf.Value.pipe(Protobuf.field(1)),
+          undefinedOr: Schema.UndefinedOr(Protobuf.Value).pipe(Protobuf.field(2)),
+          nullOr: Schema.NullOr(Protobuf.Value).pipe(Protobuf.field(3))
+        }),
+        { required: null, undefinedOr: null, nullOr: null },
+        "0a020800 12020800"
       ],
       ["an array root, boxed", Schema.Array(Protobuf.Int32), [1, 2], "0a020102"],
       ["a scalar root, boxed like StringValue", Schema.String, "a", "0a0161"],

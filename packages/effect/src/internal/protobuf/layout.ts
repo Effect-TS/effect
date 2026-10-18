@@ -232,6 +232,8 @@ export interface Field {
   // Map entries whose value is `undefined` are left out (optional values).
   readonly optionalValues: boolean
   readonly absent: Absent
+  // `null` is absent: the schema is a union with `Null`.
+  readonly nullAbsent: boolean
   readonly constant: unknown
   // Writes the zero value of an implicit-presence field.
   readonly always: boolean
@@ -244,6 +246,7 @@ export interface Oneof {
   readonly key: PropertyKey
   readonly index: number
   readonly absent: Absent
+  readonly nullAbsent: boolean
   readonly cases: Array<Case>
   // Set when every case is a tagged struct: the tag selects the case.
   discriminator: { readonly key: string; readonly cases: ReadonlyMap<unknown, Case> } | undefined
@@ -540,6 +543,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         number: annotation.number,
         kind: "rest",
         absent: "zero",
+        nullAbsent: false,
         keysOf: (obj) => SchemaAST.getIndexSignatureKeys(obj, signature.parameter)
       })
     }
@@ -564,7 +568,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     if (ast.rest.length > 1) throw layoutError(`${where} has elements after its rest element`)
     if (ast.rest.length === 1) {
       const element = compileValue(resolveEncoded(ast.rest[0]), `rest element of ${where}`)
-      addSlot(message, repeatedField(TUPLE_REST, ast.elements.length + 1, element, "zero", undefined))
+      addSlot(message, repeatedField(TUPLE_REST, ast.elements.length + 1, element, "zero", false, undefined))
     }
     return done(message)
   }
@@ -588,6 +592,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     number: number,
     element: ValueLayout,
     absent: Absent,
+    nullAbsent: boolean,
     annotation: FieldAnnotation | undefined
   ): Field {
     return {
@@ -600,6 +605,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       keysOf: undefined,
       optionalValues: false,
       absent,
+      nullAbsent,
       constant: undefined,
       always: false,
       packed: annotation?.packed ?? isPackable(element),
@@ -607,7 +613,10 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     }
   }
 
-  function mapField(signature: SchemaAST.IndexSignature, where: string): Omit<Field, "key" | "number" | "absent"> {
+  function mapField(
+    signature: SchemaAST.IndexSignature,
+    where: string
+  ): Omit<Field, "key" | "number" | "absent" | "nullAbsent"> {
     const optionalValues = SchemaAST.isOptional(signature.type)
     return {
       _tag: "Field",
@@ -668,6 +677,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         keysOf: undefined,
         optionalValues: false,
         absent: "constant",
+        nullAbsent: false,
         constant: constant.value,
         always: true,
         packed: false,
@@ -676,6 +686,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     }
 
     let absent: Absent | undefined = SchemaAST.isOptional(type) ? "omit" : undefined
+    let nullAbsent = false
     // Nullish members and `Option` make the field explicit-presence. The other
     // members of a union are a oneof, unless they are literals.
     let literals: ReadonlyArray<SchemaAST.AST> | undefined
@@ -694,7 +705,9 @@ export function compileRoot(ast: SchemaAST.AST): Root {
           }
         }
         if (rest.length < types.length) {
-          absent ??= types.some((member) => resolveEncoded(member).ast._tag === "Null") ? "null" : "undefined"
+          const hasNull = types.some((member) => resolveEncoded(member).ast._tag === "Null")
+          nullAbsent ||= hasNull
+          absent ??= hasNull ? "null" : "undefined"
           if (rest.length === 1) {
             if (fixed === undefined) annotation ??= getFieldAnnotation(rest[0])
             const inner = resolveEncoded(rest[0])
@@ -711,7 +724,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         if (annotation !== undefined && fixed === undefined) {
           throw layoutError(`${where} is a oneof; number its members instead of the property`)
         }
-        return compileOneof(message, key, rest, absent ?? "required", where)
+        return compileOneof(message, key, rest, absent ?? "required", nullAbsent, where)
       }
     }
 
@@ -728,14 +741,14 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       if (options !== undefined) checkOptions(options, "repeated", where)
       if (annotation.packed === true && !isPackable(element)) throw layoutError(`${where} cannot be packed`)
       checkDelimited(annotation, element, where)
-      return repeatedField(key, number, element, absent ?? "zero", annotation)
+      return repeatedField(key, number, element, absent ?? "zero", nullAbsent, annotation)
     }
     if (
       wkt === undefined && ast._tag === "Objects" && ast.propertySignatures.length === 0 &&
       ast.indexSignatures.length === 1
     ) {
       if (options !== undefined) checkOptions(options, "map", where)
-      return { ...mapField(ast.indexSignatures[0], where), key, number, absent: absent ?? "zero" }
+      return { ...mapField(ast.indexSignatures[0], where), key, number, absent: absent ?? "zero", nullAbsent }
     }
 
     const value = literals === undefined ? compileValue(resolved, where) : literalValue(literals, resolved, where)
@@ -751,6 +764,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       keysOf: undefined,
       optionalValues: false,
       absent: absent ?? (value._tag === "Scalar" || value._tag === "Enum" ? "zero" : "required"),
+      nullAbsent,
       constant: undefined,
       always: annotation.presence === "always",
       packed: false,
@@ -779,9 +793,17 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     key: PropertyKey,
     members: ReadonlyArray<SchemaAST.AST>,
     absent: Absent,
+    nullAbsent: boolean,
     where: string
   ): Oneof {
-    const oneof: Oneof = { key, index: message.oneofs.length, absent, cases: [], discriminator: undefined }
+    const oneof: Oneof = {
+      key,
+      index: message.oneofs.length,
+      absent,
+      nullAbsent,
+      cases: [],
+      discriminator: undefined
+    }
     for (const member of members) {
       const resolved = resolveEncoded(member)
       const annotation = getFieldAnnotation(member)

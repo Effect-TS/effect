@@ -198,7 +198,7 @@ function encodeMessage(encoder: MessageEncoder, value: unknown, w: Writer): void
       cases = []
       for (const oneof of message.oneofs) {
         key = oneof.key
-        const v = present(oneof.absent, slotValue(message, value, key))
+        const v = present(oneof, slotValue(message, value, key))
         const c = v === undefined ? undefined : matchCase(oneof, v)
         if (v !== undefined && c === undefined) throw new WireError("value matches no oneof case", v)
         cases.push(c)
@@ -230,9 +230,11 @@ function unwrapCase(key: string, member: unknown): unknown {
 }
 
 // The value of an explicit-presence slot, or `undefined` when it is absent.
-function present(absent: Absent, value: unknown): unknown {
-  if (value === null) return undefined
-  if (absent === "none" && value !== undefined) {
+// `null` is absent only for a nullable slot; elsewhere it is a value, such as
+// the `null_value` of a `google.protobuf.Value`.
+function present(slot: Field | Oneof, value: unknown): unknown {
+  if (value === null && slot.nullAbsent) return undefined
+  if (slot.absent === "none" && value !== undefined) {
     if (!Option.isOption(value)) throw new WireError("expected an Option", value)
     return Option.isSome(value) ? value.value : undefined
   }
@@ -247,7 +249,7 @@ function slotWriter(message: Message, slot: Slot): SlotWriter {
     const writeValue = valueWriter(slot.number, slot.type, slot.delimited)
     return (container, w, cases) => {
       if (cases![oneof.index] !== slot) return
-      const v = present(oneof.absent, slotValue(message, container, key))
+      const v = present(oneof, slotValue(message, container, key))
       writeValue(unwrap === undefined ? v : unwrapCase(unwrap.key, v), w)
     }
   }
@@ -273,7 +275,7 @@ function slotWriter(message: Message, slot: Slot): SlotWriter {
       const skipZero = absent === "zero" && !slot.always
       const type = slot.type
       return (container, w) => {
-        const v = present(absent, slotValue(message, container, key))
+        const v = present(slot, slotValue(message, container, key))
         if (v === undefined || (skipZero && isZero(type, v))) return
         writeValue(v, w)
       }
@@ -281,7 +283,7 @@ function slotWriter(message: Message, slot: Slot): SlotWriter {
     case "repeated": {
       const writeList = slot.packed ? packedWriter(slot) : unpackedWriter(slot)
       return (container, w) => {
-        const v = present(absent, slotValue(message, container, key))
+        const v = present(slot, slotValue(message, container, key))
         if (v === undefined) return
         if (!Array.isArray(v)) throw new WireError("expected an array", v)
         if (v.length > 0) writeList(v, w)
@@ -290,7 +292,7 @@ function slotWriter(message: Message, slot: Slot): SlotWriter {
     case "map": {
       const writeEntry = entryWriter(slot)
       return (container, w) => {
-        const v = present(absent, slotValue(message, container, key))
+        const v = present(slot, slotValue(message, container, key))
         if (v === undefined) return
         if (!Predicate.isObject(v)) throw new WireError("expected a record", v)
         const record = v as Record<string, unknown>
@@ -1144,7 +1146,7 @@ function slotReader(message: Message, slot: Slot): SlotReader {
       const absent = slot.absent
       const readEntry = entryReader(slot)
       return (acc, r, wireType, depth) => {
-        const before = present(absent, acc[key])
+        const before = present(slot, acc[key])
         const record = (Predicate.isObject(before) ? before : {}) as Record<string, unknown>
         readEntry(record, r, wireType, depth, 0)
         acc[key] = absent === "none" ? Option.some(record) : record
@@ -1170,7 +1172,7 @@ function caseReader(slot: Case): SlotReader {
   return (acc, r, wireType, depth, number) => {
     let merge: unknown = undefined
     if (merges) {
-      const before = present(oneof.absent, earlier(acc, key))
+      const before = present(oneof, earlier(acc, key))
       const c = typeof before === "object" && before !== null
         ? decodedCases.get(before)
         : before === undefined
@@ -1208,7 +1210,7 @@ function singularReader(field: Field): SlotReader {
   const readValue = valueReader(field.type)
   if (mergesOccurrences(field.type)) {
     return (acc, r, wireType, depth, number) => {
-      const value = readValue(r, wireType, present(absent, earlier(acc, key)), depth, number)
+      const value = readValue(r, wireType, present(field, earlier(acc, key)), depth, number)
       acc[key] = absent === "none" ? Option.some(value) : value
     }
   }
@@ -1309,7 +1311,7 @@ function repeatedReader(field: Field): SlotReader {
     }
   }
   return (acc, r, wireType, depth, number) => {
-    const before = present(absent, acc[key])
+    const before = present(field, acc[key])
     const list: Array<unknown> = Array.isArray(before) ? before : []
     try {
       if (wireType === WIRE_LEN && readPacked !== undefined) {
