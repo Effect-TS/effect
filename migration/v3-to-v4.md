@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `e730f59d29db5f1e312be6476a95d07bcad45788` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
+Base: `origin/v3` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `4839c601bdda845d9a54d77f578f64372475ab04` (`4839c601bdda845d9a54d77f578f64372475ab04`)
+Head: `HEAD` (`28ef5295ef202a2ee436d920bab5c2396b898ffe`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5706,6 +5706,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `ClusterSchema.ClientTracingEnabled` -> `effect/cluster/ClusterSchema#ClientTracingEnabled`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
 
+- `ClusterSchema.InterruptOnTermination`: TODO: needs guidance
+
 - `ClusterSchema.Persisted` -> `effect/cluster/ClusterSchema#Persisted`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
 
 - `ClusterSchema.ShardGroup` -> `effect/cluster/ClusterSchema#ShardGroup`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value.
@@ -11008,6 +11010,8 @@ Depend on fast-check and import it directly. Pass the former character arbitrary
 FastCheck.string({ ...constraints, unit: arbitrary })
 ```
 
+- `FastCheck.stringify`: TODO: needs guidance
+
 - `FastCheck.subarray`: TODO: needs guidance
 
 - `FastCheck.toStringMethod`: TODO: needs guidance
@@ -15571,9 +15575,9 @@ Schema.toFormatter(schema)
 
 - `Sink.race` -> `none`: Sink racing (race/raceBoth/raceWith) was removed from v4; broadcast the stream (Stream.broadcast) into two consumers and race the resulting run effects with Effect.race, or write a custom Channel.
 
-- `Sink.raceBoth` -> `none`: Removed with the race family; broadcast the stream and use Effect.raceBoth (or Effect.race) on the two Stream.run effects to learn which side won.
+- `Sink.raceBoth` -> `none`: Removed with the race family; broadcast the stream and tag each Stream.run effect's result before combining them with Effect.race to learn which side succeeded first.
 
-- `Sink.raceWith` -> `none`: Removed, along with the MergeDecision type it depended on; the closest is broadcasting the stream and combining the two run effects manually (Effect.raceWith on the run effects).
+- `Sink.raceWith` -> `none`: Removed, along with the MergeDecision type it depended on; broadcast the stream and combine the two run effects manually. Use Effect.race for the first success or Effect.raceFirst for the first completion; custom completion and interruption handling requires explicit fibers.
 
 - `Sink.refineOrDie` -> `Sink.catch`: Removed; rebuild with the typed-error handler: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(e) })) — note Sink.catch replaces the result on recovery, so refined errors must be re-failed as shown.
 
@@ -15711,7 +15715,7 @@ Schema.toFormatter(schema)
 
 - `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
-- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect (run before the stream starts pulling), covering asyncEffect; signal end/failure through the provided Queue.
+- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect, covering asyncEffect. Unlike v3, it is started before the stream pulls but not awaited: it runs synchronously until its first async boundary, so asynchronous setup may still be in progress when pulling begins. Signal end/failure through the provided Queue.
 
 - `Stream.asyncPush` -> `Stream.callback`: Stream.callback's register effect can use Scope for acquire/release of the external subscription, replacing asyncPush; the Emit ops helpers become plain Queue operations.
 

@@ -43,7 +43,7 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
  *
  * The default mode supports compatible schema evolution. `fingerprint: true`
  * uses positional layouts and an 8-byte layout hash for smaller frames, but
- * requires peers to use the same schema definition.
+ * requires peers to use an identical encoded layout.
  *
  * @stability unstable
  * @category models
@@ -91,6 +91,14 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
  *
  * Encoded results are arena-backed views and may share a larger buffer. Use
  * `bytes.slice()` when independent ownership is required.
+ *
+ * **Gotchas**
+ *
+ * Bytes carry the layout of the schema that wrote them. In the default mode,
+ * decode them with that schema or a compatible evolution of it; fingerprint
+ * mode requires an identical encoded layout. Most union codecs prefix values
+ * with a member selector, so they cannot read bytes written by a member's own
+ * codec.
  *
  * **Example** (Deriving a binary codec)
  *

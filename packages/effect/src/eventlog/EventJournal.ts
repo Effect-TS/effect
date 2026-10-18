@@ -19,15 +19,18 @@ import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import { constVoid } from "../Function.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import type { Option } from "../Option.ts"
 import * as Order from "../Order.ts"
 import * as PubSub from "../PubSub.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import type { Scope } from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import type { StoreId } from "./EventLogMessage.ts"
+import { ConflictIndex } from "./internal/conflicts.ts"
 
 /**
  * Context service for storing and replaying event journal entries.
@@ -36,6 +39,9 @@ import type { StoreId } from "./EventLogMessage.ts"
  *
  * The service writes local entries, imports entries from remote journals, exposes
  * a stream of local changes, and provides per-store locking.
+ *
+ * Entries written by `EventLog` carry payloads encoded with their event's
+ * `payloadSchemaBinary`; see {@link Entry} for how to decode them.
  *
  * @stability unstable
  * @category services
@@ -46,6 +52,14 @@ export class EventJournal extends Context.Service<EventJournal, {
    * Read all the entries in the journal.
    */
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
+
+  /**
+   * Read the stored entries with the given ids. The result is aligned with
+   * `ids`, with `undefined` for ids that are not in the journal.
+   */
+  readonly entriesById: (
+    ids: ReadonlyArray<EntryId>
+  ) => Effect.Effect<ReadonlyArray<Entry | undefined>, EventJournalError>
 
   /**
    * Write an event to the journal, performing an effect before committing the
@@ -59,11 +73,35 @@ export class EventJournal extends Context.Service<EventJournal, {
   }) => Effect.Effect<A, EventJournalError | E, R>
 
   /**
+   * Write several events to the journal, performing an effect before
+   * committing them.
+   *
+   * **Details**
+   *
+   * `effect` runs once with every entry, in input order and with ascending
+   * ids. The entries are committed together and then published to `changes`
+   * only after it succeeds. If it fails, nothing is committed or published.
+   */
+  readonly writeMany: <A, E, R>(options: {
+    readonly entries: Arr.NonEmptyReadonlyArray<{
+      readonly event: string
+      readonly primaryKey: string
+      readonly payload: Uint8Array
+    }>
+    readonly effect: (entries: Arr.NonEmptyReadonlyArray<Entry>) => Effect.Effect<A, E, R>
+  }) => Effect.Effect<A, EventJournalError | E, R>
+
+  /**
    * Write events from a remote source to the journal.
    *
    * **Details**
    *
-   * Effects run sequentially in compaction bracket order.
+   * `effect` runs once with every new entry in compaction order, each paired
+   * with the stored entries for the same event and primary key that are
+   * strictly newer than it. All conflicts are read before `effect` runs and
+   * the batch is committed after it succeeds, with no journal I/O while it
+   * runs. It is not called when the batch has no new entries. If `effect`
+   * fails, no entry from the batch is committed.
    */
   readonly writeFromRemote: (
     options: {
@@ -72,10 +110,12 @@ export class EventJournal extends Context.Service<EventJournal, {
       readonly compact?:
         | ((uncommitted: ReadonlyArray<RemoteEntry>) => Effect.Effect<ReadonlyArray<Entry>, EventJournalError>)
         | undefined
-      readonly effect: (options: {
-        readonly entry: Entry
-        readonly conflicts: ReadonlyArray<Entry>
-      }) => Effect.Effect<void, EventJournalError>
+      readonly effect: (
+        entries: ReadonlyArray<{
+          readonly entry: Entry
+          readonly conflicts: ReadonlyArray<Entry>
+        }>
+      ) => Effect.Effect<void, EventJournalError>
     }
   ) => Effect.Effect<{
     readonly duplicateEntries: ReadonlyArray<Entry>
@@ -92,6 +132,16 @@ export class EventJournal extends Context.Service<EventJournal, {
     remoteId: RemoteId,
     f: (entries: Arr.NonEmptyReadonlyArray<Entry>) => Effect.Effect<A, E, R>
   ) => Effect.Effect<Option<A>, EventJournalError | E, R>
+
+  /**
+   * Records upload acknowledgements, advancing `nextRemoteSequence` only across
+   * contiguous sequences from the current cursor or `firstSequence`.
+   */
+  readonly writeRemoteAcks: (options: {
+    readonly remoteId: RemoteId
+    readonly acks: ReadonlyArray<RemoteAck>
+    readonly firstSequence?: number | undefined
+  }) => Effect.Effect<void, EventJournalError>
 
   /**
    * Retrieve the first unused sequence number for a remote source.
@@ -249,6 +299,9 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
   return 0
 })
 
+let lastEntryIdMillis = 0
+let entryIdCounter = 0
+
 /**
  * Generates a UUID v7 `EntryId`, optionally using the supplied millisecond
  * timestamp.
@@ -258,17 +311,44 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * Use when generating an event-log entry id internally and the UUID v7 bytes
  * are trusted to satisfy the brand.
  *
+ * **Details**
+ *
+ * Ids taken from the clock are strictly ascending within the current process.
+ * Ids created in the same millisecond carry an incrementing 12-bit counter. If
+ * the clock stalls or moves backwards, ids keep the last millisecond, and
+ * after 4096 ids in one millisecond they move to the next one.
+ *
  * **Gotchas**
  *
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
+ * Ordering is only guaranteed within one process. Ids from different tabs or
+ * devices in the same millisecond sort by their random bytes. Ids created with
+ * an explicit `msecs` are not part of the sequence.
+ *
  * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
-export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
-  Uuid.v7Bytes(options.msecs ?? DateTime.nowUnsafe().epochMilliseconds) as EntryId
+export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId => {
+  if (options.msecs !== undefined) {
+    return Uuid.v7Bytes(options.msecs) as EntryId
+  }
+  const now = DateTime.nowUnsafe().epochMilliseconds
+  if (now > lastEntryIdMillis) {
+    lastEntryIdMillis = now
+    entryIdCounter = 0
+  } else if (++entryIdCounter > 0xfff) {
+    lastEntryIdMillis++
+    entryIdCounter = 0
+  }
+  const bytes = Uuid.v7Bytes(lastEntryIdMillis)
+  // The counter replaces the 12 random `rand_a` bits after the version.
+  bytes[6] = 0x70 | (entryIdCounter >> 8)
+  bytes[7] = entryIdCounter & 0xff
+  return bytes as EntryId
+}
 
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.
@@ -289,6 +369,14 @@ export const entryIdMillis = (entryId: EntryId): number =>
  *
  * An entry records its ID, event tag, primary key, and SchemaBinary-encoded
  * payload, with helpers for array SchemaBinary encoding and creation timestamps.
+ *
+ * **Gotchas**
+ *
+ * `EventLog` encodes `payload` with the `payloadSchemaBinary` of the event whose
+ * tag is `entry.event`, so decode it with that event's codec. A codec with an
+ * incompatible wire layout, such as a union of a group's tagged payload schemas,
+ * cannot read it. Entries from remote journals can carry tags the local schema
+ * does not define.
  *
  * @stability unstable
  * @category schemas
@@ -322,7 +410,11 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
    * @stability unstable
    * @since 4.0.0
    */
-  static decodeArray = Schema.decodeUnknownEffect(Entry.arraySchemaBinary)
+  static decodeArray = (
+    input: unknown,
+    options?: SchemaAST.ParseOptions
+  ): Effect.Effect<Array<Entry>, Schema.SchemaError> =>
+    Effect.map(decodeEntryFieldsArray(input, options), Arr.map(entryFromFields))
 
   /**
    * Ordering for committed entries by their event journal entry id.
@@ -332,6 +424,8 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
    */
   static Order = Order.make<Entry>((a, b) => EntryIdOrder(a.id, b.id))
 
+  #idString: string | undefined
+
   /**
    * String representation of the entry id.
    *
@@ -339,7 +433,7 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
    * @since 4.0.0
    */
   get idString(): string {
-    return Uuid.stringify(this.id)
+    return this.#idString ??= Uuid.stringify(this.id)
   }
 
   /**
@@ -364,6 +458,18 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
 }
 
 /**
+ * A local entry's remote-assigned sequence.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface RemoteAck {
+  readonly entryId: EntryId
+  readonly sequence: number
+}
+
+/**
  * Schema for an event journal entry received from a remote source.
  *
  * **Details**
@@ -378,6 +484,32 @@ export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/Even
   remoteSequence: Schema.Natural,
   entry: Entry
 }) {}
+
+// Decoding frames into the plain field structs and then constructing the
+// classes from the already validated fields skips the per-instance class
+// decode, which costs more than reading the frame. The wire format is the same.
+
+/** @internal */
+export const EntryFields = Schema.Struct(Entry.fields)
+
+/** @internal */
+export const entryFromFields = (fields: typeof EntryFields.Type): Entry => Schema.makeClassTrusted(Entry, fields)
+
+const decodeEntryFieldsArray = Schema.decodeUnknownEffect(Schema.Array(SchemaBinary.toCodec(EntryFields)))
+
+/** @internal */
+export const makeEntries = (
+  entries: Arr.NonEmptyReadonlyArray<
+    { readonly event: string; readonly primaryKey: string; readonly payload: Uint8Array }
+  >
+): Arr.NonEmptyArray<Entry> =>
+  Arr.map(entries, ({ event, payload, primaryKey }) =>
+    new Entry({
+      id: makeEntryIdUnsafe(),
+      event,
+      primaryKey,
+      payload
+    }, { disableChecks: true }))
 
 /**
  * Creates an in-memory `EventJournal` service.
@@ -419,22 +551,14 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     return created
   }
 
-  return EventJournal.of({
-    entries: Effect.sync(() => journal.slice()),
-    write({ effect, event, payload, primaryKey }) {
-      return Effect.acquireUseRelease(
-        Effect.sync(() =>
-          new Entry({
-            id: makeEntryIdUnsafe(),
-            event,
-            primaryKey,
-            payload
-          }, { disableChecks: true })
-        ),
-        effect,
-        (entry, exit) =>
-          Effect.suspend(() => {
-            if (exit._tag === "Failure" || byId.has(entry.idString)) return Effect.void
+  const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => makeEntries(entries)),
+      effect,
+      (entries, exit) =>
+        Effect.suspend(() => {
+          if (exit._tag === "Failure") return Effect.void
+          for (const entry of entries) {
             const last = journal[journal.length - 1]
             if (last !== undefined && last.createdAtMillis > entry.createdAtMillis) {
               journalSorted = false
@@ -444,55 +568,51 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
             remotes.forEach((remote) => {
               remote.missing.push(entry)
             })
-            return PubSub.publish(pubsub, entry)
-          })
-      )
-    },
+          }
+          return PubSub.publishAll(pubsub, entries)
+        })
+    )
+
+  return EventJournal.of({
+    entries: Effect.sync(() => journal.slice()),
+    write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
+    writeMany,
     writeFromRemote: Effect.fnUntraced(function*(options) {
       const remote = ensureRemote(options.remoteId)
       const uncommittedRemotes: Array<RemoteEntry> = []
-      const uncommitted: Array<Entry> = []
       const duplicateEntries: Array<Entry> = []
+      // Overlapping batches can repeat an entry; the first copy wins.
+      const incomingIds = new Set<string>()
       for (const remoteEntry of options.entries) {
-        if (byId.has(remoteEntry.entry.idString)) {
+        const idString = remoteEntry.entry.idString
+        if (byId.has(idString)) {
           duplicateEntries.push(remoteEntry.entry)
-          if (remoteEntry.remoteSequence >= remote.sequence) {
-            remote.sequence = remoteEntry.remoteSequence + 1
-          }
-          continue
+        } else if (!incomingIds.has(idString)) {
+          incomingIds.add(idString)
+          uncommittedRemotes.push(remoteEntry)
         }
-        uncommittedRemotes.push(remoteEntry)
-        uncommitted.push(remoteEntry.entry)
       }
 
       const compacted = options.compact
         ? yield* options.compact(uncommittedRemotes)
-        : uncommitted
+        : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
-      for (const originEntry of compacted) {
-        const entryMillis = entryIdMillis(originEntry.id)
-        const conflicts: Array<Entry> = []
-        for (let i = journal.length - 1; i >= -1; i--) {
-          const entry = journal[i]
-          if (entry !== undefined && entry.createdAtMillis > entryMillis) {
-            continue
-          }
-          for (let j = i + 1; j < journal.length; j++) {
-            const scannedEntry = journal[j]!
-            if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
-              conflicts.push(scannedEntry)
-            }
-          }
-          yield* options.effect({ entry: originEntry, conflicts })
-          break
+      if (compacted.length > 0) {
+        const index = new ConflictIndex(compacted)
+        // Only the newer suffix can conflict, unless local writes left the
+        // journal unordered.
+        let i = journalSorted ? journal.length : 0
+        while (i > 0 && journal[i - 1].createdAtMillis > index.oldestMillis) i--
+        for (; i < journal.length; i++) {
+          index.add(journal[i])
         }
+        yield* options.effect(index.toBatch())
       }
       for (const remoteEntry of uncommittedRemotes) {
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
-        if (remoteEntry.remoteSequence >= remote.sequence) {
-          remote.sequence = remoteEntry.remoteSequence + 1
-        }
       }
+      // Sequences advance with the commit, so a failed batch is redelivered.
+      remote.sequence = nextSequenceAfter(options.entries, remote.sequence)
       const imported = uncommittedRemotes.map((remoteEntry) => remoteEntry.entry).sort(byCreatedAt)
       insertOrdered(journal, journalSorted, imported)
       remotes.forEach((target) => {
@@ -525,7 +645,13 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
             }
           })
       ),
+    writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
+      Effect.sync(() => {
+        const remote = ensureRemote(remoteId)
+        remote.sequence = advanceSequence(remote.sequence, acks, firstSequence)
+      }),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
+    entriesById: (ids) => Effect.sync(() => ids.map((id) => byId.get(Uuid.stringify(id)))),
     changes: PubSub.subscribe(pubsub),
     destroy: Effect.sync(() => {
       journal.length = 0
@@ -594,20 +720,55 @@ export const makeIndexedDb = (options?: {
 }): Effect.Effect<EventJournal["Service"], EventJournalError, Scope> =>
   Effect.gen(function*() {
     const database = options?.database ?? "effect_event_journal"
-    const openRequest = indexedDB.open(database, 1)
-    openRequest.onupgradeneeded = () => {
+    const openRequest = indexedDB.open(database, 2)
+    openRequest.onupgradeneeded = (event) => {
       const db = openRequest.result
+      const tx = openRequest.transaction!
 
-      const entries = db.createObjectStore("entries", { keyPath: "id" })
-      entries.createIndex("id", "id", { unique: true })
-      entries.createIndex("event", "event")
+      if (event.oldVersion < 1) {
+        const entries = db.createObjectStore("entries", { keyPath: "id" })
+        entries.createIndex("id", "id", { unique: true })
+        entries.createIndex("event", "event")
+        db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] }).createIndex("id", "remoteId", { unique: true })
+      }
 
-      const remotes = db.createObjectStore("remotes", { keyPath: ["remoteId", "entryId"] })
-      remotes.createIndex("id", ["remoteId", "entryId"], { unique: true })
-      remotes.createIndex("sequence", ["remoteId", "sequence"], { unique: true })
+      const entries = tx.objectStore("entries")
+      // Bounds conflict reads to one event and primary key.
+      entries.createIndex("conflict", ["event", "primaryKey", "id"])
+      // Entry ids order creation, not insertion, so uploads checkpoint an
+      // insertion sequence instead.
+      const sequence = db.createObjectStore("entrySequence", { autoIncrement: true })
+      // The remote each imported entry came from, so uploads skip it.
+      const sources = db.createObjectStore("entrySource")
+      if (event.oldVersion < 1) return
 
-      const remoteEntryId = db.createObjectStore("remoteEntryId", { keyPath: ["remoteId"] })
-      remoteEntryId.createIndex("id", "remoteId", { unique: true })
+      // Number the existing entries in creation order.
+      const entryIds = entries.openKeyCursor()
+      entryIds.onsuccess = () => {
+        const cursor = entryIds.result
+        if (!cursor) return
+        sequence.add(cursor.primaryKey)
+        cursor.continue()
+      }
+
+      // Version 1 kept a `remotes` row per entry per remote and recorded upload
+      // progress as an entry id, which cannot become a checkpoint. Keep one
+      // source per entry and, walking each remote's rows in sequence order, its
+      // download cursor; then drop the store.
+      const progress = tx.objectStore("remoteEntryId")
+      progress.clear()
+      const remotes = tx.objectStore("remotes").index("sequence").openCursor()
+      remotes.onsuccess = () => {
+        const cursor = remotes.result
+        if (!cursor) {
+          db.deleteObjectStore("remotes")
+          return
+        }
+        const row = cursor.value as { remoteId: IDBValidKey; entryId: IDBValidKey; sequence: number }
+        sources.put(row.remoteId, row.entryId)
+        progress.put({ remoteId: row.remoteId, nextSequence: row.sequence + 1 })
+        cursor.continue()
+      }
     }
 
     const db = yield* Effect.acquireRelease(
@@ -617,194 +778,195 @@ export const makeIndexedDb = (options?: {
 
     const pubsub = yield* PubSub.unbounded<Entry>()
 
+    const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
+      Effect.uninterruptibleMask((restore) => {
+        const committed = makeEntries(entries)
+        return restore(effect(committed)).pipe(
+          Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
+            const tx = db.transaction(["entries", "entrySequence"], "readwrite")
+            const store = tx.objectStore("entries")
+            const sequence = tx.objectStore("entrySequence")
+            for (const entry of committed) {
+              store.put(encodeEntryIdb(entry))
+              sequence.add(entry.id as IDBValidKey)
+            }
+            onTransactionDone(tx, "writeMany", resume, constVoid)
+          })),
+          Effect.tap(PubSub.publishAll(pubsub, committed))
+        )
+      })
+
     return EventJournal.of({
       entries: idbReq("entries", () =>
         db.transaction("entries", "readonly")
           .objectStore("entries")
           .index("id")
           .getAll()).pipe(
-          Effect.flatMap((_) =>
-            decodeEntryIdbArray(_).pipe(
-              Effect.mapError((cause) => new EventJournalError({ method: "entries", cause }))
-            )
-          )
+          Effect.map((rows) => rows.map(entryFromIdb))
         ),
-      write: ({ effect, event, payload, primaryKey }) =>
-        Effect.uninterruptibleMask((restore) => {
-          const entry = new Entry({
-            id: makeEntryIdUnsafe(),
-            event,
-            primaryKey,
-            payload
-          }, { disableChecks: true })
-          return restore(effect(entry)).pipe(
-            Effect.tap(
-              idbReq("write", () =>
-                db.transaction("entries", "readwrite")
-                  .objectStore("entries")
-                  .put(encodeEntryIdb(entry)))
-            ),
-            Effect.tap(PubSub.publish(pubsub, entry))
-          )
-        }),
-      writeFromRemote: Effect.fnUntraced(function*(options) {
-        const uncommitted: Array<Entry> = []
-        const uncommittedRemotes: Array<RemoteEntry> = []
-        const duplicateEntries: Array<Entry> = []
-
-        yield* Effect.callback<void, EventJournalError>((resume) => {
-          const tx = db.transaction(["entries", "remotes"], "readwrite")
-          const entries = tx.objectStore("entries")
-          const remotes = tx.objectStore("remotes")
-          const iterator = options.entries[Symbol.iterator]()
-          const handleNext = (state: IteratorResult<RemoteEntry, void>) => {
-            if (state.done) return
-            const remoteEntry = state.value
-            const entry = remoteEntry.entry
-            const entryIdKey = entry.id as IDBValidKey
-            entries.get(entryIdKey).onsuccess = (event) => {
-              if (event.target && "result" in event.target && event.target.result) {
-                duplicateEntries.push(entry)
-                remotes.put({
-                  remoteId: options.remoteId,
-                  entryId: entry.id,
-                  sequence: remoteEntry.remoteSequence
-                })
-                handleNext(iterator.next())
-                return
-              }
-              uncommitted.push(entry)
-              uncommittedRemotes.push(remoteEntry)
-              handleNext(iterator.next())
+      entriesById: (ids) =>
+        Effect.callback<Array<Entry | undefined>, EventJournalError>((resume) => {
+          const entries: Array<Entry | undefined> = ids.map(() => undefined)
+          const tx = db.transaction("entries", "readonly")
+          const store = tx.objectStore("entries")
+          for (let i = 0; i < ids.length; i++) {
+            const request = store.get(ids[i] as IDBValidKey)
+            request.onsuccess = () => {
+              if (request.result !== undefined) entries[i] = entryFromIdb(request.result)
             }
           }
-          handleNext(iterator.next())
-          tx.oncomplete = () => resume(Effect.void)
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+          onTransactionDone(tx, "entriesById", resume, () => entries)
+          return Effect.sync(() => tx.abort())
+        }),
+      write: ({ effect, ...entry }) => writeMany({ entries: [entry], effect: (entries) => effect(entries[0]) }),
+      writeMany,
+      writeFromRemote: Effect.fnUntraced(function*(options) {
+        const uncommittedRemotes: Array<RemoteEntry> = []
+        const duplicateEntries: Array<Entry> = []
+        // Overlapping batches can repeat an entry; the first copy wins.
+        const incomingIds = new Set<string>()
+
+        yield* Effect.callback<void, EventJournalError>((resume) => {
+          const tx = db.transaction("entries", "readonly")
+          const entries = tx.objectStore("entries")
+          // Requests in a transaction complete in the order they were issued.
+          for (const remoteEntry of options.entries) {
+            const request = entries.getKey(remoteEntry.entry.id as IDBValidKey)
+            request.onsuccess = () => {
+              const idString = remoteEntry.entry.idString
+              if (request.result !== undefined) {
+                duplicateEntries.push(remoteEntry.entry)
+              } else if (!incomingIds.has(idString)) {
+                incomingIds.add(idString)
+                uncommittedRemotes.push(remoteEntry)
+              }
+            }
+          }
+          onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
 
         const compacted = options.compact
           ? yield* options.compact(uncommittedRemotes)
-          : uncommitted
+          : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
-        for (const originEntry of compacted) {
-          const conflicts: Array<Entry> = []
+        if (compacted.length > 0) {
+          const index = new ConflictIndex(compacted)
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
-            const entries = tx.objectStore("entries")
-            const cursorRequest = entries.index("id").openCursor(
-              IDBKeyRange.lowerBound(originEntry.id as IDBValidKey, true),
-              "next"
-            )
-            cursorRequest.onsuccess = () => {
-              const cursor = cursorRequest.result
-              if (!cursor) return
-              const decodedEntry = decodeEntryIdb(cursor.value)
-              if (
-                decodedEntry.event === originEntry.event &&
-                decodedEntry.primaryKey === originEntry.primaryKey
-              ) {
-                conflicts.push(decodedEntry)
+            const conflicts = tx.objectStore("entries").index("conflict")
+            // One read per group of the entries newer than its oldest, in id order.
+            for (const group of index.groups()) {
+              const request = conflicts.getAll(IDBKeyRange.bound(
+                [group.event, group.primaryKey, entryIdLowerBound(group.oldestMillis + 1)],
+                [group.event, group.primaryKey, entryIdUpperBound]
+              ))
+              request.onsuccess = () => {
+                for (const row of request.result) index.add(entryFromIdb(row))
               }
-              cursor.continue()
             }
-            tx.oncomplete = () => resume(Effect.void)
-            tx.onerror = () =>
-              resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+            onTransactionDone(tx, "writeFromRemote", resume, constVoid)
             return Effect.sync(() => tx.abort())
           })
-
-          yield* options.effect({ entry: originEntry, conflicts })
+          yield* options.effect(index.toBatch())
         }
 
         yield* Effect.callback<void, EventJournalError>((resume) => {
-          const tx = db.transaction(["entries", "remotes"], "readwrite")
+          const tx = db.transaction(["entries", "entrySource", "entrySequence", "remoteEntryId"], "readwrite")
           const entries = tx.objectStore("entries")
-          const remotes = tx.objectStore("remotes")
+          const sources = tx.objectStore("entrySource")
+          const sequence = tx.objectStore("entrySequence")
           for (const remoteEntry of uncommittedRemotes) {
             entries.add(encodeEntryIdb(remoteEntry.entry))
-            remotes.put({
-              remoteId: options.remoteId,
-              entryId: remoteEntry.entry.id,
-              sequence: remoteEntry.remoteSequence
-            })
+            sequence.add(remoteEntry.entry.id as IDBValidKey)
+            sources.put(options.remoteId, remoteEntry.entry.id as IDBValidKey)
           }
-          tx.oncomplete = () => resume(Effect.void)
-          tx.onerror = () => resume(Effect.fail(new EventJournalError({ method: "writeFromRemote", cause: tx.error })))
+          // Sequences advance with the commit, so a failed batch is redelivered.
+          advanceProgress(
+            tx.objectStore("remoteEntryId"),
+            options.remoteId,
+            "nextSequence",
+            () => nextSequenceAfter(options.entries)
+          )
+          onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
         return {
           duplicateEntries
         }
       }),
-      withRemoteUncommited: (remoteId, f) =>
-        Effect.callback<ReadonlyArray<Entry>, EventJournalError>((resume) => {
-          const entries: Array<Entry> = []
-          const tx = db.transaction(["entries", "remotes", "remoteEntryId"], "readwrite")
-
-          const entriesStore = tx.objectStore("entries")
-          const remotesStore = tx.objectStore("remotes")
-          const remoteEntryIdStore = tx.objectStore("remoteEntryId")
-
-          const remoteIdKey = remoteId as IDBValidKey
-          const request = remoteEntryIdStore.get(remoteIdKey) as IDBRequest<{ entryId: IDBValidKey } | undefined>
-          request.onsuccess = () => {
-            const startEntryId = request.result?.entryId
-            const entryCursor = entriesStore.index("id").openCursor(
-              startEntryId ? IDBKeyRange.lowerBound(startEntryId, true) : null,
-              "next"
-            )
-            entryCursor.onsuccess = () => {
-              const cursor = entryCursor.result
-              if (!cursor) return
-              const entry = decodeEntryIdb(cursor.value)
-              remotesStore.get([remoteIdKey, entry.id as IDBValidKey]).onsuccess = (event) => {
-                if (!(event.target && "result" in event.target && event.target.result)) entries.push(entry)
+      withRemoteUncommited: (remoteId, f) => {
+        const remoteIdKey = remoteId as IDBValidKey
+        return Effect.callback<{ readonly entries: Array<Entry>; readonly sequence: number }, EventJournalError>(
+          (resume) => {
+            const entries: Array<Entry> = []
+            // The last insertion sequence visited, or 0 when nothing follows the checkpoint.
+            let sequence = 0
+            const tx = db.transaction(["entries", "entrySource", "remoteEntryId", "entrySequence"], "readonly")
+            const entriesStore = tx.objectStore("entries")
+            const sourcesStore = tx.objectStore("entrySource")
+            const checkpoint = tx.objectStore("remoteEntryId").get([remoteIdKey]) as IDBRequest<
+              RemoteProgress | undefined
+            >
+            checkpoint.onsuccess = () => {
+              const cursorRequest = tx.objectStore("entrySequence").openCursor(
+                IDBKeyRange.lowerBound(checkpoint.result?.sequence ?? 0, true)
+              )
+              cursorRequest.onsuccess = () => {
+                const cursor = cursorRequest.result
+                if (!cursor) return
+                sequence = cursor.key as number
+                const entryId = cursor.value as IDBValidKey
+                const source = sourcesStore.get(entryId)
+                source.onsuccess = () => {
+                  if (source.result !== undefined && indexedDB.cmp(source.result, remoteIdKey) === 0) return
+                  const entry = entriesStore.get(entryId)
+                  entry.onsuccess = () => {
+                    entries.push(entryFromIdb(entry.result))
+                  }
+                }
                 cursor.continue()
               }
             }
+            onTransactionDone(tx, "withRemoteUncommited", resume, () => ({ entries, sequence }))
+            return Effect.sync(() => tx.abort())
           }
-
-          tx.oncomplete = () => resume(Effect.succeed(entries))
-          tx.onerror = () =>
-            resume(Effect.fail(new EventJournalError({ method: "withRemoteUncommited", cause: tx.error })))
-          return Effect.sync(() => tx.abort())
-        }).pipe(
-          Effect.flatMap((entries) => {
-            if (!Arr.isReadonlyArrayNonEmpty(entries)) return Effect.succeedNone
-            const entryId = entries[entries.length - 1].id
+        ).pipe(
+          Effect.flatMap(({ entries, sequence }) => {
+            if (sequence === 0) return Effect.succeedNone
+            entries.sort(byEntryId)
             return Effect.uninterruptibleMask((restore) =>
-              restore(f(entries)).pipe(
-                Effect.tap(
-                  idbReq("withRemoteUncommited", () =>
-                    db.transaction("remoteEntryId", "readwrite").objectStore("remoteEntryId").put({
-                      remoteId,
-                      entryId
-                    }))
-                ),
-                Effect.asSome
+              restore(Arr.isReadonlyArrayNonEmpty(entries) ? Effect.asSome(f(entries)) : Effect.succeedNone).pipe(
+                Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
+                  // Uploads can complete out of order; the checkpoint only moves forward.
+                  const tx = db.transaction("remoteEntryId", "readwrite")
+                  advanceProgress(tx.objectStore("remoteEntryId"), remoteId, "sequence", () => sequence)
+                  onTransactionDone(tx, "withRemoteUncommited", resume, constVoid)
+                }))
               )
             )
           })
-        ),
+        )
+      },
+      writeRemoteAcks: ({ acks, firstSequence, remoteId }) =>
+        Effect.callback<void, EventJournalError>((resume) => {
+          const tx = db.transaction("remoteEntryId", "readwrite")
+          advanceProgress(
+            tx.objectStore("remoteEntryId"),
+            remoteId,
+            "nextSequence",
+            (next) => advanceSequence(next, acks, firstSequence)
+          )
+          onTransactionDone(tx, "writeRemoteAcks", resume, constVoid)
+          return Effect.sync(() => tx.abort())
+        }),
       nextRemoteSequence: (remoteId) =>
         Effect.callback<number, EventJournalError>((resume) => {
-          const tx = db.transaction("remotes", "readonly")
-          let sequence = 0
-          const remoteIdKey = remoteId as IDBValidKey
-          const cursorRequest = tx.objectStore("remotes").index("sequence").openCursor(
-            IDBKeyRange.bound([remoteIdKey, 0], [remoteIdKey, Infinity]),
-            "prev"
-          )
-          cursorRequest.onsuccess = () => {
-            const cursor = cursorRequest.result
-            if (!cursor) return
-            sequence = cursor.value.sequence + 1
-          }
-          tx.oncomplete = () => resume(Effect.succeed(sequence))
-          tx.onerror = () =>
-            resume(Effect.fail(new EventJournalError({ method: "nextRemoteSequence", cause: tx.error })))
+          const tx = db.transaction("remoteEntryId", "readonly")
+          const progress = tx.objectStore("remoteEntryId").get([remoteId as IDBValidKey]) as IDBRequest<
+            RemoteProgress | undefined
+          >
+          onTransactionDone(tx, "nextRemoteSequence", resume, () => progress.result?.nextSequence ?? 0)
           return Effect.sync(() => tx.abort())
         }),
       changes: PubSub.subscribe(pubsub),
@@ -814,6 +976,37 @@ export const makeIndexedDb = (options?: {
       withLock: yield* makeBrowserWithLock(database)
     })
   })
+
+/**
+ * The sequence following every entry in a delivered batch.
+ *
+ * @internal
+ */
+export const nextSequenceAfter = (entries: ReadonlyArray<RemoteEntry>, next = 0): number => {
+  for (const remoteEntry of entries) {
+    if (remoteEntry.remoteSequence >= next) next = remoteEntry.remoteSequence + 1
+  }
+  return next
+}
+
+/**
+ * Advances across contiguous acknowledgements without skipping unseen entries.
+ *
+ * @internal
+ */
+export const advanceSequence = (
+  next: number,
+  acks: ReadonlyArray<RemoteAck>,
+  firstSequence = 0
+): number => {
+  next = Math.max(next, firstSequence)
+  const sequences = acks.map((ack) => ack.sequence).sort((a, b) => a - b)
+  for (const sequence of sequences) {
+    if (sequence === next) next++
+    else if (sequence > next) break
+  }
+  return next
+}
 
 const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
   if (typeof navigator !== "undefined" && "locks" in navigator) {
@@ -839,10 +1032,60 @@ const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
   }
 })
 
-const decodeEntryIdb = Schema.decodeSync(Entry)
+// Progress for a remote: `sequence` is the upload checkpoint and `nextSequence`
+// the download cursor.
+interface RemoteProgress {
+  readonly sequence?: number
+  readonly nextSequence?: number
+}
+
+// Raises one progress field within the store's transaction; progress only moves forward.
+const advanceProgress = (
+  store: IDBObjectStore,
+  remoteId: RemoteId,
+  field: keyof RemoteProgress,
+  next: (current: number) => number
+): void => {
+  const request = store.get([remoteId as IDBValidKey]) as IDBRequest<RemoteProgress | undefined>
+  request.onsuccess = () => {
+    const current = request.result?.[field] ?? 0
+    const value = next(current)
+    if (value > current) store.put({ ...request.result, remoteId, [field]: value })
+  }
+}
+
+const byEntryId = (a: Entry, b: Entry) => indexedDB.cmp(a.id as IDBValidKey, b.id as IDBValidKey)
+
+// The smallest entry id created in the given millisecond.
+const entryIdLowerBound = (millis: number): Uint8Array => {
+  const bytes = new Uint8Array(16)
+  for (let i = 5; i >= 0; i--) {
+    bytes[i] = millis % 256
+    millis = Math.floor(millis / 256)
+  }
+  return bytes
+}
+
+// Greater than or equal to every entry id.
+const entryIdUpperBound = new Uint8Array(16).fill(0xff)
+
+interface EntryIdb {
+  readonly id: EntryId
+  readonly event: string
+  readonly primaryKey: string
+  readonly payload: Uint8Array
+}
+
+// Rows are written by `encodeEntryIdb`, so they are not validated again.
+const entryFromIdb = (row: EntryIdb): Entry =>
+  new Entry({
+    id: row.id,
+    event: row.event,
+    primaryKey: row.primaryKey,
+    payload: row.payload
+  }, { disableChecks: true })
+
 const encodeEntryIdb = Schema.encodeSync(Entry)
-const EntryIdbArray = Schema.Array(Entry)
-const decodeEntryIdbArray = Schema.decodeUnknownEffect(EntryIdbArray)
 
 /**
  * Provides `EventJournal` using the IndexedDB-backed implementation created by
@@ -859,6 +1102,18 @@ export const layerIndexedDb = (options?: {
     EventJournal,
     makeIndexedDb(options)
   )
+
+// Resumes when the transaction commits, and fails if it errors or aborts. An
+// abort, such as a failed commit, does not always dispatch an error first.
+const onTransactionDone = <A>(
+  tx: IDBTransaction,
+  method: string,
+  resume: (effect: Effect.Effect<A, EventJournalError>) => void,
+  onComplete: () => A
+): void => {
+  tx.oncomplete = () => resume(Effect.succeed(onComplete()))
+  tx.onerror = tx.onabort = () => resume(Effect.fail(new EventJournalError({ method, cause: tx.error })))
+}
 
 const idbReq = <T>(method: string, evaluate: () => IDBRequest<T>) =>
   Effect.callback<T, EventJournalError>((resume) => {

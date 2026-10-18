@@ -416,9 +416,15 @@ export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> 
  *
  * **Gotchas**
  *
- * OpenAPI 3.0 `nullable` is applied only when the same Schema Object has an
- * explicit string `type`; other constraints such as `enum` are left
- * unchanged. Unknown keywords, vendor extensions, and annotation values are
+ * OpenAPI 3.0 specifies that `nullable` applies only when the same Schema
+ * Object has an explicit string `type`. For compatibility with tooling that
+ * uses a single-member `allOf` for nullable references, this converter also
+ * rewrites `{ nullable: true, allOf: [schema] }` to
+ * `{ anyOf: [schema, { type: "null" }] }` when there is no string `type` or
+ * existing `anyOf`. Sibling constraints such as `enum` remain unchanged and
+ * may still reject null.
+ *
+ * Unknown keywords, vendor extensions, and annotation values are
  * copied opaquely unless their name would become active in Draft 2020-12 and
  * change meaning, in which case conversion throws. Siblings of a valid
  * OpenAPI 3.0 `$ref` are ignored.
@@ -1331,8 +1337,17 @@ function convertOpenApi30(root: JsonSchema): JsonSchema {
     }
     rejectKeywordCollisions(source, OPEN_API_30_TO_2020_COLLISIONS, "Draft 2020-12", "OpenAPI 3.0")
 
+    const nullableAllOf = isOpenApi30NullableAllOf(source)
+
     for (const key of Object.keys(source)) {
       const value = source[key]
+      if (nullableAllOf && key === "allOf") {
+        InternalRecord.assignProperty(out, "anyOf", [
+          context.schemaAt(source.allOf[0], ["allOf", "0"], ["anyOf", "0"]),
+          { type: "null" }
+        ])
+        continue
+      }
       if (
         convertSubschemaKeyword(
           out,
@@ -1367,6 +1382,16 @@ function convertOpenApi30(root: JsonSchema): JsonSchema {
 
     return out
   })
+}
+
+function isOpenApi30NullableAllOf(
+  source: JsonSchema
+): source is JsonSchema & { readonly allOf: readonly [unknown] } {
+  return source.nullable === true &&
+    typeof source.type !== "string" &&
+    source.anyOf === undefined &&
+    Array.isArray(source.allOf) &&
+    source.allOf.length === 1
 }
 
 function convertOpenApiExclusiveBound(
