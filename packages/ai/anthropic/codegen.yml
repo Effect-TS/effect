@@ -13,10 +13,13 @@ includePaths:
   - /v1/skills
 name: AnthropicClient
 patches:
-  # Released Skills response contracts, before upstream renamed and reshaped them. Copied verbatim from the
+  # Upstream reuses released Skills names for reshaped schemas. Move the current wire schemas to
+  # *Resource names, and point the operations at them, so the released contracts below keep their names.
+  - patches/current-skills.json
+  # Released Skills contracts, before upstream renamed and reshaped them. Copied verbatim from the
   # spec generated on 2026-02-20 (anthropic-sdk-typescript fdaa72bed1). Regenerate with:
   #   curl -sL 'https://storage.googleapis.com/stainless-sdk-openapi-specs/anthropic%2Fanthropic-29a6b7ba51942cd606e5bf4b533e5aac1bef42f6d4b1f7f45f756304cf676782.yml' \
-  #     | jq '[.components.schemas | to_entries[] | select(.key | test("^(Beta)?((Create|Get|Delete)Skill(Version)?Response|api__schemas__skills__Skill)$")) | {op: "add", path: "/components/schemas/\(.key)", value: .value}]' \
+  #     | jq '[.components.schemas | to_entries[] | select(.key | test("^(Beta)?((Create|Get|Delete)Skill(Version)?Response|api__schemas__skills__Skill|Skill(Version)?|List(Skills|SkillVersions)Response)$")) | {op: "add", path: "/components/schemas/\(.key)", value: .value}]' \
   #     > packages/ai/anthropic/patches/legacy-skills.json
   - patches/legacy-skills.json
   # Keep usage fields optional when the API or Anthropic-compatible gateways omit them (#8464).
@@ -81,6 +84,14 @@ includeSchemas:
   - DeleteSkillVersionResponse
   - GetSkillResponse
   - GetSkillVersionResponse
+  - Skill
+  - SkillVersion
+  - BetaSkill
+  - BetaSkillVersion
+  - ListSkillsResponse
+  - ListSkillVersionsResponse
+  - BetaListSkillsResponse
+  - BetaListSkillVersionsResponse
 header: |
   /**
    * @stability unstable

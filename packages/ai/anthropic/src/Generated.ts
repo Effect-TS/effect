@@ -2843,7 +2843,7 @@ export const DeletedSkill = Schema.Struct({
     "default": "skill_deleted"
   })
 }).annotate({ "title": "DeletedSkill", "identifier": "DeletedSkill" })
-export type SkillVersion = {
+export type SkillVersionResource = {
   readonly "created_at": string
   readonly "description": string
   readonly "id": string
@@ -2851,7 +2851,7 @@ export type SkillVersion = {
   readonly "skill_id": string
   readonly "type": "skill_version"
 }
-export const SkillVersion = Schema.Struct({
+export const SkillVersionResource = Schema.Struct({
   "created_at": Schema.String.annotate({
     "title": "Created At",
     "description": "ISO 8601 timestamp of when the skill was created.",
@@ -2880,7 +2880,7 @@ export const SkillVersion = Schema.Struct({
     "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
     "default": "skill_version"
   })
-}).annotate({ "title": "SkillVersion", "identifier": "SkillVersion" })
+}).annotate({ "title": "SkillVersion", "identifier": "SkillVersionResource" })
 export type DeletedSkillVersion = { readonly "id": string; readonly "type": "skill_version_deleted" }
 export const DeletedSkillVersion = Schema.Struct({
   "id": Schema.String.annotate({
@@ -6086,7 +6086,7 @@ export const BetaDeletedSkill = Schema.Struct({
     "default": "skill_deleted"
   })
 }).annotate({ "title": "DeletedSkill", "identifier": "BetaDeletedSkill" })
-export type BetaSkillVersion = {
+export type BetaSkillVersionResource = {
   readonly "created_at": string
   readonly "description": string
   readonly "id": string
@@ -6094,7 +6094,7 @@ export type BetaSkillVersion = {
   readonly "skill_id": string
   readonly "type": "skill_version"
 }
-export const BetaSkillVersion = Schema.Struct({
+export const BetaSkillVersionResource = Schema.Struct({
   "created_at": Schema.String.annotate({
     "title": "Created At",
     "description": "ISO 8601 timestamp of when the skill was created.",
@@ -6123,7 +6123,7 @@ export const BetaSkillVersion = Schema.Struct({
     "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
     "default": "skill_version"
   })
-}).annotate({ "title": "SkillVersion", "identifier": "BetaSkillVersion" })
+}).annotate({ "title": "SkillVersion", "identifier": "BetaSkillVersionResource" })
 export type BetaDeletedSkillVersion = { readonly "id": string; readonly "type": "skill_version_deleted" }
 export const BetaDeletedSkillVersion = Schema.Struct({
   "id": Schema.String.annotate({
@@ -6841,6 +6841,169 @@ export const GetSkillVersionResponse = Schema.Struct({
       "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
   })
 }).annotate({ "title": "GetSkillVersionResponse", "identifier": "GetSkillVersionResponse" })
+export type Skill = {
+  readonly "created_at": string
+  readonly "display_title": string | null
+  readonly "id": string
+  readonly "latest_version": string | null
+  readonly "source": string
+  readonly "type": string
+  readonly "updated_at": string
+}
+export const Skill = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill was created."
+  }),
+  "display_title": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Display Title",
+    "description":
+      "Display title for the skill.\n\nThis is a human-readable label that is not included in the prompt sent to the model."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "latest_version": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Latest Version",
+    "description":
+      "The latest version identifier for the skill.\n\nThis represents the most recent version of the skill that has been created."
+  }),
+  "source": Schema.String.annotate({
+    "title": "Source",
+    "description":
+      "Source of the skill.\n\nThis may be one of the following values:\n* `\"custom\"`: the skill was created by a user\n* `\"anthropic\"`: the skill was created by Anthropic"
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skills, this is always `\"skill\"`.",
+    "default": "skill"
+  }),
+  "updated_at": Schema.String.annotate({
+    "title": "Updated At",
+    "description": "ISO 8601 timestamp of when the skill was last updated."
+  })
+}).annotate({ "title": "Skill", "identifier": "Skill" })
+export type SkillVersion = {
+  readonly "created_at": string
+  readonly "description": string
+  readonly "directory": string
+  readonly "id": string
+  readonly "name": string
+  readonly "skill_id": string
+  readonly "type": string
+  readonly "version": string
+}
+export const SkillVersion = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill version was created."
+  }),
+  "description": Schema.String.annotate({
+    "title": "Description",
+    "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "directory": Schema.String.annotate({
+    "title": "Directory",
+    "description":
+      "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time."
+  }),
+  "name": Schema.String.annotate({
+    "title": "Name",
+    "description":
+      "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Identifier for the skill that this version belongs to."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+    "default": "skill_version"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  })
+}).annotate({ "title": "SkillVersion", "identifier": "SkillVersion" })
+export type BetaSkill = {
+  readonly "skill_id": string
+  readonly "type": "anthropic" | "custom"
+  readonly "version": string
+}
+export const BetaSkill = Schema.Struct({
+  "skill_id": Schema.String.annotate({ "title": "Skill Id", "description": "Skill ID" }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  ).check(Schema.isMaxCodePoints(64).annotate({ "expected": "a string with at most 64 code points" })),
+  "type": Schema.Literals(["anthropic", "custom"]).annotate({
+    "title": "Type",
+    "description": "Type of skill - either 'anthropic' (built-in) or 'custom' (user-defined)"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description": "Skill version or 'latest' for most recent version"
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(64).annotate({ "expected": "a string with at most 64 code points" })
+  )
+}).annotate({
+  "title": "Skill",
+  "description": "A skill that was loaded in a container (response model).",
+  "identifier": "BetaSkill"
+})
+export type BetaSkillVersion = {
+  readonly "created_at": string
+  readonly "description": string
+  readonly "directory": string
+  readonly "id": string
+  readonly "name": string
+  readonly "skill_id": string
+  readonly "type": string
+  readonly "version": string
+}
+export const BetaSkillVersion = Schema.Struct({
+  "created_at": Schema.String.annotate({
+    "title": "Created At",
+    "description": "ISO 8601 timestamp of when the skill version was created."
+  }),
+  "description": Schema.String.annotate({
+    "title": "Description",
+    "description": "Description of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "directory": Schema.String.annotate({
+    "title": "Directory",
+    "description":
+      "Directory name of the skill version.\n\nThis is the top-level directory name that was extracted from the uploaded files."
+  }),
+  "id": Schema.String.annotate({
+    "title": "Id",
+    "description": "Unique identifier for the skill version.\n\nThe format and length of IDs may change over time."
+  }),
+  "name": Schema.String.annotate({
+    "title": "Name",
+    "description":
+      "Human-readable name of the skill version.\n\nThis is extracted from the SKILL.md file in the skill upload."
+  }),
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Identifier for the skill that this version belongs to."
+  }),
+  "type": Schema.String.annotate({
+    "title": "Type",
+    "description": "Object type.\n\nFor Skill Versions, this is always `\"skill_version\"`.",
+    "default": "skill_version"
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Version identifier for the skill.\n\nEach version is identified by a Unix epoch timestamp (e.g., \"1759178010641129\")."
+  })
+}).annotate({ "title": "SkillVersion", "identifier": "BetaSkillVersion" })
 export type CompletionResponse = {
   readonly "completion": string
   readonly "id": string
@@ -9024,7 +9187,7 @@ export const BetaBody_create_skill_version_v1_skills__skill_id__versions_postMul
   "title": "Body_create_skill_version_v1_skills__skill_id__versions_post",
   "identifier": "BetaBody_create_skill_version_v1_skills__skill_id__versions_postMultipart"
 })
-export type Skill = {
+export type SkillResource = {
   readonly "created_at": string
   readonly "display_name": string
   readonly "id": string
@@ -9033,7 +9196,7 @@ export type Skill = {
   readonly "type": "skill"
   readonly "updated_at": string
 }
-export const Skill = Schema.Struct({
+export const SkillResource = Schema.Struct({
   "created_at": Schema.String.annotate({
     "title": "Created At",
     "description": "ISO 8601 timestamp of when the skill was created.",
@@ -9067,19 +9230,19 @@ export const Skill = Schema.Struct({
     "description": "ISO 8601 timestamp of when the skill was last updated.",
     "format": "date-time"
   })
-}).annotate({ "title": "Skill", "identifier": "Skill" })
-export type ListSkillVersionsResponse = {
-  readonly "data": ReadonlyArray<SkillVersion>
+}).annotate({ "title": "Skill", "identifier": "SkillResource" })
+export type ListSkillVersionResourcesResponse = {
+  readonly "data": ReadonlyArray<SkillVersionResource>
   readonly "next_page": string | null
 }
-export const ListSkillVersionsResponse = Schema.Struct({
-  "data": Schema.Array(SkillVersion).annotate({ "title": "Data", "description": "List of skills." }),
+export const ListSkillVersionResourcesResponse = Schema.Struct({
+  "data": Schema.Array(SkillVersionResource).annotate({ "title": "Data", "description": "List of skills." }),
   "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
     "title": "Next Page",
     "description":
       "Token for fetching the next page of results.\n\nIf `null`, there are no more results available. Pass this value to the `page` parameter in the next request to get the next page."
   })
-}).annotate({ "title": "ListSkillVersionsResponse", "identifier": "ListSkillVersionsResponse" })
+}).annotate({ "title": "ListSkillVersionsResponse", "identifier": "ListSkillVersionResourcesResponse" })
 export type BetaRequestToolReferenceBlock = {
   readonly "cache_control"?: BetaCacheControlEphemeral | null
   readonly "tool_name": string
@@ -11963,7 +12126,7 @@ export const BetaFileMetadataSchema = Schema.Struct({
     "description": "Object type.\n\nFor files, this is always `\"file\"`."
   })
 }).annotate({ "title": "FileMetadataSchema", "identifier": "BetaFileMetadataSchema" })
-export type BetaSkill = {
+export type BetaSkillResource = {
   readonly "created_at": string
   readonly "display_name": string
   readonly "id": string
@@ -11972,7 +12135,7 @@ export type BetaSkill = {
   readonly "type": "skill"
   readonly "updated_at": string
 }
-export const BetaSkill = Schema.Struct({
+export const BetaSkillResource = Schema.Struct({
   "created_at": Schema.String.annotate({
     "title": "Created At",
     "description": "ISO 8601 timestamp of when the skill was created.",
@@ -12006,17 +12169,85 @@ export const BetaSkill = Schema.Struct({
     "description": "ISO 8601 timestamp of when the skill was last updated.",
     "format": "date-time"
   })
-}).annotate({ "title": "Skill", "identifier": "BetaSkill" })
-export type BetaListSkillVersionsResponse = {
-  readonly "data": ReadonlyArray<BetaSkillVersion>
+}).annotate({ "title": "Skill", "identifier": "BetaSkillResource" })
+export type BetaListSkillVersionResourcesResponse = {
+  readonly "data": ReadonlyArray<BetaSkillVersionResource>
   readonly "next_page": string | null
 }
-export const BetaListSkillVersionsResponse = Schema.Struct({
-  "data": Schema.Array(BetaSkillVersion).annotate({ "title": "Data", "description": "List of skills." }),
+export const BetaListSkillVersionResourcesResponse = Schema.Struct({
+  "data": Schema.Array(BetaSkillVersionResource).annotate({ "title": "Data", "description": "List of skills." }),
   "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
     "title": "Next Page",
     "description":
       "Token for fetching the next page of results.\n\nIf `null`, there are no more results available. Pass this value to the `page` parameter in the next request to get the next page."
+  })
+}).annotate({ "title": "ListSkillVersionsResponse", "identifier": "BetaListSkillVersionResourcesResponse" })
+export type BetaListSkillsResponse = {
+  readonly "data": ReadonlyArray<Betaapi__schemas__skills__Skill>
+  readonly "has_more": boolean
+  readonly "next_page": string | null
+}
+export const BetaListSkillsResponse = Schema.Struct({
+  "data": Schema.Array(Betaapi__schemas__skills__Skill).annotate({ "title": "Data", "description": "List of skills." }),
+  "has_more": Schema.Boolean.annotate({
+    "title": "Has More",
+    "description":
+      "Whether there are more results available.\n\nIf `true`, there are additional results that can be fetched using the `next_page` token."
+  }),
+  "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Next Page",
+    "description":
+      "Token for fetching the next page of results.\n\nIf `null`, there are no more results available. Pass this value to the `page_token` parameter in the next request to get the next page."
+  })
+}).annotate({ "title": "ListSkillsResponse", "identifier": "BetaListSkillsResponse" })
+export type ListSkillsResponse = {
+  readonly "data": ReadonlyArray<Skill>
+  readonly "has_more": boolean
+  readonly "next_page": string | null
+}
+export const ListSkillsResponse = Schema.Struct({
+  "data": Schema.Array(Skill).annotate({ "title": "Data", "description": "List of skills." }),
+  "has_more": Schema.Boolean.annotate({
+    "title": "Has More",
+    "description":
+      "Whether there are more results available.\n\nIf `true`, there are additional results that can be fetched using the `next_page` token."
+  }),
+  "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Next Page",
+    "description":
+      "Token for fetching the next page of results.\n\nIf `null`, there are no more results available. Pass this value to the `page_token` parameter in the next request to get the next page."
+  })
+}).annotate({ "title": "ListSkillsResponse", "identifier": "ListSkillsResponse" })
+export type ListSkillVersionsResponse = {
+  readonly "data": ReadonlyArray<SkillVersion>
+  readonly "has_more": boolean
+  readonly "next_page": string | null
+}
+export const ListSkillVersionsResponse = Schema.Struct({
+  "data": Schema.Array(SkillVersion).annotate({ "title": "Data", "description": "List of skill versions." }),
+  "has_more": Schema.Boolean.annotate({
+    "title": "Has More",
+    "description": "Indicates if there are more results in the requested page direction."
+  }),
+  "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Next Page",
+    "description": "Token to provide in as `page` in the subsequent request to retrieve the next page of data."
+  })
+}).annotate({ "title": "ListSkillVersionsResponse", "identifier": "ListSkillVersionsResponse" })
+export type BetaListSkillVersionsResponse = {
+  readonly "data": ReadonlyArray<BetaSkillVersion>
+  readonly "has_more": boolean
+  readonly "next_page": string | null
+}
+export const BetaListSkillVersionsResponse = Schema.Struct({
+  "data": Schema.Array(BetaSkillVersion).annotate({ "title": "Data", "description": "List of skill versions." }),
+  "has_more": Schema.Boolean.annotate({
+    "title": "Has More",
+    "description": "Indicates if there are more results in the requested page direction."
+  }),
+  "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
+    "title": "Next Page",
+    "description": "Token to provide in as `page` in the subsequent request to retrieve the next page of data."
   })
 }).annotate({ "title": "ListSkillVersionsResponse", "identifier": "BetaListSkillVersionsResponse" })
 export type BetaRequestFallbackBlock = {
@@ -12539,15 +12770,18 @@ export const ListResponse_MessageBatch_ = Schema.Struct({
     "description": "Last ID in the `data` list. Can be used as the `after_id` for the next page."
   })
 }).annotate({ "title": "ListResponse[MessageBatch]", "identifier": "ListResponse_MessageBatch_" })
-export type ListSkillsResponse = { readonly "data": ReadonlyArray<Skill>; readonly "next_page": string | null }
-export const ListSkillsResponse = Schema.Struct({
-  "data": Schema.Array(Skill).annotate({ "title": "Data", "description": "List of skills." }),
+export type ListSkillResourcesResponse = {
+  readonly "data": ReadonlyArray<SkillResource>
+  readonly "next_page": string | null
+}
+export const ListSkillResourcesResponse = Schema.Struct({
+  "data": Schema.Array(SkillResource).annotate({ "title": "Data", "description": "List of skills." }),
   "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
     "title": "Next Page",
     "description":
       "Token for fetching the next page of results.\n\nIf `null`, there are no more results available. Pass this value to the `page` parameter in the next request to get the next page."
   })
-}).annotate({ "title": "ListSkillsResponse", "identifier": "ListSkillsResponse" })
+}).annotate({ "title": "ListSkillsResponse", "identifier": "ListSkillResourcesResponse" })
 export type BetaRequestToolSearchToolSearchResultBlock = {
   readonly "tool_references": ReadonlyArray<BetaRequestToolReferenceBlock>
   readonly "type": "tool_search_tool_search_result"
@@ -13355,15 +13589,18 @@ export const BetaFileListResponse = Schema.Struct({
     })
   )
 }).annotate({ "title": "FileListResponse", "identifier": "BetaFileListResponse" })
-export type BetaListSkillsResponse = { readonly "data": ReadonlyArray<BetaSkill>; readonly "next_page": string | null }
-export const BetaListSkillsResponse = Schema.Struct({
-  "data": Schema.Array(BetaSkill).annotate({ "title": "Data", "description": "List of skills." }),
+export type BetaListSkillResourcesResponse = {
+  readonly "data": ReadonlyArray<BetaSkillResource>
+  readonly "next_page": string | null
+}
+export const BetaListSkillResourcesResponse = Schema.Struct({
+  "data": Schema.Array(BetaSkillResource).annotate({ "title": "Data", "description": "List of skills." }),
   "next_page": Schema.Union([Schema.String, Schema.Null]).annotate({
     "title": "Next Page",
     "description":
       "Token for fetching the next page of results.\n\nIf `null`, there are no more results available. Pass this value to the `page` parameter in the next request to get the next page."
   })
-}).annotate({ "title": "ListSkillsResponse", "identifier": "BetaListSkillsResponse" })
+}).annotate({ "title": "ListSkillsResponse", "identifier": "BetaListSkillResourcesResponse" })
 export type RequestToolSearchToolResultBlock = {
   readonly "cache_control"?: CacheControlEphemeral | null
   readonly "content": RequestToolSearchToolResultError | RequestToolSearchToolSearchResultBlock
@@ -17016,8 +17253,8 @@ export const ListSkillsV1SkillsGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type ListSkillsV1SkillsGet200 = ListSkillsResponse
-export const ListSkillsV1SkillsGet200 = ListSkillsResponse
+export type ListSkillsV1SkillsGet200 = ListSkillResourcesResponse
+export const ListSkillsV1SkillsGet200 = ListSkillResourcesResponse
 export type ListSkillsV1SkillsGet4XX = ErrorResponse
 export const ListSkillsV1SkillsGet4XX = ErrorResponse
 export type CreateSkillV1SkillsPostParams = {
@@ -17036,8 +17273,8 @@ export const CreateSkillV1SkillsPostParams = Schema.Struct({
 })
 export type CreateSkillV1SkillsPostRequestFormData = Body_create_skill_v1_skills_postMultipart
 export const CreateSkillV1SkillsPostRequestFormData = Body_create_skill_v1_skills_postMultipart
-export type CreateSkillV1SkillsPost200 = Skill
-export const CreateSkillV1SkillsPost200 = Skill
+export type CreateSkillV1SkillsPost200 = SkillResource
+export const CreateSkillV1SkillsPost200 = SkillResource
 export type CreateSkillV1SkillsPost4XX = ErrorResponse
 export const CreateSkillV1SkillsPost4XX = ErrorResponse
 export type GetSkillV1SkillsSkillIdGetParams = {
@@ -17060,8 +17297,8 @@ export const GetSkillV1SkillsSkillIdGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type GetSkillV1SkillsSkillIdGet200 = Skill
-export const GetSkillV1SkillsSkillIdGet200 = Skill
+export type GetSkillV1SkillsSkillIdGet200 = SkillResource
+export const GetSkillV1SkillsSkillIdGet200 = SkillResource
 export type GetSkillV1SkillsSkillIdGet4XX = ErrorResponse
 export const GetSkillV1SkillsSkillIdGet4XX = ErrorResponse
 export type DeleteSkillV1SkillsSkillIdDeleteParams = {
@@ -17128,8 +17365,8 @@ export const ListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionsResponse
-export const ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionsResponse
+export type ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionResourcesResponse
+export const ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionResourcesResponse
 export type ListSkillVersionsV1SkillsSkillIdVersionsGet4XX = ErrorResponse
 export const ListSkillVersionsV1SkillsSkillIdVersionsGet4XX = ErrorResponse
 export type CreateSkillVersionV1SkillsSkillIdVersionsPostParams = {
@@ -17150,8 +17387,8 @@ export type CreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
   Body_create_skill_version_v1_skills__skill_id__versions_postMultipart
 export const CreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
   Body_create_skill_version_v1_skills__skill_id__versions_postMultipart
-export type CreateSkillVersionV1SkillsSkillIdVersionsPost200 = SkillVersion
-export const CreateSkillVersionV1SkillsSkillIdVersionsPost200 = SkillVersion
+export type CreateSkillVersionV1SkillsSkillIdVersionsPost200 = SkillVersionResource
+export const CreateSkillVersionV1SkillsSkillIdVersionsPost200 = SkillVersionResource
 export type CreateSkillVersionV1SkillsSkillIdVersionsPost4XX = ErrorResponse
 export const CreateSkillVersionV1SkillsSkillIdVersionsPost4XX = ErrorResponse
 export type GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = {
@@ -17174,8 +17411,8 @@ export const GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema.Str
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersion
-export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersion
+export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersionResource
+export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersionResource
 export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = ErrorResponse
 export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = ErrorResponse
 export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = {
@@ -17821,8 +18058,8 @@ export const BetaListSkillsV1SkillsGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaListSkillsV1SkillsGet200 = BetaListSkillsResponse
-export const BetaListSkillsV1SkillsGet200 = BetaListSkillsResponse
+export type BetaListSkillsV1SkillsGet200 = BetaListSkillResourcesResponse
+export const BetaListSkillsV1SkillsGet200 = BetaListSkillResourcesResponse
 export type BetaListSkillsV1SkillsGet4XX = BetaErrorResponse
 export const BetaListSkillsV1SkillsGet4XX = BetaErrorResponse
 export type BetaCreateSkillV1SkillsPostParams = {
@@ -17848,8 +18085,8 @@ export const BetaCreateSkillV1SkillsPostParams = Schema.Struct({
 })
 export type BetaCreateSkillV1SkillsPostRequestFormData = BetaBody_create_skill_v1_skills_postMultipart
 export const BetaCreateSkillV1SkillsPostRequestFormData = BetaBody_create_skill_v1_skills_postMultipart
-export type BetaCreateSkillV1SkillsPost200 = BetaSkill
-export const BetaCreateSkillV1SkillsPost200 = BetaSkill
+export type BetaCreateSkillV1SkillsPost200 = BetaSkillResource
+export const BetaCreateSkillV1SkillsPost200 = BetaSkillResource
 export type BetaCreateSkillV1SkillsPost4XX = BetaErrorResponse
 export const BetaCreateSkillV1SkillsPost4XX = BetaErrorResponse
 export type BetaGetSkillV1SkillsSkillIdGetParams = {
@@ -17879,8 +18116,8 @@ export const BetaGetSkillV1SkillsSkillIdGetParams = Schema.Struct({
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaGetSkillV1SkillsSkillIdGet200 = BetaSkill
-export const BetaGetSkillV1SkillsSkillIdGet200 = BetaSkill
+export type BetaGetSkillV1SkillsSkillIdGet200 = BetaSkillResource
+export const BetaGetSkillV1SkillsSkillIdGet200 = BetaSkillResource
 export type BetaGetSkillV1SkillsSkillIdGet4XX = BetaErrorResponse
 export const BetaGetSkillV1SkillsSkillIdGet4XX = BetaErrorResponse
 export type BetaDeleteSkillV1SkillsSkillIdDeleteParams = {
@@ -17961,8 +18198,8 @@ export const BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Stru
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionsResponse
-export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionsResponse
+export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionResourcesResponse
+export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionResourcesResponse
 export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX = BetaErrorResponse
 export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet4XX = BetaErrorResponse
 export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams = {
@@ -17990,8 +18227,8 @@ export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
   BetaBody_create_skill_version_v1_skills__skill_id__versions_postMultipart
 export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
   BetaBody_create_skill_version_v1_skills__skill_id__versions_postMultipart
-export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200 = BetaSkillVersion
-export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200 = BetaSkillVersion
+export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200 = BetaSkillVersionResource
+export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost200 = BetaSkillVersionResource
 export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX = BetaErrorResponse
 export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPost4XX = BetaErrorResponse
 export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = {
@@ -18021,8 +18258,8 @@ export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
-export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersion
-export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersion
+export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersionResource
+export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersionResource
 export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = BetaErrorResponse
 export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet4XX = BetaErrorResponse
 export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = {
