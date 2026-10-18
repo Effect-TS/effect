@@ -75,7 +75,8 @@ export const make = (options?: {
 
     const tableExists = (table: string) =>
       sql.onDialectOrElse({
-        pg: () => sql`SELECT 1 AS found WHERE to_regclass(${quoted(table)}) IS NOT NULL`,
+        // Reading the catalog refreshes cached names after concurrent DDL.
+        pg: () => sql`SELECT 1 AS found FROM pg_class WHERE oid = to_regclass(${quoted(table)})`,
         mysql: () =>
           sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
         mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${table}, 'U') IS NOT NULL`,
