@@ -280,64 +280,29 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   // SQLite INTEGER comes back as a JavaScript number on drivers that cannot
   // honor SafeIntegers, including Durable Objects. Snowflakes are above
   // 2^53, so read the id columns as text and keep the stored digits exact.
-  const idColumn = sql.onDialectOrElse({
-    sqlite: () => sql.literal("CAST(id AS TEXT) AS id"),
-    orElse: () => sql.literal("id")
+  const idsAsText = sql.onDialectOrElse({
+    sqlite: () => true,
+    orElse: () => false
   })
-  const replyColumns = sql.onDialectOrElse({
-    sqlite: () =>
-      sql.literal("CAST(id AS TEXT) AS id, kind, CAST(request_id AS TEXT) AS request_id, payload, sequence"),
-    orElse: () => sql.literal("id, kind, request_id, payload, sequence")
-  })
-  const duplicateColumns = sql.onDialectOrElse({
-    sqlite: () =>
-      sql.literal(
-        [
-          "CAST(m.id AS TEXT) AS id",
-          "CAST(r.id AS TEXT) AS reply_id",
-          "r.kind as reply_kind",
-          "r.payload as reply_payload",
-          "r.sequence as reply_sequence"
-        ].join(", ")
-      ),
-    orElse: () =>
-      sql.literal(
-        "m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence"
-      )
-  })
-  const messageJoinColumns = sql.onDialectOrElse({
-    sqlite: () =>
-      sql.literal(
-        [
-          "CAST(m.id AS TEXT) AS id",
-          "m.message_id",
-          "m.shard_id",
-          "m.entity_type",
-          "m.entity_id",
-          "m.kind",
-          "m.tag",
-          "m.payload",
-          "m.headers",
-          "m.trace_id",
-          "m.span_id",
-          "m.sampled",
-          "m.processed",
-          "CAST(m.request_id AS TEXT) AS request_id",
-          "CAST(m.reply_id AS TEXT) AS reply_id",
-          "CAST(m.last_reply_id AS TEXT) AS last_reply_id",
-          "m.last_read",
-          "m.deliver_at",
-          "CAST(r.id AS TEXT) AS reply_reply_id",
-          "r.kind as reply_kind",
-          "r.payload as reply_payload",
-          "r.sequence as reply_sequence"
-        ].join(", ")
-      ),
-    orElse: () =>
-      sql.literal(
-        "m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence"
-      )
-  })
+  const idAs = (column: string, alias: string) =>
+    idsAsText ? `CAST(${column} AS TEXT) AS ${alias}` : `${column} AS ${alias}`
+  const replyJoinColumns = "r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence"
+  const messageColumns = idsAsText
+    ? `${idAs("m.id", "id")}, m.message_id, m.shard_id, m.entity_type, m.entity_id, m.kind, m.tag, m.payload, ` +
+      `m.headers, m.trace_id, m.span_id, m.sampled, m.processed, ${idAs("m.request_id", "request_id")}, ` +
+      `${idAs("m.reply_id", "reply_id")}, ${idAs("m.last_reply_id", "last_reply_id")}, m.last_read, m.deliver_at`
+    : "m.*"
+
+  const idColumn = sql.literal(idAs("id", "id"))
+  const replyColumns = sql.literal(
+    `${idAs("id", "id")}, kind, ${idAs("request_id", "request_id")}, payload, sequence`
+  )
+  const duplicateColumns = sql.literal(
+    `${idAs("m.id", "id")}, ${idAs("r.id", "reply_id")}, ${replyJoinColumns}`
+  )
+  const messageJoinColumns = sql.literal(
+    `${messageColumns}, ${idAs("r.id", "reply_reply_id")}, ${replyJoinColumns}`
+  )
 
   const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
     sql`
