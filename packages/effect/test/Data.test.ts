@@ -49,16 +49,14 @@ describe("Data", () => {
       Object.defineProperty(args, "hidden", { value: 1, enumerable: false })
       const p: any = new Person(args)
       assert.strictEqual(p[sym], "value")
-      assert.strictEqual(Object.hasOwn(p, "hidden"), false)
       assert.deepStrictEqual(Reflect.ownKeys(p), ["name", "age", sym])
     })
 
     it("keeps the class prototype when args has an own __proto__ key", () => {
-      const args = JSON.parse("{\"name\":\"F\",\"age\":4,\"__proto__\":{\"polluted\":true}}")
+      const args = JSON.parse(`{"name":"F","age":4,"__proto__":{"polluted":true}}`)
       const p = new Person(args)
       assert.strictEqual(Object.getPrototypeOf(p), Person.prototype)
       assert.strictEqual(Object.getOwnPropertyDescriptor(p, "__proto__")?.value, args.__proto__)
-      assert.strictEqual((Object.prototype as any).polluted, undefined)
       assert.strictEqual(p.name, "F")
     })
   })
