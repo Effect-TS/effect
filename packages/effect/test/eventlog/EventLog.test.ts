@@ -761,6 +761,8 @@ describe("EventLog", () => {
         reactivity.registerUnsafe(["users"], () => {
           timeline.push("invalidate")
         })
+        // Building the log may take the lock; only the writes are under test.
+        timeline.length = 0
         const results = yield* log.writeMany({
           schema: renameSchema,
           events: [
