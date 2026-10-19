@@ -198,6 +198,34 @@ describe("Xml", () => {
         })
       }))
 
+    it.effect("decodes ASCII bytes under a US-ASCII declaration", () =>
+      Effect.gen(function*() {
+        const bytes = textEncoder.encode(
+          "<?xml version=\"1.0\" encoding=\"US-ASCII\"?><a>ASCII &#233;</a>"
+        )
+        for (const chunks of [[bytes], ...byteSplits(bytes)]) {
+          assert.deepStrictEqual(yield* decodeBytes(chunks), [
+            { _tag: "Declaration", version: "1.0", encoding: "US-ASCII" },
+            start("a"),
+            text("ASCII é"),
+            end("a")
+          ])
+        }
+      }))
+
+    for (const chunked of [false, true]) {
+      it.effect(`rejects non-ASCII bytes under a US-ASCII declaration (${chunked ? "chunked" : "whole"})`, () =>
+        Effect.gen(function*() {
+          const bytes = textEncoder.encode(
+            "<?xml version=\"1.0\" encoding=\"US-ASCII\"?><a>é</a>"
+          )
+          for (const chunks of chunked ? byteSplits(bytes) : [[bytes]]) {
+            const error = yield* Effect.flip(decodeBytes(chunks))
+            assert.strictEqual(error.kind, "Syntax")
+          }
+        }))
+    }
+
     it.effect("fails on malformed documents with positions", () =>
       Effect.gen(function*() {
         const cases: ReadonlyArray<readonly [string, Xml.XmlError["kind"], number, number]> = [
