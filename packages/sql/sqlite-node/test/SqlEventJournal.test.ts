@@ -3,6 +3,7 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
+import * as StoreIdTest from "effect-test/eventlog/EventJournalStoreIdTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -91,6 +92,18 @@ const importFromOtherProcess = (filename: string, msecs: number) => {
 
 describe("SqlEventJournal", () => {
   ConflictsTest.suite(makeJournal)
+  StoreIdTest.suite({
+    makeJournal,
+    // Each journal has its own connection to one database file.
+    makeStorage: Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const filename = (yield* fs.makeTempDirectoryScoped()) + "/journal.db"
+      return Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename })
+        return yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      }).pipe(Effect.provide(Reactivity.layer))
+    }).pipe(Effect.provide(NodeFileSystem.layer))
+  })
 
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {

@@ -4,6 +4,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
+import * as StoreIdTest from "./EventJournalStoreIdTest.ts"
 
 let databaseId = 0
 const uniqueName = (prefix: string) => `${prefix}-${databaseId++}`
@@ -173,6 +174,10 @@ const importFromOtherTab = (database: string, msecs: number) => {
 
 describe("EventJournal.makeIndexedDb", () => {
   ConflictsTest.suite(Effect.suspend(() => EventJournal.makeIndexedDb({ database: uniqueName("conflicts") })))
+  StoreIdTest.suite({
+    makeJournal: Effect.suspend(() => EventJournal.makeIndexedDb({ database: uniqueName("store-id") })),
+    makeStorage: Effect.sync(() => EventJournal.makeIndexedDb({ database: uniqueName("store-id") }))
+  })
 
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
