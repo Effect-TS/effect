@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Cause.prettyErrors` and `Cause.pretty` dropping an error's `cause` when it is falsy, such as `0`, `false`, `""` or `null`. Loggers and tracers that render causes now include it too.
+Preserve falsy nested error causes (`0`, `false`, `""`, `null`) in `Cause.prettyErrors` and `Cause.pretty`.
