@@ -323,6 +323,34 @@ describe("OpenApi", () => {
     assert.property(streamExtension, "errorSchema")
   })
 
+  it("documents the data schema of a StreamSse({ data }) response", () => {
+    const MyEvent = Schema.Struct({
+      kind: Schema.String,
+      payload: Schema.String
+    }).annotate({ identifier: "MyEvent" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("stream", "/stream", {
+          success: HttpApiSchema.StreamSse({ data: MyEvent })
+        })
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
+      MyEvent: {
+        type: "object",
+        properties: { kind: { type: "string" }, payload: { type: "string" } },
+        required: ["kind", "payload"],
+        additionalProperties: false
+      },
+      MyEventEncoded: {
+        type: "string",
+        contentMediaType: "application/json",
+        contentSchema: { $ref: "#/components/schemas/MyEvent" }
+      }
+    })
+  })
+
   it("emits the encoded schema of text bodies", () => {
     class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
     const Api = HttpApi.make("Api").add(

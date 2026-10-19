@@ -468,8 +468,31 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
             streamContent.forEach((stream, contentType) => {
               op.responses[status].content ??= {}
               if (HttpApiSchema.isStreamSse(stream)) {
+                const eventsSchemaTarget = registerSchema(stream.events.ast)
+                if (stream.sseMode === "data") {
+                  const eventsAst = stream.events.ast
+                  if (SchemaAST.isObjects(eventsAst)) {
+                    const dataPS = eventsAst.propertySignatures.find((ps) => ps.name === "data")
+                    if (dataPS) {
+                      const innerDataTarget = registerSchema(SchemaAST.toType(dataPS.type))
+                      finalizeOperations.push(() => {
+                        let dataDef: JsonSchema.JsonSchema | undefined = eventsSchemaTarget.properties?.data
+                        if (
+                          dataDef && typeof dataDef === "object" && !Array.isArray(dataDef) &&
+                          "$ref" in dataDef && typeof dataDef.$ref === "string"
+                        ) {
+                          const refKey = dataDef.$ref.replace(/^#\/components\/schemas\//, "")
+                          dataDef = spec.components.schemas[refKey]
+                        }
+                        if (dataDef && typeof dataDef === "object" && !Array.isArray(dataDef)) {
+                          ;(dataDef as Record<string, unknown>).contentSchema = innerDataTarget
+                        }
+                      })
+                    }
+                  }
+                }
                 InternalRecord.assignProperty(op.responses[status].content, contentType, {
-                  schema: registerSchema(stream.events.ast),
+                  schema: eventsSchemaTarget,
                   "x-effect-stream": {
                     encoding: "sse",
                     causeSchema: registerSchema(Schema.Cause(stream.error, Schema.Defect()).ast),
