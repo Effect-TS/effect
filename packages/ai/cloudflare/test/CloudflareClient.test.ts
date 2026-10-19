@@ -31,8 +31,11 @@ const httpLayer = (
     )
   )
 
-const clientLayer = (response: (request: HttpClientRequest.HttpClientRequest) => Response) =>
-  CloudflareClient.layer({ accountId: "test-account", apiKey: Redacted.make("test-token") }).pipe(
+const clientLayer = (
+  response: (request: HttpClientRequest.HttpClientRequest) => Response,
+  options?: Partial<CloudflareClient.Options>
+) =>
+  CloudflareClient.layer({ accountId: "test-account", apiKey: Redacted.make("test-token"), ...options }).pipe(
     Layer.provide(httpLayer((request) => Effect.succeed(HttpClientResponse.fromWeb(request, response(request)))))
   )
 
@@ -51,10 +54,10 @@ describe("CloudflareClient", () => {
       assert.strictEqual(
         request.url,
         "https://api.cloudflare.com/client/v4/accounts/test-account/ai/run/@cf/cloudflare/clef-flash"
-       )
-       assert.strictEqual(request.headers.authorization, "Bearer test-token")
-       assert.strictEqual(request.headers["cf-aig-gateway-id"], undefined)
-       assert.strictEqual(request.body._tag, "Uint8Array")
+      )
+      assert.strictEqual(request.headers.authorization, "Bearer test-token")
+      assert.strictEqual(request.headers["cf-aig-gateway-id"], undefined)
+      assert.strictEqual(request.body._tag, "Uint8Array")
       if (request.body._tag === "Uint8Array") {
         assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)), payload)
       }
@@ -62,25 +65,11 @@ describe("CloudflareClient", () => {
     }))))
 
   it.effect("routes requests through the configured AI Gateway", () =>
-    Effect.gen(function*() {
-      const response = yield* createDecisions
-      assert.deepStrictEqual(response, result)
-    }).pipe(
-      Effect.provide(
-        CloudflareClient.layer({
-          accountId: "test-account",
-          apiKey: Redacted.make("test-token"),
-          gatewayId: "test-gateway"
-        }).pipe(
-          Layer.provide(httpLayer((request) => {
-            assert.strictEqual(request.headers["cf-aig-gateway-id"], "test-gateway")
-            return Effect.succeed(HttpClientResponse.fromWeb(
-              request,
-              Response.json({ success: true, result, errors: [], messages: [] })
-            ))
-          }))
-        )
-      )
+    createDecisions.pipe(
+      Effect.provide(clientLayer((request) => {
+        assert.strictEqual(request.headers["cf-aig-gateway-id"], "test-gateway")
+        return Response.json({ success: true, result })
+      }, { gatewayId: "test-gateway" }))
     ))
 
   it.effect("layerConfig reads Cloudflare credentials and AI Gateway configuration from the environment", () =>
