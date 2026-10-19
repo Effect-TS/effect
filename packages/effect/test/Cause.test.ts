@@ -611,11 +611,13 @@ describe("Cause", () => {
     it("preserves falsy Error causes", () => {
       for (const value of [0, false, "", null]) {
         const [error] = Cause.prettyErrors(Cause.fail(new Error("outer", { cause: value })))
-        assert.ok(error.cause instanceof Error, `cause ${String(value)} was dropped`)
-        assert.strictEqual(error.cause.message, Cause.prettyErrors(Cause.fail(value))[0].message)
+        assert.ok(error.cause instanceof Error)
+        assert.strictEqual(error.cause.message, `Unknown error: ${value}`)
       }
-      const [error] = Cause.prettyErrors(Cause.fail(new Error("outer", { cause: undefined })))
-      assert.strictEqual(error.cause, undefined)
+      for (const original of [new Error("outer"), new Error("outer", { cause: undefined })]) {
+        const [error] = Cause.prettyErrors(Cause.fail(original))
+        assert.strictEqual(error.cause, undefined)
+      }
     })
 
     it("restores Error.stackTraceLimit when formatting a reason throws", () => {
