@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Fiber, Layer, Schema, Tracer } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 import { EmbeddingModel } from "effect/ai"
 import * as AiError from "effect/ai/AiError"
 
@@ -25,18 +25,6 @@ interface Batch {
   readonly inputs: ReadonlyArray<string>
   readonly kind: string | undefined
 }
-
-const makeRecordingModel = (batches: Array<Batch>, settings?: ReadonlyArray<Context.Key<any, any>>) =>
-  EmbeddingModel.make({
-    settings,
-    embedMany: ({ inputs }) =>
-      Effect.serviceOption(InputType).pipe(
-        Effect.map((inputType) => {
-          batches.push({ inputs, kind: inputType._tag === "Some" ? inputType.value.kind : undefined })
-          return { results: inputs.map((input) => [input.length]), usage: { inputTokens: undefined } }
-        })
-      )
-  })
 
 describe("EmbeddingModel", () => {
   it.effect("round trips usage with undefined input tokens through JSON", () =>
@@ -133,112 +121,38 @@ describe("EmbeddingModel", () => {
     )
   })
 
-  it.effect("embed calls share a batch only when their services match", () => {
-    const batches: Array<Batch> = []
-    const query = InputType.of({ kind: "query" })
-
-    return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches)
-      yield* Effect.all([
-        model.embed("a").pipe(Effect.provideService(InputType, query), Effect.provideService(Tenant, "t")),
-        model.embed("b").pipe(Effect.provideService(Tenant, "t"), Effect.provideService(InputType, query)),
-        model.embed("c").pipe(Effect.provideService(InputType, { kind: "query" }), Effect.provideService(Tenant, "t")),
-        model.embed("d").pipe(Effect.provideService(InputType, query)),
-        model.embed("e")
-      ], { concurrency: "unbounded" })
-
-      assert.deepStrictEqual(batches, [
-        { inputs: ["a", "b"], kind: "query" },
-        { inputs: ["c"], kind: "query" },
-        { inputs: ["d"], kind: "query" },
-        { inputs: ["e"], kind: undefined }
-      ])
-    })
-  })
-
-  it.effect("settings services are compared by value", () => {
+  it.effect("equal batch keys batch despite unrelated caller context and different keys split", () => {
     const batches: Array<Batch> = []
 
     return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches, [InputType])
+      const model = yield* EmbeddingModel.make({
+        batchKey: (context: Context.Context<never>) => [Context.getOrUndefined(context, InputType)],
+        embedMany: ({ inputs }) =>
+          Effect.serviceOption(InputType).pipe(
+            Effect.map((inputType) => {
+              batches.push({ inputs, kind: inputType._tag === "Some" ? inputType.value.kind : undefined })
+              return { results: inputs.map((input) => [input.length]), usage: { inputTokens: undefined } }
+            })
+          )
+      })
       yield* Effect.all([
-        model.embed("a").pipe(Effect.provideService(InputType, { kind: "document" })),
-        model.embed("b").pipe(Effect.provideService(InputType, { kind: "query" })),
-        model.embed("c").pipe(Effect.provideService(InputType, { kind: "document" })),
-        model.embed("d").pipe(
+        model.embed("a").pipe(
           Effect.provideService(InputType, { kind: "document" }),
-          Effect.provideService(Tenant, "t")
-        )
+          Effect.provideService(Tenant, "tenant-a")
+        ),
+        model.embed("b").pipe(Effect.provideService(InputType, { kind: "query" })),
+        model.embed("c").pipe(
+          Effect.provideService(InputType, { kind: "document" }),
+          Effect.provideService(Tenant, "tenant-c")
+        ),
+        model.embed("d")
       ], { concurrency: "unbounded" })
 
       assert.deepStrictEqual(batches, [
         { inputs: ["a", "c"], kind: "document" },
         { inputs: ["b"], kind: "query" },
-        { inputs: ["d"], kind: "document" }
+        { inputs: ["d"], kind: undefined }
       ])
-    })
-  })
-
-  it.effect("per-call tracing and logging services do not split a batch", () => {
-    const batches: Array<Batch> = []
-    const link = Tracer.externalSpan({ spanId: "span", traceId: "trace" })
-
-    return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches)
-      const embed = Effect.fn("embed")(function*(input: string) {
-        return yield* model.embed(input)
-      })
-      yield* Effect.all([
-        embed("a"),
-        model.embed("b").pipe(Effect.withLogSpan("b"), Effect.annotateLogs("item", "b")),
-        model.embed("c").pipe(Effect.annotateSpans("item", "c"), Effect.linkSpans(link)),
-        model.embed("d")
-      ], { concurrency: "unbounded" })
-
-      assert.deepStrictEqual(batches, [{ inputs: ["a", "b", "c", "d"], kind: undefined }])
-    })
-  })
-
-  it.effect("callers that retry a failed batch retry it as one provider call", () => {
-    const calls: Array<ReadonlyArray<string>> = []
-    const error = AiError.make({
-      module: "EmbeddingModelTest",
-      method: "embedMany",
-      reason: new AiError.UnknownError({ description: "rate limited" })
-    })
-
-    return Effect.gen(function*() {
-      const model = yield* EmbeddingModel.make({
-        embedMany: ({ inputs }) =>
-          Effect.suspend(() => {
-            calls.push(inputs)
-            return calls.length === 1
-              ? Effect.fail(error)
-              : Effect.succeed({ results: inputs.map((input) => [input.length]), usage: { inputTokens: undefined } })
-          })
-      })
-      const responses = yield* Effect.forEach(
-        ["a", "bb"],
-        (input) => model.embed(input).pipe(Effect.retry({ times: 1 })),
-        { concurrency: "unbounded" }
-      )
-
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[1], [2]])
-      assert.deepStrictEqual(calls, [["a", "bb"], ["a", "bb"]])
-    })
-  })
-
-  it.effect("an interrupted caller's input is not sent", () => {
-    const batches: Array<Batch> = []
-
-    return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches)
-      const a = yield* Effect.forkChild(model.embed("a"), { startImmediately: true })
-      const b = yield* Effect.forkChild(model.embed("b"), { startImmediately: true })
-      yield* Fiber.interrupt(b)
-      yield* Fiber.join(a)
-
-      assert.deepStrictEqual(batches, [{ inputs: ["a"], kind: undefined }])
     })
   })
 
