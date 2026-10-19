@@ -3,4 +3,4 @@
 "@effect/platform-deno": patch
 ---
 
-Take the `host` request header from the HTTP/2 `:authority` (RFC 9113 §8.3.1), so `HttpServerRequest.toURL` and URL span attributes no longer fall back to `localhost` or follow a conflicting `host` header for HTTP/2 requests.
+Use HTTP/2 authority for the exposed `host` header and request URL, even when Host is missing or conflicting. In Deno, also use the target authority for HTTP/1.1 absolute-form requests.

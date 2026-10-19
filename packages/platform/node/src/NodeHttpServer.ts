@@ -317,8 +317,6 @@ export const makeUpgradeHandler = <
   })
 }
 
-// HTTP/2 carries the target authority in `:authority`, which takes precedence
-// over any `host` header (RFC 9113 §8.3.1).
 const withAuthorityHost = (headers: Http.IncomingHttpHeaders): Http.IncomingHttpHeaders => {
   const authority = headers[":authority"]
   return typeof authority === "string" && headers.host !== authority ? { ...headers, host: authority } : headers
