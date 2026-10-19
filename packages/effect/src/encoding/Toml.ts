@@ -300,9 +300,8 @@ class TomlParser {
     let output = ""
     while (!this.done) {
       if (multiline && this.input.startsWith("\"\"\"", this.index)) {
-        const quotes = this.closingQuotes("\"")
-        this.advance(quotes + 3)
-        return output + "\"".repeat(quotes)
+        this.advance(3)
+        return output + this.closingQuotes("\"")
       }
       const character = this.peek()
       if (!multiline && character === "\"") {
@@ -365,10 +364,9 @@ class TomlParser {
     const start = this.index
     while (!this.done) {
       if (multiline && this.input.startsWith("'''", this.index)) {
-        const quotes = this.closingQuotes("'")
-        const output = this.input.slice(start, this.index + quotes)
-        this.advance(quotes + 3)
-        return output
+        const output = this.input.slice(start, this.index)
+        this.advance(3)
+        return output + this.closingQuotes("'")
       }
       if (!multiline && this.peek() === "'") {
         const output = this.input.slice(start, this.index)
@@ -383,10 +381,13 @@ class TomlParser {
     this.fail("Unterminated literal string")
   }
 
-  // A multiline string may end with one or two quotes right before its closing delimiter
-  private closingQuotes(quote: string): number {
-    let quotes = 0
-    while (quotes < 2 && this.input[this.index + 3 + quotes] === quote) quotes++
+  // Up to two quotes directly after a multiline closing delimiter belong to the string
+  private closingQuotes(quote: string): string {
+    let quotes = ""
+    while (quotes.length < 2 && this.peek() === quote) {
+      quotes += quote
+      this.advance()
+    }
     return quotes
   }
 
