@@ -574,18 +574,17 @@ const makeUpgradeServer = () =>
     )
   )
 
-const readUntilClose = (reader: Socket.Reader) =>
-  Effect.gen(function*() {
-    const decoder = new TextDecoder()
-    let text = ""
-    while (true) {
-      const chunks = yield* reader.pull.pipe(
-        Effect.catchReason("SocketError", "SocketCloseError", () => Effect.succeed(undefined))
-      )
-      if (chunks === undefined) return text
-      for (const chunk of chunks) text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
-    }
-  })
+const readUntilClose = Effect.fnUntraced(function*(reader: Socket.Reader) {
+  const decoder = new TextDecoder()
+  let text = ""
+  while (true) {
+    const chunks = yield* reader.pull.pipe(
+      Effect.catchReason("SocketError", "SocketCloseError", () => Effect.succeed(undefined))
+    )
+    if (chunks === undefined) return text
+    for (const chunk of chunks) text += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+  }
+})
 
 describe("NodeHttpClient upgrade", () => {
   ;[
