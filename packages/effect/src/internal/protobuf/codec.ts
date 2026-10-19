@@ -52,7 +52,8 @@ import {
   Writer
 } from "./wire.ts"
 
-function matchCase(oneof: Oneof, value: unknown): Case | undefined {
+/** @internal */
+export function matchCase(oneof: Oneof, value: unknown): Case | undefined {
   const discriminator = oneof.discriminator
   if (discriminator !== undefined) {
     return Predicate.isObject(value)
@@ -232,7 +233,8 @@ function unwrapCase(key: string, member: unknown): unknown {
 // The value of an explicit-presence slot, or `undefined` when it is absent.
 // `null` is absent only for a nullable slot; elsewhere it is a value, such as
 // the `null_value` of a `google.protobuf.Value`.
-function present(slot: Field | Oneof, value: unknown): unknown {
+/** @internal */
+export function present(slot: Field | Oneof, value: unknown): unknown {
   if (value === null && slot.nullAbsent) return undefined
   if (slot.absent === "none" && value !== undefined) {
     if (!Option.isOption(value)) throw new WireError("expected an Option", value)
@@ -561,13 +563,15 @@ function encodeWrapper(scalar: ScalarLayout, value: unknown, w: Writer): void {
   encodeScalar(scalar, value, w)
 }
 
-function enumNumber(type: EnumLayout, value: unknown): number {
+/** @internal */
+export function enumNumber(type: EnumLayout, value: unknown): number {
   const n = type.toNumber === undefined ? value : type.toNumber.get(value)
   if (typeof n !== "number" || !isInt32(n)) throw new WireError("expected an enum value", value)
   return n
 }
 
-function isZero(type: ValueLayout, value: unknown): boolean {
+/** @internal */
+export function isZero(type: ValueLayout, value: unknown): boolean {
   switch (type._tag) {
     case "Scalar":
       return isScalarZero(type, value)
@@ -945,7 +949,8 @@ function sharedZero(field: Field): unknown {
   }
 }
 
-function freshZero(field: Field): unknown {
+/** @internal */
+export function freshZero(field: Field): unknown {
   return field.kind === "repeated" ? [] : field.kind === "map" ? {} : zeroValue(field.type)
 }
 
@@ -1355,7 +1360,8 @@ function entryReader(field: Field, skip?: (key: string) => boolean): SlotReader 
 // A `__proto__` key is read and written as an own property: an assignment
 // would replace the prototype, and a read would return it.
 
-function setOwn(target: Record<PropertyKey, unknown>, key: PropertyKey, value: unknown): void {
+/** @internal */
+export function setOwn(target: Record<PropertyKey, unknown>, key: PropertyKey, value: unknown): void {
   if (key === "__proto__") {
     Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true })
   } else {
@@ -1363,7 +1369,8 @@ function setOwn(target: Record<PropertyKey, unknown>, key: PropertyKey, value: u
   }
 }
 
-function ownValue(source: Record<PropertyKey, unknown>, key: PropertyKey): unknown {
+/** @internal */
+export function ownValue(source: Record<PropertyKey, unknown>, key: PropertyKey): unknown {
   return key !== "__proto__" || Object.hasOwn(source, key) ? source[key] : undefined
 }
 
@@ -1436,7 +1443,8 @@ function mergeTarget(message: Message, previous: unknown): unknown {
 }
 
 // Unknown numbers pass through for the schema to judge.
-function enumValue(type: EnumLayout, n: number): unknown {
+/** @internal */
+export function enumValue(type: EnumLayout, n: number): unknown {
   if (type.fromNumber === undefined) return n
   const value = type.fromNumber.get(n)
   return value === undefined ? n : value
@@ -1751,7 +1759,8 @@ function joinTimestamp(wkt: "timestamp" | "date", seconds: bigint, nanos: number
   return dateTime.value
 }
 
-function joinDuration(seconds: bigint, nanos: number): Duration_.Duration {
+/** @internal */
+export function joinDuration(seconds: bigint, nanos: number): Duration_.Duration {
   const total = seconds * BIGINT_NANOS_PER_SECOND + BigInt(nanos)
   // Prefer the millisecond representation when it is exact.
   return total % BIGINT_NANOS_PER_MILLI === BIGINT_ZERO && total <= BIGINT_MAX_SAFE && total >= -BIGINT_MAX_SAFE
@@ -1830,7 +1839,8 @@ function decodeJsonList(r: Reader, end: number, depth: number, previous: unknown
   return out
 }
 
-function zeroScalar(type: ScalarLayout): unknown {
+/** @internal */
+export function zeroScalar(type: ScalarLayout): unknown {
   switch (type.scalar) {
     case "bool":
       return false

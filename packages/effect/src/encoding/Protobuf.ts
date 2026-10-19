@@ -1,11 +1,12 @@
 /**
- * Protocol Buffers binary codecs derived from Effect schemas.
+ * Protocol Buffers codecs derived from Effect schemas.
  *
  * {@link toCodec} compiles the encoded side of a schema into a protobuf message
  * layout. Transformations such as `Schema.FiniteFromString` or classes run
  * before the wire layer sees a value, and schema checks run after it decodes
  * one. The bytes match what other protobuf implementations write for a
- * message with the same field numbers and types.
+ * message with the same field numbers and types. {@link toCodecJson} uses the
+ * same layout for the proto3 JSON mapping.
  *
  * | Schema                                                        | Protobuf                                                 |
  * | ------------------------------------------------------------- | -------------------------------------------------------- |
@@ -66,12 +67,14 @@
 import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
 import { makeCodec } from "../internal/protobuf/codec.ts"
+import { makeJsonCodec } from "../internal/protobuf/json.ts"
 import {
   compileRoot,
   ENUM_KEY,
   FIELD_KEY,
   type FieldAnnotation,
   isUnsigned,
+  JSON_NAME_KEY,
   MAP_KEY_KEY,
   MAX_FIELD_NUMBER,
   type Root,
@@ -155,6 +158,52 @@ export function field(number: number, options?: FieldOptions) {
     encoding: options?.encoding
   }
   const annotations = { [FIELD_KEY]: annotation }
+  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.rebuild(SchemaAST.annotateKey(self.ast, annotations))
+}
+
+/**
+ * Sets the name of a field in the proto3 JSON mapping, like
+ * `[json_name = "…"]`.
+ *
+ * **When to use**
+ *
+ * Use when a field's `.proto` declares a custom `json_name`. Without it,
+ * {@link toCodecJson} derives the JSON name from the property key, as protoc
+ * does: `display_name` becomes `displayName`.
+ *
+ * **Details**
+ *
+ * Applies to a numbered struct property and to a oneof case: a member that
+ * carries its own field number, or the numbered property of a tagged struct
+ * case. Decoding accepts the JSON name and the property key, the proto field
+ * name. To keep a property key that differs from the proto field name, rename
+ * the key on the encoded side with `Schema.encodeKeys`. The binary codec
+ * ignores JSON names. An empty name throws immediately.
+ *
+ * **Example** (Declaring a custom JSON name)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { Protobuf } from "effect/encoding"
+ *
+ * // message Book { string display_name = 1 [json_name = "title"]; }
+ * const Book = Schema.Struct({
+ *   displayName: Schema.String.pipe(Protobuf.field(1), Protobuf.jsonName("title"))
+ * }).pipe(Schema.encodeKeys({ displayName: "display_name" }))
+ *
+ * const codec = Protobuf.toCodecJson(Book)
+ *
+ * Schema.encodeSync(codec)({ displayName: "Dune" }) // => { title: "Dune" }
+ * Schema.decodeUnknownSync(codec)({ display_name: "Dune" }) // => { displayName: "Dune" }
+ * ```
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.6
+ */
+export function jsonName(name: string) {
+  if (typeof name !== "string" || name === "") throw new Error("Protobuf JSON name must be a non-empty string")
+  const annotations = { [JSON_NAME_KEY]: name }
   return <S extends Schema.Top>(self: S): S["Rebuild"] => self.rebuild(SchemaAST.annotateKey(self.ast, annotations))
 }
 
@@ -686,21 +735,140 @@ export function toCodec<S extends Schema.Constraint>(schema: S): toCodec<S> {
 function makeTransformation(root: Root): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> {
   const codec = makeCodec(root)
   return SchemaTransformation.transformEffect({
-    decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
-      try {
-        return Effect.succeed(codec.decode(bytes))
-      } catch (e) {
-        return e instanceof WireError ? Effect.fail(toIssue(e, options)) : Effect.die(e)
-      }
-    },
-    encode: (value: unknown, options) => {
-      try {
-        return Effect.succeed(codec.encode(value))
-      } catch (e) {
-        return e instanceof WireError ? Effect.fail(toIssue(e, options)) : Effect.die(e)
-      }
-    }
+    decode: (bytes: Uint8Array<ArrayBuffer>, options) => run(() => codec.decode(bytes), options),
+    encode: (value: unknown, options) => run(() => codec.encode(value), options)
   })
+}
+
+/**
+ * The codec type returned by {@link toCodecJson}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface toCodecJson<S extends Schema.Constraint> extends
+  Schema.Codec<
+    S["Type"],
+    Schema.Json,
+    S["DecodingServices"],
+    S["EncodingServices"]
+  >
+{}
+
+const jsonCodecCache = new WeakMap<Schema.Constraint, toCodecJson<any>>()
+
+/**
+ * Derives a codec for the proto3 JSON mapping from a schema.
+ *
+ * **When to use**
+ *
+ * Use to exchange messages as JSON with other protobuf implementations, such
+ * as the `application/json` encoding of Connect or gRPC transcoding. The
+ * schema is laid out as by {@link toCodec}, so both codecs agree on what a
+ * message holds.
+ *
+ * **Details**
+ *
+ * The encoded side is a JSON value; compose with `Schema.fromJsonString` for
+ * text. Output is canonical proto3 JSON:
+ *
+ * - Fields are named in lowerCamelCase, as protoc derives JSON names from
+ *   the property key: `fooBar` stays `fooBar`, `foo_bar` becomes `fooBar`.
+ *   {@link jsonName} sets another name. Decoding also accepts the property
+ *   key; rename it on the encoded side with `Schema.encodeKeys` when it is not
+ *   the proto field name.
+ * - Implicit-presence fields holding their zero value, empty repeated fields,
+ *   and empty maps are left out. `null` is only written for a {@link Value}
+ *   holding it, unless the property is nullable, where it is left out.
+ * - Enums are written by name (the first name of an aliased number), or as a
+ *   number when the values have no names or the number is unknown.
+ * - 64-bit integers are strings, `bytes` are base64, and non-finite `double`
+ *   and `float` values are `"NaN"`, `"Infinity"`, and `"-Infinity"`.
+ * - Timestamps are RFC 3339 strings in UTC, durations are seconds such as
+ *   `"1.500s"`, wrappers are their scalar, and `Value`, `Struct`, and
+ *   `ListValue` are plain JSON.
+ * - A oneof case is a field of the parent object, named after the tag of a
+ *   tagged struct case, or `<oneof>_<number>` (as JSON, `<oneof><number>`)
+ *   for a case that carries its own field number.
+ * - Messages synthesized around values are objects with a `value` field, so
+ *   a `Schema.String` root is `{ "value": "…" }` where {@link StringValue} is
+ *   the bare string. Tuples (`ReadonlyMap` and `HashMap` included) are
+ *   arrays, and the entries of a `StructWithRest` index signature are
+ *   properties of the object itself.
+ *
+ * Decoding also accepts the inputs the spec allows: integers as numbers or
+ * strings (with an exponent or a zero fraction), enum numbers, URL-safe or
+ * unpadded base64, timestamps with an offset, and `null` for any absent
+ * field. Unknown fields are ignored, or rejected with
+ * `{ onExcessProperty: "error" }`.
+ *
+ * **Gotchas**
+ *
+ * - Layout errors throw when the codec is created, as with {@link toCodec},
+ *   and so do two fields with the same JSON name, symbol property keys, and a
+ *   {@link jsonName} on a oneof property rather than on its members.
+ * - `google.protobuf.Any` fails to encode and decode: its JSON form needs a
+ *   registry of message types.
+ * - JSON has no unknown fields, so an {@link UnknownFields} property is
+ *   dropped when encoding and empty when decoding.
+ * - Timestamps are written with millisecond precision, the precision of
+ *   `DateTime.Utc` and `Date`.
+ *
+ * **Example** (Encoding and decoding proto3 JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { Protobuf } from "effect/encoding"
+ *
+ * // message User { uint64 id = 1; string display_name = 2; bool admin = 3; }
+ * const User = Schema.Struct({
+ *   id: Protobuf.UInt64.pipe(Protobuf.field(1)),
+ *   display_name: Schema.String.pipe(Protobuf.field(2)),
+ *   admin: Schema.Boolean.pipe(Protobuf.field(3))
+ * })
+ *
+ * const codec = Protobuf.toCodecJson(User)
+ *
+ * const json = Schema.encodeSync(codec)({ id: 1n, display_name: "Ada", admin: false })
+ * json // => { id: "1", displayName: "Ada" }
+ *
+ * const user = Schema.decodeUnknownSync(codec)({ id: 1, display_name: "Ada" })
+ * user // => { id: 1n, display_name: "Ada", admin: false }
+ * ```
+ *
+ * @see {@link toCodec} for the binary format.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.6
+ */
+export function toCodecJson<S extends Schema.Constraint>(schema: S): toCodecJson<S> {
+  const cached = jsonCodecCache.get(schema)
+  if (cached !== undefined) return cached
+  const target = Schema.make<Schema.Constraint>(toProtobufAST(schema.ast))
+  const codec = Schema.Json.pipe(
+    Schema.decodeTo(target, makeJsonTransformation(compileRoot(target.ast)))
+  ) as unknown as toCodecJson<S>
+  jsonCodecCache.set(schema, codec)
+  return codec
+}
+
+function makeJsonTransformation(root: Root): SchemaTransformation.Transformation<unknown, Schema.Json> {
+  const codec = makeJsonCodec(root)
+  return SchemaTransformation.transformEffect({
+    decode: (json: Schema.Json, options) =>
+      run(() => codec.decode(json, options.onExcessProperty === "error"), options),
+    encode: (value: unknown, options) => run(() => codec.encode(value), options)
+  })
+}
+
+function run<A>(f: () => A, options: SchemaAST.ParseOptions): Effect.Effect<A, SchemaIssue.Issue> {
+  try {
+    return Effect.succeed(f())
+  } catch (e) {
+    return e instanceof WireError ? Effect.fail(toIssue(e, options)) : Effect.die(e)
+  }
 }
 
 function toIssue(e: WireError, options: SchemaAST.ParseOptions): SchemaIssue.Issue {

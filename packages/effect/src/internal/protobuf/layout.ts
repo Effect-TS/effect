@@ -20,6 +20,8 @@ export const ENUM_KEY = "~effect/encoding/Protobuf/enum"
 export const WKT_KEY = "~effect/encoding/Protobuf/wkt"
 /** @internal */
 export const UNKNOWN_KEY = "~effect/encoding/Protobuf/unknown"
+/** @internal */
+export const JSON_NAME_KEY = "~effect/encoding/Protobuf/jsonName"
 
 /** @internal */
 export const WRAPPER_ANNOTATIONS = { [WRAPPER_KEY]: true }
@@ -172,6 +174,10 @@ export interface EnumLayout {
   // `undefined` when values are their own enum numbers.
   readonly toNumber: ReadonlyMap<unknown, number> | undefined
   readonly fromNumber: ReadonlyMap<number, unknown> | undefined
+  // The JSON names: the first name of each number, and the value of each
+  // name. `undefined` when the values have no names.
+  readonly names: ReadonlyMap<number, string> | undefined
+  readonly byName: ReadonlyMap<string, unknown> | undefined
 }
 
 /** @internal */
@@ -235,6 +241,8 @@ export interface Field {
   // `null` is absent: the schema is a union with `Null`.
   readonly nullAbsent: boolean
   readonly constant: unknown
+  // The name in the proto3 JSON mapping, when it is not derived from the key.
+  readonly jsonName: string | undefined
   // Writes the zero value of an implicit-presence field.
   readonly always: boolean
   readonly packed: boolean
@@ -263,6 +271,7 @@ export interface Case {
   readonly unwrap: { readonly key: string; readonly literals: ReadonlyArray<readonly [string, unknown]> } | undefined
   readonly guard: (value: unknown) => boolean
   readonly delimited: boolean
+  readonly jsonName: string | undefined
 }
 
 /** @internal */
@@ -338,13 +347,21 @@ function resolveEncoded(ast: SchemaAST.AST): Resolved {
 
 // Key annotations live on the outer node of a property, or on a link of its
 // encoding chain.
-function getFieldAnnotation(ast: SchemaAST.AST): FieldAnnotation | undefined {
+function getKeyAnnotation(ast: SchemaAST.AST, key: string): unknown {
   while (true) {
-    const found = ast.context?.annotations?.[FIELD_KEY]
-    if (found !== undefined) return found as FieldAnnotation
+    const found = ast.context?.annotations?.[key]
+    if (found !== undefined) return found
     if (ast.encoding === undefined) return undefined
     ast = ast.encoding[ast.encoding.length - 1].to
   }
+}
+
+function getFieldAnnotation(ast: SchemaAST.AST): FieldAnnotation | undefined {
+  return getKeyAnnotation(ast, FIELD_KEY) as FieldAnnotation | undefined
+}
+
+function getJsonName(ast: SchemaAST.AST): string | undefined {
+  return getKeyAnnotation(ast, JSON_NAME_KEY) as string | undefined
 }
 
 function isNullish(ast: SchemaAST.AST): boolean {
@@ -447,7 +464,8 @@ const WRAPPED_SCALARS = new Set<ScalarName>([
   "bytes"
 ])
 
-function layoutError(message: string): Error {
+/** @internal */
+export function layoutError(message: string): Error {
   return new Error(`Protobuf layout: ${message}`)
 }
 
@@ -544,6 +562,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         kind: "rest",
         absent: "zero",
         nullAbsent: false,
+        jsonName: undefined,
         keysOf: (obj) => SchemaAST.getIndexSignatureKeys(obj, signature.parameter)
       })
     }
@@ -568,7 +587,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     if (ast.rest.length > 1) throw layoutError(`${where} has elements after its rest element`)
     if (ast.rest.length === 1) {
       const element = compileValue(resolveEncoded(ast.rest[0]), `rest element of ${where}`)
-      addSlot(message, repeatedField(TUPLE_REST, ast.elements.length + 1, element, "zero", false, undefined))
+      addSlot(message, repeatedField(TUPLE_REST, ast.elements.length + 1, element, "zero", false, undefined, undefined))
     }
     return done(message)
   }
@@ -593,7 +612,8 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     element: ValueLayout,
     absent: Absent,
     nullAbsent: boolean,
-    annotation: FieldAnnotation | undefined
+    annotation: FieldAnnotation | undefined,
+    jsonName: string | undefined
   ): Field {
     return {
       _tag: "Field",
@@ -607,6 +627,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       absent,
       nullAbsent,
       constant: undefined,
+      jsonName,
       always: false,
       packed: annotation?.packed ?? isPackable(element),
       delimited: annotation?.encoding === "delimited"
@@ -616,7 +637,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
   function mapField(
     signature: SchemaAST.IndexSignature,
     where: string
-  ): Omit<Field, "key" | "number" | "absent" | "nullAbsent"> {
+  ): Omit<Field, "key" | "number" | "absent" | "nullAbsent" | "jsonName"> {
     const optionalValues = SchemaAST.isOptional(signature.type)
     return {
       _tag: "Field",
@@ -647,6 +668,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     oneofs: boolean
   ): Field | Oneof | undefined {
     let annotation = fixed ?? getFieldAnnotation(type)
+    let jsonName = fixed === undefined ? getJsonName(type) : undefined
     let resolved = resolveEncoded(type)
     let ast = resolved.ast
 
@@ -679,6 +701,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         absent: "constant",
         nullAbsent: false,
         constant: constant.value,
+        jsonName,
         always: true,
         packed: false,
         delimited: false
@@ -709,7 +732,10 @@ export function compileRoot(ast: SchemaAST.AST): Root {
           nullAbsent ||= hasNull
           absent ??= hasNull ? "null" : "undefined"
           if (rest.length === 1) {
-            if (fixed === undefined) annotation ??= getFieldAnnotation(rest[0])
+            if (fixed === undefined) {
+              annotation ??= getFieldAnnotation(rest[0])
+              jsonName ??= getJsonName(rest[0])
+            }
             const inner = resolveEncoded(rest[0])
             resolved = { ...inner, annotations: { ...inner.annotations, ...resolved.annotations } }
             ast = resolved.ast
@@ -723,6 +749,9 @@ export function compileRoot(ast: SchemaAST.AST): Root {
         }
         if (annotation !== undefined && fixed === undefined) {
           throw layoutError(`${where} is a oneof; number its members instead of the property`)
+        }
+        if (jsonName !== undefined) {
+          throw layoutError(`${where} is a oneof; give its members a JSON name instead of the property`)
         }
         return compileOneof(message, key, rest, absent ?? "required", nullAbsent, where)
       }
@@ -741,14 +770,21 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       if (options !== undefined) checkOptions(options, "repeated", where)
       if (annotation.packed === true && !isPackable(element)) throw layoutError(`${where} cannot be packed`)
       checkDelimited(annotation, element, where)
-      return repeatedField(key, number, element, absent ?? "zero", nullAbsent, annotation)
+      return repeatedField(key, number, element, absent ?? "zero", nullAbsent, annotation, jsonName)
     }
     if (
       wkt === undefined && ast._tag === "Objects" && ast.propertySignatures.length === 0 &&
       ast.indexSignatures.length === 1
     ) {
       if (options !== undefined) checkOptions(options, "map", where)
-      return { ...mapField(ast.indexSignatures[0], where), key, number, absent: absent ?? "zero", nullAbsent }
+      return {
+        ...mapField(ast.indexSignatures[0], where),
+        key,
+        number,
+        absent: absent ?? "zero",
+        nullAbsent,
+        jsonName
+      }
     }
 
     const value = literals === undefined ? compileValue(resolved, where) : literalValue(literals, resolved, where)
@@ -766,6 +802,7 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       absent: absent ?? (value._tag === "Scalar" || value._tag === "Enum" ? "zero" : "required"),
       nullAbsent,
       constant: undefined,
+      jsonName,
       always: annotation.presence === "always",
       packed: false,
       delimited: annotation.encoding === "delimited"
@@ -818,7 +855,8 @@ export function compileRoot(ast: SchemaAST.AST): Root {
           type,
           unwrap: undefined,
           guard: Schema.is(Schema.make(SchemaAST.toEncoded(member))),
-          delimited: annotation.encoding === "delimited"
+          delimited: annotation.encoding === "delimited",
+          jsonName: getJsonName(member)
         })
         continue
       }
@@ -843,7 +881,8 @@ export function compileRoot(ast: SchemaAST.AST): Root {
             type,
             unwrap: { key: wire[0].name, literals },
             guard: Schema.is(Schema.make(SchemaAST.toEncoded(member))),
-            delimited: annotation.encoding === "delimited"
+            delimited: annotation.encoding === "delimited",
+            jsonName: getJsonName(wire[0].type)
           })
           continue
         }
@@ -901,12 +940,16 @@ export function compileRoot(ast: SchemaAST.AST): Root {
       case "UniqueSymbol":
         return SYMBOL_LAYOUT
       case "Enum": {
+        const names = new Map<number, string>()
+        const byName = new Map<string, unknown>()
         for (const [name, value] of ast.enums) {
           if (typeof value !== "number" || !isInt32(value)) {
             throw layoutError(`${where} has enum member ${name} without a 32-bit integer value`)
           }
+          if (!names.has(value)) names.set(value, name)
+          byName.set(name, value)
         }
-        return { _tag: "Enum", wireType: WIRE_VARINT, toNumber: undefined, fromNumber: undefined }
+        return { _tag: "Enum", wireType: WIRE_VARINT, toNumber: undefined, fromNumber: undefined, names, byName }
       }
       case "Union": {
         const members = flattenUnion(ast)
@@ -956,7 +999,14 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     const mapping = resolved.annotations[ENUM_KEY] as Readonly<Record<string, number>> | undefined
     if (mapping === undefined) {
       if (literals.every((literal) => typeof literal === "number" && isInt32(literal))) {
-        return { _tag: "Enum", wireType: WIRE_VARINT, toNumber: undefined, fromNumber: undefined }
+        return {
+          _tag: "Enum",
+          wireType: WIRE_VARINT,
+          toNumber: undefined,
+          fromNumber: undefined,
+          names: undefined,
+          byName: undefined
+        }
       }
       const kind = typeof literals[0]
       if (literals.every((literal) => typeof literal === kind)) {
@@ -967,15 +1017,22 @@ export function compileRoot(ast: SchemaAST.AST): Root {
     }
     const toNumber = new Map<unknown, number>()
     const fromNumber = new Map<number, unknown>()
+    const names = new Map<number, string>()
+    const byName = new Map<string, unknown>()
     for (const literal of literals) {
-      const number = mapping[String(literal)]
+      const name = String(literal)
+      const number = mapping[name]
       if (number === undefined || !isInt32(number)) {
-        throw layoutError(`${where} has no 32-bit enum number for ${String(literal)}`)
+        throw layoutError(`${where} has no 32-bit enum number for ${name}`)
       }
       toNumber.set(literal, number)
-      if (!fromNumber.has(number)) fromNumber.set(number, literal)
+      if (!fromNumber.has(number)) {
+        fromNumber.set(number, literal)
+        names.set(number, name)
+      }
+      byName.set(name, literal)
     }
-    return { _tag: "Enum", wireType: WIRE_VARINT, toNumber, fromNumber }
+    return { _tag: "Enum", wireType: WIRE_VARINT, toNumber, fromNumber, names, byName }
   }
 
   function compileMapKey(resolved: Resolved, where: string): ScalarLayout {
