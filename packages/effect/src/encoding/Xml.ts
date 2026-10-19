@@ -988,6 +988,7 @@ class Parser {
   private readonly maxTokenSize: number
   private readonly maxDepth: number
   private readonly bytes: boolean
+  private ascii = false
 
   constructor(maxTokenSize: number, maxDepth: number, bytes: boolean) {
     this.maxTokenSize = maxTokenSize
@@ -1002,6 +1003,15 @@ class Parser {
     if (!this.started) {
       this.started = true
       if (chunk.charCodeAt(0) === 0xFEFF) chunk = chunk.slice(1)
+    }
+    if (this.bytes) {
+      const nonAscii = chunk.search(/[\u0080-\uFFFF]/)
+      if (nonAscii !== -1) {
+        // The prefix may contain the declaration that selects US-ASCII.
+        this.feed(chunk.slice(0, nonAscii), true)
+        if (this.ascii) throw this.error("Syntax", "invalid US-ASCII byte", this.received)
+        chunk = chunk.slice(nonAscii)
+      }
     }
     const invalid = this.bytes ? chunk.search(invalidDecodedChar) : searchInvalid(chunk)
     if (invalid !== -1) {
@@ -1471,6 +1481,7 @@ class Parser {
         this.base + i
       )
     }
+    this.ascii = this.bytes && encoding?.toLowerCase() === "us-ascii"
     const event: { -readonly [K in keyof Declaration]: Declaration[K] } = {
       _tag: "Declaration",
       version: match[1] ?? match[2]
