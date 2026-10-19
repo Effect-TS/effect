@@ -886,7 +886,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
     })
   )
 
-type ReactivityKeyName = [keyof ReactivityLayer.Keys] extends [never] ? string : keyof ReactivityLayer.Keys
+type ReactivityKeyName = [keyof ReactivityLayer.Keys] extends [never] ? string
+  : Exclude<keyof ReactivityLayer.Keys, symbol>
 
 /**
  * Registers reactivity keys to invalidate when events from a group are written or
