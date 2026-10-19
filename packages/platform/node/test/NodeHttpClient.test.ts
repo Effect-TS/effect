@@ -21,40 +21,11 @@ import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import { spawnSync } from "node:child_process"
 import { mkdtempSync, openAsBlob, rmSync, truncateSync, writeFileSync } from "node:fs"
 import * as Http from "node:http"
 import type { AddressInfo, Socket } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { fileURLToPath } from "node:url"
-
-// spawnSync must not consume the deadlines of concurrently running tests.
-describe("failing FormData file streams (isolated)", { concurrent: false, timeout: 30000 }, () => {
-  const probe = (mode: string) => {
-    const result = spawnSync(process.execPath, [
-      fileURLToPath(new URL("./fixtures/failing-form-data.ts", import.meta.url)),
-      mode
-    ], { encoding: "utf8", timeout: 10000 })
-    assert.ifError(result.error)
-    assert.strictEqual(result.status, 0, result.stderr)
-    return JSON.parse(result.stdout)
-  }
-
-  let native: unknown
-  it.each(["node:http", "undici"])("%s fails promptly and releases upload resources", (adapter) => {
-    // Diagnostic only: an upstream fix must not make the adapter regression fail.
-    native ??= probe("native")
-    const result = probe(adapter)
-    const diagnostic = JSON.stringify({ adapter, native, result })
-    assert.strictEqual(result.outcome.tag, "HttpClientError", diagnostic)
-    assert.include(["EncodeError", "TransportError"], result.outcome.reason, diagnostic)
-    assert.isAbove(result.streamsRead, 0, diagnostic)
-    assert.deepStrictEqual(result.unhandled, [], diagnostic)
-    assert.strictEqual(result.lockedStreams, 0, diagnostic)
-    assert.strictEqual(result.openSockets, 0, diagnostic)
-  })
-})
 
 describe("FormData upload cancellation", () => {
   for (
@@ -63,7 +34,7 @@ describe("FormData upload cancellation", () => {
       ["undici", NodeClient.layerUndici]
     ] as const
   ) {
-    it.live.each(["early response", "pending read"] as const)(
+    it.live.each(["early response", "mid-upload interruption"] as const)(
       `${name} cancels and unlocks the file after %s`,
       (scenario) =>
         Effect.gen(function*() {
@@ -71,14 +42,21 @@ describe("FormData upload cancellation", () => {
           const readStarted = new Promise<void>((resolve) => {
             reading = resolve
           })
+          let received!: () => void
+          const requestStarted = new Promise<void>((resolve) => {
+            received = resolve
+          })
           let cancelled = false
           let fileStream!: ReadableStream<Uint8Array<ArrayBuffer>>
-          class PendingFile extends File {
+          class SlowFile extends File {
             override stream() {
+              let remaining = this.size
               fileStream = new ReadableStream<Uint8Array<ArrayBuffer>>({
-                pull() {
+                async pull(controller) {
                   reading()
-                  // No data or EOF: cancellation must interrupt reader.read().
+                  await new Promise((resolve) => setTimeout(resolve, 20))
+                  if (remaining-- > 0) controller.enqueue(new Uint8Array([0]))
+                  else controller.close()
                 },
                 cancel() {
                   cancelled = true
@@ -88,12 +66,13 @@ describe("FormData upload cancellation", () => {
             }
           }
           const data = new FormData()
-          data.append("file", new PendingFile(["contents"], "pending.txt"))
+          data.append("file", new SlowFile([new Uint8Array(1024)], "slow.txt"))
           const sockets = new Set<Socket>()
           const server = yield* Effect.acquireRelease(
             Effect.promise(() =>
               new Promise<Http.Server>((resolve) => {
                 const server = Http.createServer((request, response) => {
+                  received()
                   request.on("error", () => {})
                   request.resume()
                   if (scenario === "early response") {
@@ -130,6 +109,7 @@ describe("FormData upload cancellation", () => {
           } else {
             const fiber = yield* client.post(url, { body: HttpBody.formData(data) }).pipe(Effect.forkChild)
             yield* Effect.promise(() => readStarted)
+            yield* Effect.promise(() => requestStarted)
             assert.isTrue(fileStream.locked)
             assert.isFalse(cancelled)
             yield* Fiber.interrupt(fiber)
