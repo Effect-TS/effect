@@ -466,6 +466,33 @@ describe("Request", { concurrent: false }, () => {
       assert.strictEqual(calls, 1)
     }))
 
+  it.effect("withCache keeps the wrapped resolver's preCheck", () =>
+    Effect.gen(function*() {
+      const batched: Array<number> = []
+      const resolver = yield* Resolver.makeWith<GetNameById>({
+        batchKey: () => "batch",
+        delay: Effect.yieldNow,
+        collectWhile: () => true,
+        preCheck(entry) {
+          if (entry.request.id !== 1) return true
+          entry.completeUnsafe(Exit.succeed("Alice"))
+          return false
+        },
+        runAll: (entries) =>
+          Effect.sync(() => {
+            for (const entry of entries) {
+              batched.push(entry.request.id)
+              entry.completeUnsafe(Exit.succeed("Bob"))
+            }
+          })
+      }).pipe(Resolver.withCache({ capacity: 10 }))
+
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "Alice")
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 2 }), resolver), "Bob")
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 2 }), resolver), "Bob")
+      assert.deepStrictEqual(batched, [2])
+    }))
+
   it.effect("withCache does not cache interrupted resolver results", () =>
     Effect.gen(function*() {
       let calls = 0
