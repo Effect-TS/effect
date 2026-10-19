@@ -2621,7 +2621,7 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
  * **Details**
  *
  * The key identifies the atom in dehydrated state, and the encode/decode
- * functions convert between the atom value and the schema encoded value.
+ * functions convert between the atom value and its JSON encoding.
  *
  * @stability unstable
  * @category models
@@ -2630,8 +2630,8 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
 export interface Serializable<S extends Schema.Constraint> {
   readonly [SerializableTypeId]: {
     readonly key: string
-    readonly encode: (value: S["Type"]) => S["Encoded"]
-    readonly decode: (value: S["Encoded"]) => S["Type"]
+    readonly encode: (value: S["Type"]) => Schema.Json
+    readonly decode: (value: Schema.Json) => S["Type"]
     readonly skipInitialRun?: boolean | undefined
   }
 }

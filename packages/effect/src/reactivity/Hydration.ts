@@ -68,7 +68,7 @@ const decodeOrSkip = (
   value: unknown
 ): unknown => {
   try {
-    return atom[Atom.SerializableTypeId].decode(value)
+    return atom[Atom.SerializableTypeId].decode(value as Schema.Json)
   } catch (error) {
     if (Schema.isSchemaError(error)) return Skipped
     throw error
