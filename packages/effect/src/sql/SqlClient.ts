@@ -542,8 +542,6 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
-  // Inside the transaction, `Reactivity` invalidations wait for the outermost
-  // commit.
   const afterCommit = makeAfterCommit(options.transactionService)
   const deferInvalidations = (reactivity: Reactivity): Reactivity => {
     const invalidate = (keys: Parameters<Reactivity["invalidate"]>[0]) =>

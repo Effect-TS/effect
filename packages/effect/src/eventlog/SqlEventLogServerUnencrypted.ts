@@ -43,13 +43,12 @@ type StorageOptions = {
  * The implementation creates tables for the server remote id, store sequences,
  * entries, and session authentication bindings, then persists and streams
  * plaintext remote entries. Writes reach `changes` subscribers once the
- * outermost SQL transaction commits, including one the caller opened, and are
+ * outermost SQL transaction commits, including caller-owned transactions, and are
  * dropped if it rolls back.
  *
  * **Gotchas**
  *
- * Writes in transactions the caller opened can reach subscribers out of
- * sequence order when two such transactions commit concurrently.
+ * Concurrent caller-owned transactions can publish writes out of sequence order.
  *
  * @stability unstable
  * @category constructors
@@ -284,9 +283,8 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       Effect.asVoid,
       Effect.scoped
     )
-  // The permit is held through COMMIT and the after-commit publication, so
-  // storage-owned transactions publish in commit order. Inside an existing
-  // transaction, the outermost one decides when writes are published.
+  // Hold the permit through commit and publication to preserve commit order
+  // for storage-owned transactions.
   const withTransaction = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError.SqlError, R> =>
     Effect.flatMap(
       Effect.serviceOption(sql.transactionService),
