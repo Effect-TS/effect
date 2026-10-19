@@ -490,6 +490,14 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         message: "Cannot combine an upgrade with other success responses"
       },
       {
+        name: "wrapped in WithHeaders",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", {
+            success: HttpApiSchema.WithHeaders(upgrade, { "x-id": Schema.String })
+          }),
+        message: "WithHeaders cannot wrap an upgrade"
+      },
+      {
         name: "on HEAD",
         make: () => HttpApiEndpoint.head("attach", "/attach", { success: upgrade }),
         message: "HEAD endpoints cannot declare an upgrade"
