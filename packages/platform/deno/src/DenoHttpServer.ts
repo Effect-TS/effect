@@ -587,13 +587,9 @@ const emptyReadableStream = new ReadableStream<Uint8Array>({
   }
 })
 
-const urlAuthority = (url: string): string | undefined => {
-  const schemeEnd = url.indexOf("://")
-  if (schemeEnd === -1) return undefined
-  const start = schemeEnd + 3
-  const end = url.slice(start).search(/[/?#]/)
-  return end === -1 ? url.slice(start) : url.slice(start, start + end)
-}
+// The authority of an absolute URL, which ends at the path, query or fragment.
+const authorityPattern = /^[^:/?#]+:\/\/([^/?#]*)/
+const urlAuthority = (url: string): string | undefined => authorityPattern.exec(url)?.[1]
 
 const removeHost = (url: string) => {
   if (url[0] === "/") return url
