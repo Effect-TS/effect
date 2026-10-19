@@ -131,24 +131,9 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as Struct from "../Struct.ts"
 import type * as Event from "./Event.ts"
 import type * as EventGroup from "./EventGroup.ts"
-import { type Entry, Entry as EntryClass } from "./EventJournal.ts"
+import { Entry } from "./EventJournal.ts"
 import * as EventLog from "./EventLog.ts"
 import type { StoreId } from "./EventLogMessage.ts"
-
-/**
- * Required string fields eligible as a row key.
- *
- * @stability unstable
- * @category utility types
- * @since 4.0.6
- */
-export type KeyField<Fields extends Schema.Struct.Fields> =
-  & {
-    [K in keyof Fields]: Fields[K] extends { readonly "~type.optionality": "optional" } ? never
-      : Schema.Schema.Type<Fields[K]> extends string ? K
-      : never
-  }[keyof Fields]
-  & string
 
 /**
  * Required fields that can be part of a declared row key.
@@ -162,6 +147,17 @@ export type RequiredField<Fields extends Schema.Struct.Fields> =
     [K in keyof Fields]: Fields[K] extends { readonly "~type.optionality": "optional" } ? never : K
   }[keyof Fields]
   & string
+
+/**
+ * Required string fields eligible as a row key.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type KeyField<Fields extends Schema.Struct.Fields> = {
+  [K in RequiredField<Fields>]: Schema.Schema.Type<Fields[K]> extends string ? K : never
+}[RequiredField<Fields>]
 
 /**
  * Values of the declared key fields of a row.
@@ -460,11 +456,7 @@ export const handler = <
     readonly entry: Entry
     readonly payload: Payload<Fields, Key, KeySchema>
   }>
-}) => Effect.Effect<
-  void,
-  Error["Type"],
-  RSet | RPatch | RRemove | PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]
-> => {
+}) => Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove | DecodingServices<Fields, Key, KeySchema>> => {
   const decode = Schema.decodeUnknownEffect(SchemaBinary.toCodec(row.payload))
   return (options) =>
     Effect.flatMap(
@@ -519,10 +511,10 @@ export const compaction = <
 >(
   group: EventGroup.EventGroup<Events>,
   row: EventRow<Tag, Fields, Key, Error, KeySchema>
-): Layer.Layer<never, never, EventLog.Registry | PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]> =>
+): Layer.Layer<never, never, EventLog.Registry | DecodingServices<Fields, Key, KeySchema>> =>
   Layer.effectDiscard(Effect.gen(function*() {
     const registry = yield* EventLog.Registry
-    const services = yield* Effect.context<PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]>()
+    const services = yield* Effect.context<DecodingServices<Fields, Key, KeySchema>>()
     const decode = Schema.decodeUnknownEffect(group.events[row.tag].payloadSchemaBinary)
     yield* registry.registerCompaction({
       events: [row.tag],
@@ -553,7 +545,7 @@ const shadowedEntries = (entries: ReadonlyArray<Entry>, ops: ReadonlyMap<Entry, 
     else row.push(entry)
   }
   for (const row of byKey.values()) {
-    row.sort(EntryClass.Order)
+    row.sort(Entry.Order)
     let replaced = false
     let patched = false
     const written = new Set<string>()
@@ -591,6 +583,12 @@ const patchField = (field: Schema.Constraint): Schema.Constraint => {
     )
   }))
 }
+
+type DecodingServices<
+  Fields extends Schema.Struct.Fields,
+  Key extends keyof Fields,
+  KeySchema extends Schema.Constraint
+> = PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]
 
 type Op =
   | { readonly _tag: "set"; readonly row: Readonly<Record<string, unknown>> }
