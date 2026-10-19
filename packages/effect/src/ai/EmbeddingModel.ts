@@ -13,15 +13,10 @@
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
-import * as Hash from "../Hash.ts"
-import * as References from "../References.ts"
 import * as Request from "../Request.ts"
 import * as RequestResolver from "../RequestResolver.ts"
-import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
-import * as Tracer from "../Tracer.ts"
 import * as AiError from "./AiError.ts"
 
 /**
@@ -214,31 +209,18 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
  * provider, while `embedMany([])` returns an empty response without calling the
  * provider.
  *
- * Concurrent `embed` calls are batched into one `embedMany` call only when
- * their contexts hold the same services. The batch runs with the first
- * caller's context, so callers whose contexts differ must not share a batch,
- * or the first caller's services would apply to every caller in it. Services
- * that differ on every call are ignored for this comparison: the current span,
- * the stack frame, log annotations and spans, tracer annotations and links,
- * and retry metadata.
- *
- * By default every service is compared by reference, so callers that provide
- * separate instances do not batch together. Pass `settings` to list the
- * services that hold the provider's per-call options, such as a config the
- * provider reads inside `embedMany`. A listed service is compared by value
- * with `Equal.equals`, so callers with equal settings share a batch even when
- * they built separate instances. Listing a service can only widen batching; it
- * never merges callers whose other services differ.
- *
- * List only services whose values are immutable data or implement `Equal`.
- * `Equal.equals` compares a plain object field by field and ignores its
- * prototype and private fields, and it compares a function by reference. So a
- * function held inside a listed value, and any value carrying hidden state,
- * still splits callers by instance. A listed `Context.Reference` is compared
- * as present or absent: a caller that leaves it at its default does not batch
- * with one that provides that same default explicitly.
+ * Concurrent `embed` calls share a provider call only when `batchKey` returns
+ * keys equal under `Equal.equals`. Return every value that `embedMany` reads
+ * from the caller's context, including values read by an injected client.
+ * Omit `batchKey` when the provider reads no per-call context; all callers
+ * then share one batch. The batch runs with the first caller's context.
  *
  * **Gotchas**
+ *
+ * Undeclared context is not isolated. For example, per-call
+ * `FetchHttpClient.RequestInit` values must be included in `batchKey` if the
+ * HTTP client reads them; otherwise the first caller's values apply to the
+ * whole batch.
  *
  * Provider responses are interpreted positionally and must contain exactly one
  * result for each requested input. If the provider returns a different number
@@ -254,11 +236,10 @@ const invalidProviderResponse = (description: string): AiError.AiError =>
  */
 export const make: (params: {
   readonly embedMany: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>
-  readonly settings?: ReadonlyArray<Context.Key<any, any>> | undefined
+  readonly batchKey?: ((context: Context.Context<never>) => unknown) | undefined
 }) => Effect.Effect<EmbeddingModel> = Effect.fnUntraced(function*(params) {
-  const settings = new Set(params.settings?.map((service) => service.key))
-  const resolver = RequestResolver.makeGrouped<EmbeddingRequest, ContextKey>({
-    key: (entry) => new ContextKey(entry.context.mapUnsafe, settings),
+  const resolver = RequestResolver.makeGrouped<EmbeddingRequest, unknown>({
+    key: ({ context }) => params.batchKey?.(context),
     resolver: (entries) =>
       Effect.flatMap(
         params.embedMany({
@@ -306,49 +287,6 @@ export const make: (params: {
         )).pipe(Effect.withSpan("EmbeddingModel.embedMany"))
   })
 })
-
-const perCallKeys = new Set<string>([
-  Tracer.ParentSpanKey,
-  References.CurrentStackFrame.key,
-  References.CurrentLogAnnotations.key,
-  References.CurrentLogSpans.key,
-  References.TracerSpanAnnotations.key,
-  References.TracerSpanLinks.key,
-  Schedule.CurrentMetadata.key
-])
-
-const identityHash = (value: unknown): number =>
-  (typeof value === "object" && value !== null) || typeof value === "function" ? Hash.random(value) : Hash.hash(value)
-
-class ContextKey implements Equal.Equal {
-  readonly services: ReadonlyMap<string, unknown>
-  readonly settings: ReadonlySet<string>
-  readonly hash: number
-  constructor(services: ReadonlyMap<string, unknown>, settings: ReadonlySet<string>) {
-    const counted = new Map<string, unknown>()
-    let hash = 0
-    for (const [key, value] of services) {
-      if (perCallKeys.has(key)) continue
-      counted.set(key, value)
-      hash = (hash + Hash.combine(Hash.string(key), settings.has(key) ? Hash.hash(value) : identityHash(value))) | 0
-    }
-    this.services = counted
-    this.settings = settings
-    this.hash = hash
-  }
-  [Equal.symbol](that: unknown): boolean {
-    if (!(that instanceof ContextKey) || that.services.size !== this.services.size) return false
-    for (const [key, value] of this.services) {
-      if (!that.services.has(key)) return false
-      const other = that.services.get(key)
-      if (this.settings.has(key) ? !Equal.equals(value, other) : !Object.is(value, other)) return false
-    }
-    return true
-  }
-  [Hash.symbol](): number {
-    return this.hash
-  }
-}
 
 const mapProviderResults = (
   inputLength: number,

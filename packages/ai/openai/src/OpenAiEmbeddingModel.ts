@@ -117,6 +117,10 @@ export const model = (
  *
  * **Gotchas**
  *
+ * Concurrent `embed` calls are grouped by `Config` and `OpenAiConfig` values.
+ * Other per-call HTTP-client context, such as `FetchHttpClient.RequestInit`,
+ * is not part of the batch key; the first caller's values apply to the batch.
+ *
  * The service expects numeric embedding vectors. It fails with
  * `InvalidOutputError` when the provider returns base64 embeddings,
  * out-of-range indexes, duplicate indexes, or an unexpected number of
@@ -141,7 +145,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
   )
 
   return yield* EmbeddingModel.make({
-    settings: [Config, OpenAiConfig],
+    batchKey: (context) => [Context.getOrUndefined(context, Config), Context.getOrUndefined(context, OpenAiConfig)],
     embedMany: Effect.fnUntraced(function*({ inputs }) {
       const config = yield* makeConfig
       const response = yield* client.createEmbedding({ ...config, input: inputs })

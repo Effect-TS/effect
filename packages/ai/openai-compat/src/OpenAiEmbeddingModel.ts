@@ -109,6 +109,10 @@ export const model = (
  *
  * **Gotchas**
  *
+ * Concurrent `embed` calls are grouped by `Config` and `OpenAiConfig` values.
+ * Other per-call HTTP-client context, such as `FetchHttpClient.RequestInit`,
+ * is not part of the batch key; the first caller's values apply to the batch.
+ *
  * Provider responses must contain one numeric vector for every requested input
  * with unique, in-range `index` values; otherwise embedding operations fail with
  * `AiError.InvalidOutputError`.
@@ -132,7 +136,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
   )
 
   return yield* EmbeddingModel.make({
-    settings: [Config, OpenAiConfig],
+    batchKey: (context) => [Context.getOrUndefined(context, Config), Context.getOrUndefined(context, OpenAiConfig)],
     embedMany: Effect.fnUntraced(function*({ inputs }) {
       const config = yield* makeConfig
       const response = yield* client.createEmbedding({ ...config, input: inputs })
