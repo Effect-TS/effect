@@ -395,16 +395,16 @@ const maxClockSkewMillis = 24 * 60 * 60 * 1000
 
 /**
  * Logs a warning when the latest of the imported `ids` is more than 24 hours
- * ahead of the local clock: the later of `clock` and this process's own id
- * sequence, so ids the process has already passed never warn. Call it once the
- * import has committed.
+ * ahead of the supplied `clock`. Memory and IndexedDB journals call this after
+ * commit; SQL calls it at the end of its transaction body, so a later rollback
+ * (including an enclosing transaction rollback) can still leave a warning.
  *
  * @internal
  */
 export const warnIfAhead = (clock: Clock.Clock, ids: Iterable<EntryId>): Effect.Effect<void> => {
   const latest = maxEntryId(ids)
   if (latest === undefined) return Effect.void
-  const ahead = entryIdMillis(latest) - Math.max(clock.currentTimeMillisUnsafe(), processEntryIds.millis)
+  const ahead = entryIdMillis(latest) - clock.currentTimeMillisUnsafe()
   if (ahead <= maxClockSkewMillis) return Effect.void
   return Effect.logWarning(
     `Imported an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
