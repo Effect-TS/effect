@@ -488,6 +488,18 @@ describe("Zip", () => {
         }
       }))
 
+    it.effect("inflates matches that end at an output buffer boundary", () =>
+      Effect.gen(function*() {
+        // The zero run ends exactly at 64 KiB; the following literal must wrap.
+        const content = concat(
+          textEncoder.encode("abc"),
+          new Uint8Array(65_533),
+          textEncoder.encode("b" + "hello world ".repeat(100))
+        )
+        const archive = concat(deflatedEntry("f", content), endRecord)
+        assert.deepStrictEqual((yield* decode(archive, archive.length)).map(({ body }) => body), [content])
+      }))
+
     it.effect("ends deflate streams that close with a stored block at their last byte", () =>
       Effect.gen(function*() {
         // A fixed Huffman block with "ab" and a stored block with "c". The end
