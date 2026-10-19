@@ -10,7 +10,12 @@
  * @stability experimental
  * @since 4.0.6
  */
+import * as Data from "./Data.ts"
 import * as Equal from "./Equal.ts"
+import { hasProperty } from "./Predicate.ts"
+import * as Result from "./Result.ts"
+
+const TextDiffErrorTypeId = "~effect/TextDiff/TextDiffError"
 
 /**
  * One run of an edit script.
@@ -111,6 +116,40 @@ export interface UnifiedOptions {
    */
   readonly toFile?: string | undefined
 }
+
+/**
+ * Error returned when an edit script does not fit the input it is applied to.
+ *
+ * **Example** (Rejecting a script made for other input)
+ *
+ * ```ts import.meta.vitest
+ * import { Result, TextDiff } from "effect"
+ *
+ * const edits = TextDiff.diff([1, 2], [1])
+ *
+ * Result.mapError(TextDiff.apply([1], edits), TextDiff.isTextDiffError) // => Result.fail(true)
+ * ```
+ *
+ * @see {@link apply} and {@link applyText} for the operations that return it
+ * @see {@link isTextDiffError} for narrowing unknown values
+ * @stability experimental
+ * @category errors
+ * @since 4.0.6
+ */
+export class TextDiffError extends Data.TaggedError("TextDiffError")<{
+  readonly message: string
+}> {
+  readonly [TextDiffErrorTypeId]: typeof TextDiffErrorTypeId = TextDiffErrorTypeId
+}
+
+/**
+ * Checks whether a value is a `TextDiffError`.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.0.6
+ */
+export const isTextDiffError = (u: unknown): u is TextDiffError => hasProperty(u, TextDiffErrorTypeId)
 
 /**
  * Creates a function that computes a minimal edit script between two arrays
@@ -265,16 +304,17 @@ export const codePoints = (before: string, after: string, options?: DiffOptions)
  *
  * **Gotchas**
  *
- * Throws when the runs do not consume exactly `before.length` items.
+ * Fails with a {@link TextDiffError} when the runs do not consume exactly
+ * `before.length` items.
  *
  * **Example** (Replaying a script)
  *
  * ```ts import.meta.vitest
- * import { TextDiff } from "effect"
+ * import { Result, TextDiff } from "effect"
  *
  * const edits = TextDiff.diff([1, 2, 3], [1, 3, 4])
  *
- * TextDiff.apply([1, 2, 3], edits) // => [1, 3, 4]
+ * TextDiff.apply([1, 2, 3], edits) // => Result.succeed([1, 3, 4])
  * ```
  *
  * @see {@link applyText} for the string variant
@@ -283,7 +323,10 @@ export const codePoints = (before: string, after: string, options?: DiffOptions)
  * @category combinators
  * @since 4.0.6
  */
-export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>): Array<A> => {
+export const apply = <A>(
+  before: ReadonlyArray<A>,
+  edits: ReadonlyArray<Edit<A>>
+): Result.Result<Array<A>, TextDiffError> => {
   const out: Array<A> = []
   let index = 0
   for (const edit of edits) {
@@ -292,14 +335,14 @@ export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>
       continue
     }
     const end = index + edit.items.length
-    if (end > before.length) throw new Error("Edit script consumes more items than the input contains")
+    if (end > before.length) return fail("Edit script consumes more items than the input contains")
     if (edit._tag === "Equal") {
       for (let i = index; i < end; i++) out.push(before[i])
     }
     index = end
   }
-  if (index !== before.length) throw new Error("Edit script consumes fewer items than the input contains")
-  return out
+  if (index !== before.length) return fail("Edit script consumes fewer items than the input contains")
+  return Result.succeed(out)
 }
 
 /**
@@ -314,17 +357,17 @@ export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>
  *
  * **Gotchas**
  *
- * Throws when a run does not match `before`, or when the runs do not cover
- * all of it.
+ * Fails with a {@link TextDiffError} when a run does not match `before`, or
+ * when the runs do not cover all of it.
  *
  * **Example** (Replaying a code point diff)
  *
  * ```ts import.meta.vitest
- * import { TextDiff } from "effect"
+ * import { Result, TextDiff } from "effect"
  *
  * const edits = TextDiff.codePoints("cat", "cut")
  *
- * TextDiff.applyText("cat", edits) // => "cut"
+ * TextDiff.applyText("cat", edits) // => Result.succeed("cut")
  * ```
  *
  * @see {@link apply} for the array variant
@@ -332,7 +375,10 @@ export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>
  * @category combinators
  * @since 4.0.6
  */
-export const applyText = (before: string, edits: ReadonlyArray<Edit<string>>): string => {
+export const applyText = (
+  before: string,
+  edits: ReadonlyArray<Edit<string>>
+): Result.Result<string, TextDiffError> => {
   let out = ""
   let index = 0
   for (const edit of edits) {
@@ -341,12 +387,12 @@ export const applyText = (before: string, edits: ReadonlyArray<Edit<string>>): s
       out += text
       continue
     }
-    if (!before.startsWith(text, index)) throw new Error(`Edit script does not match the input at index ${index}`)
+    if (!before.startsWith(text, index)) return fail(`Edit script does not match the input at index ${index}`)
     if (edit._tag === "Equal") out += text
     index += text.length
   }
-  if (index !== before.length) throw new Error("Edit script covers less text than the input contains")
-  return out
+  if (index !== before.length) return fail("Edit script covers less text than the input contains")
+  return Result.succeed(out)
 }
 
 /**
@@ -360,11 +406,11 @@ export const applyText = (before: string, edits: ReadonlyArray<Edit<string>>): s
  * **Example** (Undoing a change)
  *
  * ```ts import.meta.vitest
- * import { TextDiff } from "effect"
+ * import { Result, TextDiff } from "effect"
  *
  * const edits = TextDiff.diff([1, 2], [1, 3])
  *
- * TextDiff.apply([1, 3], TextDiff.invert(edits)) // => [1, 2]
+ * TextDiff.apply([1, 3], TextDiff.invert(edits)) // => Result.succeed([1, 2])
  * ```
  *
  * @stability experimental
@@ -488,6 +534,8 @@ export const unified = (edits: ReadonlyArray<Edit<string>>, options?: UnifiedOpt
 // -----------------------------------------------------------------------------
 // internal
 // -----------------------------------------------------------------------------
+
+const fail = (message: string) => Result.fail(new TextDiffError({ message }))
 
 interface Block {
   readonly a: number
