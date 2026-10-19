@@ -60,6 +60,7 @@
  * @since 4.0.6
  */
 import * as Effect from "../Effect.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
@@ -275,10 +276,10 @@ export const make = <
  * A patch with no fields left is skipped, and so is an empty patch. Skipped
  * entries are still journaled and synced.
  *
- * The payload is encoded and decoded with the event's payload schema first,
- * so a local write passes callbacks the same values replicas decode, without
- * keys outside the schema at any depth. The handler requires the services of
- * that codec.
+ * The handler decodes the entry's stored bytes rather than using the
+ * payload it is given, so a local write and its replay on other replicas pass
+ * callbacks the same values, without keys outside the schema at any depth.
+ * The handler requires the decoding services of the payload schema.
  *
  * **Gotchas**
  *
@@ -321,14 +322,11 @@ export const handler = <
     readonly payload: Payload<Fields, Key>
   }>
 }) => Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove | PayloadServices<Fields, Key>> => {
-  // Replicas decode the entry, so a local payload goes through the same codec
-  // first, at every depth. Decoded payloads come back unchanged, and stored
-  // conflicts are already decoded.
-  const encode = Schema.encodeEffect(row.payload)
-  const decode = Schema.decodeEffect(row.payload)
+  // A local write passes the written payload and a replay the decoded one, so
+  // decode the stored bytes for both, as stored conflicts already are.
+  const decode = Schema.decodeUnknownEffect(SchemaBinary.toCodec(row.payload))
   return (options) =>
-    encode(options.payload).pipe(
-      Effect.flatMap(decode),
+    decode(options.entry.payload).pipe(
       Effect.orDie,
       Effect.flatMap((payload): Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove> => {
         const op = resolve(payload as Op, options.conflicts as ReadonlyArray<{ readonly payload: Op }>)
@@ -348,16 +346,17 @@ export const handler = <
 }
 
 /**
- * Services the payload schema of a row needs to encode and decode, which the
- * row handler requires.
+ * Services the payload schema of a row needs to decode, which the row handler
+ * requires.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.6
  */
-export type PayloadServices<Fields extends Schema.Struct.Fields, Key extends keyof Fields> =
-  | PayloadSchema<Fields, Key>["EncodingServices"]
-  | PayloadSchema<Fields, Key>["DecodingServices"]
+export type PayloadServices<Fields extends Schema.Struct.Fields, Key extends keyof Fields> = PayloadSchema<
+  Fields,
+  Key
+>["DecodingServices"]
 
 // An optional key for a patch. An absent key stays absent, so missing-key
 // behaviour of the row field, such as a decoding default, never applies.
