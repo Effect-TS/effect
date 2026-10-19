@@ -38,6 +38,48 @@ describe("Hydration", () => {
     }
   })
 
+  it("skipInitialRun keeps a hydrated effect seed until a factory dependency changes", () => {
+    const dependency = Atom.make(1)
+    let runs = 0
+    const atom = Atom.make((get) => {
+      const value = get(dependency)
+      return Effect.sync(() => {
+        runs++
+        return value
+      })
+    }).pipe(
+      Atom.serializable({
+        key: "count",
+        schema: AsyncResult.Schema({ success: Schema.Number }),
+        skipInitialRun: true
+      })
+    )
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      const serverAtom = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.success(10)).pipe(
+        Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Number }) })
+      )
+      server.mount(serverAtom)
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      client.mount(atom)
+
+      let result = client.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 10)
+      assert.strictEqual(runs, 0)
+
+      client.set(dependency, 2)
+      result = client.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 2)
+      assert.strictEqual(runs, 1)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
   it("falls back on the first read of invalid immediate hydration", () => {
     const atom = Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number }))
     const registry = AtomRegistry.make()
