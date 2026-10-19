@@ -10,7 +10,9 @@ import {
   Exit,
   Fiber,
   Latch,
+  Logger,
   Option,
+  References,
   Scope,
   ScopedCache
 } from "effect"
@@ -2904,6 +2906,49 @@ describe("ScopedCache", () => {
         }))
     })
   })
+
+  it.effect.each(["keys", "values", "entries"] as const)(
+    "reports expiry defects discovered by %s at UnhandledLogLevel",
+    (scan) => {
+      const logged: Array<Logger.Options<unknown>> = []
+      const logger = Logger.make((event) => {
+        logged.push(event)
+      })
+      return Effect.gen(function*() {
+        const released: Array<string> = []
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          timeToLive: "1 second",
+          lookup: (key: string) =>
+            Effect.acquireRelease(
+              Effect.succeed(key),
+              () => Effect.sync(() => released.push(key)).pipe(Effect.andThen(Effect.die(`release ${key}`)))
+            )
+        })
+        yield* ScopedCache.get(cache, "a")
+        yield* TestClock.adjust("1 second")
+        assert.deepStrictEqual(released, [])
+        const result = scan === "keys"
+          ? yield* ScopedCache.keys(cache)
+          : scan === "values"
+          ? yield* ScopedCache.values(cache)
+          : yield* ScopedCache.entries(cache)
+        assert.deepStrictEqual(result, [])
+        yield* TestClock.adjust("1 second")
+        assert.deepStrictEqual(released, ["a"])
+        assert.deepStrictEqual(
+          logged.map((event) => ({
+            level: event.logLevel,
+            defects: event.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)
+          })),
+          [{ level: "Warn", defects: ["release a"] }]
+        )
+      }).pipe(
+        Effect.provide(Logger.layer([logger])),
+        Effect.provideService(References.UnhandledLogLevel, "Warn")
+      )
+    }
+  )
 })
 
 // Helper functions for testing

@@ -476,6 +476,7 @@ const removeInterrupted = <K, A, E>(
   // Borrowers close the entry on release; an idle entry has none left.
   if (entry.refCount > 0) return
   closeEntry(entry).pipe(
+    Effect.ignoreCause({ log: "Unhandled", message: "Unhandled error in RcMap finalizer" }),
     Effect.runForkWith(context),
     Fiber.runIn(self.scope)
   )
@@ -517,7 +518,10 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
         const o = MutableHashMap.get(self.state.map, key)
         if (o._tag === "None" || o.value !== entry) return Effect.void
         MutableHashMap.remove(self.state.map, key)
-        return Scope.close(entry.scope, Exit.void)
+        return Effect.ignoreCause(Scope.close(entry.scope, Exit.void), {
+          log: "Unhandled",
+          message: "Unhandled error in RcMap finalizer"
+        })
       }
       return Effect.flatMap(restore(clock.sleep(Duration.millis(remaining))), () => loop(restore))
     }).pipe(

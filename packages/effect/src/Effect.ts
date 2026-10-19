@@ -4317,6 +4317,9 @@ export const sandbox: <A, E, R>(
  *
  * Use the `log` option to emit the full {@link Cause} when the effect fails,
  * and `message` to prepend a custom log message.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Example** (Discarding success and failure values)
  *
@@ -4350,16 +4353,16 @@ export const sandbox: <A, E, R>(
  */
 export const ignore: <
   Arg extends Effect<any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined = {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   }
 >(
   effectOrOptions?: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined
 ) => [Arg] extends [Effect<infer _A, infer _E, infer _R>] ? Effect<void, never, _R>
@@ -4377,6 +4380,9 @@ export const ignore: <
  *
  * Use the `log` option to emit the full {@link Cause} when the effect fails,
  * and `message` to prepend a custom log message.
+ * Set `log: "Unhandled"` to read `References.UnhandledLogLevel` when the
+ * failure occurs; `undefined` disables logging. Minimum log level filtering
+ * still applies.
  *
  * **Example** (Ignoring failures and logging causes)
  *
@@ -4395,16 +4401,16 @@ export const ignore: <
  */
 export const ignoreCause: <
   Arg extends Effect<any, any, any> | {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined = {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   }
 >(
   effectOrOptions?: Arg,
   options?: {
-    readonly log?: boolean | Severity | undefined
+    readonly log?: boolean | Severity | "Unhandled" | undefined
     readonly message?: string | undefined
   } | undefined
 ) => [Arg] extends [Effect<infer _A, infer _E, infer _R>] ? Effect<void, never, _R>

@@ -443,12 +443,12 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             primary_key: entry.primaryKey,
             payload: entry.payload
           })
-          if (rowsForInsert.length >= insertBatchSize) {
+          if (rowsForInsert.length >= insertBatchSize && Arr.isArrayNonEmpty(rowsForInsert)) {
             yield* sql`INSERT INTO ${entriesTableSql} ${sql.insert(rowsForInsert)}`
             rowsForInsert = []
           }
         }
-        if (rowsForInsert.length > 0) {
+        if (Arr.isArrayNonEmpty(rowsForInsert)) {
           yield* sql`INSERT INTO ${entriesTableSql} ${sql.insert(rowsForInsert)}`
         }
         const nextSequence = currentNextSequence + entries.length

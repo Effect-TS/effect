@@ -136,11 +136,17 @@ export const make = (options?: {
     })
     const insertEntries = SqlSchema.void({
       Request: EntryRowArray,
-      execute: (entries) => sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+      execute: (entries) =>
+        Arr.isReadonlyArrayNonEmpty(entries)
+          ? sql`INSERT INTO ${entryTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+          : Effect.void
     })
     const insertRemotes = SqlSchema.void({
       Request: RemoteRowArray,
-      execute: (entries) => sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+      execute: (entries) =>
+        Arr.isReadonlyArrayNonEmpty(entries)
+          ? sql`INSERT INTO ${remotesTableSql} ${sql.insert(entries)} ON CONFLICT DO NOTHING`
+          : Effect.void
     })
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
