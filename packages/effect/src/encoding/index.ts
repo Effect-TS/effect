@@ -66,6 +66,12 @@ export * as Tar from "./Tar.ts"
 export * as Toml from "./Toml.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.6
+ */
+export * as Xml from "./Xml.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
