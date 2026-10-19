@@ -90,6 +90,34 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it("keeps one or two quotes right before the closing delimiter of a multiline string", () => {
+    // TOML 1.0 spec examples for multiline basic and literal strings
+    assert.deepStrictEqual(
+      Toml.parse(`
+str4 = """Here are two quotation marks: "". Simple enough."""
+str5 = """Here are three quotation marks: ""\\"."""
+str6 = """Here are fifteen quotation marks: ""\\"""\\"""\\"""\\"""\\"."""
+str7 = """"This," she said, "is just a pointless statement.""""
+quot15 = '''Here are fifteen quotation marks: """""""""""""""'''
+apos15 = "Here are fifteen apostrophes: '''''''''''''''"
+str = ''''That,' she said, 'is still pointless.''''
+one = """a""""
+`),
+      {
+        str4: "Here are two quotation marks: \"\". Simple enough.",
+        str5: "Here are three quotation marks: \"\"\".",
+        str6: "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".",
+        str7: "\"This,\" she said, \"is just a pointless statement.\"",
+        quot15: "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"",
+        apos15: "Here are fifteen apostrophes: '''''''''''''''",
+        str: "'That,' she said, 'is still pointless.'",
+        one: "a\""
+      }
+    )
+    assert.throws(() => Toml.parse(`x = """a""""""\n`), SyntaxError)
+    assert.throws(() => Toml.parse(`x = '''a''''''\n`), SyntaxError)
+  })
+
   it("rejects duplicate keys", () => {
     const duplicate = Toml.parse("key = 1\nkey = 2\n")
     assert.isTrue(Result.isFailure(duplicate))
