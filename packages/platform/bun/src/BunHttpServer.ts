@@ -299,7 +299,8 @@ const makeResponse = (
               return Channel.toTransform(body.stream.channel)(upstream, streamScope)
             })
           )),
-          context
+          context,
+          { signal: (request.source as Request).signal }
         ),
         fields
       )
