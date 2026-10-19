@@ -2,4 +2,4 @@
 "@effect/ai-openai": patch
 ---
 
-Pass `Config` and `OpenAiConfig` as `EmbeddingModel.make`'s `settings`, so concurrent `embed` calls no longer apply the first caller's `withConfigOverride` or `withClientTransform` to the whole batch. Callers with equal settings still share one provider request.
+Fix concurrent `embed` calls using the first caller's `withConfigOverride` or `withClientTransform` for the whole batch. `OpenAiEmbeddingModel` now passes `Config` and `OpenAiConfig` as `settings` to `EmbeddingModel.make`, so callers with equal settings still share one request.
