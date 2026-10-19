@@ -1657,12 +1657,7 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   push(chunk: Uint8Array): void {
     if (!this.started && chunk.length > 0) {
       const first = this.carry === undefined ? chunk[0] : this.carry[0]
-      if (this.carry === undefined && chunk.length === 1 && (first === 0xFE || first === 0xFF)) {
-        this.carry = chunk.slice()
-        return
-      }
       const second = this.carry === undefined ? chunk[1] : chunk[0]
-      this.started = true
       if ((first === 0xFE && second === 0xFF) || (first === 0xFF && second === 0xFE)) {
         throw this.parser.error(
           "Unsupported",
@@ -1670,6 +1665,8 @@ class Utf8Input implements Machine<Uint8Array, Event> {
           0
         )
       }
+      // A lone 0xFE or 0xFF is carried below as an incomplete sequence
+      this.started = second !== undefined || (first !== 0xFE && first !== 0xFF)
     }
     let start = 0
     if (this.carry !== undefined) {
