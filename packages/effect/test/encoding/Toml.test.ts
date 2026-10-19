@@ -60,26 +60,18 @@ started = 2026-08-05
 
   it("parses empty quoted keys", () => {
     assert.deepStrictEqual(
-      Toml.parse(`"" = "blank"
-x."" = 1
-inline = { "" = { '' = 2 } }
-
-[t.'']
-y = 3
-
-[[a.""]]
-z = 4
-`),
-      {
-        "": "blank",
-        x: { "": 1 },
-        inline: { "": { "": 2 } },
-        t: { "": { y: 3 } },
-        a: { "": [{ z: 4 }] }
-      }
+      Toml.parse(`"" = 1
+nested.'' = 2`),
+      { "": 1, nested: { "": 2 } }
     )
+  })
+
+  it("rejects empty bare keys, unterminated keys, and duplicate empty keys", () => {
     assert.throws(() => Toml.parse(" = 1\n"))
     assert.throws(() => Toml.parse("a. = 1\n"))
+    assert.throws(() => Toml.parse("\" = 1"))
+    assert.throws(() => Toml.parse("' = 1"))
+    assert.throws(() => Toml.parse(`"" = 1\n'' = 2`))
   })
 
   it("parses multiline strings and numeric formats", () => {
