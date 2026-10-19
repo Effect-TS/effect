@@ -109,6 +109,24 @@ describe("Union", () => {
 
   describe("Tagged unions", () => {
     describe("toTaggedUnion", () => {
+      it("should accept generic member lists", () => {
+        type Tagged = Schema.Constraint & { readonly Type: { readonly _tag: PropertyKey } }
+
+        const pipeForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+        const callForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.toTaggedUnion("_tag")(Schema.Union(members))
+
+        const A = Schema.TaggedStruct("A", { a: Schema.String })
+        const B = Schema.TaggedStruct("B", { b: Schema.Number })
+        const piped = pipeForm([A, B])
+        const called = callForm([A, B])
+
+        expect(piped).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+        expect(called).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+      })
+
       it("should not be callable if the tag field is invalid", () => {
         const original = Schema.Union([
           Schema.TaggedStruct("A", { a: Schema.String }),
@@ -169,6 +187,14 @@ describe("Union", () => {
         ])
 
         expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("event"))
+      })
+
+      it("should reject duplicate discriminants before a variadic tail", () => {
+        const A = Schema.TaggedStruct("A", {})
+        const B = Schema.TaggedStruct("B", {})
+        const original = Schema.Union([A, A, ...hole<ReadonlyArray<typeof B>>()])
+
+        expect(Schema.toTaggedUnion("_tag")).type.not.toBeCallableWith(original)
       })
 
       it("should reject numeric and string discriminants with the same property key", () => {

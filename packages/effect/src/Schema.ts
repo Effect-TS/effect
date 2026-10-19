@@ -6439,7 +6439,13 @@ export type toTaggedUnion<
  */
 export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
   return <const Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>>(
-    self: Union<Members> & NoInfer<EnsureUniqueDiscriminants<TaggedUnionUtils<Tag, Members>["discriminants"]>>
+    self:
+      & Union<Members>
+      & (
+        | NoInfer<EnsureUniqueDiscriminants<TaggedUnionUtils<Tag, Members>["discriminants"]>>
+        // Unresolved arrays have no explicit first element; known tuples must pass the uniqueness check.
+        | { readonly members: { readonly length: number; readonly 0?: never } }
+      )
   ): toTaggedUnion<Tag, Members> => {
     const cases: Record<PropertyKey, unknown> = {}
     const discriminants: Array<PropertyKey> = []
