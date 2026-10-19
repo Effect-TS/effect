@@ -580,16 +580,16 @@ export const make = (
 
 // Named directories (the root and those reached only through leading literal
 // segments) must be readable; unreadable wildcard-reached ones are skipped.
-const walk = (
+const walk = Effect.fnUntraced(function*(
   fs: Pick<FileSystem.FileSystem, "readDirectoryEntries" | "stat" | "readLink">,
   compiled: Compiled,
   options?: {
     readonly root?: string | undefined
     readonly exclude?: ReadonlyArray<string> | undefined
   }
-): Effect.Effect<Array<string>, PlatformError> => {
+): Effect.fn.Return<Array<string>, PlatformError> {
   if (compiled.initial.size === 0) {
-    return Effect.succeed([])
+    return []
   }
   const root = options?.root ?? ""
   const excludes = compile(options?.exclude ?? [], true)
@@ -660,84 +660,77 @@ const walk = (
     readonly next: States | undefined
   }
 
-  const visit = (
+  const visit = Effect.fnUntraced(function*(
     { name, type }: FileSystem.DirectoryEntry,
     parent: string,
     states: States,
     excluded: States
-  ): Effect.Effect<Child | undefined, PlatformError> => {
+  ): Effect.fn.Return<Child | undefined, PlatformError> {
     const result = step(compiled, states, name)
     const next = union(result)
     if (next.size === 0) {
-      return Effect.succeed(undefined)
+      return undefined
     }
     const relative = join(parent, name)
     const nextExcluded = union(step(excludes, excluded, name))
     const descend = canDescend(compiled, next)
-    const finish = (isDirectory: boolean): Effect.Effect<Child | undefined, PlatformError> => {
-      const accepted = accepts(compiled, next, isDirectory)
-      if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
-        return Effect.succeed(undefined)
-      }
-      const child = (next: States | undefined): Child => ({ relative, accepted, excluded: nextExcluded, next })
-      if (!isDirectory || !descend) {
-        return Effect.succeed(child(undefined))
-      }
-      if (result.globstar.size === 0) {
-        return Effect.succeed(child(next))
-      }
-      // Follow symlinks only through explicit segments, not `**`.
-      const followed = canDescend(compiled, result.explicit) ? result.explicit : undefined
-      if (type !== "Unknown") {
-        return Effect.succeed(child(type === "SymbolicLink" ? followed : next))
-      }
-      return fs.readLink(toFsPath(relative)).pipe(
-        Effect.as(child(followed)),
-        Effect.catchIf(isNotLink, () => Effect.succeed(child(next)))
+    const isDirectory = !descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory
+      ? false
+      : type !== "Unknown" && type !== "SymbolicLink"
+      ? type === "Directory"
+      : yield* fs.stat(toFsPath(relative)).pipe(
+        Effect.map((info) => info.type === "Directory"),
+        Effect.catchIf(isIgnorable, () => Effect.succeed(false))
       )
+    const accepted = accepts(compiled, next, isDirectory)
+    if ((!accepted && (!isDirectory || !descend)) || accepts(excludes, nextExcluded, isDirectory)) {
+      return undefined
     }
-    if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory) {
-      return finish(false)
+    const child = (next: States | undefined): Child => ({ relative, accepted, excluded: nextExcluded, next })
+    if (!isDirectory || !descend) {
+      return child(undefined)
     }
-    if (type !== "Unknown" && type !== "SymbolicLink") {
-      return finish(type === "Directory")
+    if (result.globstar.size === 0) {
+      return child(next)
     }
-    return fs.stat(toFsPath(relative)).pipe(
-      Effect.map((info) => info.type === "Directory"),
-      Effect.catchIf(isIgnorable, () => Effect.succeed(false)),
-      Effect.flatMap(finish)
+    // Follow symlinks only through explicit segments, not `**`.
+    const followed = canDescend(compiled, result.explicit) ? result.explicit : undefined
+    if (type !== "Unknown") {
+      return child(type === "SymbolicLink" ? followed : next)
+    }
+    return yield* fs.readLink(toFsPath(relative)).pipe(
+      Effect.as(child(followed)),
+      Effect.catchIf(isNotLink, () => Effect.succeed(child(next)))
     )
-  }
+  })
 
-  const directory = (
+  const directory = Effect.fnUntraced(function*(
     relative: string,
     states: States,
     excluded: States,
     named: boolean,
     out: Array<string>
-  ): Effect.Effect<void, PlatformError> =>
-    Effect.gen(function*() {
-      const listing = yield* entries(relative, states, named)
-      const children = yield* Effect.forEach(
-        listing.entries,
-        (entry) => visit(entry, relative, states, excluded),
-        { concurrency: 16 }
-      )
-      for (const child of children) {
-        if (child === undefined) {
-          continue
-        }
-        if (child.accepted) {
-          out.push(child.relative)
-        }
-        if (child.next !== undefined) {
-          yield* directory(child.relative, child.next, child.excluded, listing.named, out)
-        }
+  ): Effect.fn.Return<void, PlatformError> {
+    const listing = yield* entries(relative, states, named)
+    const children = yield* Effect.forEach(
+      listing.entries,
+      (entry) => visit(entry, relative, states, excluded),
+      { concurrency: 16 }
+    )
+    for (const child of children) {
+      if (child === undefined) {
+        continue
       }
-    })
-
-  return Effect.suspend(() => {
-    const out: Array<string> = []
-    return Effect.as(directory("", compiled.initial, excludes.initial, true, out), out)
+      if (child.accepted) {
+        out.push(child.relative)
+      }
+      if (child.next !== undefined) {
+        yield* directory(child.relative, child.next, child.excluded, listing.named, out)
+      }
+    }
   })
-}
+
+  const out: Array<string> = []
+  yield* directory("", compiled.initial, excludes.initial, true, out)
+  return out
+})
