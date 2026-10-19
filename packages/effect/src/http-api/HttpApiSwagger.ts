@@ -17,11 +17,16 @@ import type * as Layer from "../Layer.ts"
 import type * as HttpApi from "./HttpApi.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as Html from "./internal/html.ts"
-import * as internal from "./internal/httpApiSwagger.ts"
 import * as OpenApi from "./OpenApi.ts"
+
+const loadBundle = Effect.promise(() => import("./internal/httpApiSwagger.ts"))
 
 const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(options: {
   readonly api: HttpApi.HttpApi<Id, Groups>
+  readonly bundle: {
+    readonly javascript: string
+    readonly css: string
+  }
 }) => {
   const makeResponse = Function.memoize((api: HttpApi.HttpApi<Id, Groups>) => {
     const spec = OpenApi.fromApi(api)
@@ -31,7 +36,7 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${Html.escape(spec.info.title)} Documentation</title>
-  <style>${internal.css}</style>
+  <style>${options.bundle.css}</style>
 </head>
 <body>
   <div id="swagger-ui"></div>
@@ -39,7 +44,7 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
     ${Html.escapeJson(spec)}
   </script>
   <script>
-    ${internal.javascript}
+    ${options.bundle.javascript}
     window.onload = () => {
       window.ui = SwaggerUIBundle({
         spec: JSON.parse(document.getElementById("swagger-spec").textContent),
@@ -68,6 +73,7 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
   }
 ): Layer.Layer<never, never, HttpRouter.HttpRouter> =>
   HttpRouter.use(Effect.fnUntraced(function*(router) {
-    const handler = makeHandler({ api })
+    const bundle = yield* loadBundle
+    const handler = makeHandler({ api, bundle })
     yield* router.add("GET", options?.path ?? "/docs", handler)
   }))

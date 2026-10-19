@@ -65,6 +65,21 @@ type Local = Internal
     expect(run(cwd, "packages/foo/src/Internal.ts")).toEqual([])
   })
 
+  it("counts dynamic imports as usage of the imported module", () => {
+    const cwd = writeFixture({
+      "packages/foo/src/internal/lazy.ts": `/** @internal */
+export const first = 1
+
+/** @internal */
+export const second = 2
+`,
+      "packages/foo/src/Consumer.ts": `export const load = () => import("./internal/lazy.ts")
+`
+    })
+
+    expect(run(cwd, "packages/foo/src/internal/lazy.ts")).toEqual([])
+  })
+
   it("reports @internal exports used in public exported type signatures", () => {
     const cwd = writeFixture({
       "packages/foo/src/Internal.ts": `/** @internal */
