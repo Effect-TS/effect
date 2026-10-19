@@ -162,6 +162,19 @@ development:
     assert.throws(() => Yaml.parse("root:\n   child: true\n  sibling: false\n"))
   })
 
+  it("keeps tabs and whitespace in block scalar content", () => {
+    assert.deepStrictEqual(Yaml.parse("makefile: |\n  all:\n  \tcc -o app main.c\n"), {
+      makefile: "all:\n\tcc -o app main.c\n"
+    })
+    assert.deepStrictEqual(Yaml.parse("text: >\n  a\n  \tb\n  c\n"), { text: "a\n\tb\nc\n" })
+    assert.deepStrictEqual(Yaml.parse("text: |\n  a\n    \n  b\n"), { text: "a\n  \nb\n" })
+    assert.deepStrictEqual(Yaml.parse("a: 1\n\t# comment\n\t\nb: 2\n"), { a: 1, b: 2 })
+    assert.deepStrictEqual(Yaml.parse("text: |1\n   \n  x\n"), { text: "  \n x\n" })
+    assert.throws(() => Yaml.parse("root:\n\tchild: true\n"), /Tabs cannot be used for YAML indentation/)
+    assert.throws(() => Yaml.parse("text: |\n  x\n\t\nnext: 1\n"), /Tabs cannot be used for YAML indentation/)
+    assert.throws(() => Yaml.parse("text: a\n\t\n  b\n"), /Tabs cannot be used for YAML indentation/)
+  })
+
   // YAML 1.2.2 §8.2.1: a mapping value's block sequence may be indentless.
   describe("indentless sequences", () => {
     it.each([
