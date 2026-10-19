@@ -1,13 +1,11 @@
 /**
- * The `TextDiff` module computes minimal edit scripts between sequences and
- * text, and formats line differences as unified diffs. Use it for readable
- * assertion output, CLI tools, reviewing or applying generated edits, and as
- * the diff step of editors and collaborative editing.
+ * The `TextDiff` module computes edit scripts for arrays and text, applies and
+ * inverts them, and formats line differences as unified diffs.
  *
  * Scripts are computed with Myers' O(ND) algorithm in linear space, after
- * trimming the common prefix and suffix. The module provides edit scripts and
- * unified output only; word diffs, semantic cleanup and alternative
- * algorithms are out of scope.
+ * trimming common prefixes and suffixes. Scripts are minimal unless the
+ * optional `maxEdits` search cap is exceeded. Word diffs, semantic cleanup
+ * and collaborative editing protocols are out of scope.
  *
  * @stability unstable
  * @since 4.0.6
@@ -83,7 +81,7 @@ export interface DiffOptions {
    * point it reached and continues on the rest, and a part that still cannot
    * be matched becomes a deletion followed by an insertion. The script stays
    * valid, and is minimal whenever the whole diff needs at most `maxEdits`
-   * edits. Work is O((N + M) * maxEdits).
+   * edits. For a finite cap, work is O((N + M) * (maxEdits + 1)).
    *
    * @default Infinity
    */
@@ -125,8 +123,9 @@ export interface UnifiedOptions {
  *
  * **Details**
  *
- * The script has the fewest possible inserted plus deleted items. `Equal`
- * runs carry the items from `before`.
+ * Unless the {@link DiffOptions.maxEdits} cap is exceeded, the script has the
+ * fewest possible inserted plus deleted items. `Equal` runs carry the items
+ * from `before`, not necessarily the exact values from `after`.
  *
  * **Gotchas**
  *
@@ -162,9 +161,14 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
  *
  * **Details**
  *
- * The script has the fewest possible inserted plus deleted items. Among
- * equally short scripts the choice is deterministic, and each change lists its
- * deletions before its insertions.
+ * Unless the {@link DiffOptions.maxEdits} cap is exceeded, the script has the
+ * fewest possible inserted plus deleted items. The choice is deterministic,
+ * and each change lists its deletions before its insertions.
+ *
+ * **Gotchas**
+ *
+ * Without `maxEdits`, work is quadratic for unrelated inputs. Set `maxEdits`
+ * when diffing large or untrusted arrays.
  *
  * **Example** (Diffing two arrays)
  *
@@ -197,9 +201,8 @@ export const diff = <A>(
  *
  * **Gotchas**
  *
- * Without `maxEdits`, work is quadratic for unrelated inputs: two unrelated
- * 10,000-line texts take a few seconds. Set `maxEdits` when diffing large
- * or untrusted text.
+ * Without `maxEdits`, work is quadratic for unrelated inputs. Set `maxEdits`
+ * when diffing large or untrusted text.
  *
  * **Example** (Diffing lines)
  *
@@ -425,7 +428,7 @@ export const invert = <A>(edits: ReadonlyArray<Edit<A>>): Array<Edit<A>> => {
 export const unified = (edits: ReadonlyArray<Edit<string>>, options?: UnifiedOptions): string => {
   const a: Array<string> = []
   const b: Array<string> = []
-  // Changes are the maximal runs of edits between `Equal` runs
+  // Group consecutive deletions and insertions between Equal runs.
   const changes: Array<Change> = []
   let change: Change | undefined
   for (const edit of edits) {
@@ -561,11 +564,10 @@ const editScript = <A>(
 }
 
 /**
- * Returns the matched runs of an edit script between `a[0..n)` and `b[0..m)`,
- * in order and with adjacent runs merged. Uses the linear-space
- * divide-and-conquer form of Myers' algorithm: find the middle snake of an
- * optimal path, then solve both halves. A region needing more than `maxEdits`
- * edits is split at the furthest point either search reached instead.
+ * Returns ordered, merged matching runs for sequences of lengths n and m,
+ * using the index comparator. Linear-space Myers search splits each region
+ * at the middle snake of a minimal path, or at the furthest point reached
+ * when the search cap is exceeded.
  */
 const matchingBlocks = (
   n: number,

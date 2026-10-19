@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add the unstable `TextDiff` module for computing minimal edit scripts between arrays, lines, or code points, applying and inverting them, and formatting line differences as unified diffs.
+Add the unstable `TextDiff` module for array, line and Unicode code point edit scripts, replay, inversion and unified diff formatting. Use `maxEdits` to bound search work on large inputs, trading minimality for a valid script when the cap is exceeded.
