@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Allow `Schema.toTaggedUnion` to compile with generic member lists while continuing to reject concrete tuples with duplicate discriminants.
+Remove the type-level uniqueness check from `Schema.toTaggedUnion` so generic member lists compile again. Duplicate discriminants still throw at runtime.

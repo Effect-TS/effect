@@ -6319,12 +6319,6 @@ type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail]
   ? Head extends Union<infer Inner> ? [...Flatten<Inner>, ...Flatten<Tail>]
   : [Head, ...Flatten<Tail>]
   : []
-type DiscriminantKey<T extends PropertyKey> = T extends number ? `${T}` : T
-type EnsureUniqueDiscriminants<Tags extends ReadonlyArray<PropertyKey>, Seen = never> = Tags extends
-  readonly [infer Head extends PropertyKey, ...infer Tail extends ReadonlyArray<PropertyKey>]
-  ? [DiscriminantKey<Head> & Seen] extends [never] ? EnsureUniqueDiscriminants<Tail, Seen | DiscriminantKey<Head>>
-  : never
-  : unknown
 type MatchCasesResult<Cases> = {
   [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never
 }[keyof Cases]
@@ -6409,10 +6403,9 @@ export type toTaggedUnion<
  *
  * **Gotchas**
  *
- * Rejects overlapping discriminant types in known member tuples at compile
- * time, including nested unions. Numeric and string values such as `1` and
- * `"1"` count as duplicates. Also throws at runtime if multiple members use the
- * same discriminant property key.
+ * Throws when multiple members use the same discriminant property key,
+ * including members of nested unions. Numeric and string values such as `1`
+ * and `"1"` count as duplicates.
  *
  * **Example** (Adding tagged-union utilities to an existing union)
  *
@@ -6439,13 +6432,7 @@ export type toTaggedUnion<
  */
 export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
   return <const Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>>(
-    self:
-      & Union<Members>
-      & (
-        | NoInfer<EnsureUniqueDiscriminants<TaggedUnionUtils<Tag, Members>["discriminants"]>>
-        // Unresolved arrays have no explicit first element; known tuples must pass the uniqueness check.
-        | { readonly members: { readonly length: number; readonly 0?: never } }
-      )
+    self: Union<Members>
   ): toTaggedUnion<Tag, Members> => {
     const cases: Record<PropertyKey, unknown> = {}
     const discriminants: Array<PropertyKey> = []

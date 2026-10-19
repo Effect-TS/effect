@@ -165,45 +165,17 @@ describe("Union", () => {
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
       })
 
-      it("should reject duplicates only on the selected tag", () => {
+      it("should collect discriminants for the selected tag", () => {
         const original = Schema.Union([
           Schema.Struct({ _tag: Schema.tag("A"), kind: Schema.tag("shared") }),
           Schema.Struct({ _tag: Schema.tag("B"), kind: Schema.tag("shared") })
         ])
 
-        expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("kind"))
-
         const schema = original.pipe(Schema.toTaggedUnion("_tag"))
         expect(schema.discriminants).type.toBe<readonly ["A", "B"]>()
       })
 
-      it("should reject duplicate nested discriminants", () => {
-        const original = Schema.Union([
-          Schema.Struct({ event: Schema.Literal("A") }),
-          Schema.Union([
-            Schema.Struct({ event: Schema.Literal("B") }),
-            Schema.Struct({ event: Schema.Literal("A") })
-          ])
-        ])
-
-        expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("event"))
-      })
-
-      it("should reject duplicate discriminants before a variadic tail", () => {
-        const A = Schema.TaggedStruct("A", {})
-        const B = Schema.TaggedStruct("B", {})
-        const original = Schema.Union([A, A, ...hole<ReadonlyArray<typeof B>>()])
-
-        expect(Schema.toTaggedUnion("_tag")).type.not.toBeCallableWith(original)
-      })
-
-      it("should reject numeric and string discriminants with the same property key", () => {
-        const original = Schema.Union([
-          Schema.Struct({ event: Schema.Literal(1) }),
-          Schema.Struct({ event: Schema.Literal("1") })
-        ])
-        expect(Schema.toTaggedUnion("event")).type.not.toBeCallableWith(original)
-
+      it("should preserve numeric and string discriminants", () => {
         const schema = Schema.Union([
           Schema.Struct({ event: Schema.Literal(1) }),
           Schema.Struct({ event: Schema.Literal("2") })
