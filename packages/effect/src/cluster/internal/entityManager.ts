@@ -528,6 +528,11 @@ export const make = Effect.fnUntraced(function*<
   const typeAttributes = Metric.CurrentMetricAttributes.context({ type: entity.type })
   yield* Effect.sync(() => {
     ClusterMetrics.entities.updateUnsafe(BigInt(activeServers.size), typeAttributes)
+    let mailboxMax = 0
+    for (const server of activeServers.values()) {
+      if (server.activeRequests.size > mailboxMax) mailboxMax = server.activeRequests.size
+    }
+    ClusterMetrics.entityMailboxMax.updateUnsafe(BigInt(mailboxMax), typeAttributes)
   }).pipe(
     Effect.andThen(Effect.sleep(1000)),
     Effect.forever,

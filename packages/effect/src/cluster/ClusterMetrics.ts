@@ -42,6 +42,34 @@ import * as Metric from "../Metric.ts"
 export const entities = Metric.gauge("effect_cluster_entities", { bigint: true })
 
 /**
+ * Creates a gauge tracking the largest number of in-flight requests held by a
+ * single entity of each entity type on the current runner.
+ *
+ * **When to use**
+ *
+ * Use to alert before an entity's mailbox reaches `mailboxCapacity` and starts
+ * rejecting requests with `MailboxFull`.
+ *
+ * **Details**
+ *
+ * Bigint gauge named `effect_cluster_entity_mailbox_max`, updated with the
+ * entity type as a metric tag. The value is the maximum across the type's
+ * active entities, not a sum.
+ *
+ * **Gotchas**
+ *
+ * This gauge is runner-local and sampled by the entity manager loop, so a
+ * short burst between samples is not observed.
+ *
+ * @see {@link entities} for the number of active entities per type
+ *
+ * @stability unstable
+ * @category metrics
+ * @since 4.1.0
+ */
+export const entityMailboxMax = Metric.gauge("effect_cluster_entity_mailbox_max", { bigint: true })
+
+/**
  * Creates a gauge tracking the number of singleton processes currently running on the
  * current runner.
  *
