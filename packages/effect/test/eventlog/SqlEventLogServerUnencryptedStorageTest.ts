@@ -59,6 +59,27 @@ const assertEntries = (
   assert.deepStrictEqual(rows.map((row) => row.entry.idString), expected.map((entry) => entry.idString))
 }
 
+/**
+ * Writes `entries` in a caller-owned transaction whose earlier after-commit
+ * callback holds it between COMMIT and the storage's publication until
+ * `release` runs.
+ */
+const writeWithHeldPublication = Effect.fnUntraced(function*(
+  storage: EventLogServerUnencrypted.Storage["Service"],
+  storeId: StoreId,
+  entries: ReadonlyArray<EventJournal.Entry>
+) {
+  const sql = yield* SqlClient.SqlClient
+  const committed = yield* Deferred.make<void>()
+  const released = yield* Deferred.make<void>()
+  const writer = yield* sql.withTransaction(Effect.gen(function*() {
+    yield* sql.afterCommit(Deferred.succeed(committed, undefined).pipe(Effect.andThen(Deferred.await(released))))
+    yield* storage.write(storeId, entries)
+  })).pipe(Effect.forkChild)
+  yield* Deferred.await(committed)
+  return Deferred.succeed(released, undefined).pipe(Effect.andThen(Fiber.join(writer)))
+})
+
 export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unknown>) =>
   it.layer(
     Layer.mergeAll(Reactivity.layer, layer),
@@ -380,5 +401,54 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
         const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
         assertEntries(persisted, [backlog, sentinel], 1)
+      }))
+
+    it.effect("publishes writes made in an enclosing SQL transaction only after it commits", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const storage = yield* makeStorage(makeOptions("sql_outer_commit"))
+        const storeId = makeStoreId("sql_outer_commit")
+        const backlog = makeEntry("Ada")
+        const rolledBack = makeEntry("Grace")
+        const committed = makeEntry("Margaret")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        yield* Effect.exit(sql.withTransaction(
+          Effect.andThen(storage.write(storeId, [rolledBack]), Effect.fail("rollback"))
+        ))
+        yield* sql.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [committed])
+          yield* Effect.yieldNow
+          assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        }))
+        assertEntries([yield* Queue.take(changes)], [committed], 2)
+      }))
+
+    it.effect("does not redeliver entries removed by backlog compaction when startup publication resumes", () =>
+      Effect.gen(function*() {
+        const storage = yield* makeStorage(makeOptions("compacted_startup"))
+        const storeId = makeStoreId("compacted_startup")
+        const folded = makeEntry("Ada")
+        const sentinel = makeEntry("Grace")
+        const compacted = yield* Deferred.make<void>()
+        const release = yield* writeWithHeldPublication(storage, storeId, [folded])
+        const changes = yield* storage.changes({
+          storeId,
+          startSequence: 0,
+          compactors: new Map([["UserNameSet", {
+            events: new Set(["UserNameSet"]),
+            effect: ({ entries }) =>
+              Effect.sync(() => {
+                assert.deepStrictEqual(entries.map((entry) => entry.idString), [folded.idString])
+              }).pipe(Effect.andThen(Deferred.succeed(compacted, undefined)))
+          }]])
+        }).pipe(Stream.toQueue({ capacity: "unbounded" }))
+        yield* Deferred.await(compacted)
+
+        yield* release
+        yield* storage.write(storeId, [sentinel])
+        assertEntries([yield* Queue.take(changes)], [sentinel], 2)
       }))
   })
