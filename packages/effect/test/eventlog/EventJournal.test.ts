@@ -375,6 +375,22 @@ describe("EventJournal", () => {
       assert.deepStrictEqual({ warningsWithin24Hours, warnings }, { warningsWithin24Hours: 0, warnings: 1 })
     }))
 
+  it.effect("logs skew warnings relative to the supplied Clock service when local ids are later", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const hour = 60 * 60 * 1000
+      // Local ids follow wall time, which is ahead of the supplied Clock here.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe())
+      yield* TestClock.setTime(millis - 48 * hour)
+      let warnings = 0
+      const logger = Logger.layer([Logger.make(({ logLevel }) => {
+        if (logLevel === "Warn") warnings++
+      })])
+      // 25 hours ahead of the supplied Clock, though behind the local ids.
+      yield* importEntry(journal, entry(millis - 23 * hour)).pipe(Effect.provide(logger))
+      assert.strictEqual(warnings, 1)
+    }))
+
   it.effect("orders imported entries by id and reports conflicts with greater ids per event and key", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
