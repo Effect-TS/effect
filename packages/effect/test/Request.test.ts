@@ -794,4 +794,21 @@ describe("Request", { concurrent: false }, () => {
       assert.strictEqual(delayServiceValue, "provided")
     })
   )
+
+  it.effect("setDelay(0) registers the request before running the batch", () =>
+    Effect.gen(function*() {
+      const batches: Array<Array<number>> = []
+      const resolver = Resolver.makeGrouped<GetNameById, string>({
+        key: () => "all",
+        resolver: (entries) =>
+          Effect.sync(() => {
+            batches.push(entries.map(({ request }) => request.id))
+            for (const entry of entries) entry.completeUnsafe(Exit.succeed(String(entry.request.id)))
+          })
+      }).pipe(Resolver.setDelay(0), Resolver.batchN(2))
+
+      yield* Effect.promise(() => Promise.resolve())
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "1")
+      assert.deepStrictEqual(batches, [[1]])
+    }))
 })
