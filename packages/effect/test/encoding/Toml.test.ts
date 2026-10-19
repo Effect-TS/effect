@@ -122,28 +122,40 @@ local = 2026-08-05 01:02:03
   })
 
   it("rejects bare carriage returns", () => {
-    assert.deepStrictEqual(Toml.parse("a = 1 # comment\r\nb = 2"), { a: 1, b: 2 })
-    assert.throws(() => Toml.parse("a = 1 # comment\rb = 2"), SyntaxError, "Invalid control character")
+    assert.deepStrictEqual(Result.getOrThrow(Toml.parse("a = 1 # comment\r\nb = 2")), { a: 1, b: 2 })
+    const result = Toml.parse("a = 1 # comment\rb = 2")
+    assert.isTrue(Result.isFailure(result))
+    if (Result.isFailure(result)) {
+      assert.include(result.failure.message, "Invalid control character")
+    }
   })
 
   it("parses Unicode escapes at the scalar value boundaries", () => {
     assert.deepStrictEqual(
-      Toml.parse(String.raw`
+      Result.getOrThrow(Toml.parse(String.raw`
 before = "\uD7FF"
 after = "\uE000"
 max = "\U0010FFFF"
 nul = "\u0000"
-`),
+`)),
       { before: "\uD7FF", after: "\uE000", max: "\u{10FFFF}", nul: "\u0000" }
     )
   })
 
   it("rejects raw control characters", () => {
     for (const input of [`"\u0000" = 1`, `key = '\u007F'`, `key = """\u001F"""`, "# comment\r"]) {
-      assert.throws(() => Toml.parse(input), SyntaxError, "Invalid control character")
+      const result = Toml.parse(input)
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.include(result.failure.message, "Invalid control character")
+      }
     }
-    assert.throws(() => Toml.parse(`key = "a\u0000"`), SyntaxError, "Invalid control character at line 1, column 9")
-    assert.deepStrictEqual(Toml.parse("key = '''\t\r\n'''\r\n# \t\r\n"), { key: "\t\r\n" })
+    const result = Toml.parse(`key = "a\u0000"`)
+    assert.isTrue(Result.isFailure(result))
+    if (Result.isFailure(result)) {
+      assert.strictEqual(result.failure.message, "Invalid control character at line 1, column 9")
+    }
+    assert.deepStrictEqual(Result.getOrThrow(Toml.parse("key = '''\t\r\n'''\r\n# \t\r\n")), { key: "\t\r\n" })
   })
 
   it.each([
@@ -152,7 +164,31 @@ nul = "\u0000"
     String.raw`value = "\uD83D\uDE00"`,
     String.raw`value = "\U00110000"`
   ])("rejects Unicode escapes that are not scalar values: %s", (input) => {
-    assert.throws(() => Toml.parse(input), SyntaxError, "Invalid unicode escape at line 1, column 12")
+    const result = Toml.parse(input)
+    assert.isTrue(Result.isFailure(result))
+    if (Result.isFailure(result)) {
+      assert.strictEqual(result.failure.message, "Invalid unicode escape at line 1, column 12")
+    }
+  })
+
+  it.each(["\"", "'"])("preserves up to two closing content quotes in multiline strings (%s)", (quote) => {
+    const delimiter = quote.repeat(3)
+    assert.deepStrictEqual(
+      Result.getOrThrow(Toml.parse(`empty = ${delimiter}${delimiter}
+one = ${delimiter}value${quote}${delimiter}
+two = ${delimiter}value${quote}${quote}${delimiter}`)),
+      { empty: "", one: `value${quote}`, two: `value${quote}${quote}` }
+    )
+  })
+
+  it("preserves escaped quotes before multiline closing content quotes", () => {
+    assert.deepStrictEqual(Result.getOrThrow(Toml.parse(String.raw`value = """value\""""""`)), { value: "value\"\"\"" })
+  })
+
+  it.each(["\"", "'"])("rejects six or more closing quotes in multiline strings (%s)", (quote) => {
+    for (const count of [6, 7]) {
+      assert.isTrue(Result.isFailure(Toml.parse(`value = ${quote.repeat(3)}value${quote.repeat(count)}`)))
+    }
   })
 
   it("rejects duplicate keys", () => {
@@ -182,10 +218,12 @@ nul = "\u0000"
       "[[a]]\n[a]\n"
     ]
     for (const input of invalid) {
-      assert.throws(() => Toml.parse(input))
+      assert.isTrue(Result.isFailure(Toml.parse(input)))
     }
     assert.deepStrictEqual(
-      Toml.parse("[fruit]\napple.color = \"red\"\napple.taste.sweet = true\n[fruit.apple.texture]\nsmooth = true\n"),
+      Result.getOrThrow(
+        Toml.parse("[fruit]\napple.color = \"red\"\napple.taste.sweet = true\n[fruit.apple.texture]\nsmooth = true\n")
+      ),
       { fruit: { apple: { color: "red", taste: { sweet: true }, texture: { smooth: true } } } }
     )
   })

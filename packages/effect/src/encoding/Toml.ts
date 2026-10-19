@@ -304,7 +304,7 @@ class TomlParser {
     while (!this.done) {
       if (multiline && this.input.startsWith("\"\"\"", this.index)) {
         this.advance(3)
-        return output
+        return output + this.closingQuotes("\"")
       }
       const character = this.peek()
       if (!multiline && character === "\"") {
@@ -374,7 +374,7 @@ class TomlParser {
       if (multiline && this.input.startsWith("'''", this.index)) {
         const output = this.input.slice(start, this.index)
         this.advance(3)
-        return output
+        return output + this.closingQuotes("'")
       }
       if (!multiline && this.peek() === "'") {
         const output = this.input.slice(start, this.index)
@@ -387,6 +387,15 @@ class TomlParser {
       this.advance()
     }
     this.fail("Unterminated literal string")
+  }
+
+  private closingQuotes(quote: string): string {
+    let quotes = ""
+    while (quotes.length < 2 && this.peek() === quote) {
+      quotes += quote
+      this.advance()
+    }
+    return quotes
   }
 
   private parseArray(): Array<unknown> {
