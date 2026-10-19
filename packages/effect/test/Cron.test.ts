@@ -494,6 +494,15 @@ describe("Cron", () => {
     deepStrictEqual(next(Cron.parseUnsafe("0 1 * * TUE", utc), wednesday), new Date("2025-10-28T01:00:00.000Z"))
   })
 
+  it("prev includes an occurrence earlier in the same second", () => {
+    const utc = DateTime.zoneMakeNamedUnsafe("UTC")
+    const daily = Cron.parseUnsafe("0 0 * * *", utc)
+    deepStrictEqual(prev(daily, new Date("2024-01-01T00:00:00.001Z")), new Date("2024-01-01T00:00:00.000Z"))
+    deepStrictEqual(prev(daily, new Date("2024-01-01T00:00:00.000Z")), new Date("2023-12-31T00:00:00.000Z"))
+    const seconds = Cron.parseUnsafe("10,30 * * * * *", utc)
+    deepStrictEqual(prev(seconds, new Date("2024-01-01T00:00:30.999Z")), new Date("2024-01-01T00:00:30.000Z"))
+  })
+
   it("returns the latest second when rolling back a minute", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const expr = Cron.parseUnsafe("10,30 * * * * *", utc)
