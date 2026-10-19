@@ -362,44 +362,26 @@ export const make = <
   [NoInfer<Declared>] extends [never] ? Fields[NoInfer<Key>]
     : Schema.Struct<{ readonly [K in NoInfer<Declared>]: Fields[K] }>
 > => {
-  const declaration = options.key as string | KeyDeclaration<any, string>
   const fields = options.schema.fields
-  const keyFields: ReadonlyArray<string> = typeof declaration === "string" ? [declaration] : declaration.fields
-  const keyOf = typeof declaration === "string" && isStringAst(SchemaAST.toType(fields[declaration].ast))
-    ? (row: Readonly<Record<string, unknown>>) => row[declaration] as string
-    : typeof declaration !== "string" && declaration.derive !== undefined
-    ? (row: Readonly<Record<string, unknown>>) => declaration.derive!(Struct.pick(row, keyFields) as any)
-    : jsonKey(keyFields.map((name) => [name, fields[name]]))
-  // The key of a row as callbacks and `patch` / `remove` payloads carry it.
-  const keyFrom = typeof declaration === "string"
-    ? (row: Readonly<Record<string, unknown>>) => row[declaration]
-    : (row: Readonly<Record<string, unknown>>) => Struct.pick(row, keyFields)
-  const keySchema = typeof declaration === "string"
-    ? fields[declaration]
-    : Schema.Struct(Struct.pick(fields, keyFields) as Schema.Struct.Fields)
+  const key = typeof options.key === "string"
+    ? scalarKey(options.key, fields[options.key])
+    : declaredKey(options.key as KeyDeclaration<any, string>, fields)
   const patchFields: Record<string, Schema.Constraint> = {}
-  for (const name of Object.keys(options.schema.fields)) {
-    if (!keyFields.includes(name)) patchFields[name] = patchField(options.schema.fields[name])
+  for (const name of Object.keys(fields)) {
+    if (!key.fields.includes(name)) patchFields[name] = patchField(fields[name])
   }
   const payload = Schema.Union([
     Schema.TaggedStruct("set", { row: options.schema }),
-    Schema.TaggedStruct("patch", { key: keySchema, fields: Schema.Struct(patchFields) }),
-    Schema.TaggedStruct("remove", { key: keySchema })
+    Schema.TaggedStruct("patch", { key: key.schema, fields: Schema.Struct(patchFields) }),
+    Schema.TaggedStruct("remove", { key: key.schema })
   ])
   return {
     tag,
-    keyFields,
+    keyFields: key.fields,
     schema: options.schema,
-    keyOf,
-    [keyFromId]: keyFrom,
-    primaryKey: (payload: Op) =>
-      keyOf(
-        payload._tag === "set"
-          ? payload.row
-          : typeof declaration === "string"
-          ? { [declaration]: payload.key }
-          : payload.key as Readonly<Record<string, unknown>>
-      ),
+    keyOf: key.primaryKey,
+    [keyFromId]: key.fromRow,
+    primaryKey: (payload: Op) => key.primaryKey(payload._tag === "set" ? payload.row : key.toValues(payload.key)),
     payload,
     success: Schema.Void,
     error: options.error ?? Schema.Never,
@@ -471,6 +453,7 @@ export const handler = <
   }>
 }) => Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove | DecodingServices<Fields, Key, KeySchema>> => {
   const decode = Schema.decodeUnknownEffect(SchemaBinary.toCodec(row.payload))
+  const keyFrom: RowKey["fromRow"] = (row as any)[keyFromId]
   return (options) =>
     Effect.flatMap(
       Effect.orDie(decode(options.entry.payload)),
@@ -479,7 +462,7 @@ export const handler = <
         if (op === undefined) return Effect.void
         switch (op._tag) {
           case "set":
-            return callbacks.set(op.row as any, (row as any)[keyFromId](op.row))
+            return callbacks.set(op.row as any, keyFrom(op.row) as any)
           case "patch":
             return Object.keys(op.fields).length === 0 ? Effect.void : callbacks.patch(op.key as any, op.fields as any)
           case "remove":
@@ -574,6 +557,42 @@ const shadowedEntries = (entries: ReadonlyArray<Entry>, ops: ReadonlyMap<Entry, 
 
 const keyFromId = "~effect/eventlog/EventRow/keyFrom"
 
+type Row = Readonly<Record<string, unknown>>
+
+// How a row's key is carried and derived, for a single key field or a declaration.
+interface RowKey {
+  readonly fields: ReadonlyArray<string>
+  // Schema of the key in `patch` and `remove` payloads.
+  readonly schema: Schema.Constraint
+  // The key as payloads and callbacks carry it.
+  readonly fromRow: (row: Row) => unknown
+  // The key field values a carried key stands for.
+  readonly toValues: (key: unknown) => Row
+  readonly primaryKey: (values: Row) => string
+}
+
+const scalarKey = (name: string, field: Schema.Constraint): RowKey => ({
+  fields: [name],
+  schema: field,
+  fromRow: (row) => row[name],
+  toValues: (key) => ({ [name]: key }),
+  primaryKey: isStringAst(SchemaAST.toType(field.ast)) ? (row) => row[name] as string : jsonKey([[name, field]])
+})
+
+const declaredKey = (declaration: KeyDeclaration<any, string>, fields: Schema.Struct.Fields): RowKey => {
+  const names = declaration.fields
+  const derive = declaration.derive
+  return {
+    fields: names,
+    schema: Schema.Struct(Struct.pick(fields, names) as Schema.Struct.Fields),
+    fromRow: (row) => Struct.pick(row, names),
+    toValues: (key) => key as Row,
+    primaryKey: derive !== undefined
+      ? (row) => derive(Struct.pick(row, names) as any)
+      : jsonKey(names.map((name) => [name, fields[name]]))
+  }
+}
+
 const isStringAst = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
     case "String":
@@ -595,7 +614,7 @@ const jsonKey = (fields: ReadonlyArray<readonly [string, Schema.Constraint]>) =>
   const encoders = fields.map(([name, field]) =>
     [name, Schema.encodeUnknownSync(Schema.toCodecJson(field as Schema.Codec<unknown>))] as const
   )
-  return (row: Readonly<Record<string, unknown>>) => JSON.stringify(encoders.map(([name, encode]) => encode(row[name])))
+  return (row: Row) => JSON.stringify(encoders.map(([name, encode]) => encode(row[name])))
 }
 
 // Run the field codec only for present keys, bypassing missing-key defaults.
@@ -623,8 +642,8 @@ type DecodingServices<
 > = PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]
 
 type Op =
-  | { readonly _tag: "set"; readonly row: Readonly<Record<string, unknown>> }
-  | { readonly _tag: "patch"; readonly key: unknown; readonly fields: Readonly<Record<string, unknown>> }
+  | { readonly _tag: "set"; readonly row: Row }
+  | { readonly _tag: "patch"; readonly key: unknown; readonly fields: Row }
   | { readonly _tag: "remove"; readonly key: unknown }
 
 const compose = (x: Op, y: Op): Op => {
