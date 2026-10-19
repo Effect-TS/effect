@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, Deferred, Effect, Exit, Fiber, Request, RequestResolver } from "effect"
+import { Data, Deferred, Effect, Exit, Fiber, Option, Request, RequestResolver } from "effect"
+import type { Tracer } from "effect"
 
 class Key extends Data.Class<{ id: number }> {}
 class GetValue extends Request.Class<{ key: Key }, number> {}
@@ -59,5 +60,19 @@ describe("RequestResolver.makeGrouped", () => {
 
       assert.strictEqual(keys.length, 1)
       assert.strictEqual(keys[0], next)
+    }))
+})
+
+describe("RequestResolver.withSpan", () => {
+  it.effect("applies span options returned by an options function", () =>
+    Effect.gen(function*() {
+      class GetSpan extends Request.Class<{ kind: "client" | "server" }, Tracer.Span> {}
+      const resolver = RequestResolver.fromEffect<GetSpan>(() => Effect.orDie(Effect.currentSpan)).pipe(
+        RequestResolver.withSpan("resolver", (entries) => ({ kind: entries[0].request.kind, root: true }))
+      )
+      const span = yield* Effect.request(new GetSpan({ kind: "client" }), resolver).pipe(Effect.withSpan("caller"))
+
+      assert.strictEqual(span.kind, "client")
+      assert.isTrue(Option.isNone(span.parent))
     }))
 })

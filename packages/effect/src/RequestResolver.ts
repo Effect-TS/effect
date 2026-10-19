@@ -1020,7 +1020,7 @@ export const withSpan: {
           links.push({ span: span.value, attributes: {} })
         }
         return Effect.withSpan(self.runAll(entries, key), name, {
-          ...options,
+          ...opts,
           links,
           attributes: {
             batchSize: entries.length,
