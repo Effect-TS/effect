@@ -90,32 +90,24 @@ local = 2026-08-05 01:02:03
     )
   })
 
-  it("keeps one or two quotes right before the closing delimiter of a multiline string", () => {
-    // TOML 1.0 spec examples for multiline basic and literal strings
+  it.each(["\"", "'"])("preserves up to two closing content quotes in multiline strings (%s)", (quote) => {
+    const delimiter = quote.repeat(3)
     assert.deepStrictEqual(
-      Toml.parse(`
-str4 = """Here are two quotation marks: "". Simple enough."""
-str5 = """Here are three quotation marks: ""\\"."""
-str6 = """Here are fifteen quotation marks: ""\\"""\\"""\\"""\\"""\\"."""
-str7 = """"This," she said, "is just a pointless statement.""""
-quot15 = '''Here are fifteen quotation marks: """""""""""""""'''
-apos15 = "Here are fifteen apostrophes: '''''''''''''''"
-str = ''''That,' she said, 'is still pointless.''''
-one = """a""""
-`),
-      {
-        str4: "Here are two quotation marks: \"\". Simple enough.",
-        str5: "Here are three quotation marks: \"\"\".",
-        str6: "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".",
-        str7: "\"This,\" she said, \"is just a pointless statement.\"",
-        quot15: "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"",
-        apos15: "Here are fifteen apostrophes: '''''''''''''''",
-        str: "'That,' she said, 'is still pointless.'",
-        one: "a\""
-      }
+      Toml.parse(`empty = ${delimiter}${delimiter}
+one = ${delimiter}value${quote}${delimiter}
+two = ${delimiter}value${quote}${quote}${delimiter}`),
+      { empty: "", one: `value${quote}`, two: `value${quote}${quote}` }
     )
-    assert.throws(() => Toml.parse(`x = """a""""""\n`), SyntaxError)
-    assert.throws(() => Toml.parse(`x = '''a''''''\n`), SyntaxError)
+  })
+
+  it("preserves escaped quotes before multiline closing content quotes", () => {
+    assert.deepStrictEqual(Toml.parse(String.raw`value = """value\""""""`), { value: "value\"\"\"" })
+  })
+
+  it.each(["\"", "'"])("rejects six or more closing quotes in multiline strings (%s)", (quote) => {
+    for (const count of [6, 7]) {
+      assert.throws(() => Toml.parse(`value = ${quote.repeat(3)}value${quote.repeat(count)}`), SyntaxError)
+    }
   })
 
   it("rejects duplicate keys", () => {
