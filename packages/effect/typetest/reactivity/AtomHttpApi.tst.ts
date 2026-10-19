@@ -172,4 +172,13 @@ describe("AtomHttpApi", () => {
       HttpApiSchema.withHeaders<SseStream, { readonly "x-count": number }>
     >()
   })
+
+  it("accepts any reactivity keys when no keys are declared", () => {
+    const keys = hole<ReadonlyArray<unknown>>()
+    const mutation = Client.mutation("group", "get")
+
+    expect(Client.query).type.toBeCallableWith("group", "get", { reactivityKeys: keys })
+    expect(Client.query).type.toBeCallableWith("group", "get", { reactivityKeys: { anything: [1, { id: 1 }] } })
+    expect(AtomRegistry.make().set).type.toBeCallableWith(mutation, { reactivityKeys: keys })
+  })
 })

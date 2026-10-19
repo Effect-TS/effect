@@ -34,4 +34,9 @@ describe("EventLog", () => {
       events: [{ event: "A", payload: { b: 1 } }, { event: "B", payload: { a: "x" } }]
     })
   })
+
+  it("groupReactivity accepts any key names when no keys are declared", () => {
+    expect(EventLog.groupReactivity).type.toBeCallableWith(Group, ["anything"])
+    expect(EventLog.groupReactivity).type.toBeCallableWith(Group, { A: ["anything"] })
+  })
 })
