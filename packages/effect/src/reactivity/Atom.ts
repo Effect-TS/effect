@@ -31,7 +31,6 @@ import * as KeyValueStore from "../persistence/KeyValueStore.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
-import type { ReadonlyRecord } from "../Record.ts"
 import { UnhandledLogLevel } from "../References.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Schema from "../Schema.ts"
@@ -279,7 +278,7 @@ const RuntimeProto = {
 
   fn(this: AtomRuntime<any, any>, arg: any, options?: {
     readonly initialValue?: unknown
-    readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+    readonly reactivityKeys?: Reactivity.KeysInput | undefined
     readonly concurrent?: boolean | undefined
   }) {
     if (arguments.length === 0) {
@@ -340,7 +339,7 @@ const makeFnRuntime = (
     | Stream.Stream<any, any, AtomRegistry>,
   options?: {
     readonly initialValue?: unknown
-    readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+    readonly reactivityKeys?: Reactivity.KeysInput | undefined
   }
 ) => {
   const [read, write, argAtom] = makeResultFn(
@@ -680,7 +679,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
         fn: (arg: Arg, get: FnContext) => Effect.Effect<A, E, Scope.Scope | AtomRegistry | Reactivity.Reactivity | R>,
         options?: {
           readonly initialValue?: A | undefined
-          readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+          readonly reactivityKeys?: Reactivity.KeysInput | undefined
           readonly concurrent?: boolean | undefined
         }
       ): AtomResultFn<Arg, A, E | ER>
@@ -688,7 +687,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
         fn: (arg: Arg, get: FnContext) => Stream.Stream<A, E, AtomRegistry | Reactivity.Reactivity | R>,
         options?: {
           readonly initialValue?: A | undefined
-          readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+          readonly reactivityKeys?: Reactivity.KeysInput | undefined
           readonly concurrent?: boolean | undefined
         }
       ): AtomResultFn<Arg, A, E | ER | Cause.NoSuchElementError>
@@ -697,7 +696,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
       fn: (arg: Arg, get: FnContext) => Effect.Effect<A, E, Scope.Scope | AtomRegistry | Reactivity.Reactivity | R>,
       options?: {
         readonly initialValue?: A | undefined
-        readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly concurrent?: boolean | undefined
       }
     ): AtomResultFn<Arg, A, E | ER>
@@ -705,7 +704,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
       fn: (arg: Arg, get: FnContext) => Stream.Stream<A, E, AtomRegistry | Reactivity.Reactivity | R>,
       options?: {
         readonly initialValue?: A | undefined
-        readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly concurrent?: boolean | undefined
       }
     ): AtomResultFn<Arg, A, E | ER | Cause.NoSuchElementError>
@@ -750,7 +749,7 @@ export interface RuntimeFactory {
    * the keys change.
    */
   readonly withReactivity: (
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+    keys: Reactivity.KeysInput
   ) => <A extends Atom<any>>(atom: A) => A
 }
 
@@ -851,17 +850,15 @@ export function context(options?: {
       )
     )
   )
-  factory.withReactivity =
-    (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) =>
-    <A extends Atom<any>>(atom: A): A =>
-      transform(atom, (get) => {
-        const reactivity = AsyncResult.getOrThrow(get(reactivityAtom))
-        get.addFinalizer(reactivity.registerUnsafe(keys, () => {
-          get.refresh(atom)
-        }))
-        get.subscribe(atom, (value) => get.setSelf(value))
-        return get.once(atom)
-      }, { initialValueTarget: atom }) as any as A
+  factory.withReactivity = (keys: Reactivity.KeysInput) => <A extends Atom<any>>(atom: A): A =>
+    transform(atom, (get) => {
+      const reactivity = AsyncResult.getOrThrow(get(reactivityAtom))
+      get.addFinalizer(reactivity.registerUnsafe(keys, () => {
+        get.refresh(atom)
+      }))
+      get.subscribe(atom, (value) => get.setSelf(value))
+      return get.once(atom)
+    }, { initialValueTarget: atom }) as any as A
   return factory as any
 }
 
@@ -888,7 +885,7 @@ export const runtime: RegistryRuntimeFactory = context()
  * @since 4.0.0
  */
 export const withReactivity: (
-  keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  keys: Reactivity.KeysInput
 ) => <A extends Atom<any>>(atom: A) => A = runtime.withReactivity
 
 // -----------------------------------------------------------------------------

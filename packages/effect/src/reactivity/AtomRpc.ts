@@ -15,7 +15,6 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Layer from "../Layer.ts"
-import type { ReadonlyRecord } from "../Record.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import * as RpcClient from "../rpc/RpcClient.ts"
 import { RpcClientError } from "../rpc/RpcClientError.ts"
@@ -69,8 +68,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
       {
         readonly payload: Rpc.PayloadConstructor<Rpcs>
         readonly reactivityKeys?:
-          | ReadonlyArray<unknown>
-          | ReadonlyRecord<string, ReadonlyArray<unknown>>
+          | Reactivity.KeysInput
           | undefined
         readonly headers?: Headers.Input | undefined
       },
@@ -85,8 +83,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     options?: {
       readonly headers?: Headers.Input | undefined
       readonly reactivityKeys?:
-        | ReadonlyArray<unknown>
-        | ReadonlyRecord<string, ReadonlyArray<unknown>>
+        | Reactivity.KeysInput
         | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
@@ -197,8 +194,7 @@ export const Service = <Self>() =>
     return self.runtime.fn<{
       readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
       readonly reactivityKeys?:
-        | ReadonlyArray<unknown>
-        | ReadonlyRecord<string, ReadonlyArray<unknown>>
+        | Reactivity.KeysInput
         | undefined
       readonly headers?: Headers.Input | undefined
     }>()(
@@ -265,8 +261,7 @@ export const Service = <Self>() =>
     options?: {
       readonly headers?: Headers.Input | undefined
       readonly reactivityKeys?:
-        | ReadonlyArray<unknown>
-        | ReadonlyRecord<string, ReadonlyArray<unknown>>
+        | Reactivity.KeysInput
         | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
@@ -295,8 +290,7 @@ interface QueryKey {
   payload: any
   headers: Headers.Headers | undefined
   reactivityKeys:
-    | ReadonlyArray<unknown>
-    | ReadonlyRecord<string, ReadonlyArray<unknown>>
+    | Reactivity.KeysInput
     | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
