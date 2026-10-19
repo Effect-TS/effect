@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Cron.prev` skipping the most recent occurrence when the input has a non-zero millisecond part, for example returning the previous day's midnight for `00:00:00.001`.
+Fix `Cron.prev` skipping an occurrence earlier in the same second as the input.

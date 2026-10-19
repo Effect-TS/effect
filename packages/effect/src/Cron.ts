@@ -866,11 +866,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     }).epochMilliseconds <= zoned.epochMilliseconds
 
   const result = dateTime.mutate(zoned, (current) => {
-    if (reverse && current.getUTCMilliseconds() > 0) {
-      current.setUTCMilliseconds(0)
-    } else {
-      current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
-    }
+    // Start from the nearest whole second strictly past the input in the search
+    // direction. Going backward, a fractional input already has one.
+    const offset = reverse && current.getUTCMilliseconds() > 0 ? 0 : tick
+    current.setUTCSeconds(current.getUTCSeconds() + offset, 0)
 
     for (let i = 0; i < 10_000; i++) {
       if (cron.seconds.size !== 0) {
