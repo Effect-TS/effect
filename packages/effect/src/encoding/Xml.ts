@@ -1656,9 +1656,14 @@ class Utf8Input implements Machine<Uint8Array, Event> {
 
   push(chunk: Uint8Array): void {
     if (!this.started && chunk.length > 0) {
+      const first = this.carry === undefined ? chunk[0] : this.carry[0]
+      if (this.carry === undefined && chunk.length === 1 && (first === 0xFE || first === 0xFF)) {
+        this.carry = chunk.slice()
+        return
+      }
+      const second = this.carry === undefined ? chunk[1] : chunk[0]
       this.started = true
-      // UTF-16 documents start with a byte order mark, and UTF-8 never starts with 0xFE or 0xFF
-      if (chunk[0] === 0xFE || chunk[0] === 0xFF) {
+      if ((first === 0xFE && second === 0xFF) || (first === 0xFF && second === 0xFE)) {
         throw this.parser.error(
           "Unsupported",
           "UTF-16 is not supported for byte input, decode the bytes to text first",
