@@ -528,7 +528,8 @@ describe("toJsonSchemaDocument", () => {
       const schema = Schema.Date
       assertJsonSchemaDocument(schema, {
         schema: {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         }
       })
     })
