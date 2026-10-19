@@ -17,6 +17,7 @@ import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Simplify } from "effect/Types"
 import { OpenAiClient } from "./OpenAiClient.ts"
+import { OpenAiConfig } from "./OpenAiConfig.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 
 /**
@@ -140,6 +141,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
   )
 
   return yield* EmbeddingModel.make({
+    settings: [Config, OpenAiConfig],
     embedMany: Effect.fnUntraced(function*({ inputs }) {
       const config = yield* makeConfig
       const response = yield* client.createEmbedding({ ...config, input: inputs })
