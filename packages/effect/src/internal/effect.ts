@@ -350,7 +350,7 @@ export const causePrettyError = (
   let error: Error
   if (original && kind === "object") {
     error = new globalThis.Error(causePrettyMessage(original), {
-      cause: original.cause ? causePrettyError(original.cause as any) : undefined
+      cause: original.cause !== undefined ? causePrettyError(original.cause as any) : undefined
     })
     if (typeof original.name === "string") {
       error.name = original.name
