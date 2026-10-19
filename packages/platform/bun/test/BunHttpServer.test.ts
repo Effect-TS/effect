@@ -263,6 +263,45 @@ describe("BunHttpServer", () => {
       }).pipe(Effect.timeout("2 seconds")))
   })
 
+  for (const kind of ["serveEffect", "uninterruptible route"] as const) {
+    it.live(`closes the request scope when ${kind} returns a stream after client abort`, () =>
+      Effect.gen(function*() {
+        const closed = yield* Deferred.make<void>()
+        const controller = new AbortController()
+        const handler = Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Deferred.succeed(closed, undefined))
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const signal = (request.source as Request).signal
+          // Wait for Bun to observe the disconnect before returning the response.
+          yield* Effect.callback<void>((resume) => {
+            const onAbort = () => resume(Effect.void)
+            signal.addEventListener("abort", onAbort, { once: true })
+            controller.abort()
+            return Effect.sync(() => signal.removeEventListener("abort", onAbort))
+          })
+          const chunk = new TextEncoder().encode("body")
+          return HttpServerResponse.stream(Stream.concat(Stream.succeed(chunk), Stream.succeed(chunk)))
+        })
+        if (kind === "serveEffect") {
+          yield* HttpServer.serveEffect(handler)
+        } else {
+          yield* HttpRouter.add("GET", "/", handler, { uninterruptible: true }).pipe(
+            HttpRouter.serve,
+            Layer.build
+          )
+        }
+        const server = yield* HttpServer.HttpServer
+        const aborted = yield* Effect.promise(() =>
+          fetch(NetAddress.formatUrlUnsafe(server.address), { signal: controller.signal }).then(
+            () => false,
+            () => true
+          )
+        )
+        assert.isTrue(aborted)
+        yield* Deferred.await(closed).pipe(Effect.timeout("2 seconds"))
+      }).pipe(Effect.provide(BunHttpServer.layerTest)), 5000)
+  }
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {
