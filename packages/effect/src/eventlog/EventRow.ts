@@ -12,14 +12,12 @@
  *
  * **Details**
  *
- * Entries are stored as bytes and decoded with the current row schema
- * whenever they are replayed, including stored entries read as the conflicts
- * of a late entry. So the row schema must decode every encoding ever written:
+ * Replay decodes entries and stored conflicts with the current row schema,
+ * which must accept every encoding previously written:
  *
- * - Adding a field is safe when old entries decode without it. Give it a
- *   decoding default, such as `Schema.withDecodingDefaultKey`. A nullable
- *   field without one fails on old `set` entries. Patches never apply
- *   defaults.
+ * - New fields must accept absence, for example with
+ *   `Schema.withDecodingDefaultKey`. Nullable fields alone reject old `set`
+ *   entries. Patches never apply defaults.
  * - Removing a field is safe. Old entries decode without it.
  * - To change a field's type, keep its encoded type and change its decoded
  *   type with a transformation, such as `Schema.NumberFromString` for a field
@@ -30,17 +28,13 @@
  *   encodings are tagged. A rename keeps old entries readable only if the
  *   field has an explicit `SchemaBinary.fieldId`.
  *
- * Conflicts are only resolved between entries for the same row, so removing
- * a parent row does not remove a child that another replica adds at the same
- * time. Keep a removed parent in storage as a marker instead of deleting it.
- * The child `set` and `patch` callbacks skip the write when the parent is
- * marked removed, and apply it when the parent has not arrived yet. The
- * parent `remove` callback marks the parent and deletes its children. If
- * removing a parent is final, so its key is never set again, and a child
- * never moves to another parent, every replica ends without the children of
- * removed parents, whatever the delivery order. Queries must filter out
- * marked parents, and markers stay until the app removes them with a cutoff
- * of its own.
+ * Conflicts are scoped to one row; parent removal does not resolve concurrent
+ * child writes. For cascading deletion, retain a removed-parent marker and
+ * delete its children in the parent `remove` callback. Child `set` and `patch`
+ * callbacks must skip marked parents but allow parents not yet received. This
+ * converges only if parent deletion is final (no key reuse) and children never
+ * move between parents. Queries must exclude marked parents. Retain markers
+ * unless the app defines a safe cutoff for removing them.
  *
  * **Example** (Syncing grocery rows)
  *
@@ -175,11 +169,9 @@ export type KeyValues<Fields extends Schema.Struct.Fields, Names extends keyof F
  *
  * **Details**
  *
- * `derive` builds the key string from the declared fields. It must be
- * deterministic and return distinct keys for distinct rows. Without it, every
- * declared field must be a string field, and the key is the JSON encoding of
- * the field values in declaration order, which is distinct for distinct
- * values. Other field types need `derive`.
+ * `derive` must return a deterministic, unique row key. Without it, all
+ * declared fields must be strings; their JSON tuple in declaration order
+ * forms the key without collisions. Other field types require `derive`.
  *
  * @stability unstable
  * @category models
@@ -315,17 +307,14 @@ export interface EventRow<
  *
  * **Details**
  *
- * `key` is either the name of a required string field, or a declaration of
- * one or more required fields with a `derive` function, which is optional
- * when every declared field is a string field. A declared key is a string:
- * the result of `derive`, or the JSON encoding of the field values. Every key
- * field is excluded from `patch`, so a row's key never changes. To move a row
- * to another key, remove it and set it again.
+ * `key` names a required string field or declares required fields with an
+ * optional `derive` function. Non-string fields require `derive`. A declared
+ * key is the result of `derive`, or the JSON tuple of field values without it.
+ * Key fields cannot be patched. To move a row, remove it and set it again.
  *
- * A row's key is computed by `keyOf` from the values as written, and stored
- * as the entry's primary key. Conflicts are grouped by it, and handler
- * callbacks receive it, so storage must be keyed by it. Key fields in a
- * decoded row can differ from it when their schemas transform values.
+ * `keyOf` computes the entry's primary key from values as written. Conflicts
+ * and storage callbacks use that key, so storage must also use it. Decoding
+ * transformations can make the row's key fields differ from the stored key.
  *
  * Last-writer-wins applies to top-level fields. Nested values are atomic, so
  * concurrent updates within one nested value do not merge.
@@ -400,9 +389,8 @@ export const make = <
  *
  * **Details**
  *
- * Resolves stored newer conflicts in id order and calls at most one callback.
- * Callbacks receive typed values, never conflicts. Every callback receives
- * the entry's primary key, the row key computed when the entry was written.
+ * Resolves newer conflicts in id order and calls at most one callback with
+ * typed values and the entry's primary key, never conflicts.
  *
  * Newer writes take precedence per top-level field. Empty patches and entries
  * with nothing left to write skip the callback but are still journaled and synced.
@@ -464,8 +452,7 @@ export const handler = <
       (payload): Effect.Effect<unknown, Error["Type"], RSet | RPatch | RRemove> => {
         const op = resolve(payload as Op, options.conflicts as ReadonlyArray<{ readonly payload: Op }>)
         if (op === undefined) return Effect.void
-        // The key as written, which conflicts are grouped by. Decoding can change
-        // the key fields of the payload.
+        // Decoded key fields may differ from the key used to group conflicts.
         const key = options.entry.primaryKey as Schema.Schema.Type<KeySchema>
         switch (op._tag) {
           case "set":
@@ -484,18 +471,16 @@ export const handler = <
  *
  * **Details**
  *
- * The compactor only drops entries that a newer entry in the same remote
- * batch, for the same row, shadows. Kept entries are forwarded unchanged, so
- * they keep their ids and their stored conflicts. An entry is shadowed by a
- * newer `set` or `remove`, and a `patch` is also shadowed when newer patches
- * write all of its fields.
+ * Drops entries superseded within the same remote batch and row by a newer
+ * `set` or `remove`. A `patch` is also dropped when newer patches together
+ * overwrite all its fields. Kept entries retain their ids and stored conflicts.
  *
  * A `set` or `remove` followed only by patches is kept: without it, the
  * patches would apply to a different row, or to none. Entries that fail to
  * decode are kept.
  *
- * Only the row's event is registered, so compactors for other events in the
- * group are kept. Register one compactor per row event to compact several.
+ * Leaves other events' compactors unchanged. Register one compactor per row
+ * event.
  *
  * @stability unstable
  * @category compaction
@@ -534,8 +519,6 @@ export const compaction = <
     })
   }))
 
-// Walks each row's entries from newest to oldest, tracking whether a newer
-// `set` or `remove` exists and which fields newer patches write.
 const shadowedEntries = (entries: ReadonlyArray<Entry>, ops: ReadonlyMap<Entry, Op>): Set<Entry> => {
   const shadowed = new Set<Entry>()
   const byKey = new Map<string, Array<Entry>>()
