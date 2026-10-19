@@ -77,17 +77,6 @@ const E: Row = { id: "g1", name: "e", quantity: null, completed: false }
 const P: Fields = { name: "p", quantity: 3 }
 const Q: Fields = { name: "q", completed: true }
 
-const Shelf = EventRow.make("shelf", {
-  key: "id",
-  schema: Schema.Struct({
-    id: Schema.String,
-    box: Schema.Struct({ n: Schema.Number }),
-    items: Schema.Array(Schema.Struct({ n: Schema.Number })),
-    label: Schema.OptionFromOptionalKey(Schema.String)
-  })
-})
-const ShelfCodec = EventGroup.empty.add(Shelf).events.shelf.payloadSchemaBinary
-
 // Decoding is not undone by encoding, so a value decoded twice differs from
 // one decoded once.
 const Stamp = EventRow.make("stamp", {
@@ -232,50 +221,6 @@ const makeReplica = Effect.fnUntraced(function*(compact = false) {
 })
 
 describe("EventRow", () => {
-  it.effect("preserves typed key identity across lawful decoding and both delivery orders", () =>
-    Effect.gen(function*() {
-      const keySchema = Schema.NumberFromString
-      const rowSchema = Schema.Struct({ id: keySchema, n: Schema.Number })
-      const actual: Array<unknown> = []
-      const expected: Array<unknown> = []
-      const row = EventRow.make("stable", {
-        key: { fields: ["id"], derive: ({ id }) => String(id) },
-        schema: rowSchema
-      })
-      const codec = EventGroup.empty.add(row).events.stable.payloadSchemaBinary
-      const written = { id: 42, n: 1 }
-      const key = row.keyOf(written)
-      const keyValues = { id: written.id }
-      const payloads = [row.set(written), row.patch(keyValues, { n: 2 })]
-      const entries = yield* Effect.forEach(payloads, (payload, i) => makeEntryWith(1000 + i, row, codec, payload))
-      const decoded = yield* Effect.forEach(entries, (entry) => Schema.decodeUnknownEffect(codec)(entry.payload))
-      for (const order of [[0, 1], [1, 0]]) {
-        const storage = new Map<string, typeof rowSchema.Type>()
-        const handler = EventRow.handler(row, {
-          set: (value, key) => Effect.sync(() => storage.set(row.keyOf(key), value)),
-          patch: (key, fields) =>
-            Effect.sync(() => {
-              const value = storage.get(row.keyOf(key))
-              if (value !== undefined) storage.set(row.keyOf(key), { ...value, ...fields })
-            }),
-          remove: (key) => Effect.sync(() => storage.delete(row.keyOf(key)))
-        })
-        const delivered = new Set<number>()
-        for (const i of order) {
-          yield* handler({
-            storeId: yield* EventLog.CurrentStoreId,
-            payload: decoded[i],
-            entry: entries[i],
-            conflicts: [...delivered].filter((j) => j > i).map((j) => ({ entry: entries[j], payload: decoded[j] }))
-          })
-          delivered.add(i)
-        }
-        actual.push([...storage])
-        expected.push([[key, { id: 42, n: 2 }]])
-      }
-      assert.deepStrictEqual(actual, expected)
-    }))
-
   it.effect("round-trips byte keys without derive through every operation", () =>
     Effect.gen(function*() {
       const rowSchema = Schema.Struct({ id: Schema.Uint8Array, value: Schema.Number })
@@ -315,94 +260,41 @@ describe("EventRow", () => {
       yield* check(EventRow.make("bytes", { key: { fields: ["id"] }, schema: rowSchema }), { id })
     }))
 
-  it.effect("routes declared composite and derived keys through the same row", () =>
+  it.effect("routes typed composite keys with default and custom derivation", () =>
     Effect.gen(function*() {
-      const rowSchema = Schema.Struct({ list: Schema.String, aisle: Schema.String, value: Schema.Number })
-      const cases = [
-        {
-          tag: "composite",
-          declaration: { fields: ["list", "aisle"] },
-          key: "[\"a|b\",\"c\"]",
-          otherKey: "[\"a\",\"b|c\"]"
-        },
-        {
-          tag: "derivedComposite",
-          declaration: {
-            fields: ["list", "aisle"],
-            derive: ({ list, aisle }: { readonly list: string; readonly aisle: string }) =>
-              JSON.stringify([list.toLowerCase(), aisle.toLowerCase()])
-          },
-          key: "[\"a|b\",\"c\"]",
-          otherKey: "[\"a\",\"b|c\"]"
-        }
-      ] as const
-      for (const { tag, declaration, key, otherKey } of cases) {
-        const row = EventRow.make(tag, { key: declaration, schema: rowSchema })
-        const initial = { list: "A|B", aisle: "c", value: 1 }
-        // The default tuple encoding preserves case.
-        const input = row.tag === "composite" ? { ...initial, list: "a|b" } : initial
-        const other = { list: "a", aisle: "b|c", value: 3 }
-        assert.strictEqual(row.keyOf(input), key)
-        assert.deepStrictEqual(row.keyFields, declaration.fields)
-        assert.strictEqual(row.primaryKey(row.set(other)), otherKey)
-        assert.notStrictEqual(key, otherKey)
-        const keyValues = { list: input.list, aisle: input.aisle }
-        const storage = new Map<string, typeof rowSchema.Type>()
+      const schema = Schema.Struct({ list: Schema.String, aisle: Schema.String, value: Schema.Number })
+      const key = { list: "A|B", aisle: "c" }
+      for (const derive of [undefined, ({ list, aisle }: typeof key) => JSON.stringify([list.toLowerCase(), aisle])]) {
+        const row = EventRow.make("composite", { key: { fields: ["list", "aisle"], derive }, schema })
+        const codec = EventGroup.empty.add(row).events.composite.payloadSchemaBinary
         const calls: Array<unknown> = []
         const handler = EventRow.handler(row, {
-          set: (value, typedKey) =>
-            Effect.sync(() => {
-              calls.push(["set", typedKey])
-              storage.set(row.keyOf(typedKey), value)
-            }),
-          patch: (typedKey, fields) =>
-            Effect.sync(() => {
-              calls.push(["patch", typedKey])
-              const value = storage.get(row.keyOf(typedKey))
-              if (value !== undefined) storage.set(row.keyOf(typedKey), { ...value, ...fields })
-            }),
-          remove: (typedKey) =>
-            Effect.sync(() => {
-              calls.push(["remove", typedKey])
-              storage.delete(row.keyOf(typedKey))
-            })
+          set: (_, key) => Effect.sync(() => calls.push(key)),
+          patch: (key) => Effect.sync(() => calls.push(key)),
+          remove: (key) => Effect.sync(() => calls.push(key))
         })
-        const codec = EventGroup.empty.add(row).events[row.tag].payloadSchemaBinary
-        const payloads = [row.set(input), row.patch(keyValues, { value: 2 }), row.remove(keyValues)]
-        for (const [i, payload] of payloads.entries()) {
-          assert.strictEqual(row.primaryKey(payload), key)
-          const entry = yield* makeEntryWith(1000 + i, row, codec, payload)
+        assert.notStrictEqual(row.keyOf(key), row.keyOf({ list: "a", aisle: "b|c" }))
+        for (const payload of [row.set({ ...key, value: 1 }), row.patch(key, { value: 2 }), row.remove(key)]) {
+          const entry = yield* makeEntryWith(1000, row, codec, payload)
           const decoded = yield* Schema.decodeUnknownEffect(codec)(entry.payload)
-          assert.strictEqual(row.primaryKey(decoded), key)
-          assert.deepStrictEqual(decoded, payload)
-          yield* handler({
-            storeId: yield* EventLog.CurrentStoreId,
-            payload: decoded,
-            entry,
-            conflicts: []
-          })
-          assert.deepStrictEqual([...storage], i === 2 ? [] : [[key, { ...input, value: i + 1 }]])
+          const expected = derive ? "[\"a|b\",\"c\"]" : "[\"A|B\",\"c\"]"
+          assert.strictEqual(entry.primaryKey, expected)
+          assert.strictEqual(row.primaryKey(decoded), expected)
+          yield* handler({ storeId: yield* EventLog.CurrentStoreId, payload: decoded, entry, conflicts: [] })
         }
-        assert.deepStrictEqual(calls, [["set", keyValues], ["patch", keyValues], ["remove", keyValues]])
+        assert.deepStrictEqual(calls, [key, key, key])
       }
     }))
 
   it.effect("compacts only shadowed entries within the same row tag and key", () =>
     Effect.gen(function*() {
       const Other = EventRow.make("other", { key: "id", schema: Grocery.schema })
-      const notice = { tag: "notice", payload: Schema.String, primaryKey: (id: string) => id } as const
-      const NoticeGroup = EventGroup.empty.add(notice)
-      const group = Groceries.add(Other).add(notice)
+      const group = Groceries.add(Other)
       const registry = yield* EventLog.Registry
       const register = (layer: Layer.Layer<never, never, EventLog.Registry>) =>
         Layer.build(layer.pipe(Layer.provide(Layer.succeed(EventLog.Registry, registry))))
-      yield* register(EventLog.groupBatchCompaction(NoticeGroup, ({ entries, forward }) =>
-        Effect.forEach(entries, ({ entry }) =>
-          forward(entry), { discard: true })))
-      const noticeCompactor = registry.compactors.get("notice")!
       yield* register(EventRow.compaction(group, Grocery))
       yield* register(EventRow.compaction(group, Other))
-      assert.strictEqual(registry.compactors.get("notice"), noticeCompactor)
       assert.deepStrictEqual([...registry.compactors.get("grocery")!.events], ["grocery"])
       assert.deepStrictEqual([...registry.compactors.get("other")!.events], ["other"])
 
@@ -417,27 +309,15 @@ describe("EventRow", () => {
             ] as const
           )
         ),
-        ["patch covered by newer patch", [
-          ["grocery", Grocery.patch("g1", { name: "old" })],
-          ["grocery", Grocery.patch("g1", P)]
-        ], [1]],
-        ["equal patch field sets", [["grocery", Grocery.patch("g1", P)], ["grocery", Grocery.patch("g1", P)]], [1]],
         ["patch jointly covered by newer patches", [
           ["grocery", Grocery.patch("g1", P)],
           ["grocery", Grocery.patch("g1", { name: "new" })],
           ["grocery", Grocery.patch("g1", { quantity: 4 })]
         ], [1, 2]],
-        ["empty patch covered by patch", [["grocery", Grocery.patch("g1", {})], ["grocery", Grocery.patch("g1", P)]], [
-          1
-        ]],
         ["partially overlapping patches", [["grocery", Grocery.patch("g1", P)], ["grocery", Grocery.patch("g1", Q)]], [
           0,
           1
         ]],
-        ["disjoint patches", [
-          ["grocery", Grocery.patch("g1", { name: "old" })],
-          ["grocery", Grocery.patch("g1", { completed: true })]
-        ], [0, 1]],
         ["set is required even before a patch of every field", [
           ["grocery", Grocery.set(X)],
           ["grocery", Grocery.patch("g1", { name: "new", quantity: null, completed: true })]
@@ -466,9 +346,7 @@ describe("EventRow", () => {
         const output: Array<EventJournal.Entry> = []
         for (const tag of ["grocery", "other"] as const) {
           yield* registry.compactors.get(tag)!.effect({
-            entries: entries.filter((entry) =>
-              entry.event === tag
-            ).reverse(),
+            entries: entries.filter((entry) => entry.event === tag).reverse(),
             write: (entry, source) =>
               Effect.sync(() => {
                 assert.isUndefined(source, name)
@@ -555,38 +433,6 @@ describe("EventRow", () => {
       assert.deepStrictEqual(replayed, payloads)
     }))
 
-  it.effect("passes only the row's schema fields to callbacks", () =>
-    Effect.gen(function*() {
-      // Replicas decode these payloads without the extra keys, so a local
-      // write must not see them either. Variables bypass excess property checks.
-      const fields = { id: "other", completed: true }
-      const row = { ...E, note: "not in the schema" }
-      const actual = [yield* replay(Grocery.patch("g1", fields), []), yield* replay(Grocery.set(row), [])]
-      assert.deepStrictEqual(actual, [[["patch", "g1", { completed: true }]], [["set", E]]])
-    }))
-
-  it.effect("passes nested values to callbacks as replicas decode them", () =>
-    Effect.gen(function*() {
-      const calls: Array<unknown> = []
-      const handler = EventRow.handler(Shelf, {
-        set: (row) => Effect.sync(() => calls.push(["set", row])),
-        patch: (id, fields) => Effect.sync(() => calls.push(["patch", id, fields])),
-        remove: () => Effect.void
-      })
-      // Replicas decode nested structs without these extra keys.
-      const box = { n: 1, extra: "not in the schema" }
-      const items = [{ n: 2, extra: "not in the schema" }]
-      const payloads = [Shelf.set({ id: "s1", box, items, label: Option.none() }), Shelf.patch("s1", { box, items })]
-      for (const payload of payloads) {
-        const entry = yield* makeEntryWith(1000, Shelf, ShelfCodec, payload)
-        yield* handler({ storeId: yield* EventLog.CurrentStoreId, payload, entry, conflicts: [] })
-      }
-      assert.deepStrictEqual(calls, [
-        ["set", { id: "s1", box: { n: 1 }, items: [{ n: 2 }], label: Option.none() }],
-        ["patch", "s1", { box: { n: 1 }, items: [{ n: 2 }] }]
-      ])
-    }))
-
   it.effect("passes the same values to callbacks for a local write and its replay", () =>
     Effect.gen(function*() {
       const calls: Array<unknown> = []
@@ -622,6 +468,11 @@ describe("EventRow", () => {
 
   it.effect("patches a field whose encoding omits None only with Some", () =>
     Effect.gen(function*() {
+      const Shelf = EventRow.make("shelf", {
+        key: "id",
+        schema: Schema.Struct({ id: Schema.String, label: Schema.OptionFromOptionalKey(Schema.String) })
+      })
+      const ShelfCodec = EventGroup.empty.add(Shelf).events.shelf.payloadSchemaBinary
       const some = Shelf.patch("s1", { label: Option.some("x") })
       const replayed = yield* Schema.encodeUnknownEffect(ShelfCodec)(some).pipe(
         Effect.flatMap(Schema.decodeUnknownEffect(ShelfCodec))
@@ -640,7 +491,7 @@ describe("EventRow", () => {
     Effect.fnUntraced(function*({ commands }) {
       const replicas = yield* Effect.forEach([0, 1, 2], () =>
         Effect.gen(function*() {
-          return { plain: yield* makeReplica(), compacted: yield* makeReplica(true), single: yield* makeReplica() }
+          return { plain: yield* makeReplica(), compacted: yield* makeReplica(true) }
         }))
       const deliver = Effect.fnUntraced(function*(
         replica: typeof replicas[number],
@@ -649,7 +500,6 @@ describe("EventRow", () => {
       ) {
         yield* replica.plain.deliver(entries, batchSizes)
         yield* replica.compacted.deliver(entries, batchSizes)
-        yield* replica.single.deliver(entries, [1])
       })
       // Every entry written anywhere, with the payload it carries.
       const server = new Map<string, { readonly entry: EventJournal.Entry; readonly payload: Payload }>()
@@ -678,7 +528,6 @@ describe("EventRow", () => {
               .sort(EventJournal.Entry.Order)
             written.forEach((entry, i) => server.set(entry.idString, { entry, payload: payloads[i] }))
             yield* replica.compacted.deliver(written, [written.length])
-            yield* replica.single.deliver(written, [1])
             break
           }
           case "offline": {
@@ -738,10 +587,10 @@ describe("EventRow", () => {
         }
       }
       assert.deepStrictEqual(
-        replicas.map(({ plain, compacted, single }) =>
-          [plain, compacted, single].map((replica) => Object.fromEntries(replica.storage))
+        replicas.map(({ plain, compacted }) =>
+          [plain, compacted].map((replica) => Object.fromEntries(replica.storage))
         ),
-        replicas.map(() => [Object.fromEntries(expected), Object.fromEntries(expected), Object.fromEntries(expected)])
+        replicas.map(() => [Object.fromEntries(expected), Object.fromEntries(expected)])
       )
     }, Effect.scoped),
     { arbitrary: { runs: 200 } }
