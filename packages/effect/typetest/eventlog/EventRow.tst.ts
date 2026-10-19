@@ -73,11 +73,31 @@ describe("EventRow", () => {
     })
   })
 
-  it("preserves literal shorthand primary keys", () => {
+  it("requires derive for nullable or mixed-kind keys", () => {
+    const nullable = Schema.Struct({ id: Schema.Union([Schema.Null, Schema.Undefined, Schema.String]) })
+    const mixed = Schema.Struct({ id: Schema.Union([Schema.String, Schema.Number]) })
+    expect(EventRow.make).type.not.toBeCallableWith("nullable", { key: "id", schema: nullable })
+    expect(EventRow.make).type.not.toBeCallableWith("nullable", { key: { fields: ["id"] }, schema: nullable })
+    expect(EventRow.make).type.not.toBeCallableWith("mixed", { key: "id", schema: mixed })
+    expect(EventRow.make).type.not.toBeCallableWith("mixed", { key: { fields: ["id"] }, schema: mixed })
+    expect(EventRow.make).type.toBeCallableWith("nullable", {
+      key: { fields: ["id"], derive: ({ id }: typeof nullable.Type) => `${typeof id}:${id}` },
+      schema: nullable
+    })
+    expect(EventRow.make).type.toBeCallableWith("mixed", {
+      key: { fields: ["id"], derive: ({ id }: typeof mixed.Type) => `${typeof id}:${id}` },
+      schema: mixed
+    })
+    const numeric = Schema.Struct({ id: Schema.Number })
+    expect(EventRow.make).type.toBeCallableWith("numeric", { key: "id", schema: numeric })
+    expect(EventRow.make).type.toBeCallableWith("numeric", { key: { fields: ["id"] }, schema: numeric })
+  })
+
+  it("preserves suspended literal shorthand primary keys", () => {
     const row = EventRow.make("literal", {
       key: "id",
-      schema: Schema.Struct({ id: Schema.Literals(["a", "b"]), value: Schema.Number })
+      schema: Schema.Struct({ id: Schema.suspend(() => Schema.Literal("a")), value: Schema.Number })
     })
-    expect<ReturnType<typeof row.keyOf>>().type.toBe<"a" | "b">()
+    expect<ReturnType<typeof row.keyOf>>().type.toBe<"a">()
   })
 })

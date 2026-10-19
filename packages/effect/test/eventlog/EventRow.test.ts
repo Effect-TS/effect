@@ -260,7 +260,7 @@ describe("EventRow", () => {
       yield* check(EventRow.make("bytes", { key: { fields: ["id"] }, schema: rowSchema }), { id })
     }))
 
-  it.effect("routes typed composite keys with default and custom derivation", () =>
+  it.effect("routes composite keys and suspended string keys consistently", () =>
     Effect.gen(function*() {
       const schema = Schema.Struct({ list: Schema.String, aisle: Schema.String, value: Schema.Number })
       const key = { list: "A|B", aisle: "c" }
@@ -284,6 +284,12 @@ describe("EventRow", () => {
         }
         assert.deepStrictEqual(calls, [key, key, key])
       }
+      const suspended = EventRow.make("suspended", {
+        key: "id",
+        schema: Schema.Struct({ id: Schema.suspend(() => Schema.Literal("a")) })
+      })
+      assert.strictEqual(suspended.keyOf({ id: "a" }), "a")
+      assert.strictEqual(suspended.primaryKey(suspended.set({ id: "a" })), "a")
     }))
 
   it.effect("compacts only shadowed entries within the same row tag and key", () =>
