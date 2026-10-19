@@ -5,13 +5,14 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import * as NFS from "node:fs"
 import * as Path from "node:path"
 import { afterEach, beforeEach, vi } from "vitest"
-import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
+import { testGlob, testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
 const startWatch = Effect.fnUntraced(function*<E, R>(
   fs: FileSystem.FileSystem,
@@ -43,6 +44,24 @@ const startWatch = Effect.fnUntraced(function*<E, R>(
     Effect.ensuring(Fiber.interrupt(signalFiber))
   )
   return fiber
+})
+
+// A file system whose listings report every entry as `"Unknown"`, so `glob`
+// learns entry types from `stat` and `readLink` alone.
+const untypedLayer = Layer.effect(
+  FileSystem.FileSystem,
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    return FileSystem.make({
+      ...fs,
+      readDirectoryEntries: (path) =>
+        Effect.map(fs.readDirectory(path), (names) => names.map((name) => ({ name, type: "Unknown" as const })))
+    })
+  })
+).pipe(Layer.provide(NodeFileSystem.layer))
+
+describe("FileSystem without typed directory listings", { concurrent: false }, () => {
+  testGlob(untypedLayer)
 })
 
 describe("FileSystem", { concurrent: false }, () => {
