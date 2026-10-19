@@ -195,7 +195,7 @@ export const make = Effect.fnUntraced(
         const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
           Effect.sync(() => {
             const bunRequest = request as BunServerRequest
-            bunRequest.resolve(makeResponse(request, response, services, scope))
+            bunRequest.resolve(makeResponse(bunRequest, response, services, scope))
             if (upgradedSources.has(bunRequest.source)) return upgradedResponse
           }), middleware)
 
@@ -244,7 +244,7 @@ const upgradedResponse = ServerResponse.empty({ status: 101 })
 const upgradedSources = new WeakSet<Request>()
 
 const makeResponse = (
-  request: ServerRequest.HttpServerRequest,
+  request: BunServerRequest,
   response: ServerResponse.HttpServerResponse,
   context: Context.Context<never>,
   scope: Scope.Scope
@@ -300,7 +300,7 @@ const makeResponse = (
             })
           )),
           context,
-          { signal: (request.source as Request).signal }
+          { signal: request.source.signal }
         ),
         fields
       )
