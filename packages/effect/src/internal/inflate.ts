@@ -126,6 +126,13 @@ const OUTPUT_SIZE = 64 * 1024
 const WINDOW_SIZE = 32 * 1024
 const INFLATE_BUFFER_SIZE = WINDOW_SIZE + OUTPUT_SIZE
 
+// Shorter matches are copied faster by a loop than by `copyWithin`
+const COPY_WITHIN_LENGTH = 32
+
+// The fast path needs room for the longest match, and leaves the buffer short
+// of full
+const FAST_OUTPUT_END = INFLATE_BUFFER_SIZE - 258
+
 // Extra bits of the length codes 257 to 285 and of the distance codes, and the
 // base values that they are added to (RFC 1951, section 3.2.5)
 const LENGTH_EXTRA = Array.from({ length: 29 }, (_, i) => i < 8 || i === 28 ? 0 : (i >> 2) - 1)
@@ -169,6 +176,17 @@ const makeHuffman = (): Huffman => ({
   symbols: new Uint16Array(288)
 })
 
+// Each byte with its bits in reverse order, as deflate stores codes
+const REVERSED_BYTES = (() => {
+  const table = new Uint8Array(256)
+  for (let i = 0; i < 256; i++) {
+    let reversed = 0
+    for (let bit = 0; bit < 8; bit++) reversed |= ((i >>> bit) & 1) << (7 - bit)
+    table[i] = reversed
+  }
+  return table
+})()
+
 // Scratch space of `huffman`, which returns before any other call can use it
 const nextCodes = new Uint16Array(16)
 const offsets = new Uint16Array(16)
@@ -206,12 +224,8 @@ const huffman = (codes: Huffman, lengths: Uint8Array, start: number, end: number
     const length = lengths[start + symbol]
     if (length === 0) continue
     symbols[offsets[length]++] = symbol
-    let code = nextCodes[length]++
-    let reversed = 0
-    for (let i = 0; i < length; i++) {
-      reversed = (reversed << 1) | (code & 1)
-      code >>>= 1
-    }
+    const code = nextCodes[length]++
+    const reversed = ((REVERSED_BYTES[code & 0xff] << 8) | REVERSED_BYTES[code >>> 8]) >>> (16 - length)
     if (length > bits) {
       table[reversed & (size - 1)] = LONG
       continue
@@ -487,7 +501,86 @@ export class Inflater {
       const distanceTable = distances.table
       const distanceMask = distances.mask
       const distanceBits = distances.bits
-      while (true) {
+      symbols: while (true) {
+        // Fast path: a symbol with its extra bits and distance takes at most 8
+        // input bytes and writes at most 258, so no bounds checks are needed.
+        // It reads only from the current chunk, and stops before the buffer
+        // fills, which the slow path handles.
+        const fastInputEnd = input.length - 8
+        while (inputPosition <= fastInputEnd && position < FAST_OUTPUT_END) {
+          if (bitCount < 15) {
+            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
+            inputPosition += 2
+            bitCount += 16
+          }
+          let entry = literalTable[bitBuffer & literalMask]
+          // With 15 bits held, a long code is complete or invalid
+          if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
+          if (entry === 0) throw inflateError("invalid literal or length code")
+          bitBuffer >>>= entry & 15
+          bitCount -= entry & 15
+          const symbol = entry >>> 4
+          if (symbol < 256) {
+            buffer[position++] = symbol
+            continue
+          }
+          if (symbol === 256) break symbols
+          const lengthIndex = symbol - 257
+          if (lengthIndex >= 29) throw inflateError("invalid length code")
+          if (bitCount < 15) {
+            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
+            inputPosition += 2
+            bitCount += 16
+          }
+          const lengthExtra = LENGTH_EXTRA[lengthIndex]
+          const length = LENGTH_BASE[lengthIndex] + (bitBuffer & ((1 << lengthExtra) - 1))
+          bitBuffer >>>= lengthExtra
+          bitCount -= lengthExtra
+          if (bitCount < 15) {
+            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
+            inputPosition += 2
+            bitCount += 16
+          }
+          entry = distanceTable[bitBuffer & distanceMask]
+          if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
+          if (entry === 0) throw inflateError("invalid distance code")
+          bitBuffer >>>= entry & 15
+          bitCount -= entry & 15
+          const distanceIndex = entry >>> 4
+          if (distanceIndex >= 30) throw inflateError("invalid distance code")
+          if (bitCount < 13) {
+            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
+            inputPosition += 2
+            bitCount += 16
+          }
+          const distanceExtra = DISTANCE_EXTRA[distanceIndex]
+          const distance = DISTANCE_BASE[distanceIndex] + (bitBuffer & ((1 << distanceExtra) - 1))
+          bitBuffer >>>= distanceExtra
+          bitCount -= distanceExtra
+          if (distance > position - floor) throw inflateError("distance is beyond the start of the data")
+          let from = position - distance
+          const end = position + length
+          if (length < COPY_WITHIN_LENGTH) {
+            // Every match has at least three bytes
+            buffer[position] = buffer[from]
+            buffer[position + 1] = buffer[from + 1]
+            buffer[position + 2] = buffer[from + 2]
+            position += 3
+            from += 3
+            while (position < end) buffer[position++] = buffer[from++]
+          } else if (distance === 1) {
+            buffer.fill(buffer[from], position, end)
+            position = end
+          } else {
+            // A match can repeat the bytes it writes, so copy at most what is
+            // already written, which doubles each time
+            while (position < end) {
+              const n = Math.min(position - from, end - position)
+              buffer.copyWithin(position, from, from + n)
+              position += n
+            }
+          }
+        }
         let entry = 0
         while (true) {
           entry = literalTable[bitBuffer & literalMask]

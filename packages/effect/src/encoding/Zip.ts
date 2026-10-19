@@ -3,7 +3,8 @@
  *
  * `encode` writes each entry as it arrives and adds the central directory once
  * the input ends; `decode` reads entries in archive order from their local
- * headers. Neither buffers an entire entry body.
+ * headers. `decode` never buffers an entire entry body, and `encode` only
+ * collects deflated bodies with a `size` of at most 64 KiB.
  *
  * Entries are stored or compressed with deflate, the methods every zip tool
  * reads. Compression uses the runtime's `CompressionStream("deflate-raw")`;
@@ -469,7 +470,10 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * Headers and body chunks below 16 KiB are gathered into output chunks of
  * about 64 KiB, and larger body chunks pass through without copying. Output is
  * handed out before waiting for more entries, but up to 64 KiB of it can be
- * held while a body is pulled.
+ * held while a body is pulled. Each body chunk of a streamed `Deflate` entry is
+ * a separate compressor job, so larger chunks compress faster. A `Deflate`
+ * body with a `size` of at most 64 KiB is instead collected and compressed in
+ * one job, and still gets a data descriptor; omit `size` to stream it.
  *
  * **Gotchas**
  *
@@ -545,7 +549,7 @@ export const encode = <
       let bodyScope: Scope.Closeable | undefined
       // In-memory entries are deflated ahead of the one being written, so the
       // deflates overlap
-      let deflates: Array<Promise<Uint8Array> | undefined> = []
+      let deflates: Array<Deflating | undefined> = []
 
       const startDeflates = (from: number): void => {
         for (let i = from; i < Math.min(entries.length, from + DEFLATE_AHEAD); i++) {
@@ -553,11 +557,13 @@ export const encode = <
           const { content, header } = entries[i]
           if (header.type !== "File" || header.method !== "Deflate" || content === undefined) continue
           if (i > from && content.length > DEFLATE_AHEAD_SIZE) continue
-          const deflate = deflateBytes(content)
+          const deflating: Deflating = { promise: deflateBytes(content), data: undefined }
           // Failures surface when the entry is written; deflates left behind by
           // a failed encode finish on their own
-          deflate.catch(() => {})
-          deflates[i] = deflate
+          deflating.promise.then((data) => {
+            deflating.data = data
+          }, () => {})
+          deflates[i] = deflating
         }
       }
 
@@ -594,14 +600,35 @@ export const encode = <
               let data = bytes
               if (compress) {
                 startDeflates(index - 1)
-                const deflate = deflates[index - 1]!
+                const deflating = deflates[index - 1]!
                 deflates[index - 1] = undefined
-                data = yield* Effect.promise(() => deflate)
+                data = deflating.data ?? (yield* Effect.promise(() => deflating.promise))
               }
               yield* write(() => writer.entry(header, bytes, data))
               continue
             }
             yield* write(() => writer.begin(header))
+            if (compress && header.size !== undefined && header.size <= DEFLATE_AHEAD_SIZE) {
+              // A small body costs less to deflate in one piece than as a stream
+              const size = header.size
+              const chunks: Array<Uint8Array> = []
+              let length = 0
+              yield* Stream.runForEachArray(entry.body, (array) =>
+                write(() => {
+                  for (const chunk of array) {
+                    chunks.push(chunk)
+                    length += chunk.length
+                  }
+                  if (length > size) throw sizeMismatch(header.path, length, size)
+                  writer.update(array)
+                }))
+              const data = yield* Effect.promise(() => deflateBytes(concat(chunks, length)))
+              yield* write(() => {
+                writer.data([data])
+                writer.end()
+              })
+              continue
+            }
             const raw = Stream.mapArray(entry.body, (chunks) => {
               writer.update(chunks)
               return chunks
@@ -663,6 +690,12 @@ const compressible = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
 const DEFLATE_AHEAD = 16
 const DEFLATE_AHEAD_SIZE = 64 * 1024
 
+// A deflate started ahead, with its data once it is done
+interface Deflating {
+  readonly promise: Promise<Uint8Array>
+  data: Uint8Array | undefined
+}
+
 // One promise per in-memory entry costs less than a stream
 const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
   const compressor = new CompressionStream("deflate-raw")
@@ -679,6 +712,10 @@ const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
     chunks.push(value)
     length += value.length
   }
+  return concat(chunks, length)
+}
+
+const concat = (chunks: ReadonlyArray<Uint8Array>, length: number): Uint8Array => {
   if (chunks.length === 1) return chunks[0]
   const out = new Uint8Array(length)
   let at = 0
@@ -818,11 +855,32 @@ const CRC_TABLE = (() => {
   return table
 })()
 
+const littleEndian = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1
+
 const crc32 = (crc: number, bytes: Uint8Array): number => {
   const t = CRC_TABLE
   let c = ~crc
   let i = 0
   const length = bytes.length
+  // Reading whole words is faster than combining bytes, but needs aligned,
+  // little-endian words
+  if (littleEndian && length >= 64) {
+    for (; ((bytes.byteOffset + i) & 3) !== 0; i++) c = t[(c ^ bytes[i]) & 0xff] ^ (c >>> 8)
+    const count = ((length - i) >>> 4) << 2
+    const words = new Int32Array(bytes.buffer, bytes.byteOffset + i, count)
+    for (let j = 0; j < count; j += 4) {
+      const a = c ^ words[j]
+      const b = words[j + 1]
+      const d = words[j + 2]
+      const e = words[j + 3]
+      c = t[3840 + (a & 0xff)] ^ t[3584 + ((a >>> 8) & 0xff)] ^ t[3328 + ((a >>> 16) & 0xff)] ^
+        t[3072 + (a >>> 24)] ^ t[2816 + (b & 0xff)] ^ t[2560 + ((b >>> 8) & 0xff)] ^
+        t[2304 + ((b >>> 16) & 0xff)] ^ t[2048 + (b >>> 24)] ^ t[1792 + (d & 0xff)] ^
+        t[1536 + ((d >>> 8) & 0xff)] ^ t[1280 + ((d >>> 16) & 0xff)] ^ t[1024 + (d >>> 24)] ^
+        t[768 + (e & 0xff)] ^ t[512 + ((e >>> 8) & 0xff)] ^ t[256 + ((e >>> 16) & 0xff)] ^ t[e >>> 24]
+    }
+    i += count * 4
+  }
   for (; i + 16 <= length; i += 16) {
     const a = c ^ (bytes[i] | (bytes[i + 1] << 8) | (bytes[i + 2] << 16) | (bytes[i + 3] << 24))
     c = t[3840 + (a & 0xff)] ^ t[3584 + ((a >>> 8) & 0xff)] ^ t[3328 + ((a >>> 16) & 0xff)] ^
