@@ -93,20 +93,20 @@ local = 2026-08-05 01:02:03
   it.each(["\"", "'"])("preserves up to two closing content quotes in multiline strings (%s)", (quote) => {
     const delimiter = quote.repeat(3)
     assert.deepStrictEqual(
-      Toml.parse(`empty = ${delimiter}${delimiter}
+      Result.getOrThrow(Toml.parse(`empty = ${delimiter}${delimiter}
 one = ${delimiter}value${quote}${delimiter}
-two = ${delimiter}value${quote}${quote}${delimiter}`),
+two = ${delimiter}value${quote}${quote}${delimiter}`)),
       { empty: "", one: `value${quote}`, two: `value${quote}${quote}` }
     )
   })
 
   it("preserves escaped quotes before multiline closing content quotes", () => {
-    assert.deepStrictEqual(Toml.parse(String.raw`value = """value\""""""`), { value: "value\"\"\"" })
+    assert.deepStrictEqual(Result.getOrThrow(Toml.parse(String.raw`value = """value\""""""`)), { value: "value\"\"\"" })
   })
 
   it.each(["\"", "'"])("rejects six or more closing quotes in multiline strings (%s)", (quote) => {
     for (const count of [6, 7]) {
-      assert.throws(() => Toml.parse(`value = ${quote.repeat(3)}value${quote.repeat(count)}`), SyntaxError)
+      assert.isTrue(Result.isFailure(Toml.parse(`value = ${quote.repeat(3)}value${quote.repeat(count)}`)))
     }
   })
 
