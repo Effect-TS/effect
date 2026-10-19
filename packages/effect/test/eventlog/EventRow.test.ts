@@ -227,6 +227,83 @@ const makeReplica = Effect.fnUntraced(function*(compact = false) {
 })
 
 describe("EventRow", () => {
+  it.effect("routes declared composite and derived keys through the same row", () =>
+    Effect.gen(function*() {
+      const rowSchema = Schema.Struct({ list: Schema.String, aisle: Schema.String, value: Schema.Number })
+      const cases = [
+        {
+          tag: "composite",
+          declaration: { fields: ["list", "aisle"] },
+          key: "[\"a|b\",\"c\"]",
+          otherKey: "[\"a\",\"b|c\"]"
+        },
+        {
+          tag: "derived",
+          declaration: { fields: ["list"], derive: ({ list }: { readonly list: string }) => list.toLowerCase() },
+          key: "a|b",
+          otherKey: "a"
+        },
+        {
+          tag: "derivedComposite",
+          declaration: {
+            fields: ["list", "aisle"],
+            derive: ({ list, aisle }: { readonly list: string; readonly aisle: string }) =>
+              JSON.stringify([list.toLowerCase(), aisle.toLowerCase()])
+          },
+          key: "[\"a|b\",\"c\"]",
+          otherKey: "[\"a\",\"b|c\"]"
+        },
+        { tag: "single", declaration: "list", key: "A|B", otherKey: "a" }
+      ] as const
+      for (const { tag, declaration, key, otherKey } of cases) {
+        const row = EventRow.make(tag, { key: declaration, schema: rowSchema })
+        const initial = { list: "A|B", aisle: "c", value: 1 }
+        // The default tuple encoding preserves case.
+        const input = row.tag === "composite" ? { ...initial, list: "a|b" } : initial
+        const other = { list: "a", aisle: "b|c", value: 3 }
+        assert.strictEqual(row.primaryKey(row.set(other)), otherKey)
+        assert.notStrictEqual(key, otherKey)
+        const storage = new Map<string, typeof rowSchema.Type>()
+        const calls: Array<readonly [string, string]> = []
+        const handler = EventRow.handler(row, {
+          set: (value: typeof rowSchema.Type, key: string) =>
+            Effect.sync(() => {
+              calls.push(["set", key])
+              storage.set(key, value)
+            }),
+          patch: (key, fields) =>
+            Effect.sync(() => {
+              calls.push(["patch", key])
+              const value = storage.get(key)
+              if (value !== undefined) storage.set(key, { ...value, ...fields })
+            }),
+          remove: (key) =>
+            Effect.sync(() => {
+              calls.push(["remove", key])
+              storage.delete(key)
+            })
+        })
+        const codec = EventGroup.empty.add(row).events[row.tag].payloadSchemaBinary
+        const payloads = [row.set(input), row.patch(key, { value: 2 }), row.remove(key)]
+        for (const [i, payload] of payloads.entries()) {
+          assert.strictEqual(row.primaryKey(payload), key)
+          yield* handler({
+            storeId: yield* EventLog.CurrentStoreId,
+            payload,
+            entry: new EventJournal.Entry({
+              id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 + i }),
+              event: row.tag,
+              primaryKey: key,
+              payload: yield* Schema.encodeEffect(codec)(payload)
+            }, { disableChecks: true }),
+            conflicts: []
+          })
+          assert.deepStrictEqual([...storage], i === 2 ? [] : [[key, { ...input, value: i + 1 }]])
+        }
+        assert.deepStrictEqual(calls, [["set", key], ["patch", key], ["remove", key]])
+      }
+    }))
+
   it.effect("compacts only shadowed entries within the same row tag and key", () =>
     Effect.gen(function*() {
       const Other = EventRow.make("other", { key: "id", schema: Grocery.schema })
