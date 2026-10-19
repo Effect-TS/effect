@@ -1,4 +1,4 @@
-import { Effect, Layer, Schema, SubscriptionRef } from "effect"
+import { Effect, hole, Layer, Schema, SubscriptionRef } from "effect"
 import type { AsyncResult } from "effect/reactivity"
 import { Atom } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
@@ -54,6 +54,17 @@ describe("Atom", () => {
       const seed = Atom.make(1)
 
       expect(Atom.initialValue).type.not.toBeCallableWith(seed, { skipInitialRun: true })
+    })
+  })
+
+  describe("reactivity keys", () => {
+    it("accepts any keys when no keys are declared", () => {
+      const keys = hole<ReadonlyArray<unknown>>()
+      const runtime = Atom.runtime(Layer.empty)
+
+      expect(Atom.withReactivity).type.toBeCallableWith(keys)
+      expect(Atom.withReactivity).type.toBeCallableWith({ anything: [1, { id: 1 }] })
+      expect(runtime.fn).type.toBeCallableWith(() => Effect.void, { reactivityKeys: keys })
     })
   })
 })

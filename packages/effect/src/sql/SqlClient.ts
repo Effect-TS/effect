@@ -18,7 +18,7 @@ import { identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
-import { Reactivity } from "../reactivity/Reactivity.ts"
+import { type KeysInput, Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
@@ -141,7 +141,7 @@ export interface SqlClient extends Constructor {
    * Use the Reactivity service to create a reactive query.
    */
   readonly reactive: <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Stream.Stream<A, E, R>
 
@@ -150,7 +150,7 @@ export interface SqlClient extends Constructor {
    * query.
    */
   readonly reactiveMailbox: <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<Queue.Dequeue<A, E>, never, R | Scope.Scope>
 }

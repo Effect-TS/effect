@@ -886,6 +886,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
     })
   )
 
+type ReactivityKeyName = [keyof ReactivityLayer.Keys] extends [never] ? string : keyof ReactivityLayer.Keys
+
 /**
  * Registers reactivity keys to invalidate when events from a group are written or
  * replayed.
@@ -901,8 +903,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
 export const groupReactivity = <Events extends Event.Any>(
   group: EventGroup.EventGroup<Events>,
   keys:
-    | { readonly [Tag in Event.Tag<Events>]?: ReadonlyArray<string> }
-    | ReadonlyArray<string>
+    | { readonly [Tag in Event.Tag<Events>]?: ReadonlyArray<ReactivityKeyName> }
+    | ReadonlyArray<ReactivityKeyName>
 ): Layer.Layer<never, never, Registry> =>
   Effect.gen(function*() {
     const registry = yield* Registry
