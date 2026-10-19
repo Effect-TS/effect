@@ -31,7 +31,7 @@ import type * as NetAddress from "effect/net/NetAddress"
 import * as Queue from "effect/Queue"
 import * as References from "effect/References"
 import * as Schema from "effect/Schema"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
@@ -47,6 +47,87 @@ const todoResponse = HttpServerResponse.schemaJson(Todo)
 const fixture = `${import.meta.dirname}/fixtures/text.txt`
 
 describe("DenoHttpServer", () => {
+  describe("serve scope ownership", { concurrent: false }, () => {
+    it.live("closes the request scope when a streaming body is cancelled synchronously during construction", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        let pulled = false
+        let cancellation: Promise<void> | undefined
+        const OriginalResponse = globalThis.Response
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            // Intercept construction: awaiting a response over HTTP lets the first pull run already.
+            globalThis.Response = class extends OriginalResponse {
+              constructor(body?: BodyInit | null, init?: ResponseInit) {
+                if (body instanceof ReadableStream) {
+                  cancellation = body.cancel()
+                  super(null, init)
+                } else {
+                  super(body, init)
+                }
+              }
+            }
+          }),
+          () =>
+            Effect.sync(() => {
+              globalThis.Response = OriginalResponse
+            })
+        )
+        yield* HttpServer.serveEffect(Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          return HttpServerResponse.stream(Stream.fromEffect(Effect.sync(() => {
+            pulled = true
+            return new Uint8Array([1])
+          })))
+        }))
+        const response = yield* HttpClient.get("/")
+        assert.strictEqual(response.status, 200)
+        yield* response.text
+        assert.isDefined(cancellation)
+        yield* Effect.promise(() => cancellation!)
+        assert.strictEqual(pulled, false)
+        assert.strictEqual(finalized, true)
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
+
+    it.live("interrupts a streaming body suspended during startup when the serve scope closes", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const server = yield* DenoHttpServer.make({ hostname: "127.0.0.1", port: 0, disablePreemptiveShutdown: true })
+        // Let the body finish on teardown so the server can stop if it was never interrupted.
+        yield* Effect.addFinalizer(() => Deferred.succeed(release, undefined))
+        const serveScope = yield* Scope.fork(yield* Effect.scope)
+        yield* server.serve(Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          // The body suspends during startup, before it can serve a pull.
+          return HttpServerResponse.stream(
+            Stream.transformPull(
+              Stream.empty,
+              (pull) =>
+                Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(release)), Effect.as(pull))
+            )
+          )
+        })).pipe(Scope.provide(serveScope))
+        // Not awaited: headers may not be sent while the body is suspended.
+        fetch(`http://127.0.0.1:${(server.address as NetAddress.InetAddress).port}/`, {
+          headers: { connection: "close" }
+        }).catch(() => undefined)
+        yield* Deferred.await(started)
+        assert.strictEqual(finalized, false)
+        yield* Scope.close(serveScope, Exit.void)
+        assert.strictEqual(finalized, true)
+      }).pipe(Effect.timeout("2 seconds")))
+  })
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {
