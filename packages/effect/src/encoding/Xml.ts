@@ -355,10 +355,9 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
  * **Gotchas**
  *
  * - Invalid or truncated UTF-8 fails with a `Syntax` `XmlError`.
- * - UTF-16 input, which starts with a byte order mark, and an XML declaration
- *   naming an encoding other than UTF-8 or US-ASCII fail with an
- *   `Unsupported` `XmlError`. Decode such bytes to text with a `TextDecoder`
- *   for that encoding and use `decodeString`.
+ * - An initial UTF-16 byte order mark or an XML declaration naming an encoding
+ *   other than UTF-8 or US-ASCII fails with an `Unsupported` `XmlError`.
+ *   Decode such bytes with a `TextDecoder` for that encoding and use `decodeString`.
  *
  * @see {@link decodeString} for text input and the shared gotchas
  *
@@ -1665,7 +1664,7 @@ class Utf8Input implements Machine<Uint8Array, Event> {
           0
         )
       }
-      // A lone 0xFE or 0xFF is carried below as an incomplete sequence
+      // Keep a lone BOM prefix pending in the UTF-8 carry below
       this.started = second !== undefined || (first !== 0xFE && first !== 0xFF)
     }
     let start = 0
