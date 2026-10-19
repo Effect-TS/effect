@@ -1,17 +1,13 @@
 /**
  * Mutable rows that converge across event-log replicas.
  *
- * An `EventRow` is a single event per row type. Its payload is a `set`,
- * `patch` or `remove` op for one row, keyed by a string field of the row.
- * `make` returns the options `EventGroup.add` takes, so row events and plain
- * events can share a group. Write ops with the existing `EventLog.write` and
- * `EventLog.writeMany`, using the payload constructors on the row.
+ * Each row type has one event with `set`, `patch` and `remove` payloads, keyed
+ * by a string field. Pass the result of `make` to `EventGroup.add` and write
+ * its payloads with `EventLog.write` or `EventLog.writeMany`.
  *
- * `handler` builds the event handler. When an entry arrives after newer
- * entries for the same row, it resolves the conflict with last-writer-wins on
- * top-level fields, then calls at most one of your `set`, `patch` or `remove`
- * callbacks. Every replica ends up with the row it would have if it had
- * applied every entry in id order.
+ * `handler` resolves conflicts per top-level field and calls at most one
+ * storage callback. Replicas converge to the result of applying entries in
+ * id order.
  *
  * **Example** (Syncing grocery rows)
  *
@@ -70,8 +66,7 @@ import type { Entry } from "./EventJournal.ts"
 import type { StoreId } from "./EventLogMessage.ts"
 
 /**
- * Fields of a row schema that can be its key: required fields whose value is
- * a string.
+ * Required string fields eligible as a row key.
  *
  * @stability unstable
  * @category utility types
@@ -86,8 +81,7 @@ export type KeyField<Fields extends Schema.Struct.Fields> =
   & string
 
 /**
- * Field schemas of a `patch` payload: every non-key field of the row, made
- * optional.
+ * Optional non-key fields of a `patch` payload.
  *
  * @stability unstable
  * @category utility types
@@ -102,7 +96,7 @@ export type PatchFields<Fields extends Schema.Struct.Fields, Key extends keyof F
  *
  * **Details**
  *
- * - `set` carries the full row, with every field required.
+ * - `set` carries the full row, validated by the row schema.
  * - `patch` carries the row key and the fields to write. An absent field is
  *   not written. The key itself cannot be patched.
  * - `remove` carries the row key.
@@ -138,10 +132,8 @@ export type Payload<Fields extends Schema.Struct.Fields, Key extends keyof Field
  *
  * **Details**
  *
- * It is the options object `EventGroup.add` takes, plus the row schema, the
- * key field and payload constructors for `EventLog.write` and
- * `EventLog.writeMany`. The event tag is the row name and the primary key is
- * the row key. Handlers always succeed with `void`.
+ * Includes `EventGroup.add` options, the row schema, its key field and payload
+ * constructors. The row key is the event primary key; success is `void`.
  *
  * @stability unstable
  * @category models
@@ -162,22 +154,22 @@ export interface EventRow<
   readonly error: Error
 
   /**
-   * Replace the whole row, or create it.
+   * Replaces the whole row, creating it if missing.
    */
   readonly set: (row: Schema.Struct<Fields>["Type"]) => Payload<Fields, Key>
 
   /**
-   * Write some fields of an existing row.
+   * Writes fields of an existing row.
    *
    * **Details**
    *
    * A patch on a missing row does nothing. To clear a value, use a nullable
    * field and write `null`.
    *
-   * An absent field is not written, so a field's decoding default never
-   * applies to a patch. Writing a value whose encoding omits the key, such as
-   * `Option.none()` for `Schema.OptionFromOptionalKey`, fails, because
-   * replicas could not tell it from a field that was not written.
+   * Absent fields stay unwritten, even with decoding defaults. Values whose
+   * encoding omits the key, such as `Option.none()` for
+   * `Schema.OptionFromOptionalKey`, fail encoding: replicas cannot distinguish
+   * them from unwritten fields.
    */
   readonly patch: (
     key: Schema.Schema.Type<Fields[Key]>,
@@ -185,7 +177,7 @@ export interface EventRow<
   ) => Payload<Fields, Key>
 
   /**
-   * Delete the row.
+   * Deletes the row.
    */
   readonly remove: (key: Schema.Schema.Type<Fields[Key]>) => Payload<Fields, Key>
 }
@@ -195,12 +187,10 @@ export interface EventRow<
  *
  * **Details**
  *
- * `key` names the row field used as the event's primary key. Its value must
- * be a string. Composite keys are not supported.
+ * `key` must name a required string field. Composite keys are not supported.
  *
- * Top-level fields are the unit of last-writer-wins. Nested structs and
- * arrays are written whole: a patch replaces them, and concurrent patches to
- * different parts of one nested value do not merge.
+ * Last-writer-wins applies to top-level fields. Nested values are atomic, so
+ * concurrent updates within one nested value do not merge.
  *
  * `error` is the error schema of the event. Handler callbacks can fail with it.
  *
@@ -208,12 +198,9 @@ export interface EventRow<
  *
  * Do not use row events with `EventLog.groupCompaction` or
  * `EventLog.groupBatchCompaction`. Compaction runs before stored conflicts
- * are read, so collapsing row ops loses or misapplies writes. Each entry is a
- * single storage write anyway.
+ * are read, so collapsing row ops loses or misapplies writes.
  *
- * An operation over several rows, such as clearing completed items, is one op
- * per row written with `EventLog.writeMany`. Each row then resolves its own
- * conflicts.
+ * For multi-row operations, use `EventLog.writeMany` with one op per row.
  *
  * @stability unstable
  * @category constructors
@@ -259,36 +246,25 @@ export const make = <
  *
  * **Details**
  *
- * The handler resolves the entry against its stored newer conflicts, then
- * calls at most one callback. Callbacks never see the conflicts.
+ * Resolves stored newer conflicts in id order and calls at most one callback.
+ * Callbacks receive typed values, never conflicts.
  *
- * The newer conflicts are collapsed into one op, in id order. A later `set`
- * or `remove` replaces whatever came before it, a `patch` on a `set` or
- * `patch` merges its fields on top, and a `patch` after a `remove` stays a
- * `remove`. Then, for the entry being handled:
+ * Newer writes take precedence per top-level field. Empty patches and entries
+ * with nothing left to write skip the callback but are still journaled and synced.
+ * A late `set` retains newer patches, including when the row is missing.
  *
- * - With no newer conflicts, the entry is written as is.
- * - With a newer `set` or `remove`, nothing is written.
- * - With a newer `patch`, a `set` is written with the patch's fields on top,
- *   a `patch` is written without the fields the newer patch already wrote,
- *   and a `remove` is written as is.
- *
- * A patch with no fields left is skipped, and so is an empty patch. Skipped
- * entries are still journaled and synced.
- *
- * The handler decodes the entry's stored bytes rather than using the
- * payload it is given, so a local write and its replay on other replicas pass
- * callbacks the same values, without keys outside the schema at any depth.
- * The handler requires the decoding services of the payload schema.
+ * Decodes stored entry bytes so local writes and replay pass the same values
+ * to callbacks, stripping keys outside the schema at any depth. Requires the
+ * payload schema's decoding services, plus any services the callbacks require.
+ * Callbacks may fail with the event's error type; success is always `void`.
  *
  * **Gotchas**
  *
- * Convergence depends on the callbacks following this contract, which the
- * handler cannot check:
+ * Convergence requires this callback contract:
  *
  * - `set` replaces the whole row, creating it if it is missing.
  * - `patch` updates an existing row and does nothing if the row is missing.
- *   An upsert here brings back removed rows on some replicas only.
+ *   Upserting can resurrect removed rows on only some replicas.
  * - `remove` is idempotent.
  *
  * @stability unstable
@@ -326,8 +302,6 @@ export const handler = <
   Error["Type"],
   RSet | RPatch | RRemove | PayloadSchema<Fields, Key>["DecodingServices"]
 > => {
-  // A local write passes the written payload and a replay the decoded one, so
-  // decode the stored bytes for both, as stored conflicts already are.
   const decode = Schema.decodeUnknownEffect(SchemaBinary.toCodec(row.payload))
   return (options) =>
     Effect.flatMap(
@@ -347,12 +321,10 @@ export const handler = <
     ).pipe(Effect.asVoid)
 }
 
-// An optional key for a patch. An absent key stays absent, so missing-key
-// behaviour of the row field, such as a decoding default, never applies.
-// A present value goes through the row field's own codec.
+// Run the field codec only for present keys, bypassing missing-key defaults.
 const patchField = (field: Schema.Constraint): Schema.Constraint => {
   const decode = SchemaParser.decodeUnknownEffect(field)
-  // Encoded inside a struct, to see whether the field's encoding drops the key.
+  // The struct wrapper detects encodings that drop a written key.
   const encode = SchemaParser.encodeUnknownEffect(Schema.Struct({ value: field }))
   return Schema.optionalKey(Schema.toEncoded(field)).pipe(Schema.decodeTo(Schema.optionalKey(Schema.toType(field)), {
     decode: SchemaGetter.transformEffect(decode),
@@ -360,7 +332,6 @@ const patchField = (field: Schema.Constraint): Schema.Constraint => {
       Effect.flatMap(encode({ value }, options), (encoded) =>
         Object.hasOwn(encoded, "value")
           ? Effect.succeed(encoded.value)
-          // Replicas would read the missing key as "not written".
           : Effect.fail(
             new SchemaIssue.Forbidden({ message: "A patch cannot write a value whose encoding omits the key" }, value)
           ))
@@ -373,7 +344,6 @@ type Op =
   | { readonly _tag: "patch"; readonly key: unknown; readonly fields: Readonly<Record<string, unknown>> }
   | { readonly _tag: "remove"; readonly key: unknown }
 
-// `x ; y`: the result of applying `x` and then `y`.
 const compose = (x: Op, y: Op): Op => {
   if (y._tag !== "patch") return y
   switch (x._tag) {
@@ -386,7 +356,6 @@ const compose = (x: Op, y: Op): Op => {
   }
 }
 
-// What to write for a late entry, given its newer conflicts in id order.
 const resolve = (entry: Op, conflicts: ReadonlyArray<{ readonly payload: Op }>): Op | undefined => {
   if (conflicts.length === 0) return entry
   let newer = conflicts[0].payload
