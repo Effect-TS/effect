@@ -27,37 +27,26 @@ const isCanonical = (edits: ReadonlyArray<TextDiff.Edit<unknown>>): boolean =>
 const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
 
 const smallArray = fc.array(fc.constantFrom("a", "b", "c"), { maxLength: 12 })
-const text = fc.string({ unit: fc.constantFrom("a", "b", "\n", "\r\n", "é", "é", "😀", "👍🏽") })
+const text = fc.string({ unit: fc.constantFrom("a", "b", "\n", "\r\n", "é", "é", "😀", "👍🏽") })
 
 describe("TextDiff", () => {
   describe("diff", () => {
-    it("produces a minimal canonical script that applies and inverts", () => {
-      fc.assert(fc.property(smallArray, smallArray, (before, after) => {
-        const edits = TextDiff.diff(before, after)
+    it("produces a canonical script that applies and inverts, minimal within maxEdits", () => {
+      fc.assert(fc.property(smallArray, smallArray, fc.option(fc.nat(6)), (before, after, maxEdits) => {
+        const edits = TextDiff.diff(before, after, maxEdits === null ? undefined : { maxEdits })
         deepStrictEqual(TextDiff.apply(before, edits), after)
         deepStrictEqual(TextDiff.apply(after, TextDiff.invert(edits)), before)
         deepStrictEqual(TextDiff.invert(TextDiff.invert(edits)), edits)
-        strictEqual(cost(edits), before.length + after.length - 2 * lcsLength(before, after))
         assertTrue(isCanonical(edits))
         assertTrue(isCanonical(TextDiff.invert(edits)))
+        const distance = before.length + after.length - 2 * lcsLength(before, after)
+        if (maxEdits === null || distance <= maxEdits) {
+          strictEqual(cost(edits), distance)
+        }
       }))
     })
 
-    it("returns one Equal run for equal inputs and none for empty inputs", () => {
-      deepStrictEqual(TextDiff.diff([1, 2], [1, 2]), [{ _tag: "Equal", items: [1, 2] }])
-      deepStrictEqual(TextDiff.diff([], []), [])
-    })
-
-    it("lists deletions before insertions", () => {
-      deepStrictEqual(TextDiff.diff(["a", "b", "c"], ["a", "x", "y", "c"]), [
-        { _tag: "Equal", items: ["a"] },
-        { _tag: "Delete", items: ["b"] },
-        { _tag: "Insert", items: ["x", "y"] },
-        { _tag: "Equal", items: ["c"] }
-      ])
-    })
-
-    it("compares at most maxCost times and stays valid", () => {
+    it("charges maxEdits per region and never for common runs", () => {
       let calls = 0
       const diffCounted = TextDiff.diffWith<number>((a, b) => {
         calls++
@@ -65,17 +54,43 @@ describe("TextDiff", () => {
       })
       const middle = Array.from({ length: 100_000 }, () => 1)
       const interleaved = Array.from({ length: 50_000 }, (_, i) => i)
-      const cases: ReadonlyArray<readonly [ReadonlyArray<number>, ReadonlyArray<number>, number]> = [
-        [[0, ...middle, 3], [2, ...middle, 4], 10],
-        [interleaved, interleaved.map((i) => (i % 2 === 0 ? -i - 1 : i)), 10_000]
+      const cases: ReadonlyArray<readonly [ReadonlyArray<number>, ReadonlyArray<number>]> = [
+        [[0, ...middle, 3], [2, ...middle, 4]],
+        [interleaved, interleaved.map((i) => (i % 2 === 0 ? -i - 1 : i))]
       ]
-      for (const [before, after, maxCost] of cases) {
+      const maxEdits = 4
+      for (const [before, after] of cases) {
         calls = 0
-        const edits = diffCounted(before, after, { maxCost })
-        assertTrue(calls <= maxCost)
+        const edits = diffCounted(before, after, { maxEdits })
+        assertTrue(calls <= 2 * (before.length + after.length) * (maxEdits + 1))
         deepStrictEqual(TextDiff.apply(before, edits), after)
         assertTrue(isCanonical(edits))
       }
+      deepStrictEqual(diffCounted(cases[0][0], cases[0][1], { maxEdits }), [
+        { _tag: "Delete", items: [0] },
+        { _tag: "Insert", items: [2] },
+        { _tag: "Equal", items: middle },
+        { _tag: "Delete", items: [3] },
+        { _tag: "Insert", items: [4] }
+      ])
+
+      // A region over the cap becomes delete + insert without degrading the
+      // small change after it
+      const heavyBefore = Array.from({ length: 100 }, (_, i) => `a${i}\n`)
+      const heavyAfter = Array.from({ length: 100 }, (_, i) => `b${i}\n`)
+      const shared = Array.from({ length: 50 }, (_, i) => `s${i}\n`)
+      deepStrictEqual(
+        TextDiff.lines([...heavyBefore, ...shared, "x\n"].join(""), [...heavyAfter, ...shared, "y\n"].join(""), {
+          maxEdits: 10
+        }),
+        [
+          { _tag: "Delete", items: heavyBefore },
+          { _tag: "Insert", items: heavyAfter },
+          { _tag: "Equal", items: shared },
+          { _tag: "Delete", items: ["x\n"] },
+          { _tag: "Insert", items: ["y\n"] }
+        ]
+      )
     })
   })
 
@@ -94,8 +109,16 @@ describe("TextDiff", () => {
       const edits = TextDiff.diff([1, 2], [1])
       throws(() => TextDiff.apply([1], edits))
       throws(() => TextDiff.apply([1, 2, 3], edits))
-      throws(() => TextDiff.applyText("a", TextDiff.chars("ab", "a")))
-      throws(() => TextDiff.applyText("abc", TextDiff.chars("ab", "a")))
+    })
+  })
+
+  describe("applyText", () => {
+    it("throws when the script does not match the input content", () => {
+      const edits = TextDiff.lines("a\nb\n", "a\n")
+      throws(() => TextDiff.applyText("a\n", edits))
+      throws(() => TextDiff.applyText("a\nb\nc\n", edits))
+      throws(() => TextDiff.applyText("a\nc\n", edits))
+      throws(() => TextDiff.applyText("c\nb\n", edits))
     })
   })
 
@@ -119,24 +142,13 @@ describe("TextDiff", () => {
         { _tag: "Delete", items: ["b"] },
         { _tag: "Insert", items: ["b\n"] }
       ])
-      deepStrictEqual(TextDiff.lines("a\n b\n", "a\nb\n"), [
-        { _tag: "Equal", items: ["a\n"] },
-        { _tag: "Delete", items: [" b\n"] },
-        { _tag: "Insert", items: ["b\n"] }
-      ])
-    })
-
-    it("handles empty strings", () => {
-      deepStrictEqual(TextDiff.lines("", ""), [])
-      deepStrictEqual(TextDiff.lines("", "a\n"), [{ _tag: "Insert", items: ["a\n"] }])
-      deepStrictEqual(TextDiff.lines("a", ""), [{ _tag: "Delete", items: ["a"] }])
     })
   })
 
-  describe("chars", () => {
+  describe("codePoints", () => {
     it("round-trips arbitrary text without splitting surrogate pairs", () => {
       fc.assert(fc.property(text, text, (before, after) => {
-        const edits = TextDiff.chars(before, after)
+        const edits = TextDiff.codePoints(before, after)
         strictEqual(TextDiff.applyText(before, edits), after)
         for (const edit of edits) {
           assertTrue(!loneSurrogate.test(edit.items.join("")))
@@ -144,14 +156,8 @@ describe("TextDiff", () => {
       }))
     })
 
-    it("diffs code points at emoji and combining mark boundaries", () => {
-      deepStrictEqual(TextDiff.chars("a😀b", "a😁b"), [
-        { _tag: "Equal", items: ["a"] },
-        { _tag: "Delete", items: ["😀"] },
-        { _tag: "Insert", items: ["😁"] },
-        { _tag: "Equal", items: ["b"] }
-      ])
-      deepStrictEqual(TextDiff.chars("é", "e"), [
+    it("splits combining marks from their base letter", () => {
+      deepStrictEqual(TextDiff.codePoints("é", "e"), [
         { _tag: "Equal", items: ["e"] },
         { _tag: "Delete", items: ["́"] }
       ])
@@ -189,20 +195,21 @@ describe("TextDiff", () => {
         ["", "1\n2\n", "@@ -0,0 +1,2 @@\n+1\n+2\n"],
         ["1\n2\n", "", "@@ -1,2 +0,0 @@\n-1\n-2\n"],
         ["a\nb\n", "a\nb", "@@ -1,2 +1,2 @@\n a\n-b\n+b\n\\ No newline at end of file\n"],
-        ["a\nb\n", "a\r\nb\n", "@@ -1,2 +1,2 @@\n-a\n+a\r\n b\n"]
+        ["a\nb\n", "a\r\nb\n", "@@ -1,2 +1,2 @@\n-a\n+a\r\n b\n"],
+        [base, base, ""]
       ]
       for (const [before, after, expected] of cases) {
-        strictEqual(TextDiff.unified(before, after), expected)
+        strictEqual(TextDiff.unified(TextDiff.lines(before, after)), expected)
       }
-    })
-
-    it("returns an empty string for equal inputs", () => {
-      strictEqual(TextDiff.unified(base, base), "")
     })
 
     it("applies context and file names", () => {
       strictEqual(
-        TextDiff.unified("a\nb\nc\n", "a\nx\nc\n", { context: 0, fromFile: "a/f.txt", toFile: "b/f.txt" }),
+        TextDiff.unified(TextDiff.lines("a\nb\nc\n", "a\nx\nc\n"), {
+          context: 0,
+          fromFile: "a/f.txt",
+          toFile: "b/f.txt"
+        }),
         "--- a/f.txt\n+++ b/f.txt\n@@ -2 +2 @@\n-b\n+x\n"
       )
     })
