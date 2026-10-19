@@ -98,6 +98,53 @@ describe("HttpClient", () => {
     }
   )
 
+  it("does not throw when unread response cleanup runs outside a Cloudflare request", async () => {
+    const cleanups: Array<() => void> = []
+    vi.stubGlobal("navigator", { userAgent: "Cloudflare-Workers" })
+    vi.stubGlobal(
+      "FinalizationRegistry",
+      class<T> {
+        constructor(readonly cleanup: (value: T) => void) {}
+        register(_target: object, value: T) {
+          cleanups.push(() => this.cleanup(value))
+        }
+        unregister(_token: object) {
+          return true
+        }
+      }
+    )
+    let abort: ReturnType<typeof vi.spyOn> | undefined
+    try {
+      // Select the runtime registry on import, then drive GC cleanup deterministically.
+      vi.resetModules()
+      const { Effect } = await import("effect")
+      const { FetchHttpClient, HttpClient } = await import("effect/http")
+      const status = await Effect.runPromise(
+        HttpClient.get("https://example.test/").pipe(
+          Effect.map((response) => response.status),
+          Effect.provide(FetchHttpClient.layer),
+          Effect.provideService(
+            FetchHttpClient.Fetch,
+            Object.assign(async () => new Response("unread"), { preconnect: () => {} })
+          )
+        )
+      )
+      assert.strictEqual(status, 200)
+
+      // workerd disallows aborting request I/O from a finalizer outside its request.
+      abort = vi.spyOn(AbortController.prototype, "abort").mockImplementation(() => {
+        throw new Error("Disallowed operation called within global scope")
+      })
+      assert.doesNotThrow(() => {
+        for (const cleanup of cleanups) cleanup()
+      })
+    } finally {
+      abort?.mockRestore()
+      vi.unstubAllGlobals()
+      vi.resetModules()
+    }
+  })
+
   it.effect("applies JSON revivers to response schema decoders", () =>
     Effect.gen(function*() {
       const makeResponse = () =>
