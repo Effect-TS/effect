@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 "@effect/atom-react": patch
 "@effect/atom-solid": patch
 ---
