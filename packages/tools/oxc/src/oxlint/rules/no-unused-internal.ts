@@ -423,87 +423,6 @@ function markNamespaceReference(
   markUsed(getExports(fileInfos, importedFile, name.text), name)
 }
 
-type InternalExportsByName = ReadonlyMap<string, ReadonlyArray<InternalExport>>
-
-function markModuleMember(exports: InternalExportsByName, name: ts.Identifier) {
-  markUsed(exports.get(name.text) ?? [], name)
-}
-
-function resolveImportedModuleValue(importCall: ts.CallExpression): ts.Node {
-  let current: ts.Node = importCall
-  while (true) {
-    const parent = current.parent
-    if (
-      ts.isParenthesizedExpression(parent) ||
-      ts.isAwaitExpression(parent) ||
-      (ts.isYieldExpression(parent) && parent.asteriskToken !== undefined)
-    ) {
-      current = parent
-    } else if (
-      ts.isArrowFunction(parent) &&
-      parent.body === current &&
-      ts.isCallExpression(parent.parent) &&
-      parent.parent.arguments.includes(parent)
-    ) {
-      current = parent.parent
-    } else {
-      return current
-    }
-  }
-}
-
-function findEnclosingScope(node: ts.Node): ts.Node {
-  let current = node.parent
-  while (!ts.isBlock(current) && !ts.isSourceFile(current) && !ts.isFunctionLike(current)) {
-    current = current.parent
-  }
-  return current
-}
-
-function markModuleBindingUsage(exports: InternalExportsByName, name: ts.BindingName, scope: ts.Node) {
-  if (ts.isObjectBindingPattern(name)) {
-    for (const element of name.elements) {
-      const property = element.propertyName ?? element.name
-      if (element.dotDotDotToken === undefined && ts.isIdentifier(property)) {
-        markModuleMember(exports, property)
-      }
-    }
-  } else if (ts.isIdentifier(name)) {
-    const visit = (node: ts.Node) => {
-      if (
-        ts.isPropertyAccessExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === name.text &&
-        ts.isIdentifier(node.name)
-      ) {
-        markModuleMember(exports, node.name)
-      }
-      ts.forEachChild(node, visit)
-    }
-    visit(scope)
-  }
-}
-
-function markModuleValueUsage(exports: InternalExportsByName, value: ts.Node) {
-  const parent = value.parent
-  if (ts.isPropertyAccessExpression(parent) && parent.expression === value && ts.isIdentifier(parent.name)) {
-    const call = parent.parent
-    if (parent.name.text !== "then" || !ts.isCallExpression(call) || call.expression !== parent) {
-      markModuleMember(exports, parent.name)
-      return
-    }
-    const callback = call.arguments[0]
-    const parameter = callback !== undefined && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
-      ? callback.parameters[0]
-      : undefined
-    if (parameter !== undefined) {
-      markModuleBindingUsage(exports, parameter.name, parameter.parent)
-    }
-  } else if (ts.isVariableDeclaration(parent) && parent.initializer === value) {
-    markModuleBindingUsage(exports, parent.name, findEnclosingScope(parent))
-  }
-}
-
 function markDynamicImport(
   fileInfos: ReadonlyMap<string, FileInfo>,
   fileInfo: FileInfo,
@@ -515,7 +434,9 @@ function markDynamicImport(
   const importedFile = resolveModule(specifier.text, fileInfo.sourceFile.fileName, workspacePackages)
   const exports = importedFile === undefined ? undefined : fileInfos.get(importedFile)?.internalExports
   if (exports === undefined) return
-  markModuleValueUsage(exports, resolveImportedModuleValue(importCall))
+  for (const exportsForName of exports.values()) {
+    markUsed(exportsForName, importCall)
+  }
 }
 
 function scanUsage(
