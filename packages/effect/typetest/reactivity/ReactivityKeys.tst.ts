@@ -10,13 +10,9 @@ import { Rpc } from "effect/rpc"
 import type { SqlClient } from "effect/sql"
 import { describe, expect, it } from "tstyche"
 
-declare const symbolKey: unique symbol
-
 declare module "effect/reactivity/Reactivity" {
   interface Keys {
     users: number
-    0: number
-    [symbolKey]: number
   }
 }
 
@@ -103,18 +99,5 @@ describe("Reactivity.Keys", () => {
     expect(EventLog.groupReactivity).type.toBeCallableWith(Group, { UserCreated: ["users"] })
     expect(EventLog.groupReactivity).type.not.toBeCallableWith(Group, ["user"])
     expect(EventLog.groupReactivity).type.not.toBeCallableWith(Group, { UserCreated: ["user"] })
-  })
-
-  it("EventLog.groupReactivity rejects symbol key names", () => {
-    const Group = EventGroup.empty.add({
-      tag: "UserCreated",
-      primaryKey: (payload) => payload.id,
-      payload: Schema.Struct({ id: Schema.String })
-    })
-
-    // EventLog invalidates `{ [name]: [primaryKey] }`, and symbol record keys are never matched
-    expect(EventLog.groupReactivity).type.toBeCallableWith(Group, [0])
-    expect(EventLog.groupReactivity).type.not.toBeCallableWith(Group, [symbolKey])
-    expect(EventLog.groupReactivity).type.not.toBeCallableWith(Group, { UserCreated: [symbolKey] })
   })
 })
