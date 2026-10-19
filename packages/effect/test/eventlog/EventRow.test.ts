@@ -39,12 +39,17 @@ const makeEntry = (msecs: number) =>
   }, { disableChecks: true })
 
 // An entry carrying `payload` encoded as the journal stores it.
-const makeEntryWith = <A>(msecs: number, codec: Schema.Codec<A, Uint8Array<ArrayBuffer>>, payload: A) =>
+const makeEntryWith = <A>(
+  msecs: number,
+  row: { readonly tag: string; readonly primaryKey: (payload: A) => string },
+  codec: Schema.Codec<A, Uint8Array<ArrayBuffer>>,
+  payload: A
+) =>
   Effect.map(Schema.encodeEffect(codec)(payload), (bytes) =>
     new EventJournal.Entry({
       id: EventJournal.makeEntryIdUnsafe({ msecs }),
-      event: "grocery",
-      primaryKey: "g1",
+      event: row.tag,
+      primaryKey: row.primaryKey(payload),
       payload: bytes
     }, { disableChecks: true }))
 
@@ -60,7 +65,7 @@ const replay = Effect.fnUntraced(function*(payload: Payload, conflicts: Readonly
   yield* handler({
     storeId: yield* EventLog.CurrentStoreId,
     payload,
-    entry: yield* makeEntryWith(1000, Groceries.events.grocery.payloadSchemaBinary, payload),
+    entry: yield* makeEntryWith(1000, Grocery, Groceries.events.grocery.payloadSchemaBinary, payload),
     conflicts: conflicts.map((payload, i) => ({ entry: makeEntry(2000 + i), payload }))
   })
   return calls
@@ -227,6 +232,51 @@ const makeReplica = Effect.fnUntraced(function*(compact = false) {
 })
 
 describe("EventRow", () => {
+  it.effect("keeps written keys stable across decoding and delivery order", () =>
+    Effect.gen(function*() {
+      const keySchema = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transform((s: string) => `${s}!`),
+        encode: SchemaGetter.transform((s: string) => s)
+      }))
+      const rowSchema = Schema.Struct({ id: keySchema, n: Schema.Number })
+      const actual: Array<unknown> = []
+      const expected: Array<unknown> = []
+      for (const declaration of ["id", { fields: ["id"] }] as const) {
+        const row = EventRow.make("stable", { key: declaration, schema: rowSchema })
+        const codec = EventGroup.empty.add(row).events.stable.payloadSchemaBinary
+        const written = { id: "a", n: 1 }
+        const key = row.keyOf(written)
+        const payloads = [row.set(written), row.patch(key, { n: 2 })]
+        const entries = yield* Effect.forEach(payloads, (payload, i) => makeEntryWith(1000 + i, row, codec, payload))
+        const decoded = yield* Effect.forEach(entries, (entry) => Schema.decodeUnknownEffect(codec)(entry.payload))
+        for (const order of [[0, 1], [1, 0]]) {
+          const storage = new Map<string, typeof rowSchema.Type>()
+          const handler = EventRow.handler(row, {
+            set: (value, key) => Effect.sync(() => storage.set(key, value)),
+            patch: (key, fields) =>
+              Effect.sync(() => {
+                const value = storage.get(key)
+                if (value !== undefined) storage.set(key, { ...value, ...fields })
+              }),
+            remove: (key) => Effect.sync(() => storage.delete(key))
+          })
+          const delivered = new Set<number>()
+          for (const i of order) {
+            yield* handler({
+              storeId: yield* EventLog.CurrentStoreId,
+              payload: decoded[i],
+              entry: entries[i],
+              conflicts: [...delivered].filter((j) => j > i).map((j) => ({ entry: entries[j], payload: decoded[j] }))
+            })
+            delivered.add(i)
+          }
+          actual.push([...storage])
+          expected.push([[key, { id: "a!", n: 2 }]])
+        }
+      }
+      assert.deepStrictEqual(actual, expected)
+    }))
+
   it.effect("routes declared composite and derived keys through the same row", () =>
     Effect.gen(function*() {
       const rowSchema = Schema.Struct({ list: Schema.String, aisle: Schema.String, value: Schema.Number })
@@ -261,6 +311,8 @@ describe("EventRow", () => {
         // The default tuple encoding preserves case.
         const input = row.tag === "composite" ? { ...initial, list: "a|b" } : initial
         const other = { list: "a", aisle: "b|c", value: 3 }
+        assert.strictEqual(row.keyOf(input), key)
+        assert.deepStrictEqual(row.keyFields, typeof declaration === "string" ? [declaration] : declaration.fields)
         assert.strictEqual(row.primaryKey(row.set(other)), otherKey)
         assert.notStrictEqual(key, otherKey)
         const storage = new Map<string, typeof rowSchema.Type>()
@@ -339,6 +391,11 @@ describe("EventRow", () => {
           ["grocery", Grocery.patch("g1", P)]
         ], [1]],
         ["equal patch field sets", [["grocery", Grocery.patch("g1", P)], ["grocery", Grocery.patch("g1", P)]], [1]],
+        ["patch jointly covered by newer patches", [
+          ["grocery", Grocery.patch("g1", P)],
+          ["grocery", Grocery.patch("g1", { name: "new" })],
+          ["grocery", Grocery.patch("g1", { quantity: 4 })]
+        ], [1, 2]],
         ["empty patch covered by patch", [["grocery", Grocery.patch("g1", {})], ["grocery", Grocery.patch("g1", P)]], [
           1
         ]],
@@ -490,7 +547,7 @@ describe("EventRow", () => {
       const items = [{ n: 2, extra: "not in the schema" }]
       const payloads = [Shelf.set({ id: "s1", box, items, label: Option.none() }), Shelf.patch("s1", { box, items })]
       for (const payload of payloads) {
-        const entry = yield* makeEntryWith(1000, ShelfCodec, payload)
+        const entry = yield* makeEntryWith(1000, Shelf, ShelfCodec, payload)
         yield* handler({ storeId: yield* EventLog.CurrentStoreId, payload, entry, conflicts: [] })
       }
       assert.deepStrictEqual(calls, [

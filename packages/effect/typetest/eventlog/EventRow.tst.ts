@@ -28,6 +28,49 @@ describe("EventRow", () => {
       schema
     })
     const single = EventRow.make("single", { key: "list", schema })
+    const literal = EventRow.make("literal", {
+      key: "id",
+      schema: Schema.Struct({ id: Schema.Literals(["a", "b"]), value: Schema.Number })
+    })
+
+    expect<Parameters<typeof composite.keyOf>[0]>().type.toBe<{ readonly list: string; readonly aisle: string }>()
+    expect<Parameters<typeof derived.keyOf>[0]>().type.toBe<{ readonly list: string }>()
+    expect<Parameters<typeof derivedComposite.keyOf>[0]>().type.toBe<{
+      readonly list: string
+      readonly aisle: string
+    }>()
+    expect<Parameters<typeof single.keyOf>[0]>().type.toBe<{ readonly list: string }>()
+    expect<ReturnType<typeof composite.keyOf>>().type.toBe<string>()
+    expect<ReturnType<typeof derived.keyOf>>().type.toBe<string>()
+    expect<ReturnType<typeof derivedComposite.keyOf>>().type.toBe<string>()
+    expect<ReturnType<typeof literal.keyOf>>().type.toBe<"a" | "b">()
+
+    const numberSchema = Schema.Struct({ part: Schema.Number, value: Schema.String })
+    const nullableSchema = Schema.Struct({ part: Schema.Union([Schema.Null, Schema.Undefined, Schema.String]) })
+    expect(EventRow.make).type.not.toBeCallableWith("number", { key: { fields: ["part"] }, schema: numberSchema })
+    expect(EventRow.make).type.not.toBeCallableWith("nullable", { key: { fields: ["part"] }, schema: nullableSchema })
+    const numberKey = EventRow.make("number", {
+      key: {
+        fields: ["part"],
+        derive: (fields) => {
+          expect(fields).type.toBe<{ readonly part: number }>()
+          return String(fields.part)
+        }
+      },
+      schema: numberSchema
+    })
+    const nullableKey = EventRow.make("nullable", {
+      key: {
+        fields: ["part"],
+        derive: (fields) => {
+          expect(fields).type.toBe<{ readonly part: string | null | undefined }>()
+          return fields.part === null ? "null" : fields.part === undefined ? "undefined" : "string:" + fields.part
+        }
+      },
+      schema: nullableSchema
+    })
+    expect<ReturnType<typeof numberKey.keyOf>>().type.toBe<string>()
+    expect<ReturnType<typeof nullableKey.keyOf>>().type.toBe<string>()
 
     expect<Parameters<typeof composite.patch>[1]>().type.toBe<{ readonly value?: number }>()
     expect<Parameters<typeof derivedComposite.patch>[1]>().type.toBe<{ readonly value?: number }>()
