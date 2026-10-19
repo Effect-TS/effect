@@ -357,6 +357,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      iconv-lite:
+        specifier: ^0.7.3
+        version: 0.7.3
       immer:
         specifier: ^11.1.21
         version: 11.1.21

@@ -1,0 +1,3 @@
+{"node":"v22.23.2","esbuild":"0.28.2","rolldown":"1.2.7"}
+{"entry":"utf8-only","esbuild":{"bytes":3147,"gzip":1458,"mappingModules":0},"rolldown":{"bytes":3090,"gzip":1380,"mappingModules":0}}
+{"entry":"cp1251-only","esbuild":{"bytes":2623,"gzip":1350,"mappingModules":1},"rolldown":{"bytes":2590,"gzip":1337,"mappingModules":1}}
