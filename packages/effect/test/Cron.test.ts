@@ -495,11 +495,10 @@ describe("Cron", () => {
   })
 
   it("prev includes an occurrence earlier in the same second", () => {
-    const utc = DateTime.zoneMakeNamedUnsafe("UTC")
-    const daily = Cron.parseUnsafe("0 0 * * *", utc)
+    const daily = Cron.parseUnsafe("0 0 * * *", "UTC")
     deepStrictEqual(prev(daily, new Date("2024-01-01T00:00:00.001Z")), new Date("2024-01-01T00:00:00.000Z"))
     deepStrictEqual(prev(daily, new Date("2024-01-01T00:00:00.000Z")), new Date("2023-12-31T00:00:00.000Z"))
-    const seconds = Cron.parseUnsafe("10,30 * * * * *", utc)
+    const seconds = Cron.parseUnsafe("10,30 * * * * *", "UTC")
     deepStrictEqual(prev(seconds, new Date("2024-01-01T00:00:30.999Z")), new Date("2024-01-01T00:00:30.000Z"))
   })
 
