@@ -125,7 +125,6 @@ import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
-import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
@@ -161,22 +160,40 @@ export type KeyValues<Fields extends Schema.Struct.Fields, Names extends keyof F
 }
 
 /**
+ * Required fields whose values are all strings, all numbers or all
+ * `Uint8Array`s, so their JSON encodings form keys without `derive`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type DefaultKeyField<Fields extends Schema.Struct.Fields> = {
+  [K in RequiredField<Fields>]: [Schema.Schema.Type<Fields[K]>] extends [string] ? K
+    : [Schema.Schema.Type<Fields[K]>] extends [number] ? K
+    : [Schema.Schema.Type<Fields[K]>] extends [Uint8Array] ? K
+    : never
+}[RequiredField<Fields>]
+
+/**
  * A row key declared from one or more fields.
  *
  * **Details**
  *
  * The primary key is the result of `derive`, which must be deterministic and
  * unique per row. Without it, the primary key is the JSON tuple of the
- * fields' JSON encodings, in declaration order.
+ * fields' JSON encodings, in declaration order, which needs every field to be
+ * a {@link DefaultKeyField}. Other fields can collide in JSON, such as `null`
+ * and `undefined`, so they require `derive`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> {
-  readonly fields: readonly [Names, ...Array<Names>]
-  readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined
-}
+export type KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> =
+  & { readonly fields: readonly [Names, ...Array<Names>] }
+  & ([Names] extends [DefaultKeyField<Fields>] ?
+    { readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined }
+    : { readonly derive: (fields: KeyValues<Fields, Names>) => string })
 
 /**
  * Primary key type of a row: the key value for a string-typed single-field
@@ -320,9 +337,12 @@ export interface EventRow<
  * of the fields for a declaration. Key fields cannot be patched. To move a
  * row, remove it and set it again.
  *
+ * A single-field key must be a {@link DefaultKeyField}. Declare other fields
+ * with a `derive` function.
+ *
  * `keyOf` computes the primary key that conflicts are grouped by: the value
- * of a string-typed single field, the result of `derive`, or else the JSON
- * tuple of the key fields' JSON encodings.
+ * of a string single-field key, the result of `derive`, or else the JSON
+ * tuple of the key fields' JSON encodings. `-0` and `0` are the same key.
  *
  * Last-writer-wins applies to top-level fields. Nested values are atomic, so
  * concurrent updates within one nested value do not merge.
@@ -345,7 +365,7 @@ export interface EventRow<
 export const make = <
   const Tag extends string,
   Fields extends Schema.Struct.Fields,
-  const Key extends RequiredField<Fields> = never,
+  const Key extends DefaultKeyField<Fields> = never,
   const Declared extends RequiredField<Fields> = never,
   Error extends Schema.Top = typeof Schema.Never
 >(tag: Tag, options: {
@@ -576,7 +596,7 @@ const scalarKey = (name: string, field: Schema.Constraint): RowKey => ({
   schema: field,
   fromRow: (row) => row[name],
   toValues: (key) => ({ [name]: key }),
-  primaryKey: isStringAst(SchemaAST.toType(field.ast)) ? (row) => row[name] as string : jsonKey([[name, field]])
+  primaryKey: jsonKey([[name, field]], true)
 })
 
 const declaredKey = (declaration: KeyDeclaration<any, string>, fields: Schema.Struct.Fields): RowKey => {
@@ -589,32 +609,23 @@ const declaredKey = (declaration: KeyDeclaration<any, string>, fields: Schema.St
     toValues: (key) => key as Row,
     primaryKey: derive !== undefined
       ? (row) => derive(Struct.pick(row, names) as any)
-      : jsonKey(names.map((name) => [name, fields[name]]))
+      : jsonKey(names.map((name) => [name, fields[name]]), false)
   }
 }
 
-const isStringAst = (ast: SchemaAST.AST): boolean => {
-  switch (ast._tag) {
-    case "String":
-    case "TemplateLiteral":
-      return true
-    case "Literal":
-      return typeof ast.literal === "string"
-    case "Enum":
-      return ast.enums.every(([, value]) => typeof value === "string")
-    case "Union":
-      return ast.types.every(isStringAst)
-    default:
-      return false
+// A string single-field key is its own primary key. Otherwise the key is the
+// JSON tuple of the fields' JSON encodings, distinct for distinct values of
+// `DefaultKeyField`s. A field holds one kind of value, so a raw string never
+// meets a tuple from the same field.
+const jsonKey = (fields: ReadonlyArray<readonly [string, Schema.Constraint]>, single: boolean) => {
+  let encoders: ReadonlyArray<readonly [string, (value: unknown) => unknown]> | undefined
+  return (row: Row): string => {
+    if (single && typeof row[fields[0][0]] === "string") return row[fields[0][0]] as string
+    encoders ??= fields.map(([name, field]) =>
+      [name, Schema.encodeUnknownSync(Schema.toCodecJson(field as Schema.Codec<unknown>))] as const
+    )
+    return JSON.stringify(encoders.map(([name, encode]) => encode(row[name])))
   }
-}
-
-// The JSON tuple of the key fields' JSON encodings, distinct for distinct values.
-const jsonKey = (fields: ReadonlyArray<readonly [string, Schema.Constraint]>) => {
-  const encoders = fields.map(([name, field]) =>
-    [name, Schema.encodeUnknownSync(Schema.toCodecJson(field as Schema.Codec<unknown>))] as const
-  )
-  return (row: Row) => JSON.stringify(encoders.map(([name, encode]) => encode(row[name])))
 }
 
 // Run the field codec only for present keys, bypassing missing-key defaults.
