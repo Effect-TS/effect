@@ -11,7 +11,7 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 
 // A journal bound to `journalStoreId` fails `withLock(storeId)` with an
 // `EventJournalError` whose cause names both store ids.
-const assertStoreIdMismatch = Effect.fnUntraced(function*<A, E>(
+export const assertStoreIdMismatch = Effect.fnUntraced(function*<A, E>(
   effect: Effect.Effect<A, E>,
   expected: { readonly storeId: EventLogMessage.StoreId; readonly journalStoreId: EventLogMessage.StoreId }
 ) {

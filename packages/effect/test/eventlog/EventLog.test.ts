@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import {
   Array,
   Context,
+  Deferred,
   Effect,
   Layer,
   Logger,
@@ -24,6 +25,7 @@ import * as EventLogRemote from "effect/eventlog/EventLogRemote"
 import { Reactivity } from "effect/reactivity"
 import * as RpcTest from "effect/rpc/RpcTest"
 import { TestClock } from "effect/testing"
+import { assertStoreIdMismatch } from "./EventJournalStoreIdTest.ts"
 
 const UserPayload = Schema.Struct({
   id: Schema.String
@@ -1193,6 +1195,49 @@ describe("EventLog", () => {
           logLayer(yield* Ref.make<ReadonlyArray<string>>([]), Layer.succeed(EventJournal.EventJournal, journal))
         )
       )
+    }))
+
+  it.effect("fails to build for a second store id before syncing the first store's entries", () =>
+    Effect.gen(function*() {
+      const journal = Layer.succeed(EventJournal.EventJournal, yield* EventJournal.makeMemory)
+      const storeA = EventLogMessage.StoreId.make("store-a")
+      const storeB = EventLogMessage.StoreId.make("store-b")
+      yield* Effect.gen(function*() {
+        const log = yield* EventLog.EventLog
+        yield* log.write({ schema, event: "UserCreated", payload: { id: "user-1" } })
+      }).pipe(
+        Effect.provide(logLayer(yield* Ref.make<ReadonlyArray<string>>([]), journal)),
+        Effect.provideService(EventLog.CurrentStoreId, storeA)
+      )
+
+      // `user-1` is still pending for any remote, so a log that accepted
+      // store B would upload it there.
+      const synced: Array<string> = []
+      const started = yield* Deferred.make<void>()
+      const remote = Layer.effectDiscard(Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: ({ storeId }) => {
+            synced.push(`changes ${storeId}`)
+            return Effect.andThen(Deferred.succeed(started, undefined), Queue.unbounded())
+          },
+          write: ({ entries, storeId }) => {
+            synced.push(`write ${storeId} ${entries.map((entry) => entry.primaryKey).join(",")}`)
+            return Deferred.succeed(started, undefined)
+          },
+          whenAuthenticated: (effect) => effect
+        }))
+      })).pipe(Layer.provideMerge(logLayer(yield* Ref.make<ReadonlyArray<string>>([]), journal)))
+
+      const exit = yield* Layer.build(remote).pipe(
+        Effect.andThen(Deferred.await(started)),
+        Effect.scoped,
+        Effect.provideService(EventLog.CurrentStoreId, storeB),
+        Effect.exit
+      )
+      assert.deepStrictEqual(synced, [], "the log for store B synced with the remote")
+      yield* assertStoreIdMismatch(exit, { storeId: storeB, journalStoreId: storeA })
     }))
 
   it.effect("retries a failed remote write and flushes changes made during the retry", () =>
