@@ -47,6 +47,51 @@ const todoResponse = HttpServerResponse.schemaJson(Todo)
 const fixture = `${import.meta.dirname}/fixtures/text.txt`
 
 describe("DenoHttpServer", () => {
+  it.live("closes the request scope when a streaming body is cancelled synchronously during construction", () =>
+    Effect.gen(function*() {
+      let finalized = false
+      let pulled = false
+      let cancellation: Promise<void> | undefined
+      const OriginalResponse = globalThis.Response
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          // Intercept construction: awaiting a response over HTTP lets the first pull run already.
+          globalThis.Response = class extends OriginalResponse {
+            constructor(body?: BodyInit | null, init?: ResponseInit) {
+              if (body instanceof ReadableStream) {
+                cancellation = body.cancel()
+                super(null, init)
+              } else {
+                super(body, init)
+              }
+            }
+          }
+        }),
+        () =>
+          Effect.sync(() => {
+            globalThis.Response = OriginalResponse
+          })
+      )
+      yield* HttpServer.serveEffect(Effect.gen(function*() {
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+        return HttpServerResponse.stream(Stream.fromEffect(Effect.sync(() => {
+          pulled = true
+          return new Uint8Array([1])
+        })))
+      }))
+      const response = yield* HttpClient.get("/")
+      assert.strictEqual(response.status, 200)
+      yield* response.text
+      assert.isDefined(cancellation)
+      yield* Effect.promise(() => cancellation!)
+      assert.strictEqual(pulled, false)
+      assert.strictEqual(finalized, true)
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {
