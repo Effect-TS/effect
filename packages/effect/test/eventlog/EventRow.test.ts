@@ -38,6 +38,16 @@ const makeEntry = (msecs: number) =>
     payload: new Uint8Array()
   }, { disableChecks: true })
 
+// An entry carrying `payload` encoded as the journal stores it.
+const makeEntryWith = <A>(msecs: number, codec: Schema.Codec<A, Uint8Array<ArrayBuffer>>, payload: A) =>
+  Effect.map(Schema.encodeEffect(codec)(payload), (bytes) =>
+    new EventJournal.Entry({
+      id: EventJournal.makeEntryIdUnsafe({ msecs }),
+      event: "grocery",
+      primaryKey: "g1",
+      payload: bytes
+    }, { disableChecks: true }))
+
 // Runs the generated handler for a late `payload` whose stored newer
 // conflicts are `conflicts` (oldest first), returning the callbacks it made.
 const replay = Effect.fnUntraced(function*(payload: Payload, conflicts: ReadonlyArray<Payload>) {
@@ -50,7 +60,7 @@ const replay = Effect.fnUntraced(function*(payload: Payload, conflicts: Readonly
   yield* handler({
     storeId: yield* EventLog.CurrentStoreId,
     payload,
-    entry: makeEntry(1000),
+    entry: yield* makeEntryWith(1000, Groceries.events.grocery.payloadSchemaBinary, payload),
     conflicts: conflicts.map((payload, i) => ({ entry: makeEntry(2000 + i), payload }))
   })
   return calls
@@ -306,7 +316,8 @@ describe("EventRow", () => {
       const items = [{ n: 2, extra: "not in the schema" }]
       const payloads = [Shelf.set({ id: "s1", box, items, label: Option.none() }), Shelf.patch("s1", { box, items })]
       for (const payload of payloads) {
-        yield* handler({ storeId: yield* EventLog.CurrentStoreId, payload, entry: makeEntry(1000), conflicts: [] })
+        const entry = yield* makeEntryWith(1000, ShelfCodec, payload)
+        yield* handler({ storeId: yield* EventLog.CurrentStoreId, payload, entry, conflicts: [] })
       }
       assert.deepStrictEqual(calls, [
         ["set", { id: "s1", box: { n: 1 }, items: [{ n: 2 }], label: Option.none() }],
