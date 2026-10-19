@@ -485,7 +485,8 @@ describe("EventJournal", () => {
   it.effect("reports conflicts in id order after a local write following a future import", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
-      const future = entry(281_474_976_710_655)
+      const futureMillis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const future = entry(futureMillis)
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
