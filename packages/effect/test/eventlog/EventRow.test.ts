@@ -143,11 +143,11 @@ const toPayload = (op: typeof Op.Type): Payload => {
   }
 }
 
-type Replica = Effect.Success<typeof makeReplica>
+type Replica = Effect.Success<ReturnType<typeof makeReplica>>
 
 // An `EventLog` on a memory journal whose storage is a map of rows, fed by a
 // remote whose changes the test delivers by hand.
-const makeReplica = Effect.gen(function*() {
+const makeReplica = Effect.fnUntraced(function*(compact = false) {
   const storage = new Map<string, Row>()
   const applied = yield* Queue.unbounded<void>()
   const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
@@ -181,6 +181,14 @@ const makeReplica = Effect.gen(function*() {
     )
   )
   const registry = Context.get(context, EventLog.Registry)
+  if (compact) {
+    const compaction: Layer.Layer<never, never, EventLog.Registry> = EventRow.compaction(Groceries, Grocery)
+    yield* Layer.build(
+      compaction.pipe(
+        Layer.provide(Layer.succeed(EventLog.Registry, registry))
+      )
+    )
+  }
   yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
     id: EventJournal.makeRemoteIdUnsafe(),
     changes: () => Effect.succeed(changes),
@@ -219,6 +227,95 @@ const makeReplica = Effect.gen(function*() {
 })
 
 describe("EventRow", () => {
+  it.effect("compacts only shadowed entries within the same row tag and key", () =>
+    Effect.gen(function*() {
+      const Other = EventRow.make("other", { key: "id", schema: Grocery.schema })
+      const notice = { tag: "notice", payload: Schema.String, primaryKey: (id: string) => id } as const
+      const NoticeGroup = EventGroup.empty.add(notice)
+      const group = Groceries.add(Other).add(notice)
+      const registry = yield* EventLog.Registry
+      const register = (layer: Layer.Layer<never, never, EventLog.Registry>) =>
+        Layer.build(layer.pipe(Layer.provide(Layer.succeed(EventLog.Registry, registry))))
+      yield* register(EventLog.groupBatchCompaction(NoticeGroup, ({ entries, forward }) =>
+        Effect.forEach(entries, ({ entry }) =>
+          forward(entry), { discard: true })))
+      const noticeCompactor = registry.compactors.get("notice")!
+      yield* register(EventRow.compaction(group, Grocery))
+      yield* register(EventRow.compaction(group, Other))
+      assert.strictEqual(registry.compactors.get("notice"), noticeCompactor)
+      assert.deepStrictEqual([...registry.compactors.get("grocery")!.events], ["grocery"])
+      assert.deepStrictEqual([...registry.compactors.get("other")!.events], ["other"])
+
+      type Input = readonly ["grocery" | "other", Payload]
+      const cases: ReadonlyArray<readonly [string, ReadonlyArray<Input>, ReadonlyArray<number>]> = [
+        ...([Grocery.set(X), Grocery.patch("g1", P), Grocery.remove("g1")] as const).flatMap((older) =>
+          [Grocery.set(Y), Grocery.remove("g1")].map((newer) =>
+            [
+              older._tag + " before " + newer._tag,
+              [["grocery", older], ["grocery", newer]],
+              [1]
+            ] as const
+          )
+        ),
+        ["patch covered by newer patch", [
+          ["grocery", Grocery.patch("g1", { name: "old" })],
+          ["grocery", Grocery.patch("g1", P)]
+        ], [1]],
+        ["equal patch field sets", [["grocery", Grocery.patch("g1", P)], ["grocery", Grocery.patch("g1", P)]], [1]],
+        ["empty patch covered by patch", [["grocery", Grocery.patch("g1", {})], ["grocery", Grocery.patch("g1", P)]], [
+          1
+        ]],
+        ["partially overlapping patches", [["grocery", Grocery.patch("g1", P)], ["grocery", Grocery.patch("g1", Q)]], [
+          0,
+          1
+        ]],
+        ["disjoint patches", [
+          ["grocery", Grocery.patch("g1", { name: "old" })],
+          ["grocery", Grocery.patch("g1", { completed: true })]
+        ], [0, 1]],
+        ["set is required even before a patch of every field", [
+          ["grocery", Grocery.set(X)],
+          ["grocery", Grocery.patch("g1", { name: "new", quantity: null, completed: true })]
+        ], [0, 1]],
+        ["remove is required before patch", [["grocery", Grocery.remove("g1")], ["grocery", Grocery.patch("g1", P)]], [
+          0,
+          1
+        ]],
+        ["different key cannot shadow", [["grocery", Grocery.set(X)], ["grocery", Grocery.remove("g2")]], [0, 1]],
+        ["different tag cannot shadow the same key", [["grocery", Grocery.set(X)], ["other", Other.remove("g1")]], [
+          0,
+          1
+        ]]
+      ]
+      for (const [name, inputs, kept] of cases) {
+        const entries = yield* Effect.forEach(inputs, ([event, payload], i) =>
+          Effect.gen(function*() {
+            return new EventJournal.Entry({
+              id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 + i }),
+              event,
+              primaryKey: payload._tag === "set" ? payload.row.id : payload.key,
+              payload: yield* Schema.encodeUnknownEffect(group.events[event].payloadSchemaBinary)(payload)
+            }, { disableChecks: true })
+          }))
+        // Batch order must not be mistaken for id order.
+        const output: Array<EventJournal.Entry> = []
+        for (const tag of ["grocery", "other"] as const) {
+          yield* registry.compactors.get(tag)!.effect({
+            entries: entries.filter((entry) =>
+              entry.event === tag
+            ).reverse(),
+            write: (entry, source) =>
+              Effect.sync(() => {
+                assert.isUndefined(source, name)
+                assert.isTrue(entries.includes(entry), name)
+                output.push(entry)
+              })
+          })
+        }
+        assert.deepStrictEqual(output.sort(EventJournal.Entry.Order), kept.map((i) => entries[i]), name)
+      }
+    }).pipe(Effect.provide(EventLog.layerRegistry)))
+
   it.effect("composes newer conflicts with the op algebra", () =>
     Effect.gen(function*() {
       // The late entry is `set(E)`: a collapsed `set` or `remove` skips it, and
@@ -376,7 +473,19 @@ describe("EventRow", () => {
     "replicas converge to the fold of every entry in id order",
     { commands: Schema.Array(Command).check(Schema.isMaxLength(24)) },
     Effect.fnUntraced(function*({ commands }) {
-      const replicas = yield* Effect.forEach([0, 1, 2], () => makeReplica)
+      const replicas = yield* Effect.forEach([0, 1, 2], () =>
+        Effect.gen(function*() {
+          return { plain: yield* makeReplica(), compacted: yield* makeReplica(true), single: yield* makeReplica() }
+        }))
+      const deliver = Effect.fnUntraced(function*(
+        replica: typeof replicas[number],
+        entries: ReadonlyArray<EventJournal.Entry>,
+        batchSizes: ReadonlyArray<number>
+      ) {
+        yield* replica.plain.deliver(entries, batchSizes)
+        yield* replica.compacted.deliver(entries, batchSizes)
+        yield* replica.single.deliver(entries, [1])
+      })
       // Every entry written anywhere, with the payload it carries.
       const server = new Map<string, { readonly entry: EventJournal.Entry; readonly payload: Payload }>()
 
@@ -392,7 +501,7 @@ describe("EventRow", () => {
           case "write": {
             const replica = replicas[command.replica]
             const payloads = command.ops.map(toPayload)
-            yield* replica.log.writeMany({
+            yield* replica.plain.log.writeMany({
               schema,
               events: [
                 { event: "grocery", payload: payloads[0] },
@@ -400,9 +509,11 @@ describe("EventRow", () => {
               ]
             })
             // Local ids ascend in input order.
-            const written = (yield* replica.journal.entries).filter((entry) => !server.has(entry.idString))
+            const written = (yield* replica.plain.journal.entries).filter((entry) => !server.has(entry.idString))
               .sort(EventJournal.Entry.Order)
             written.forEach((entry, i) => server.set(entry.idString, { entry, payload: payloads[i] }))
+            yield* replica.compacted.deliver(written, [written.length])
+            yield* replica.single.deliver(written, [1])
             break
           }
           case "offline": {
@@ -421,13 +532,13 @@ describe("EventRow", () => {
           }
           case "sync": {
             const replica = replicas[command.replica]
-            const remaining = yield* missing(replica)
+            const remaining = yield* missing(replica.plain)
             const picked: Array<EventJournal.Entry> = []
             for (const pick of command.picks) {
               if (remaining.length === 0) break
               picked.push(remaining.splice(pick % remaining.length, 1)[0])
             }
-            yield* replica.deliver(picked, command.batchSizes)
+            yield* deliver(replica, picked, command.batchSizes)
             break
           }
         }
@@ -435,8 +546,8 @@ describe("EventRow", () => {
 
       // Deliver the rest newest first, as one batch per replica.
       for (const replica of replicas) {
-        const remaining = yield* missing(replica)
-        yield* replica.deliver(remaining.reverse(), [remaining.length])
+        const remaining = yield* missing(replica.plain)
+        yield* deliver(replica, remaining.reverse(), [remaining.length])
       }
 
       const expected = new Map<string, Row>()
@@ -462,8 +573,10 @@ describe("EventRow", () => {
         }
       }
       assert.deepStrictEqual(
-        replicas.map((replica) => Object.fromEntries(replica.storage)),
-        replicas.map(() => Object.fromEntries(expected))
+        replicas.map(({ plain, compacted, single }) =>
+          [plain, compacted, single].map((replica) => Object.fromEntries(replica.storage))
+        ),
+        replicas.map(() => [Object.fromEntries(expected), Object.fromEntries(expected), Object.fromEntries(expected)])
       )
     }, Effect.scoped),
     { arbitrary: { runs: 200 } }
