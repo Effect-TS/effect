@@ -50,7 +50,7 @@ class TomlParser {
   private line = 1
   private column = 1
   private readonly explicitTables = new Set<Table>()
-  // Arrays and inline tables are complete once parsed; later keys and headers cannot extend them.
+  // Values parsed from `[...]` or `{...}` are complete; headers and dotted keys cannot extend them.
   private readonly inlineValues = new Set<unknown>()
 
   constructor(input: string) {
@@ -511,9 +511,9 @@ class TomlParser {
  * **Details**
  *
  * Returns `Result.succeed` with the parsed record, or `Result.fail` with an
- * `EncodingError` describing the first syntax error and its position. Offset
- * date-times are represented by `Date`, matching the package this parser
- * replaces. Local dates and times remain strings.
+ * `EncodingError` when the input is not valid TOML. Offset date-times are
+ * represented by `Date`, matching the package this parser replaces. Local
+ * dates and times remain strings.
  *
  * **Example** (Parsing a TOML document)
  *
