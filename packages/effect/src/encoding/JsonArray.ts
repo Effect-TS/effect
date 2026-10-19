@@ -170,6 +170,11 @@ const RBRACE = 125
 
 const isWhitespace = (c: number): boolean => c === SPACE || c === LF || c === CR || c === TAB
 
+const indexOf = (text: string, search: string, i: number): number => {
+  const index = text.indexOf(search, i)
+  return index === -1 ? text.length : index
+}
+
 const isValueStart = (c: number): boolean =>
   c === QUOTE || c === LBRACKET || c === LBRACE || c === 45 || (c >= 48 && c <= 57) || c === 102 || c === 110 ||
   c === 116
@@ -224,6 +229,13 @@ class Scanner {
   inString = false
   escape = false
 
+  // Cached quote and backslash positions; the chunk length means not found.
+  quote = -1
+  backslash = -1
+  // Absolute end of a batch that failed to parse. The precise scan handles
+  // text before it, so the batch is not rescanned for every element.
+  slow = 0
+
   constructor(config: Config) {
     this.config = config
   }
@@ -253,6 +265,8 @@ class Scanner {
       this.started = true
       if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
     }
+    this.quote = -1
+    this.backslash = -1
     let i = this.capture === NONE ? 0 : this.scan(text, 0, out)
     while (i < text.length) {
       const c = text.charCodeAt(i)
@@ -332,8 +346,13 @@ class Scanner {
       case ARRAY_VALUE: {
         if (c === RBRACKET && this.state === ARRAY_START) return this.close(i)
         if (!isValueStart(c)) break
+        if (frame.target) {
+          const next = this.scanElements(text, i, out)
+          if (next > i) return next
+          this.state = ARRAY_NEXT
+          return this.begin(ELEMENT, text, i, out)
+        }
         this.state = ARRAY_NEXT
-        if (frame.target) return this.begin(ELEMENT, text, i, out)
         if (frame.index++ === this.config.indices[this.frames.length - 1]) {
           frame.found = true
           this.state = VALUE
@@ -407,37 +426,106 @@ class Scanner {
   // Tracks only string, escape and nesting state; `JSON.parse` validates the
   // rest. Returns the index after the value, or -1.
   scanNested(text: string, i: number): number {
+    if (this.inString) {
+      i = this.scanString(text, i, this.escape)
+      if (i === -1) return -1
+      this.inString = false
+      if (this.depth === 0) return i
+    }
     let depth = this.depth
-    let inString = this.inString
-    let escape = this.escape
-    let end = -1
     while (i < text.length) {
       const c = text.charCodeAt(i++)
-      if (inString) {
-        if (escape) {
-          escape = false
-        } else if (c === BACKSLASH) {
-          escape = true
-        } else if (c === QUOTE) {
-          inString = false
-          if (depth === 0) {
-            end = i
-            break
-          }
+      if (c === QUOTE) {
+        i = this.scanString(text, i, false)
+        if (i === -1) {
+          this.inString = true
+          break
         }
-      } else if (c === QUOTE) {
-        inString = true
       } else if (c === LBRACKET || c === LBRACE) {
         if (++depth > this.config.maxDepth) this.failDepth()
       } else if ((c === RBRACKET || c === RBRACE) && --depth === 0) {
-        end = i
-        break
+        this.depth = 0
+        return i
       }
     }
     this.depth = depth
-    this.inString = inString
+    return -1
+  }
+
+  // Scans string contents from `i`; returns the index after the closing quote,
+  // or -1 if the string continues into the next chunk, recording `escape` for
+  // `scanNested` to resume with.
+  scanString(text: string, i: number, escape: boolean): number {
+    let plain = 0
+    while (i < text.length) {
+      const c = text.charCodeAt(i++)
+      if (escape) {
+        escape = false
+      } else if (c === BACKSLASH) {
+        escape = true
+      } else if (c === QUOTE) {
+        return i
+      } else if (++plain === 16) {
+        // A long string: jump to the next quote or backslash.
+        if (this.quote < i) this.quote = indexOf(text, "\"", i)
+        if (this.backslash < i) this.backslash = indexOf(text, "\\", i)
+        i = Math.min(this.quote, this.backslash)
+        plain = 0
+      }
+    }
     this.escape = escape
-    return end
+    return -1
+  }
+
+  // Parses the elements from `i` up to the last comma or closing bracket at
+  // the array's level with one `JSON.parse`. Wrapped in brackets, that text
+  // parses only when every element and separator in it is valid. Returns `i`
+  // to leave anything else, including errors, to the precise scan.
+  scanElements(text: string, i: number, out: Array<unknown>): number {
+    if (this.base + i < this.slow) return i
+    const { maxDepth, maxElementSize } = this.config
+    let cut = -1
+    let start = i
+    let close = false
+    let depth = 0
+    let j = i
+    while (j < text.length) {
+      const c = text.charCodeAt(j++)
+      if (c === QUOTE) {
+        j = this.scanString(text, j, false)
+        if (j === -1) break
+      } else if (c === LBRACKET || c === LBRACE) {
+        if (++depth > maxDepth) break
+      } else if (c === RBRACKET || c === RBRACE) {
+        if (depth-- > 0) continue
+        // Including surrounding whitespace makes this a conservative size check.
+        if (c === RBRACKET && j - 1 - start <= maxElementSize) {
+          cut = j - 1
+          close = true
+        }
+        break
+      } else if (c === COMMA && depth === 0) {
+        if (j - 1 - start > maxElementSize) break
+        cut = j - 1
+        start = j
+      }
+    }
+    let values: Array<unknown> | undefined
+    if (cut !== -1) {
+      try {
+        values = JSON.parse("[" + text.slice(i, cut) + "]")
+      } catch {
+        this.slow = this.base + cut
+      }
+    }
+    // Rescanning may start before the cached matches, so discard them.
+    this.quote = -1
+    this.backslash = -1
+    if (values === undefined) return i
+    for (let k = 0; k < values.length; k++) out.push(values[k])
+    if (close) return this.close(cut)
+    this.state = ARRAY_VALUE
+    return cut + 1
   }
 
   checkSize(size: number): void {
