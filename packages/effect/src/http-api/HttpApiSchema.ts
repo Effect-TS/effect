@@ -717,6 +717,9 @@ export function WithHeaders(
   if (isWithHeaders(schema)) {
     throw new Error("WithHeaders schemas cannot be nested")
   }
+  if (isUpgrade(schema)) {
+    throw new Error("WithHeaders cannot wrap an upgrade")
+  }
   return Schema.make<WithHeaders<Schema.Top, Schema.Top>>(withHeadersValueSchema.ast, {
     [WithHeadersTypeId]: WithHeadersTypeId,
     schema,
