@@ -205,8 +205,6 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
   return Effect.sync(() => makeResponse(options.api))
 }
 
-const loadBundle = Effect.promise(() => import("./internal/httpApiScalar.ts"))
-
 /**
  * Mounts a Scalar API reference page for an `HttpApi` using the bundled Scalar script.
  *
@@ -227,7 +225,7 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
   } | undefined
 ): Layer.Layer<never, never, HttpRouter.HttpRouter> =>
   HttpRouter.use(Effect.fnUntraced(function*(router) {
-    const { javascript } = yield* loadBundle
+    const { javascript } = yield* Effect.promise(() => import("./internal/httpApiScalar.ts"))
     const handler = makeHandler({
       api,
       source: {
