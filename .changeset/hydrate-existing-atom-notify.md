@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Apply `Hydration.hydrate` entries immediately for atoms the registry already holds, so existing subscribers are notified instead of waiting for the next read.
+Fix `Hydration.hydrate` to notify existing atom subscribers immediately instead of on the next read.
