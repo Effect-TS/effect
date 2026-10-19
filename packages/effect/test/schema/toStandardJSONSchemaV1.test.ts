@@ -68,6 +68,14 @@ describe("toStandardJSONSchemaV1", () => {
   })
 
   describe("draft-2020-12", () => {
+    it("preserves the date-time format for string-encoded dates", () => {
+      const schema = Schema.toStandardJSONSchemaV1(Schema.toStandardSchemaV1(Schema.DateFromString))
+      deepStrictEqual(standardConvertToJSONSchemaInput(schema), {
+        type: "string",
+        format: "date-time"
+      })
+    })
+
     it("should return the input JSON Schema", () => {
       const schema = Schema.Tuple([Schema.FiniteFromString])
       const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)

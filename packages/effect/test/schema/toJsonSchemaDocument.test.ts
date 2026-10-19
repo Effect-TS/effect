@@ -534,6 +534,12 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    it("DateFromString", () => {
+      assertJsonSchemaDocument(Schema.DateFromString, {
+        schema: { type: "string", format: "date-time" }
+      })
+    })
+
     it("URL", () => {
       const schema = Schema.URL
       assertJsonSchemaDocument(schema, {
