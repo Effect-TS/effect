@@ -93,6 +93,9 @@ type ExtractStreamSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> 
 
 type ExtractUpgradeSuccess<S extends SuccessConstraint> = Extract<UnwrapReadonlyArray<S>, HttpApiSchema.Upgrade>
 
+type UpgradeSocket<Success> = [Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {}
+  : { readonly socket: Socket.Socket }
+
 type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.WithHeaders<infer _Inner, infer _Headers> ? HttpApiSchema.WithHeaders<
       _Inner extends HttpApiSchema.StreamSchema ? _Inner : Schema.toCodecJson<_Inner>,
@@ -119,7 +122,7 @@ type ToStringTreeCodec<S> = [S] extends [never] ? never
   : never
 
 type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType, Success> =
-  & ([Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {} : { readonly socket: Socket.Socket })
+  & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([PayloadType] extends [never] ? {}
@@ -134,7 +137,7 @@ type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType,
   }
 
 type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType, Success> =
-  & ([Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {} : { readonly socket: Socket.Socket })
+  & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
@@ -1165,9 +1168,6 @@ export const make = <Method extends HttpMethod>(method: Method): {
 > => {
   const disableCodecs = options?.disableCodecs ?? false
   const transformStringTree = disableCodecs ? identity : Schema.toCodecStringTree
-  if (options?.payload !== undefined && Arr.ensure(options.success ?? []).some(HttpApiSchema.isUpgrade)) {
-    throw new Error("Upgrade endpoints cannot declare a payload")
-  }
   return makeProto({
     identifier,
     path,
@@ -1176,7 +1176,7 @@ export const make = <Method extends HttpMethod>(method: Method): {
     query: ensureStruct(options?.query, transformStringTree),
     headers: ensureStruct(options?.headers, transformStringTree),
     payload: getPayload(options?.payload, method, disableCodecs),
-    success: getSuccessResponse(options?.success, method, disableCodecs),
+    success: getSuccessResponse(options?.success, method, options?.payload !== undefined, disableCodecs),
     error: getErrorResponse(options?.error, disableCodecs),
     annotations: Context.empty(),
     middlewares: new Set(),
@@ -1239,11 +1239,12 @@ const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 function getSuccessResponse(
   success: Schema.Top | ReadonlyArray<Schema.Top> | undefined,
   method: HttpMethod,
+  hasPayload: boolean,
   disableCodecs: boolean
 ): Set<Schema.Top> {
   if (success === undefined) return new Set()
   const schemas = Arr.ensure(success)
-  validateSuccessResponse(schemas, method)
+  validateSuccessResponse(schemas, method, hasPayload)
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
@@ -1277,13 +1278,16 @@ function getErrorResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod) {
+function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod, hasPayload: boolean) {
   if (schemas.some(HttpApiSchema.isUpgrade)) {
     if (schemas.length > 1) {
       throw new Error("Cannot combine an upgrade with other success responses")
     }
     if (method === "HEAD") {
       throw new Error("HEAD endpoints cannot declare an upgrade")
+    }
+    if (hasPayload) {
+      throw new Error("Upgrade endpoints cannot declare a payload")
     }
     return
   }
