@@ -476,12 +476,15 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
                     if (dataPS) {
                       const innerDataTarget = registerSchema(SchemaAST.toType(dataPS.type))
                       finalizeOperations.push(() => {
-                        let dataDef: JsonSchema.JsonSchema | undefined = eventsSchemaTarget.properties?.data
+                        const properties = eventsSchemaTarget.properties as
+                          | Record<string, JsonSchema.JsonSchema>
+                          | undefined
+                        let dataDef: JsonSchema.JsonSchema | undefined = properties?.data
                         if (
                           dataDef && typeof dataDef === "object" && !Array.isArray(dataDef) &&
                           "$ref" in dataDef && typeof dataDef.$ref === "string"
                         ) {
-                          const refKey = dataDef.$ref.replace(/^#\/components\/schemas\//, "")
+                          const refKey = (dataDef.$ref as string).replace(/^#\/components\/schemas\//, "")
                           dataDef = spec.components.schemas[refKey]
                         }
                         if (dataDef && typeof dataDef === "object" && !Array.isArray(dataDef)) {
