@@ -388,7 +388,7 @@ const maxEntryId = (ids: Iterable<EntryId>): EntryId | undefined => {
 export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
   options.msecs !== undefined
     ? Uuid.v7Bytes(options.msecs) as EntryId
-    : nextEntryId(processEntryIds, DateTime.nowUnsafe().epochMilliseconds)
+    : nextEntryId(processEntryIds, Date.now())
 
 // Imported ids further ahead of the local clock than this are logged.
 const maxClockSkewMillis = 24 * 60 * 60 * 1000
@@ -575,7 +575,7 @@ export const makeEntries = (
       const sequence = sequenceAfter(maxEntryId(after))
       return Arr.map(entries, ({ event, payload, primaryKey }) =>
         new Entry({
-          id: nextEntryId(sequence, DateTime.nowUnsafe().epochMilliseconds),
+          id: nextEntryId(sequence, Date.now()),
           event,
           primaryKey,
           payload
