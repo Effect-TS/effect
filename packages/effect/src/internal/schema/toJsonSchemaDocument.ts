@@ -619,7 +619,11 @@ function compileJsonSchema(
           if (compacted !== undefined) return compacted
         }
         if (mode === "oneOf") pendingOneOf.set(types, [branches, []])
-        return { [mode]: types }
+        return {
+          [mode]: mode === "anyOf"
+            ? types.flatMap((type) => Array.isArray(type.anyOf) && Object.keys(type).length === 1 ? type.anyOf : [type])
+            : types
+        }
       }
     }
   }
