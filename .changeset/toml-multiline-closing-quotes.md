@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Toml.parse` rejecting multiline strings that end with one or two quotes right before the closing delimiter, such as `"""say "hi""""`.
+Fix `Toml.parse` rejecting multiline basic and literal strings ending with one or two content quotes.

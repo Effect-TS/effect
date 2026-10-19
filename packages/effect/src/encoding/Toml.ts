@@ -381,7 +381,6 @@ class TomlParser {
     this.fail("Unterminated literal string")
   }
 
-  // Up to two quotes directly after a multiline closing delimiter belong to the string
   private closingQuotes(quote: string): string {
     let quotes = ""
     while (quotes.length < 2 && this.peek() === quote) {
