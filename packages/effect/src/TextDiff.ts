@@ -154,12 +154,7 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
   before: ReadonlyArray<A>,
   after: ReadonlyArray<A>,
   options?: DiffOptions
-): Array<Edit<A>> =>
-  toEdits(
-    before,
-    after,
-    matchingBlocks(before.length, after.length, (i, j) => isEquivalent(before[i], after[j]), options?.maxEdits)
-  )
+): Array<Edit<A>> => editScript(before, after, (i, j) => isEquivalent(before[i], after[j]), options?.maxEdits)
 
 /**
  * Computes a minimal edit script between two arrays, comparing items with
@@ -221,7 +216,7 @@ export const diff = <A>(
  * @since 4.0.6
  */
 export const lines = (before: string, after: string, options?: DiffOptions): Array<Edit<string>> =>
-  diffTokens(splitLines(before), splitLines(after), options)
+  diffStrings(splitLines(before), splitLines(after), options)
 
 /**
  * Computes a minimal code point edit script between two strings.
@@ -253,7 +248,7 @@ export const lines = (before: string, after: string, options?: DiffOptions): Arr
  * @since 4.0.6
  */
 export const codePoints = (before: string, after: string, options?: DiffOptions): Array<Edit<string>> =>
-  diffTokens(Array.from(before), Array.from(after), options)
+  diffStrings(Array.from(before), Array.from(after), options)
 
 /**
  * Applies an edit script to an array.
@@ -511,17 +506,15 @@ interface Region {
   readonly bHi: number
 }
 
-const splitLines = (text: string): Array<string> => {
-  const out: Array<string> = []
-  let start = 0
-  while (start < text.length) {
-    const newline = text.indexOf("\n", start)
-    const end = newline === -1 ? text.length : newline + 1
-    out.push(text.slice(start, end))
-    start = end
-  }
-  return out
+// A diagonal run from (x, y) to (u, v)
+interface Snake {
+  readonly x: number
+  readonly y: number
+  readonly u: number
+  readonly v: number
 }
+
+const splitLines = (text: string): Array<string> => text.match(/[^\n]*\n|[^\n]+$/g) ?? []
 
 const range = (start: number, count: number): string =>
   count === 0 ? `${start},0` : count === 1 ? `${start + 1}` : `${start + 1},${count}`
@@ -529,7 +522,8 @@ const range = (start: number, count: number): string =>
 const formatLine = (prefix: string, line: string): string =>
   line.endsWith("\n") ? prefix + line : `${prefix}${line}\n\\ No newline at end of file\n`
 
-const internedEquals = (a: ReadonlyArray<string>, b: ReadonlyArray<string>) => {
+// Interns the tokens so the search compares integers instead of strings
+const diffStrings = (a: ReadonlyArray<string>, b: ReadonlyArray<string>, options?: DiffOptions) => {
   const ids = new Map<string, number>()
   const intern = (token: string) => {
     let id = ids.get(token)
@@ -541,17 +535,22 @@ const internedEquals = (a: ReadonlyArray<string>, b: ReadonlyArray<string>) => {
   }
   const ai = Int32Array.from(a, intern)
   const bi = Int32Array.from(b, intern)
-  return (i: number, j: number) => ai[i] === bi[j]
+  return editScript(a, b, (i, j) => ai[i] === bi[j], options?.maxEdits)
 }
 
-const diffTokens = (a: ReadonlyArray<string>, b: ReadonlyArray<string>, options?: DiffOptions) =>
-  toEdits(a, b, matchingBlocks(a.length, b.length, internedEquals(a, b), options?.maxEdits))
-
-const toEdits = <A>(a: ReadonlyArray<A>, b: ReadonlyArray<A>, blocks: ReadonlyArray<Block>): Array<Edit<A>> => {
+const editScript = <A>(
+  a: ReadonlyArray<A>,
+  b: ReadonlyArray<A>,
+  equals: (i: number, j: number) => boolean,
+  maxEdits?: number
+): Array<Edit<A>> => {
+  const blocks = matchingBlocks(a.length, b.length, equals, maxEdits)
+  // A final empty block flushes the trailing changes
+  blocks.push({ a: a.length, b: b.length, length: 0 })
   const out: Array<Edit<A>> = []
   let i = 0
   let j = 0
-  for (const block of [...blocks, { a: a.length, b: b.length, length: 0 }]) {
+  for (const block of blocks) {
     if (block.a > i) out.push({ _tag: "Delete", items: a.slice(i, block.a) })
     if (block.b > j) out.push({ _tag: "Insert", items: b.slice(j, block.b) })
     if (block.length > 0) out.push({ _tag: "Equal", items: a.slice(block.a, block.a + block.length) })
@@ -593,12 +592,10 @@ const matchingBlocks = (
   // most `maxEdits` edits is solved within `maxD` steps of each search
   const maxD = Math.ceil(Math.max(0, maxEdits) / 2)
 
-  // Sets `split` to [x, y, u, v] in absolute coordinates: the middle snake of
-  // a minimal path, or an empty snake at the furthest point reached when the
-  // region needs more than `maxEdits` edits. Returns false when no point
-  // inside the region was reached
-  const split = [0, 0, 0, 0]
-  const findSplit = (aLo: number, aHi: number, bLo: number, bHi: number): boolean => {
+  // Returns the middle snake of a minimal path in absolute coordinates, or an
+  // empty snake at the furthest point reached when the region needs more than
+  // `maxEdits` edits, or undefined when no point inside the region was reached
+  const findSplit = (aLo: number, aHi: number, bLo: number, bHi: number): Snake | undefined => {
     const N = aHi - aLo
     const M = bHi - bLo
     const delta = N - M
@@ -620,11 +617,7 @@ const matchingBlocks = (
         }
         vf[offset + k] = x
         if (odd && k >= delta - (d - 1) && k <= delta + (d - 1) && x + vb[offset + delta - k] >= N) {
-          split[0] = aLo + x0
-          split[1] = bLo + y0
-          split[2] = aLo + x
-          split[3] = bLo + y
-          return true
+          return { x: aLo + x0, y: bLo + y0, u: aLo + x, v: bLo + y }
         }
       }
       for (let k = -d; k <= d; k += 2) {
@@ -640,34 +633,33 @@ const matchingBlocks = (
         }
         vb[offset + k] = x
         if (!odd && k >= delta - d && k <= delta + d && x + vf[offset + delta - k] >= N) {
-          split[0] = aHi - x
-          split[1] = bHi - y
-          split[2] = aHi - x0
-          split[3] = bHi - y0
-          return true
+          return { x: aHi - x, y: bHi - y, u: aHi - x0, v: bHi - y0 }
         }
       }
     }
 
-    // Over the cap: split at the reached point that covers the most items
+    // Over the cap: split at the reached point that covers the most items. It
+    // must lie strictly inside the region so that both parts shrink
     let best = 0
+    let x = 0
+    let y = 0
     for (let k = -limit; k <= limit; k += 2) {
       const xf = vf[offset + k]
       const yf = xf - k
       if (xf <= N && yf >= 0 && yf <= M && xf + yf > best) {
         best = xf + yf
-        split[0] = split[2] = aLo + xf
-        split[1] = split[3] = bLo + yf
+        x = aLo + xf
+        y = bLo + yf
       }
       const xb = vb[offset + k]
       const yb = xb - k
       if (xb <= N && yb >= 0 && yb <= M && xb + yb > best) {
         best = xb + yb
-        split[0] = split[2] = aHi - xb
-        split[1] = split[3] = bHi - yb
+        x = aHi - xb
+        y = bHi - yb
       }
     }
-    return best > 0 && best < N + M
+    return best > 0 && best < N + M ? { x, y, u: x, v: y } : undefined
   }
 
   // Regions are processed in order from an explicit stack, since splits over
@@ -680,12 +672,11 @@ const matchingBlocks = (
       continue
     }
     let { aHi, aLo, bHi, bLo } = task
-    const prefixStart = aLo
-    while (aLo < aHi && bLo < bHi && equals(aLo, bLo)) {
-      aLo++
-      bLo++
-    }
-    push(prefixStart, bLo - (aLo - prefixStart), aLo - prefixStart)
+    let prefix = 0
+    while (aLo + prefix < aHi && bLo + prefix < bHi && equals(aLo + prefix, bLo + prefix)) prefix++
+    push(aLo, bLo, prefix)
+    aLo += prefix
+    bLo += prefix
     let suffix = 0
     while (aLo < aHi - suffix && bLo < bHi - suffix && equals(aHi - suffix - 1, bHi - suffix - 1)) suffix++
     aHi -= suffix
@@ -693,12 +684,12 @@ const matchingBlocks = (
     stack.push({ a: aHi, b: bHi, length: suffix })
     // With a common prefix and suffix removed, a non-empty side on both ends
     // means at least two edits, so both halves below are strictly smaller
-    if (aLo < aHi && bLo < bHi && findSplit(aLo, aHi, bLo, bHi)) {
-      const [x, y, u, v] = split
+    const snake = aLo < aHi && bLo < bHi ? findSplit(aLo, aHi, bLo, bHi) : undefined
+    if (snake !== undefined) {
       stack.push(
-        { aLo: u, aHi, bLo: v, bHi },
-        { a: x, b: y, length: u - x },
-        { aLo, aHi: x, bLo, bHi: y }
+        { aLo: snake.u, aHi, bLo: snake.v, bHi },
+        { a: snake.x, b: snake.y, length: snake.u - snake.x },
+        { aLo, aHi: snake.x, bLo, bHi: snake.y }
       )
     }
   }
