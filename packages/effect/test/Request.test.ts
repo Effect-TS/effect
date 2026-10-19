@@ -468,6 +468,7 @@ describe("Request", { concurrent: false }, () => {
 
   it.effect("withCache keeps the wrapped resolver's preCheck", () =>
     Effect.gen(function*() {
+      let prechecked = "Alice"
       const batched: Array<number> = []
       const resolver = yield* Resolver.makeWith<GetNameById>({
         batchKey: () => "batch",
@@ -475,7 +476,7 @@ describe("Request", { concurrent: false }, () => {
         collectWhile: () => true,
         preCheck(entry) {
           if (entry.request.id !== 1) return true
-          entry.completeUnsafe(Exit.succeed("Alice"))
+          entry.completeUnsafe(Exit.succeed(prechecked))
           return false
         },
         runAll: (entries) =>
@@ -488,9 +489,33 @@ describe("Request", { concurrent: false }, () => {
       }).pipe(Resolver.withCache({ capacity: 10 }))
 
       assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "Alice")
+      prechecked = "Carol"
+      assert.strictEqual(yield* Effect.request(new GetNameById({ id: 1 }), resolver), "Carol")
       assert.strictEqual(yield* Effect.request(new GetNameById({ id: 2 }), resolver), "Bob")
       assert.strictEqual(yield* Effect.request(new GetNameById({ id: 2 }), resolver), "Bob")
       assert.deepStrictEqual(batched, [2])
+    }))
+
+  it.effect("withCache delegates pending and completed requests to the inner cache", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      let calls = 0
+      const inner = yield* Resolver.make<GetNameById>((entries) =>
+        Effect.sync(() => {
+          calls++
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed("Alice"))
+        })
+      ).pipe(Resolver.setDelayEffect(Deferred.await(gate)), Resolver.withCache({ capacity: 10 }))
+      const outer = yield* Resolver.withCache(inner, { capacity: 10 })
+      const request = new GetNameById({ id: 1 })
+      const first = yield* Effect.request(request, inner).pipe(Effect.forkChild({ startImmediately: true }))
+      const second = yield* Effect.request(request, outer).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* Deferred.succeed(gate, undefined)
+      assert.strictEqual(yield* Fiber.join(first), "Alice")
+      assert.strictEqual(yield* Fiber.join(second), "Alice")
+      assert.strictEqual(yield* Effect.request(request, outer), "Alice")
+      assert.strictEqual(calls, 1)
     }))
 
   it.effect("withCache does not cache interrupted resolver results", () =>
