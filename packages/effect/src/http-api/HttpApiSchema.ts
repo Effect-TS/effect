@@ -884,6 +884,9 @@ export function encodeToWithHeaders<
 }) {
   return (self: S): encodeToWithHeaders<S, Body, Headers> => {
     const body = options.body
+    if (isUpgrade(body)) {
+      throw new Error("encodeToWithHeaders cannot wrap an upgrade")
+    }
     const headers = Schema.Struct(options.headers)
     const status = resolveHttpApiStatus(body.ast)
     const encoding = resolveHttpApiEncoding(body.ast)
