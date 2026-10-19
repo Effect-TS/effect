@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `HEAD` (`28ef5295ef202a2ee436d920bab5c2396b898ffe`)
+Head: `origin/main` (`4cddd3c41e71fc4990d37c42b1bcf2ce3780b41d`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4914,11 +4914,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `AiError.HttpRequestError` -> `AiError.make + AiError.NetworkError`: Replace the old top-level request error with an AiError whose reason is NetworkError. NetworkError.fromRequestError converts a v4 HttpClientError.RequestError.
 
-- `AiError.HttpResponseError` -> `AiError.make + AiError.reasonFromHttpStatus / AiError.InvalidOutputError`: There is no single v4 response-error class. Wrap a semantic reason with AiError.make: use reasonFromHttpStatus for status failures and InvalidOutputError for decode or empty-body failures.
+- `AiError.HttpResponseError` -> `AiError.make + AiError.reasonFromHttpStatus / AiError.InvalidResponseError / AiError.InvalidOutputError`: There is no single v4 response-error class. Wrap a semantic reason with AiError.make: use reasonFromHttpStatus for status failures. Provider response-schema and SSE decoding failures use non-retryable InvalidResponseError. Lower-level HTTP client DecodeError and EmptyBodyError still map to retryable InvalidOutputError in provider adapters.
 
 - `AiError.MalformedInput` -> `AiError.make + AiError.InvalidUserInputError`: Replace the old top-level input error with an AiError whose reason is InvalidUserInputError. Use InvalidRequestError when the provider request parameters themselves are malformed.
 
-- `AiError.MalformedOutput` -> `AiError.make + AiError.InvalidOutputError`: Replace the old top-level output error with an AiError whose reason is InvalidOutputError. The old fromParseError helper becomes InvalidOutputError.fromSchemaError.
+- `AiError.MalformedOutput` -> `AiError.make + AiError.InvalidOutputError / AiError.InvalidResponseError`: Replace the old top-level output error with an AiError wrapper. Use retryable InvalidOutputError for invalid model-generated output and non-retryable InvalidResponseError for incompatible provider response formats, including response-schema and SSE decoding failures. Replace fromParseError with InvalidOutputError.fromSchemaError or InvalidResponseError.fromSchemaError according to what was being decoded; pass module and method to AiError.make.
 
 - `AiError.TypeId` -> `AiError.isAiError`: The AiError brand is private in v4. Use isAiError for runtime narrowing, or isAiErrorReason for a reason, instead of inspecting or constructing the type id.
 
@@ -5950,9 +5950,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventJournal.ErrorTypeId` -> `none`: The v4 error marker is private; narrow with EventJournalError instead.
 
+- `EventJournal.EventJournal` -> `effect/eventlog/EventJournal#EventJournal`: Custom journal services must implement entriesById, writeMany, and writeRemoteAcks. writeFromRemote.effect now receives one array of entry/conflicts pairs per batch, not one pair per callback. Read conflicts before invoking it and commit the batch only after it succeeds. Replay entries in entry-id order; conflicts are stored entries with strictly greater ids, also in id order. Compaction replacements use the source entry as their ordering and conflict anchor.
+
 - `EventJournal.RemoteIdTypeId` -> `effect/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
-- `EventJournal.makeEntryId` -> `effect/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
+- `EventJournal.makeEntryId` -> `effect/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe. Without explicit msecs, ids advance monotonically within the process using a logical millisecond and counter, so their timestamp can exceed wall-clock time when the clock stalls or moves backwards. Explicit msecs bypasses this sequence.
 
 - `EventJournal.makeMemory` -> `effect/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
 
@@ -5960,7 +5962,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/experimental/EventLog`
 
-- `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId.
+- `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId. Remote decode or handler failures leave the entire batch uncommitted and retry it after backoff instead of logging and committing past the failure. Replay handlers must tolerate repeated execution. Conflicts are stored entries with strictly greater ids, in id order; compacted replacements use their source entry as the conflict anchor.
 
 - `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
 
@@ -5968,17 +5970,29 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventLog.group` -> `effect/eventlog/EventLog#group`: Import group from the v4 EventLog module; it now requires the shared Registry service.
 
+- `EventLog.groupCompaction` -> `effect/eventlog/EventLog#groupCompaction`: Use forward(entry) to retain an input entry unchanged rather than writing a replacement. Entries neither forwarded nor replaced are dropped; undecodable entries are preserved automatically. Replacements are anchored to the first decoded entry for the primary key and replayed in anchor-id order, then write order, with conflicts newer than that anchor. Collapsing entries across an intervening stored entry for the same event and primary key can break convergence.
+
 - `EventLog.layer` -> `effect/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
 
 - `EventLog.layerIdentityKvs` -> `none`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
 
+- `EventLog.makeClient` -> `effect/eventlog/EventLog#makeClient`: The returned client now takes one { event, payload } object instead of separate event and payload arguments. The payload remains paired with its event tag, and each call delegates to EventLog.write; use EventLog.writeMany for an atomic batch of events.
+
+### `@effect/experimental/EventLogEncryption`
+
+- `EventLogEncryption.EncryptedEntry` -> `effect/eventlog/EventLogEncryption#EncryptedBatch`: Replace per-entry encrypted records with batches containing entryIds, iv, and encryptedBatch. Each batch encrypts multiple entries as one message and authenticates the store id and ordered entry ids; existing per-entry ciphertext is not compatible with this format.
+
+- `EventLogEncryption.EncryptedRemoteEntry` -> `effect/eventlog/EventLogEncryption#EncryptedRemoteBatch`: Remote encrypted records are now batches with entryIds, iv, and encryptedBatch. sequence is the first entry sequence; subsequent entries have consecutive sequences. Existing per-entry ciphertext is not compatible with the batch format.
+
+- `EventLogEncryption.EventLogEncryption` -> `effect/eventlog/EventLogEncryption#EventLogEncryption`: Use the Context.Service and its Service projection. encrypt and decrypt now take storeId after identity. encrypt returns EncryptedBatch records rather than an iv/encryptedEntries object; decrypt takes EncryptedRemoteBatch records and returns RemoteEntry records. Encryption authenticates the store id and ordered entry ids, so old per-entry ciphertext cannot be supplied as a batch.
+
 ### `@effect/experimental/EventLogRemote`
 
-- `EventLogRemote.Ack` -> `none`: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc.
+- `EventLogRemote.Ack` -> `effect/eventlog/EventLogMessage#WriteAck`: Write RPCs now return arrays of entryId/sequence acknowledgements in request order. WriteSingleRpc returns them directly; WriteChunkedRpc returns them on the completing chunk, with empty arrays for earlier chunks.
 
-- `EventLogRemote.Changes` -> `effect/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC.
+- `EventLogRemote.Changes` -> `effect/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC. Encrypted changes carry EncryptedRemoteBatch records. Built-in servers acknowledge writes from this connection instead of echoing them through changes.
 
-- `EventLogRemote.EventLogRemote` -> `effect/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options.
+- `EventLogRemote.EventLogRemote` -> `effect/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options. write may return entryId/sequence acknowledgement arrays; custom remotes can still return void when confirming uploads through changes instead.
 
 - `EventLogRemote.Hello` -> `effect/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
 
@@ -5998,6 +6012,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventLogRemote.StopChanges` -> `none`: Interrupt the ChangesRpc stream instead of sending a StopChanges message.
 
+- `EventLogRemote.WriteEntries` -> `effect/eventlog/EventLogMessage#WriteEntries`: Use the storeId-aware write payload with batches of EncryptedBatch instead of iv and encryptedEntries. Each batch contains entryIds, iv, and encryptedBatch; it is not compatible with the old per-entry ciphertext format.
+
 - `EventLogRemote.decodeRequest` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific request decoder.
 
 - `EventLogRemote.decodeResponse` -> `effect/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerSchemaBinary replace the module-specific response decoder.
@@ -6014,7 +6030,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/experimental/EventLogServer`
 
-- `EventLogServer.Storage` -> `effect/eventlog/EventLogServerEncrypted#Storage`: Use the encrypted server Storage service, which is storeId- and session-aware.
+- `EventLogServer.PersistedEntry` -> `effect/eventlog/EventLogEncryption#EncryptedBatch`: The per-entry class was removed; encrypted storage now accepts batch records containing entryIds, iv, and encryptedBatch. The class encoding helpers and entryIdString getter are not retained. Old per-entry ciphertext cannot be reused as an encrypted batch.
+
+- `EventLogServer.Storage` -> `effect/eventlog/EventLogServerEncrypted#Storage`: Use the storeId- and session-aware encrypted server Storage service. write and changes now operate on encrypted batches. write returns newly stored batches and skips a batch only when all its entry ids are already known. Custom storage must implement entrySequences to look up acknowledgements for skipped batches; each batch owns consecutive sequences starting at its sequence.
 
 - `EventLogServer.layerStorageMemory` -> `effect/eventlog/EventLogServerEncrypted#layerStorageMemory`: Use the encrypted server memory storage layer; storage is now storeId- and session-aware.
 
@@ -6510,6 +6528,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Undici.errors` -> `undici.errors`: Import the upstream errors object directly; individual classes follow the Undici 8 API.
 
+- `Undici.errors.ResponseError`: TODO: needs guidance
+
 - `Undici.errors.ResponseStatusCodeError` -> `undici.errors.ResponseError`: Undici 8 replaced ResponseStatusCodeError with ResponseError; construct it with message, statusCode, and the headers/body object.
 
 - `Undici.interceptors` -> `undici.interceptors`: Import the upstream interceptors object and apply returned interceptors with dispatcher.compose(...).
@@ -6519,6 +6539,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Undici.interceptors.DNSInterceptorOriginRecords` -> `undici.interceptors.DNSInterceptorOriginRecords`: Import the same namespace type, but adopt Undici 8's shape with IPv4 and IPv6 entries nested under records.
 
 - `Undici.interceptors.RedirectInterceptorOpts` -> `undici.interceptors.RedirectInterceptorOpts`: Import the same namespace type; Undici 8 adds throwOnMaxRedirect and redirect header-stripping options.
+
+- `Undici.interceptors.ResponseErrorInterceptorOpts`: TODO: needs guidance
 
 ### `@effect/platform/ChannelSchema`
 
@@ -8072,7 +8094,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqlClient.SafeIntegers` -> `effect/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
 
-- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver, a string identifying the driver independently of its SQL dialect; SqlClient.make sets it from MakeOptions.driver.
+- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver and afterCommit; SqlClient.make supplies both. driver identifies the driver independently of its SQL dialect. afterCommit registers effects to run after the outermost successful commit and connection release attempt, discarding rolled-back work. withTransaction now also defers contextual Reactivity.invalidate and mutation invalidations until that commit. Transactions bypassing makeWithTransaction, such as sqlite-do transactions, run callbacks and invalidations immediately.
 
 - `SqlClient.SqlClient.MakeOptions` -> `effect/sql/SqlClient#SqlClient.MakeOptions`: Moved; driver is now required and conventionally names the driver package without @effect/sql-, for example pg or pglite. Rename reactiveMailbox to reactiveQueue; transactionService is optional.
 
@@ -8081,6 +8103,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `SqlClient.TypeId` -> `none`: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
 
 - `SqlClient.make` -> `effect/sql/SqlClient#make`: Moved; custom clients must supply MakeOptions.driver, rename reactiveMailbox to reactiveQueue, and may supply transactionService. Driver names conventionally omit the @effect/sql- prefix, for example pg or pglite.
+
+- `SqlClient.makeWithTransaction` -> `effect/sql/SqlClient#makeWithTransaction`: Rename transactionTag to transactionService. acquireConnection is now a function receiving restore and returning Effect\<Connection, SqlError, Scope\>, rather than an effect returning a scope/connection pair. Register releases in the provided scope and wrap interruptible connection waits with restore; the wrapper closes the scope on transaction completion or failed acquisition.
 
 ### `@effect/sql/SqlConnection`
 
@@ -8098,9 +8122,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql/SqlEventLogServer`
 
-- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module with the same options and EventLogEncryption requirement.
+- `SqlEventLogServer.layerStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorage`: Moved to the encrypted server module; remove insertBatchSize. entryTablePrefix and remoteIdTable remain, as does the EventLogEncryption requirement. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
 
-- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module with the same SQL, encryption, and scope requirements.
+- `SqlEventLogServer.layerStorageSubtle` -> `effect/eventlog/SqlEventLogServerEncrypted#layerStorageSubtle`: Moved to the encrypted server module; remove insertBatchSize. The layer still supplies Web Crypto encryption. Storage now uses encrypted batch tables and entry-id lookup tables; existing per-entry ciphertext tables are not automatically converted.
+
+- `SqlEventLogServer.makeStorage` -> `effect/eventlog/SqlEventLogServerEncrypted#makeStorage`: Moved to the encrypted server module; remove insertBatchSize. SQL, encryption, and scope requirements remain. Storage uses encrypted batch tables and entry-id lookup tables, not the old per-entry ciphertext schema; existing encrypted tables are not automatically converted.
 
 ### `@effect/sql/SqlPersistedQueue`
 
@@ -8700,7 +8726,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `index.expect` -> `vitest#expect`: This was a Vitest re-export, not Effect API. Import it directly from vitest; @effect/vitest/index is not a valid v4 route.
 
-- `index.it` -> `@effect/vitest#it`: Effect helpers retain their calling convention. Vitest 5 removes it.sequential; pass { concurrent: false } to the native test or as the Effect helper's third argument.
+- `index.it` -> `@effect/vitest#it`: Vitest 5 removes it.sequential; pass { concurrent: false } to the native test or as the Effect helper's third argument. Synchronous it.prop callbacks must return boolean or void: true and undefined pass, false falsifies, and other values (including Effects and Promises) throw TypeError. Use it.effect.prop for Effect callbacks.
+
+- `index.prop` -> `@effect/vitest#prop`: Synchronous property callbacks must return boolean or void: true and undefined pass, false falsifies, and other values (including Effects and Promises) throw TypeError. Move Effect callbacks to it.effect.prop instead of returning an Effect from prop.
 
 - `index.scoped` -> `@effect/vitest#effect`: V4 effect tests are scoped and provide the test environment. Replace scoped(...) with effect(...), and it.scoped(...) with it.effect(...).
 
@@ -9000,7 +9028,7 @@ Arbitrary.schema(schema)
 
 ### `effect/Cause`
 
-- `Cause.Cause` -> `Cause.Cause`: The name remains, but v4 Cause\<E\> is a wrapper with readonly reasons: ReadonlyArray\<Cause.Reason\<E\>\>, not the v3 Empty/Fail/Die/Interrupt/Sequential/Parallel tree.
+- `Cause.Cause` -> `Cause.Cause`: V4 Cause\<E\> wraps readonly reasons: ReadonlyArray\<Cause.Reason\<E\>\>, replacing the v3 cause tree. Finalizer and concurrent failure aggregation can convert typed errors to defects when a defect is present; Cause.combine itself does not perform this conversion.
 
 - `Cause.Cause.Variance` -> `none`: The public variance helper was removed. Cause.Cause is directly branded by Cause.TypeId; application code should not reproduce the old variance member.
 
@@ -9164,7 +9192,7 @@ Arbitrary.schema(schema)
 
 - `Channel.bufferChunk` -> `none`: The inferred Channel.fromChunk match is not equivalent. Rebuild the buffered upstream-pull transform with Channel.fromTransform and Channel.toTransform.
 
-- `Channel.catchAll` -> `Channel.catch`: Renamed to catch for typed-error recovery.
+- `Channel.catchAll` -> `Channel.catch`: Rename to Channel.catch. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery. Use Channel.catchCause for full-cause handling.
 
 - `Channel.catchAllCause` -> `Channel.catchCause`: Renamed to catchCause for full-cause recovery.
 
@@ -9210,6 +9238,8 @@ Arbitrary.schema(schema)
 
 - `Channel.isChannelException` -> `none`: Removed implementation artifact. Channel.pipeToOrFail now handles upstream failures without exposing the v3 exception wrapper.
 
+- `Channel.mapError` -> `Channel.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
 - `Channel.mapErrorCause` -> `Channel.catchCause`: Use Channel.catchCause(self, (cause) =\> Channel.failCause(f(cause))).
 
 - `Channel.mapInputContext` -> `Channel.updateContext`: Renamed to updateContext for transforming the channel requirement Context.
@@ -9242,9 +9272,11 @@ Arbitrary.schema(schema)
 
 - `Channel.mergeWith` -> `Channel.merge`: Use Channel.merge with haltStrategy left, right, both, or either for standard policies. Custom MergeDecision effects require a Pull-level redesign.
 
-- `Channel.orDieWith` -> `Channel.catch`: Use Channel.catch(self, (error) =\> Channel.die(f(error))); v4 Channel.orDie has no mapping callback.
+- `Channel.orDie` -> `Channel.orDie`: Converts typed errors to defects. If a defect is already present, every typed error is converted to a defect, preserving reason order and interruptions.
 
-- `Channel.orElse` -> `Channel.catch`: Use Channel.catch(self, () =\> that()) and keep the fallback lazy.
+- `Channel.orDieWith` -> `Channel.mapError + Channel.orDie`: Use self.pipe(Channel.mapError(f), Channel.orDie). Mapping transforms every typed error while preserving existing defects and interruptions; Channel.catch skips the mapper for causes containing defects.
+
+- `Channel.orElse` -> `Channel.catch`: Use Channel.catch(self, () =\> that()) and keep the fallback lazy. Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Channel.provideLayer` -> `Channel.provide`: Both collapse into provide. V4 removes services supplied by the layer and retains remaining requirements; use options.local when a fresh layer instance is needed.
 
@@ -9924,19 +9956,25 @@ Arbitrary.schema(schema)
 
 - `Effect.cachedFunction` -> `none`: The function memoizer was removed; use `Cache` for keyed effectful caching. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
-- `Effect.catch` -> `Effect.catch`: Still exported in v4; update call sites for the revised signature, options, and channel inference.
+- `Effect.catch` -> `Effect.catch`: Typed recovery skips causes containing defects and converts their typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery; use Effect.catchCause for full-cause handling.
 
-- `Effect.catchAll` -> `Effect.catch`: Use the shortened v4 error-handler name. Adapt arguments and imports to the v4 API.
+- `Effect.catchAll` -> `Effect.catch`: Rename to Effect.catch. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery. Use Effect.catchCause for full-cause handling.
 
 - `Effect.catchAllCause` -> `Effect.catchCause`: Use the shortened v4 cause-handler name. Adapt arguments and imports to the v4 API.
 
 - `Effect.catchAllDefect` -> `Effect.catchDefect`: Use the shortened v4 defect-handler name. Adapt arguments and imports to the v4 API.
 
-- `Effect.catchSome` -> `Effect.catchFilter`: Replace the Option-returning partial function with a `Filter` and handler. Adapt arguments and imports to the v4 API.
+- `Effect.catchIf` -> `Effect.catchIf`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Effect.catchSome` -> `Effect.catchFilter`: Replace the Option-returning partial function with a Filter and handler. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Effect.catchSomeCause` -> `Effect.catchCauseFilter`: Replace the Option-returning partial function with a cause `Filter` and handler. Adapt arguments and imports to the v4 API.
 
 - `Effect.catchSomeDefect` -> `none`: Use `Effect.catchDefect` and branch explicitly, re-dying for unmatched defects. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
+
+- `Effect.catchTag` -> `Effect.catchTag`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Effect.catchTags` -> `Effect.catchTags`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Effect.cause` -> `Effect.exit`: Inspect `Exit.Failure.cause`; v4 no longer exposes an Effect-only cause extractor. Adapt arguments and imports to the v4 API.
 
@@ -9974,7 +10012,7 @@ Arbitrary.schema(schema)
 
 - `Effect.dropWhile` -> `none`: Use an explicit `Effect.gen` loop, or `Array.dropWhile` when the predicate is pure. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
-- `Effect.either` -> `Effect.result`: V4 represents typed success/failure as `Result` instead of `Either`. Adapt arguments and imports to the v4 API.
+- `Effect.either` -> `Effect.result`: V4 represents typed success/failure as `Result` instead of `Either`. Adapt arguments and imports to the v4 API. Causes containing defects are not captured as Result failures and propagate with typed errors converted to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Effect.ensureErrorType` -> `Effect.satisfiesErrorType`: Use the renamed compile-time channel constraint. Adapt arguments and imports to the v4 API.
 
@@ -10034,7 +10072,9 @@ Arbitrary.schema(schema)
 
 - `Effect.if` -> `Effect.suspend`: Select the branch lazily with a JavaScript conditional inside `Effect.suspend`. Adapt arguments and imports to the v4 API.
 
-- `Effect.ignoreLogged` -> `Effect.ignore`: Pass `{ log: true }` to the consolidated ignore combinator. Adapt arguments and imports to the v4 API.
+- `Effect.ignore` -> `Effect.ignore`: Ignores recoverable typed errors only. Causes containing defects propagate with typed errors converted to defects; interruptions alongside typed errors do not prevent ignoring them.
+
+- `Effect.ignoreLogged` -> `Effect.ignore`: Use Effect.ignore(self, { log: true }). Causes containing defects are not ignored and propagate with typed errors converted to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Effect.inheritFiberRefs` -> `none`: Bulk FiberRef inheritance was removed; propagate required context references explicitly. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -10072,9 +10112,17 @@ Arbitrary.schema(schema)
 
 - `Effect.mapAccum` -> `Effect.reduce`: Carry `[state, output]` through an effectful reduction. Adapt arguments and imports to the v4 API.
 
+- `Effect.mapBoth` -> `Effect.mapBoth`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
+- `Effect.mapError` -> `Effect.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
 - `Effect.mapErrorCause` -> `Effect.catchCause + Effect.failCause`: Transform the Cause in a cause handler and fail with the mapped Cause. Adapt arguments and imports to the v4 API.
 
 - `Effect.mapInputContext` -> `Effect.contextWith + Effect.provide`: Build the required context from the incoming context and provide it explicitly. Adapt arguments and imports to the v4 API.
+
+- `Effect.match` -> `Effect.match`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Effect.matchEffect` -> `Effect.matchEffect`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Effect.merge` -> `Effect.catch`: Recover each typed error with `Effect.succeed` so both channels become success values. Adapt arguments and imports to the v4 API.
 
@@ -10088,13 +10136,19 @@ Arbitrary.schema(schema)
 
 - `Effect.once` -> `Effect.cached`: Create the cached Effect once, then execute the returned Effect repeatedly. Adapt arguments and imports to the v4 API.
 
+- `Effect.option` -> `Effect.option`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
 - `Effect.optionFromOptional` -> `Effect.catchTag`: Map success to `Option.some` and recover `NoSuchElementError` with `Option.none`. Adapt arguments and imports to the v4 API.
+
+- `Effect.orDie` -> `Effect.orDie`: Converts typed errors to defects. If a defect is already present, every typed error is converted to a defect, preserving reason order and interruptions.
 
 - `Effect.orDieWith` -> `Effect.mapError + Effect.orDie`: Map the typed error to the desired defect, then convert failures to defects. Adapt arguments and imports to the v4 API.
 
-- `Effect.orElse` -> `Effect.catch`: Ignore the caught error and evaluate the fallback Effect. Adapt arguments and imports to the v4 API.
+- `Effect.orElse` -> `Effect.catch`: Use Effect.catch(self, () =\> that()). Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Effect.orElseFail` -> `Effect.mapError`: Replace every typed error with the lazily produced failure value. Adapt arguments and imports to the v4 API.
+
+- `Effect.orElseSucceed` -> `Effect.orElseSucceed`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Effect.parallelErrors` -> `Effect.all`: Use `{ mode: "result", concurrency: "unbounded" }` and collect failures explicitly. Adapt arguments and imports to the v4 API.
 
@@ -10118,7 +10172,15 @@ Arbitrary.schema(schema)
 
 - `Effect.reduceWhile` -> `none`: Use an explicit `Effect.gen` loop that checks the accumulator before each step. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
+- `Effect.repeat` -> `Effect.repeat`: If the source or policy fails with a cause containing defects, typed errors are converted to defects. An interruption alongside a typed error does not block the typed failure path.
+
 - `Effect.repeatN` -> `Effect.repeat`: Pass `{ times: n }` to the consolidated repeat combinator. Adapt arguments and imports to the v4 API.
+
+- `Effect.repeatOrElse` -> `Effect.repeatOrElse`: The fallback receives Option\<Schedule.Metadata\<B, A\>\> instead of Option\<B\>. Read metadata.output for the previous schedule output and metadata.attempt for the attempt count. The error also includes schedule failures. Causes containing defects from either the source or policy skip the fallback and convert typed errors to defects. Interruptions alongside typed errors do not block the fallback.
+
+- `Effect.retry` -> `Effect.retry`: Retries typed source errors, including those alongside interruptions. A source cause containing a defect is not retried and propagates with typed errors converted to defects.
+
+- `Effect.retryOrElse` -> `Effect.retryOrElse`: A source cause containing a defect skips retries and the fallback, converting typed errors to defects. Interruptions alongside typed errors do not block retries. Policy failures propagate unchanged.
 
 - `Effect.runRequestBlock` -> `none`: The request-runtime block runner is internal; submit requests with `Effect.request`. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -10495,6 +10557,10 @@ Arbitrary.schema(schema)
 - `Exit.getOrElse` -> `Exit.match`: Use Exit.match(self, { onFailure: orElse, onSuccess: identity }); onFailure still receives the full Cause.
 
 - `Exit.isInterrupted` -> `Exit.hasInterrupts`: Direct semantic rename; true for a Failure whose Cause contains at least one Interrupt reason, false for Success.
+
+- `Exit.mapBoth` -> `Exit.mapBoth`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
+- `Exit.mapError` -> `Exit.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
 
 - `Exit.mapErrorCause` -> `Exit.match + Exit.failCause / Exit.succeed`: No direct v4 combinator. Use Exit.match(self, { onFailure: cause =\> Exit.failCause(f(cause)), onSuccess: Exit.succeed }); f now receives the flattened v4 Cause representation. Cause.map is only equivalent when f merely maps typed errors.
 
@@ -15567,11 +15633,15 @@ Schema.toFormatter(schema)
 
 - `Sink.leftover` -> `Sink.succeed`: Removed as a standalone constructor; Sink.succeed now takes optional leftovers: Sink.succeed(void 0, leftovers) where leftovers is a NonEmptyReadonlyArray\<L\> instead of Chunk\<L\>.
 
+- `Sink.mapError` -> `Sink.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
+
 - `Sink.mapInputChunks` -> `Sink.mapInputArray`: Renamed; f maps NonEmptyReadonlyArray\<In0\> =\> NonEmptyReadonlyArray\<In\> (must stay non-empty) instead of Chunk =\> Chunk.
 
 - `Sink.mapInputChunksEffect` -> `Sink.mapInputArrayEffect`: Renamed; f maps NonEmptyReadonlyArray\<In0\> =\> Effect\<NonEmptyReadonlyArray\<In\>\> (must stay non-empty) instead of Chunk =\> Effect\<Chunk\>.
 
 - `Sink.mkString` -> `Sink.reduceArray`: Removed as a built-in; equivalent one-liner: Sink.reduceArray(() =\> "", (s, arr) =\> s + arr.join("")).
+
+- `Sink.orElse` -> `Sink.orElse`: Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Sink.race` -> `none`: Sink racing (race/raceBoth/raceWith) was removed from v4; broadcast the stream (Stream.broadcast) into two consumers and race the resulting run effects with Effect.race, or write a custom Channel.
 
@@ -15579,9 +15649,9 @@ Schema.toFormatter(schema)
 
 - `Sink.raceWith` -> `none`: Removed, along with the MergeDecision type it depended on; broadcast the stream and combine the two run effects manually. Use Effect.race for the first success or Effect.raceFirst for the first completion; custom completion and interruption handling requires explicit fibers.
 
-- `Sink.refineOrDie` -> `Sink.catch`: Removed; rebuild with the typed-error handler: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(e) })) — note Sink.catch replaces the result on recovery, so refined errors must be re-failed as shown.
+- `Sink.refineOrDie` -> `Sink.catch`: For recoverable typed errors, use Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(e) })). Causes containing defects skip pf and convert typed errors to defects; use Sink.catchCause for full-cause handling.
 
-- `Sink.refineOrDieWith` -> `Sink.catch`: Removed; same pattern as refineOrDie but die with the mapped defect: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(f(e)) })).
+- `Sink.refineOrDieWith` -> `Sink.catch`: Use the refineOrDie recipe with Effect.die(f(e)) for unrefined errors. Causes containing defects skip pf and f and convert typed errors to defects; use Sink.catchCause for full-cause handling.
 
 - `Sink.splitWhere` -> `none`: Removed; it re-chunked input so the sink stopped before the first later element matching the predicate — closest v4 options are pre-splitting the stream (Stream.split / Stream.takeWhile) or a custom Sink.fromTransform that cuts pulled arrays at the predicate boundary and returns the rest as leftovers.
 
@@ -15745,15 +15815,17 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.bufferChunks` -> `Stream.bufferArray`: Chunk-\>Array rename; buffers whole arrays (chunks) up to capacity with the same strategy options.
 
-- `Stream.catchAll` -> `Stream.catch`: Renamed to Stream.catch (exported keyword-style); same (error) =\> Stream handler for all typed failures.
+- `Stream.catchAll` -> `Stream.catch`: Rename to Stream.catch with an (error) =\> Stream handler. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery. Use Stream.catchCause for full-cause handling.
 
 - `Stream.catchAllCause` -> `Stream.catchCause`: Renamed; handler receives the full Cause\<E\> and returns a recovery stream, identical semantics.
 
-- `Stream.catchSome` -> `Stream.catchFilter`: Option-returning partial handler replaced by the Filter API: Stream.catchFilter(filter, f, orElse?) recovers matched errors, unmatched failures pass through (Stream.catchIf for refinement/predicate matching).
+- `Stream.catchSome` -> `Stream.catchFilter`: Use Stream.catchFilter(filter, f, orElse?) instead of an Option-returning partial handler. Causes containing defects skip typed recovery and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Stream.catchSomeCause` -> `Stream.catchCauseFilter`: Option-returning cause handler replaced by Stream.catchCauseFilter(filter, f, orElse?) using a Filter on the Cause (Stream.catchCauseIf for refinements).
 
-- `Stream.catchTags` -> `Stream.catchTags`: Only keys present in the tagged error union are accepted; remove handlers for tags the stream cannot fail with. Untagged errors remain in the error channel.
+- `Stream.catchTag` -> `Stream.catchTag`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
+
+- `Stream.catchTags` -> `Stream.catchTags`: Only keys in the tagged error union are accepted; untagged errors remain in the error channel. Causes containing defects skip handlers and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
 - `Stream.chunksWith` -> `Stream.flattenArray(f(Stream.chunks(self)))`: No dedicated combinator; expose chunk structure with Stream.chunks (Stream\<NonEmptyReadonlyArray\<A\>\>), transform, then re-flatten with Stream.flattenArray.
 
@@ -15781,7 +15853,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.distributedWithDynamic` -> `none`: Dynamic predicate-routed fan-out removed with distributedWith. Use Stream.broadcast/Stream.share for dynamic mirrors plus per-subscriber Stream.filter, or hand-roll routing into Queues via Stream.runForEach.
 
-- `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before).
+- `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before). Causes containing defects are not emitted as Result failures and propagate with typed errors converted to defects; interruptions alongside typed errors do not block typed recovery.
 
 - `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer with the Exit\<unknown, E\> of the stream, identical shape.
 
@@ -15831,7 +15903,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.let` -> `Stream.let`: Retained in v4 and aligned with Effect.let: the field name may re-bind an existing key (the computed value replaces it) and the record type is Simplify\<Omit\<A, N\> & Record\<N, B\>\>.
 
-- `Stream.mapBoth` -> `Stream.mapBoth`: Rename the options onSuccess to onElement and onFailure to onError. The callbacks still transform emitted elements and typed errors respectively.
+- `Stream.mapBoth` -> `Stream.mapBoth`: Rename the options onSuccess to onElement and onFailure to onError. The callbacks still transform emitted elements and typed errors respectively. Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
 
 - `Stream.mapChunks` -> `Stream.mapArray`: Chunk-\>Array rename; transforms each emitted chunk as a NonEmptyReadonlyArray.
 
@@ -15844,6 +15916,8 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 - `Stream.mapConcatChunkEffect` -> `Stream.flattenArray(Stream.mapEffect(self, f))`: Removed; effectfully map each element to a ReadonlyArray and flatten with Stream.flattenArray.
 
 - `Stream.mapConcatEffect` -> `Stream.flattenIterable(Stream.mapEffect(self, f))`: Removed; effectfully map each element to an Iterable and flatten with Stream.flattenIterable.
+
+- `Stream.mapError` -> `Stream.mapError`: Maps every typed error in the cause, preserving defects, interruptions and reason order. Unlike typed recovery, mapping does not convert errors to defects.
 
 - `Stream.mapErrorCause` -> `Stream.catchCause((cause) => Stream.failCause(f(cause)))`: Removed; transform the full Cause by catching it and re-failing with the mapped cause.
 
@@ -15867,17 +15941,21 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.onDone` -> `Stream.onEnd`: Renamed; v4 onEnd takes an Effect value (not a () =\> Effect thunk) run when the stream ends successfully, and its error type may add to the stream's.
 
+- `Stream.orDie` -> `Stream.orDie`: Converts typed errors to defects. If a defect is already present, every typed error is converted to a defect, preserving reason order and interruptions.
+
 - `Stream.orDieWith` -> `Stream.orDie`: orDieWith removed; transform the error first, then convert failures to defects: `self.pipe(Stream.mapError(f), Stream.orDie)`.
 
-- `Stream.orElse` -> `Stream.catch`: v3 catchAll was renamed to Stream.catch in v4; orElse ignored the error, so write `Stream.catch(self, () => that())`.
+- `Stream.orElse` -> `Stream.catch`: Use Stream.catch(self, () =\> that()). Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
-- `Stream.orElseEither` -> `Stream.catch`: Removed; Either is replaced by Result in v4. Emulate: `Stream.map(self, Result.succeed).pipe(Stream.catch(() => Stream.map(that(), Result.fail)))` (same encoding v4 Stream.mergeResult uses).
+- `Stream.orElseEither` -> `Stream.catch`: Replace Either with Result: Stream.map(self, Result.succeed).pipe(Stream.catch(() =\> Stream.map(that(), Result.fail))). Causes containing defects skip the fallback and convert typed errors to defects; interruptions alongside typed errors do not block recovery.
 
-- `Stream.orElseFail` -> `Stream.mapError`: Removed; it only replaced the failure value: `Stream.mapError(self, () => error())` or `Stream.catch(self, () => Stream.fail(error()))`.
+- `Stream.orElseFail` -> `Stream.mapError`: Use Stream.mapError(self, () =\> error()) to replace each typed error while preserving existing defects and interruptions. Stream.catch is not equivalent for causes containing defects because it skips typed recovery.
 
 - `Stream.orElseIfEmptyChunk` -> `Stream.orElseIfEmpty`: Folded into Stream.orElseIfEmpty, which now takes a lazy fallback Stream: `Stream.orElseIfEmpty(self, () => Stream.fromArray(array))`; Chunk is replaced by plain arrays.
 
 - `Stream.orElseIfEmptyStream` -> `Stream.orElseIfEmpty`: Direct rename: v4 Stream.orElseIfEmpty takes a LazyArg\<Stream\> fallback, identical semantics.
+
+- `Stream.orElseSucceed` -> `Stream.orElseSucceed`: Causes containing defects skip typed recovery and convert typed errors to defects, preserving reason order and interruptions. An interruption alongside a typed error does not block recovery.
 
 - `Stream.paginateChunk` -> `Stream.paginate`: v4 Stream.paginate is effectful and array-based: `paginate(s, (s) => Effect<readonly [ReadonlyArray<A>, Option<S>]>)`; wrap the pure step in Effect.succeed and use an array instead of a Chunk.
 
@@ -15897,9 +15975,9 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.provideSomeLayer` -> `Stream.provide`: v4 Stream.provide accepts a Layer (or Context) and excludes only the provided services from R — same partial-provision semantics.
 
-- `Stream.refineOrDie` -> `Stream.catch`: Removed; emulate with `Stream.catch(self, (e) => { const r = pf(e); return Option.isSome(r) ? Stream.fail(r.value) : Stream.die(e) })` — refail refined errors, die on the rest.
+- `Stream.refineOrDie` -> `Stream.catch`: For recoverable typed errors, use Stream.catch(self, (e) =\> { const r = pf(e); return Option.isSome(r) ? Stream.fail(r.value) : Stream.die(e) }). Causes containing defects skip pf and convert typed errors to defects; use Stream.catchCause for full-cause handling.
 
-- `Stream.refineOrDieWith` -> `Stream.catch`: Removed; same as refineOrDie but die with the mapped defect: `Stream.die(f(e))` for unrefined errors.
+- `Stream.refineOrDieWith` -> `Stream.catch`: Use the refineOrDie recipe with Stream.die(f(e)) for unrefined errors. Causes containing defects skip pf and f and convert typed errors to defects; use Stream.catchCause for full-cause handling.
 
 - `Stream.repeatEffect` -> `Stream.fromEffectRepeat`: Renamed; repeats the effect forever emitting each result.
 
@@ -15918,6 +15996,8 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 - `Stream.repeatValue` -> `Stream.fromEffectRepeat`: Removed; use `Stream.fromEffectRepeat(Effect.succeed(value))` or `Stream.forever(Stream.succeed(value))`.
 
 - `Stream.repeatWith` -> `none`: Removed; v4 Stream.repeat(schedule) covers the repetition but drops the schedule outputs and the onElement/onSchedule unification. Hand-roll if schedule outputs must appear in the stream.
+
+- `Stream.retry` -> `Stream.retry`: Retries typed source errors, including those alongside interruptions. A source cause containing a defect is not retried and propagates with typed errors converted to defects.
 
 - `Stream.runFoldScoped` -> `Stream.runFold`: Scoped run variants are gone; v4 run functions manage the stream's scope internally and the initial value is now a LazyArg: `Stream.runFold(self, () => s, f)`. For enclosing-scope control, pull manually via `Stream.toPull` (Effect\<Pull, never, R | Scope\>).
 
