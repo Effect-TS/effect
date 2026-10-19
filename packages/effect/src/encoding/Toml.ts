@@ -47,6 +47,8 @@ class TomlParser {
   private line = 1
   private column = 1
   private readonly explicitTables = new Set<Table>()
+  // Arrays and inline tables are complete once parsed; later keys and headers cannot extend them.
+  private readonly inlineValues = new Set<unknown>()
 
   constructor(input: string) {
     this.input = input
@@ -102,6 +104,9 @@ class TomlParser {
       const key = path[index]
       const last = index === path.length - 1
       let value = table[key]
+      if (this.inlineValues.has(value)) {
+        this.fail(`Cannot redefine existing key '${path.slice(0, index + 1).join(".")}'`)
+      }
 
       if (last && array) {
         if (value === undefined) {
@@ -140,7 +145,7 @@ class TomlParser {
         const child = makeTable()
         table[key] = child
         table = child
-      } else if (isTable(existing)) {
+      } else if (isTable(existing) && !this.inlineValues.has(existing)) {
         table = existing
       } else {
         this.fail(`Cannot redefine existing key '${keys.slice(0, index + 1).join(".")}'`)
@@ -195,10 +200,14 @@ class TomlParser {
       return this.parseLiteralString(this.input.startsWith("'''", this.index))
     }
     if (character === "[") {
-      return this.parseArray()
+      const array = this.parseArray()
+      this.inlineValues.add(array)
+      return array
     }
     if (character === "{") {
-      return this.parseInlineTable()
+      const table = this.parseInlineTable()
+      this.inlineValues.add(table)
+      return table
     }
 
     const spaceSeparatedDateTime = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)/

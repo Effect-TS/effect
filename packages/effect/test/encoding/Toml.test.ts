@@ -93,4 +93,17 @@ local = 2026-08-05 01:02:03
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))
   })
+
+  it("rejects extending inline tables and arrays", () => {
+    assert.throws(() => Toml.parse("point = { x = 1 }\npoint.y = 2\n"))
+    assert.throws(() => Toml.parse("point = { x = 1 }\n[point]\ny = 2\n"))
+    assert.throws(() => Toml.parse("point = { x = 1 }\n[point.z]\ny = 2\n"))
+    assert.throws(() => Toml.parse("t = { a = { x = 1 }, a.y = 2 }\n"))
+    assert.throws(() => Toml.parse("fruits = []\n[[fruits]]\nname = \"apple\"\n"))
+    assert.throws(() => Toml.parse("fruits = [{ name = \"apple\" }]\n[fruits.variety]\nname = \"red\"\n"))
+    assert.deepStrictEqual(
+      Toml.parse("t = { a.x = 1, a.y = 2 }\n[[fruits]]\nname = \"apple\"\n[fruits.variety]\nname = \"red\"\n"),
+      { t: { a: { x: 1, y: 2 } }, fruits: [{ name: "apple", variety: { name: "red" } }] }
+    )
+  })
 })
