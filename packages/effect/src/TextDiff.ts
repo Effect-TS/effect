@@ -72,52 +72,6 @@ export interface EditDelete<A> {
 }
 
 /**
- * Options for computing an edit script.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface DiffOptions {
-  /**
-   * Largest number of inserted plus deleted items searched for in each
-   * changed region. Common prefixes, suffixes and matching runs are free.
-   * When a region needs more edits, the search splits it at the furthest
-   * point it reached and continues on the rest, and a part that still cannot
-   * be matched becomes a deletion followed by an insertion. The script stays
-   * valid, and is minimal whenever the whole diff needs at most `maxEdits`
-   * edits. For a finite cap, work is O((N + M) * (maxEdits + 1)).
-   *
-   * @default Infinity
-   */
-  readonly maxEdits?: number | undefined
-}
-
-/**
- * Options for {@link unified}.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface UnifiedOptions {
-  /**
-   * Number of unchanged lines shown around each change.
-   *
-   * @default 3
-   */
-  readonly context?: number | undefined
-  /**
-   * Name shown in the `---` header line.
-   */
-  readonly fromFile?: string | undefined
-  /**
-   * Name shown in the `+++` header line.
-   */
-  readonly toFile?: string | undefined
-}
-
-/**
  * Error returned when an edit script does not fit the input it is applied to.
  *
  * **Example** (Rejecting a script made for other input)
@@ -162,7 +116,7 @@ export const isTextDiffError = (u: unknown): u is TextDiffError => hasProperty(u
  *
  * **Details**
  *
- * Unless the {@link DiffOptions.maxEdits} cap is exceeded, the script has the
+ * Unless the `maxEdits` cap is exceeded, the script has the
  * fewest possible inserted plus deleted items. `Equal` runs carry the items
  * from `before`, not necessarily the exact values from `after`.
  *
@@ -191,7 +145,20 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
 (
   before: ReadonlyArray<A>,
   after: ReadonlyArray<A>,
-  options?: DiffOptions
+  options?: {
+    /**
+     * Largest number of inserted plus deleted items searched for in each
+     * changed region. Common prefixes, suffixes and matching runs are free.
+     * When a region needs more edits, the search splits it at the furthest
+     * point it reached and continues on the rest, and a part that still cannot
+     * be matched becomes a deletion followed by an insertion. The script stays
+     * valid, and is minimal whenever the whole diff needs at most `maxEdits`
+     * edits. For a finite cap, work is O((N + M) * (maxEdits + 1)).
+     *
+     * @default Infinity
+     */
+    readonly maxEdits?: number | undefined
+  }
 ): Array<Edit<A>> => editScript(before, after, (i, j) => isEquivalent(before[i], after[j]), options?.maxEdits)
 
 /**
@@ -200,7 +167,7 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
  *
  * **Details**
  *
- * Unless the {@link DiffOptions.maxEdits} cap is exceeded, the script has the
+ * Unless the `maxEdits` cap is exceeded, the script has the
  * fewest possible inserted plus deleted items. The choice is deterministic,
  * and each change lists its deletions before its insertions.
  *
@@ -226,7 +193,20 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
 export const diff = <A>(
   before: ReadonlyArray<A>,
   after: ReadonlyArray<A>,
-  options?: DiffOptions
+  options?: {
+    /**
+     * Largest number of inserted plus deleted items searched for in each
+     * changed region. Common prefixes, suffixes and matching runs are free.
+     * When a region needs more edits, the search splits it at the furthest
+     * point it reached and continues on the rest, and a part that still cannot
+     * be matched becomes a deletion followed by an insertion. The script stays
+     * valid, and is minimal whenever the whole diff needs at most `maxEdits`
+     * edits. For a finite cap, work is O((N + M) * (maxEdits + 1)).
+     *
+     * @default Infinity
+     */
+    readonly maxEdits?: number | undefined
+  }
 ): Array<Edit<A>> => diffWith<A>(Equal.equals)(before, after, options)
 
 /**
@@ -257,8 +237,20 @@ export const diff = <A>(
  * @category constructors
  * @since 4.0.6
  */
-export const lines = (before: string, after: string, options?: DiffOptions): Array<Edit<string>> =>
-  diffStrings(splitLines(before), splitLines(after), options)
+export const lines = (before: string, after: string, options?: {
+  /**
+   * Largest number of inserted plus deleted items searched for in each
+   * changed region. Common prefixes, suffixes and matching runs are free.
+   * When a region needs more edits, the search splits it at the furthest
+   * point it reached and continues on the rest, and a part that still cannot
+   * be matched becomes a deletion followed by an insertion. The script stays
+   * valid, and is minimal whenever the whole diff needs at most `maxEdits`
+   * edits. For a finite cap, work is O((N + M) * (maxEdits + 1)).
+   *
+   * @default Infinity
+   */
+  readonly maxEdits?: number | undefined
+}): Array<Edit<string>> => diffStrings(splitLines(before), splitLines(after), options?.maxEdits)
 
 /**
  * Computes a minimal code point edit script between two strings.
@@ -289,8 +281,20 @@ export const lines = (before: string, after: string, options?: DiffOptions): Arr
  * @category constructors
  * @since 4.0.6
  */
-export const codePoints = (before: string, after: string, options?: DiffOptions): Array<Edit<string>> =>
-  diffStrings(Array.from(before), Array.from(after), options)
+export const codePoints = (before: string, after: string, options?: {
+  /**
+   * Largest number of inserted plus deleted items searched for in each
+   * changed region. Common prefixes, suffixes and matching runs are free.
+   * When a region needs more edits, the search splits it at the furthest
+   * point it reached and continues on the rest, and a part that still cannot
+   * be matched becomes a deletion followed by an insertion. The script stays
+   * valid, and is minimal whenever the whole diff needs at most `maxEdits`
+   * edits. For a finite cap, work is O((N + M) * (maxEdits + 1)).
+   *
+   * @default Infinity
+   */
+  readonly maxEdits?: number | undefined
+}): Array<Edit<string>> => diffStrings(Array.from(before), Array.from(after), options?.maxEdits)
 
 /**
  * Applies an edit script to an array.
@@ -471,7 +475,22 @@ export const invert = <A>(edits: ReadonlyArray<Edit<A>>): Array<Edit<A>> => {
  * @category formatting
  * @since 4.0.6
  */
-export const unified = (edits: ReadonlyArray<Edit<string>>, options?: UnifiedOptions): string => {
+export const unified = (edits: ReadonlyArray<Edit<string>>, options?: {
+  /**
+   * Number of unchanged lines shown around each change.
+   *
+   * @default 3
+   */
+  readonly context?: number | undefined
+  /**
+   * Name shown in the `---` header line.
+   */
+  readonly fromFile?: string | undefined
+  /**
+   * Name shown in the `+++` header line.
+   */
+  readonly toFile?: string | undefined
+}): string => {
   const a: Array<string> = []
   const b: Array<string> = []
   // Group consecutive deletions and insertions between Equal runs.
@@ -574,7 +593,7 @@ const formatLine = (prefix: string, line: string): string =>
   line.endsWith("\n") ? prefix + line : `${prefix}${line}\n\\ No newline at end of file\n`
 
 // Interns the tokens so the search compares integers instead of strings
-const diffStrings = (a: ReadonlyArray<string>, b: ReadonlyArray<string>, options?: DiffOptions) => {
+const diffStrings = (a: ReadonlyArray<string>, b: ReadonlyArray<string>, maxEdits?: number) => {
   const ids = new Map<string, number>()
   const intern = (token: string) => {
     let id = ids.get(token)
@@ -586,7 +605,7 @@ const diffStrings = (a: ReadonlyArray<string>, b: ReadonlyArray<string>, options
   }
   const ai = Int32Array.from(a, intern)
   const bi = Int32Array.from(b, intern)
-  return editScript(a, b, (i, j) => ai[i] === bi[j], options?.maxEdits)
+  return editScript(a, b, (i, j) => ai[i] === bi[j], maxEdits)
 }
 
 const editScript = <A>(
