@@ -107,29 +107,7 @@ describe("OpenAiEmbeddingModel", () => {
       assert.deepStrictEqual(requestBody.input, ["hello"])
     }))
 
-  it.effect("concurrent embed calls keep their own withConfigOverride", () =>
-    Effect.gen(function*() {
-      const requests: Array<RecordedRequest> = []
-
-      const responses = yield* Effect.gen(function*() {
-        const model = yield* EmbeddingModel.EmbeddingModel
-        return yield* Effect.all([
-          model.embed("small").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 2 })),
-          model.embed("large").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 3 }))
-        ], { concurrency: "unbounded" })
-      }).pipe(
-        Effect.provide(OpenAiEmbeddingModel.layer({ model: "text-embedding-3-small" })),
-        Effect.provide(makeRecordingClientLayer(requests))
-      )
-
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[2, 2], [3, 3, 3]])
-      assert.deepStrictEqual(requests, [
-        { input: ["small"], dimensions: 2, tenant: undefined },
-        { input: ["large"], dimensions: 3, tenant: undefined }
-      ])
-    }))
-
-  it.effect("concurrent embed calls with equal withConfigOverride share one request", () =>
+  it.effect("concurrent embed calls batch by their withConfigOverride", () =>
     Effect.gen(function*() {
       const requests: Array<RecordedRequest> = []
 
@@ -137,28 +115,34 @@ describe("OpenAiEmbeddingModel", () => {
         const model = yield* EmbeddingModel.EmbeddingModel
         return yield* Effect.all([
           model.embed("a").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 2 })),
-          model.embed("b").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 2 }))
+          model.embed("b").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 3 })),
+          model.embed("c").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 2 }))
         ], { concurrency: "unbounded" })
       }).pipe(
         Effect.provide(OpenAiEmbeddingModel.layer({ model: "text-embedding-3-small" })),
         Effect.provide(makeRecordingClientLayer(requests))
       )
 
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[2, 2], [2, 2]])
-      assert.deepStrictEqual(requests, [{ input: ["a", "b"], dimensions: 2, tenant: undefined }])
+      assert.deepStrictEqual(responses.map((response) => response.vector), [[2, 2], [3, 3, 3], [2, 2]])
+      assert.deepStrictEqual(requests, [
+        { input: ["a", "c"], dimensions: 2, tenant: undefined },
+        { input: ["b"], dimensions: 3, tenant: undefined }
+      ])
     }))
 
-  it.effect("concurrent embed calls keep their own withClientTransform", () =>
+  it.effect("concurrent embed calls batch by their withClientTransform", () =>
     Effect.gen(function*() {
       const requests: Array<RecordedRequest> = []
       const setTenant = (tenant: string) => (client: HttpClient.HttpClient) =>
         client.pipe(HttpClient.mapRequest(HttpClientRequest.setHeader("x-tenant", tenant)))
+      const tenantA = setTenant("a")
 
       yield* Effect.gen(function*() {
         const model = yield* EmbeddingModel.EmbeddingModel
         return yield* Effect.all([
-          model.embed("a").pipe(OpenAiConfig.withClientTransform(setTenant("tenant-a"))),
-          model.embed("b").pipe(OpenAiConfig.withClientTransform(setTenant("tenant-b")))
+          model.embed("a").pipe(OpenAiConfig.withClientTransform(tenantA)),
+          model.embed("b").pipe(OpenAiConfig.withClientTransform(setTenant("b"))),
+          model.embed("c").pipe(OpenAiConfig.withClientTransform(tenantA))
         ], { concurrency: "unbounded" })
       }).pipe(
         Effect.provide(OpenAiEmbeddingModel.layer({ model: "text-embedding-3-small" })),
@@ -166,29 +150,9 @@ describe("OpenAiEmbeddingModel", () => {
       )
 
       assert.deepStrictEqual(requests, [
-        { input: ["a"], dimensions: undefined, tenant: "tenant-a" },
-        { input: ["b"], dimensions: undefined, tenant: "tenant-b" }
+        { input: ["a", "c"], dimensions: undefined, tenant: "a" },
+        { input: ["b"], dimensions: undefined, tenant: "b" }
       ])
-    }))
-
-  it.effect("concurrent embed calls with the same withClientTransform share one request", () =>
-    Effect.gen(function*() {
-      const requests: Array<RecordedRequest> = []
-      const setTenant = (client: HttpClient.HttpClient) =>
-        client.pipe(HttpClient.mapRequest(HttpClientRequest.setHeader("x-tenant", "tenant-a")))
-
-      yield* Effect.gen(function*() {
-        const model = yield* EmbeddingModel.EmbeddingModel
-        return yield* Effect.all([
-          model.embed("a").pipe(OpenAiConfig.withClientTransform(setTenant)),
-          model.embed("b").pipe(OpenAiConfig.withClientTransform(setTenant))
-        ], { concurrency: "unbounded" })
-      }).pipe(
-        Effect.provide(OpenAiEmbeddingModel.layer({ model: "text-embedding-3-small" })),
-        Effect.provide(makeRecordingClientLayer(requests))
-      )
-
-      assert.deepStrictEqual(requests, [{ input: ["a", "b"], dimensions: undefined, tenant: "tenant-a" }])
     }))
 
   it.effect("fails with InvalidOutputError when provider returns duplicate indices", () =>

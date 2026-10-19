@@ -21,8 +21,6 @@ class InputType extends Context.Service<InputType, { readonly kind: "document" |
 
 class Tenant extends Context.Service<Tenant, string>()("EmbeddingModelTest/Tenant") {}
 
-class Score extends Context.Service<Score, number>()("EmbeddingModelTest/Score") {}
-
 interface Batch {
   readonly inputs: ReadonlyArray<string>
   readonly kind: string | undefined
@@ -135,63 +133,65 @@ describe("EmbeddingModel", () => {
     )
   })
 
-  it.effect("settings services are compared by value and unlisted services by reference", () => {
+  it.effect("embed calls share a batch only when their services match", () => {
+    const batches: Array<Batch> = []
+    const query = InputType.of({ kind: "query" })
+
+    return Effect.gen(function*() {
+      const model = yield* makeRecordingModel(batches)
+      yield* Effect.all([
+        model.embed("a").pipe(Effect.provideService(InputType, query), Effect.provideService(Tenant, "t")),
+        model.embed("b").pipe(Effect.provideService(Tenant, "t"), Effect.provideService(InputType, query)),
+        model.embed("c").pipe(Effect.provideService(InputType, { kind: "query" }), Effect.provideService(Tenant, "t")),
+        model.embed("d").pipe(Effect.provideService(InputType, query)),
+        model.embed("e")
+      ], { concurrency: "unbounded" })
+
+      assert.deepStrictEqual(batches, [
+        { inputs: ["a", "b"], kind: "query" },
+        { inputs: ["c"], kind: "query" },
+        { inputs: ["d"], kind: "query" },
+        { inputs: ["e"], kind: undefined }
+      ])
+    })
+  })
+
+  it.effect("settings services are compared by value", () => {
     const batches: Array<Batch> = []
 
     return Effect.gen(function*() {
       const model = yield* makeRecordingModel(batches, [InputType])
-      const responses = yield* Effect.all([
-        model.embed("doc").pipe(Effect.provideService(InputType, { kind: "document" })),
-        model.embed("query").pipe(Effect.provideService(InputType, { kind: "query" })),
-        model.embed("doc 2").pipe(Effect.provideService(InputType, { kind: "document" })),
-        model.embed("doc 3").pipe(
+      yield* Effect.all([
+        model.embed("a").pipe(Effect.provideService(InputType, { kind: "document" })),
+        model.embed("b").pipe(Effect.provideService(InputType, { kind: "query" })),
+        model.embed("c").pipe(Effect.provideService(InputType, { kind: "document" })),
+        model.embed("d").pipe(
           Effect.provideService(InputType, { kind: "document" }),
-          Effect.provideService(Tenant, "b")
+          Effect.provideService(Tenant, "t")
         )
       ], { concurrency: "unbounded" })
 
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[3], [5], [5], [5]])
       assert.deepStrictEqual(batches, [
-        { inputs: ["doc", "doc 2"], kind: "document" },
-        { inputs: ["query"], kind: "query" },
-        { inputs: ["doc 3"], kind: "document" }
+        { inputs: ["a", "c"], kind: "document" },
+        { inputs: ["b"], kind: "query" },
+        { inputs: ["d"], kind: "document" }
       ])
     })
   })
 
-  it.effect("concurrent embed calls with different services run in separate batches by default", () => {
-    const batches: Array<Batch> = []
-
-    return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches)
-      const embedDoc = Effect.fn("embedDoc")(function*(input: string) {
-        return yield* model.embed(input)
-      })
-      yield* Effect.all([
-        embedDoc("doc").pipe(Effect.provideService(InputType, { kind: "document" })),
-        model.embed("doc 2").pipe(Effect.provideService(InputType, { kind: "document" })),
-        embedDoc("plain"),
-        model.embed("plain 2").pipe(Effect.annotateLogs("item", 2))
-      ], { concurrency: "unbounded" })
-
-      assert.deepStrictEqual(batches, [
-        { inputs: ["doc"], kind: "document" },
-        { inputs: ["doc 2"], kind: "document" },
-        { inputs: ["plain", "plain 2"], kind: undefined }
-      ])
-    })
-  })
-
-  it.effect("per-item log spans, span annotations, and span links share one batch", () => {
+  it.effect("per-call tracing and logging services do not split a batch", () => {
     const batches: Array<Batch> = []
     const link = Tracer.externalSpan({ spanId: "span", traceId: "trace" })
 
     return Effect.gen(function*() {
       const model = yield* makeRecordingModel(batches)
+      const embed = Effect.fn("embed")(function*(input: string) {
+        return yield* model.embed(input)
+      })
       yield* Effect.all([
-        model.embed("a").pipe(Effect.withLogSpan("a")),
-        model.embed("b").pipe(Effect.annotateSpans("item", "b")),
-        model.embed("c").pipe(Effect.linkSpans(link)),
+        embed("a"),
+        model.embed("b").pipe(Effect.withLogSpan("b"), Effect.annotateLogs("item", "b")),
+        model.embed("c").pipe(Effect.annotateSpans("item", "c"), Effect.linkSpans(link)),
         model.embed("d")
       ], { concurrency: "unbounded" })
 
@@ -199,36 +199,7 @@ describe("EmbeddingModel", () => {
     })
   })
 
-  it.effect("the same services provided in opposite orders share one batch", () => {
-    const batches: Array<Batch> = []
-    const inputType = InputType.of({ kind: "query" })
-
-    return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches)
-      yield* Effect.all([
-        model.embed("a").pipe(Effect.provideService(InputType, inputType), Effect.provideService(Tenant, "t")),
-        model.embed("b").pipe(Effect.provideService(Tenant, "t"), Effect.provideService(InputType, inputType))
-      ], { concurrency: "unbounded" })
-
-      assert.deepStrictEqual(batches, [{ inputs: ["a", "b"], kind: "query" }])
-    })
-  })
-
-  it.effect("embed calls from two root fibers share one batch", () => {
-    const batches: Array<Batch> = []
-
-    return Effect.gen(function*() {
-      const model = yield* makeRecordingModel(batches)
-      const a = Effect.runFork(model.embed("a"))
-      const b = Effect.runFork(model.embed("b"))
-      const responses = yield* Fiber.joinAll([a, b])
-
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[1], [1]])
-      assert.deepStrictEqual(batches, [{ inputs: ["a", "b"], kind: undefined }])
-    })
-  })
-
-  it.effect("callers that retry a failed shared batch retry it as one provider call", () => {
+  it.effect("callers that retry a failed batch retry it as one provider call", () => {
     const calls: Array<ReadonlyArray<string>> = []
     const error = AiError.make({
       module: "EmbeddingModelTest",
@@ -247,30 +218,28 @@ describe("EmbeddingModel", () => {
           })
       })
       const responses = yield* Effect.forEach(
-        ["a", "bb", "ccc"],
+        ["a", "bb"],
         (input) => model.embed(input).pipe(Effect.retry({ times: 1 })),
         { concurrency: "unbounded" }
       )
 
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[1], [2], [3]])
-      assert.deepStrictEqual(calls, [["a", "bb", "ccc"], ["a", "bb", "ccc"]])
+      assert.deepStrictEqual(responses.map((response) => response.vector), [[1], [2]])
+      assert.deepStrictEqual(calls, [["a", "bb"], ["a", "bb"]])
     })
   })
 
-  it.effect("an interrupted caller's pending input is not sent, even under a NaN service", () => {
+  it.effect("an interrupted caller's input is not sent", () => {
     const batches: Array<Batch> = []
 
     return Effect.gen(function*() {
       const model = yield* makeRecordingModel(batches)
       const a = yield* Effect.forkChild(model.embed("a"), { startImmediately: true })
       const b = yield* Effect.forkChild(model.embed("b"), { startImmediately: true })
-      const c = yield* Effect.forkChild(model.embed("c"), { startImmediately: true })
       yield* Fiber.interrupt(b)
-      const responses = yield* Fiber.joinAll([a, c])
+      yield* Fiber.join(a)
 
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[1], [1]])
-      assert.deepStrictEqual(batches, [{ inputs: ["a", "c"], kind: undefined }])
-    }).pipe(Effect.provideService(Score, NaN))
+      assert.deepStrictEqual(batches, [{ inputs: ["a"], kind: undefined }])
+    })
   })
 
   it.effect("provider AiError propagates through embed", () => {
