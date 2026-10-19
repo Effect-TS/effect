@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Allow empty quoted keys in `Toml.parse`, such as `"" = 1`, as TOML 1.0 does.
+Allow empty quoted keys such as `"" = 1` in `Toml.parse`, as permitted by TOML 1.0.
