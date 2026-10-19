@@ -57,6 +57,8 @@ jobs:
           GOMEMLIMIT: 4GiB
       - run: deno check .
       - run: pnpm test-types --target '>=5.9'
+        env:
+          TSTYCHE_FETCH_TIMEOUT: "120"
 
   build:
     name: Build
