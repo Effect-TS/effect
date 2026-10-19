@@ -51,16 +51,39 @@ describe("CloudflareClient", () => {
       assert.strictEqual(
         request.url,
         "https://api.cloudflare.com/client/v4/accounts/test-account/ai/run/@cf/cloudflare/clef-flash"
-      )
-      assert.strictEqual(request.headers.authorization, "Bearer test-token")
-      assert.strictEqual(request.body._tag, "Uint8Array")
+       )
+       assert.strictEqual(request.headers.authorization, "Bearer test-token")
+       assert.strictEqual(request.headers["cf-aig-gateway-id"], undefined)
+       assert.strictEqual(request.body._tag, "Uint8Array")
       if (request.body._tag === "Uint8Array") {
         assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)), payload)
       }
       return Response.json({ success: true, result, errors: [], messages: [] })
     }))))
 
-  it.effect("layerConfig reads Cloudflare credentials from the environment", () =>
+  it.effect("routes requests through the configured AI Gateway", () =>
+    Effect.gen(function*() {
+      const response = yield* createDecisions
+      assert.deepStrictEqual(response, result)
+    }).pipe(
+      Effect.provide(
+        CloudflareClient.layer({
+          accountId: "test-account",
+          apiKey: Redacted.make("test-token"),
+          gatewayId: "test-gateway"
+        }).pipe(
+          Layer.provide(httpLayer((request) => {
+            assert.strictEqual(request.headers["cf-aig-gateway-id"], "test-gateway")
+            return Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              Response.json({ success: true, result, errors: [], messages: [] })
+            ))
+          }))
+        )
+      )
+    ))
+
+  it.effect("layerConfig reads Cloudflare credentials and AI Gateway configuration from the environment", () =>
     createDecisions.pipe(
       Effect.provide(CloudflareClient.layerConfig({
         apiUrl: Config.String("TEST_API_URL"),
@@ -70,6 +93,7 @@ describe("CloudflareClient", () => {
         env: {
           CLOUDFLARE_ACCOUNT_ID: "configured-account",
           CLOUDFLARE_API_TOKEN: "configured-token",
+          CLOUDFLARE_AI_GATEWAY_ID: "configured-gateway",
           TEST_API_URL: "https://example.com/api"
         }
       }))),
@@ -79,6 +103,7 @@ describe("CloudflareClient", () => {
           "https://example.com/api/accounts/configured-account/ai/run/@cf/cloudflare/clef-flash"
         )
         assert.strictEqual(request.headers.authorization, "Bearer configured-token")
+        assert.strictEqual(request.headers["cf-aig-gateway-id"], "configured-gateway")
         assert.strictEqual(request.headers["x-test"], "configured")
         return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ success: true, result })))
       }))

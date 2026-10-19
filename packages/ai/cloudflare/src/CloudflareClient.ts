@@ -13,6 +13,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as CloudflareSchema from "./CloudflareSchema.ts"
@@ -44,7 +45,7 @@ export class CloudflareClient
 {}
 
 /**
- * Account, authentication, API base URL, and HTTP customization options.
+ * Account, authentication, AI Gateway, API base URL, and HTTP customization options.
  *
  * @stability unstable
  * @category options
@@ -53,6 +54,7 @@ export class CloudflareClient
 export interface Options {
   readonly accountId: string
   readonly apiKey: Redacted.Redacted<string>
+  readonly gatewayId?: string | undefined
   readonly apiUrl?: string | undefined
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }
@@ -76,7 +78,10 @@ export const make = Effect.fnUntraced(
       HttpClient.mapRequest(flow(
         HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.cloudflare.com/client/v4"),
         HttpClientRequest.bearerToken(Redacted.value(options.apiKey)),
-        HttpClientRequest.acceptJson
+        HttpClientRequest.acceptJson,
+        options.gatewayId === undefined
+          ? identity
+          : HttpClientRequest.setHeader("cf-aig-gateway-id", options.gatewayId)
       )),
       HttpClient.filterStatusOk,
       options.transformClient ?? identity
@@ -124,7 +129,8 @@ export const layer = (options: Options): Layer.Layer<CloudflareClient, never, Ht
   Layer.effect(CloudflareClient, make(options))
 
 /**
- * Provides a client from configuration, defaulting to CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN.
+ * Provides a client from configuration. It reads `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and the optional
+ * `CLOUDFLARE_AI_GATEWAY_ID` by default.
  *
  * @stability unstable
  * @category layers
@@ -133,6 +139,7 @@ export const layer = (options: Options): Layer.Layer<CloudflareClient, never, Ht
 export const layerConfig = (options?: {
   readonly accountId?: Config.Config<string> | undefined
   readonly apiKey?: Config.Config<Redacted.Redacted<string>> | undefined
+  readonly gatewayId?: Config.Config<string> | undefined
   readonly apiUrl?: Config.Config<string> | undefined
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }): Layer.Layer<CloudflareClient, Config.ConfigError, HttpClient.HttpClient> =>
@@ -142,6 +149,9 @@ export const layerConfig = (options?: {
       return yield* make({
         accountId: yield* (options?.accountId ?? Config.String("CLOUDFLARE_ACCOUNT_ID")),
         apiKey: yield* (options?.apiKey ?? Config.Redacted("CLOUDFLARE_API_TOKEN")),
+        gatewayId: options?.gatewayId
+          ? yield* options.gatewayId
+          : Option.getOrUndefined(yield* Config.option(Config.String("CLOUDFLARE_AI_GATEWAY_ID"))),
         apiUrl: options?.apiUrl ? yield* options.apiUrl : undefined,
         transformClient: options?.transformClient
       })
