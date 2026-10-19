@@ -200,19 +200,22 @@ describe("OpenAiEmbeddingModel", () => {
   it.effect("concurrent embed calls keep their own FetchHttpClient.RequestInit", () =>
     Effect.gen(function*() {
       const requests: Array<{ readonly input: unknown; readonly tenant: unknown }> = []
-      const fetch: typeof globalThis.fetch = async (_url, init) => {
-        const body = JSON.parse(init!.body as string)
-        requests.push({ input: body.input, tenant: (init!.headers as Record<string, string>)["x-tenant"] })
-        return new Response(
-          JSON.stringify({
-            data: body.input.map((_: string, index: number) => ({ index, embedding: [index], object: "embedding" })),
-            model: body.model,
-            object: "list",
-            usage: { prompt_tokens: 1, total_tokens: 1 }
-          }),
-          { status: 200, headers: { "content-type": "application/json" } }
-        )
-      }
+      const fetch = Object.assign(
+        async (_url: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
+          const body = JSON.parse(init!.body as string)
+          requests.push({ input: body.input, tenant: (init!.headers as Record<string, string>)["x-tenant"] })
+          return new Response(
+            JSON.stringify({
+              data: body.input.map((_: string, index: number) => ({ index, embedding: [index], object: "embedding" })),
+              model: body.model,
+              object: "list",
+              usage: { prompt_tokens: 1, total_tokens: 1 }
+            }),
+            { status: 200, headers: { "content-type": "application/json" } }
+          )
+        },
+        { preconnect: () => {} }
+      )
 
       yield* Effect.gen(function*() {
         const model = yield* EmbeddingModel.EmbeddingModel
