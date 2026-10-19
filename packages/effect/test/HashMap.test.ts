@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import { Equal, Hash, HashMap, Option, Result } from "effect"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
@@ -602,14 +603,17 @@ describe("HashMap", () => {
     })
 
     it("set stores a new value that is equal to the current one", () => {
+      let valueOperations = 0
       class Versioned implements Equal.Equal {
         constructor(readonly id: string, readonly version: number) {}
 
         [Equal.symbol](that: Equal.Equal): boolean {
+          valueOperations++
           return that instanceof Versioned && this.id === that.id
         }
 
         [Hash.symbol](): number {
+          valueOperations++
           return Hash.string(this.id)
         }
       }
@@ -620,20 +624,27 @@ describe("HashMap", () => {
       const collisions = HashMap.make([collisionA, new Versioned("a", 0)], [collisionB, new Versioned("b", 0)])
       const next = new Versioned("a", 1)
 
-      expect(Option.getOrThrow(HashMap.get(HashMap.set(leaf, "a", next), "a"))).toBe(next)
-      expect(Option.getOrThrow(HashMap.get(HashMap.set(collisions, collisionA, next), collisionA))).toBe(next)
+      assert.strictEqual(HashMap.getUnsafe(HashMap.set(leaf, "a", next), "a"), next)
+      assert.strictEqual(HashMap.getUnsafe(HashMap.set(collisions, collisionA, next), collisionA), next)
+      assert.strictEqual(valueOperations, 0)
     })
 
-    it("set returns the same map when the value is already stored", () => {
+    it("set uses Object.is to decide whether to preserve map identity", () => {
       const value = { x: 1 }
       const collisionA = new FixedHashKey("collisionA", 7)
       const collisionB = new FixedHashKey("collisionB", 7)
-      const leaf = HashMap.make(["a", value], ["nan", NaN])
-      const collisions = HashMap.make([collisionA, value], [collisionB, value])
-
-      expect(HashMap.set(leaf, "a", value)).toBe(leaf)
-      expect(HashMap.set(leaf, "nan", NaN)).toBe(leaf)
-      expect(HashMap.set(collisions, collisionA, value)).toBe(collisions)
+      for (const stored of [value, NaN, 0]) {
+        for (
+          const map of [HashMap.make([collisionA, stored]), HashMap.make([collisionA, stored], [collisionB, stored])]
+        ) {
+          assert.strictEqual(HashMap.set(map, collisionA, stored), map)
+          if (stored === 0) {
+            const updated = HashMap.set(map, collisionA, -0)
+            assert.notStrictEqual(updated, map)
+            assert.isTrue(Object.is(HashMap.getUnsafe(updated, collisionA), -0))
+          }
+        }
+      }
     })
   })
 
