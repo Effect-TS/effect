@@ -4,7 +4,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Channel from "effect/Channel"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/Config"
 import * as Context from "effect/Context"
@@ -211,13 +210,12 @@ const makeResponse = Effect.fnUntraced(function*(
       const stream = (HttpEffect.scopeTransferToStream(response).body as HttpBody.Stream).stream
       return new Response(
         Stream.toReadableStreamWith(
-          // Transform the body eagerly so its scope finalizer is registered before the first pull.
-          Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
+          // Stream.unwrap would defer registering the request scope finalizer until the first pull
+          Stream.transformPull(stream, (pull) =>
             Effect.withFiber((fiber) => {
               Fiber.runIn(fiber, scope)
-              return Channel.toTransform(stream.channel)(upstream, streamScope)
-            })
-          )),
+              return Effect.succeed(pull)
+            })),
           context
         ),
         fields
