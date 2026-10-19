@@ -2,9 +2,8 @@
 "effect": patch
 ---
 
-Generate EventLog entry ids from a hybrid logical clock, so a local write always sorts after every committed entry the process has seen, even when the local clock is behind.
+Generate EventLog entry ids from a hybrid logical clock, so a local write always sorts after every entry committed to its journal, even when the local clock is behind.
 
-- The memory, IndexedDB and SQL journals advance the entry id clock past each remote entry they import, once the import commits. A rejected or rolled-back import leaves the clock alone, except in `@effect/sql-sqlite-do`, whose transactions run `afterCommit` callbacks immediately.
-- The IndexedDB and SQL journals also read the latest stored id before each local write, because other tabs or processes sharing the store keep their own clock. This adds one read per `writeMany`.
-- Clocks that run ahead are not clamped. A warning is logged when an observed id is more than 24 hours ahead of the local clock.
-- If an observed id is at the end of the UUID v7 timestamp range, local writes fail with an `EventJournalError` from then on, instead of committing ids that sort before it. `makeEntryIdUnsafe` throws a `RangeError` in that state. Ids created with an explicit `msecs` still clamp.
+- The memory, IndexedDB and SQL journals generate each local id after the latest id in their store, without adopting it into the process's id sequence. The IndexedDB and SQL journals read it from the store, because other tabs or processes sharing the store keep their own sequence. This adds one read per `writeMany`. Inside an enclosing SQL transaction, local ids also sort after its uncommitted rows, and a rollback leaves nothing behind.
+- Clocks that run ahead are not clamped. A warning is logged when an imported id is more than 24 hours ahead of the local clock, read from the `Clock` service.
+- If a store holds an id at the end of the UUID v7 timestamp range, local writes to that store fail with an `EventJournalError` instead of committing ids that sort before it. `makeEntryIdUnsafe` throws a `RangeError` once its own sequence passes the range. Ids created with an explicit `msecs` still clamp.

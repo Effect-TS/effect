@@ -5,6 +5,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Clock from "../Clock.ts"
 import * as Effect from "../Effect.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
@@ -348,6 +349,7 @@ export const make = (options?: {
       `
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
+    const clock = yield* Clock.Clock
 
     const writeFromRemote = Effect.fnUntraced(function*(options: WriteFromRemoteOptions): Effect.fn.Return<
       {
@@ -432,18 +434,14 @@ export const make = (options?: {
       if (options.entries.length > 0) {
         yield* writeCursor(options.remoteId, EventJournal.nextSequenceAfter(options.entries))
       }
-      // Only once the outermost transaction commits. A local write in between
-      // still reads the committed ids from the database. Clients whose
-      // transactions don't buffer `afterCommit`, such as `@effect/sql-sqlite-do`,
-      // run this before an enclosing transaction commits or rolls back.
-      yield* sql.afterCommit(EventJournal.observeEntryIds(uncommitted.map((remoteEntry) => remoteEntry.entry.id)))
+      yield* EventJournal.warnIfAhead(clock, uncommitted.map((remoteEntry) => remoteEntry.entry.id))
 
       return {
         duplicateEntries
       }
     })
 
-    // Other processes share the database but not the entry id clock. Ids in
+    // Other processes share the database but not the entry id sequence. Ids in
     // the latest millisecond are few, and comparing them here avoids ordering
     // id bytes in SQL.
     const latestEntryIds = sql`
@@ -457,8 +455,9 @@ export const make = (options?: {
       Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
           yield* lockWriters
-          yield* Effect.flatMap(latestEntryIds, EventJournal.observeEntryIds)
-          const committed = yield* EventJournal.makeEntries(entries)
+          // Rows visible here include an enclosing transaction's uncommitted
+          // ones, which local ids must also sort after.
+          const committed = yield* EventJournal.makeEntries(entries, yield* latestEntryIds)
           const result = yield* restore(effect(committed)).pipe(
             Effect.mapError((error) => new CallbackFailure(error))
           )
