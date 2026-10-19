@@ -275,6 +275,11 @@ export const make = <
  * A patch with no fields left is skipped, and so is an empty patch. Skipped
  * entries are still journaled and synced.
  *
+ * The payload is encoded and decoded with the event's payload schema first,
+ * so a local write passes callbacks the same values replicas decode, without
+ * keys outside the schema at any depth. The handler requires the services of
+ * that codec.
+ *
  * **Gotchas**
  *
  * Convergence depends on the callbacks following this contract, which the
@@ -315,39 +320,44 @@ export const handler = <
     readonly entry: Entry
     readonly payload: Payload<Fields, Key>
   }>
-}) => Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove> => {
-  const rowFields = Object.keys(row.schema.fields)
-  const patchFields = rowFields.filter((name) => name !== row.key)
-  // Replicas decode the entry, which drops keys outside the schema, so a local
-  // write must drop them too. Stored conflicts are already decoded.
-  const normalize = (op: Op): Op => {
-    switch (op._tag) {
-      case "set":
-        return { _tag: "set", row: pick(op.row, rowFields) }
-      case "patch":
-        return { _tag: "patch", key: op.key, fields: pick(op.fields, patchFields) }
-      case "remove":
-        return op
-    }
-  }
-  return (options) => {
-    const op = resolve(
-      normalize(options.payload as Op),
-      options.conflicts as ReadonlyArray<{ readonly payload: Op }>
+}) => Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove | PayloadServices<Fields, Key>> => {
+  // Replicas decode the entry, so a local payload goes through the same codec
+  // first, at every depth. Decoded payloads come back unchanged, and stored
+  // conflicts are already decoded.
+  const encode = Schema.encodeEffect(row.payload)
+  const decode = Schema.decodeEffect(row.payload)
+  return (options) =>
+    encode(options.payload).pipe(
+      Effect.flatMap(decode),
+      Effect.orDie,
+      Effect.flatMap((payload): Effect.Effect<void, Error["Type"], RSet | RPatch | RRemove> => {
+        const op = resolve(payload as Op, options.conflicts as ReadonlyArray<{ readonly payload: Op }>)
+        if (op === undefined) return Effect.void
+        switch (op._tag) {
+          case "set":
+            return Effect.asVoid(callbacks.set(op.row as any))
+          case "patch":
+            return Object.keys(op.fields).length === 0
+              ? Effect.void
+              : Effect.asVoid(callbacks.patch(op.key as any, op.fields as any))
+          case "remove":
+            return Effect.asVoid(callbacks.remove(op.key as any))
+        }
+      })
     )
-    if (op === undefined) return Effect.void
-    switch (op._tag) {
-      case "set":
-        return Effect.asVoid(callbacks.set(op.row as any))
-      case "patch":
-        return Object.keys(op.fields).length === 0
-          ? Effect.void
-          : Effect.asVoid(callbacks.patch(op.key as any, op.fields as any))
-      case "remove":
-        return Effect.asVoid(callbacks.remove(op.key as any))
-    }
-  }
 }
+
+/**
+ * Services the payload schema of a row needs to encode and decode, which the
+ * row handler requires.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type PayloadServices<Fields extends Schema.Struct.Fields, Key extends keyof Fields> =
+  | PayloadSchema<Fields, Key>["EncodingServices"]
+  | PayloadSchema<Fields, Key>["DecodingServices"]
 
 // An optional key for a patch. An absent key stays absent, so missing-key
 // behaviour of the row field, such as a decoding default, never applies.
@@ -376,17 +386,6 @@ const patchField = (field: Schema.Constraint): Schema.Constraint => {
       )
     )
   }))
-}
-
-const pick = (
-  object: Readonly<Record<string, unknown>>,
-  names: ReadonlyArray<string>
-): Readonly<Record<string, unknown>> => {
-  const out: Record<string, unknown> = {}
-  for (const name of names) {
-    if (Object.hasOwn(object, name)) out[name] = object[name]
-  }
-  return out
 }
 
 type Op =
