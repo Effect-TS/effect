@@ -175,6 +175,10 @@ describe("Xml", () => {
         }
         // Invalid UTF-8 and invalid characters, with columns in UTF-16 code units
         const invalid: ReadonlyArray<readonly [Uint8Array, number, number]> = [
+          [Uint8Array.of(0xFE), 1, 1],
+          [Uint8Array.of(0xFF), 1, 1],
+          [Uint8Array.of(0xFE, 0x00), 1, 1],
+          [Uint8Array.of(0xFF, 0x00), 1, 1],
           [Uint8Array.of(0x3C, 0x31, 0xFF, ...textEncoder.encode("></a>")), 1, 2],
           [Uint8Array.of(0x3C, 0x31, 0xE2), 1, 2],
           [Uint8Array.of(...textEncoder.encode("<a>\né"), 0xFF, ...textEncoder.encode("</a>")), 2, 2],
@@ -196,6 +200,20 @@ describe("Xml", () => {
           version: "1.0",
           encoding: "ISO-8859-1"
         })
+      }))
+
+    it.effect("rejects UTF-16 byte order marks as unsupported across chunk boundaries", () =>
+      Effect.gen(function*() {
+        for (
+          const bytes of [
+            Uint8Array.of(0xFF, 0xFE, 0x3C, 0, 0x61, 0, 0x2F, 0, 0x3E, 0),
+            Uint8Array.of(0xFE, 0xFF, 0, 0x3C, 0, 0x61, 0, 0x2F, 0, 0x3E)
+          ]
+        ) {
+          for (const chunks of byteSplits(bytes)) {
+            assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), ["Unsupported", 1, 1])
+          }
+        }
       }))
 
     it.effect("decodes ASCII bytes under a US-ASCII declaration", () =>

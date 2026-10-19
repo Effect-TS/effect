@@ -355,9 +355,9 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
  * **Gotchas**
  *
  * - Invalid or truncated UTF-8 fails with a `Syntax` `XmlError`.
- * - An XML declaration naming an encoding other than UTF-8 or US-ASCII fails
- *   with an `Unsupported` `XmlError`. Decode such bytes to text with a
- *   `TextDecoder` for that encoding and use `decodeString`.
+ * - An initial UTF-16 byte order mark or an XML declaration naming an encoding
+ *   other than UTF-8 or US-ASCII fails with an `Unsupported` `XmlError`.
+ *   Decode such bytes with a `TextDecoder` for that encoding and use `decodeString`.
  *
  * @see {@link decodeString} for text input and the shared gotchas
  *
@@ -1640,6 +1640,7 @@ const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 class Utf8Input implements Machine<Uint8Array, Event> {
   private readonly parser: Parser
   private carry: Uint8Array | undefined
+  private started = false
 
   constructor(parser: Parser) {
     this.parser = parser
@@ -1653,6 +1654,19 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   }
 
   push(chunk: Uint8Array): void {
+    if (!this.started && chunk.length > 0) {
+      const first = this.carry === undefined ? chunk[0] : this.carry[0]
+      const second = this.carry === undefined ? chunk[1] : chunk[0]
+      if ((first === 0xFE && second === 0xFF) || (first === 0xFF && second === 0xFE)) {
+        throw this.parser.error(
+          "Unsupported",
+          "UTF-16 is not supported for byte input, decode the bytes to text first",
+          0
+        )
+      }
+      // Keep a lone BOM prefix pending in the UTF-8 carry below
+      this.started = second !== undefined || (first !== 0xFE && first !== 0xFF)
+    }
     let start = 0
     if (this.carry !== undefined) {
       const need = utf8Length(this.carry[0]) - this.carry.length
