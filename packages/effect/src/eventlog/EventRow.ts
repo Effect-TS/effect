@@ -2,9 +2,8 @@
  * Mutable rows that converge across event-log replicas.
  *
  * Each row type has one event with `set`, `patch` and `remove` payloads, keyed
- * by a string built from one or more of its fields. Pass the result of `make`
- * to `EventGroup.add` and write its payloads with `EventLog.write` or
- * `EventLog.writeMany`.
+ * by one or more of its fields. Pass the result of `make` to `EventGroup.add`
+ * and write its payloads with `EventLog.write` or `EventLog.writeMany`.
  *
  * `handler` resolves conflicts per top-level field and calls at most one
  * storage callback. Replicas converge to the result of applying entries in
@@ -27,14 +26,21 @@
  *   widening a field to a union of its old and new types, because union
  *   encodings are tagged. A rename keeps old entries readable only if the
  *   field has an explicit `SchemaBinary.fieldId`.
+ * - Key-field schemas must decode written values to ones with the same
+ *   primary key, since replicas derive the key from decoded values.
  *
  * Conflicts are scoped to one row; parent removal does not resolve concurrent
  * child writes. For cascading deletion, retain a removed-parent marker and
- * delete its children in the parent `remove` callback. Child `set` and `patch`
- * callbacks must skip marked parents but allow parents not yet received. This
- * converges only if parent deletion is final (no key reuse) and children never
- * move between parents. Queries must exclude marked parents. Retain markers
- * unless the app defines a safe cutoff for removing them.
+ * delete its children in the parent `remove` callback. The `remove` callback
+ * writes the marker even when the parent was never stored, since compaction
+ * or a newer `remove` can skip its `set`, and the marker must not depend on
+ * the old row. A parent `patch` treats a marker as a missing row. Child `set`
+ * and `patch` callbacks must skip marked parents but allow parents not yet
+ * received. Make the parent id part of the child key, as in
+ * `fields: ["parentId", "id"]`, so a child cannot move between parents. This
+ * converges only if parent deletion is final (no key reuse). Queries must
+ * exclude marked parents. Retain markers unless the app defines a safe cutoff
+ * for removing them.
  *
  * **Example** (Syncing grocery rows)
  *
@@ -119,6 +125,7 @@ import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
+import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
@@ -143,17 +150,6 @@ export type RequiredField<Fields extends Schema.Struct.Fields> =
   & string
 
 /**
- * Required string fields eligible as a row key.
- *
- * @stability unstable
- * @category utility types
- * @since 4.0.6
- */
-export type KeyField<Fields extends Schema.Struct.Fields> = {
-  [K in RequiredField<Fields>]: Schema.Schema.Type<Fields[K]> extends string ? K : never
-}[RequiredField<Fields>]
-
-/**
  * Values of the declared key fields of a row.
  *
  * @stability unstable
@@ -169,19 +165,30 @@ export type KeyValues<Fields extends Schema.Struct.Fields, Names extends keyof F
  *
  * **Details**
  *
- * `derive` must return a deterministic, unique row key. Without it, all
- * declared fields must be strings; their JSON tuple in declaration order
- * forms the key without collisions. Other field types require `derive`.
+ * The primary key is the result of `derive`, which must be deterministic and
+ * unique per row. Without it, the primary key is the JSON tuple of the
+ * fields' JSON encodings, in declaration order.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export type KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> =
-  & { readonly fields: readonly [Names, ...Array<Names>] }
-  & ([Names] extends [KeyField<Fields>] ?
-    { readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined }
-    : { readonly derive: (fields: KeyValues<Fields, Names>) => string })
+export interface KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> {
+  readonly fields: readonly [Names, ...Array<Names>]
+  readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined
+}
+
+/**
+ * Primary key type of a row: the key value for a string-typed single-field
+ * key, and `string` otherwise.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type PrimaryKey<KeySchema extends Schema.Constraint> = Schema.Schema.Type<KeySchema> extends string
+  ? Schema.Schema.Type<KeySchema>
+  : string
 
 /**
  * Optional non-key fields of a `patch` payload.
@@ -245,9 +252,9 @@ export type Payload<
  * payload constructors. The row key is the event primary key; success is
  * `void`.
  *
- * `Key` is the union of the declared key fields. `KeySchema` is the schema of
- * the key in `patch` and `remove` payloads: the field's schema for a single
- * field key, and `Schema.String` for a declared key.
+ * `Key` is the union of the key fields. `KeySchema` is the schema of the key
+ * in `patch` and `remove` payloads and callbacks: the field's schema for a
+ * single-field key, and a struct of the key fields for a declared key.
  *
  * @stability unstable
  * @category models
@@ -269,9 +276,9 @@ export interface EventRow<
   readonly error: Error
 
   /**
-   * Computes the key of a row from its key fields.
+   * Computes the primary key of a row from its key fields.
    */
-  readonly keyOf: (fields: KeyValues<Fields, Key>) => Schema.Schema.Type<KeySchema>
+  readonly keyOf: (fields: KeyValues<Fields, Key>) => PrimaryKey<KeySchema>
 
   /**
    * Replaces the whole row, creating it if missing.
@@ -307,14 +314,15 @@ export interface EventRow<
  *
  * **Details**
  *
- * `key` names a required string field or declares required fields with an
- * optional `derive` function. Non-string fields require `derive`. A declared
- * key is the result of `derive`, or the JSON tuple of field values without it.
- * Key fields cannot be patched. To move a row, remove it and set it again.
+ * `key` names a required field, or declares required fields with an
+ * optional `derive` function. `patch`, `remove` and the handler callbacks take
+ * the key as typed values: the field's value for a single field, and a struct
+ * of the fields for a declaration. Key fields cannot be patched. To move a
+ * row, remove it and set it again.
  *
- * `keyOf` computes the entry's primary key from values as written. Conflicts
- * and storage callbacks use that key, so storage must also use it. Decoding
- * transformations can make the row's key fields differ from the stored key.
+ * `keyOf` computes the primary key that conflicts are grouped by: the value
+ * of a string-typed single field, the result of `derive`, or else the JSON
+ * tuple of the key fields' JSON encodings.
  *
  * Last-writer-wins applies to top-level fields. Nested values are atomic, so
  * concurrent updates within one nested value do not merge.
@@ -337,7 +345,7 @@ export interface EventRow<
 export const make = <
   const Tag extends string,
   Fields extends Schema.Struct.Fields,
-  const Key extends KeyField<Fields> = never,
+  const Key extends RequiredField<Fields> = never,
   const Declared extends RequiredField<Fields> = never,
   Error extends Schema.Top = typeof Schema.Never
 >(tag: Tag, options: {
@@ -348,18 +356,27 @@ export const make = <
   Tag,
   Fields,
   // A declaration also infers `Key`, as its constraint, so `Declared` decides.
-  [Declared] extends [never] ? Key : Declared,
+  // `NoInfer` keeps a contextual return type from inferring `Declared`.
+  [NoInfer<Declared>] extends [never] ? NoInfer<Key> : NoInfer<Declared>,
   Error,
-  [Declared] extends [never] ? Fields[Key] : typeof Schema.String
+  [NoInfer<Declared>] extends [never] ? Fields[NoInfer<Key>]
+    : Schema.Struct<{ readonly [K in NoInfer<Declared>]: Fields[K] }>
 > => {
   const declaration = options.key as string | KeyDeclaration<any, string>
+  const fields = options.schema.fields
   const keyFields: ReadonlyArray<string> = typeof declaration === "string" ? [declaration] : declaration.fields
-  const keyOf = typeof declaration === "string"
-    ? (row: Readonly<Record<string, unknown>>) => row[declaration]
-    : declaration.derive !== undefined
+  const keyOf = typeof declaration === "string" && isStringAst(SchemaAST.toType(fields[declaration].ast))
+    ? (row: Readonly<Record<string, unknown>>) => row[declaration] as string
+    : typeof declaration !== "string" && declaration.derive !== undefined
     ? (row: Readonly<Record<string, unknown>>) => declaration.derive!(Struct.pick(row, keyFields) as any)
-    : (row: Readonly<Record<string, unknown>>) => JSON.stringify(keyFields.map((name) => row[name]))
-  const keySchema = typeof declaration === "string" ? options.schema.fields[declaration] : Schema.String
+    : jsonKey(keyFields.map((name) => [name, fields[name]]))
+  // The key of a row as callbacks and `patch` / `remove` payloads carry it.
+  const keyFrom = typeof declaration === "string"
+    ? (row: Readonly<Record<string, unknown>>) => row[declaration]
+    : (row: Readonly<Record<string, unknown>>) => Struct.pick(row, keyFields)
+  const keySchema = typeof declaration === "string"
+    ? fields[declaration]
+    : Schema.Struct(Struct.pick(fields, keyFields) as Schema.Struct.Fields)
   const patchFields: Record<string, Schema.Constraint> = {}
   for (const name of Object.keys(options.schema.fields)) {
     if (!keyFields.includes(name)) patchFields[name] = patchField(options.schema.fields[name])
@@ -374,7 +391,15 @@ export const make = <
     keyFields,
     schema: options.schema,
     keyOf,
-    primaryKey: (payload: Op) => (payload._tag === "set" ? keyOf(payload.row) : payload.key) as string,
+    [keyFromId]: keyFrom,
+    primaryKey: (payload: Op) =>
+      keyOf(
+        payload._tag === "set"
+          ? payload.row
+          : typeof declaration === "string"
+          ? { [declaration]: payload.key }
+          : payload.key as Readonly<Record<string, unknown>>
+      ),
     payload,
     success: Schema.Void,
     error: options.error ?? Schema.Never,
@@ -390,7 +415,7 @@ export const make = <
  * **Details**
  *
  * Resolves newer conflicts in id order and calls at most one callback with
- * typed values and the entry's primary key, never conflicts.
+ * typed values and key, never conflicts.
  *
  * Newer writes take precedence per top-level field. Empty patches and entries
  * with nothing left to write skip the callback but are still journaled and synced.
@@ -452,15 +477,13 @@ export const handler = <
       (payload): Effect.Effect<unknown, Error["Type"], RSet | RPatch | RRemove> => {
         const op = resolve(payload as Op, options.conflicts as ReadonlyArray<{ readonly payload: Op }>)
         if (op === undefined) return Effect.void
-        // Decoded key fields may differ from the key used to group conflicts.
-        const key = options.entry.primaryKey as Schema.Schema.Type<KeySchema>
         switch (op._tag) {
           case "set":
-            return callbacks.set(op.row as any, key)
+            return callbacks.set(op.row as any, (row as any)[keyFromId](op.row))
           case "patch":
-            return Object.keys(op.fields).length === 0 ? Effect.void : callbacks.patch(key, op.fields as any)
+            return Object.keys(op.fields).length === 0 ? Effect.void : callbacks.patch(op.key as any, op.fields as any)
           case "remove":
-            return callbacks.remove(key)
+            return callbacks.remove(op.key as any)
         }
       }
     ).pipe(Effect.asVoid)
@@ -547,6 +570,32 @@ const shadowedEntries = (entries: ReadonlyArray<Entry>, ops: ReadonlyMap<Entry, 
     }
   }
   return shadowed
+}
+
+const keyFromId = "~effect/eventlog/EventRow/keyFrom"
+
+const isStringAst = (ast: SchemaAST.AST): boolean => {
+  switch (ast._tag) {
+    case "String":
+    case "TemplateLiteral":
+      return true
+    case "Literal":
+      return typeof ast.literal === "string"
+    case "Enum":
+      return ast.enums.every(([, value]) => typeof value === "string")
+    case "Union":
+      return ast.types.every(isStringAst)
+    default:
+      return false
+  }
+}
+
+// The JSON tuple of the key fields' JSON encodings, distinct for distinct values.
+const jsonKey = (fields: ReadonlyArray<readonly [string, Schema.Constraint]>) => {
+  const encoders = fields.map(([name, field]) =>
+    [name, Schema.encodeUnknownSync(Schema.toCodecJson(field as Schema.Codec<unknown>))] as const
+  )
+  return (row: Readonly<Record<string, unknown>>) => JSON.stringify(encoders.map(([name, encode]) => encode(row[name])))
 }
 
 // Run the field codec only for present keys, bypassing missing-key defaults.
