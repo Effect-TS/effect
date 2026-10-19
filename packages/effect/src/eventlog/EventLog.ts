@@ -1329,8 +1329,27 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
  *
  * **Details**
  *
- * The returned function delegates to the `EventLog` service and preserves each
- * event's success and error types.
+ * The returned function takes one `{ event, payload }` object, typed so the
+ * payload matches the event, as `writeMany` items are. It delegates to the
+ * `EventLog` service and preserves each event's success and error types.
+ *
+ * **Example** (Writing events with a client)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ * import { EventGroup, EventLog } from "effect/eventlog"
+ *
+ * const Users = EventGroup.empty.add({
+ *   tag: "UserCreated",
+ *   primaryKey: (payload) => payload.id,
+ *   payload: Schema.Struct({ id: Schema.String })
+ * })
+ *
+ * export const createUser = Effect.gen(function*() {
+ *   const client = yield* EventLog.makeClient(EventLog.schema(Users))
+ *   yield* client({ event: "UserCreated", payload: { id: "user-1" } })
+ * })
+ * ```
  *
  * @stability unstable
  * @category constructors
@@ -1339,24 +1358,23 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
 export const makeClient = <Groups extends EventGroup.Any>(
   schema: EventLogSchema<Groups>
 ): Effect.Effect<
-  (<Tag extends Event.Tag<EventGroup.Events<Groups>>>(
-    event: Tag,
-    payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
-  ) => Effect.Effect<
-    Event.SuccessWithTag<EventGroup.Events<Groups>, Tag>,
-    Event.ErrorWithTag<EventGroup.Events<Groups>, Tag> | EventJournalError
-  >),
+  <
+    // Pairs each event tag with its own payload.
+    Item extends {
+      readonly [Tag in Event.Tag<EventGroup.Events<Groups>>]: {
+        readonly event: Tag
+        readonly payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
+      }
+    }[Event.Tag<EventGroup.Events<Groups>>]
+  >(item: Item) => Effect.Effect<
+    Event.SuccessWithTag<EventGroup.Events<Groups>, Item["event"]>,
+    Event.ErrorWithTag<EventGroup.Events<Groups>, Item["event"]> | EventJournalError
+  >,
   never,
   EventLog
 > =>
   Effect.gen(function*() {
     const log = yield* EventLog
-
-    return <Tag extends Event.Tag<EventGroup.Events<Groups>>>(
-      event: Tag,
-      payload: Event.PayloadWithTag<EventGroup.Events<Groups>, Tag>
-    ): Effect.Effect<
-      Event.SuccessWithTag<EventGroup.Events<Groups>, Tag>,
-      Event.ErrorWithTag<EventGroup.Events<Groups>, Tag> | EventJournalError
-    > => log.write({ schema, event, payload })
-  })
+    return (item: { readonly event: string; readonly payload: unknown }) =>
+      log.write({ schema, event: item.event, payload: item.payload } as any)
+  }) as any
