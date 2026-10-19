@@ -117,9 +117,9 @@ export const model = (
  *
  * **Gotchas**
  *
- * Concurrent `embed` calls are grouped by `Config` and `OpenAiConfig` values.
- * Other per-call HTTP-client context, such as `FetchHttpClient.RequestInit`,
- * is not part of the batch key; the first caller's values apply to the batch.
+ * Concurrent `embed` calls share a request when their `Config` and
+ * `OpenAiConfig` values are equal. Other per-call context, such as
+ * `FetchHttpClient.RequestInit`, takes the first caller's value for the batch.
  *
  * The service expects numeric embedding vectors. It fails with
  * `InvalidOutputError` when the provider returns base64 embeddings,
