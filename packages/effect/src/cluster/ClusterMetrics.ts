@@ -1,8 +1,8 @@
 /**
  * Standard metric definitions used by the unstable cluster runtime. The gauges
  * track runner-local entities, singleton processes, registered runners,
- * healthy runners, and acquired shards. The timer tracks shard release
- * duration.
+ * healthy runners, acquired shards, and shards being released. The timer
+ * tracks shard release duration.
  *
  * This module only defines the metric handles. The runtime components that
  * manage entities, runners, singletons, and sharding update these metrics while
@@ -117,6 +117,40 @@ export const runnersHealthy = Metric.gauge("effect_cluster_runners_healthy", { b
  * @since 4.0.0
  */
 export const shards = Metric.gauge("effect_cluster_shards", { bigint: true })
+
+/**
+ * Represents a gauge tracking the number of shards the current runner is still
+ * releasing.
+ *
+ * **When to use**
+ *
+ * Use to detect shard releases that stall during rebalancing, shutdown handoff
+ * or lock storage failures.
+ *
+ * **Details**
+ *
+ * Bigint gauge named `effect_cluster_shards_releasing`, updated with the number
+ * of distinct shards being released. A shard counts from the moment it is no
+ * longer acquired until its entities and singletons have stopped and its lock
+ * is released, including waits for lock storage to recover and release
+ * retries.
+ *
+ * **Gotchas**
+ *
+ * Positive values are normal while shards move; alert only when the value
+ * stays positive. It does not reflect lock ownership, and reacquisition can
+ * stay blocked briefly after it returns to zero, while a forced release
+ * finishes its bookkeeping.
+ *
+ * Like the other runner gauges it assumes one runner per process: runners
+ * sharing a registry without distinct metric attributes overwrite each other's
+ * value.
+ *
+ * @stability unstable
+ * @category metrics
+ * @since 4.1.0
+ */
+export const shardsReleasing = Metric.gauge("effect_cluster_shards_releasing", { bigint: true })
 
 /**
  * Represents a timer tracking how long the current runner takes to release a

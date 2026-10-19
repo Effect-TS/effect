@@ -3515,6 +3515,11 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
     }
     assert.isTrue(done())
   })
+  // Reads the releasing-shards gauge from the registry the runner was built with
+  const releasingGauge = (registry: Metric.MetricRegistry) =>
+    (Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry)).find((metric) =>
+      metric.id === "effect_cluster_shards_releasing"
+    )?.state as Metric.GaugeState<bigint> | undefined)?.value
   const buildSharding = Effect.fnUntraced(function*(
     storageState: FailoverStorageState,
     config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
@@ -3548,32 +3553,44 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
       const registrationScope = yield* makeOwnedScope
-      const warnings: Array<string> = []
+      const registry: Metric.MetricRegistry = new Map()
+      const clock = yield* Clock.Clock
+      const warnings: Array<{ at: number; output: string }> = []
+      let unhealthyAt: number | undefined
       const logger = Logger.make((options) => {
+        if (options.logLevel === "Error" && String(options.message).includes("unhealthy")) {
+          unhealthyAt ??= clock.currentTimeMillisUnsafe()
+        }
         if (options.logLevel !== "Warn") return
         const output = Logger.formatJson.log(options)
-        if (/releas/i.test(output)) warnings.push(output)
+        if (/releas/i.test(output)) warnings.push({ at: clock.currentTimeMillisUnsafe(), output })
       })
       const { context, sharding } = yield* buildSharding(storageState, {
         shardsPerGroup: 1,
         shardLockExpiration: 300,
-        shardLockRefreshInterval: 1000
-      }).pipe(Effect.provide(Logger.layer([logger])))
-      // This finalizer runs before either scope closes, even on assertion failure.
-      const gate = yield* makeGate
+        shardLockRefreshInterval: 1000,
+        // Keep 30 seconds of polling cheap
+        entityMessagePollInterval: 100
+      }).pipe(Effect.provide(Logger.layer([logger])), Effect.provideService(Metric.MetricRegistry, registry))
+      // These finalizers run before either scope closes, even on assertion failure.
+      const entityGate = yield* makeGate
+      const singletonGate = yield* makeGate
       const started = Latch.makeUnsafe()
       const stopped = Latch.makeUnsafe()
       const shardId = ShardId.make("default", 1)
       yield* advanceUntil(() => sharding.hasShardId(shardId))
       yield* sharding.registerEntity(
         GatedTeardownEntity,
-        Effect.as(Effect.addFinalizer(() => gate.await), GatedTeardownEntity.of({ Activate: () => Effect.void }))
+        Effect.as(
+          Effect.addFinalizer(() => entityGate.await),
+          GatedTeardownEntity.of({ Activate: () => Effect.void })
+        )
       ).pipe(Effect.provideService(Scope.Scope, registrationScope))
       const makeClient = yield* GatedTeardownEntity.client.pipe(Effect.provideContext(context))
       yield* makeClient("1").Activate()
       yield* sharding.registerSingleton(
         "StalledReleaseSingleton",
-        Effect.andThen(started.open, gate.await).pipe(
+        Effect.andThen(started.open, singletonGate.await).pipe(
           Effect.uninterruptible,
           Effect.ensuring(stopped.open)
         )
@@ -3581,6 +3598,11 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       yield* started.await
       yield* advanceUntil(() => storageState.refreshCalls.some((call) => call.shards.length > 0))
       const acquiresBeforeOutage = storageState.acquireCalls.length
+      const assertStillBlocked = () => {
+        assert.isFalse(sharding.hasShardId(shardId))
+        assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
+        assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      }
 
       storageState.blackholed = true
       yield* TestClock.adjust(201)
@@ -3589,18 +3611,21 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       storageState.blackholed = false
       // Storage recovers, but uninterruptible work must still prevent release.
       yield* TestClock.adjust(1000)
-      assert.isFalse(sharding.hasShardId(shardId))
+      assertStillBlocked()
       assert.isFalse(stopped.isOpen())
-      assert.strictEqual(storageState.releaseAllCalls.length, 0)
-      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
-      const stalledWarnings = warnings.slice()
-      yield* TestClock.adjust(900)
-      assert.deepStrictEqual(warnings, stalledWarnings, "a pending release must not flood warnings")
-      assert.isFalse(sharding.hasShardId(shardId))
-      assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
-      assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      const firstWarnings = warnings.slice()
+      const blockedShards = ClusterMetrics.shards.valueUnsafe(Context.empty()).value
+      const blockedReleasing = releasingGauge(registry)
+      // The entity stops, so the next warning names only the singleton.
+      yield* entityGate.open
+      yield* TestClock.adjust(firstWarnings[0].at + 29_999 - clock.currentTimeMillisUnsafe())
+      const warningsBeforeRepeat = warnings.slice()
+      assertStillBlocked()
+      yield* TestClock.adjust(1)
+      const warningsAtRepeat = warnings.slice()
+      assertStillBlocked()
 
-      yield* gate.open
+      yield* singletonGate.open
       yield* advanceUntil(() => sharding.hasShardId(shardId))
       assert.isTrue(stopped.isOpen())
       assert.strictEqual(storageState.releaseAllCalls.length, 1)
@@ -3608,14 +3633,28 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       const reacquires = storageState.acquireCalls.slice(acquiresBeforeOutage)
       assert.isAbove(reacquires.length, 0)
       assert.isTrue(reacquires.every((call) => call.completedReleaseAlls === 1))
-      yield* TestClock.adjust(900)
-      assert.deepStrictEqual(warnings, stalledWarnings, "the release monitor must stop after recovery")
+      const recoveredReleasing = releasingGauge(registry)
+      const warningsAtRecovery = warnings.slice()
+      yield* TestClock.adjust(30_000)
+      assert.deepStrictEqual(warnings, warningsAtRecovery, "the release monitor must stop after recovery")
 
       // Assert diagnostics last so the red test also exercises safe recovery.
-      assert.strictEqual(stalledWarnings.length, 1, "a prolonged forced release must warn once")
-      assert.include(stalledWarnings[0], "default:1")
-      assert.include(stalledWarnings[0], "GatedTeardownEntity")
-      assert.include(stalledWarnings[0], "StalledReleaseSingleton")
+      assert.strictEqual(firstWarnings.length, 1, "a prolonged forced release must warn once by expiration")
+      // The forced release starts once the acquisition loop wakes, after the loss.
+      assert.isAtLeast(firstWarnings[0].at - unhealthyAt!, 300, "the first warning must not precede expiration")
+      assert.include(firstWarnings[0].output, "default:1")
+      assert.include(firstWarnings[0].output, "GatedTeardownEntity")
+      assert.include(firstWarnings[0].output, "StalledReleaseSingleton")
+      assert.deepStrictEqual(warningsBeforeRepeat, firstWarnings, "warnings must not repeat before 30 seconds")
+      assert.strictEqual(warningsAtRepeat.length, 2, "a pending release must warn again after 30 seconds")
+      assert.strictEqual(warningsAtRepeat[1].at - firstWarnings[0].at, 30_000)
+      assert.include(warningsAtRepeat[1].output, "default:1")
+      assert.notInclude(warningsAtRepeat[1].output, "GatedTeardownEntity")
+      assert.include(warningsAtRepeat[1].output, "StalledReleaseSingleton")
+      assert.deepStrictEqual(warningsAtRecovery, warningsAtRepeat)
+      assert.strictEqual(blockedShards, 0n)
+      assert.strictEqual(blockedReleasing, 1n, "the blocked shard must count as releasing")
+      assert.strictEqual(recoveredReleasing, 0n, "releasing must return to zero after recovery")
     }))
 
   it.effect("does not warn when forced release completes before the warning deadline", () =>
@@ -3735,29 +3774,49 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
   it.effect("does not record a release cancelled when shutdown handoff times out", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState({ releaseFailures: Infinity })
-      const { scope, sharding } = yield* buildSharding(storageState, {
-        shardsPerGroup: 1,
-        shardLockRefreshInterval: 100
-      })
+      const registry: Metric.MetricRegistry = new Map()
+      const config = { shardsPerGroup: 1, shardLockRefreshInterval: 100 }
+      const { scope, sharding } = yield* buildSharding(storageState, config).pipe(
+        Effect.provideService(Metric.MetricRegistry, registry)
+      )
       yield* advanceUntil(() => sharding.hasShardId(allShards[0]))
-      const before = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
+      const releaseDuration = () =>
+        ClusterMetrics.shardReleaseDuration.valueUnsafe(Context.make(Metric.MetricRegistry, registry))
+      const before = releaseDuration()
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* advanceUntil(() => storageState.releaseCalls.length > 0)
+      yield* TestClock.adjust(50)
+      assert.isAbove(storageState.releaseCalls.length, 1, "storage retries must continue")
+      const retryingReleasing = releasingGauge(registry)
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
 
       assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
-      assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
+      assert.strictEqual(releaseDuration().count, before.count)
+      assert.strictEqual(retryingReleasing, 1n, "retries must not count a shard twice")
+
+      // A new runner in the same registry must not report the abandoned release.
+      storageState.releaseFailures = 0
+      const restarted = yield* buildSharding(storageState, config).pipe(
+        Effect.provideService(Metric.MetricRegistry, registry)
+      )
+      assert.strictEqual(releasingGauge(registry), 0n, "initialization must publish zero")
+      yield* advanceUntil(() => restarted.sharding.hasShardId(allShards[0]))
+      assert.strictEqual(releasingGauge(registry), 0n)
     }))
 
   it.effect("waits for singleton teardown before handing off their shards", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
+      const registry: Metric.MetricRegistry = new Map()
       const registrationScope = yield* makeOwnedScope
       const runningRegistrationScope = yield* makeOwnedScope
-      const { scope, sharding } = yield* buildSharding(storageState)
+      const { scope, sharding } = yield* buildSharding(storageState).pipe(
+        Effect.provideService(Metric.MetricRegistry, registry)
+      )
       const gate = yield* makeGate
       yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
+      assert.strictEqual(releasingGauge(registry), 0n, "initialization must publish zero")
       const started = Latch.makeUnsafe()
       const stopping = Latch.makeUnsafe()
       yield* sharding.registerSingleton(
@@ -3785,11 +3844,19 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.isUndefined(closing.pollUnsafe())
       assert.deepStrictEqual(storageState.releaseCalls, [])
       assert.deepStrictEqual(storageState.releaseAllCalls, [])
+      const tearingDownReleasing = releasingGauge(registry)
 
+      // Each shard's first release attempt fails and is retried.
+      storageState.releaseFailures = 2
       yield* gate.open
+      yield* advanceUntil(() => storageState.releaseCalls.length >= 2)
+      const retryingReleasing = releasingGauge(registry)
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
       assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
-      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [2])
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [4])
+      assert.strictEqual(tearingDownReleasing, 2n, "each shard waiting for teardown must count once")
+      assert.strictEqual(retryingReleasing, 2n, "retries must not count a shard twice")
+      assert.strictEqual(releasingGauge(registry), 0n, "a completed handoff must publish zero")
     }).pipe(Effect.scoped))
 
   it.effect("closes a singleton registration whose singleton registered another singleton", () =>
