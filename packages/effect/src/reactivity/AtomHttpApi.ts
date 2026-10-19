@@ -115,9 +115,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         infer _RE
       >
     ] ? HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, ResponseMode> & {
-        readonly reactivityKeys?:
-          | Reactivity.KeysInput
-          | undefined
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly timeToLive?: Duration.Input | undefined
         readonly serializationKey?: string | undefined
       }

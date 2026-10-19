@@ -67,9 +67,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     : Atom.AtomResultFn<
       {
         readonly payload: Rpc.PayloadConstructor<Rpcs>
-        readonly reactivityKeys?:
-          | Reactivity.KeysInput
-          | undefined
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly headers?: Headers.Input | undefined
       },
       _Success["Type"],
@@ -82,9 +80,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
-      readonly reactivityKeys?:
-        | Reactivity.KeysInput
-        | undefined
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
@@ -193,9 +189,7 @@ export const Service = <Self>() =>
     const rpc = options.group.requests.get(tag)! as any as Rpc.AnyWithProps
     return self.runtime.fn<{
       readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
-      readonly reactivityKeys?:
-        | Reactivity.KeysInput
-        | undefined
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly headers?: Headers.Input | undefined
     }>()(
       Effect.fnUntraced(function*({ headers, payload, reactivityKeys }) {
@@ -260,9 +254,7 @@ export const Service = <Self>() =>
     payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
-      readonly reactivityKeys?:
-        | Reactivity.KeysInput
-        | undefined
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
@@ -289,9 +281,7 @@ interface QueryKey {
   tag: string
   payload: any
   headers: Headers.Headers | undefined
-  reactivityKeys:
-    | Reactivity.KeysInput
-    | undefined
+  reactivityKeys: Reactivity.KeysInput | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
 }
