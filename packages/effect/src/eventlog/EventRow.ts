@@ -35,10 +35,12 @@
  * time. Keep a removed parent in storage as a marker instead of deleting it.
  * The child `set` and `patch` callbacks skip the write when the parent is
  * marked removed, and apply it when the parent has not arrived yet. The
- * parent `remove` callback marks the parent and deletes its children. Every
- * replica then ends without the children of removed parents, whatever the
- * delivery order. Queries must filter out marked parents, and markers stay
- * until the app removes them with a cutoff of its own.
+ * parent `remove` callback marks the parent and deletes its children. If
+ * removing a parent is final, so its key is never set again, and a child
+ * never moves to another parent, every replica ends without the children of
+ * removed parents, whatever the delivery order. Queries must filter out
+ * marked parents, and markers stay until the app removes them with a cutoff
+ * of its own.
  *
  * **Example** (Syncing grocery rows)
  *
@@ -177,18 +179,21 @@ export type KeyValues<Fields extends Schema.Struct.Fields, Names extends keyof F
  *
  * **Details**
  *
- * `derive` builds the key string from the declared fields. Without it, the
- * key is the JSON encoding of the field values in declaration order, which is
- * distinct for distinct values.
+ * `derive` builds the key string from the declared fields. It must be
+ * deterministic and return distinct keys for distinct rows. Without it, every
+ * declared field must be a string field, and the key is the JSON encoding of
+ * the field values in declaration order, which is distinct for distinct
+ * values. Other field types need `derive`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> {
-  readonly fields: readonly [Names, ...Array<Names>]
-  readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined
-}
+export type KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> =
+  & { readonly fields: readonly [Names, ...Array<Names>] }
+  & ([Names] extends [KeyField<Fields>] ?
+    { readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined }
+    : { readonly derive: (fields: KeyValues<Fields, Names>) => string })
 
 /**
  * Optional non-key fields of a `patch` payload.
@@ -315,10 +320,16 @@ export interface EventRow<
  * **Details**
  *
  * `key` is either the name of a required string field, or a declaration of
- * one or more required fields with an optional `derive` function. A declared
- * key is a string: the result of `derive`, or the JSON encoding of the field
- * values. Every key field is excluded from `patch`, so a row's key never
- * changes. To move a row to another key, remove it and set it again.
+ * one or more required fields with a `derive` function, which is optional
+ * when every declared field is a string field. A declared key is a string:
+ * the result of `derive`, or the JSON encoding of the field values. Every key
+ * field is excluded from `patch`, so a row's key never changes. To move a row
+ * to another key, remove it and set it again.
+ *
+ * A row's key is computed by `keyOf` from the values as written, and stored
+ * as the entry's primary key. Conflicts are grouped by it, and handler
+ * callbacks receive it, so storage must be keyed by it. Key fields in a
+ * decoded row can differ from it when their schemas transform values.
  *
  * Last-writer-wins applies to top-level fields. Nested values are atomic, so
  * concurrent updates within one nested value do not merge.
@@ -394,7 +405,8 @@ export const make = <
  * **Details**
  *
  * Resolves stored newer conflicts in id order and calls at most one callback.
- * Callbacks receive typed values, never conflicts.
+ * Callbacks receive typed values, never conflicts. Every callback receives
+ * the entry's primary key, the row key computed when the entry was written.
  *
  * Newer writes take precedence per top-level field. Empty patches and entries
  * with nothing left to write skip the callback but are still journaled and synced.
@@ -460,13 +472,16 @@ export const handler = <
       (payload): Effect.Effect<unknown, Error["Type"], RSet | RPatch | RRemove> => {
         const op = resolve(payload as Op, options.conflicts as ReadonlyArray<{ readonly payload: Op }>)
         if (op === undefined) return Effect.void
+        // The key as written, which conflicts are grouped by. Decoding can change
+        // the key fields of the payload.
+        const key = options.entry.primaryKey as Schema.Schema.Type<KeySchema>
         switch (op._tag) {
           case "set":
-            return callbacks.set(op.row as any, row.keyOf(op.row as any))
+            return callbacks.set(op.row as any, key)
           case "patch":
-            return Object.keys(op.fields).length === 0 ? Effect.void : callbacks.patch(op.key as any, op.fields as any)
+            return Object.keys(op.fields).length === 0 ? Effect.void : callbacks.patch(key, op.fields as any)
           case "remove":
-            return callbacks.remove(op.key as any)
+            return callbacks.remove(key)
         }
       }
     ).pipe(Effect.asVoid)
