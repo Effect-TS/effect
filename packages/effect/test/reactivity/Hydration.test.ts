@@ -3,6 +3,41 @@ import { Effect, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("Hydration", () => {
+  it("runs a plain hydrated effect atom on mount and tracks factory dependencies", () => {
+    const dependency = Atom.make(1)
+    let runs = 0
+    const atom = Atom.make((get) => {
+      const value = get(dependency)
+      return Effect.sync(() => {
+        runs++
+        return value
+      })
+    }).pipe(
+      Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Number }) })
+    )
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      const serverAtom = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.success(10)).pipe(
+        Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Number }) })
+      )
+      server.mount(serverAtom)
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      client.mount(atom)
+
+      assert.strictEqual(runs, 1)
+
+      client.set(dependency, 2)
+      const result = client.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 2)
+      assert.strictEqual(runs, 2)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
   it("falls back on the first read of invalid immediate hydration", () => {
     const atom = Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number }))
     const registry = AtomRegistry.make()

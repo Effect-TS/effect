@@ -482,6 +482,9 @@ describe("atom-react", { concurrent: false }, () => {
       )
 
       expect(screen.getByTestId("value")).toHaveTextContent("Initial")
+      // Hydration starts a client effect while the server effect is still pending.
+      expect(start).toBe(2)
+      expect(stop).toBe(0)
 
       act(() => {
         Effect.runSync(latch.open)
@@ -495,8 +498,8 @@ describe("atom-react", { concurrent: false }, () => {
       }
 
       expect(screen.getByTestId("value")).toHaveTextContent("Success")
-      expect(start).toBe(1)
-      expect(stop).toBe(1)
+      expect(start).toBe(2)
+      expect(stop).toBe(2)
     })
 
     test("HydrationBoundary splits new vs existing atoms", () => {
