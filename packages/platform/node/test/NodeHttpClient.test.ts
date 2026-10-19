@@ -4,6 +4,7 @@ import Undici from "@effect/platform-node/Undici"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { flow } from "effect/Function"
@@ -545,11 +546,17 @@ it.live("returns a stream body encoding failure", () =>
 
 // Answers upgrade requests by hand, sending bytes in the same write as the
 // response head, like a Docker Engine attach endpoint.
-const makeUpgradeServer = () =>
-  Effect.acquireRelease(
+const makeUpgradeServer = (onClose?: () => void) => {
+  const sockets = new Set<Net.Socket>()
+  return Effect.acquireRelease(
     Effect.callback<Http.Server>((resume) => {
       const server = Http.createServer()
+      server.on("connection", (socket) => {
+        sockets.add(socket)
+        socket.once("close", () => sockets.delete(socket))
+      })
       server.on("upgrade", (request: Http.IncomingMessage, socket: Net.Socket) => {
+        if (onClose !== undefined) socket.once("close", onClose)
         socket.write(
           "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\n" +
             `Upgrade: ${request.headers.upgrade}\r\nX-Url: ${request.url}\r\n` +
@@ -562,6 +569,7 @@ const makeUpgradeServer = () =>
     }),
     (server) =>
       Effect.callback<void>((resume) => {
+        for (const socket of sockets) socket.destroy()
         server.closeAllConnections()
         server.close(() => resume(Effect.void))
       })
@@ -573,6 +581,7 @@ const makeUpgradeServer = () =>
       ))
     )
   )
+}
 
 const readUntilClose = Effect.fnUntraced(function*(reader: Socket.Reader) {
   const decoder = new TextDecoder()
@@ -608,6 +617,21 @@ describe("NodeHttpClient upgrade", () => {
           // releasing the writer half-closes, so the server answers "bye"
           yield* Effect.scoped(Effect.flatMap(socket.writer, (writer) => writer.write("ping")))
           assert.strictEqual(yield* readUntilClose(reader), "hello|echo:ping|bye")
+        }).pipe(Effect.provide(layer)))
+      it.live("closes the upgraded connection when the request scope closes", () =>
+        Effect.gen(function*() {
+          const closed = yield* Deferred.make<void>()
+          const client = (yield* HttpClient.HttpClient).pipe(
+            yield* makeUpgradeServer(() => Deferred.doneUnsafe(closed, Effect.void)),
+            HttpClient.withScope
+          )
+          yield* Effect.scoped(Effect.gen(function*() {
+            const response = yield* client.execute(
+              HttpClientRequest.post("/attach").pipe(HttpClientRequest.upgrade("tcp"))
+            )
+            assert.strictEqual(response.status, 101)
+          }))
+          yield* Deferred.await(closed).pipe(Effect.timeout("1 second"))
         }).pipe(Effect.provide(layer)))
     })
   })

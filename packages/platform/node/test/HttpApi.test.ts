@@ -1015,6 +1015,12 @@ describe("HttpApi", () => {
         assert.strictEqual(refused.status, 426)
         assert.strictEqual(refused.headers.upgrade, "tcp")
 
+        const missingConnection = yield* HttpClient.post("/containers/abc/attach", {
+          headers: { upgrade: "tcp" }
+        })
+        assert.strictEqual(missingConnection.status, 426)
+        assert.strictEqual(missingConnection.headers.upgrade, "tcp")
+
         // client side
         const client = yield* HttpApiClient.make(Api)
         const { headers, socket } = yield* client.containers.attach({ params: { id: "abc" } })
