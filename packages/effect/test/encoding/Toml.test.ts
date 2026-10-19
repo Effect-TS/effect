@@ -97,6 +97,7 @@ local = 2026-08-05 01:02:03
       assert.strictEqual(duplicate.failure.kind, "Decode")
       assert.strictEqual(duplicate.failure.module, "Toml")
       assert.strictEqual(duplicate.failure.input, "key = 1\nkey = 2\n")
+      assert.strictEqual(duplicate.failure.message, "Cannot redefine existing key 'key' at line 2, column 8")
     }
 
     assert.isTrue(Result.isFailure(Toml.parse("key = 1__000\n")))
