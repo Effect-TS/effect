@@ -32,6 +32,9 @@
  * SOFTWARE.
  */
 
+import * as Result from "../Result.ts"
+import { EncodingError } from "./EncodingError.ts"
+
 type Table = Record<string, unknown>
 
 const hasOwn = Object.prototype.hasOwnProperty
@@ -507,11 +510,36 @@ class TomlParser {
  *
  * **Details**
  *
- * Offset date-times are represented by `Date`, matching the package this
- * parser replaces. Local dates and times remain strings.
+ * Returns `Result.succeed` with the parsed record, or `Result.fail` with an
+ * `EncodingError` describing the first syntax error and its position. Offset
+ * date-times are represented by `Date`, matching the package this parser
+ * replaces. Local dates and times remain strings.
+ *
+ * **Example** (Parsing a TOML document)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Toml } from "effect/encoding"
+ *
+ * Toml.parse("port = 8080") // => Result.succeed({ port: 8080 })
+ * Result.isFailure(Toml.parse("port = ")) // => true
+ * ```
  *
  * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
-export const parse = (input: string): Record<string, unknown> => new TomlParser(input.replace(/^\uFEFF/, "")).parse()
+export const parse = (input: string): Result.Result<Record<string, unknown>, EncodingError> => {
+  try {
+    return Result.succeed(new TomlParser(input.replace(/^\uFEFF/, "")).parse())
+  } catch (e) {
+    return Result.fail(
+      new EncodingError({
+        module: "Toml",
+        kind: "Decode",
+        input,
+        message: e instanceof Error ? e.message : "Invalid input"
+      })
+    )
+  }
+}
