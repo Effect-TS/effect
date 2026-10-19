@@ -504,8 +504,12 @@ class YamlParser {
 
     while (end < this.lines.length) {
       const line = this.lines[end]
-      if (line.raw.trim().length !== 0 && line.indent <= parentIndent) break
-      if (line.raw.trim().length !== 0) contentIndent = Math.min(contentIndent, line.indent)
+      if (line.raw.trim().length !== 0) {
+        if (line.indent <= parentIndent) break
+        // The first non-empty line sets the indentation; a less indented line ends the scalar.
+        if (contentIndent === Number.POSITIVE_INFINITY) contentIndent = line.indent
+        else if (line.indent < contentIndent) break
+      }
       end++
     }
     if (contentIndent === Number.POSITIVE_INFINITY) contentIndent = parentIndent + 1
@@ -513,13 +517,7 @@ class YamlParser {
     const content: Array<string> = []
     for (let index = start; index < end; index++) {
       const line = this.lines[index]
-      if (line.raw.trim().length === 0) {
-        content.push("")
-      } else if (line.indent < contentIndent) {
-        this.fail(line, `Expected block scalar indentation of ${contentIndent} spaces`)
-      } else {
-        content.push(line.raw.slice(contentIndent))
-      }
+      content.push(line.raw.trim().length === 0 ? "" : line.raw.slice(contentIndent))
     }
     this.index = end
 
