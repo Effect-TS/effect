@@ -334,7 +334,7 @@ describe("EventRow", () => {
         yield* handler({ storeId, payload, entry, conflicts: [] })
         yield* handler({
           storeId,
-          payload: yield* Schema.decodeEffect(StampCodec)(entry.payload),
+          payload: yield* Schema.decodeUnknownEffect(StampCodec)(entry.payload),
           entry,
           conflicts: []
         })
