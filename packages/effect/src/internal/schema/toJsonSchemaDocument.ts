@@ -618,11 +618,15 @@ function compileJsonSchema(
           const compacted = compactEnums(types)
           if (compacted !== undefined) return compacted
         }
-        if (mode === "oneOf") pendingOneOf.set(types, [branches, []])
+        if (mode === "oneOf") {
+          pendingOneOf.set(types, [branches, []])
+          return { oneOf: types }
+        }
+        // A member that is only an `anyOf` adds no constraints of its own, so its alternatives can be spliced in.
         return {
-          [mode]: mode === "anyOf"
-            ? types.flatMap((type) => Array.isArray(type.anyOf) && Object.keys(type).length === 1 ? type.anyOf : [type])
-            : types
+          anyOf: types.flatMap((type) =>
+            Array.isArray(type.anyOf) && Object.keys(type).length === 1 ? type.anyOf : [type]
+          )
         }
       }
     }
