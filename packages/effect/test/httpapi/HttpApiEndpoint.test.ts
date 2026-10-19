@@ -498,6 +498,17 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         message: "WithHeaders cannot wrap an upgrade"
       },
       {
+        name: "wrapped by encodeToWithHeaders",
+        make: () =>
+          upgrade.pipe(
+            HttpApiSchema.encodeToWithHeaders(
+              { body: upgrade, headers: { "x-id": Schema.String } },
+              { decode: ({ body }) => body, encode: (body) => ({ body, headers: { "x-id": "id" } }) }
+            )
+          ),
+        message: "encodeToWithHeaders cannot wrap an upgrade"
+      },
+      {
         name: "on HEAD",
         make: () => HttpApiEndpoint.head("attach", "/attach", { success: upgrade }),
         message: "HEAD endpoints cannot declare an upgrade"
