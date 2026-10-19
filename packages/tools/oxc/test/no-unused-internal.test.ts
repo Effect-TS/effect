@@ -1,4 +1,5 @@
 import rule from "@effect/oxc/oxlint/rules/no-unused-internal"
+import { assert } from "@effect/vitest"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -65,63 +66,25 @@ type Local = Internal
     expect(run(cwd, "packages/foo/src/Internal.ts")).toEqual([])
   })
 
-  it("counts only members destructured from dynamic imports as usage", () => {
+  it("counts literal dynamic imports as usage of only the resolved module", () => {
     const cwd = writeFixture({
       "packages/foo/src/internal/lazy.ts": `/** @internal */
-export const viaYield = 1
+export const first = 1
 
 /** @internal */
-export const viaAwait = 2
-
-/** @internal */
-export const unused = 3
+export const second = 2
 `,
-      "packages/foo/src/Consumer.ts": `export const program = Effect.gen(function*() {
-  const { viaYield } = yield* Effect.promise(() => import("./internal/lazy.ts"))
-  return viaYield
-})
-
-export const load = async () => {
-  const { viaAwait: renamed } = await import("./internal/lazy.ts")
-  return renamed
-}
+      "packages/foo/src/internal/unrelated.ts": `/** @internal */
+export const first = 1
+`,
+      "packages/foo/src/Consumer.ts": `export const load = () => import("./internal/lazy.ts")
+export const unknown = (specifier: string) => import(specifier)
 `
     })
 
-    expect(run(cwd, "packages/foo/src/internal/lazy.ts")).toEqual([
-      `@internal export "unused" is not used by production sources`
-    ])
-  })
-
-  it("counts only members accessed on dynamically imported modules as usage", () => {
-    const cwd = writeFixture({
-      "packages/foo/src/internal/lazy.ts": `/** @internal */
-export const viaBinding = 1
-
-/** @internal */
-export const viaThen = 2
-
-/** @internal */
-export const viaExpression = 3
-
-/** @internal */
-export const unused = 4
-`,
-      "packages/foo/src/Consumer.ts": `export const binding = async () => {
-  const module = await import("./internal/lazy.ts")
-  return module.viaBinding
-}
-
-export const then = () => import("./internal/lazy.ts").then((module) => module.viaThen)
-
-export const expression = async () => (await import("./internal/lazy.ts")).viaExpression
-
-export const opaque = () => import("./internal/lazy.ts")
-`
-    })
-
-    expect(run(cwd, "packages/foo/src/internal/lazy.ts")).toEqual([
-      `@internal export "unused" is not used by production sources`
+    assert.deepStrictEqual(run(cwd, "packages/foo/src/internal/lazy.ts"), [])
+    assert.deepStrictEqual(run(cwd, "packages/foo/src/internal/unrelated.ts"), [
+      `@internal export "first" is not used by production sources`
     ])
   })
 
