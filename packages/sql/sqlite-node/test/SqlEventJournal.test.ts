@@ -1,6 +1,6 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
@@ -39,6 +39,55 @@ const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payloa
 
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
+
+// Fresh module instances keep their own entry id clock. They load before any
+// test runs, so loading them cannot stall running tests.
+const isolate = () => {
+  vi.resetModules()
+  return Promise.all([
+    import("effect/Effect"),
+    import("effect/eventlog/EventJournal"),
+    import("effect/eventlog/SqlEventJournal"),
+    import("effect/sql/SqlClient"),
+    import("@effect/sql-sqlite-node/SqliteClient"),
+    import("effect/reactivity/Reactivity")
+  ]).then(([Effect, EventJournal, SqlEventJournal, SqlClient, SqliteClient, Reactivity]) => ({
+    Effect,
+    EventJournal,
+    SqlEventJournal,
+    SqlClient,
+    SqliteClient,
+    Reactivity
+  }))
+}
+// Stands in for another process.
+const OtherProcess = await isolate()
+// Importing the maximum timestamp can exhaust the entry id clock of its module.
+const IsolatedRolledBackImport = await isolate()
+
+// Saturated `rand_a` bits sort the imported entry above every local id counter
+// in the same millisecond.
+const importFromOtherProcess = (filename: string, msecs: number) => {
+  const { Effect, EventJournal, Reactivity, SqlClient, SqlEventJournal, SqliteClient } = OtherProcess
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  id[6] = 0x7f
+  id[7] = 0xff
+  const entry = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+  return Effect.runPromise(
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+        effect: () => Effect.void
+      })
+      return id
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer))
+  )
+}
 
 describe("SqlEventJournal", () => {
   ConflictsTest.suite(makeJournal)
@@ -185,6 +234,76 @@ describe("SqlEventJournal", () => {
         assert.deepStrictEqual((yield* Queue.take(results)).map((entry) => entry.idString), [entry.idString])
       }).pipe(Effect.provide(layer))
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it.effect("writeMany generates ids after entries another process imported into the shared database", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const filename = (yield* fs.makeTempDirectoryScoped()) + "/journal.db"
+      const sql = yield* SqliteClient.make({ filename })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      // This process's clock lags the entry the other process imports.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const imported = yield* Effect.promise(() => importFromOtherProcess(filename, millis))
+      const [local] = yield* journal.writeMany({ entries: [localEntry("key")], effect: Effect.succeed })
+      assert.strictEqual(EventJournal.EntryIdOrder(imported, local.id), -1)
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it("keeps local writes working after an enclosing transaction rolls back an import at the maximum timestamp and a write after it", async () => {
+    const { Effect, EventJournal, Reactivity, SqlClient, SqlEventJournal, SqliteClient } = IsolatedRolledBackImport
+    const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+    id[6] = 0x7f
+    id[7] = 0xff
+    const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+      disableChecks: true
+    })
+    const { entries, rolledBack, written } = await Effect.runPromise(
+      Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename: ":memory:" })
+        const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+        // The import itself succeeds, and a local write in the same transaction
+        // reads it before it commits. The transaction around both then fails.
+        const rolledBack = yield* journal.writeFromRemote({
+          remoteId: EventJournal.makeRemoteIdUnsafe(),
+          entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+          effect: () => Effect.void
+        }).pipe(
+          Effect.andThen(Effect.exit(journal.write({ ...localEntry("key"), effect: Effect.succeed }))),
+          Effect.andThen(Effect.fail("rolled back")),
+          sql.withTransaction,
+          Effect.exit
+        )
+        const written = yield* Effect.exit(journal.write({ ...localEntry("key"), effect: Effect.succeed }))
+        return { rolledBack, written, entries: (yield* journal.entries).map((entry) => entry.idString) }
+      }).pipe(Effect.scoped, Effect.provide(Reactivity.layer))
+    )
+    assert.strictEqual(rolledBack._tag, "Failure")
+    if (written._tag === "Failure") return assert.fail("the local write failed after the import was rolled back")
+    assert.deepStrictEqual(entries, [written.value.idString])
+  })
+
+  it.effect("orders a local write after an import earlier in the same transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const journal = yield* SqlEventJournal.make().pipe(Effect.provideService(SqlClient.SqlClient, sql))
+      // Ahead of this process's clock, with saturated `rand_a` bits.
+      const id = EventJournal.makeEntryIdUnsafe({
+        msecs: EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      })
+      id[6] = 0x7f
+      id[7] = 0xff
+      const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+        disableChecks: true
+      })
+      const local = yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+        effect: () => Effect.void
+      }).pipe(
+        Effect.andThen(journal.write({ ...localEntry("key"), effect: Effect.succeed })),
+        sql.withTransaction
+      )
+      assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("rolls back a failed same-client handler transaction with the journal and redelivers the batch", () =>
     Effect.gen(function*() {

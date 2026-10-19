@@ -1,6 +1,6 @@
 // oxlint-disable-next-line no-unassigned-import
 import "fake-indexeddb/auto"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
@@ -120,13 +120,13 @@ const openVersion1 = (database: string) => {
 const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
-const countTransactions = (database: string) =>
+const countTransactions = (database: string, transactionMode?: IDBTransactionMode) =>
   Effect.acquireRelease(
     Effect.sync(() => {
       const transactions = { opened: 0 }
       const original = IDBDatabase.prototype.transaction
       IDBDatabase.prototype.transaction = function(this: IDBDatabase, storeNames, mode, options) {
-        if (this.name === database) transactions.opened++
+        if (this.name === database && (transactionMode === undefined || mode === transactionMode)) transactions.opened++
         return original.call(this, storeNames, mode, options)
       }
       return { transactions, original }
@@ -136,6 +136,40 @@ const countTransactions = (database: string) =>
         IDBDatabase.prototype.transaction = original
       })
   ).pipe(Effect.map(({ transactions }) => transactions))
+
+// Fresh module instances keep their own entry id clock. They load before any
+// test runs, so loading them cannot stall running tests.
+const isolate = () => {
+  vi.resetModules()
+  return Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
+    [Effect, EventJournal]
+  ) => ({ Effect, EventJournal }))
+}
+// Stands in for another tab.
+const OtherTab = await isolate()
+// Importing the maximum timestamp can exhaust the entry id clock of its module.
+const IsolatedFailedImport = await isolate()
+
+// Saturated `rand_a` bits sort the imported entry above every local id counter
+// in the same millisecond.
+const importFromOtherTab = (database: string, msecs: number) => {
+  const { Effect, EventJournal } = OtherTab
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  id[6] = 0x7f
+  id[7] = 0xff
+  const entry = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+  return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+    const journal = yield* EventJournal.makeIndexedDb({ database })
+    yield* journal.writeFromRemote({
+      remoteId: EventJournal.makeRemoteIdUnsafe(),
+      entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+      effect: () => Effect.void
+    })
+    return id
+  })))
+}
 
 describe("EventJournal.makeIndexedDb", () => {
   ConflictsTest.suite(Effect.suspend(() => EventJournal.makeIndexedDb({ database: uniqueName("conflicts") })))
@@ -288,7 +322,8 @@ describe("EventJournal.makeIndexedDb", () => {
       const database = uniqueName("journal")
       const journal = yield* EventJournal.makeIndexedDb({ database })
       const changes = yield* journal.changes
-      const transactions = yield* countTransactions(database)
+      // Clock observations may read separately; the batch must still use one write transaction.
+      const transactions = yield* countTransactions(database, "readwrite")
       const local = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
       const entries = [local("a"), local("b"), local("c")] as const
       const failed = yield* Effect.exit(journal.writeMany({ entries, effect: () => Effect.fail("callback failed") }))
@@ -311,6 +346,48 @@ describe("EventJournal.makeIndexedDb", () => {
         published: ids
       })
     }))
+
+  it.effect("writeMany generates ids after entries another tab imported into the shared database", () =>
+    Effect.gen(function*() {
+      const database = uniqueName("journal")
+      const journal = yield* EventJournal.makeIndexedDb({ database })
+      // This tab's clock lags the entry the other tab imports.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const imported = yield* Effect.promise(() => importFromOtherTab(database, millis))
+      const [local] = yield* journal.writeMany({
+        entries: [{ event: "Repro", primaryKey: "key", payload: new Uint8Array() }],
+        effect: Effect.succeed
+      })
+      assert.strictEqual(EventJournal.EntryIdOrder(imported, local.id), -1)
+    }))
+
+  it("keeps local writes working after a failed import of an id at the maximum timestamp", async () => {
+    const { Effect, EventJournal } = IsolatedFailedImport
+    const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+    id[6] = 0x7f
+    id[7] = 0xff
+    const remote = new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+      disableChecks: true
+    })
+    const { entries, failed, written } = await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+      const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
+      const failed = yield* Effect.exit(journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+        effect: () => Effect.fail(new EventJournal.EventJournalError({ method: "test", cause: "rejected" }))
+      }))
+      const written = yield* Effect.exit(journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      }))
+      return { failed, written, entries: (yield* journal.entries).map((entry) => entry.idString) }
+    })))
+    assert.strictEqual(failed._tag, "Failure")
+    if (written._tag === "Failure") return assert.fail("the local write failed after the import was rejected")
+    assert.deepStrictEqual(entries, [written.value.idString])
+  })
 
   it.live("writeMany fails when its transaction aborts after the puts succeed", () =>
     Effect.gen(function*() {

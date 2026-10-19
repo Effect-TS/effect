@@ -5,6 +5,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Clock from "../Clock.ts"
 import * as Effect from "../Effect.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
@@ -348,6 +349,7 @@ export const make = (options?: {
       `
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
+    const clock = yield* Clock.Clock
 
     const writeFromRemote = Effect.fnUntraced(function*(options: WriteFromRemoteOptions): Effect.fn.Return<
       {
@@ -432,33 +434,48 @@ export const make = (options?: {
       if (options.entries.length > 0) {
         yield* writeCursor(options.remoteId, EventJournal.nextSequenceAfter(options.entries))
       }
+      yield* EventJournal.warnIfAhead(clock, uncommitted.map((remoteEntry) => remoteEntry.entry.id))
 
       return {
         duplicateEntries
       }
     })
 
+    // Other processes share the database but not the entry id sequence. Ids in
+    // the latest millisecond are few, and comparing them here avoids ordering
+    // id bytes in SQL.
+    const latestEntryIds = sql`
+      SELECT id FROM ${entryTableSql} WHERE timestamp = (SELECT MAX(timestamp) FROM ${entryTableSql})
+    `.pipe(
+      Effect.flatMap(decodeEntryIdRows),
+      Effect.map((rows) => rows.map((row) => row.id))
+    )
+
     const writeMany: EventJournal.EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
-      Effect.uninterruptibleMask((restore) => {
-        const committed = EventJournal.makeEntries(entries)
-        return Effect.gen(function*() {
+      Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
           yield* lockWriters
+          // Rows visible here include an enclosing transaction's uncommitted
+          // ones, which local ids must also sort after.
+          const committed = yield* EventJournal.makeEntries(entries, yield* latestEntryIds)
           const result = yield* restore(effect(committed)).pipe(
             Effect.mapError((error) => new CallbackFailure(error))
           )
           yield* insertEntries(committed.map(toEntryRow))
           yield* insertSequence(committed)
-          return result
+          return { result, committed }
         }).pipe(
           sql.withTransaction,
           Effect.mapError((error) =>
             error instanceof CallbackFailure
               ? error.error
+              : error instanceof EventJournal.EventJournalError
+              ? error
               : new EventJournal.EventJournalError({ cause: error, method: "writeMany" })
           ),
-          Effect.tap(PubSub.publishAll(pubsub, committed))
+          Effect.flatMap(({ committed, result }) => Effect.as(PubSub.publishAll(pubsub, committed), result))
         )
-      }).pipe(withTracerDisabled)
+      ).pipe(withTracerDisabled)
 
     return EventJournal.EventJournal.of({
       entries: sql`SELECT * FROM ${entryTableSql} ORDER BY timestamp ASC`.pipe(

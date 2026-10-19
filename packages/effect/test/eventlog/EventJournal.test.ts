@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Equal, Hash, Option, Schema } from "effect"
+import { Effect, Equal, Hash, Logger, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import { TestClock } from "effect/testing"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
 // `tail` fixes the random id bytes, so entries sharing a millisecond sort in a
@@ -16,6 +17,23 @@ const entry = (msecs: number, event = "Repro", primaryKey = "key", tail?: number
   }, { disableChecks: true })
 }
 
+// Fixes the 12 `rand_a` bits, which local ids use for their counter.
+const remoteEntryWithRandA = (msecs: number, randA: number) => {
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  id[6] = 0x70 | (randA >> 8)
+  id[7] = randA & 0xff
+  return new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+}
+
+const importEntry = (journal: EventJournal.EventJournal["Service"], entry: EventJournal.Entry) =>
+  journal.writeFromRemote({
+    remoteId: EventJournal.makeRemoteIdUnsafe(),
+    entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+    effect: () => Effect.void
+  })
+
 const idStrings = (entries: ReadonlyArray<EventJournal.Entry>) => entries.map((item) => item.idString)
 
 // Preserve the original UUID formatter as the compatibility oracle.
@@ -27,6 +45,28 @@ const legacyStringify = (bytes: Uint8Array): string =>
     bytes.subarray(8, 10),
     bytes.subarray(10, 16)
   ].map((segment) => Array.from(segment, (byte) => byte.toString(16).padStart(2, "0")).join("")).join("-")
+
+// Importing the maximum timestamp can exhaust the entry id clock of its module,
+// so those tests use their own module instances. They load before any test
+// runs, so loading them cannot stall running tests.
+const isolate = () => {
+  vi.resetModules()
+  return Promise.all([import("effect/Effect"), import("effect/eventlog/EventJournal")]).then((
+    [Effect, EventJournal]
+  ) => ({ Effect, EventJournal }))
+}
+const Isolated = await isolate()
+const IsolatedFailedImport = await isolate()
+
+// Saturated `rand_a` bits at the maximum timestamp leave no later local id.
+const maximumEntry = ({ EventJournal }: typeof Isolated) => {
+  const id = EventJournal.makeEntryIdUnsafe({ msecs: 2 ** 48 - 1 })
+  id[6] = 0x7f
+  id[7] = 0xff
+  return new EventJournal.Entry({ id, event: "Repro", primaryKey: "key", payload: new Uint8Array() }, {
+    disableChecks: true
+  })
+}
 
 describe("EventJournal", () => {
   ConflictsTest.suite(EventJournal.makeMemory)
@@ -210,8 +250,8 @@ describe("EventJournal", () => {
   })
 
   it("generates strictly ascending entry ids when the clock stalls or moves backwards", () => {
-    // Later than any clock-based id generated so far in this process.
-    const start = Date.now() + 1_000_000
+    // Later than any id generated or observed so far in this process.
+    const start = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1_000_000
     const now = vi.spyOn(Date, "now").mockReturnValue(start)
     try {
       const ids = Array.from({ length: 10_000 }, () => EventJournal.makeEntryIdUnsafe())
@@ -230,6 +270,126 @@ describe("EventJournal", () => {
       now.mockRestore()
     }
   })
+
+  // These run synchronously so the mocked clock never leaks into concurrent tests.
+  it("generates local ids after imported ids from the same or a later millisecond", () => {
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    // Later than any clock-based id generated so far in this process.
+    const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
+    const now = vi.spyOn(Date, "now").mockReturnValue(millis)
+    try {
+      // Saturated `rand_a` bits sort above every local id counter in the same
+      // millisecond.
+      for (const remote of [remoteEntryWithRandA(millis, 0xfff), remoteEntryWithRandA(millis + 1, 0xfff)]) {
+        Effect.runSync(importEntry(journal, remote))
+        const local = Effect.runSync(journal.write({
+          event: "Repro",
+          primaryKey: "key",
+          payload: new Uint8Array(),
+          effect: Effect.succeed
+        }))
+        assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
+      }
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("continues the local id counter after a low imported rand_a in the same millisecond", () => {
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 1
+    const remote = remoteEntryWithRandA(millis, 5)
+    const now = vi.spyOn(Date, "now").mockReturnValue(millis)
+    try {
+      Effect.runSync(importEntry(journal, remote))
+      const local = Effect.runSync(journal.write({
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array(),
+        effect: Effect.succeed
+      }))
+      assert.strictEqual(EventJournal.EntryIdOrder(remote.id, local.id), -1)
+      // Only a saturated counter needs the next millisecond.
+      assert.strictEqual(EventJournal.entryIdMillis(local.id), millis)
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("never commits a local id below an imported id at the maximum timestamp", () => {
+    const { Effect, EventJournal } = Isolated
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const remote = maximumEntry(Isolated)
+    Effect.runSync(journal.writeFromRemote({
+      remoteId: EventJournal.makeRemoteIdUnsafe(),
+      entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: remote })],
+      effect: () => Effect.void
+    }))
+    // No later id exists, so the write may fail, but it must not commit an id
+    // that sorts before the imported one.
+    Effect.runSyncExit(journal.write({
+      event: "Repro",
+      primaryKey: "key",
+      payload: new Uint8Array(),
+      effect: Effect.succeed
+    }))
+    const below = Effect.runSync(journal.entries).filter((entry) =>
+      EventJournal.EntryIdOrder(entry.id, remote.id) === -1
+    )
+    assert.deepStrictEqual(idStrings(below), [])
+  })
+
+  it("keeps local writes working after a failed import of an id at the maximum timestamp", () => {
+    const { Effect, EventJournal } = IsolatedFailedImport
+    const journal = Effect.runSync(EventJournal.makeMemory)
+    const failed = Effect.runSyncExit(journal.writeFromRemote({
+      remoteId: EventJournal.makeRemoteIdUnsafe(),
+      entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: maximumEntry(IsolatedFailedImport) })],
+      effect: () => Effect.fail(new EventJournal.EventJournalError({ method: "test", cause: "rejected" }))
+    }))
+    const written = Effect.runSyncExit(journal.write({
+      event: "Repro",
+      primaryKey: "key",
+      payload: new Uint8Array(),
+      effect: Effect.succeed
+    }))
+    assert.strictEqual(failed._tag, "Failure")
+    if (written._tag === "Failure") return assert.fail("the local write failed after the import was rejected")
+    assert.deepStrictEqual(idStrings(Effect.runSync(journal.entries)), [written.value.idString])
+  })
+
+  it.effect("logs skew warnings relative to the supplied Clock service", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const hour = 60 * 60 * 1000
+      // Both imports advance the id clock and are over 24 hours ahead of wall time.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 48 * hour
+      yield* TestClock.setTime(millis - 25 * hour)
+      let warnings = 0
+      const logger = Logger.layer([Logger.make(({ logLevel }) => {
+        if (logLevel === "Warn") warnings++
+      })])
+      yield* importEntry(journal, entry(millis - 2 * hour)).pipe(Effect.provide(logger))
+      const warningsWithin24Hours = warnings
+      yield* importEntry(journal, entry(millis)).pipe(Effect.provide(logger))
+      assert.deepStrictEqual({ warningsWithin24Hours, warnings }, { warningsWithin24Hours: 0, warnings: 1 })
+    }))
+
+  it.effect("logs skew warnings relative to the supplied Clock service when local ids are later", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const hour = 60 * 60 * 1000
+      // Local ids follow wall time, which is ahead of the supplied Clock here.
+      const millis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe())
+      yield* TestClock.setTime(millis - 48 * hour)
+      let warnings = 0
+      const logger = Logger.layer([Logger.make(({ logLevel }) => {
+        if (logLevel === "Warn") warnings++
+      })])
+      // 25 hours ahead of the supplied Clock, though behind the local ids.
+      yield* importEntry(journal, entry(millis - 23 * hour)).pipe(Effect.provide(logger))
+      assert.strictEqual(warnings, 1)
+    }))
 
   it.effect("orders imported entries by id and reports conflicts with greater ids per event and key", () =>
     Effect.gen(function*() {
@@ -280,7 +440,7 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(missing, Option.some(expected))
     }))
 
-  it.effect("orders the journal and remote backlogs after a local write following a future import", () =>
+  it.effect("orders a local write after a future import and reports it as a conflict for older imports", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
       const peer = EventJournal.makeRemoteIdUnsafe()
@@ -288,7 +448,9 @@ describe("EventJournal", () => {
       yield* journal.nextRemoteSequence(peer)
       yield* journal.nextRemoteSequence(source)
 
-      const future = entry(281_474_976_710_655)
+      // Ahead of the clock and of any id generated or observed so far in this process.
+      const futureMillis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const future = entry(futureMillis)
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
@@ -300,7 +462,7 @@ describe("EventJournal", () => {
         payload: new Uint8Array(),
         effect: Effect.succeed
       })
-      const imported = entry(281_474_976_710_654)
+      const imported = entry(futureMillis - 1)
       let conflicts: Array<string> = []
       yield* journal.writeFromRemote({
         remoteId: source,
@@ -311,20 +473,20 @@ describe("EventJournal", () => {
           })
       })
 
-      // The unordered journal still reports the newer future entry.
-      assert.deepStrictEqual(conflicts, idStrings([future]))
-      const expected = idStrings([local, imported, future])
+      assert.deepStrictEqual(conflicts, idStrings([future, local]))
+      const expected = idStrings([imported, future, local])
       assert.deepStrictEqual(idStrings(yield* journal.entries), expected)
       const missing = yield* journal.withRemoteUncommited(peer, (entries) => Effect.succeed(idStrings(entries)))
       assert.deepStrictEqual(missing, Option.some(expected))
       const sourceMissing = yield* journal.withRemoteUncommited(source, (entries) => Effect.succeed(idStrings(entries)))
-      assert.deepStrictEqual(sourceMissing, Option.some(idStrings([local, future])))
+      assert.deepStrictEqual(sourceMissing, Option.some(idStrings([future, local])))
     }))
 
   it.effect("reports conflicts in id order after a local write following a future import", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeMemory
-      const future = entry(281_474_976_710_655)
+      const futureMillis = EventJournal.entryIdMillis(EventJournal.makeEntryIdUnsafe()) + 60_000
+      const future = entry(futureMillis)
       yield* journal.writeFromRemote({
         remoteId: EventJournal.makeRemoteIdUnsafe(),
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: future })],
@@ -346,8 +508,8 @@ describe("EventJournal", () => {
           })
       })
 
-      // The journal holds `[future, local]` in commit order here.
-      assert.deepStrictEqual(conflicts, idStrings([local, future]))
+      // The local id continues from the imported one, so it sorts after it.
+      assert.deepStrictEqual(conflicts, idStrings([future, local]))
     }))
 
   it.effect("relays an imported entry to another remote", () =>

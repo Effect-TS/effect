@@ -987,6 +987,9 @@ describe("EventLog", () => {
 
   it.effect("logs remote replay failures and handler logs with the entry annotations", () =>
     Effect.gen(function*() {
+      // The imported entries have wall-clock ids, so align the supplied Clock
+      // with them to keep skew warnings out of the logs.
+      yield* TestClock.setTime(Date.now())
       const logs: Array<{ readonly level: string; readonly annotations: Record<string, unknown> }> = []
       const handled: Array<string> = []
       const done = yield* Queue.unbounded<void>()

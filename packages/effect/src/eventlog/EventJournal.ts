@@ -14,6 +14,7 @@
  */
 import * as Arr from "../Array.ts"
 import type { Brand } from "../Brand.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
@@ -298,8 +299,55 @@ export const EntryId = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayB
  */
 export const EntryIdOrder: Order.Order<EntryId> = entryIdOrder
 
-let lastEntryIdMillis = 0
-let entryIdCounter = 0
+const maxEntryIdMillis = 2 ** 48 - 1
+
+// The millisecond and 12-bit counter of the last id in a sequence of local ids.
+interface EntryIdSequence {
+  millis: number
+  counter: number
+}
+
+const processEntryIds: EntryIdSequence = { millis: 0, counter: 0 }
+
+const nextEntryId = (sequence: EntryIdSequence, now: number): EntryId => {
+  if (now > sequence.millis) {
+    sequence.millis = now
+    sequence.counter = 0
+  } else if (++sequence.counter > 0xfff) {
+    sequence.millis++
+    sequence.counter = 0
+  }
+  // The sequence only moves forward, so once exhausted it stays exhausted.
+  if (sequence.millis > maxEntryIdMillis) {
+    throw new RangeError("The entry id sequence has passed the last UUID v7 millisecond")
+  }
+  const bytes = Uuid.v7Bytes(sequence.millis)
+  // The counter replaces the 12 random `rand_a` bits after the version.
+  bytes[6] = 0x70 | (sequence.counter >> 8)
+  bytes[7] = sequence.counter & 0xff
+  return bytes as EntryId
+}
+
+// The process sequence, or a copy advanced to `floor` when that is later. The
+// copy is never written back, so a floor read from uncommitted rows leaves the
+// process sequence alone.
+const sequenceAfter = (floor: EntryId | undefined): EntryIdSequence => {
+  if (floor === undefined) return processEntryIds
+  const millis = entryIdMillis(floor)
+  // Continuing from the floor's `rand_a` sorts the next id after it.
+  const counter = ((floor[6] & 0x0f) << 8) | floor[7]
+  return millis > processEntryIds.millis || (millis === processEntryIds.millis && counter > processEntryIds.counter)
+    ? { millis, counter }
+    : processEntryIds
+}
+
+const maxEntryId = (ids: Iterable<EntryId>): EntryId | undefined => {
+  let latest: EntryId | undefined
+  for (const id of ids) {
+    if (latest === undefined || EntryIdOrder(id, latest) === 1) latest = id
+  }
+  return latest
+}
 
 /**
  * Generates a UUID v7 `EntryId`, optionally using the supplied millisecond
@@ -317,36 +365,50 @@ let entryIdCounter = 0
  * the clock stalls or moves backwards, ids keep the last millisecond, and
  * after 4096 ids in one millisecond they move to the next one.
  *
+ * The journals generate local ids from this sequence, or from a copy of it
+ * advanced past the latest id in their store, so a local id sorts after every
+ * entry committed to that store, even when the local clock is behind.
+ *
  * **Gotchas**
  *
  * This is unsafe because the generated UUID bytes are cast to the brand without
  * schema validation.
  *
- * Ordering is only guaranteed within one process. Ids from different tabs or
- * devices in the same millisecond sort by their random bytes. Ids created with
- * an explicit `msecs` are not part of the sequence.
+ * Throws a `RangeError` once the sequence passes the last UUID v7 millisecond.
+ * Every later call throws too, because any id it could return would sort before
+ * one already generated.
+ *
+ * Ids created with an explicit `msecs` are not part of the sequence, and clamp
+ * to the UUID v7 range.
  *
  * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
-export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId => {
-  if (options.msecs !== undefined) {
-    return Uuid.v7Bytes(options.msecs) as EntryId
-  }
-  const now = DateTime.nowUnsafe().epochMilliseconds
-  if (now > lastEntryIdMillis) {
-    lastEntryIdMillis = now
-    entryIdCounter = 0
-  } else if (++entryIdCounter > 0xfff) {
-    lastEntryIdMillis++
-    entryIdCounter = 0
-  }
-  const bytes = Uuid.v7Bytes(lastEntryIdMillis)
-  // The counter replaces the 12 random `rand_a` bits after the version.
-  bytes[6] = 0x70 | (entryIdCounter >> 8)
-  bytes[7] = entryIdCounter & 0xff
-  return bytes as EntryId
+export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
+  options.msecs !== undefined
+    ? Uuid.v7Bytes(options.msecs) as EntryId
+    : nextEntryId(processEntryIds, Date.now())
+
+// Imported ids further ahead of the local clock than this are logged.
+const maxClockSkewMillis = 24 * 60 * 60 * 1000
+
+/**
+ * Logs a warning when the latest of the imported `ids` is more than 24 hours
+ * ahead of the supplied `clock`. Memory and IndexedDB journals call this after
+ * commit; SQL calls it at the end of its transaction body, so a later rollback
+ * (including an enclosing transaction rollback) can still leave a warning.
+ *
+ * @internal
+ */
+export const warnIfAhead = (clock: Clock.Clock, ids: Iterable<EntryId>): Effect.Effect<void> => {
+  const latest = maxEntryId(ids)
+  if (latest === undefined) return Effect.void
+  const ahead = entryIdMillis(latest) - clock.currentTimeMillisUnsafe()
+  if (ahead <= maxClockSkewMillis) return Effect.void
+  return Effect.logWarning(
+    `Imported an entry id ${Math.round(ahead / 3_600_000)} hours ahead of the local clock`
+  ).pipe(Effect.annotateLogs({ service: "EventJournal", entryId: Uuid.stringify(latest) }))
 }
 
 /**
@@ -496,19 +558,31 @@ export const entryFromFields = (fields: typeof EntryFields.Type): Entry => Schem
 
 const decodeEntryFieldsArray = Schema.decodeUnknownEffect(Schema.Array(SchemaBinary.toCodec(EntryFields)))
 
-/** @internal */
+/**
+ * Creates local entries with ids after every id in `after`, normally the
+ * latest id in the journal's store.
+ *
+ * @internal
+ */
 export const makeEntries = (
   entries: Arr.NonEmptyReadonlyArray<
     { readonly event: string; readonly primaryKey: string; readonly payload: Uint8Array }
-  >
-): Arr.NonEmptyArray<Entry> =>
-  Arr.map(entries, ({ event, payload, primaryKey }) =>
-    new Entry({
-      id: makeEntryIdUnsafe(),
-      event,
-      primaryKey,
-      payload
-    }, { disableChecks: true }))
+  >,
+  after: Iterable<EntryId>
+): Effect.Effect<Arr.NonEmptyArray<Entry>, EventJournalError> =>
+  Effect.try({
+    try: () => {
+      const sequence = sequenceAfter(maxEntryId(after))
+      return Arr.map(entries, ({ event, payload, primaryKey }) =>
+        new Entry({
+          id: nextEntryId(sequence, Date.now()),
+          event,
+          primaryKey,
+          payload
+        }, { disableChecks: true }))
+    },
+    catch: (cause) => new EventJournalError({ method: "writeMany", cause })
+  })
 
 /**
  * Creates an in-memory `EventJournal` service.
@@ -524,11 +598,17 @@ export const makeEntries = (
  */
 export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(function*() {
   const journal: Array<Entry> = []
-  // Kept in id order. Local writes append in commit order, so a local write
-  // after an import with a greater id leaves the journal unordered until the
-  // next import re-sorts it. Remote backlogs are subsequences of the journal,
-  // so one flag covers them too.
+  // Local writes append in commit order, which unserialized direct callers can
+  // make differ from id order, leaving the journal unordered until the next
+  // import re-sorts it. Remote backlogs are subsequences of the journal, so one
+  // flag covers them too.
   let journalSorted = true
+  // The latest committed id, the floor for local ids.
+  let latestId: EntryId | undefined
+  const commitLatest = (ids: Iterable<EntryId>) => {
+    latestId = maxEntryId(latestId === undefined ? ids : [latestId, ...ids])
+  }
+  const clock = yield* Clock.Clock
   const byId = new Map<string, Entry>()
   const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
   const pubsub = yield* PubSub.unbounded<Entry>()
@@ -553,7 +633,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
 
   const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
     Effect.acquireUseRelease(
-      Effect.sync(() => makeEntries(entries)),
+      Effect.suspend(() => makeEntries(entries, latestId === undefined ? [] : [latestId])),
       effect,
       (entries, exit) =>
         Effect.suspend(() => {
@@ -569,6 +649,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
               remote.missing.push(entry)
             })
           }
+          commitLatest(entries.map((entry) => entry.id))
           return PubSub.publishAll(pubsub, entries)
         })
     )
@@ -624,6 +705,8 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         }
       })
       journalSorted = true
+      commitLatest(imported.map((entry) => entry.id))
+      yield* warnIfAhead(clock, imported.map((entry) => entry.id))
       return {
         duplicateEntries
       }
@@ -657,6 +740,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     destroy: Effect.sync(() => {
       journal.length = 0
       journalSorted = true
+      latestId = undefined
       byId.clear()
       remotes.clear()
     }),
@@ -775,24 +859,45 @@ export const makeIndexedDb = (options?: {
     )
 
     const pubsub = yield* PubSub.unbounded<Entry>()
+    const clock = yield* Clock.Clock
+
+    // Other tabs share the database but not the entry id sequence.
+    const latestEntryId = Effect.callback<ReadonlyArray<EntryId>, EventJournalError>((resume) => {
+      const tx = db.transaction("entries", "readonly")
+      const request = tx.objectStore("entries").openKeyCursor(null, "prev")
+      onTransactionDone(tx, "writeMany", resume, () => {
+        const key = request.result?.primaryKey as ArrayBuffer | ArrayBufferView | undefined
+        if (key === undefined) return []
+        return [
+          (ArrayBuffer.isView(key)
+            ? new Uint8Array(key.buffer, key.byteOffset, key.byteLength)
+            : new Uint8Array(key)) as EntryId
+        ]
+      })
+      return Effect.sync(() => tx.abort())
+    })
 
     const writeMany: EventJournal["Service"]["writeMany"] = ({ effect, entries }) =>
-      Effect.uninterruptibleMask((restore) => {
-        const committed = makeEntries(entries)
-        return restore(effect(committed)).pipe(
-          Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
-            const tx = db.transaction(["entries", "entrySequence"], "readwrite")
-            const store = tx.objectStore("entries")
-            const sequence = tx.objectStore("entrySequence")
-            for (const entry of committed) {
-              store.put(encodeEntryIdb(entry))
-              sequence.add(entry.id as IDBValidKey)
-            }
-            onTransactionDone(tx, "writeMany", resume, constVoid)
-          })),
-          Effect.tap(PubSub.publishAll(pubsub, committed))
+      Effect.uninterruptibleMask((restore) =>
+        latestEntryId.pipe(
+          Effect.flatMap((latest) => makeEntries(entries, latest)),
+          Effect.flatMap((committed) =>
+            restore(effect(committed)).pipe(
+              Effect.tap(Effect.callback<void, EventJournalError>((resume) => {
+                const tx = db.transaction(["entries", "entrySequence"], "readwrite")
+                const store = tx.objectStore("entries")
+                const sequence = tx.objectStore("entrySequence")
+                for (const entry of committed) {
+                  store.put(encodeEntryIdb(entry))
+                  sequence.add(entry.id as IDBValidKey)
+                }
+                onTransactionDone(tx, "writeMany", resume, constVoid)
+              })),
+              Effect.tap(PubSub.publishAll(pubsub, committed))
+            )
+          )
         )
-      })
+      )
 
     return EventJournal.of({
       entries: idbReq("entries", () =>
@@ -891,6 +996,7 @@ export const makeIndexedDb = (options?: {
           onTransactionDone(tx, "writeFromRemote", resume, constVoid)
           return Effect.sync(() => tx.abort())
         })
+        yield* warnIfAhead(clock, uncommittedRemotes.map((remoteEntry) => remoteEntry.entry.id))
         return {
           duplicateEntries
         }
