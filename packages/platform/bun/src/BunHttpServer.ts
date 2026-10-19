@@ -15,6 +15,7 @@
 import type { Server as BunServer, ServerWebSocket } from "bun"
 import type * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/Config"
 import * as Context from "effect/Context"
@@ -291,10 +292,13 @@ const makeResponse = (
     case "Stream": {
       return new Response(
         Stream.toReadableStreamWith(
-          Stream.unwrap(Effect.withFiber((fiber) => {
-            Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
-          })),
+          // Transform the body eagerly so its scope finalizer is registered before the first pull.
+          Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
+            Effect.withFiber((fiber) => {
+              Fiber.runIn(fiber, scope)
+              return Channel.toTransform(body.stream.channel)(upstream, streamScope)
+            })
+          )),
           context
         ),
         fields
