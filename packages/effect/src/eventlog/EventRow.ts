@@ -2,8 +2,10 @@
  * Mutable rows that converge across event-log replicas.
  *
  * Each row type has one event with `set`, `patch` and `remove` payloads, keyed
- * by one or more of its fields. Pass the result of `make` to `EventGroup.add`
- * and write its payloads with `EventLog.write` or `EventLog.writeMany`.
+ * by one or more of its fields. Pass the result of `make` to `EventGroup.add`.
+ * Its `set`, `patch` and `remove` constructors return `{ event, payload }`,
+ * which spreads into `EventLog.write` and serves as an item of
+ * `EventLog.writeMany` or an argument of an `EventLog.makeClient` client.
  *
  * `handler` resolves conflicts per top-level field and calls at most one
  * storage callback. Replicas converge to the result of applying entries in
@@ -79,8 +81,7 @@
  *   const log = yield* EventLog.EventLog
  *   yield* log.write({
  *     schema: EventLog.schema(Groceries),
- *     event: "grocery",
- *     payload: Grocery.patch(id, { completed: true })
+ *     ...Grocery.patch(id, { completed: true })
  *   })
  * })
  * ```
@@ -111,7 +112,7 @@
  * const v1 = EventGroup.empty.add(ItemV1).events.item.payloadSchemaBinary
  * const v2 = EventGroup.empty.add(ItemV2).events.item.payloadSchemaBinary
  *
- * const written = Schema.encodeUnknownSync(v1)(ItemV1.set({ id: "a", quantity: "3" }))
+ * const written = Schema.encodeUnknownSync(v1)(ItemV1.set({ id: "a", quantity: "3" }).payload)
  * const decoded = Schema.decodeUnknownSync(v2)(written)
  * decoded // => { _tag: "set", row: { id: "a", quantity: 3, note: null } }
  * ```
@@ -261,13 +262,31 @@ export type Payload<
 > = Schema.Schema.Type<PayloadSchema<Fields, Key, KeySchema>>
 
 /**
+ * A row event to write, as returned by the `set`, `patch` and `remove`
+ * constructors of a row.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type Write<
+  Tag extends string,
+  Fields extends Schema.Struct.Fields,
+  Key extends keyof Fields,
+  KeySchema extends Schema.Constraint = Fields[Key]
+> = {
+  readonly event: Tag
+  readonly payload: Payload<Fields, Key, KeySchema>
+}
+
+/**
  * A row type that syncs through an `EventLog`.
  *
  * **Details**
  *
  * Includes `EventGroup.add` options, the row schema, its key fields and
- * payload constructors. The row key is the event primary key; success is
- * `void`.
+ * constructors for the events to write. The row key is the event primary key;
+ * success is `void`.
  *
  * `Key` is the union of the key fields. `KeySchema` is the schema of the key
  * in `patch` and `remove` payloads and callbacks: the field's schema for a
@@ -300,7 +319,7 @@ export interface EventRow<
   /**
    * Replaces the whole row, creating it if missing.
    */
-  readonly set: (row: Schema.Struct<Fields>["Type"]) => Payload<Fields, Key, KeySchema>
+  readonly set: (row: Schema.Struct<Fields>["Type"]) => Write<Tag, Fields, Key, KeySchema>
 
   /**
    * Writes fields of an existing row.
@@ -318,12 +337,12 @@ export interface EventRow<
   readonly patch: (
     key: Schema.Schema.Type<KeySchema>,
     fields: Schema.Struct<PatchFields<Fields, Key>>["Type"]
-  ) => Payload<Fields, Key, KeySchema>
+  ) => Write<Tag, Fields, Key, KeySchema>
 
   /**
    * Deletes the row.
    */
-  readonly remove: (key: Schema.Schema.Type<KeySchema>) => Payload<Fields, Key, KeySchema>
+  readonly remove: (key: Schema.Schema.Type<KeySchema>) => Write<Tag, Fields, Key, KeySchema>
 }
 
 /**
@@ -405,9 +424,9 @@ export const make = <
     payload,
     success: Schema.Void,
     error: options.error ?? Schema.Never,
-    set: (row: unknown) => ({ _tag: "set", row }),
-    patch: (key: unknown, fields: unknown) => ({ _tag: "patch", key, fields }),
-    remove: (key: unknown) => ({ _tag: "remove", key })
+    set: (row: unknown) => ({ event: tag, payload: { _tag: "set", row } }),
+    patch: (key: unknown, fields: unknown) => ({ event: tag, payload: { _tag: "patch", key, fields } }),
+    remove: (key: unknown) => ({ event: tag, payload: { _tag: "remove", key } })
   } as any
 }
 
