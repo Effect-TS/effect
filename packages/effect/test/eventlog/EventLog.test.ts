@@ -221,6 +221,86 @@ const makeObservedEntry = Effect.fnUntraced(function*(event: string, id: string,
 })
 
 describe("EventLog", () => {
+  it.effect("does not acknowledge undecodable remote entries before a compatible handler can replay them", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const entry = yield* makeCompactionEntry({ id: "user-1" })
+      const handled: Array<string> = []
+      const snapshots: Array<{ readonly stored: Array<string>; readonly nextSequence: number }> = []
+      const requested: Array<number> = []
+
+      // The first app requires a name; the second can decode the stored payload.
+      for (const compatible of [false, true]) {
+        const group = EventGroup.empty.add({
+          tag: "UserCreated",
+          primaryKey: (payload) => payload.id,
+          payload: Schema.Struct({
+            id: Schema.String,
+            name: compatible ? Schema.optionalKey(Schema.String) : Schema.String
+          })
+        })
+        const done = yield* Queue.unbounded<void>()
+        const subscribed = yield* Queue.unbounded<number>()
+        const handlers = EventLog.group(
+          group,
+          (handlers) =>
+            handlers.handle("UserCreated", ({ payload }) =>
+              Effect.sync(() => {
+                handled.push(payload.id)
+              }))
+        ).pipe(Layer.provide(EventLog.layerRegistry))
+        const layer = EventLog.layer(EventLog.schema(group), handlers).pipe(
+          Layer.provide([
+            Layer.succeed(EventJournal.EventJournal, journal),
+            Layer.succeed(EventLog.Identity, testIdentity("log")),
+            Layer.succeed(
+              EventLog.HandlerTransaction,
+              (effect) => Effect.ensuring(effect, Queue.offer(done, undefined))
+            )
+          ])
+        )
+
+        yield* Effect.gen(function*() {
+          const registry = yield* EventLog.Registry
+          yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+            id: remoteId,
+            changes: Effect.fnUntraced(function*({ startSequence }) {
+              const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+              if (startSequence === 0) {
+                yield* Queue.offer(changes, new EventJournal.RemoteEntry({ remoteSequence: 0, entry }))
+              }
+              yield* Queue.offer(subscribed, startSequence)
+              return changes
+            }),
+            write: () => Effect.void,
+            whenAuthenticated: (effect) => effect
+          }))
+          const startSequence = yield* Queue.take(subscribed)
+          requested.push(startSequence)
+          if (startSequence === 0) yield* Queue.take(done)
+          // Wait for the journal transaction, not merely the handler, to finish.
+          snapshots.push(
+            yield* journal.withLock(EventLogMessage.StoreId.make("default"))(
+              Effect.all({
+                stored: Effect.map(journal.entries, (entries) => entries.map((entry) => entry.idString)),
+                nextSequence: journal.nextRemoteSequence(remoteId)
+              })
+            )
+          )
+        }).pipe(Effect.provide(layer), Effect.scoped)
+      }
+
+      assert.deepStrictEqual({ snapshots, requested, handled }, {
+        snapshots: [
+          { stored: [], nextSequence: 0 },
+          { stored: [entry.idString], nextSequence: 1 }
+        ],
+        requested: [0, 0],
+        handled: ["user-1"]
+      })
+    }))
+
   it.effect("decodes shared conflicts once per remote replay batch", () =>
     Effect.gen(function*() {
       const decoded: Array<number> = []
@@ -726,9 +806,8 @@ describe("EventLog", () => {
         UserGroup,
         (handlers) =>
           handlers.handle("UserCreated", ({ payload }) =>
-            Effect.gen(function*() {
+            Effect.sync(() => {
               timeline.push(`handle ${payload.id}`)
-              if (payload.id === "user-1") return yield* Effect.die("handler failed")
             }))
       ).pipe(
         Layer.merge(EventLog.groupReactivity(UserGroup, ["users"])),
@@ -778,8 +857,7 @@ describe("EventLog", () => {
         yield* offer(users)
         yield* Queue.take(invalidated)
 
-        // A failed handler is logged and its batch still commits; duplicates
-        // invalidate with their batch rather than once per entry.
+        // Duplicates invalidate with their batch rather than once per entry.
         assert.deepStrictEqual(timeline, [
           "begin",
           "handle user-1",
@@ -985,62 +1063,79 @@ describe("EventLog", () => {
       ])
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect("logs remote replay failures and handler logs with the entry annotations", () =>
+  it.effect("logs a failed remote replay batch and redelivers it uncommitted after a backoff", () =>
     Effect.gen(function*() {
       // The imported entries have wall-clock ids, so align the supplied Clock
       // with them to keep skew warnings out of the logs.
       yield* TestClock.setTime(Date.now())
+      const journal = yield* EventJournal.makeMemory
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
       const logs: Array<{ readonly level: string; readonly annotations: Record<string, unknown> }> = []
       const handled: Array<string> = []
-      const done = yield* Queue.unbounded<void>()
-      const handlers = EventLog.group(UserGroup, (handlers) =>
-        handlers.handle("UserCreated", ({ payload }) =>
-          Effect.gen(function*() {
-            handled.push(payload.id)
-            if (payload.id === "user-1") {
-              yield* Effect.log("handled")
-            }
-            if (payload.id === "user-2") {
-              return yield* Effect.die("handler failed")
-            }
-          }))).pipe(Layer.provide(EventLog.layerRegistry))
+      const subscribed = yield* Queue.unbounded<number>()
+      const finished = yield* Queue.unbounded<void>()
+      let failures = 0
+      const handlers = EventLog.group(
+        UserGroup,
+        (handlers) =>
+          handlers.handle("UserCreated", ({ payload }) =>
+            Effect.gen(function*() {
+              handled.push(payload.id)
+              if (payload.id === "user-1") {
+                yield* Effect.log("handled")
+              }
+              // Fails on the first delivery only, like a transient handler error.
+              if (payload.id === "user-2" && failures++ === 0) {
+                return yield* Effect.die("handler failed")
+              }
+            }))
+      ).pipe(Layer.provide(EventLog.layerRegistry))
       const layer = EventLog.layer(schema, handlers).pipe(
         Layer.provide([
-          EventJournal.layerMemory,
+          Layer.succeed(EventJournal.EventJournal, journal),
           Layer.succeed(EventLog.Identity, testIdentity("log")),
-          Layer.succeed(EventLog.HandlerTransaction, (effect) =>
-            Effect.ensuring(effect, Queue.offer(done, undefined)))
+          Layer.succeed(
+            EventLog.HandlerTransaction,
+            (effect) => Effect.ensuring(effect, Queue.offer(finished, undefined))
+          )
         ])
       )
       const user1 = yield* makeCompactionEntry({ id: "user-1" })
       const user2 = yield* makeCompactionEntry({ id: "user-2" })
-      const undecodable = new EventJournal.Entry({
-        id: EventJournal.makeEntryIdUnsafe(),
-        event: "UserCreated",
-        primaryKey: "user-3",
-        payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
-          list: "list-1",
-          item: 1
+      // Waits for the journal transaction, not merely the handlers, to finish.
+      const snapshot = journal.withLock(EventLogMessage.StoreId.make("default"))(
+        Effect.all({
+          stored: Effect.map(journal.entries, (entries) => entries.map((entry) => entry.idString)),
+          nextSequence: journal.nextRemoteSequence(remoteId)
         })
-      }, { disableChecks: true })
-      const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
-      yield* Queue.offerAll(
-        changes,
-        [user1, user2, undecodable].map((entry, remoteSequence) =>
-          new EventJournal.RemoteEntry({ remoteSequence, entry })
-        )
       )
 
       yield* Effect.gen(function*() {
         const registry = yield* EventLog.Registry
         yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
-          id: EventJournal.makeRemoteIdUnsafe(),
-          changes: () =>
-            Effect.succeed(changes),
+          id: remoteId,
+          changes: Effect.fnUntraced(function*({ startSequence }) {
+            const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+            yield* Queue.offerAll(
+              changes,
+              [user1, user2].flatMap((entry, remoteSequence) =>
+                remoteSequence < startSequence ? [] : [new EventJournal.RemoteEntry({ remoteSequence, entry })]
+              )
+            )
+            yield* Queue.offer(subscribed, startSequence)
+            return changes
+          }),
           write: () => Effect.void,
           whenAuthenticated: (effect) => effect
         }))
-        yield* Queue.take(done)
+        assert.strictEqual(yield* Queue.take(subscribed), 0)
+        yield* Queue.take(finished)
+        assert.deepStrictEqual(yield* snapshot, { stored: [], nextSequence: 0 })
+
+        yield* TestClock.adjust("10 seconds")
+        assert.strictEqual(yield* Queue.take(subscribed), 0)
+        yield* Queue.take(finished)
+        assert.deepStrictEqual(yield* snapshot, { stored: [user1.idString, user2.idString], nextSequence: 2 })
       }).pipe(
         Effect.provide(layer),
         Effect.provide(Logger.layer([Logger.make((options) => {
@@ -1056,11 +1151,12 @@ describe("EventLog", () => {
         effect: "writeFromRemote",
         entryId: entry.idString
       })
-      assert.deepStrictEqual(handled, ["user-1", "user-2"])
+      assert.deepStrictEqual(handled, ["user-1", "user-2", "user-1", "user-2"])
       assert.deepStrictEqual(logs, [
         { level: "Info", annotations: annotations(user1) },
         { level: "Error", annotations: annotations(user2) },
-        { level: "Error", annotations: annotations(undecodable) }
+        { level: "Error", annotations: { service: "EventLog", effect: "runRemote consume" } },
+        { level: "Info", annotations: annotations(user1) }
       ])
     }))
 

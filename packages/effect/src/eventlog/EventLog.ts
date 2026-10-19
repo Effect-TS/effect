@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as FiberMap from "../FiberMap.ts"
@@ -488,17 +489,18 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
  *
  * **Gotchas**
  *
- * - During replay, errors returned by a handler are logged and skipped. They
- *   do not fail the transaction, and the entry is still committed to the
- *   journal.
+ * - A replayed entry that fails to decode, or whose handler fails or dies,
+ *   fails the whole batch, which is retried as above. A failure that repeats
+ *   on every attempt, such as a payload written by a newer schema, stops sync
+ *   from that remote until the app is updated to handle it.
  * - In a local write, an error returned by a handler fails the transaction
  *   and the write, and the journal commits none of its events.
  * - Failures that abort the underlying transaction fail the whole batch, even
- *   when replay catches the handler's error. In IndexedDB, any failed request
- *   that is not prevented aborts the whole transaction, and in PostgreSQL so
- *   does a failed statement outside a savepoint. A replayed batch is then
- *   retried as above, so a failure that repeats on every attempt stops sync
- *   from that remote until it is fixed.
+ *   when the handler recovers from them. In IndexedDB, any failed request that
+ *   is not prevented aborts the whole transaction, and in PostgreSQL so does a
+ *   failed statement outside a savepoint.
+ * - Failing the batch does not undo side effects of handlers that already ran.
+ *   Only changes made inside a transaction that rolls back are undone.
  * - Replay handlers must tolerate running more than once for the same entry.
  * - Unless the transaction and the journal share a database connection, the
  *   transaction commits before the journal does, and the two commits are not
@@ -509,8 +511,7 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
  *   from yielding to the scheduler while it is open, by providing
  *   `References.PreventSchedulerYield` as `withTransaction` from
  *   `@effect/platform-browser` does. Otherwise it can commit partway through a
- *   batch, and the remaining handlers fail. During replay those errors are
- *   logged and skipped, leaving the projection silently out of date.
+ *   batch, and the remaining handlers fail.
  * - The transaction stays open for the whole batch, so other read-write
  *   transactions on the same tables wait for it.
  * - The transaction must not change the error or success of the wrapped
@@ -924,9 +925,10 @@ export const groupReactivity = <Events extends Event.Any>(
  * **Details**
  *
  * The returned handler decodes the entry and conflicts with the registered event
- * schema, runs the matching handler with the supplied identity and store id, logs
- * failures, and invalidates configured reactivity keys. Invalidations are
- * deferred until the end of an enclosing `Reactivity.withBatch`.
+ * schema, runs the matching handler with the supplied identity and store id, and
+ * invalidates configured reactivity keys. Decode and handler failures are logged
+ * and fail the effect. Invalidations are deferred until the end of an enclosing
+ * `Reactivity.withBatch`.
  *
  * @stability unstable
  * @category handlers
@@ -1006,7 +1008,7 @@ const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemo
     function*(
       { conflicts, entry }: ReplayInput,
       batch: ReplayBatch
-    ): Effect.fn.Return<void, Schema.SchemaError> {
+    ): Effect.fn.Return<void, unknown> {
       const handler = options.handlers.get(entry.event) as Handlers.Item<any> | undefined
       if (!handler) {
         return yield* Effect.logDebug(`Event handler not found for: "${entry.event}"`)
@@ -1046,7 +1048,7 @@ const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemo
 
       yield* invalidateEntry(options.reactivity, options.reactivityKeys, entry)
     },
-    Effect.catchCause(Effect.logError),
+    Effect.tapCauseIf((cause) => !Cause.hasInterruptsOnly(cause), Effect.logError),
     (effect, { entry }) =>
       Effect.annotateLogs(effect, {
         ...options.logAnnotations,
@@ -1158,7 +1160,8 @@ const make = Effect.gen(function*() {
                 return output
               })
               : undefined,
-            effect: (batch) => handlerTransaction(replayFromRemote(batch))
+            // A failed batch is not committed, so the remote redelivers it on retry.
+            effect: (batch) => handlerTransaction(replayFromRemote(batch)).pipe(Effect.orDie)
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),
