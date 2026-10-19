@@ -509,7 +509,7 @@ describe("Atom", { concurrent: false }, () => {
     { reconfigure: false, expected: 0 },
     { reconfigure: true, expected: 1 }
   ])(
-    "runtime atom with keepInitialValue keeps its seed only when an async runtime resolves unchanged (reconfigure: $reconfigure)",
+    "runtime atom with skipInitialRun keeps its seed only when an async runtime resolves unchanged (reconfigure: $reconfigure)",
     async ({ expected, reconfigure }) => {
       const config = Atom.make(0)
       const runtime = Atom.runtime((get) => {
@@ -519,7 +519,7 @@ describe("Atom", { concurrent: false }, () => {
       let runs = 0
       const atom = runtime.atom(Effect.sync(() => ++runs))
       const r = AtomRegistry.make({
-        initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { keepInitialValue: true })]
+        initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { skipInitialRun: true })]
       })
       try {
         r.mount(atom)
@@ -1460,12 +1460,12 @@ describe("Atom", { concurrent: false }, () => {
     r.dispose()
   })
 
-  it("initialValues keepInitialValue keeps an effect seed until a reactivity key is invalidated", () => {
+  it("initialValues skipInitialRun keeps an effect seed until a reactivity key is invalidated", () => {
     let runs = 0
     const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.withReactivity(["count"]))
     const invalidate = counterRuntime.fn(() => Effect.void, { reactivityKeys: ["count"] })
     const r = AtomRegistry.make({
-      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { keepInitialValue: true })]
+      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { skipInitialRun: true })]
     })
     try {
       r.mount(atom)
@@ -2342,7 +2342,7 @@ describe("Atom", { concurrent: false }, () => {
     const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.swr({ staleTime: 1_000 }))
     const seed = AsyncResult.success(0, { timestamp: Date.now() - age })
     const r = AtomRegistry.make({
-      initialValues: [Atom.initialValue(atom, seed, { keepInitialValue: true })]
+      initialValues: [Atom.initialValue(atom, seed, { skipInitialRun: true })]
     })
     try {
       r.mount(atom)

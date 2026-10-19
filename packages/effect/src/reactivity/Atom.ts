@@ -563,7 +563,7 @@ function makeEffect<A, E>(
   uninterruptible = false
 ): AsyncResult.AsyncResult<A, E> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
-  if (previous._tag === "Some" && Registry.consumeKeepInitialValue(ctx)) {
+  if (previous._tag === "Some" && Registry.consumeSkipInitialRun(ctx)) {
     return previous.value
   }
   const getServices = typeof services === "function" ? services : constant(services)
@@ -916,7 +916,7 @@ function makeStream<A, E>(
   services = Context.empty()
 ): AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
-  if (previous._tag === "Some" && Registry.consumeKeepInitialValue(ctx)) {
+  if (previous._tag === "Some" && Registry.consumeSkipInitialRun(ctx)) {
     return previous.value
   }
   services = Context.add(services, AtomRegistry, ctx.registry)
@@ -1685,7 +1685,7 @@ export const withLabel: {
  *
  * By default a seeded effect or stream atom still runs its effect on mount,
  * because the dependencies read inside the effect are only known once it has
- * run. With `keepInitialValue`, the atom keeps the seeded value until it is
+ * run. With `skipInitialRun`, the atom keeps the seeded value until it is
  * refreshed or one of its dependencies changes. The factory and any wrappers
  * still build, so `get(...)` calls in the factory and `withReactivity` keys are
  * tracked; only the first effect or stream run is skipped. Dependencies read
@@ -1697,7 +1697,7 @@ export const withLabel: {
  * @since 4.1.0
  */
 export interface InitialValueOptions {
-  readonly keepInitialValue?: boolean | undefined
+  readonly skipInitialRun?: boolean | undefined
 }
 
 /**
@@ -1711,7 +1711,7 @@ export interface InitialValueOptions {
  *
  * The returned tuple can be supplied to `AtomRegistry` initial values so the atom
  * starts with the provided value before it is first rebuilt. Pass
- * `{ keepInitialValue: true }` to keep the value of an effect or stream atom
+ * `{ skipInitialRun: true }` to keep the value of an effect or stream atom
  * instead of running its effect on mount (see {@link InitialValueOptions}).
  *
  * @stability unstable
@@ -2632,7 +2632,7 @@ export interface Serializable<S extends Schema.Constraint> {
     readonly key: string
     readonly encode: (value: S["Type"]) => S["Encoded"]
     readonly decode: (value: S["Encoded"]) => S["Type"]
-    readonly keepInitialValue?: boolean | undefined
+    readonly skipInitialRun?: boolean | undefined
   }
 }
 
@@ -2652,7 +2652,7 @@ export const isSerializable = (self: Atom<any>): self is Atom<any> & Serializabl
  *
  * The schema is converted to a JSON codec for synchronous encode/decode, and the
  * key is also used as the atom label when the atom does not already have one.
- * Set `keepInitialValue` to keep a hydrated value of an effect or stream atom
+ * Set `skipInitialRun` to keep a hydrated value of an effect or stream atom
  * instead of running its effect on mount (see {@link InitialValueOptions}).
  *
  * @stability unstable
@@ -2688,7 +2688,7 @@ export const serializable: {
       key: options.key,
       encode: Schema.encodeSync(codecJson),
       decode: Schema.decodeSync(codecJson),
-      keepInitialValue: options.keepInitialValue
+      skipInitialRun: options.skipInitialRun
     }
   })
 })

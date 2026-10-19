@@ -389,7 +389,7 @@ class RegistryImpl implements AtomRegistry {
         while (target.initialValueTarget) {
           target = target.initialValueTarget
         }
-        this.ensureNode(target).setInitialValue(value, options?.keepInitialValue)
+        this.ensureNode(target).setInitialValue(value, options?.skipInitialRun)
       }
     }
   }
@@ -490,7 +490,7 @@ class RegistryImpl implements AtomRegistry {
       }
       const targetNode = target === atom ? node : this.ensureNode(target)
       if (shouldHydrate(targetNode._value, decoded)) {
-        targetNode.setInitialValue(decoded, serializable.keepInitialValue)
+        targetNode.setInitialValue(decoded, serializable.skipInitialRun)
       }
     }
     return node
@@ -509,7 +509,7 @@ class RegistryImpl implements AtomRegistry {
 
   invalidateAtom = <A>(atom: Atom.Atom<A>): void => {
     const node = this.ensureNode(atom)
-    node.keepInitialValue = false
+    node.skipInitialRun = false
     node.invalidate()
   }
 
@@ -661,7 +661,7 @@ class NodeImpl<A> {
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
-  keepInitialValue = false
+  skipInitialRun = false
   // the parents, and their lifetimes, of a build that kept the seed without
   // reaching the effect, such as one waiting for a runtime
   keptParents: Array<readonly [NodeImpl<any>, Lifetime<any> | undefined]> | undefined
@@ -751,7 +751,7 @@ class NodeImpl<A> {
     if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
       if (this.preserveInitialValueOnBuild) {
         this.preserveInitialValueOnBuild = false
-        if (this.keepInitialValue) {
+        if (this.skipInitialRun) {
           this.keptParents = Array.from(this.parents, (parent) => [parent, parent.lifetime] as const)
         }
         this.failed = false
@@ -827,10 +827,10 @@ class NodeImpl<A> {
     return Option.some(this._value)
   }
 
-  setInitialValue(value: A, keepInitialValue = false): void {
+  setInitialValue(value: A, skipInitialRun = false): void {
     if ((this.state & NodeFlags.initialized) === 0) {
       this.preserveInitialValueOnBuild = true
-      this.keepInitialValue = keepInitialValue
+      this.skipInitialRun = skipInitialRun
       this.state = NodeState.stale
       this._value = value
       if (this.listeners.size > 0) {
@@ -997,12 +997,12 @@ class NodeImpl<A> {
  *
  * @internal
  */
-export const consumeKeepInitialValue = (ctx: Atom.AtomContext): boolean => {
+export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
   const lifetime = ctx as Lifetime<any>
   const node = lifetime.node
-  if (!node.keepInitialValue) return false
+  if (!node.skipInitialRun) return false
   const keptParents = node.keptParents
-  node.keepInitialValue = false
+  node.skipInitialRun = false
   node.keptParents = undefined
   return !lifetime.isFn && !Result.isInitial(node._value) &&
     (keptParents === undefined || keptParents.every(([parent, lifetime]) => parent.lifetime === lifetime))

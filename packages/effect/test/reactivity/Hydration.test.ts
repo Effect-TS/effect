@@ -38,7 +38,7 @@ describe("Hydration", () => {
     }
   })
 
-  it("keepInitialValue keeps a hydrated effect seed until a factory dependency changes", () => {
+  it("skipInitialRun keeps a hydrated effect seed until a factory dependency changes", () => {
     const dependency = Atom.make(1)
     let runs = 0
     const atom = Atom.make((get) => {
@@ -51,7 +51,7 @@ describe("Hydration", () => {
       Atom.serializable({
         key: "count",
         schema: AsyncResult.Schema({ success: Schema.Number }),
-        keepInitialValue: true
+        skipInitialRun: true
       })
     )
     const server = AtomRegistry.make()

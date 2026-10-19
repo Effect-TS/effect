@@ -45,7 +45,7 @@ describe("Atom", () => {
     it("accepts options only in the data-first form", () => {
       const seed = Atom.make(1)
 
-      expect(Atom.initialValue).type.not.toBeCallableWith(seed, { keepInitialValue: true })
+      expect(Atom.initialValue).type.not.toBeCallableWith(seed, { skipInitialRun: true })
     })
   })
 })
