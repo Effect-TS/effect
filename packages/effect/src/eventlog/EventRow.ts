@@ -2,12 +2,43 @@
  * Mutable rows that converge across event-log replicas.
  *
  * Each row type has one event with `set`, `patch` and `remove` payloads, keyed
- * by a string field. Pass the result of `make` to `EventGroup.add` and write
- * its payloads with `EventLog.write` or `EventLog.writeMany`.
+ * by a string built from one or more of its fields. Pass the result of `make`
+ * to `EventGroup.add` and write its payloads with `EventLog.write` or
+ * `EventLog.writeMany`.
  *
  * `handler` resolves conflicts per top-level field and calls at most one
  * storage callback. Replicas converge to the result of applying entries in
- * id order.
+ * id order. `compaction` drops entries that newer ones shadow.
+ *
+ * **Details**
+ *
+ * Entries are stored as bytes and decoded with the current row schema
+ * whenever they are replayed, including stored entries read as the conflicts
+ * of a late entry. So the row schema must decode every encoding ever written:
+ *
+ * - Adding a field is safe when old entries decode without it. Give it a
+ *   decoding default, such as `Schema.withDecodingDefaultKey`. A nullable
+ *   field without one fails on old `set` entries. Patches never apply
+ *   defaults.
+ * - Removing a field is safe. Old entries decode without it.
+ * - To change a field's type, keep its encoded type and change its decoded
+ *   type with a transformation, such as `Schema.NumberFromString` for a field
+ *   that used to be a string.
+ * - Making a field required, renaming it, narrowing its type, changing its
+ *   encoded type or changing the key breaks old entries. That includes
+ *   widening a field to a union of its old and new types, because union
+ *   encodings are tagged. A rename keeps old entries readable only if the
+ *   field has an explicit `SchemaBinary.fieldId`.
+ *
+ * Conflicts are only resolved between entries for the same row, so removing
+ * a parent row does not remove a child that another replica adds at the same
+ * time. Keep a removed parent in storage as a marker instead of deleting it.
+ * The child `set` and `patch` callbacks skip the write when the parent is
+ * marked removed, and apply it when the parent has not arrived yet. The
+ * parent `remove` callback marks the parent and deletes its children. Every
+ * replica then ends without the children of removed parents, whatever the
+ * delivery order. Queries must filter out marked parents, and markers stay
+ * until the app removes them with a cutoff of its own.
  *
  * **Example** (Syncing grocery rows)
  *
@@ -52,17 +83,54 @@
  * })
  * ```
  *
+ * **Example** (Evolving a row schema)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema } from "effect"
+ * import { EventGroup, EventRow } from "effect/eventlog"
+ *
+ * const ItemV1 = EventRow.make("item", {
+ *   key: "id",
+ *   schema: Schema.Struct({ id: Schema.String, quantity: Schema.String })
+ * })
+ *
+ * // Adds a nullable field and reads the old string quantity as a number.
+ * const ItemV2 = EventRow.make("item", {
+ *   key: "id",
+ *   schema: Schema.Struct({
+ *     id: Schema.String,
+ *     quantity: Schema.NumberFromString,
+ *     note: Schema.NullOr(Schema.String).pipe(
+ *       Schema.withDecodingDefaultKey(Effect.succeed(null))
+ *     )
+ *   })
+ * })
+ *
+ * const v1 = EventGroup.empty.add(ItemV1).events.item.payloadSchemaBinary
+ * const v2 = EventGroup.empty.add(ItemV2).events.item.payloadSchemaBinary
+ *
+ * const written = Schema.encodeUnknownSync(v1)(ItemV1.set({ id: "a", quantity: "3" }))
+ * const decoded = Schema.decodeUnknownSync(v2)(written)
+ * decoded // => { _tag: "set", row: { id: "a", quantity: 3, note: null } }
+ * ```
+ *
  * @stability unstable
  * @since 4.0.6
  */
+import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as Layer from "../Layer.ts"
+import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as Struct from "../Struct.ts"
-import type { Entry } from "./EventJournal.ts"
+import type * as Event from "./Event.ts"
+import type * as EventGroup from "./EventGroup.ts"
+import { type Entry, Entry as EntryClass } from "./EventJournal.ts"
+import * as EventLog from "./EventLog.ts"
 import type { StoreId } from "./EventLogMessage.ts"
 
 /**
@@ -79,6 +147,48 @@ export type KeyField<Fields extends Schema.Struct.Fields> =
       : never
   }[keyof Fields]
   & string
+
+/**
+ * Required fields that can be part of a declared row key.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type RequiredField<Fields extends Schema.Struct.Fields> =
+  & {
+    [K in keyof Fields]: Fields[K] extends { readonly "~type.optionality": "optional" } ? never : K
+  }[keyof Fields]
+  & string
+
+/**
+ * Values of the declared key fields of a row.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type KeyValues<Fields extends Schema.Struct.Fields, Names extends keyof Fields> = {
+  readonly [K in Names]: Schema.Schema.Type<Fields[K]>
+}
+
+/**
+ * A row key declared from one or more fields.
+ *
+ * **Details**
+ *
+ * `derive` builds the key string from the declared fields. Without it, the
+ * key is the JSON encoding of the field values in declaration order, which is
+ * distinct for distinct values.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface KeyDeclaration<Fields extends Schema.Struct.Fields, Names extends RequiredField<Fields>> {
+  readonly fields: readonly [Names, ...Array<Names>]
+  readonly derive?: ((fields: KeyValues<Fields, Names>) => string) | undefined
+}
 
 /**
  * Optional non-key fields of a `patch` payload.
@@ -105,14 +215,18 @@ export type PatchFields<Fields extends Schema.Struct.Fields, Key extends keyof F
  * @category models
  * @since 4.0.6
  */
-export type PayloadSchema<Fields extends Schema.Struct.Fields, Key extends keyof Fields> = Schema.Union<
+export type PayloadSchema<
+  Fields extends Schema.Struct.Fields,
+  Key extends keyof Fields,
+  KeySchema extends Schema.Constraint = Fields[Key]
+> = Schema.Union<
   readonly [
     Schema.TaggedStruct<"set", { readonly row: Schema.Struct<Fields> }>,
     Schema.TaggedStruct<"patch", {
-      readonly key: Fields[Key]
+      readonly key: KeySchema
       readonly fields: Schema.Struct<PatchFields<Fields, Key>>
     }>,
-    Schema.TaggedStruct<"remove", { readonly key: Fields[Key] }>
+    Schema.TaggedStruct<"remove", { readonly key: KeySchema }>
   ]
 >
 
@@ -123,17 +237,24 @@ export type PayloadSchema<Fields extends Schema.Struct.Fields, Key extends keyof
  * @category models
  * @since 4.0.6
  */
-export type Payload<Fields extends Schema.Struct.Fields, Key extends keyof Fields> = Schema.Schema.Type<
-  PayloadSchema<Fields, Key>
->
+export type Payload<
+  Fields extends Schema.Struct.Fields,
+  Key extends keyof Fields,
+  KeySchema extends Schema.Constraint = Fields[Key]
+> = Schema.Schema.Type<PayloadSchema<Fields, Key, KeySchema>>
 
 /**
  * A row type that syncs through an `EventLog`.
  *
  * **Details**
  *
- * Includes `EventGroup.add` options, the row schema, its key field and payload
- * constructors. The row key is the event primary key; success is `void`.
+ * Includes `EventGroup.add` options, the row schema, its key fields and
+ * payload constructors. The row key is the event primary key; success is
+ * `void`.
+ *
+ * `Key` is the union of the declared key fields. `KeySchema` is the schema of
+ * the key in `patch` and `remove` payloads: the field's schema for a single
+ * field key, and `Schema.String` for a declared key.
  *
  * @stability unstable
  * @category models
@@ -142,21 +263,27 @@ export type Payload<Fields extends Schema.Struct.Fields, Key extends keyof Field
 export interface EventRow<
   out Tag extends string,
   in out Fields extends Schema.Struct.Fields,
-  in out Key extends KeyField<Fields>,
-  in out Error extends Schema.Top = typeof Schema.Never
+  in out Key extends keyof Fields & string,
+  in out Error extends Schema.Top = typeof Schema.Never,
+  in out KeySchema extends Schema.Constraint = Fields[Key]
 > {
   readonly tag: Tag
-  readonly key: Key
+  readonly keyFields: ReadonlyArray<Key>
   readonly schema: Schema.Struct<Fields>
-  readonly primaryKey: (payload: Payload<Fields, Key>) => string
-  readonly payload: PayloadSchema<Fields, Key>
+  readonly primaryKey: (payload: Payload<Fields, Key, KeySchema>) => string
+  readonly payload: PayloadSchema<Fields, Key, KeySchema>
   readonly success: typeof Schema.Void
   readonly error: Error
 
   /**
+   * Computes the key of a row from its key fields.
+   */
+  readonly keyOf: (fields: KeyValues<Fields, Key>) => Schema.Schema.Type<KeySchema>
+
+  /**
    * Replaces the whole row, creating it if missing.
    */
-  readonly set: (row: Schema.Struct<Fields>["Type"]) => Payload<Fields, Key>
+  readonly set: (row: Schema.Struct<Fields>["Type"]) => Payload<Fields, Key, KeySchema>
 
   /**
    * Writes fields of an existing row.
@@ -172,14 +299,14 @@ export interface EventRow<
    * them from unwritten fields.
    */
   readonly patch: (
-    key: Schema.Schema.Type<Fields[Key]>,
+    key: Schema.Schema.Type<KeySchema>,
     fields: Schema.Struct<PatchFields<Fields, Key>>["Type"]
-  ) => Payload<Fields, Key>
+  ) => Payload<Fields, Key, KeySchema>
 
   /**
    * Deletes the row.
    */
-  readonly remove: (key: Schema.Schema.Type<Fields[Key]>) => Payload<Fields, Key>
+  readonly remove: (key: Schema.Schema.Type<KeySchema>) => Payload<Fields, Key, KeySchema>
 }
 
 /**
@@ -187,7 +314,11 @@ export interface EventRow<
  *
  * **Details**
  *
- * `key` must name a required string field. Composite keys are not supported.
+ * `key` is either the name of a required string field, or a declaration of
+ * one or more required fields with an optional `derive` function. A declared
+ * key is a string: the result of `derive`, or the JSON encoding of the field
+ * values. Every key field is excluded from `patch`, so a row's key never
+ * changes. To move a row to another key, remove it and set it again.
  *
  * Last-writer-wins applies to top-level fields. Nested values are atomic, so
  * concurrent updates within one nested value do not merge.
@@ -196,9 +327,10 @@ export interface EventRow<
  *
  * **Gotchas**
  *
- * Do not use row events with `EventLog.groupCompaction` or
+ * Do not compact row events with `EventLog.groupCompaction` or
  * `EventLog.groupBatchCompaction`. Compaction runs before stored conflicts
- * are read, so collapsing row ops loses or misapplies writes.
+ * are read, so merging row ops loses or misapplies writes. Use
+ * {@link compaction}, which only drops entries that newer ones shadow.
  *
  * For multi-row operations, use `EventLog.writeMany` with one op per row.
  *
@@ -209,18 +341,32 @@ export interface EventRow<
 export const make = <
   const Tag extends string,
   Fields extends Schema.Struct.Fields,
-  const Key extends KeyField<Fields>,
+  const Key extends KeyField<Fields> = never,
+  const Declared extends RequiredField<Fields> = never,
   Error extends Schema.Top = typeof Schema.Never
 >(tag: Tag, options: {
-  readonly key: Key
+  readonly key: Key | KeyDeclaration<Fields, Declared>
   readonly schema: Schema.Struct<Fields>
   readonly error?: Error | undefined
-}): EventRow<Tag, Fields, Key, Error> => {
-  const key = options.key
-  const keySchema = options.schema.fields[key]
+}): EventRow<
+  Tag,
+  Fields,
+  // A declaration also infers `Key`, as its constraint, so `Declared` decides.
+  [Declared] extends [never] ? Key : Declared,
+  Error,
+  [Declared] extends [never] ? Fields[Key] : typeof Schema.String
+> => {
+  const declaration = options.key as string | KeyDeclaration<any, string>
+  const keyFields: ReadonlyArray<string> = typeof declaration === "string" ? [declaration] : declaration.fields
+  const keyOf = typeof declaration === "string"
+    ? (row: Readonly<Record<string, unknown>>) => row[declaration]
+    : declaration.derive !== undefined
+    ? (row: Readonly<Record<string, unknown>>) => declaration.derive!(Struct.pick(row, keyFields) as any)
+    : (row: Readonly<Record<string, unknown>>) => JSON.stringify(keyFields.map((name) => row[name]))
+  const keySchema = typeof declaration === "string" ? options.schema.fields[declaration] : Schema.String
   const patchFields: Record<string, Schema.Constraint> = {}
   for (const name of Object.keys(options.schema.fields)) {
-    if (name !== key) patchFields[name] = patchField(options.schema.fields[name])
+    if (!keyFields.includes(name)) patchFields[name] = patchField(options.schema.fields[name])
   }
   const payload = Schema.Union([
     Schema.TaggedStruct("set", { row: options.schema }),
@@ -229,9 +375,10 @@ export const make = <
   ])
   return {
     tag,
-    key,
+    keyFields,
     schema: options.schema,
-    primaryKey: (payload: Op) => payload._tag === "set" ? payload.row[key] as string : payload.key as string,
+    keyOf,
+    primaryKey: (payload: Op) => (payload._tag === "set" ? keyOf(payload.row) : payload.key) as string,
     payload,
     success: Schema.Void,
     error: options.error ?? Schema.Never,
@@ -274,33 +421,37 @@ export const make = <
 export const handler = <
   Tag extends string,
   Fields extends Schema.Struct.Fields,
-  Key extends KeyField<Fields>,
+  Key extends keyof Fields & string,
   Error extends Schema.Top,
+  KeySchema extends Schema.Constraint,
   RSet = never,
   RPatch = never,
   RRemove = never
 >(
-  row: EventRow<Tag, Fields, Key, Error>,
+  row: EventRow<Tag, Fields, Key, Error, KeySchema>,
   callbacks: {
-    readonly set: (row: Schema.Struct<Fields>["Type"]) => Effect.Effect<unknown, Error["Type"], RSet>
+    readonly set: (
+      row: Schema.Struct<Fields>["Type"],
+      key: Schema.Schema.Type<KeySchema>
+    ) => Effect.Effect<unknown, Error["Type"], RSet>
     readonly patch: (
-      key: Schema.Schema.Type<Fields[Key]>,
+      key: Schema.Schema.Type<KeySchema>,
       fields: Schema.Struct<PatchFields<Fields, Key>>["Type"]
     ) => Effect.Effect<unknown, Error["Type"], RPatch>
-    readonly remove: (key: Schema.Schema.Type<Fields[Key]>) => Effect.Effect<unknown, Error["Type"], RRemove>
+    readonly remove: (key: Schema.Schema.Type<KeySchema>) => Effect.Effect<unknown, Error["Type"], RRemove>
   }
 ): (options: {
   readonly storeId: StoreId
-  readonly payload: Payload<Fields, Key>
+  readonly payload: Payload<Fields, Key, KeySchema>
   readonly entry: Entry
   readonly conflicts: ReadonlyArray<{
     readonly entry: Entry
-    readonly payload: Payload<Fields, Key>
+    readonly payload: Payload<Fields, Key, KeySchema>
   }>
 }) => Effect.Effect<
   void,
   Error["Type"],
-  RSet | RPatch | RRemove | PayloadSchema<Fields, Key>["DecodingServices"]
+  RSet | RPatch | RRemove | PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]
 > => {
   const decode = Schema.decodeUnknownEffect(SchemaBinary.toCodec(row.payload))
   return (options) =>
@@ -311,7 +462,7 @@ export const handler = <
         if (op === undefined) return Effect.void
         switch (op._tag) {
           case "set":
-            return callbacks.set(op.row as any)
+            return callbacks.set(op.row as any, row.keyOf(op.row as any))
           case "patch":
             return Object.keys(op.fields).length === 0 ? Effect.void : callbacks.patch(op.key as any, op.fields as any)
           case "remove":
@@ -319,6 +470,93 @@ export const handler = <
         }
       }
     ).pipe(Effect.asVoid)
+}
+
+/**
+ * Registers a compactor for one row event of a group.
+ *
+ * **Details**
+ *
+ * The compactor only drops entries that a newer entry in the same remote
+ * batch, for the same row, shadows. Kept entries are forwarded unchanged, so
+ * they keep their ids and their stored conflicts. An entry is shadowed by a
+ * newer `set` or `remove`, and a `patch` is also shadowed when newer patches
+ * write all of its fields.
+ *
+ * A `set` or `remove` followed only by patches is kept: without it, the
+ * patches would apply to a different row, or to none. Entries that fail to
+ * decode are kept.
+ *
+ * Only the row's event is registered, so compactors for other events in the
+ * group are kept. Register one compactor per row event to compact several.
+ *
+ * @stability unstable
+ * @category compaction
+ * @since 4.0.6
+ */
+export const compaction = <
+  Events extends Event.Any,
+  Tag extends Event.Tag<Events>,
+  Fields extends Schema.Struct.Fields,
+  Key extends keyof Fields & string,
+  Error extends Schema.Top,
+  KeySchema extends Schema.Constraint
+>(
+  group: EventGroup.EventGroup<Events>,
+  row: EventRow<Tag, Fields, Key, Error, KeySchema>
+): Layer.Layer<never, never, EventLog.Registry | PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]> =>
+  Layer.effectDiscard(Effect.gen(function*() {
+    const registry = yield* EventLog.Registry
+    const services = yield* Effect.context<PayloadSchema<Fields, Key, KeySchema>["DecodingServices"]>()
+    const decode = Schema.decodeUnknownEffect(group.events[row.tag].payloadSchemaBinary)
+    yield* registry.registerCompaction({
+      events: [row.tag],
+      effect: Effect.fnUntraced(function*({ entries, write }) {
+        const ops = new Map<Entry, Op>()
+        for (const entry of entries) {
+          const payload = yield* Effect.result(
+            decode(entry.payload).pipe(Effect.updateContext((input) => Context.merge(services, input)))
+          ) as Effect.Effect<Result.Result<Op, unknown>>
+          if (Result.isSuccess(payload)) ops.set(entry, payload.success)
+        }
+        const shadowed = shadowedEntries(entries, ops)
+        for (const entry of entries) {
+          if (!shadowed.has(entry)) yield* write(entry)
+        }
+      })
+    })
+  }))
+
+// Walks each row's entries from newest to oldest, tracking whether a newer
+// `set` or `remove` exists and which fields newer patches write.
+const shadowedEntries = (entries: ReadonlyArray<Entry>, ops: ReadonlyMap<Entry, Op>): Set<Entry> => {
+  const shadowed = new Set<Entry>()
+  const byKey = new Map<string, Array<Entry>>()
+  for (const entry of entries) {
+    const row = byKey.get(entry.primaryKey)
+    if (row === undefined) byKey.set(entry.primaryKey, [entry])
+    else row.push(entry)
+  }
+  for (const row of byKey.values()) {
+    row.sort(EntryClass.Order)
+    let replaced = false
+    let patched = false
+    const written = new Set<string>()
+    for (let i = row.length - 1; i >= 0; i--) {
+      const op = ops.get(row[i])
+      if (op === undefined) continue
+      if (op._tag !== "patch") {
+        if (replaced) shadowed.add(row[i])
+        replaced = true
+        continue
+      }
+      const names = Object.keys(op.fields)
+      if (replaced || (patched && names.every((name) => written.has(name)))) shadowed.add(row[i])
+      patched = true
+      for (const name of names) written.add(name)
+    }
+  }
+  return shadowed
 }
 
 // Run the field codec only for present keys, bypassing missing-key defaults.
