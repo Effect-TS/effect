@@ -13,7 +13,6 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as CloudflareSchema from "./CloudflareSchema.ts"
@@ -149,9 +148,8 @@ export const layerConfig = (options?: {
       return yield* make({
         accountId: yield* (options?.accountId ?? Config.String("CLOUDFLARE_ACCOUNT_ID")),
         apiKey: yield* (options?.apiKey ?? Config.Redacted("CLOUDFLARE_API_TOKEN")),
-        gatewayId: options?.gatewayId
-          ? yield* options.gatewayId
-          : Option.getOrUndefined(yield* Config.option(Config.String("CLOUDFLARE_AI_GATEWAY_ID"))),
+        gatewayId: yield* (options?.gatewayId ??
+          Config.String("CLOUDFLARE_AI_GATEWAY_ID").pipe(Config.withDefault(undefined))),
         apiUrl: options?.apiUrl ? yield* options.apiUrl : undefined,
         transformClient: options?.transformClient
       })
