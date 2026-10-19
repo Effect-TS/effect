@@ -600,6 +600,41 @@ describe("HashMap", () => {
         { numRuns: 200 }
       )
     })
+
+    it("set stores a new value that is equal to the current one", () => {
+      class Versioned implements Equal.Equal {
+        constructor(readonly id: string, readonly version: number) {}
+
+        [Equal.symbol](that: Equal.Equal): boolean {
+          return that instanceof Versioned && this.id === that.id
+        }
+
+        [Hash.symbol](): number {
+          return Hash.string(this.id)
+        }
+      }
+
+      const collisionA = new FixedHashKey("collisionA", 7)
+      const collisionB = new FixedHashKey("collisionB", 7)
+      const leaf = HashMap.make(["a", new Versioned("a", 0)])
+      const collisions = HashMap.make([collisionA, new Versioned("a", 0)], [collisionB, new Versioned("b", 0)])
+      const next = new Versioned("a", 1)
+
+      expect(Option.getOrThrow(HashMap.get(HashMap.set(leaf, "a", next), "a"))).toBe(next)
+      expect(Option.getOrThrow(HashMap.get(HashMap.set(collisions, collisionA, next), collisionA))).toBe(next)
+    })
+
+    it("set returns the same map when the value is already stored", () => {
+      const value = { x: 1 }
+      const collisionA = new FixedHashKey("collisionA", 7)
+      const collisionB = new FixedHashKey("collisionB", 7)
+      const leaf = HashMap.make(["a", value], ["nan", NaN])
+      const collisions = HashMap.make([collisionA, value], [collisionB, value])
+
+      expect(HashMap.set(leaf, "a", value)).toBe(leaf)
+      expect(HashMap.set(leaf, "nan", NaN)).toBe(leaf)
+      expect(HashMap.set(collisions, collisionA, value)).toBe(collisions)
+    })
   })
 
   describe("type guards", () => {
