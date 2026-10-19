@@ -3,4 +3,4 @@
 "@effect/platform-deno": patch
 ---
 
-Close the request scope when a streaming HTTP response body is cancelled before its first pull in Bun and Deno servers, preventing request resources from leaking.
+Fix request scope leaks when Bun or Deno streaming response bodies are cancelled before their first pull.
