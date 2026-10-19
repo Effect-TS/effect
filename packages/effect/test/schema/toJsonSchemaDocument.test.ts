@@ -3620,6 +3620,80 @@ describe("toJsonSchemaDocument", () => {
   })
 
   describe("Union", () => {
+    describe("nested unions", () => {
+      const Person = Schema.Struct({ name: Schema.String })
+      const Company = Schema.Struct({ company: Schema.String })
+      const Team = Schema.Struct({ team: Schema.String })
+      const person: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+        additionalProperties: false
+      }
+      const company: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: { company: { type: "string" } },
+        required: ["company"],
+        additionalProperties: false
+      }
+      const team: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: { team: { type: "string" } },
+        required: ["team"],
+        additionalProperties: false
+      }
+
+      it("flattens a union inside NullOr", () => {
+        assertJsonSchemaDocument(Schema.NullOr(Schema.Union([Person, Company])), {
+          schema: { anyOf: [person, company, { type: "null" }] }
+        })
+      })
+
+      it("flattens a union inside another anyOf", () => {
+        assertJsonSchemaDocument(Schema.Union([Schema.Union([Person, Company]), Team]), {
+          schema: { anyOf: [person, company, team] }
+        })
+      })
+
+      it("preserves annotations on a nested anyOf", () => {
+        const inner = Schema.Union([Schema.String, Schema.Boolean]).annotate({ description: "inner" })
+        assertJsonSchemaDocument(Schema.Union([inner, Schema.Null]), {
+          schema: {
+            anyOf: [
+              { anyOf: [{ type: "string" }, { type: "boolean" }], description: "inner" },
+              { type: "null" }
+            ]
+          }
+        })
+      })
+
+      it("preserves references to a nested anyOf", () => {
+        const inner = Schema.Union([Schema.String, Schema.Boolean]).annotate({ identifier: "Inner" })
+        assertJsonSchemaDocument(Schema.Union([inner, Schema.Null]), {
+          schema: { anyOf: [{ $ref: "#/$defs/Inner" }, { type: "null" }] },
+          definitions: { Inner: { anyOf: [{ type: "string" }, { type: "boolean" }] } }
+        })
+      })
+
+      it.each(
+        [
+          ["anyOf", "oneOf"],
+          ["oneOf", "anyOf"],
+          ["oneOf", "oneOf"]
+        ] as const
+      )("preserves an inner %s inside an outer %s", (innerMode, outerMode) => {
+        const inner = Schema.Union([Schema.String, Schema.Boolean], { mode: innerMode })
+        assertJsonSchemaDocument(Schema.Union([inner, Schema.String], { mode: outerMode }), {
+          schema: {
+            [outerMode]: [
+              { [innerMode]: [{ type: "string" }, { type: "boolean" }] },
+              { type: "string" }
+            ]
+          }
+        })
+      })
+    })
+
     it("empty union", () => {
       const schema = Schema.Union([])
       assertJsonSchemaDocument(schema, {
