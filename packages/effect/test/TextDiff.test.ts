@@ -27,7 +27,7 @@ const isCanonical = (edits: ReadonlyArray<TextDiff.Edit<unknown>>): boolean =>
 const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
 
 const smallArray = fc.array(fc.constantFrom("a", "b", "c"), { maxLength: 12 })
-const text = fc.string({ unit: fc.constantFrom("a", "b", "\n", "\r\n", "é", "é", "😀", "👍🏽") })
+const text = fc.string({ unit: fc.constantFrom("a", "b", "\n", "\r\n", "é", "e\u0301", "😀", "👍🏽") })
 
 describe("TextDiff", () => {
   describe("diff", () => {
@@ -157,9 +157,9 @@ describe("TextDiff", () => {
     })
 
     it("splits combining marks from their base letter", () => {
-      deepStrictEqual(TextDiff.codePoints("é", "e"), [
+      deepStrictEqual(TextDiff.codePoints("e\u0301", "e"), [
         { _tag: "Equal", items: ["e"] },
-        { _tag: "Delete", items: ["́"] }
+        { _tag: "Delete", items: ["\u0301"] }
       ])
     })
   })
