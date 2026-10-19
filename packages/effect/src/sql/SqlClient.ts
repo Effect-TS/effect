@@ -70,6 +70,21 @@ export interface SqlClient extends Constructor {
 
   /**
    * With the given effect, ensure all sql queries are run in a transaction.
+   *
+   * **Details**
+   *
+   * Inside the transaction, `Reactivity.invalidate` and `Reactivity.mutation`
+   * invalidate once the outermost transaction commits, and not at all if it
+   * rolls back.
+   *
+   * **Gotchas**
+   *
+   * Deferred invalidations run individually after the commit and don't join an
+   * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
+   * the transaction's context defers, and a fiber that outlives the
+   * transaction can't defer through it, as with `afterCommit`. Transactions
+   * that don't go through `makeWithTransaction`, such as those of
+   * `@effect/sql-sqlite-do`, invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -269,25 +284,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
 
-  const afterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
-    Effect.withFiber((fiber) => {
-      const transaction = Context.getOrUndefined(fiber.context, transactionService)
-      const buffer = transaction && afterCommitBuffers.get(transaction)
-      // Outside a transaction, or in one that doesn't buffer callbacks.
-      if (buffer === undefined) {
-        return runAfterCommit(effect)
-      }
-      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
-        if (!current.open) {
-          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
-        }
-      }
-      // Runs later with the services in scope now, without the transaction.
-      buffer.callbacks.push(
-        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
-      )
-      return Effect.void
-    })
+  const afterCommit = makeAfterCommit(transactionService)
 
   const reactivity = yield* Reactivity
   // A statement inside a transaction has to run on that transaction's
@@ -483,6 +480,28 @@ const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect
       return Effect.void
     }))
 
+const makeAfterCommit =
+  (transactionService: Context.Key<any, any>) =>
+  <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
+    Effect.withFiber((fiber) => {
+      const transaction = Context.getOrUndefined(fiber.context, transactionService)
+      const buffer = transaction && afterCommitBuffers.get(transaction)
+      // Outside a transaction, or in one that doesn't buffer callbacks.
+      if (buffer === undefined) {
+        return runAfterCommit(effect)
+      }
+      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
+        if (!current.open) {
+          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+        }
+      }
+      // Runs later with the services in scope now, without the transaction.
+      buffer.callbacks.push(
+        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
+      )
+      return Effect.void
+    })
+
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
@@ -523,6 +542,14 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
+  // Inside the transaction, `Reactivity` invalidations wait for the outermost
+  // commit.
+  const afterCommit = makeAfterCommit(options.transactionService)
+  const deferInvalidations = (reactivity: Reactivity): Reactivity => {
+    const invalidate = (keys: Parameters<Reactivity["invalidate"]>[0]) =>
+      afterCommit(Effect.sync(() => reactivity.invalidateUnsafe(keys)))
+    return { ...reactivity, invalidate, mutation: (keys, effect) => Effect.tap(effect, invalidate(keys)) }
+  }
   return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
@@ -534,6 +561,7 @@ export const makeWithTransaction = <I, S>(options: {
               span.attribute(key, value)
             }
             const services = fiber.context
+            const reactivity = Context.getOrUndefined(services, Reactivity)
             const clock = fiber.getRef(Clock)
             const connOption = Context.getOption(services, options.transactionService)
             const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
@@ -564,6 +592,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
                         )

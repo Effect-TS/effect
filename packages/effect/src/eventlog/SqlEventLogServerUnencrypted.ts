@@ -11,7 +11,6 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
-import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -26,7 +25,6 @@ import * as Stream from "../Stream.ts"
 import { Entry, EntryId, makeRemoteIdUnsafe, RemoteEntry, type RemoteId } from "./EventJournal.ts"
 import * as EventLogServerUnencrypted from "./EventLogServerUnencrypted.ts"
 
-let storageIdCounter = 0
 const withTracerDisabled = Effect.withTracerEnabled(false)
 // Keeps each history lookup within dialect parameter limits.
 const lookupBatchSize = 200
@@ -44,7 +42,14 @@ type StorageOptions = {
  *
  * The implementation creates tables for the server remote id, store sequences,
  * entries, and session authentication bindings, then persists and streams
- * plaintext remote entries.
+ * plaintext remote entries. Writes reach `changes` subscribers once the
+ * outermost SQL transaction commits, including one the caller opened, and are
+ * dropped if it rolls back.
+ *
+ * **Gotchas**
+ *
+ * Writes in transactions the caller opened can reach subscribers out of
+ * sequence order when two such transactions commit concurrently.
  *
  * @stability unstable
  * @category constructors
@@ -273,49 +278,23 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   })
 
   const transactionSemaphore = yield* Semaphore.make(1)
-  type PendingWrites = Array<readonly [storeId: string, entries: Array<RemoteEntry>]>
-  const pendingWrites = Context.Service<PendingWrites>(
-    `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${storageIdCounter++}`
-  )
-  const publish = Effect.fnUntraced(function*([storeId, entries]: PendingWrites[number]) {
-    const pubsub = yield* RcMap.get(pubsubs, storeId)
-    return yield* PubSub.publishAll(pubsub, entries)
-  }, Effect.scoped)
-  // Merge nested buffers on success; publish only after the outer commit.
-  // Hold the outer permit through publication to prevent later commits from overtaking it.
-  const withTransaction = Effect.fnUntraced(function*<A, E, R>(
-    effect: Effect.Effect<A, E, R>
-  ): Effect.fn.Return<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> {
-    const parent = yield* Effect.serviceOption(pendingWrites)
-    // Allow body interruption, but mask commit through publication.
-    const transaction = Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-      const writes: PendingWrites = []
-      const result = yield* sql.withTransaction(
-        Effect.provideService(restore(effect), pendingWrites, writes)
-      )
-      if (parent._tag === "Some") {
-        parent.value.push(...writes)
-      } else {
-        const stores = new Map<string, Array<RemoteEntry>>()
-        for (const [storeId, entries] of writes) {
-          const existing = stores.get(storeId)
-          if (existing === undefined) {
-            stores.set(storeId, [...entries])
-          } else {
-            existing.push(...entries)
-          }
-        }
-        // Sibling buffers may merge out of sequence order.
-        for (const entries of stores.values()) {
-          entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
-        }
-        yield* Effect.forEach(stores, publish, { discard: true })
-      }
-      return result
-    }))
-    // Wait interruptibly; nested transactions reuse the outer permit.
-    return yield* parent._tag === "Some" ? transaction : transactionSemaphore.withPermit(transaction)
-  })
+  const publish = (storeId: string, entries: ReadonlyArray<RemoteEntry>) =>
+    RcMap.get(pubsubs, storeId).pipe(
+      Effect.flatMap((pubsub) => PubSub.publishAll(pubsub, entries)),
+      Effect.asVoid,
+      Effect.scoped
+    )
+  // The permit is held through COMMIT and the after-commit publication, so
+  // storage-owned transactions publish in commit order. Inside an existing
+  // transaction, the outermost one decides when writes are published.
+  const withTransaction = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError.SqlError, R> =>
+    Effect.flatMap(
+      Effect.serviceOption(sql.transactionService),
+      (transaction) =>
+        transaction._tag === "Some"
+          ? sql.withTransaction(effect)
+          : transactionSemaphore.withPermit(sql.withTransaction(effect))
+    )
 
   const ensureStore = (storeId: string) =>
     sql.onDialectOrElse({
@@ -555,8 +534,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         const nextSequence = currentNextSequence + entries.length
         yield* setNextSequence(storeId, nextSequence)
 
-        const writes = yield* pendingWrites
-        writes.push([storeId, committed])
+        yield* sql.afterCommit(publish(storeId, committed))
 
         return committed
       },
@@ -568,11 +546,13 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       function*({ storeId, startSequence, compactors }) {
         const pubsub = yield* RcMap.get(pubsubs, storeId)
         const subscription = yield* PubSub.subscribe(pubsub)
-        const backlog = yield* EventLogServerUnencrypted.compactBacklog({
-          compactors,
-          remoteEntries: yield* selectEntriesAfter(storeId, startSequence)
-        })
-        let watermark = backlog.length > 0 ? backlog[backlog.length - 1]!.remoteSequence : startSequence - 1
+        const remoteEntries = yield* selectEntriesAfter(storeId, startSequence)
+        const backlog = yield* EventLogServerUnencrypted.compactBacklog({ compactors, remoteEntries })
+        // Compaction can drop trailing entries, so skip live entries up to the
+        // last uncompacted one.
+        const watermark = remoteEntries.length > 0
+          ? remoteEntries[remoteEntries.length - 1]!.remoteSequence
+          : startSequence - 1
 
         return Stream.fromArray(backlog).pipe(
           Stream.concat(
