@@ -211,7 +211,8 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
  * **Details**
  *
  * The route serves the OpenAPI specification generated from the API at the
- * configured path, defaulting to `/docs`.
+ * configured path, defaulting to `/docs`. The bundled script is loaded when
+ * the layer is built, not when this module is imported.
  *
  * @stability unstable
  * @category layers

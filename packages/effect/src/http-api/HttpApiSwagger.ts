@@ -58,6 +58,11 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
  * Mounts Swagger UI for an `HttpApi` at the configured path, defaulting to
  * `/docs`, using the OpenAPI specification generated from the API.
  *
+ * **Details**
+ *
+ * The bundled Swagger UI assets are loaded when the layer is built, not when
+ * this module is imported.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0

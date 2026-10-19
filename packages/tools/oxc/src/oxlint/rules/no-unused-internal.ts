@@ -432,10 +432,9 @@ function markDynamicImport(
   const specifier = importCall.arguments[0]
   if (specifier === undefined || !ts.isStringLiteralLike(specifier)) return
   const importedFile = resolveModule(specifier.text, fileInfo.sourceFile.fileName, workspacePackages)
-  const exports = importedFile === undefined ? undefined : fileInfos.get(importedFile)?.internalExports
-  if (exports === undefined) return
-  for (const exportsForName of exports.values()) {
-    markUsed(exportsForName, importCall)
+  if (importedFile === undefined) return
+  for (const exports of fileInfos.get(importedFile)?.internalExports.values() ?? []) {
+    markUsed(exports, importCall)
   }
 }
 
