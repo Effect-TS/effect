@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Layer, Queue, Schema } from "effect"
+import { Context, Effect, Exit, Layer, Option, Queue, Schema } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -61,6 +61,17 @@ const Y: Row = { id: "g1", name: "y", quantity: 2, completed: true }
 const E: Row = { id: "g1", name: "e", quantity: null, completed: false }
 const P: Fields = { name: "p", quantity: 3 }
 const Q: Fields = { name: "q", completed: true }
+
+const Shelf = EventRow.make("shelf", {
+  key: "id",
+  schema: Schema.Struct({
+    id: Schema.String,
+    box: Schema.Struct({ n: Schema.Number }),
+    items: Schema.Array(Schema.Struct({ n: Schema.Number })),
+    label: Schema.OptionFromOptionalKey(Schema.String)
+  })
+})
+const ShelfCodec = EventGroup.empty.add(Shelf).events.shelf.payloadSchemaBinary
 
 const Key = Schema.Literals(["a", "b"])
 const Name = Schema.Literals(["x", "y"])
@@ -266,6 +277,41 @@ describe("EventRow", () => {
       const row = { ...E, note: "not in the schema" }
       const actual = [yield* replay(Grocery.patch("g1", fields), []), yield* replay(Grocery.set(row), [])]
       assert.deepStrictEqual(actual, [[["patch", "g1", { completed: true }]], [["set", E]]])
+    }))
+
+  it.effect("passes nested values to callbacks as replicas decode them", () =>
+    Effect.gen(function*() {
+      const calls: Array<unknown> = []
+      const handler = EventRow.handler(Shelf, {
+        set: (row) => Effect.sync(() => calls.push(["set", row])),
+        patch: (id, fields) => Effect.sync(() => calls.push(["patch", id, fields])),
+        remove: () => Effect.void
+      })
+      // Replicas decode nested structs without these extra keys.
+      const box = { n: 1, extra: "not in the schema" }
+      const items = [{ n: 2, extra: "not in the schema" }]
+      const payloads = [Shelf.set({ id: "s1", box, items, label: Option.none() }), Shelf.patch("s1", { box, items })]
+      for (const payload of payloads) {
+        yield* handler({ storeId: yield* EventLog.CurrentStoreId, payload, entry: makeEntry(1000), conflicts: [] })
+      }
+      assert.deepStrictEqual(calls, [
+        ["set", { id: "s1", box: { n: 1 }, items: [{ n: 2 }], label: Option.none() }],
+        ["patch", "s1", { box: { n: 1 }, items: [{ n: 2 }] }]
+      ])
+    }))
+
+  it.effect("patches a field whose encoding omits None only with Some", () =>
+    Effect.gen(function*() {
+      const some = Shelf.patch("s1", { label: Option.some("x") })
+      const replayed = yield* Schema.encodeUnknownEffect(ShelfCodec)(some).pipe(
+        Effect.flatMap(Schema.decodeUnknownEffect(ShelfCodec))
+      )
+      // Replicas would read the omitted key as "not written", so None is refused.
+      const none = yield* Effect.exit(
+        Schema.encodeUnknownEffect(ShelfCodec)(Shelf.patch("s1", { label: Option.none() }))
+      )
+      assert.deepStrictEqual(replayed, some)
+      assert.isTrue(Exit.isFailure(none))
     }))
 
   it.effect.prop(
