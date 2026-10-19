@@ -5,7 +5,9 @@
  * the diff step of editors and collaborative editing.
  *
  * Scripts are computed with Myers' O(ND) algorithm in linear space, after
- * trimming the common prefix and suffix.
+ * trimming the common prefix and suffix. The module provides edit scripts and
+ * unified output only; word diffs, semantic cleanup and alternative
+ * algorithms are out of scope.
  *
  * @stability unstable
  * @since 4.0.6
@@ -75,15 +77,17 @@ export interface EditDelete<A> {
  */
 export interface DiffOptions {
   /**
-   * Upper bound on the work, counted in item comparisons and search steps,
-   * so items are compared at most `maxCost` times. When it is exhausted,
-   * unresolved regions, including any common prefix or suffix not yet
-   * trimmed, are emitted as a deletion followed by an insertion, so the script
-   * stays valid but may not be minimal.
+   * Largest number of inserted plus deleted items searched for in each
+   * changed region. Common prefixes, suffixes and matching runs are free.
+   * When a region needs more edits, the search splits it at the furthest
+   * point it reached and continues on the rest, and a part that still cannot
+   * be matched becomes a deletion followed by an insertion. The script stays
+   * valid, and is minimal whenever the whole diff needs at most `maxEdits`
+   * edits. Work is O((N + M) * maxEdits).
    *
    * @default Infinity
    */
-  readonly maxCost?: number | undefined
+  readonly maxEdits?: number | undefined
 }
 
 /**
@@ -93,7 +97,7 @@ export interface DiffOptions {
  * @category models
  * @since 4.0.6
  */
-export interface UnifiedOptions extends DiffOptions {
+export interface UnifiedOptions {
   /**
    * Number of unchanged lines shown around each change.
    *
@@ -126,8 +130,9 @@ export interface UnifiedOptions extends DiffOptions {
  *
  * **Gotchas**
  *
- * Work grows with the product of the input size and the number of differences.
- * Set `maxCost` for large or untrusted inputs.
+ * Without `maxEdits`, work grows with the product of the input size and the
+ * number of differences, which is quadratic for unrelated inputs. Set
+ * `maxEdits` for large or untrusted inputs.
  *
  * **Example** (Matching items by id)
  *
@@ -153,7 +158,7 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
   toEdits(
     before,
     after,
-    matchingBlocks(before.length, after.length, (i, j) => isEquivalent(before[i], after[j]), options?.maxCost)
+    matchingBlocks(before.length, after.length, (i, j) => isEquivalent(before[i], after[j]), options?.maxEdits)
   )
 
 /**
@@ -195,6 +200,12 @@ export const diff = <A>(
  * missing final newline are reported as changes. Joining the items of a run
  * gives the exact text it covers.
  *
+ * **Gotchas**
+ *
+ * Without `maxEdits`, work is quadratic for unrelated inputs: two unrelated
+ * 10,000-line texts take a few seconds. Set `maxEdits` when diffing large
+ * or untrusted text.
+ *
  * **Example** (Diffing lines)
  *
  * ```ts import.meta.vitest
@@ -203,7 +214,7 @@ export const diff = <A>(
  * TextDiff.lines("a\nb\n", "a\nc\n") // => [{ _tag: "Equal", items: ["a\n"] }, { _tag: "Delete", items: ["b\n"] }, { _tag: "Insert", items: ["c\n"] }]
  * ```
  *
- * @see {@link chars} for a code point diff
+ * @see {@link codePoints} for a code point diff
  * @see {@link unified} to format a line diff
  * @stability unstable
  * @category constructors
@@ -222,12 +233,17 @@ export const lines = (before: string, after: string, options?: DiffOptions): Arr
  * combining marks, can still be split. The UTF-16 length of a run is the sum
  * of its items' lengths.
  *
- * **Example** (Diffing characters)
+ * **Gotchas**
+ *
+ * Without `maxEdits`, work is quadratic for unrelated inputs. Set `maxEdits`
+ * when diffing large or untrusted text.
+ *
+ * **Example** (Diffing code points)
  *
  * ```ts import.meta.vitest
  * import { TextDiff } from "effect"
  *
- * TextDiff.chars("cat", "cut") // => [{ _tag: "Equal", items: ["c"] }, { _tag: "Delete", items: ["a"] }, { _tag: "Insert", items: ["u"] }, { _tag: "Equal", items: ["t"] }]
+ * TextDiff.codePoints("cat", "cut") // => [{ _tag: "Equal", items: ["c"] }, { _tag: "Delete", items: ["a"] }, { _tag: "Insert", items: ["u"] }, { _tag: "Equal", items: ["t"] }]
  * ```
  *
  * @see {@link lines} for a line diff
@@ -236,7 +252,7 @@ export const lines = (before: string, after: string, options?: DiffOptions): Arr
  * @category constructors
  * @since 4.0.6
  */
-export const chars = (before: string, after: string, options?: DiffOptions): Array<Edit<string>> =>
+export const codePoints = (before: string, after: string, options?: DiffOptions): Array<Edit<string>> =>
   diffTokens(Array.from(before), Array.from(after), options)
 
 /**
@@ -246,7 +262,8 @@ export const chars = (before: string, after: string, options?: DiffOptions): Arr
  *
  * `Equal` and `Delete` runs consume items from `before` by count, `Equal` runs
  * copy them to the result, and `Insert` runs add their items. Run contents are
- * not compared with `before`.
+ * not compared with `before`, since under a custom equivalence `Equal` items
+ * can differ from the input.
  *
  * **Gotchas**
  *
@@ -272,15 +289,18 @@ export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>
   const out: Array<A> = []
   let index = 0
   for (const edit of edits) {
-    const end = consume(index, edit, before.length)
+    if (edit._tag === "Insert") {
+      for (const item of edit.items) out.push(item)
+      continue
+    }
+    const end = index + edit.items.length
+    if (end > before.length) throw new Error("Edit script consumes more items than the input contains")
     if (edit._tag === "Equal") {
       for (let i = index; i < end; i++) out.push(before[i])
-    } else if (edit._tag === "Insert") {
-      for (const item of edit.items) out.push(item)
     }
     index = end
   }
-  ensureConsumed(index, before.length)
+  if (index !== before.length) throw new Error("Edit script consumes fewer items than the input contains")
   return out
 }
 
@@ -289,20 +309,22 @@ export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>
  *
  * **Details**
  *
- * Runs are measured by the UTF-16 length of their joined items, so this works
- * with scripts from both {@link lines} and {@link chars}. Run contents are not
- * compared with `before`.
+ * Works with scripts from both {@link lines} and {@link codePoints}. The
+ * joined items of each `Equal` and `Delete` run must match `before` at the
+ * current position, so a script made for different text is rejected rather
+ * than applied.
  *
  * **Gotchas**
  *
- * Throws when the runs do not consume exactly `before.length` code units.
+ * Throws when a run does not match `before`, or when the runs do not cover
+ * all of it.
  *
- * **Example** (Replaying a character diff)
+ * **Example** (Replaying a code point diff)
  *
  * ```ts import.meta.vitest
  * import { TextDiff } from "effect"
  *
- * const edits = TextDiff.chars("cat", "cut")
+ * const edits = TextDiff.codePoints("cat", "cut")
  *
  * TextDiff.applyText("cat", edits) // => "cut"
  * ```
@@ -321,12 +343,11 @@ export const applyText = (before: string, edits: ReadonlyArray<Edit<string>>): s
       out += text
       continue
     }
-    const end = index + text.length
-    if (end > before.length) throw new Error(overrun)
-    if (edit._tag === "Equal") out += before.slice(index, end)
-    index = end
+    if (!before.startsWith(text, index)) throw new Error(`Edit script does not match the input at index ${index}`)
+    if (edit._tag === "Equal") out += text
+    index += text.length
   }
-  ensureConsumed(index, before.length)
+  if (index !== before.length) throw new Error("Edit script covers less text than the input contains")
   return out
 }
 
@@ -377,15 +398,16 @@ export const invert = <A>(edits: ReadonlyArray<Edit<A>>): Array<Edit<A>> => {
 }
 
 /**
- * Formats the line differences between two strings as a unified diff.
+ * Formats a line edit script as a unified diff.
  *
  * **Details**
  *
- * The output follows `diff -u`: hunks whose context would touch or overlap
- * are merged, and a final line without a newline is followed by
+ * The script must come from {@link lines}, or otherwise hold one line per
+ * item. The output follows `diff -u`: hunks whose context would touch or
+ * overlap are merged, and a final line without a newline is followed by
  * `\ No newline at end of file`. When `fromFile` or `toFile` is set, both
- * header lines are emitted and an unset name falls back to the other. Equal
- * inputs produce an empty string.
+ * header lines are emitted and an unset name falls back to the other. A script
+ * without changes produces an empty string.
  *
  * **Gotchas**
  *
@@ -397,32 +419,45 @@ export const invert = <A>(edits: ReadonlyArray<Edit<A>>): Array<Edit<A>> => {
  * ```ts import.meta.vitest
  * import { TextDiff } from "effect"
  *
- * TextDiff.unified("a\nb\n", "a\nc\n") // => "@@ -1,2 +1,2 @@\n a\n-b\n+c\n"
+ * TextDiff.unified(TextDiff.lines("a\nb\n", "a\nc\n")) // => "@@ -1,2 +1,2 @@\n a\n-b\n+c\n"
  * ```
  *
- * @see {@link lines} for the underlying line diff
+ * @see {@link lines} to compute a line diff
  * @stability unstable
  * @category formatting
  * @since 4.0.6
  */
-export const unified = (before: string, after: string, options?: UnifiedOptions): string => {
-  const a = splitLines(before)
-  const b = splitLines(after)
-  const context = Math.max(0, Math.floor(options?.context ?? 3))
-  const blocks = matchingBlocks(a.length, b.length, internedEquals(a, b), options?.maxCost)
-
-  // Changes are the gaps between matching blocks
+export const unified = (edits: ReadonlyArray<Edit<string>>, options?: UnifiedOptions): string => {
+  const a: Array<string> = []
+  const b: Array<string> = []
+  // Changes are the maximal runs of edits between `Equal` runs
   const changes: Array<Change> = []
-  let i = 0
-  let j = 0
-  for (const block of blocks) {
-    if (block.a > i || block.b > j) changes.push({ a0: i, a1: block.a, b0: j, b1: block.b })
-    i = block.a + block.length
-    j = block.b + block.length
+  let change: Change | undefined
+  for (const edit of edits) {
+    if (edit._tag === "Equal") {
+      change = undefined
+      for (const line of edit.items) {
+        a.push(line)
+        b.push(line)
+      }
+      continue
+    }
+    if (edit.items.length === 0) continue
+    if (change === undefined) {
+      change = { a0: a.length, a1: a.length, b0: b.length, b1: b.length }
+      changes.push(change)
+    }
+    if (edit._tag === "Delete") {
+      for (const line of edit.items) a.push(line)
+      change.a1 = a.length
+    } else {
+      for (const line of edit.items) b.push(line)
+      change.b1 = b.length
+    }
   }
-  if (i < a.length || j < b.length) changes.push({ a0: i, a1: a.length, b0: j, b1: b.length })
   if (changes.length === 0) return ""
 
+  const context = Math.max(0, Math.floor(options?.context ?? 3))
   let out = ""
   if (options?.fromFile !== undefined || options?.toFile !== undefined) {
     out += `--- ${options.fromFile ?? options.toFile}\n+++ ${options.toFile ?? options.fromFile}\n`
@@ -463,23 +498,17 @@ interface Block {
 }
 
 interface Change {
-  readonly a0: number
-  readonly a1: number
-  readonly b0: number
-  readonly b1: number
+  a0: number
+  a1: number
+  b0: number
+  b1: number
 }
 
-const overrun = "Edit script consumes more items than the input contains"
-
-const consume = (index: number, edit: Edit<unknown>, length: number): number => {
-  if (edit._tag === "Insert") return index
-  const end = index + edit.items.length
-  if (end > length) throw new Error(overrun)
-  return end
-}
-
-const ensureConsumed = (index: number, length: number) => {
-  if (index !== length) throw new Error("Edit script consumes fewer items than the input contains")
+interface Region {
+  readonly aLo: number
+  readonly aHi: number
+  readonly bLo: number
+  readonly bHi: number
 }
 
 const splitLines = (text: string): Array<string> => {
@@ -516,7 +545,7 @@ const internedEquals = (a: ReadonlyArray<string>, b: ReadonlyArray<string>) => {
 }
 
 const diffTokens = (a: ReadonlyArray<string>, b: ReadonlyArray<string>, options?: DiffOptions) =>
-  toEdits(a, b, matchingBlocks(a.length, b.length, internedEquals(a, b), options?.maxCost))
+  toEdits(a, b, matchingBlocks(a.length, b.length, internedEquals(a, b), options?.maxEdits))
 
 const toEdits = <A>(a: ReadonlyArray<A>, b: ReadonlyArray<A>, blocks: ReadonlyArray<Block>): Array<Edit<A>> => {
   const out: Array<Edit<A>> = []
@@ -533,16 +562,17 @@ const toEdits = <A>(a: ReadonlyArray<A>, b: ReadonlyArray<A>, blocks: ReadonlyAr
 }
 
 /**
- * Returns the matched runs of a minimal edit script between `a[0..n)` and
- * `b[0..m)`, in order and with adjacent runs merged. Uses the linear-space
+ * Returns the matched runs of an edit script between `a[0..n)` and `b[0..m)`,
+ * in order and with adjacent runs merged. Uses the linear-space
  * divide-and-conquer form of Myers' algorithm: find the middle snake of an
- * optimal path, then solve both halves.
+ * optimal path, then solve both halves. A region needing more than `maxEdits`
+ * edits is split at the furthest point either search reached instead.
  */
 const matchingBlocks = (
   n: number,
   m: number,
   equals: (i: number, j: number) => boolean,
-  maxCost = Infinity
+  maxEdits = Infinity
 ): Array<Block> => {
   const blocks: Array<Block> = []
   const push = (a: number, b: number, length: number) => {
@@ -559,104 +589,118 @@ const matchingBlocks = (
   const offset = n + m + 1
   const vf = new Int32Array(2 * offset + 1)
   const vb = new Int32Array(2 * offset + 1)
-  // Each comparison and search step spends one unit of the budget. Once it is
-  // spent nothing matches and searches give up, so `equals` runs at most
-  // `maxCost` times
-  let budget = maxCost
-  let exhausted = false
-  const spend = (): boolean => {
-    if (budget >= 1) {
-      budget--
-      return true
-    }
-    exhausted = true
-    return false
-  }
-  const matches = (i: number, j: number): boolean => spend() && equals(i, j)
+  // The searches meet after half the edits of a region, so a region needing at
+  // most `maxEdits` edits is solved within `maxD` steps of each search
+  const maxD = Math.ceil(Math.max(0, maxEdits) / 2)
 
-  // Sets `snake` to [x, y, u, v] in absolute coordinates, or returns false when
-  // the budget runs out
-  const snake = [0, 0, 0, 0]
-  const middleSnake = (aLo: number, aHi: number, bLo: number, bHi: number): boolean => {
+  // Sets `split` to [x, y, u, v] in absolute coordinates: the middle snake of
+  // a minimal path, or an empty snake at the furthest point reached when the
+  // region needs more than `maxEdits` edits. Returns false when no point
+  // inside the region was reached
+  const split = [0, 0, 0, 0]
+  const findSplit = (aLo: number, aHi: number, bLo: number, bHi: number): boolean => {
     const N = aHi - aLo
     const M = bHi - bLo
     const delta = N - M
     const odd = (delta & 1) === 1
-    const maxD = (N + M + 1) >> 1
+    const limit = Math.min((N + M + 1) >> 1, maxD)
     vf[offset + 1] = 0
     vb[offset + 1] = 0
-    for (let d = 0; d <= maxD; d++) {
+    for (let d = 0; d <= limit; d++) {
       for (let k = -d; k <= d; k += 2) {
-        if (!spend()) return false
         let x = k === -d || (k !== d && vf[offset + k - 1] < vf[offset + k + 1])
           ? vf[offset + k + 1]
           : vf[offset + k - 1] + 1
         let y = x - k
         const x0 = x
         const y0 = y
-        while (x < N && y < M && matches(aLo + x, bLo + y)) {
+        while (x < N && y < M && equals(aLo + x, bLo + y)) {
           x++
           y++
         }
-        if (exhausted) return false
         vf[offset + k] = x
         if (odd && k >= delta - (d - 1) && k <= delta + (d - 1) && x + vb[offset + delta - k] >= N) {
-          snake[0] = aLo + x0
-          snake[1] = bLo + y0
-          snake[2] = aLo + x
-          snake[3] = bLo + y
+          split[0] = aLo + x0
+          split[1] = bLo + y0
+          split[2] = aLo + x
+          split[3] = bLo + y
           return true
         }
       }
       for (let k = -d; k <= d; k += 2) {
-        if (!spend()) return false
         let x = k === -d || (k !== d && vb[offset + k - 1] < vb[offset + k + 1])
           ? vb[offset + k + 1]
           : vb[offset + k - 1] + 1
         let y = x - k
         const x0 = x
         const y0 = y
-        while (x < N && y < M && matches(aHi - x - 1, bHi - y - 1)) {
+        while (x < N && y < M && equals(aHi - x - 1, bHi - y - 1)) {
           x++
           y++
         }
-        if (exhausted) return false
         vb[offset + k] = x
         if (!odd && k >= delta - d && k <= delta + d && x + vf[offset + delta - k] >= N) {
-          snake[0] = aHi - x
-          snake[1] = bHi - y
-          snake[2] = aHi - x0
-          snake[3] = bHi - y0
+          split[0] = aHi - x
+          split[1] = bHi - y
+          split[2] = aHi - x0
+          split[3] = bHi - y0
           return true
         }
       }
     }
-    // Unreachable: an optimal path has at most N + M edits
-    return false
+
+    // Over the cap: split at the reached point that covers the most items
+    let best = 0
+    for (let k = -limit; k <= limit; k += 2) {
+      const xf = vf[offset + k]
+      const yf = xf - k
+      if (xf <= N && yf >= 0 && yf <= M && xf + yf > best) {
+        best = xf + yf
+        split[0] = split[2] = aLo + xf
+        split[1] = split[3] = bLo + yf
+      }
+      const xb = vb[offset + k]
+      const yb = xb - k
+      if (xb <= N && yb >= 0 && yb <= M && xb + yb > best) {
+        best = xb + yb
+        split[0] = split[2] = aHi - xb
+        split[1] = split[3] = bHi - yb
+      }
+    }
+    return best > 0 && best < N + M
   }
 
-  const compare = (aLo: number, aHi: number, bLo: number, bHi: number): void => {
+  // Regions are processed in order from an explicit stack, since splits over
+  // the cap can nest deeper than the call stack allows
+  const stack: Array<Region | Block> = [{ aLo: 0, aHi: n, bLo: 0, bHi: m }]
+  while (stack.length > 0) {
+    const task = stack.pop()!
+    if ("length" in task) {
+      push(task.a, task.b, task.length)
+      continue
+    }
+    let { aHi, aLo, bHi, bLo } = task
     const prefixStart = aLo
-    while (aLo < aHi && bLo < bHi && matches(aLo, bLo)) {
+    while (aLo < aHi && bLo < bHi && equals(aLo, bLo)) {
       aLo++
       bLo++
     }
     push(prefixStart, bLo - (aLo - prefixStart), aLo - prefixStart)
     let suffix = 0
-    while (aLo < aHi - suffix && bLo < bHi - suffix && matches(aHi - suffix - 1, bHi - suffix - 1)) suffix++
+    while (aLo < aHi - suffix && bLo < bHi - suffix && equals(aHi - suffix - 1, bHi - suffix - 1)) suffix++
     aHi -= suffix
     bHi -= suffix
+    stack.push({ a: aHi, b: bHi, length: suffix })
     // With a common prefix and suffix removed, a non-empty side on both ends
     // means at least two edits, so both halves below are strictly smaller
-    if (aLo < aHi && bLo < bHi && !exhausted && middleSnake(aLo, aHi, bLo, bHi)) {
-      const [x, y, u, v] = snake
-      compare(aLo, x, bLo, y)
-      push(x, y, u - x)
-      compare(u, aHi, v, bHi)
+    if (aLo < aHi && bLo < bHi && findSplit(aLo, aHi, bLo, bHi)) {
+      const [x, y, u, v] = split
+      stack.push(
+        { aLo: u, aHi, bLo: v, bHi },
+        { a: x, b: y, length: u - x },
+        { aLo, aHi: x, bLo, bHi: y }
+      )
     }
-    push(aHi, bHi, suffix)
   }
-
-  compare(0, n, 0, m)
   return blocks
 }
