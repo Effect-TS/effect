@@ -39,6 +39,7 @@ import { Entry, EventJournal, type EventJournalError, makeEntryIdUnsafe, type Re
 import * as EventLogEncryption from "./EventLogEncryption.ts"
 import { StoreId } from "./EventLogMessage.ts"
 import type { EventLogRemote } from "./EventLogRemote.ts"
+import { setAnchor } from "./internal/conflicts.ts"
 
 /**
  * Service for writing typed event-log events through registered handlers.
@@ -757,12 +758,22 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
  * Only entries that the effect outputs are kept:
  *
  * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
- *   and primary key, at its original position in the batch.
- * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
- *   to the first entry in the batch.
+ *   and primary key.
+ * - `write(tag, payload)` encodes a replacement entry anchored to the first
+ *   entry in the batch, with a fresh id in that entry's millisecond.
  *
  * Entries that are neither forwarded nor replaced are dropped, including entries
- * that could not be decoded.
+ * that could not be decoded. During remote replay, kept entries are replayed in
+ * the id order of their anchors, then in write order, and a replacement's
+ * conflicts are the stored entries newer than its anchor.
+ *
+ * **Gotchas**
+ *
+ * Compaction runs before conflicts are read, so it never sees stored entries.
+ * Collapsing several entries into one is only safe when no stored entry for
+ * the same event and primary key has an id between theirs. Otherwise that
+ * stored entry should have applied between the collapsed ones, and replicas
+ * that received the entries in separate batches end up different.
  *
  * @see {@link groupCompaction} for compaction grouped by primary key
  *
@@ -800,12 +811,24 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
  * the compaction effect, which outputs the entries to keep:
  *
  * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
- *   and primary key, at its original position in the batch.
- * - `write(tag, payload)` encodes a replacement entry with a new id, anchored
- *   to the first decoded entry for the primary key.
+ *   and primary key.
+ * - `write(tag, payload)` encodes a replacement entry anchored to the first
+ *   decoded entry for the primary key, with a fresh id in that entry's
+ *   millisecond.
  *
  * Entries that are neither forwarded nor replaced are dropped. Entries that
  * cannot be decoded are not passed to the effect and are kept unchanged.
+ * During remote replay, kept entries are replayed in the id order of their
+ * anchors, then in write order, and a replacement's conflicts are the stored
+ * entries newer than its anchor.
+ *
+ * **Gotchas**
+ *
+ * Compaction runs before conflicts are read, so it never sees stored entries.
+ * Collapsing several entries into one is only safe when no stored entry for
+ * the same event and primary key has an id between theirs. Otherwise that
+ * stored entry should have applied between the collapsed ones, and replicas
+ * that received the entries in separate batches end up different.
  *
  * @see {@link groupBatchCompaction} for compaction across primary keys
  *
@@ -1087,48 +1110,52 @@ const make = Effect.gen(function*() {
             entries,
             compact: registry.compactors.size > 0
               ? Effect.fnUntraced(function*(remoteEntries) {
-                const finalEntries: Array<Array<Entry>> = remoteEntries.map(() => [])
-                const sourcePositions = new Map<string, number>()
+                // The journal sorts the batch by anchor, so output order is irrelevant.
+                const output: Array<Entry> = []
+                const inputs = new Map<string, Entry>()
+                const outputCounts = new Map<Entry, number>()
                 const compactable = new Map<
                   (options: {
                     readonly entries: ReadonlyArray<Entry>
                     readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
                   }) => Effect.Effect<void>,
-                  { readonly entries: Array<Entry>; readonly position: number }
+                  Array<Entry>
                 >()
 
-                for (let i = 0; i < remoteEntries.length; i++) {
-                  const remoteEntry = remoteEntries[i]
-                  const entry = remoteEntry.entry
-                  sourcePositions.set(entry.idString, i)
+                for (const { entry } of remoteEntries) {
+                  inputs.set(entry.idString, entry)
                   const compactor = registry.compactors.get(entry.event)
                   if (!compactor) {
-                    finalEntries[i].push(entry)
+                    output.push(entry)
                     continue
                   }
                   let group = compactable.get(compactor.effect)
                   if (!group) {
-                    group = { entries: [], position: i }
+                    group = []
                     compactable.set(compactor.effect, group)
                   }
-                  group.entries.push(entry)
+                  group.push(entry)
                 }
 
-                for (const [compact, { entries, position }] of compactable) {
+                for (const [compact, entries] of compactable) {
                   yield* compact({
                     entries,
                     write(entry, source) {
                       return Effect.sync(() => {
-                        // Anchor replacements to their source, preserving write order
-                        // without sorting generated IDs. Forwarded entries stay in place.
-                        const index = sourcePositions.get((source ?? entry).idString) ?? position
-                        finalEntries[index].push(entry)
+                        // Each output is ordered and conflict-checked by its source,
+                        // then by write order, not by its own fresh id. An output
+                        // without a known source stands for the group's first entry.
+                        const anchor = inputs.get((source ?? entry).idString) ?? entries[0]
+                        const index = outputCounts.get(anchor) ?? 0
+                        outputCounts.set(anchor, index + 1)
+                        setAnchor(entry, anchor, index)
+                        output.push(entry)
                       })
                     }
                   })
                 }
 
-                return finalEntries.flat()
+                return output
               })
               : undefined,
             effect: (batch) => handlerTransaction(replayFromRemote(batch))

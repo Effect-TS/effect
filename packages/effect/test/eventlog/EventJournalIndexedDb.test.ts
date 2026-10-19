@@ -3,6 +3,7 @@ import "fake-indexeddb/auto"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PubSub } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
+import * as ConflictsTest from "./EventJournalConflictsTest.ts"
 
 let databaseId = 0
 const uniqueName = (prefix: string) => `${prefix}-${databaseId++}`
@@ -137,6 +138,8 @@ const countTransactions = (database: string) =>
   ).pipe(Effect.map(({ transactions }) => transactions))
 
 describe("EventJournal.makeIndexedDb", () => {
+  ConflictsTest.suite(Effect.suspend(() => EventJournal.makeIndexedDb({ database: uniqueName("conflicts") })))
+
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.makeIndexedDb({ database: uniqueName("journal") })
@@ -388,7 +391,7 @@ describe("EventJournal.makeIndexedDb", () => {
         [[
           [older.idString, [newer.idString]],
           [sameBatch.idString, [newer.idString]],
-          [sameMillis.idString, []]
+          [sameMillis.idString, [newer.idString]]
         ]]
       )
       // Duplicate check, conflicts, commit.
@@ -455,7 +458,7 @@ describe("EventJournal.makeIndexedDb", () => {
 
       const older = entry(1000)
       const equalMillis = entry(2000, { tail: 0x05 })
-      const crossed = entry(1000, { event: "Other", primaryKey: "other" })
+      const crossed = entry(1000, { event: "Other", primaryKey: "other", tail: 0xf0 })
       const otherEventOlder = entry(2500, { event: "Other" })
       const batches: Array<Batch> = []
       const { duplicateEntries } = yield* journal.writeFromRemote({
@@ -470,8 +473,8 @@ describe("EventJournal.makeIndexedDb", () => {
         duplicates: [newest.idString],
         batches: [[
           [older.idString, [sameMillisLow, sameMillisHigh, newest].map(describeEntry)],
-          [equalMillis.idString, [describeEntry(newest)]],
           [crossed.idString, []],
+          [equalMillis.idString, [sameMillisHigh, newest].map(describeEntry)],
           [otherEventOlder.idString, [describeEntry(otherEvent)]]
         ]]
       })

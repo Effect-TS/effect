@@ -392,7 +392,7 @@ export const make = (options?: {
         ? yield* options.compact(uncommitted)
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
 
-      if (compacted.length > 0) {
+      if (Arr.isReadonlyArrayNonEmpty(compacted)) {
         const index = new ConflictIndex(compacted)
         const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
         // Match the hash index; exact predicates below rule out hash collisions.
@@ -407,9 +407,10 @@ export const make = (options?: {
           ...hashed,
           sql.in("event", index.events),
           sql.in("primary_key", primaryKeys),
-          sql`timestamp > ${index.oldestMillis}`
+          // A coarse filter: the index compares ids exactly.
+          sql`timestamp >= ${index.oldestMillis}`
         ])
-        const stored = yield* sql`SELECT * FROM ${entryTableSql} WHERE ${conflicts} ORDER BY timestamp ASC`.pipe(
+        const stored = yield* sql`SELECT * FROM ${entryTableSql} WHERE ${conflicts}`.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )

@@ -24,7 +24,6 @@ import * as EventLogRemote from "effect/eventlog/EventLogRemote"
 import { Reactivity } from "effect/reactivity"
 import * as RpcTest from "effect/rpc/RpcTest"
 import { TestClock } from "effect/testing"
-import { vi } from "vitest"
 
 const UserPayload = Schema.Struct({
   id: Schema.String
@@ -122,16 +121,8 @@ const replayItems = Effect.fnUntraced(function*(
   )
   return yield* Effect.gen(function*() {
     const registry = yield* EventLog.Registry
-    // Control only the randomness boundary: successive replacement UUIDs sort
-    // opposite to compactor write order, without relying on chance or retries.
-    let randomByte = 255
-    const random = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((bytes) => {
-      new Uint8Array(bytes!.buffer, bytes!.byteOffset, bytes!.byteLength).fill(randomByte--)
-      return bytes
-    })
     return yield* registry.registerRemote(remote).pipe(
-      Effect.andThen(Effect.forEach(events, () => Queue.take(handled))),
-      Effect.ensuring(Effect.sync(() => random.mockRestore()))
+      Effect.andThen(Effect.forEach(events, () => Queue.take(handled)))
     )
   }).pipe(Effect.provide(layer))
 })
@@ -329,7 +320,7 @@ describe("EventLog", () => {
     }), { concurrent: false })
 
   it.effect(
-    "replays a mixed same-millisecond batch at source positions even when replacement keys change",
+    "replays a mixed same-millisecond batch in id order even when replacement keys change",
     () =>
       Effect.gen(function*() {
         const handled = yield* replayItems([
@@ -339,9 +330,10 @@ describe("EventLog", () => {
           { event: "ItemObserved" },
           { event: "ItemAdded", list: "b" }
         ])
-        // The opaque b entry stays between sources; b replacements belong at
-        // the first decoded b source, not the opaque entry or group start.
-        assert.deepStrictEqual(handled, [0, 1, 2, 3, 4])
+        // Replacements reuse their source's id, so the batch replays in id
+        // order, the reverse of remote order here. The b replacement takes the
+        // first decoded b source's id, not the opaque entry's or the group start's.
+        assert.deepStrictEqual(handled, [4, 3, 2, 1, 0])
       }),
     { concurrent: false }
   )
@@ -391,6 +383,99 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
+  it.effect("gives replacements fresh ids in their anchor's millisecond", () =>
+    Effect.gen(function*() {
+      const first = yield* makeCompactionEntry({ id: "user-1", name: "before" })
+      const last = yield* makeCompactionEntry({ id: "user-1", name: "after" })
+      const compaction = EventLog.groupCompaction(CurrentUserGroup, ({ events, write }) =>
+        Effect.forEach(events, (event) => write("UserCreated", event.payload), { discard: true }))
+
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        const compactor = registry.compactors.get("UserCreated")!
+        const output: Array<EventJournal.Entry> = []
+        yield* compactor.effect({
+          entries: [first, last],
+          write: (entry) =>
+            Effect.sync(() => {
+              output.push(entry)
+            })
+        })
+
+        assert.strictEqual(output.length, 2)
+        for (const entry of output) {
+          assert.strictEqual(entry.createdAtMillis, first.createdAtMillis)
+          assert.notStrictEqual(entry.idString, first.idString)
+          assert.notStrictEqual(entry.idString, last.idString)
+        }
+        assert.notStrictEqual(output[0].idString, output[1].idString)
+      }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+    }))
+
+  it.effect("reports a stored entry newer than the source as a conflict for every replacement", () =>
+    Effect.gen(function*() {
+      const conflicts = yield* Queue.unbounded<number>()
+      const handlers = Layer.mergeAll(
+        EventLog.group(
+          ItemGroup,
+          (handlers) => handlers.handle("ItemAdded", ({ conflicts: c }) => Queue.offer(conflicts, c.length))
+        ),
+        EventLog.groupCompaction(ItemGroup, ({ events, write }) =>
+          Effect.forEach(
+            [1, 2],
+            (item) => write("ItemAdded", { ...events[0].payload, item }),
+            { discard: true }
+          ))
+      ).pipe(Layer.provide(EventLog.layerRegistry))
+      const layer = EventLog.layer(EventLog.schema(ItemGroup), handlers).pipe(
+        Layer.provideMerge(EventJournal.layerMemory),
+        Layer.provide(
+          Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle))
+        )
+      )
+      // Valid ids can be adjacent: `stored` is the source's id plus one.
+      const makeEntry = Effect.fnUntraced(function*(item: number, lastByte: number) {
+        const id = EventJournal.makeEntryIdUnsafe({ msecs: 1000 })
+        id.fill(0, 7)
+        id[6] = 0x70
+        id[8] = 0x80
+        id[15] = lastByte
+        return new EventJournal.Entry({
+          id,
+          event: "ItemAdded",
+          primaryKey: "list-1",
+          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
+            list: "list-1",
+            item
+          })
+        }, { disableChecks: true })
+      })
+      const source = yield* makeEntry(0, 0x10)
+      const stored = yield* makeEntry(9, 0x11)
+
+      const handled = yield* Effect.gen(function*() {
+        const journal = yield* EventJournal.EventJournal
+        const registry = yield* EventLog.Registry
+        yield* journal.writeFromRemote({
+          remoteId: EventJournal.makeRemoteIdUnsafe(),
+          entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: stored })],
+          effect: () => Effect.void
+        })
+        const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+        yield* Queue.offer(changes, new EventJournal.RemoteEntry({ remoteSequence: 0, entry: source }))
+        yield* registry.registerRemote(EventLogRemote.EventLogRemote.of({
+          id: EventJournal.makeRemoteIdUnsafe(),
+          changes: () => Effect.succeed(changes),
+          write: () => Effect.void,
+          whenAuthenticated: (effect) => effect
+        }))
+        return [yield* Queue.take(conflicts), yield* Queue.take(conflicts)]
+      }).pipe(Effect.provide(layer))
+
+      // Both replacements stand for `source`, which `stored` is newer than.
+      assert.deepStrictEqual(handled, [1, 1])
+    }))
+
   it.effect("preserves all undecodable entries without invoking the group compactor", () =>
     Effect.gen(function*() {
       const entries = [
@@ -420,7 +505,7 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
     }))
 
-  it.effect("replays forwarded entries unchanged in batch order when old entries arrive after new ones", () =>
+  it.effect("replays forwarded entries unchanged in id order when old entries arrive after new ones", () =>
     Effect.gen(function*() {
       const makeEntry = Effect.fnUntraced(function*(list: string, item: number, msecs: number) {
         return new EventJournal.Entry({
@@ -467,7 +552,7 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(layer))
 
       const fields = (entry: EventJournal.Entry) => [entry.idString, entry.primaryKey, entry.payload] as const
-      assert.deepStrictEqual(replayed.map(fields), entries.map(fields))
+      assert.deepStrictEqual(replayed.map(fields), [entries[1], entries[0], entries[2]].map(fields))
     }))
 
   it.effect("passes every group entry to one batch compactor call in order and drops unforwarded opaque entries", () =>

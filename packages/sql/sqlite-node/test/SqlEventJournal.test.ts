@@ -2,6 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
+import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -21,13 +22,18 @@ const makeJournal = Effect.gen(function*() {
   )
 }).pipe(Effect.provide(Reactivity.layer))
 
-const entry = (msecs: number, event = "Repro", primaryKey = "key") =>
-  new EventJournal.Entry({
-    id: EventJournal.makeEntryIdUnsafe({ msecs }),
+// `tail` fixes the random id bytes, so entries sharing a millisecond sort in a
+// known order by id.
+const entry = (msecs: number, event = "Repro", primaryKey = "key", tail?: number) => {
+  const id = EventJournal.makeEntryIdUnsafe({ msecs })
+  if (tail !== undefined) id.fill(tail, 6)
+  return new EventJournal.Entry({
+    id,
     event,
     primaryKey,
     payload: new Uint8Array()
   }, { disableChecks: true })
+}
 
 const localEntry = (primaryKey: string) => ({ event: "Repro", primaryKey, payload: new Uint8Array() })
 
@@ -35,6 +41,8 @@ const remoteEntries = (entries: ReadonlyArray<EventJournal.Entry>) =>
   entries.map((entry, remoteSequence) => new EventJournal.RemoteEntry({ remoteSequence, entry }))
 
 describe("SqlEventJournal", () => {
+  ConflictsTest.suite(makeJournal)
+
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal
@@ -260,15 +268,15 @@ describe("SqlEventJournal", () => {
       }).pipe(Effect.provide(layer))
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect("replays each remote batch in one callback with strictly newer same-event-and-key conflicts", () =>
+  it.effect("replays each remote batch in one callback with same-event-and-key conflicts that have greater ids", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal
-      const newer = entry(2000)
-      const otherEvent = entry(3000, "Other")
-      const otherKey = entry(3000, "Repro", "other")
+      const newer = entry(2000, "Repro", "key", 0x80)
+      const otherEvent = entry(3000, "Other", "key", 0x10)
+      const otherKey = entry(3000, "Repro", "other", 0x20)
       const older = entry(1000)
       const sameBatch = entry(1500)
-      const sameMillis = entry(2000)
+      const sameMillis = entry(2000, "Repro", "key", 0x10)
       const batches: Array<
         ReadonlyArray<{ readonly entry: EventJournal.Entry; readonly conflicts: ReadonlyArray<EventJournal.Entry> }>
       > = []
@@ -285,8 +293,8 @@ describe("SqlEventJournal", () => {
       yield* writeBatch([older, sameBatch, sameMillis])
 
       assert.strictEqual(batches.length, 2)
-      // Conflicts exclude the incoming batch, equal timestamps, and other
-      // event/key pairs.
+      // Conflicts exclude the incoming batch and other event/key pairs. A
+      // stored entry in the same millisecond with a greater id conflicts.
       assert.deepStrictEqual(
         batches.map((batch) => batch.map(({ conflicts, entry }) => [entry.idString, conflicts.map((c) => c.idString)])),
         [
@@ -294,7 +302,7 @@ describe("SqlEventJournal", () => {
           [
             [older.idString, [newer.idString]],
             [sameBatch.idString, [newer.idString]],
-            [sameMillis.idString, []]
+            [sameMillis.idString, [newer.idString]]
           ]
         ]
       )

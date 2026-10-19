@@ -178,7 +178,7 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           ])
         }))
 
-      it.effect("reports equal-timestamp conflicts by entry id order and batch start", () =>
+      it.effect("reports equal-timestamp conflicts only for stored entries with a greater id", () =>
         Effect.gen(function*() {
           const [lower, stored, higher] = [
             yield* makeEntry(1_000, "a"),
@@ -197,13 +197,12 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
             yield* write(batch)
             results.push(handled.map(({ conflicts }) => conflicts))
           }
-          // History is read from the batch's lowest entry id, so a stored entry
-          // with the same timestamp and a lower id conflicts with `higher` only
-          // when `lower` is in the same batch.
+          // `stored` has the same timestamp as `higher` but a lower id, so it
+          // never conflicts with `higher`, whatever else is in the batch.
           assert.deepStrictEqual(results, [
             [[stored.idString]],
             [[]],
-            [[stored.idString], [stored.idString]]
+            [[stored.idString], []]
           ])
         }))
 
@@ -214,16 +213,16 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           for (let i = 0; i < 252; i++) entries.push(yield* makeEntry(1_000, "x"))
           entries.sort(EventJournal.Entry.Order)
           // `stored` sorts between the batch's first and last entries and only
-          // shares a key with the last, so every lookup must start from the
-          // batch's lowest id.
+          // shares a key with the batch's second entry, so the history must
+          // start from the batch's lowest id.
           const withKeyB = ({ event, id, payload }: EventJournal.Entry) =>
             new EventJournal.Entry({ id, event, primaryKey: "b", payload }, { disableChecks: true })
-          const stored = withKeyB(entries[1])
-          const last = withKeyB(entries[251])
+          const second = withKeyB(entries[1])
+          const stored = withKeyB(entries[2])
           yield* write([stored])
           handled.length = 0
-          yield* write([entries[0], ...entries.slice(2, 251), last])
-          assert.deepStrictEqual(handled.at(-1), { key: "b", conflicts: [stored.idString] })
+          yield* write([entries[0], second, ...entries.slice(3)])
+          assert.deepStrictEqual(handled[1], { key: "b", conflicts: [stored.idString] })
         }))
 
       it.effect("matches long primary keys exactly", () =>
@@ -247,10 +246,11 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerUnencrypt
           handled.length = 0
           yield* write([before, stored, after])
           yield* write([yield* makeEntry(500, "a")])
+          // Conflicts are reported in id order, not upload order.
           assert.deepStrictEqual(handled, [
             { key: "a", conflicts: [stored.idString] },
             { key: "a", conflicts: [] },
-            { key: "a", conflicts: [stored.idString, before.idString, after.idString] }
+            { key: "a", conflicts: [before.idString, stored.idString, after.idString] }
           ])
         }))
 

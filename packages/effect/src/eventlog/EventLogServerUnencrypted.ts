@@ -496,15 +496,18 @@ class KeyIndex<A> {
 }
 
 /**
- * Indexes the history returned by `Storage.entriesAfter` for one batch. Batch
- * entries are never added, so they do not conflict with each other.
+ * Indexes the history returned by `Storage.entriesAfter` for one batch. A
+ * conflict is a stored entry with the same event and primary key and a
+ * strictly greater id, reported in id order. Batch entries are never added, so
+ * they do not conflict with each other.
  */
 class HistoryIndex {
   private readonly ids = new Set<string>()
   private readonly byKey = new KeyIndex<Entry>()
 
   constructor(history: ReadonlyArray<Entry>) {
-    for (const entry of history) {
+    // Storage returns history in sequence order; conflicts are reported in id order.
+    for (const entry of Arr.sort(history, Entry.Order)) {
       this.ids.add(entry.idString)
       this.byKey.add(entry.event, entry.primaryKey, entry)
     }
@@ -517,7 +520,7 @@ class HistoryIndex {
   conflicts(entry: Entry): Array<Entry> {
     const stored = this.byKey.get(entry.event, entry.primaryKey)
     if (stored === undefined) return []
-    return stored.filter((candidate) => candidate.createdAtMillis >= entry.createdAtMillis)
+    return stored.filter((candidate) => Entry.Order(candidate, entry) > 0)
   }
 }
 
