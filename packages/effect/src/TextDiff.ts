@@ -7,7 +7,7 @@
  * optional `maxEdits` search cap is exceeded. Word diffs, semantic cleanup
  * and collaborative editing protocols are out of scope.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.6
  */
 import * as Equal from "./Equal.ts"
@@ -24,7 +24,7 @@ import * as Equal from "./Equal.ts"
  * the `Insert` run.
  *
  * @see {@link diff} to compute an edit script
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -33,7 +33,7 @@ export type Edit<A> = EditEqual<A> | EditInsert<A> | EditDelete<A>
 /**
  * Run of items present in both sequences.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -45,7 +45,7 @@ export interface EditEqual<A> {
 /**
  * Run of items present only in the `after` sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -57,7 +57,7 @@ export interface EditInsert<A> {
 /**
  * Run of items present only in the `before` sequence.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -69,7 +69,7 @@ export interface EditDelete<A> {
 /**
  * Options for computing an edit script.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -91,7 +91,7 @@ export interface DiffOptions {
 /**
  * Options for {@link unified}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.6
  */
@@ -144,7 +144,7 @@ export interface UnifiedOptions {
  * ```
  *
  * @see {@link diff} for the `Equal.equals` variant
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -180,7 +180,7 @@ export const diffWith = <A>(isEquivalent: (self: A, that: A) => boolean) =>
  *
  * @see {@link diffWith} to compare items with a custom equivalence
  * @see {@link apply} to replay a script
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -214,7 +214,7 @@ export const diff = <A>(
  *
  * @see {@link codePoints} for a code point diff
  * @see {@link unified} to format a line diff
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -246,7 +246,7 @@ export const lines = (before: string, after: string, options?: DiffOptions): Arr
  *
  * @see {@link lines} for a line diff
  * @see {@link applyText} to replay a script on a string
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
@@ -279,7 +279,7 @@ export const codePoints = (before: string, after: string, options?: DiffOptions)
  *
  * @see {@link applyText} for the string variant
  * @see {@link invert} to apply a script in reverse
- * @stability unstable
+ * @stability experimental
  * @category combinators
  * @since 4.0.6
  */
@@ -328,7 +328,7 @@ export const apply = <A>(before: ReadonlyArray<A>, edits: ReadonlyArray<Edit<A>>
  * ```
  *
  * @see {@link apply} for the array variant
- * @stability unstable
+ * @stability experimental
  * @category combinators
  * @since 4.0.6
  */
@@ -367,7 +367,7 @@ export const applyText = (before: string, edits: ReadonlyArray<Edit<string>>): s
  * TextDiff.apply([1, 3], TextDiff.invert(edits)) // => [1, 2]
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category combinators
  * @since 4.0.6
  */
@@ -421,7 +421,7 @@ export const invert = <A>(edits: ReadonlyArray<Edit<A>>): Array<Edit<A>> => {
  * ```
  *
  * @see {@link lines} to compute a line diff
- * @stability unstable
+ * @stability experimental
  * @category formatting
  * @since 4.0.6
  */
