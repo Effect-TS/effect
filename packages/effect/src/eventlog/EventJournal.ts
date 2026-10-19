@@ -44,6 +44,15 @@ import { ConflictIndex, entryIdOrder } from "./internal/conflicts.ts"
  * Entries written by `EventLog` carry payloads encoded with their event's
  * `payloadSchemaBinary`; see {@link Entry} for how to decode them.
  *
+ * **Gotchas**
+ *
+ * A journal belongs to one store id. Entries and remote sync state are not
+ * partitioned by store, so the first `withLock` binds the journal to its store
+ * id, and `withLock` with any other store id fails with a
+ * {@link StoreIdMismatchError}. The binding lasts until `destroy`, and the
+ * IndexedDB and SQL journals store it with their data. Use a separate journal,
+ * such as a separate database, for each store id.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -167,8 +176,14 @@ export class EventJournal extends Context.Service<EventJournal, {
 
   /**
    * Run an effect with a lock on the journal.
+   *
+   * The first call binds the journal to `storeId`. A call with any other store
+   * id fails with an `EventJournalError` caused by a
+   * {@link StoreIdMismatchError}, without running the effect.
    */
-  readonly withLock: (storeId: StoreId) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  readonly withLock: (
+    storeId: StoreId
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | EventJournalError, R>
 }>()("effect/eventlog/EventJournal") {}
 
 const TypeId = "effect/eventlog/EventJournal/EventJournalError" as const
@@ -195,6 +210,64 @@ export class EventJournalError extends Data.TaggedError("EventJournalError")<{
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
+}
+
+/**
+ * Cause of the `EventJournalError` raised when a journal bound to one store id
+ * is used with another.
+ *
+ * **Details**
+ *
+ * `journalStoreId` is the store id the journal is bound to, and `storeId` the
+ * one it was used with.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class StoreIdMismatchError extends Data.TaggedError("StoreIdMismatchError")<{
+  readonly storeId: StoreId
+  readonly journalStoreId: StoreId
+}> {
+  /**
+   * Public message naming both store ids.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  override get message(): string {
+    return `The journal belongs to store id "${this.journalStoreId}" and cannot be used with "${this.storeId}". Use a separate journal for each store id.`
+  }
+}
+
+/**
+ * Checks the store id passed to `withLock`. `bind` records `storeId` when the
+ * journal is unbound, atomically, and returns the store id it is bound to.
+ * Matches are cached, so the journal reads its binding once.
+ *
+ * @internal
+ */
+export const makeStoreIdBinding = (bind: (storeId: StoreId) => Effect.Effect<StoreId, EventJournalError>) => {
+  let bound: StoreId | undefined
+  const mismatch = (storeId: StoreId, journalStoreId: StoreId) =>
+    Effect.fail(
+      new EventJournalError({ method: "withLock", cause: new StoreIdMismatchError({ storeId, journalStoreId }) })
+    )
+  return {
+    check: (storeId: StoreId): Effect.Effect<void, EventJournalError> =>
+      Effect.suspend(() => {
+        if (bound === storeId) return Effect.void
+        if (bound !== undefined) return mismatch(storeId, bound)
+        return Effect.flatMap(bind(storeId), (journalStoreId) => {
+          if (journalStoreId !== storeId) return mismatch(storeId, journalStoreId)
+          bound = storeId
+          return Effect.void
+        })
+      }),
+    reset: () => {
+      bound = undefined
+    }
+  }
 }
 
 /**
@@ -612,15 +685,12 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
   const byId = new Map<string, Entry>()
   const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
   const pubsub = yield* PubSub.unbounded<Entry>()
-  const storeSemaphores = new Map<StoreId, Semaphore.Semaphore>()
-  const withLock = (storeId: StoreId) => {
-    let semaphore = storeSemaphores.get(storeId)
-    if (!semaphore) {
-      semaphore = Semaphore.makeUnsafe(1)
-      storeSemaphores.set(storeId, semaphore)
-    }
-    return semaphore.withPermit
-  }
+  // The journal holds one store, so one semaphore covers it.
+  const semaphore = Semaphore.makeUnsafe(1)
+  let journalStoreId: StoreId | undefined
+  const binding = makeStoreIdBinding((storeId) => Effect.sync(() => journalStoreId ??= storeId))
+  const withLock = (storeId: StoreId) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    Effect.andThen(binding.check(storeId), semaphore.withPermit(effect))
 
   const ensureRemote = (remoteId: RemoteId) => {
     const remoteIdString = Uuid.stringify(remoteId)
@@ -743,6 +813,8 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       latestId = undefined
       byId.clear()
       remotes.clear()
+      journalStoreId = undefined
+      binding.reset()
     }),
     withLock
   })
@@ -789,9 +861,14 @@ export const layerMemory: Layer.Layer<EventJournal> = Layer.effect(EventJournal,
  *
  * **Details**
  *
- * The journal stores entries and remote replication metadata in the configured
- * browser database, publishes local changes, and requires `Scope` so the database
- * connection can be closed when the scope ends.
+ * The journal stores entries, remote replication metadata and the store id it
+ * is bound to in the configured browser database, publishes local changes, and
+ * requires `Scope` so the database connection can be closed when the scope ends.
+ *
+ * **Gotchas**
+ *
+ * The database belongs to the first store id used with it, including from
+ * other tabs. Use a separate `database` for each store id.
  *
  * @stability unstable
  * @category constructors
@@ -802,10 +879,14 @@ export const makeIndexedDb = (options?: {
 }): Effect.Effect<EventJournal["Service"], EventJournalError, Scope> =>
   Effect.gen(function*() {
     const database = options?.database ?? "effect_event_journal"
-    const openRequest = indexedDB.open(database, 2)
+    const openRequest = indexedDB.open(database, 3)
     openRequest.onupgradeneeded = (event) => {
       const db = openRequest.result
       const tx = openRequest.transaction!
+
+      // The store id the journal is bound to, under `storeIdKey`.
+      if (event.oldVersion < 3) db.createObjectStore("store")
+      if (event.oldVersion >= 2) return
 
       if (event.oldVersion < 1) {
         const entries = db.createObjectStore("entries", { keyPath: "id" })
@@ -860,6 +941,22 @@ export const makeIndexedDb = (options?: {
 
     const pubsub = yield* PubSub.unbounded<Entry>()
     const clock = yield* Clock.Clock
+    const lock = yield* makeBrowserWithLock(database)
+
+    // One readwrite transaction reads and records the binding, so journals in
+    // other tabs cannot bind the database to another store id in between.
+    const binding = makeStoreIdBinding((storeId) =>
+      Effect.callback<StoreId, EventJournalError>((resume) => {
+        const tx = db.transaction("store", "readwrite")
+        const store = tx.objectStore("store")
+        const request = store.get(storeIdKey) as IDBRequest<StoreId | undefined>
+        request.onsuccess = () => {
+          if (request.result === undefined) store.put(storeId, storeIdKey)
+        }
+        onTransactionDone(tx, "withLock", resume, () => request.result ?? storeId)
+        return Effect.sync(() => tx.abort())
+      })
+    )
 
     // Other tabs share the database but not the entry id sequence.
     const latestEntryId = Effect.callback<ReadonlyArray<EntryId>, EventJournalError>((resume) => {
@@ -1077,9 +1174,13 @@ export const makeIndexedDb = (options?: {
         }),
       changes: PubSub.subscribe(pubsub),
       destroy: Effect.sync(() => {
+        binding.reset()
         indexedDB.deleteDatabase(database)
       }),
-      withLock: yield* makeBrowserWithLock(database)
+      withLock: (storeId) => {
+        const locked = lock(storeId)
+        return (effect) => Effect.andThen(binding.check(storeId), locked(effect))
+      }
     })
   })
 
@@ -1159,6 +1260,8 @@ const advanceProgress = (
     if (value > current) store.put({ ...request.result, remoteId, [field]: value })
   }
 }
+
+const storeIdKey = "storeId"
 
 const byEntryId = (a: Entry, b: Entry) => indexedDB.cmp(a.id as IDBValidKey, b.id as IDBValidKey)
 

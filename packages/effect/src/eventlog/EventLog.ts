@@ -457,6 +457,14 @@ export declare namespace Handlers {
  *
  * Defaults to the branded store id `"default"`.
  *
+ * **Gotchas**
+ *
+ * An `EventJournal` belongs to the first store id it is used with. Building an
+ * `EventLog` with another store id over the same journal fails with an
+ * `EventJournalError` caused by a `StoreIdMismatchError`, before any remote
+ * syncs. To switch stores, use a separate journal, such as a separate
+ * database, for each store id.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -1076,6 +1084,9 @@ const make = Effect.gen(function*() {
   const storeId = yield* CurrentStoreId
   const identity = yield* Identity
   const journal = yield* EventJournal
+  // Binds the journal to the store id, or fails before any remote can sync it
+  // with another store.
+  yield* journal.withLock(storeId)(Effect.void)
   const registry = yield* Registry
 
   const reactivity = yield* Reactivity
@@ -1269,11 +1280,20 @@ const make = Effect.gen(function*() {
  * Provides `EventLog` and `Registry` using the configured `EventJournal` and
  * `Identity`.
  *
+ * **Gotchas**
+ *
+ * Fails with an `EventJournalError` when the journal belongs to a store id
+ * other than `CurrentStoreId`.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerEventLog: Layer.Layer<EventLog | Registry, never, EventJournal | Identity> = Layer.effect(
+export const layerEventLog: Layer.Layer<
+  EventLog | Registry,
+  EventJournalError,
+  EventJournal | Identity
+> = Layer.effect(
   EventLog,
   make
 ).pipe(
@@ -1293,8 +1313,8 @@ export const layerEventLog: Layer.Layer<EventLog | Registry, never, EventJournal
  * **Details**
  *
  * The supplied handler layer is provided with `layerEventLog`. The returned
- * layer provides `EventLog | Registry`, preserves the handler layer's error
- * type, and still requires its remaining services plus `EventJournal` and
+ * layer provides `EventLog | Registry`, fails with the handler layer's error or
+ * the `EventJournalError` of `layerEventLog`, and still requires its remaining services plus `EventJournal` and
  * `Identity`.
  *
  * **Gotchas**
@@ -1316,7 +1336,7 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
   layer: Layer.Layer<EventGroup.ToService<Groups>, E, R>
 ): Layer.Layer<
   EventLog | Registry,
-  E,
+  E | EventJournalError,
   Exclude<R, EventLog | Registry> | EventJournal | Identity
 > =>
   layer.pipe(

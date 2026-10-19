@@ -16,6 +16,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as SqlSchema from "../sql/SqlSchema.ts"
 import * as EventJournal from "./EventJournal.ts"
+import { StoreId } from "./EventLogMessage.ts"
 import { ConflictIndex } from "./internal/conflicts.ts"
 
 type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["writeFromRemote"]>[0]
@@ -26,10 +27,16 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  * **Details**
  *
  * Maintains `entryTable`, `${entryTable}_sequence`, `${entryTable}_sources`,
- * `${remotesTable}_checkpoints` and `remoteCursorsTable` (default
- * `${remotesTable}_cursors`) using the configured `SqlClient`.
+ * `${entryTable}_store`, `${remotesTable}_checkpoints` and `remoteCursorsTable`
+ * (default `${remotesTable}_cursors`) using the configured `SqlClient`.
+ *
+ * `${entryTable}_store` records the store id the tables are bound to, by the
+ * first `withLock` from any connection.
  *
  * **Gotchas**
+ *
+ * The tables belong to one store id. Use separate tables or a separate
+ * database for each store id.
  *
  * Creating or migrating the schema requires a writable connection. Migrated
  * databases can be reopened read-only.
@@ -62,12 +69,14 @@ export const make = (options?: {
 
     const sequenceTable = `${entryTable}_sequence`
     const sourcesTable = `${entryTable}_sources`
+    const storeTable = `${entryTable}_store`
     const checkpointsTable = `${remotesTable}_checkpoints`
 
     const entryTableSql = sql(entryTable)
     const remotesTableSql = sql(remotesTable)
     const sequenceTableSql = sql(sequenceTable)
     const sourcesTableSql = sql(sourcesTable)
+    const storeTableSql = sql(storeTable)
     const checkpointsTableSql = sql(checkpointsTable)
     const remoteCursorsTableSql = sql(remoteCursorsTable)
 
@@ -269,6 +278,34 @@ export const make = (options?: {
       `
     })
 
+    // One row, keyed by `id = 1`, so the primary key admits one store id.
+    const createStoreTable = sql.onDialectOrElse({
+      pg: () =>
+        sql`
+          CREATE TABLE IF NOT EXISTS ${storeTableSql} (
+            id INT PRIMARY KEY,
+            store_id TEXT NOT NULL
+          )`,
+      mysql: () =>
+        sql`
+          CREATE TABLE IF NOT EXISTS ${storeTableSql} (
+            id INT PRIMARY KEY,
+            store_id TEXT NOT NULL
+          )`,
+      mssql: () =>
+        sql`
+          CREATE TABLE ${storeTableSql} (
+            id INT PRIMARY KEY,
+            store_id NVARCHAR(MAX) NOT NULL
+          )`,
+      orElse: () =>
+        sql`
+          CREATE TABLE IF NOT EXISTS ${storeTableSql} (
+            id INTEGER PRIMARY KEY,
+            store_id TEXT NOT NULL
+          )`
+    })
+
     // Earlier releases kept a remotes row per entry per remote. An entry known
     // to several remotes keeps one of them as its source, and a remote without
     // a cursor resumes after its highest downloaded sequence.
@@ -286,13 +323,17 @@ export const make = (options?: {
       yield* sql`DROP TABLE ${remotesTableSql}`
     })
 
-    // Both steps run in one transaction, so a complete schema has the sources
-    // table and no remotes table. Checking that first lets complete databases
-    // open read-only; PostgreSQL also locks and rechecks so concurrent opens
-    // migrate once.
-    const schemaState = Effect.all({ sources: tableExists(sourcesTable), remotes: tableExists(remotesTable) })
-    const isComplete = (state: { readonly sources: boolean; readonly remotes: boolean }) =>
-      state.sources && !state.remotes
+    // The steps run in one transaction, so a complete schema has the sources
+    // and store tables and no remotes table. Checking that first lets complete
+    // databases open read-only; PostgreSQL also locks and rechecks so
+    // concurrent opens migrate once.
+    const schemaState = Effect.all({
+      sources: tableExists(sourcesTable),
+      store: tableExists(storeTable),
+      remotes: tableExists(remotesTable)
+    })
+    const isComplete = (state: { readonly sources: boolean; readonly store: boolean; readonly remotes: boolean }) =>
+      state.sources && state.store && !state.remotes
     yield* Effect.gen(function*() {
       if (isComplete(yield* schemaState)) return
       yield* Effect.gen(function*() {
@@ -302,6 +343,7 @@ export const make = (options?: {
         })
         const state = yield* schemaState
         if (!state.sources) yield* createSchema
+        if (!state.store) yield* createStoreTable
         if (state.remotes) yield* importRemotes
       }).pipe(sql.withTransaction)
     }).pipe(withTracerDisabled)
@@ -347,6 +389,28 @@ export const make = (options?: {
         ON CONFLICT (remote_id) DO UPDATE SET next_sequence = excluded.next_sequence
         WHERE ${remoteCursorsTableSql}.next_sequence < excluded.next_sequence
       `
+
+    const decodeStoreRows = Schema.decodeUnknownEffect(StoreRowArray)
+    const readStoreId = sql`SELECT store_id FROM ${storeTableSql} WHERE id = 1`.pipe(
+      Effect.flatMap(decodeStoreRows),
+      Effect.map((rows) => rows.length > 0 ? rows[0].store_id : undefined)
+    )
+    // Reading first keeps bound databases usable read-only. The primary key
+    // keeps one of several concurrent binds, and every connection reads it back.
+    const binding = EventJournal.makeStoreIdBinding((storeId) =>
+      Effect.gen(function*() {
+        const bound = yield* readStoreId
+        if (bound !== undefined) return bound
+        yield* sql`INSERT INTO ${storeTableSql} ${sql.insert({ id: 1, store_id: storeId })} ON CONFLICT DO NOTHING`
+        const winner = yield* readStoreId
+        // A snapshot from an enclosing transaction can hide a concurrent bind.
+        if (winner === undefined) return yield* Effect.fail("the store id binding is not visible to this transaction")
+        return winner
+      }).pipe(
+        withTracerDisabled,
+        Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "withLock" }))
+      )
+    )
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
     const clock = yield* Clock.Clock
@@ -565,16 +629,21 @@ export const make = (options?: {
         yield* sql`DROP TABLE ${entryTableSql}`
         yield* sql`DROP TABLE ${sequenceTableSql}`
         yield* sql`DROP TABLE ${sourcesTableSql}`
+        yield* sql`DROP TABLE ${storeTableSql}`
         yield* sql`DROP TABLE ${checkpointsTableSql}`
         yield* sql`DROP TABLE ${remoteCursorsTableSql}`
+        binding.reset()
       }).pipe(
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "destroy" }))
       ),
-      withLock(_storeId) {
+      withLock(storeId) {
         return (effect) =>
-          sql.withTransaction(effect).pipe(
-            Effect.catchIf(SqlError.isSqlError, Effect.die)
+          Effect.andThen(
+            binding.check(storeId),
+            sql.withTransaction(effect).pipe(
+              Effect.catchIf(SqlError.isSqlError, Effect.die)
+            )
           )
       }
     })
@@ -665,6 +734,8 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
 })
 
 const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural }))
+
+const StoreRowArray = Schema.Array(Schema.Struct({ store_id: StoreId }))
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
