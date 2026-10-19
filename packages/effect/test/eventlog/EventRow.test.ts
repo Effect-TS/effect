@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, Queue, Schema } from "effect"
+import { Context, Effect, Exit, Layer, Option, Queue, Schema, SchemaGetter } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -72,6 +72,20 @@ const Shelf = EventRow.make("shelf", {
   })
 })
 const ShelfCodec = EventGroup.empty.add(Shelf).events.shelf.payloadSchemaBinary
+
+// Decoding is not undone by encoding, so a value decoded twice differs from
+// one decoded once.
+const Stamp = EventRow.make("stamp", {
+  key: "id",
+  schema: Schema.Struct({
+    id: Schema.String,
+    mark: Schema.String.pipe(Schema.decode({
+      decode: SchemaGetter.transform((s: string) => `${s}!`),
+      encode: SchemaGetter.transform((s: string) => s)
+    }))
+  })
+})
+const StampCodec = EventGroup.empty.add(Stamp).events.stamp.payloadSchemaBinary
 
 const Key = Schema.Literals(["a", "b"])
 const Name = Schema.Literals(["x", "y"])
@@ -297,6 +311,39 @@ describe("EventRow", () => {
       assert.deepStrictEqual(calls, [
         ["set", { id: "s1", box: { n: 1 }, items: [{ n: 2 }], label: Option.none() }],
         ["patch", "s1", { box: { n: 1 }, items: [{ n: 2 }] }]
+      ])
+    }))
+
+  it.effect("passes the same values to callbacks for a local write and its replay", () =>
+    Effect.gen(function*() {
+      const calls: Array<unknown> = []
+      const handler = EventRow.handler(Stamp, {
+        set: (row) => Effect.sync(() => calls.push(["set", row])),
+        patch: (id, fields) => Effect.sync(() => calls.push(["patch", id, fields])),
+        remove: () => Effect.void
+      })
+      const storeId = yield* EventLog.CurrentStoreId
+      for (const payload of [Stamp.set({ id: "s1", mark: "x" }), Stamp.patch("s1", { mark: "x" })]) {
+        const entry = new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 }),
+          event: "stamp",
+          primaryKey: "s1",
+          payload: yield* Schema.encodeEffect(StampCodec)(payload)
+        }, { disableChecks: true })
+        // A local write passes the written payload, and a replica the decoded entry.
+        yield* handler({ storeId, payload, entry, conflicts: [] })
+        yield* handler({
+          storeId,
+          payload: yield* Schema.decodeEffect(StampCodec)(entry.payload),
+          entry,
+          conflicts: []
+        })
+      }
+      assert.deepStrictEqual(calls, [
+        ["set", { id: "s1", mark: "x!" }],
+        ["set", { id: "s1", mark: "x!" }],
+        ["patch", "s1", { mark: "x!" }],
+        ["patch", "s1", { mark: "x!" }]
       ])
     }))
 
