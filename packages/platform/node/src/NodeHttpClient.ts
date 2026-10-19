@@ -30,8 +30,6 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import { randomUUID } from "node:crypto"
-import { once } from "node:events"
 import type * as Http from "node:http"
 import type * as Https from "node:https"
 import { Readable } from "node:stream"
@@ -252,12 +250,10 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
       return Effect.succeed({ body: body.body as Uint8Array, headers })
     }
     case "FormData": {
-      // undici only encodes its own `FormData` class, not Node's global one
-      const encoded = encodeFormData(body.formData)
-      return Effect.succeed({
-        body: encoded.body,
-        headers: Headers.set(headers, "content-type", encoded.contentType)
-      })
+      return Effect.map(loadUndici, (undici) => ({
+        body: convertFormData(body.formData, undici),
+        headers: Headers.remove(headers, "content-type")
+      }))
     }
     case "Stream": {
       return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers }))
@@ -265,60 +261,12 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
   }
 }
 
-const encodeFormData = (formData: FormData): { readonly body: Readable; readonly contentType: string } => {
-  // Not Response(FormData): on some Node versions a failing file stream leaves
-  // its body pending and rejects a detached promise instead.
-  const boundary = `----effect-${randomUUID()}`
-  const encoder = new TextEncoder()
-  const normalize = (value: string) => value.replace(/\r?\n|\r/g, "\r\n")
-  const escape = (value: string) => value.replace(/\r/g, "%0D").replace(/\n/g, "%0A").replace(/"/g, "%22")
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
-  const chunks = (async function*() {
-    for (const [name, value] of formData) {
-      const disposition = `--${boundary}\r\nContent-Disposition: form-data; name="${escape(normalize(name))}"`
-      if (typeof value === "string") {
-        yield encoder.encode(`${disposition}\r\n\r\n${normalize(value)}\r\n`)
-      } else {
-        yield encoder.encode(
-          `${disposition}; filename="${escape(value.name)}"\r\nContent-Type: ${
-            value.type || "application/octet-stream"
-          }\r\n\r\n`
-        )
-        reader = value.stream().getReader()
-        try {
-          while (true) {
-            const chunk = await reader.read()
-            if (chunk.done) break
-            yield chunk.value
-          }
-        } finally {
-          await reader.cancel().catch(() => {})
-          reader.releaseLock()
-          reader = undefined
-        }
-        yield encoder.encode("\r\n")
-      }
-    }
-    yield encoder.encode(`--${boundary}--\r\n`)
-  })()
-  const body = Readable.fromWeb(
-    new ReadableStream({
-      async pull(controller) {
-        const chunk = await chunks.next()
-        if (chunk.done) controller.close()
-        else controller.enqueue(chunk.value)
-      },
-      async cancel() {
-        // A pending file read would otherwise block the generator from finishing.
-        await reader?.cancel().catch(() => {})
-        await chunks.return(undefined)
-      }
-    }) as any
-  )
-  return {
-    body,
-    contentType: `multipart/form-data; boundary=${boundary}`
+const convertFormData = (formData: FormData, undici: typeof Undici): Undici.FormData => {
+  const converted = new undici.FormData()
+  for (const [key, value] of formData) {
+    converted.append(key, value)
   }
+  return converted
 }
 
 function noopErrorHandler(_: any) {}
@@ -630,7 +578,7 @@ export const makeNodeHttp = Effect.gen(function*() {
       })
     return Effect.raceFirst(
       waitForResponse(nodeRequest, request),
-      sendBody(nodeRequest, request, request.body, signal).pipe(Effect.andThen(Effect.never))
+      sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
     ).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
@@ -641,8 +589,7 @@ export const makeNodeHttp = Effect.gen(function*() {
 const sendBody = (
   nodeRequest: Http.ClientRequest,
   request: HttpClientRequest,
-  body: Body.HttpBody,
-  signal: AbortSignal
+  body: Body.HttpBody
 ): Effect.Effect<void, Error.HttpClientError> =>
   Effect.suspend((): Effect.Effect<void, Error.HttpClientError> => {
     switch (body._tag) {
@@ -656,26 +603,20 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        const encoded = encodeFormData(body.formData)
-        nodeRequest.setHeader("content-type", encoded.contentType)
+        return Effect.flatMap(loadUndici, (undici) => {
+          const response = new undici.Response(convertFormData(body.formData, undici))
+          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
 
-        return Effect.tryPromise({
-          try: async () => {
-            // The sending fiber is interrupted once headers arrive, so the upload
-            // follows the request signal instead. Wait for the socket to connect
-            // first: destroying a connecting socket can leave the server with an
-            // idle connection.
-            const socket = nodeRequest.socket ?? (await once(nodeRequest, "socket", { signal }))[0]
-            if (socket.connecting) await once(socket, "connect", { signal })
-            await pipeline(encoded.body, nodeRequest, { signal })
-          },
-          catch: (cause) =>
-            new Error.HttpClientError({
-              reason: new Error.TransportError({
-                request,
-                cause
+          return Effect.tryPromise({
+            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
+            catch: (cause) =>
+              new Error.HttpClientError({
+                reason: new Error.TransportError({
+                  request,
+                  cause
+                })
               })
-            })
+          })
         })
       }
       case "Stream": {
