@@ -191,6 +191,13 @@ describe("Xml", () => {
         // Byte input accepts only UTF-8 and US-ASCII encoding declarations
         const latin1 = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a/>"
         assert.deepStrictEqual(yield* failure(decodeBytes([textEncoder.encode(latin1)])), ["Unsupported", 1, 1])
+        // UTF-16 documents start with a byte order mark
+        const utf16 = Array.from("﻿<?xml version=\"1.0\" encoding=\"UTF-16\"?><a/>", (c) => c.charCodeAt(0))
+        for (const input of [utf16.flatMap((c) => [c & 0xFF, c >> 8]), utf16.flatMap((c) => [c >> 8, c & 0xFF])]) {
+          for (const chunks of byteSplits(Uint8Array.from(input))) {
+            assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), ["Unsupported", 1, 1])
+          }
+        }
         assert.deepStrictEqual((yield* decodeString([latin1]))[0], {
           _tag: "Declaration",
           version: "1.0",

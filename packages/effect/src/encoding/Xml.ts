@@ -355,9 +355,10 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
  * **Gotchas**
  *
  * - Invalid or truncated UTF-8 fails with a `Syntax` `XmlError`.
- * - An XML declaration naming an encoding other than UTF-8 or US-ASCII fails
- *   with an `Unsupported` `XmlError`. Decode such bytes to text with a
- *   `TextDecoder` for that encoding and use `decodeString`.
+ * - UTF-16 input, which starts with a byte order mark, and an XML declaration
+ *   naming an encoding other than UTF-8 or US-ASCII fail with an
+ *   `Unsupported` `XmlError`. Decode such bytes to text with a `TextDecoder`
+ *   for that encoding and use `decodeString`.
  *
  * @see {@link decodeString} for text input and the shared gotchas
  *
@@ -1640,6 +1641,7 @@ const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 class Utf8Input implements Machine<Uint8Array, Event> {
   private readonly parser: Parser
   private carry: Uint8Array | undefined
+  private started = false
 
   constructor(parser: Parser) {
     this.parser = parser
@@ -1653,6 +1655,17 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   }
 
   push(chunk: Uint8Array): void {
+    if (!this.started && chunk.length > 0) {
+      this.started = true
+      // UTF-16 documents start with a byte order mark, and UTF-8 never starts with 0xFE or 0xFF
+      if (chunk[0] === 0xFE || chunk[0] === 0xFF) {
+        throw this.parser.error(
+          "Unsupported",
+          "UTF-16 is not supported for byte input, decode the bytes to text first",
+          0
+        )
+      }
+    }
     let start = 0
     if (this.carry !== undefined) {
       const need = utf8Length(this.carry[0]) - this.carry.length
