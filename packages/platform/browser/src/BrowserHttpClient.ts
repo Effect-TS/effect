@@ -144,8 +144,7 @@ const makeXmlHttpRequest = HttpClient.make(
   (request, url, signal, fiber) =>
     Effect.suspend(() => {
       if (request.headers.upgrade !== undefined) {
-        // XMLHttpRequest drops the `Upgrade` header, so the request would not
-        // reach the server as written.
+        // Reject before sending: XMLHttpRequest silently drops the Upgrade header.
         return Effect.fail(upgradeNotSupported(request))
       }
       const xhr = Context.getOrElse(

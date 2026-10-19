@@ -55,8 +55,7 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
   if (request.headers.upgrade !== undefined) {
-    // fetch rejects or drops the `Upgrade` header, so the request would not
-    // reach the server as written.
+    // Reject before sending: fetch may silently drop the Upgrade header.
     return Effect.fail(
       new HttpClientError.HttpClientError({
         reason: new HttpClientError.UpgradeNotSupportedError({

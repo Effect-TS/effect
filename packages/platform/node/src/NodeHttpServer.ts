@@ -323,8 +323,6 @@ export const makeUpgradeHandler = <
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
       ))
-      // Other protocols switch to the raw connection, also once the socket's
-      // reader is acquired.
       const protocol = nodeRequest.headers.upgrade
       const upgradeEffect = protocol === undefined || protocol.toLowerCase() === "websocket" ?
         webSocketUpgrade :
@@ -332,8 +330,7 @@ export const makeUpgradeHandler = <
           if (request.upgraded) return
           request.upgraded = true
           if (head.length > 0) socket.unshift(head)
-          // Node's parser rejects CR and LF in header values, so echoing
-          // `protocol` cannot inject lines into the response head.
+          // Node rejects CR/LF in header values, so protocol cannot inject response headers.
           socket.write(`HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: ${protocol}\r\n\r\n`)
         })
       const request = new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)

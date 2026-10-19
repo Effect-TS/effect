@@ -253,9 +253,8 @@ interface UndiciResponseSource {
   readonly upgraded?: Duplex | undefined
 }
 
-// `Dispatcher.request` rejects upgrade requests and `Dispatcher.upgrade` fails
-// on any status but 101, so dispatch directly to hand over either the
-// connection or an ordinary response.
+// Dispatch directly to support both upgrades and readable refusal bodies.
+// Dispatcher.request rejects upgrades; Dispatcher.upgrade rejects non-101 responses.
 const dispatchUpgrade = (
   dispatcher: Undici.Dispatcher,
   request: HttpClientRequest,
@@ -579,9 +578,6 @@ export const layerUndiciOptions = (options?: Undici.Agent.Options | undefined): 
 // Loaded on demand, as it depends on node:net and ws.
 const loadUpgrade = Effect.promise(() => import("./internal/upgrade.ts"))
 
-// Takes over the connection of a 101 response. Bytes received past the
-// response head are read first, errors are left to the socket reader, and
-// aborting the request (see `HttpClient.withScope`) closes the connection.
 const takeOver = (conn: Duplex, head: Uint8Array | undefined, signal: AbortSignal): Duplex => {
   if (head !== undefined && head.length > 0) conn.unshift(head)
   conn.on("error", constVoid)
@@ -605,7 +601,7 @@ const upgradeSocket = (
   return Effect.fail(
     new Error.HttpClientError({
       reason: response.status === 101
-        // Bun before 1.4 reports a 101 as an ordinary response and keeps the connection
+        // Bun before 1.4 reports 101 without handing over the connection.
         ? new Error.UpgradeNotSupportedError({
           request: response.request,
           description: "the runtime did not hand over the connection of the upgrade"

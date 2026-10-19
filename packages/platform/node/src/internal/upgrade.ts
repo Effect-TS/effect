@@ -5,12 +5,10 @@ import type { Duplex } from "node:stream"
 import * as NodeSocket from "../NodeSocket.ts"
 
 /**
- * Wraps the connection of an HTTP/1.1 upgrade as a `Socket`. `onOpen` runs
- * when the reader is acquired, and releasing the reader's scope closes the
- * connection.
+ * Wraps an upgraded connection. Acquiring the reader calls `onOpen`; releasing
+ * its scope closes the connection.
  *
- * Node hands over upgraded connections without a `data` listener, so bytes
- * received before the reader is acquired stay buffered.
+ * No `data` listener is attached before acquisition, so early bytes stay buffered.
  *
  * @internal
  */
