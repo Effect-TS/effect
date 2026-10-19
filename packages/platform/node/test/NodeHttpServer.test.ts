@@ -105,14 +105,12 @@ describe("HttpServer", () => {
       )
       const port = tcpPort(server as unknown as Http.Server)
 
-      assert.strictEqual(
-        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573" }),
-        "example.test:4573 http://example.test:4573/info"
-      )
-      assert.strictEqual(
-        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host: "client.test" }),
-        "example.test:4573 http://example.test:4573/info"
-      )
+      for (const host of [undefined, "client.test"]) {
+        assert.strictEqual(
+          yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host }),
+          "example.test:4573 http://example.test:4573/info"
+        )
+      }
     }))
 
   it.effect("schema", () =>

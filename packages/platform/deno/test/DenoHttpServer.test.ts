@@ -636,14 +636,12 @@ describe("DenoHttpServer", () => {
       const server = yield* HttpServer.HttpServer
       const port = (server.address as NetAddress.InetAddress).port
 
-      assert.strictEqual(
-        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573" }),
-        "example.test:4573 http://example.test:4573/info"
-      )
-      assert.strictEqual(
-        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host: "client.test" }),
-        "example.test:4573 http://example.test:4573/info"
-      )
+      for (const host of [undefined, "client.test"]) {
+        assert.strictEqual(
+          yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host }),
+          "example.test:4573 http://example.test:4573/info"
+        )
+      }
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("RouterConfig", () =>
