@@ -588,10 +588,11 @@ const emptyReadableStream = new ReadableStream<Uint8Array>({
 })
 
 const urlAuthority = (url: string): string | undefined => {
-  if (url[0] === "/") return undefined
-  const start = url.indexOf("//") + 2
-  const end = url.indexOf("/", start)
-  return end === -1 ? url.slice(start) : url.slice(start, end)
+  const schemeEnd = url.indexOf("://")
+  if (schemeEnd === -1) return undefined
+  const start = schemeEnd + 3
+  const end = url.slice(start).search(/[/?#]/)
+  return end === -1 ? url.slice(start) : url.slice(start, start + end)
 }
 
 const removeHost = (url: string) => {
