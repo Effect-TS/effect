@@ -34,6 +34,7 @@ import type * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+import * as Http from "node:http"
 import * as Http2 from "node:http2"
 
 const Todo = Schema.Struct({
@@ -642,6 +643,38 @@ describe("DenoHttpServer", () => {
           "example.test:4573 http://example.test:4573/info"
         )
       }
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("excludes a query from the host of an absolute-form HTTP/1.1 target", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.succeed(HttpServerResponse.text(request.headers.host))
+        )
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const host = yield* Effect.callback<string, Error>((resume) => {
+        const request = Http.get({
+          hostname: "127.0.0.1",
+          port,
+          path: "http://Target.TEST:80?q=/info",
+          headers: { host: "client.test" }
+        }, (response) => {
+          let body = ""
+          response.setEncoding("utf8")
+          response.on("data", (chunk: string) => {
+            body += chunk
+          })
+          response.on("end", () => resume(Effect.succeed(body)))
+          response.on("error", (error) => resume(Effect.fail(error)))
+        })
+        request.on("error", (error) => resume(Effect.fail(error)))
+        return Effect.sync(() => {
+          request.destroy()
+        })
+      })
+      assert.strictEqual(host, "Target.TEST:80")
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("RouterConfig", () =>
