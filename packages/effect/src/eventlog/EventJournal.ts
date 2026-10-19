@@ -100,7 +100,9 @@ export class EventJournal extends Context.Service<EventJournal, {
    * `Entry.Order`. Each entry is paired with the stored entries for the same
    * event and primary key whose id is strictly greater, in id order. Entries
    * in the batch never conflict with each other: applying them in id order
-   * gives the same result as delivering them one at a time.
+   * gives the same result as delivering them one at a time. A compaction
+   * replacement written by `EventLog` takes the place and conflicts of the
+   * source entry it is anchored to, not of its own id.
    *
    * All conflicts are read before `effect` runs and the batch is committed
    * after it succeeds, with no journal I/O while it runs. It is not called
@@ -604,7 +606,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
 
       if (compacted.length > 0) {
         const index = new ConflictIndex(compacted, Entry.Order)
-        const oldest = index.batch[0]
+        const oldest = index.oldest!
         // Only the suffix with greater ids can conflict, unless local writes
         // left the journal unordered.
         let i = journalSorted ? journal.length : 0

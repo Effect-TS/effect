@@ -35,10 +35,11 @@ import type * as Scope from "../Scope.ts"
 import type { Covariant } from "../Types.ts"
 import type * as Event from "./Event.ts"
 import type * as EventGroup from "./EventGroup.ts"
-import { Entry, type EntryId, EventJournal, type EventJournalError, type RemoteId } from "./EventJournal.ts"
+import { Entry, EventJournal, type EventJournalError, makeEntryIdUnsafe, type RemoteId } from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
 import { StoreId } from "./EventLogMessage.ts"
 import type { EventLogRemote } from "./EventLogRemote.ts"
+import { setAnchor } from "./internal/conflicts.ts"
 
 /**
  * Service for writing typed event-log events through registered handlers.
@@ -669,18 +670,6 @@ export const group = <Events extends Event.Any, Return>(
     })
   ) as any
 
-// The first replacement reuses its source's id. Later ones add their index to
-// it as a 128-bit integer, so they sort directly after it with no random bits.
-const replacementEntryId = (sourceId: EntryId, index: number): EntryId => {
-  const id = sourceId.slice() as EntryId
-  for (let i = id.length - 1; i >= 0 && index > 0; i--) {
-    const sum = id[i] + index
-    id[i] = sum & 0xff
-    index = Math.floor(sum / 256)
-  }
-  return id
-}
-
 const registerBatchCompaction = <Events extends Event.Any, R>(
   group: EventGroup.EventGroup<Events>,
   effect: (options: {
@@ -709,19 +698,14 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
             Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input))
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
-          // Replacements written so far per source, so ids are derived from
-          // the source alone and match on every replica.
-          const replacements = new Map<string, number>()
           const writeFrom = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
             source: Entry,
             tag: Tag,
             payload: Event.PayloadWithTag<Events, Tag>
           ): Effect.fn.Return<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]> {
             const event = Object.hasOwn(group.events, tag) ? group.events[tag] : undefined!
-            const index = replacements.get(source.idString) ?? 0
-            replacements.set(source.idString, index + 1)
             const entry = new Entry({
-              id: replacementEntryId(source.id, index),
+              id: makeEntryIdUnsafe({ msecs: source.createdAtMillis }),
               event: tag,
               payload: yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)(payload).pipe(
                 Effect.orDie
@@ -776,12 +760,12 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
  * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
  *   and primary key.
  * - `write(tag, payload)` encodes a replacement entry anchored to the first
- *   entry in the batch. The first replacement reuses that entry's id, and later
- *   ones get ids derived from it that sort directly after it, so every replica
- *   produces the same ids.
+ *   entry in the batch, with a fresh id in that entry's millisecond.
  *
  * Entries that are neither forwarded nor replaced are dropped, including entries
- * that could not be decoded. The kept entries are replayed in id order.
+ * that could not be decoded. During remote replay, kept entries are replayed in
+ * the id order of their anchors, then in write order, and a replacement's
+ * conflicts are the stored entries newer than its anchor.
  *
  * **Gotchas**
  *
@@ -829,13 +813,14 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
  * - `forward(entry)` keeps an input entry unchanged, with the same id, payload,
  *   and primary key.
  * - `write(tag, payload)` encodes a replacement entry anchored to the first
- *   decoded entry for the primary key. The first replacement reuses that
- *   entry's id, and later ones get ids derived from it that sort directly after
- *   it, so every replica produces the same ids.
+ *   decoded entry for the primary key, with a fresh id in that entry's
+ *   millisecond.
  *
  * Entries that are neither forwarded nor replaced are dropped. Entries that
- * cannot be decoded are not passed to the effect and are kept unchanged. The
- * kept entries are replayed in id order.
+ * cannot be decoded are not passed to the effect and are kept unchanged.
+ * During remote replay, kept entries are replayed in the id order of their
+ * anchors, then in write order, and a replacement's conflicts are the stored
+ * entries newer than its anchor.
  *
  * **Gotchas**
  *
@@ -1157,10 +1142,11 @@ const make = Effect.gen(function*() {
                     entries,
                     write(entry, source) {
                       return Effect.sync(() => {
-                        // Anchor replacements to their source. The journal then sorts
-                        // the batch by id, and replacement ids sort directly after
-                        // their source, so write order per source is kept.
+                        // Anchor each output to its source, so the journal orders it
+                        // and checks its conflicts by the source's id, then by write
+                        // order, instead of by its own fresh id.
                         const index = sourcePositions.get((source ?? entry).idString) ?? position
+                        setAnchor(entry, remoteEntries[index].entry, finalEntries[index].length)
                         finalEntries[index].push(entry)
                       })
                     }
