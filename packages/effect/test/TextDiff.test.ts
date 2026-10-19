@@ -1,5 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { assertSuccess, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import * as Result from "effect/Result"
 import * as TextDiff from "effect/TextDiff"
 import * as fc from "fast-check"
 
@@ -24,6 +25,11 @@ const isCanonical = (edits: ReadonlyArray<TextDiff.Edit<unknown>>): boolean =>
     (i === 0 || (edits[i - 1]._tag !== edit._tag && !(edits[i - 1]._tag === "Insert" && edit._tag === "Delete")))
   )
 
+const assertTextDiffFailure = <A>(result: Result.Result<A, TextDiff.TextDiffError>) => {
+  assertTrue(Result.isFailure(result))
+  assertTrue(TextDiff.isTextDiffError(result.failure))
+}
+
 const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
 
 const smallArray = fc.array(fc.constantFrom("a", "b", "c"), { maxLength: 12 })
@@ -34,8 +40,8 @@ describe("TextDiff", () => {
     it("produces a canonical script that applies and inverts, minimal within maxEdits", () => {
       fc.assert(fc.property(smallArray, smallArray, fc.option(fc.nat(6)), (before, after, maxEdits) => {
         const edits = TextDiff.diff(before, after, maxEdits === null ? undefined : { maxEdits })
-        deepStrictEqual(TextDiff.apply(before, edits), after)
-        deepStrictEqual(TextDiff.apply(after, TextDiff.invert(edits)), before)
+        assertSuccess(TextDiff.apply(before, edits), after)
+        assertSuccess(TextDiff.apply(after, TextDiff.invert(edits)), before)
         deepStrictEqual(TextDiff.invert(TextDiff.invert(edits)), edits)
         assertTrue(isCanonical(edits))
         assertTrue(isCanonical(TextDiff.invert(edits)))
@@ -63,7 +69,7 @@ describe("TextDiff", () => {
         calls = 0
         const edits = diffCounted(before, after, { maxEdits })
         assertTrue(calls <= 2 * (before.length + after.length) * (maxEdits + 1))
-        deepStrictEqual(TextDiff.apply(before, edits), after)
+        assertSuccess(TextDiff.apply(before, edits), after)
         assertTrue(isCanonical(edits))
       }
       deepStrictEqual(diffCounted(cases[0][0], cases[0][1], { maxEdits }), [
@@ -105,20 +111,20 @@ describe("TextDiff", () => {
   })
 
   describe("apply", () => {
-    it("throws when the script does not match the input length", () => {
+    it("fails when the script does not match the input length", () => {
       const edits = TextDiff.diff([1, 2], [1])
-      throws(() => TextDiff.apply([1], edits))
-      throws(() => TextDiff.apply([1, 2, 3], edits))
+      assertTextDiffFailure(TextDiff.apply([1], edits))
+      assertTextDiffFailure(TextDiff.apply([1, 2, 3], edits))
     })
   })
 
   describe("applyText", () => {
-    it("throws when the script does not match the input content", () => {
+    it("fails when the script does not match the input content", () => {
       const edits = TextDiff.lines("a\nb\n", "a\n")
-      throws(() => TextDiff.applyText("a\n", edits))
-      throws(() => TextDiff.applyText("a\nb\nc\n", edits))
-      throws(() => TextDiff.applyText("a\nc\n", edits))
-      throws(() => TextDiff.applyText("c\nb\n", edits))
+      assertTextDiffFailure(TextDiff.applyText("a\n", edits))
+      assertTextDiffFailure(TextDiff.applyText("a\nb\nc\n", edits))
+      assertTextDiffFailure(TextDiff.applyText("a\nc\n", edits))
+      assertTextDiffFailure(TextDiff.applyText("c\nb\n", edits))
     })
   })
 
@@ -126,8 +132,8 @@ describe("TextDiff", () => {
     it("round-trips arbitrary text", () => {
       fc.assert(fc.property(text, text, (before, after) => {
         const edits = TextDiff.lines(before, after)
-        strictEqual(TextDiff.applyText(before, edits), after)
-        strictEqual(TextDiff.applyText(after, TextDiff.invert(edits)), before)
+        assertSuccess(TextDiff.applyText(before, edits), after)
+        assertSuccess(TextDiff.applyText(after, TextDiff.invert(edits)), before)
       }))
     })
 
@@ -149,7 +155,7 @@ describe("TextDiff", () => {
     it("round-trips arbitrary text without splitting surrogate pairs", () => {
       fc.assert(fc.property(text, text, (before, after) => {
         const edits = TextDiff.codePoints(before, after)
-        strictEqual(TextDiff.applyText(before, edits), after)
+        assertSuccess(TextDiff.applyText(before, edits), after)
         for (const edit of edits) {
           assertTrue(!loneSurrogate.test(edit.items.join("")))
         }
