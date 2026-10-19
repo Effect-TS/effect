@@ -229,6 +229,40 @@ describe("BunHttpServer", () => {
       assert.strictEqual(finalized, true)
     }).pipe(Effect.timeout("2 seconds"), Effect.provide(BunHttpServer.layerTest)))
 
+  describe("serve scope ownership", { concurrent: false }, () => {
+    it.live("interrupts a streaming body suspended during startup when the serve scope closes", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0, disablePreemptiveShutdown: true })
+        // Let the body finish on teardown so the server can stop if it was never interrupted.
+        yield* Effect.addFinalizer(() => Deferred.succeed(release, undefined))
+        const serveScope = yield* Scope.fork(yield* Effect.scope)
+        yield* server.serve(Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          // The body suspends during startup, before it can serve a pull.
+          return HttpServerResponse.stream(
+            Stream.transformPull(
+              Stream.empty,
+              (pull) =>
+                Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(release)), Effect.as(pull))
+            )
+          )
+        })).pipe(Scope.provide(serveScope))
+        // Not awaited: headers may not be sent while the body is suspended.
+        fetch(NetAddress.formatUrlUnsafe(server.address), { headers: { connection: "close" } }).catch(() => undefined)
+        yield* Deferred.await(started)
+        assert.strictEqual(finalized, false)
+        yield* Scope.close(serveScope, Exit.void)
+        assert.strictEqual(finalized, true)
+      }).pipe(Effect.timeout("2 seconds")))
+  })
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {
