@@ -22,7 +22,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { ClockRef, endSpan } from "./internal/effect.ts"
+import { ClockRef, endSpan, findRecoverableError } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -488,7 +488,7 @@ const asyncQueue = <A, E = never, R = never>(
     Effect.tap((queue) =>
       Scope.provide(f(queue), scope).pipe(
         Effect.catchCause((cause) => Queue.failCause(queue, cause)),
-        Effect.forkIn(scope)
+        Effect.forkIn(scope, { startImmediately: true })
       )
     )
   )
@@ -1749,6 +1749,7 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
   readonly writable: WritableStream<A>
   readonly onError: (error: unknown) => E
   readonly closeOnDone?: boolean | undefined
+  readonly onAbort?: ((cause: Cause.Cause<IE | E>) => void) | undefined
 }): Pull.Pull<never, IE | E, unknown> =>
   Effect.acquireUseRelease(
     Effect.sync(() => options.writable.getWriter()),
@@ -1779,10 +1780,11 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
         : loop
       return Effect.onError(
         withClose,
-        (cause) =>
-          Pull.isDoneCause(cause)
-            ? Effect.void
-            : Effect.promise(() => writer.abort(cause).catch(constVoid))
+        (cause) => {
+          if (Pull.isDoneCause(cause)) return Effect.void
+          options.onAbort?.(cause as Cause.Cause<IE | E>)
+          return Effect.promise(() => writer.abort(cause).catch(constVoid))
+        }
       )
     },
     (writer) => Effect.sync(() => writer.releaseLock())
@@ -1873,7 +1875,12 @@ export const fromTransformStream = <IE, I, O, E>(options: {
       pull: upstream,
       writable: transform.writable,
       onError: options.onError,
-      closeOnDone: options.closeOnDone
+      closeOnDone: options.closeOnDone,
+      // Aborting errors the readable, so record the failure first. Otherwise a
+      // pending read reports the abort reason instead.
+      onAbort: (cause) => {
+        exit.current = Exit.failCause(cause)
+      }
     }).pipe(
       Effect.catchCause((cause) => {
         if (!Pull.isDoneCause(cause)) {
@@ -2247,7 +2254,7 @@ const mapEffectConcurrent = <
       const pull = yield* toTransform(self)(upstream, scope)
       const concurrencyN = options.concurrency === "unbounded"
         ? Number.MAX_SAFE_INTEGER
-        : options.concurrency
+        : Math.min(options.concurrency, Number.MAX_SAFE_INTEGER)
       const queue = yield* Queue.bounded<OutElem2, OutErr | EX | Cause.Done<OutDone>>(0)
       yield* Scope.addFinalizer(forkedScope, Queue.shutdown(queue))
 
@@ -4289,6 +4296,12 @@ export const catchCause: {
  *
  * Typed failures and interruptions are not caught.
  *
+ * **Gotchas**
+ *
+ * `catchDefect` recovers any cause that contains a defect, including causes
+ * that also contain typed errors. Typed error handlers such as `catch` skip
+ * those causes, so defects always take precedence.
+ *
  * **Example** (Recovering from a defect)
  *
  * ```ts import.meta.vitest
@@ -4800,11 +4813,18 @@ const catch_: {
   InErr & InErr1,
   InDone & InDone1,
   Env | Env1
-> => catchCauseFilter(self, Cause.findError, (e) => f(e)))
+> => catchCauseFilter(self, findRecoverableError, (e) => f(e)))
 
 export {
   /**
    * Recovers from typed channel errors by running a fallback channel.
+   *
+   * **Gotchas**
+   *
+   * Defects take precedence over typed errors. If the cause also contains a
+   * defect, the handler does not run and the failure is propagated with every
+   * typed error converted to a defect. An interruption alongside a typed error
+   * does not prevent recovery.
    *
    * @stability stable
    * @category error handling
@@ -4913,6 +4933,12 @@ export const tapError: {
  * Matching errors are handled by the recovery function. Non-matching errors
  * are handled by `orElse` when provided. Without `orElse`, non-matching errors
  * are re-failed.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @see {@link catch_ catch} for recovering from every typed channel error
  * @see {@link catchFilter} for selecting typed errors with a `Filter`
@@ -5159,6 +5185,12 @@ export const catchIf: {
  * filter results are handled by `orElse` when provided. Without `orElse`,
  * failed filter results are re-failed.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * @see {@link catchIf} for selecting typed errors with a predicate
  * @see {@link catchTag} for selecting tagged typed errors
  * @see {@link catchCauseFilter} for selecting full causes with a `Filter`
@@ -5323,6 +5355,12 @@ export const catchFilter: {
  * errors are handled by `orElse` when provided. Without `orElse`,
  * non-matching errors are re-failed.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * @stability stable
  * @category error handling
  * @since 4.0.0
@@ -5473,6 +5511,12 @@ export const catchTag: {
 
 /**
  * Catches a specific reason within a tagged error.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Recovering from nested reasons)
  *
@@ -5683,6 +5727,12 @@ export const catchReason: {
 
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @stability stable
  * @category error handling
@@ -5956,9 +6006,12 @@ export const unwrapReason: {
   ) as any)
 
 /**
- * Returns a new channel, which is the same as this one, except the failure
- * value of the returned channel is created by applying the specified function
- * to the failure value of this channel.
+ * Transforms the typed errors of a channel using the specified function.
+ *
+ * **Details**
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * @stability stable
  * @category error handling
@@ -5977,7 +6030,11 @@ export const mapError: {
 } = dual(2, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutErr2>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
   f: (err: OutErr) => OutErr2
-): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> => catch_(self, (err) => fail(f(err))))
+): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> =>
+  transformPull(
+    self,
+    (pull) => Effect.succeed(Effect.mapError(pull, (err) => Cause.isDone(err) ? err : f(err)))
+  ))
 
 /**
  * Converts all errors in the channel to defects (unrecoverable failures).
@@ -6024,6 +6081,13 @@ export const orDie = <
  * **Details**
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the failure is not ignored and is propagated with every typed error
+ * converted to a defect. An interruption alongside a typed error does not
+ * prevent the error from being ignored.
  *
  * @stability stable
  * @category error handling
@@ -6123,6 +6187,12 @@ export const ignoreCause: <
 /**
  * Returns a new channel that retries this channel according to the specified
  * schedule whenever it fails.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. A failure whose cause contains a
+ * defect is not retried and is propagated with every typed error converted to a
+ * defect. A typed error alongside an interruption is retried.
  *
  * @stability stable
  * @category error handling
@@ -6862,8 +6932,9 @@ export const splitLines = <Err, Done>(): Channel<
  * **Details**
  *
  * Input chunks are decoded with streaming enabled so multi-byte characters may
- * span `Uint8Array` boundaries. The optional `encoding` and `options` are
- * passed to `TextDecoder`.
+ * span `Uint8Array` boundaries. On normal completion, incomplete trailing
+ * characters become U+FFFD or, with `fatal: true`, a defect. The optional
+ * `encoding` and `options` are passed to `TextDecoder`.
  *
  * @stability stable
  * @category decoding
@@ -6884,7 +6955,15 @@ export const decodeText = <Err, Done>(
     Effect.sync(() => {
       const decoder = new TextDecoder(encoding, options)
       const streamOptions = { stream: true }
-      return Effect.map(upstream, Arr.map((line) => decoder.decode(line, streamOptions)))
+      let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<string>, Err, Done> = upstream.pipe(
+        Effect.map(Arr.map((bytes) => decoder.decode(bytes, streamOptions))),
+        Pull.catchDone((leftover) => {
+          pull = Cause.done(leftover as Done)
+          const last = decoder.decode()
+          return last.length > 0 ? Effect.succeed(Arr.of(last)) : pull
+        })
+      )
+      return Effect.suspend(() => pull)
     })
   )
 

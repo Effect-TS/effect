@@ -888,15 +888,14 @@ export const suite = (
       })
 
       describe("process supervision", { concurrent: false }, () => {
-        const countMatchingProcesses = (pattern: string) =>
-          Effect.gen(function*() {
-            const handle = yield* ChildProcess.make("bash", [
-              "-c",
-              `ps aux | grep '${pattern}' | grep -v grep | wc -l`
-            ])
-            const output = yield* decodeByteStream(handle.stdout)
-            return Number.parseInt(output.trim())
-          }).pipe(Effect.orElseSucceed(() => 0))
+        const countMatchingProcesses = Effect.fnUntraced(function*(pattern: string) {
+          const handle = yield* ChildProcess.make("bash", [
+            "-c",
+            `ps aux | grep '${pattern}' | grep -v grep | wc -l`
+          ])
+          const output = yield* decodeByteStream(handle.stdout)
+          return Number.parseInt(output.trim())
+        }, Effect.orElseSucceed(() => 0))
 
         const killMatchingProcesses = (pattern: string) => {
           if (!/^[A-Za-z0-9_-]+$/.test(pattern)) {

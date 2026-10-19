@@ -54,9 +54,8 @@ export const model = (
  *
  * - Remote URLs fail with `AiError.InvalidUserInputError` because OpenAI only
  *   accepts inline images.
- * - If OpenAI refuses any decision, the whole call fails with
- *   `AiError.ContentPolicyError`. The refused names are in
- *   `metadata.openai.refusedDecisions`.
+ * - Refusals yield `"Refused"` with `decideSettled`; `decide` fails with
+ *   `AiError.ContentPolicyError` naming the refused decisions.
  *
  * @stability unstable
  * @category constructors
@@ -91,11 +90,11 @@ export const make = Effect.fnUntraced(
           questions
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
-        const refused: Array<string> = []
         for (const answer of response.answers) {
+          if (answers[answer.name]?._tag === "Refusal") continue
           switch (answer.type) {
             case "refusal":
-              refused.push(answer.name)
+              answers[answer.name] = { _tag: "Refusal" }
               break
             case "choice":
               answers[answer.name] = {
@@ -107,10 +106,10 @@ export const make = Effect.fnUntraced(
               break
             case "score": {
               const decision = decisions[answer.name]
-              if (decision?._tag !== "Rate") break
+              const levels = decision?._tag === "Rate" ? decision.criteria : []
               const probabilities: Record<string, number> = Object.create(null)
               for (const { value, probability } of answer.probabilities) {
-                const level = decision.criteria[value]
+                const level = levels[value]
                 if (level !== undefined) probabilities[level.label] = probability
               }
               answers[answer.name] = {
@@ -125,16 +124,6 @@ export const make = Effect.fnUntraced(
               answers[answer.name] = { _tag: "Probability", probability: answer.probability }
               break
           }
-        }
-        if (refused.length > 0) {
-          return yield* Effect.fail(AiError.make({
-            module: "OpenAiDecisionModel",
-            method: "decide",
-            reason: new AiError.ContentPolicyError({
-              description: `OpenAI refused to answer: ${refused.join(", ")}`,
-              metadata: { openai: { errorCode: null, errorType: null, requestId: null, refusedDecisions: refused } }
-            })
-          }))
         }
         return {
           answers,

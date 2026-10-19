@@ -2756,6 +2756,11 @@ export {
    * `catch` only handles recoverable errors. It will not recover from
    * unrecoverable defects.
    *
+   * Defects take precedence over typed errors. If the cause also contains a
+   * defect, the handler does not run and the failure is propagated with every
+   * typed error converted to a defect. An interruption alongside a typed error
+   * does not prevent recovery.
+   *
    * @see {@link catchCause} for a version that can recover from both recoverable and unrecoverable errors.
    *
    * @stability stable
@@ -2778,6 +2783,12 @@ export {
  *
  * The error type must have a readonly `_tag` field. `catchTag` matches that
  * field and only handles errors with the requested tag.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling a tagged error)
  *
@@ -2880,6 +2891,12 @@ export const catchTag: {
  *
  * The error type must have a readonly `_tag` field to use `catchTags`. This
  * field is used to identify and match errors.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling multiple tagged errors)
  *
@@ -2990,6 +3007,12 @@ export const catchTags: {
  * Use this to handle nested error causes without removing the parent error
  * from the error channel. The handler receives the unwrapped reason.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * **Example** (Handling an error reason)
  *
  * ```ts import.meta.vitest
@@ -3087,6 +3110,12 @@ export const catchReason: {
 
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Handling multiple error reasons)
  *
@@ -3362,6 +3391,12 @@ export const catchCause: {
  * they often indicate serious issues. In some cases, such as dynamically loaded
  * plugins, controlled recovery may be needed.
  *
+ * **Gotchas**
+ *
+ * `catchDefect` recovers any cause that contains a defect, including causes
+ * that also contain typed errors. Typed error handlers such as `catch` skip
+ * those causes, so defects always take precedence.
+ *
  * **Example** (Recovering from defects)
  *
  * ```ts import.meta.vitest
@@ -3410,6 +3445,12 @@ export const catchDefect: {
  * Use a `Refinement` for type narrowing or a `Predicate` for simple boolean
  * matching. Non-matching errors re-fail with the original cause. Defects and
  * interrupts are not caught.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Recovering when a predicate matches)
  *
@@ -3487,6 +3528,12 @@ export const catchIf: {
  * filter results are passed to `f`; failed filter results are passed to
  * `orElse` when provided. Without `orElse`, the original failure cause is
  * preserved.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * @see {@link catchIf} for predicate-based recovery from typed errors
  * @see {@link catchTag} for recovering from a single tagged error
@@ -3656,6 +3703,9 @@ export const catchCauseFilter: {
  * Only the failure channel is transformed. The success channel and requirements
  * are preserved.
  *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Transforming the error channel)
  *
  * ```ts import.meta.vitest
@@ -3702,6 +3752,9 @@ export const mapError: {
  * and one for the success channel. You can use it when you want to modify both
  * the error and the success values without altering the overall success or
  * failure status of the effect.
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * **Example** (Transforming success and failure channels)
  *
@@ -4152,7 +4205,9 @@ export declare namespace Retry {
  * applied. For example, `Schedule.recurs(3)` allows up to three retries after
  * the initial attempt.
  *
- * Defects and interruptions are not retried.
+ * Defects take precedence over typed errors. A failure whose cause contains a
+ * defect is not retried and is propagated with every typed error converted to a
+ * defect. A typed error alongside an interruption is retried.
  *
  * **Example** (Retrying with a schedule)
  *
@@ -4221,6 +4276,14 @@ export const retry: {
  *
  * If the retries are exhausted and the effect still fails, it runs a fallback
  * effect instead.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. A failure whose cause contains a
+ * defect is not retried and is propagated with every typed error converted to a
+ * defect. A typed error alongside an interruption is retried. When the cause
+ * contains a defect, `orElse` does not run.
+ * This applies to source failures only; policy failures propagate unchanged.
  *
  * **Example** (Falling back after retries are exhausted)
  *
@@ -4317,6 +4380,13 @@ export const sandbox: <A, E, R>(
  *
  * Use the `log` option to emit the full {@link Cause} when the effect fails,
  * and `message` to prepend a custom log message.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors. If the cause also contains a
+ * defect, the failure is not ignored and is propagated with every typed error
+ * converted to a defect. An interruption alongside a typed error does not
+ * prevent the error from being ignored.
  *
  * **Example** (Discarding success and failure values)
  *
@@ -4541,6 +4611,12 @@ export const withErrorReporting: <
  * effect.
  *
  * Defects and interruptions are not recovered by this operator.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Replacing failures with a value)
  *
@@ -5425,6 +5501,12 @@ export const when: {
  * to process the result if the effect succeeds, or handle the error if the
  * effect fails.
  *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
+ *
  * **Example** (Matching success and failure values)
  *
  * ```ts import.meta.vitest
@@ -5489,6 +5571,12 @@ export const match: {
  * effects (Success or Failure). When the effect is already resolved, it applies
  * the handlers immediately without fiber scheduling. For unresolved effects,
  * it falls back to the regular `match` behavior.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Pattern matching eagerly when possible)
  *
@@ -5744,6 +5832,12 @@ export const matchCauseEffect: {
  * Use `matchEffect` when either branch needs to return an `Effect`, such as
  * performing logging, recovery, notification, or other effectful work. The
  * returned effect succeeds or fails according to the handler that is run.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Matching success and failure with effectful handlers)
  *
@@ -7792,6 +7886,10 @@ export const forever: <
  * The source effect is always evaluated once before the schedule is stepped.
  * The schedule controls additional repetitions, not the initial execution.
  *
+ * If the effect or policy fails with a cause that contains a defect, the
+ * failure is propagated with every typed error converted to a defect.
+ * An interruption alongside a typed error does not block the typed error path.
+ *
  * **Example** (Repeating successful effects with a schedule)
  *
  * ```ts import.meta.vitest
@@ -7880,6 +7978,13 @@ export const repeat: {
  * and the latest schedule metadata when at least one schedule step has run;
  * otherwise it receives `None`. If the schedule completes normally, the
  * returned effect succeeds with the schedule's output.
+ *
+ * **Gotchas**
+ *
+ * Defects take precedence over typed errors from either the effect or policy.
+ * If the cause contains a defect, `orElse` does not run and every typed error
+ * is converted to a defect. An interruption alongside a typed error does not
+ * prevent `orElse` from running.
  *
  * **Example** (Recovering after repetition stops)
  *
@@ -8756,8 +8861,8 @@ export const requestUnsafe: <A extends Request.Any>(
  * You can use the `forkChild` method whenever you want to execute an effect in a
  * new fiber, concurrently and without "blocking" the fiber executing other
  * effects. Using fibers can be tricky, so instead of using this method
- * directly, consider other higher-level methods, such as `raceWith`,
- * `zipPar`, and so forth.
+ * directly, consider higher-level methods such as `Effect.race`,
+ * `Effect.raceFirst`, or `Effect.all` with a concurrency option.
  *
  * The fiber returned by this method has methods to interrupt the fiber and to
  * wait for it to finish executing the effect. See `Fiber` for more
@@ -8895,9 +9000,14 @@ export const forkScoped: <
   : <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber<A, E>, never, R | Scope> = internal.forkScoped
 
 /**
- * Forks the effect into a new fiber attached to the global scope. Because the
- * new fiber is attached to the global scope, when the fiber executing the
- * returned effect terminates, the forked fiber will continue running.
+ * Forks the effect into a new fiber with no parent and no scope, so its lifetime
+ * is independent of the forking fiber.
+ *
+ * **Details**
+ *
+ * The detached fiber inherits the forking fiber's context. It continues running
+ * until it completes or is explicitly interrupted through the returned handle,
+ * even after the forking fiber terminates.
  *
  * **Example** (Forking a detached fiber)
  *
@@ -9055,11 +9165,11 @@ export interface RunOptions {
  * import { Effect, Fiber } from "effect"
  * const output: Array<unknown> = []
  *
- * //      ┌─── Effect<number, never, never>
+ * //      ┌─── Effect<string, never, never>
  * //      ▼
  * const program = Effect.sync(() => { output.push("running...") }).pipe(Effect.as("done"))
  *
- * //      ┌─── RuntimeFiber<number, never>
+ * //      ┌─── Fiber<string, never>
  * //      ▼
  * const fiber = Effect.runFork(program)
  *
@@ -15420,16 +15530,26 @@ export const effectify: {
   (<A>(fn: Function, onError?: (e: any, args: any) => any, onSyncError?: (e: any, args: any) => any) =>
   (...args: Array<any>) =>
     callback<A, globalThis.Error>((resume) => {
+      let synchronous = true
+      let pending: Effect<A, globalThis.Error> | undefined
       try {
         fn(...args, (err: globalThis.Error | null, result: A) => {
-          if (err) {
-            resume(onError ? suspend(() => fail(onError(err, args))) : fail(err))
+          const effect = err
+            ? onError ? suspend(() => fail(onError(err, args))) : fail(err)
+            : succeed(result)
+          if (synchronous) {
+            // Keep the first callback result until registration succeeds.
+            pending ??= effect
           } else {
-            resume(succeed(result))
+            resume(effect)
           }
         })
       } catch (err) {
-        resume(onSyncError ? fail(onSyncError(err, args)) : die(err))
+        pending = onSyncError ? fail(onSyncError(err, args)) : die(err)
+      }
+      synchronous = false
+      if (pending) {
+        resume(pending)
       }
     })) as any
 
@@ -15587,6 +15707,9 @@ export const mapEager: {
  * transform. Failure effects apply the mapping function immediately, and
  * pending effects fall back to regular `mapError` behavior.
  *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
+ *
  * **Example** (Mapping errors eagerly when possible)
  *
  * ```ts import.meta.vitest
@@ -15633,6 +15756,9 @@ export const mapErrorEager: {
  * Success effects apply `onSuccess` immediately, and failure effects apply
  * `onFailure` immediately. Pending effects fall back to regular `mapBoth`
  * behavior.
+ *
+ * Maps every typed error in the cause, preserving defects, interrupts and
+ * reason order. Unlike typed recovery, mapping does not convert errors to defects.
  *
  * **Example** (Mapping both channels eagerly when possible)
  *
@@ -15727,6 +15853,12 @@ export const flatMapEager: {
  * Success effects pass through unchanged because there is no error to catch.
  * Failure effects apply the catch function immediately, and pending effects
  * fall back to regular `catch` behavior.
+ *
+ * **Gotchas**
+ *
+ * If the cause contains a defect, the handler is skipped and every typed error
+ * is converted to a defect, preserving reason order and interrupts. An
+ * interruption alongside a typed error does not prevent recovery.
  *
  * **Example** (Catching failures eagerly when possible)
  *

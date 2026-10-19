@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, Scope, Stream } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, type Scope, Semaphore, Stream } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
 import type { SqlConnection } from "effect/sql"
@@ -55,14 +55,11 @@ const makeHarness = (options: {
   const withTransaction = SqlClient.makeWithTransaction({
     transactionService,
     spanAttributes: [],
-    acquireConnection: Effect.flatMap(Scope.make(), (scope) =>
+    acquireConnection: () =>
       Effect.as(
-        Effect.flatMap(
-          record("acquireConnection"),
-          () => Scope.addFinalizer(scope, record("closeConnection"))
-        ),
-        [scope, conn] as const
-      )),
+        Effect.flatMap(record("acquireConnection"), () => Effect.addFinalizer(() => record("closeConnection"))),
+        conn
+      ),
     begin: () =>
       Effect.flatMap(record("begin"), () => {
         if (options.begin !== undefined) {
@@ -119,9 +116,10 @@ const makeHarness = (options: {
 /**
  * Builds a client over a stub connection that records the transaction control
  * statements, the connection release, and `after(name)` for each callback
- * registered with `after`.
+ * registered with `after`, along with the `Reactivity` service the client uses.
  */
 const makeClient = (options: {
+  readonly acquire?: Effect.Effect<void, never, Scope.Scope> | undefined
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
   readonly release?: Effect.Effect<void> | undefined
 } = {}) => {
@@ -143,14 +141,25 @@ const makeClient = (options: {
   return SqlClient.make({
     driver: "test",
     acquirer: Effect.as(
-      Effect.addFinalizer(() => Effect.andThen(record("release"), options.release ?? Effect.void)),
+      Effect.andThen(
+        options.acquire ?? Effect.void,
+        Effect.addFinalizer(() => Effect.andThen(record("release"), options.release ?? Effect.void))
+      ),
       connection
     ),
     compiler: Statement.makeCompilerSqlite(),
     spanAttributes: [],
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
-    Effect.map((sql) => ({ sql, calls, record, after: (name: string) => sql.afterCommit(record(`after(${name})`)) })),
+    Effect.flatMap((sql) =>
+      Effect.map(Effect.service(Reactivity.Reactivity), (reactivity) => ({
+        sql,
+        reactivity,
+        calls,
+        record,
+        after: (name: string) => sql.afterCommit(record(`after(${name})`))
+      }))
+    ),
     Effect.provide(Reactivity.layer)
   )
 }
@@ -168,6 +177,43 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
 }
 
 describe("SqlClient", () => {
+  it.effect("interrupts a queued transaction before the connection is released without starting its body", () =>
+    Effect.gen(function*() {
+      const semaphore = yield* Semaphore.make(1)
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const { calls, record, sql } = yield* makeClient({
+        acquire: Effect.asVoid(
+          Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true })
+        )
+      })
+      const holder = yield* Effect.forkChild(sql.withTransaction(
+        Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(release))
+      ))
+      yield* Deferred.await(entered)
+
+      const queued = yield* Effect.forkChild(sql.withTransaction(record("queued body")), { startImmediately: true })
+      const interrupting = yield* Effect.forkChild(
+        Effect.andThen(Fiber.interrupt(queued), Deferred.succeed(interrupted, undefined))
+      )
+      yield* Effect.yieldNow
+      const interruptedBeforeRelease = yield* Deferred.isDone(interrupted)
+
+      // Unblock both fibers before asserting, so the regression fails rather than hanging.
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(holder)
+      yield* Fiber.join(interrupting)
+      const exit = yield* Fiber.await(queued)
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+      assert.isFalse(calls.includes("queued body"))
+
+      // A cancelled waiter must not retain the connection or its permit.
+      yield* sql.withTransaction(record("reused"))
+      assert.isTrue(interruptedBeforeRelease, "interruption must complete while the holder still owns the connection")
+      assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "BEGIN", "reused", "COMMIT", "release"])
+    }))
+
   describe("makeWithTransaction", () => {
     it.effect("recovers a failed commit with catchTag after successful cleanup", () =>
       Effect.gen(function*() {
@@ -310,7 +356,7 @@ describe("SqlClient", () => {
 
         const exit = yield* Effect.exit(harness.withTransaction(harness.withTransaction(Effect.fail("boom"))))
 
-        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("boom"), Cause.die(rollbackError))))
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die("boom"), Cause.die(rollbackError))))
         assert.deepStrictEqual(harness.calls, [
           "acquireConnection",
           "begin",
@@ -491,6 +537,46 @@ describe("SqlClient", () => {
           Exit.isFailure(nestedExit) && Cause.pretty(nestedExit.cause).includes("the transaction has already ended")
         )
         assert.isFalse(calls.some((call) => call.startsWith("after")))
+      }))
+  })
+
+  describe("Reactivity.mutation", () => {
+    // Records `invalidate(key)` when a mutation invalidates one of `keys`.
+    const watch = (
+      client: Effect.Success<ReturnType<typeof makeClient>>,
+      keys: ReadonlyArray<string>
+    ) =>
+      Effect.sync(() => {
+        for (const key of keys) {
+          client.reactivity.registerUnsafe([key], () => {
+            client.calls.push(`invalidate(${key})`)
+          })
+        }
+      })
+
+    it.effect("invalidates once the outermost transaction commits, dropping rolled-back work", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, sql } = client
+        yield* watch(client, ["users", "dropped"])
+
+        yield* Effect.gen(function*() {
+          yield* Effect.exit(sql.withTransaction(
+            Effect.andThen(Reactivity.mutation(sql`UPDATE users`, ["users"]), Effect.fail("boom"))
+          ))
+          assert.isFalse(calls.includes("invalidate(users)"))
+
+          yield* sql.withTransaction(Effect.gen(function*() {
+            yield* sql.withTransaction(Reactivity.mutation(sql`UPDATE users`, ["users"]))
+            yield* Effect.exit(sql.withTransaction(
+              Effect.andThen(Reactivity.mutation(sql`UPDATE dropped`, ["dropped"]), Effect.fail("boom"))
+            ))
+            assert.isFalse(calls.includes("invalidate(users)"))
+          }))
+        }).pipe(Effect.provideService(Reactivity.Reactivity, client.reactivity))
+
+        assert.deepStrictEqual(calls.slice(-3), ["COMMIT", "release", "invalidate(users)"])
+        assert.isFalse(calls.includes("invalidate(dropped)"))
       }))
   })
 })

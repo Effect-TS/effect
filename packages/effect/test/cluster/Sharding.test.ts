@@ -19,6 +19,7 @@ import {
   Ref,
   Result,
   Schedule,
+  Scheduler,
   Schema,
   Scope,
   Stream
@@ -61,6 +62,44 @@ import {
   User
 } from "./TestEntity.ts"
 
+describe("Sharding startup", () => {
+  it.effect("initializes singleton synchronization before startup fibers run", () =>
+    Effect.gen(function*() {
+      const causes: Array<string> = []
+      const logger = Logger.make(({ cause }) => {
+        if (cause.reasons.length > 0) causes.push(Cause.pretty(cause))
+      })
+      const layer = Sharding.layer.pipe(
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 1
+        }))
+      )
+      const scheduler = new Scheduler.MixedScheduler()
+      const scope = yield* Scope.make()
+      yield* Effect.withFiber((startupFiber) =>
+        Layer.buildWithScope(layer, scope).pipe(
+          Effect.provide(Logger.layer([logger])),
+          // Let startup fibers run to their first suspension whenever construction yields.
+          Effect.provideService(Scheduler.Scheduler, {
+            executionMode: scheduler.executionMode,
+            makeDispatcher: () => scheduler.makeDispatcher(),
+            shouldYield: (fiber) => fiber === startupFiber && fiber.currentOpCount >= 4
+          })
+        )
+      )
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      // Drain the retry/handoff delay too, so a regression fails without leaking a scope.
+      yield* TestClock.adjust(10_000)
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(causes, [])
+    }))
+})
+
 // Isolate the long-lived stream from concurrent shard-metric tests.
 // Use a nonzero assignment refresh interval when advancing through claim expiry
 // so the runner-storage sync loop does not busy-poll between clock ticks.
@@ -101,11 +140,10 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         { defectRetryPolicy: Schedule.forever }
       ).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
-        resetRequests: (ids) =>
-          Effect.gen(function*() {
-            released.push(...ids)
-            yield* storage.resetRequests(ids)
-          }),
+        resetRequests: Effect.fnUntraced(function*(ids) {
+          released.push(...ids)
+          yield* storage.resetRequests(ids)
+        }),
         unprocessedMessages: (shards, options) =>
           storage.unprocessedMessages(shards, options).pipe(
             Effect.tap((messages) =>
@@ -171,20 +209,18 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           .annotate(ClusterSchema.Uninterruptible, true)
       ])
       const layer = Restarting.toLayer({
-        Run: () =>
-          Effect.gen(function*() {
-            starts++
-            active++
-            yield* Queue.offer(started, starts)
-            return yield* Effect.never
-          }).pipe(Effect.ensuring(Effect.sync(() => active--)))
+        Run: Effect.fnUntraced(function*() {
+          starts++
+          active++
+          yield* Queue.offer(started, starts)
+          return yield* Effect.never
+        }, Effect.ensuring(Effect.sync(() => active--)))
       }).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
-        resetRequests: (ids) =>
-          Effect.gen(function*() {
-            released.push(...ids)
-            yield* storage.resetRequests(ids)
-          }),
+        resetRequests: Effect.fnUntraced(function*(ids) {
+          released.push(...ids)
+          yield* storage.resetRequests(ids)
+        }),
         unprocessedMessages: (shards, options) =>
           storage.unprocessedMessages(shards, options).pipe(
             Effect.tap((messages) =>
@@ -284,11 +320,10 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           storage.saveEnvelope(message).pipe(
             Effect.tap(() => message.envelope._tag === "AckChunk" ? Deferred.succeed(acked, void 0) : Effect.void)
           ),
-        resetRequests: (ids) =>
-          Effect.gen(function*() {
-            released.push(...ids)
-            yield* storage.resetRequests(ids)
-          }),
+        resetRequests: Effect.fnUntraced(function*(ids) {
+          released.push(...ids)
+          yield* storage.resetRequests(ids)
+        }),
         unprocessedMessages: (shards, options) =>
           storage.unprocessedMessages(shards, options).pipe(
             Effect.tap((messages) =>
@@ -349,22 +384,20 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
             failedReleases.push(...ids)
             return Effect.fail(new ClusterError.PersistenceError({ cause: "injected targeted release failure" }))
           }),
-        resetAddresses: (addresses) =>
-          Effect.gen(function*() {
-            cappedReleases.push(...addresses)
-            yield* storage.resetAddresses(addresses)
-          }),
-        unprocessedMessages: (shards, options) =>
-          Effect.gen(function*() {
-            if (pauseNextRead) {
-              pauseNextRead = false
-              yield* Deferred.succeed(readStarted, void 0)
-              yield* Deferred.await(releaseRead)
-            }
-            const messages = yield* storage.unprocessedMessages(shards, options)
-            for (const message of messages) claimed.push(message.envelope.address.entityId)
-            return messages
-          })
+        resetAddresses: Effect.fnUntraced(function*(addresses) {
+          cappedReleases.push(...addresses)
+          yield* storage.resetAddresses(addresses)
+        }),
+        unprocessedMessages: Effect.fnUntraced(function*(shards, options) {
+          if (pauseNextRead) {
+            pauseNextRead = false
+            yield* Deferred.succeed(readStarted, void 0)
+            yield* Deferred.await(releaseRead)
+          }
+          const messages = yield* storage.unprocessedMessages(shards, options)
+          for (const message of messages) claimed.push(message.envelope.address.entityId)
+          return messages
+        })
       }))))
     }))
 
@@ -414,17 +447,16 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         )
       }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
-        unprocessedMessages: (shardIds, options) =>
-          Effect.gen(function*() {
-            if (pauseNextRead) {
-              pauseNextRead = false
-              yield* Deferred.succeed(readStarted, void 0)
-              yield* Deferred.await(releaseRead)
-            }
-            const messages = yield* storage.unprocessedMessages(shardIds, options)
-            for (const message of messages) claimed.push(message.envelope.requestId)
-            return messages
-          })
+        unprocessedMessages: Effect.fnUntraced(function*(shardIds, options) {
+          if (pauseNextRead) {
+            pauseNextRead = false
+            yield* Deferred.succeed(readStarted, void 0)
+            yield* Deferred.await(releaseRead)
+          }
+          const messages = yield* storage.unprocessedMessages(shardIds, options)
+          for (const message of messages) claimed.push(message.envelope.requestId)
+          return messages
+        })
       }))))
     }))
 })
@@ -494,36 +526,33 @@ describe.concurrent("Sharding", () => {
             expect(Queue.sizeUnsafe(state.envelopes)).toEqual(0)
           }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
             ...storage,
-            resetRequests: (ids) =>
-              Effect.gen(function*() {
-                released.push(...ids)
-                yield* storage.resetRequests(ids)
-              }),
-            unprocessedMessages: (shards, options) =>
-              Effect.gen(function*() {
-                if (pauseNextRead) {
-                  pauseNextRead = false
-                  yield* Deferred.succeed(readStarted, void 0)
-                  yield* Deferred.await(releaseRead)
-                }
-                const messages = yield* storage.unprocessedMessages(shards, options)
-                return messages.map((message) =>
-                  message._tag !== "IncomingRequest" ?
-                    message :
-                    new Message.IncomingRequest({
-                      ...message,
-                      respond: (reply) =>
-                        Effect.gen(function*() {
-                          yield* message.respond(reply)
-                          if (pauseNextReply) {
-                            pauseNextReply = false
-                            yield* Deferred.succeed(replyPublished, void 0)
-                            yield* Deferred.await(releaseReply)
-                          }
-                        })
+            resetRequests: Effect.fnUntraced(function*(ids) {
+              released.push(...ids)
+              yield* storage.resetRequests(ids)
+            }),
+            unprocessedMessages: Effect.fnUntraced(function*(shards, options) {
+              if (pauseNextRead) {
+                pauseNextRead = false
+                yield* Deferred.succeed(readStarted, void 0)
+                yield* Deferred.await(releaseRead)
+              }
+              const messages = yield* storage.unprocessedMessages(shards, options)
+              return messages.map((message) =>
+                message._tag !== "IncomingRequest" ?
+                  message :
+                  new Message.IncomingRequest({
+                    ...message,
+                    respond: Effect.fnUntraced(function*(reply) {
+                      yield* message.respond(reply)
+                      if (pauseNextReply) {
+                        pauseNextReply = false
+                        yield* Deferred.succeed(replyPublished, void 0)
+                        yield* Deferred.await(releaseReply)
+                      }
                     })
-                )
-              })
+                  })
+              )
+            })
           }))))
         })
     )
@@ -1889,6 +1918,14 @@ const DefectRecoveryEntity = Entity.make("DefectRecovery", [DefectRecoveryRun.an
 const DefectRecoverySharding = <R>(entityLayer: Layer.Layer<never, never, R>) =>
   entityLayer.pipe(Layer.provideMerge(UnregisteredSharding({})))
 
+// Restarts after 1ms, so tests only advance the clock as far as a restart
+// needs instead of waking every background Sharding loop along the way.
+const defectRetryPolicy = Schedule.spaced(1)
+
+// Steps the test clock until `effect` completes.
+const advanceUntil = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.raceFirst(effect, Effect.forever(TestClock.adjust(1)))
+
 // Counts handler builds. Building the `blocked` generation waits until
 // `acquired` completes, holding the entity in replacement acquisition.
 const makeGenerations = Effect.fnUntraced(function*(blocked?: number) {
@@ -1963,25 +2000,27 @@ describe.concurrent("Sharding defect recovery", () => {
       const entity = DefectRecoveryEntity
       const generations = yield* makeGenerations()
       const attempts = yield* Ref.make(0)
-      const entityLayer = entity.toLayer(Effect.as(
-        generations.next,
-        entity.of({
-          run: Effect.fnUntraced(function*({ payload }) {
-            if ((yield* Ref.updateAndGet(attempts, (n) => n + 1)) <= 3) {
-              return yield* Effect.die("repeated defect")
-            }
-            return payload.id
+      const entityLayer = entity.toLayer(
+        Effect.as(
+          generations.next,
+          entity.of({
+            run: Effect.fnUntraced(function*({ payload }) {
+              if ((yield* Ref.updateAndGet(attempts, (n) => n + 1)) <= 3) {
+                return yield* Effect.die("repeated defect")
+              }
+              return payload.id
+            })
           })
-        })
-      ))
+        ),
+        { defectRetryPolicy }
+      )
 
       yield* Effect.gen(function*() {
         const client = (yield* entity.client)("repeated")
         const work = yield* client.run({ id: "request" }).pipe(Effect.forkChild)
-        yield* TestClock.adjust("30 seconds")
+        assert.strictEqual(yield* advanceUntil(Fiber.join(work)), "request")
         assert.strictEqual(yield* Ref.get(attempts), 4)
         assert.strictEqual(yield* Ref.get(generations.count), 4)
-        assert.strictEqual(yield* Fiber.join(work), "request")
       }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
     }))
 
@@ -2017,7 +2056,7 @@ describe.concurrent("Sharding defect recovery", () => {
               return payload.id
             })
           })),
-        { concurrency: "unbounded" }
+        { concurrency: "unbounded", defectRetryPolicy }
       )
 
       yield* Effect.gen(function*() {
@@ -2026,12 +2065,11 @@ describe.concurrent("Sharding defect recovery", () => {
         const second = yield* client.run({ id: "second" }).pipe(Effect.forkChild)
         yield* Deferred.await(bothStarted)
         yield* Deferred.succeed(fail, undefined)
-        yield* TestClock.adjust("10 seconds")
-        yield* Deferred.await(generations.acquiring)
+        yield* advanceUntil(Deferred.await(generations.acquiring))
         const third = yield* client.run({ id: "third" }).pipe(Effect.forkChild)
         yield* TestClock.adjust(1)
         yield* Deferred.succeed(generations.acquired, undefined)
-        yield* TestClock.adjust("30 seconds")
+        yield* advanceUntil(Fiber.joinAll([first, second, third]))
         assert.strictEqual(yield* Fiber.join(first), "first")
         assert.strictEqual(yield* Fiber.join(second), "second")
         assert.strictEqual(yield* Fiber.join(third), "third")
@@ -3480,13 +3518,17 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
   const makeOwnedScope = Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
   // Open teardown gates before closing scopes, including on assertion failure.
   const makeGate = Effect.acquireRelease(Effect.sync(() => Latch.makeUnsafe()), (gate) => gate.open)
-  const advanceUntil = (done: () => boolean) =>
-    Effect.gen(function*() {
-      for (let i = 0; i < 100 && !done(); i++) {
-        yield* TestClock.adjust(10)
-      }
-      assert.isTrue(done())
-    })
+  const advanceUntil = Effect.fnUntraced(function*(done: () => boolean) {
+    for (let i = 0; i < 100 && !done(); i++) {
+      yield* TestClock.adjust(10)
+    }
+    assert.isTrue(done())
+  })
+  // Reads the releasing-shards gauge from the registry the runner was built with
+  const releasingGauge = (registry: Metric.MetricRegistry) =>
+    (Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry)).find((metric) =>
+      metric.id === "effect_cluster_shards_releasing"
+    )?.state as Metric.GaugeState<bigint> | undefined)?.value
   const buildSharding = Effect.fnUntraced(function*(
     storageState: FailoverStorageState,
     config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
@@ -3515,6 +3557,190 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
     )
     return { context, scope, sharding: Context.get(context, Sharding.Sharding) }
   })
+
+  it.effect("warns about pending entities and singletons and reacquires only after teardown", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const registrationScope = yield* makeOwnedScope
+      const registry: Metric.MetricRegistry = new Map()
+      const clock = yield* Clock.Clock
+      const warnings: Array<{ at: number; output: string }> = []
+      let unhealthyAt: number | undefined
+      const logger = Logger.make((options) => {
+        if (options.logLevel === "Error" && String(options.message).includes("unhealthy")) {
+          unhealthyAt ??= clock.currentTimeMillisUnsafe()
+        }
+        if (options.logLevel !== "Warn") return
+        const output = Logger.formatJson.log(options)
+        if (/releas/i.test(output)) warnings.push({ at: clock.currentTimeMillisUnsafe(), output })
+      })
+      const { context, sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000,
+        // Keep 30 seconds of polling cheap
+        entityMessagePollInterval: 100
+      }).pipe(Effect.provide(Logger.layer([logger])), Effect.provideService(Metric.MetricRegistry, registry))
+      // These finalizers run before either scope closes, even on assertion failure.
+      const entityGate = yield* makeGate
+      const singletonGate = yield* makeGate
+      const started = Latch.makeUnsafe()
+      const stopped = Latch.makeUnsafe()
+      const shardId = ShardId.make("default", 1)
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      yield* sharding.registerEntity(
+        GatedTeardownEntity,
+        Effect.as(
+          Effect.addFinalizer(() => entityGate.await),
+          GatedTeardownEntity.of({ Activate: () => Effect.void })
+        )
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      const makeClient = yield* GatedTeardownEntity.client.pipe(Effect.provideContext(context))
+      yield* makeClient("1").Activate()
+      yield* sharding.registerSingleton(
+        "StalledReleaseSingleton",
+        Effect.andThen(started.open, singletonGate.await).pipe(
+          Effect.uninterruptible,
+          Effect.ensuring(stopped.open)
+        )
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      yield* started.await
+      yield* advanceUntil(() => storageState.refreshCalls.some((call) => call.shards.length > 0))
+      const acquiresBeforeOutage = storageState.acquireCalls.length
+      const assertStillBlocked = () => {
+        assert.isFalse(sharding.hasShardId(shardId))
+        assert.strictEqual(storageState.acquireCalls.length, acquiresBeforeOutage)
+        assert.strictEqual(storageState.releaseAllCalls.length, 0)
+      }
+
+      storageState.blackholed = true
+      yield* TestClock.adjust(201)
+      assert.isFalse(sharding.hasShardId(shardId))
+      assert.deepStrictEqual(warnings, [], "a brief release must not warn")
+      storageState.blackholed = false
+      // Storage recovers, but uninterruptible work must still prevent release.
+      yield* TestClock.adjust(1000)
+      assertStillBlocked()
+      assert.isFalse(stopped.isOpen())
+      const firstWarnings = warnings.slice()
+      const blockedShards = ClusterMetrics.shards.valueUnsafe(Context.empty()).value
+      const blockedReleasing = releasingGauge(registry)
+      // The entity stops, so the next warning names only the singleton.
+      yield* entityGate.open
+      yield* TestClock.adjust(firstWarnings[0].at + 29_999 - clock.currentTimeMillisUnsafe())
+      const warningsBeforeRepeat = warnings.slice()
+      assertStillBlocked()
+      yield* TestClock.adjust(1)
+      const warningsAtRepeat = warnings.slice()
+      assertStillBlocked()
+
+      yield* singletonGate.open
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      assert.isTrue(stopped.isOpen())
+      assert.strictEqual(storageState.releaseAllCalls.length, 1)
+      assert.isTrue(storageState.releaseAllCalls[0].completed)
+      const reacquires = storageState.acquireCalls.slice(acquiresBeforeOutage)
+      assert.isAbove(reacquires.length, 0)
+      assert.isTrue(reacquires.every((call) => call.completedReleaseAlls === 1))
+      const recoveredReleasing = releasingGauge(registry)
+      const warningsAtRecovery = warnings.slice()
+      yield* TestClock.adjust(30_000)
+      assert.deepStrictEqual(warnings, warningsAtRecovery, "the release monitor must stop after recovery")
+
+      // Assert diagnostics last so the red test also exercises safe recovery.
+      assert.strictEqual(firstWarnings.length, 1, "a prolonged forced release must warn once by expiration")
+      // The forced release starts once the acquisition loop wakes, after the loss.
+      assert.isAtLeast(firstWarnings[0].at - unhealthyAt!, 300, "the first warning must not precede expiration")
+      assert.include(firstWarnings[0].output, "default:1")
+      assert.include(firstWarnings[0].output, "GatedTeardownEntity")
+      assert.include(firstWarnings[0].output, "StalledReleaseSingleton")
+      assert.deepStrictEqual(warningsBeforeRepeat, firstWarnings, "warnings must not repeat before 30 seconds")
+      assert.strictEqual(warningsAtRepeat.length, 2, "a pending release must warn again after 30 seconds")
+      assert.strictEqual(warningsAtRepeat[1].at - firstWarnings[0].at, 30_000)
+      assert.include(warningsAtRepeat[1].output, "default:1")
+      assert.notInclude(warningsAtRepeat[1].output, "GatedTeardownEntity")
+      assert.include(warningsAtRepeat[1].output, "StalledReleaseSingleton")
+      assert.deepStrictEqual(warningsAtRecovery, warningsAtRepeat)
+      assert.strictEqual(blockedShards, 0n)
+      assert.strictEqual(blockedReleasing, 1n, "the blocked shard must count as releasing")
+      assert.strictEqual(recoveredReleasing, 0n, "releasing must return to zero after recovery")
+    }))
+
+  it.effect("does not warn when forced release completes before the warning deadline", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ releaseAllDuration: 50 })
+      const warnings: Array<string> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel === "Warn") {
+          const output = Logger.formatJson.log(options)
+          if (/releas/i.test(output)) warnings.push(output)
+        }
+      })
+      const { sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000
+      }).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          storageState.releaseAllDuration = 0
+        })
+      )
+      const shardId = ShardId.make("default", 1)
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      yield* advanceUntil(() => storageState.refreshCalls.some((call) => call.shards.length > 0))
+      storageState.blackholed = true
+      yield* TestClock.adjust(201)
+      assert.isFalse(sharding.hasShardId(shardId))
+      storageState.blackholed = false
+      yield* advanceUntil(() => storageState.releaseAllCalls.length > 0)
+      assert.isFalse(storageState.releaseAllCalls[0].completed)
+      yield* advanceUntil(() => sharding.hasShardId(shardId))
+      assert.isTrue(storageState.releaseAllCalls[0].completed)
+      yield* TestClock.adjust(900)
+      assert.deepStrictEqual(warnings, [], "a completed release must cancel its warning monitor")
+    }))
+
+  it.effect("warns immediately on release failure and throttles retries to one warning per 30 seconds", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ releaseFailures: Infinity })
+      const clock = yield* Clock.Clock
+      const warnings: Array<{ at: number; output: string }> = []
+      const logger = Logger.make((options) => {
+        if (options.logLevel !== "Warn") return
+        const output = Logger.formatJson.log(options)
+        if (/releas/i.test(output)) warnings.push({ at: clock.currentTimeMillisUnsafe(), output })
+      })
+      const { sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockRefreshInterval: 100
+      }).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          storageState.releaseFailures = 0
+        })
+      )
+      yield* advanceUntil(() => sharding.hasShardId(allShards[0]))
+      storageState.assignSelf = false
+      yield* advanceUntil(() => storageState.releaseCalls.length > 0)
+      assert.strictEqual(warnings.length, 1, "the first failure must warn immediately")
+      assert.include(warnings[0].output, "release failed")
+      assert.include(warnings[0].output, "default")
+      const firstWarningAt = warnings[0].at
+      const firstAttempts = storageState.releaseCalls.length
+      yield* TestClock.adjust(firstWarningAt + 29_999 - (yield* Clock.currentTimeMillis))
+      assert.strictEqual(warnings.length, 1, "retries inside the throttle window must not warn")
+      assert.isAbove(storageState.releaseCalls.length, firstAttempts, "storage retries must continue")
+      yield* TestClock.adjust(1)
+      assert.strictEqual(warnings.length, 2, "a continuing failure must warn again after 30 seconds")
+      assert.strictEqual(warnings[1].at - firstWarningAt, 30_000)
+      storageState.releaseFailures = 0
+      yield* TestClock.adjust(100)
+      const completedAttempts = storageState.releaseCalls.length
+      yield* TestClock.adjust(30_000)
+      assert.strictEqual(storageState.releaseCalls.length, completedAttempts)
+      assert.strictEqual(warnings.length, 2, "warnings must stop after release succeeds")
+    }))
 
   it.effect("waits for entity teardown before handing off without acquiring newly freed shards", () =>
     Effect.gen(function*() {
@@ -3557,29 +3783,49 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
   it.effect("does not record a release cancelled when shutdown handoff times out", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState({ releaseFailures: Infinity })
-      const { scope, sharding } = yield* buildSharding(storageState, {
-        shardsPerGroup: 1,
-        shardLockRefreshInterval: 100
-      })
+      const registry: Metric.MetricRegistry = new Map()
+      const config = { shardsPerGroup: 1, shardLockRefreshInterval: 100 }
+      const { scope, sharding } = yield* buildSharding(storageState, config).pipe(
+        Effect.provideService(Metric.MetricRegistry, registry)
+      )
       yield* advanceUntil(() => sharding.hasShardId(allShards[0]))
-      const before = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
+      const releaseDuration = () =>
+        ClusterMetrics.shardReleaseDuration.valueUnsafe(Context.make(Metric.MetricRegistry, registry))
+      const before = releaseDuration()
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* advanceUntil(() => storageState.releaseCalls.length > 0)
+      yield* TestClock.adjust(50)
+      assert.isAbove(storageState.releaseCalls.length, 1, "storage retries must continue")
+      const retryingReleasing = releasingGauge(registry)
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
 
       assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
-      assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
+      assert.strictEqual(releaseDuration().count, before.count)
+      assert.strictEqual(retryingReleasing, 1n, "retries must not count a shard twice")
+
+      // A new runner in the same registry must not report the abandoned release.
+      storageState.releaseFailures = 0
+      const restarted = yield* buildSharding(storageState, config).pipe(
+        Effect.provideService(Metric.MetricRegistry, registry)
+      )
+      assert.strictEqual(releasingGauge(registry), 0n, "initialization must publish zero")
+      yield* advanceUntil(() => restarted.sharding.hasShardId(allShards[0]))
+      assert.strictEqual(releasingGauge(registry), 0n)
     }))
 
   it.effect("waits for singleton teardown before handing off their shards", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
+      const registry: Metric.MetricRegistry = new Map()
       const registrationScope = yield* makeOwnedScope
       const runningRegistrationScope = yield* makeOwnedScope
-      const { scope, sharding } = yield* buildSharding(storageState)
+      const { scope, sharding } = yield* buildSharding(storageState).pipe(
+        Effect.provideService(Metric.MetricRegistry, registry)
+      )
       const gate = yield* makeGate
       yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
+      assert.strictEqual(releasingGauge(registry), 0n, "initialization must publish zero")
       const started = Latch.makeUnsafe()
       const stopping = Latch.makeUnsafe()
       yield* sharding.registerSingleton(
@@ -3607,11 +3853,19 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.isUndefined(closing.pollUnsafe())
       assert.deepStrictEqual(storageState.releaseCalls, [])
       assert.deepStrictEqual(storageState.releaseAllCalls, [])
+      const tearingDownReleasing = releasingGauge(registry)
 
+      // Each shard's first release attempt fails and is retried.
+      storageState.releaseFailures = 2
       yield* gate.open
+      yield* advanceUntil(() => storageState.releaseCalls.length >= 2)
+      const retryingReleasing = releasingGauge(registry)
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
       assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
-      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [2])
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [4])
+      assert.strictEqual(tearingDownReleasing, 2n, "each shard waiting for teardown must count once")
+      assert.strictEqual(retryingReleasing, 2n, "retries must not count a shard twice")
+      assert.strictEqual(releasingGauge(registry), 0n, "a completed handoff must publish zero")
     }).pipe(Effect.scoped))
 
   it.effect("closes a singleton registration whose singleton registered another singleton", () =>

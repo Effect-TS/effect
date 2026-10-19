@@ -192,12 +192,7 @@ const sendBody = (
       return Effect.sync(() => xhr.send(body.formData))
     case "Stream":
       return Effect.matchEffect(
-        Stream.runFold(body.stream, () => new Uint8Array(0), (acc, chunk) => {
-          const next = new Uint8Array(acc.length + chunk.length)
-          next.set(acc, 0)
-          next.set(chunk, acc.length)
-          return next
-        }),
+        Stream.mkUint8Array(body.stream),
         {
           onFailure: (cause) =>
             Effect.fail(
@@ -342,10 +337,12 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
       this.source.addEventListener("readystatechange", onReadyStateChange)
       this.source.addEventListener("error", onError)
       onReadyStateChange()
-      return Effect.sync(() => {
-        this.source.removeEventListener("readystatechange", onReadyStateChange)
-        this.source.removeEventListener("error", onError)
-      })
+      return Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          this.source.removeEventListener("readystatechange", onReadyStateChange)
+          this.source.removeEventListener("error", onError)
+        })
+      )
     })
   }
 

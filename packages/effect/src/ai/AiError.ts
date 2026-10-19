@@ -342,6 +342,15 @@ export interface ContentPolicyErrorMetadata extends ProviderMetadata {}
 export interface InvalidRequestErrorMetadata extends ProviderMetadata {}
 
 /**
+ * Provider-specific metadata attached to `InvalidResponseError`.
+ *
+ * @stability unstable
+ * @category configuration
+ * @since 4.1.0
+ */
+export interface InvalidResponseErrorMetadata extends ProviderMetadata {}
+
+/**
  * Provider-specific metadata attached to `InternalProviderError`.
  *
  * @stability unstable
@@ -835,7 +844,59 @@ export class InternalProviderError extends Schema.Error<InternalProviderError>(
 }
 
 /**
- * Error indicating failure to parse or validate LLM output.
+ * Error indicating the provider response does not conform to the expected format.
+ *
+ * **Details**
+ *
+ * Invalid response errors are not retryable because retrying does not resolve an
+ * incompatible provider response format. Optional HTTP context can retain request
+ * and response details for diagnosis.
+ *
+ * @see {@link InvalidOutputError} for retryable model-generated output failures
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class InvalidResponseError extends Schema.Error<InvalidResponseError>(
+  "effect/ai/AiError/InvalidResponseError"
+)({
+  _tag: Schema.tag("InvalidResponseError"),
+  description: Schema.String,
+  metadata: providerMetadataWithDefaults<InvalidResponseErrorMetadata>(),
+  http: Schema.optional(HttpContext)
+}) {
+  /**
+   * Marks `InvalidResponseError` as a semantic AI error reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  /**
+   * Invalid response errors are not retryable because the response format is incompatible.
+   *
+   * @since 4.1.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+
+  /**
+   * Creates an InvalidResponseError from a provider response schema error.
+   *
+   * @since 4.1.0
+   */
+  static fromSchemaError(error: Schema.SchemaError): InvalidResponseError {
+    return new InvalidResponseError({ description: error.message })
+  }
+
+  override get message(): string {
+    return `Invalid response: ${this.description}`
+  }
+}
+
+/**
+ * Error indicating failure to parse or validate model-generated output.
  *
  * **Details**
  *
@@ -903,9 +964,7 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
    * @since 4.0.0
    */
   static fromSchemaError(error: Schema.SchemaError): InvalidOutputError {
-    return new InvalidOutputError({
-      description: error.message
-    })
+    return new InvalidOutputError({ description: error.message })
   }
 
   override get message(): string {
@@ -1520,6 +1579,7 @@ export type AiErrorReason =
   | AuthenticationError
   | ContentPolicyError
   | InvalidRequestError
+  | InvalidResponseError
   | InternalProviderError
   | NetworkError
   | InvalidOutputError
@@ -1557,6 +1617,7 @@ export const AiErrorReason: Schema.Union<[
   typeof AuthenticationError,
   typeof ContentPolicyError,
   typeof InvalidRequestError,
+  typeof InvalidResponseError,
   typeof InternalProviderError,
   typeof NetworkError,
   typeof InvalidOutputError,
@@ -1576,6 +1637,7 @@ export const AiErrorReason: Schema.Union<[
   AuthenticationError,
   ContentPolicyError,
   InvalidRequestError,
+  InvalidResponseError,
   InternalProviderError,
   NetworkError,
   InvalidOutputError,

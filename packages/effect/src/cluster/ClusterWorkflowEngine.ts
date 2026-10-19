@@ -24,7 +24,7 @@ import * as Rpc from "../rpc/Rpc.ts"
 import { ClientAbort } from "../rpc/RpcSchema.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
@@ -135,11 +135,21 @@ export const make = Effect.gen(function*() {
   // Rebuilds share an activation; overlapping activations have separate results.
   // Weak keys do not retain scopes, but contexts captured by clients, activities,
   // or finalizers can keep a closed scope (and its results) reachable until later.
-  const pendingByActivation = new WeakMap<Scope.Scope, {
-    readonly workflowName: string
-    readonly executionId: string
-    readonly results: Map<string, Exit.Exit<unknown, unknown>>
-  }>()
+  const pendingByActivation = new WeakMap<Scope.Scope, ActivationState>()
+  // Closes the scopes retained by suspended runs. The latest run already closed
+  // its own scope with its real exit, so earlier finalizers observe success and
+  // skip superseded compensations. Abandonment releases owner-local resources
+  // without running durable finalizers, so the run can replay elsewhere.
+  const closeRuns = (state: ActivationState, abandoned: boolean) =>
+    Effect.suspend(() => {
+      const scope = state.scope
+      if (abandoned) {
+        for (const instance of state.instances) instance.abandoned = true
+      }
+      state.instances.clear()
+      state.scope = Scope.makeUnsafe()
+      return Scope.close(scope, Exit.void)
+    })
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -374,26 +384,25 @@ export const make = Effect.gen(function*() {
   // `Suspended`. Replies are only observed on the runner that saves them, so
   // callers on other runners, and any failure here, leave delivery to the
   // caller's retry schedule.
-  const awaitComplete = (workflow: Workflow.Any, executionId: string) =>
-    Effect.gen(function*() {
-      const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
-      if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
-      const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
-      if (Option.isNone(requestId)) return yield* Effect.never
-      const request = Envelope.makeRequest<any>({
-        requestId: requestId.value,
-        address,
-        tag: "run",
-        payload: {},
-        headers: Headers.empty
-      })
-      // A replay that suspends again re-arms the wait, so it does not spend a
-      // step of the caller's retry schedule.
-      let settled = false
-      while (!settled) {
-        settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
-      }
-    }).pipe(Effect.catchCause(() => Effect.never))
+  const awaitComplete = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string) {
+    const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
+    if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
+    const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
+    if (Option.isNone(requestId)) return yield* Effect.never
+    const request = Envelope.makeRequest<any>({
+      requestId: requestId.value,
+      address,
+      tag: "run",
+      payload: {},
+      headers: Headers.empty
+    })
+    // A replay that suspends again re-arms the wait, so it does not spend a
+    // step of the caller's retry schedule.
+    let settled = false
+    while (!settled) {
+      settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
+    }
+  }, Effect.catchCause(() => Effect.never))
 
   const interrupt = Effect.fnUntraced(
     function*(workflow: Workflow.Any, executionId: string) {
@@ -465,7 +474,14 @@ export const make = Effect.gen(function*() {
                   (decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit) as Exit.Exit<unknown, unknown>
                 )
               }
-              pending = { workflowName: workflow._tag, executionId, results }
+              pending = {
+                workflowName: workflow._tag,
+                executionId,
+                results,
+                instances: new Set(),
+                scope: Scope.makeUnsafe()
+              }
+              yield* Scope.addFinalizer(activation, closeRuns(pending, true))
               pendingByActivation.set(activation, pending)
             }
             // Retain awaited names through reply persistence, including suspension.
@@ -493,7 +509,12 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
-                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+                // Each run gets a fresh scope under the activation's parent, so
+                // replays rebuild compensations while suspended runs keep theirs.
+                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+                  scope: Scope.forkUnsafe(pending.scope)
+                })
+                pending.instances.add(instance)
                 currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string; detached?: boolean }
@@ -533,6 +554,11 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
+                  Effect.onExit((exit) =>
+                    Exit.isSuccess(exit) && exit.value._tag === "Suspended"
+                      ? Effect.void
+                      : closeRuns(pending, instance.abandoned)
+                  ),
                   (effect) => deferredState.trackRun(instance, effect),
                   // Request middleware and local callers may carry another entity's context.
                   Effect.provideService(CurrentActivationScope, activation)
@@ -908,6 +934,16 @@ const DeferredRpc = Rpc.make("deferred", {
   .annotate(ClusterSchema.Uninterruptible, true)
 
 type WakeMode = "explicit" | "automatic"
+
+interface ActivationState {
+  readonly workflowName: string
+  readonly executionId: string
+  readonly results: Map<string, Exit.Exit<unknown, unknown>>
+  // Every run forks its scope from here, so runs that suspended keep their
+  // resources and durable finalizers until the execution finishes.
+  scope: Scope.Closeable
+  readonly instances: Set<WorkflowEngine.WorkflowInstance["Service"]>
+}
 
 const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"

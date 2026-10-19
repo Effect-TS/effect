@@ -1,4 +1,4 @@
-import { Context, Effect, Schema, SchemaGetter } from "effect"
+import { Context, Effect, type Result, Schema, SchemaGetter } from "effect"
 import { type AiError, Decision, DecisionModel } from "effect/ai"
 import { describe, expect, it } from "tstyche"
 
@@ -261,6 +261,41 @@ describe("DecisionModel", () => {
     expect<ServiceError>().type.toBe<AiError.AiError>()
     expect<ServiceRequirements>().type.toBe<never>()
     expect<RedactedRequirements>().type.toBe<Redactor>()
+  })
+
+  it("provider classify and rate answers may omit probabilities", () => {
+    expect<{ readonly _tag: "Classify"; readonly label: string }>()
+      .type.toBeAssignableTo<DecisionModel.ProviderClassifyAnswer>()
+    expect<{ readonly _tag: "Rate"; readonly rating: number }>()
+      .type.toBeAssignableTo<DecisionModel.ProviderRateAnswer>()
+  })
+
+  it("providers can report a refused decision", () => {
+    expect<{ readonly _tag: "Refusal" }>().type.toBeAssignableTo<DecisionModel.ProviderAnswer>()
+  })
+
+  it("decideSettled keys Result outcomes by the decisions map", () => {
+    const settled = DecisionModel.decideSettled(RedactedTriage, { input: { body: "call me" } })
+    const outcomes = DecisionModel.decideSettled(TicketTriage, {
+      input: { subject: "Card was charged twice", priority: 3 }
+    })
+
+    type Settled = typeof outcomes extends Effect.Effect<infer A, any, any> ? A : never
+
+    expect<Settled["outcomes"]>().type.toBe<{
+      readonly department: Result.Result<Answers["department"], Decision.Unanswered>
+      readonly frustration: Result.Result<Answers["frustration"], Decision.Unanswered>
+      readonly urgent: Result.Result<Answers["urgent"], Decision.Unanswered>
+    }>()
+    expect<Settled["usage"]>().type.toBe<DecisionModel.DecisionUsage>()
+    expect<Decision.Unanswered["reason"]>().type.toBe<"Missing" | "Refused" | "NoDistribution" | "Invalid">()
+    expect(settled).type.toBe<
+      Effect.Effect<
+        DecisionModel.DecideSettledResponse<typeof RedactedTriage.decisions>,
+        AiError.AiError,
+        DecisionModel.DecisionModel | Redactor
+      >
+    >()
   })
 
   it("make takes a provider decide returning AiError", () => {

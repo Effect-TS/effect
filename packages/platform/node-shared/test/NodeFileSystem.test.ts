@@ -8,45 +8,58 @@ import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
-import type * as NFS from "node:fs"
+import * as NFS from "node:fs"
+import * as Path from "node:path"
 import { afterEach, beforeEach, vi } from "vitest"
 import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
-const startWatch = <E, R>(
+const startWatch = Effect.fnUntraced(function*<E, R>(
   fs: FileSystem.FileSystem,
   root: string,
   watch: () => Stream.Stream<FileSystem.WatchEvent, E, R>
-) =>
-  Effect.gen(function*() {
-    const ready = yield* Deferred.make<void>()
-    const readyName = ".watch-ready"
-    const fiber = yield* watch().pipe(
-      Stream.tap((event) =>
-        event.path === readyName
-          ? Deferred.succeed(ready, undefined)
-          : Effect.void
-      ),
-      Stream.dropUntil((event) => event.path === readyName),
-      Stream.filter((event) => event.path !== readyName),
-      Stream.runHead,
-      Effect.flatMap(Effect.fromOption),
-      Effect.forkChild
-    )
-    const signalFiber = yield* Effect.sleep("10 millis").pipe(
-      TestClock.withLive,
-      Effect.andThen(fs.writeFileString(`${root}/${readyName}`, "")),
-      Effect.forever,
-      Effect.forkChild
-    )
-    yield* Deferred.await(ready).pipe(
-      Effect.raceFirst(Fiber.join(fiber).pipe(Effect.asVoid)),
-      Effect.ensuring(Fiber.interrupt(signalFiber))
-    )
-    return fiber
-  })
+) {
+  const ready = yield* Deferred.make<void>()
+  const readyName = ".watch-ready"
+  const fiber = yield* watch().pipe(
+    Stream.tap((event) =>
+      event.path === readyName
+        ? Deferred.succeed(ready, undefined)
+        : Effect.void
+    ),
+    Stream.dropUntil((event) => event.path === readyName),
+    Stream.filter((event) => event.path !== readyName),
+    Stream.runHead,
+    Effect.flatMap(Effect.fromOption),
+    Effect.forkChild
+  )
+  const signalFiber = yield* Effect.sleep("10 millis").pipe(
+    TestClock.withLive,
+    Effect.andThen(fs.writeFileString(`${root}/${readyName}`, "")),
+    Effect.forever,
+    Effect.forkChild
+  )
+  yield* Deferred.await(ready).pipe(
+    Effect.raceFirst(Fiber.join(fiber).pipe(Effect.asVoid)),
+    Effect.ensuring(Fiber.interrupt(signalFiber))
+  )
+  return fiber
+})
 
 describe("FileSystem", { concurrent: false }, () => {
   testLayer(NodeFileSystem.layer, { noFollow: process.platform !== "win32" })
+
+  it.effect("realPath resolves a directory alias to its physical target", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.realPath(yield* fs.makeTempDirectoryScoped())
+      const target = Path.join(root, "target")
+      const alias = Path.join(root, "alias")
+      yield* fs.makeDirectory(target)
+      NFS.symlinkSync(target, alias, process.platform === "win32" ? "junction" : "dir")
+      assert.strictEqual(yield* fs.realPath(alias), target)
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer)
+    ))
 
   it.effect("writeAll accepts an empty buffer", () =>
     Effect.gen(function*() {

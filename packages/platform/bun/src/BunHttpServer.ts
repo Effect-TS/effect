@@ -15,6 +15,7 @@
 import type { Server as BunServer, ServerWebSocket } from "bun"
 import type * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/Config"
 import * as Context from "effect/Context"
@@ -194,11 +195,14 @@ export const make = Effect.fnUntraced(
         const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
           Effect.sync(() => {
             const bunRequest = request as BunServerRequest
-            bunRequest.resolve(makeResponse(request, response, services, scope))
+            bunRequest.resolve(makeResponse(bunRequest, response, services, scope))
             if (upgradedSources.has(bunRequest.source)) return upgradedResponse
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
+          if (request.method === "CONNECT") {
+            return Promise.resolve(new Response(null, { status: 501 }))
+          }
           return new Promise<Response>((resolve, _reject) => {
             const context = Context.add(
               services,
@@ -240,7 +244,7 @@ const upgradedResponse = ServerResponse.empty({ status: 101 })
 const upgradedSources = new WeakSet<Request>()
 
 const makeResponse = (
-  request: ServerRequest.HttpServerRequest,
+  request: BunServerRequest,
   response: ServerResponse.HttpServerResponse,
   context: Context.Context<never>,
   scope: Scope.Scope
@@ -278,10 +282,7 @@ const makeResponse = (
     }
     case "Raw": {
       if (body.body instanceof Response) {
-        for (const [key, value] of fields.headers.entries()) {
-          body.body.headers.set(key, value)
-        }
-        return body.body
+        return ServerResponse.toWeb(response)
       }
       return new Response(body.body as any, fields)
     }
@@ -291,11 +292,15 @@ const makeResponse = (
     case "Stream": {
       return new Response(
         Stream.toReadableStreamWith(
-          Stream.unwrap(Effect.withFiber((fiber) => {
-            Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
-          })),
-          context
+          // Attach before transforming: startup can suspend. Register the request finalizer before the first pull.
+          Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
+            Effect.withFiber((fiber) => {
+              Fiber.runIn(fiber, scope)
+              return Channel.toTransform(body.stream.channel)(upstream, streamScope)
+            })
+          )),
+          context,
+          { signal: request.source.signal }
         ),
         fields
       )

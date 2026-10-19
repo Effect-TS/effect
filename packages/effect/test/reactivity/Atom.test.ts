@@ -505,6 +505,45 @@ describe("Atom", { concurrent: false }, () => {
     assert(Effect.isEffect(result.value.get))
   })
 
+  it.each([
+    { reconfigure: false, expected: 0 },
+    { reconfigure: true, expected: 1 }
+  ])(
+    "runtime atom with skipInitialRun keeps its seed only when an async runtime resolves unchanged (reconfigure: $reconfigure)",
+    async ({ expected, reconfigure }) => {
+      const config = Atom.make(0)
+      const runtime = Atom.runtime((get) => {
+        get(config)
+        return Layer.effectDiscard(Effect.sleep(10))
+      })
+      let runs = 0
+      const atom = runtime.atom(Effect.sync(() => ++runs))
+      const r = AtomRegistry.make({
+        initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { skipInitialRun: true })]
+      })
+      try {
+        r.mount(atom)
+        if (reconfigure) {
+          r.set(config, 1)
+        }
+        await vitest.advanceTimersByTimeAsync(10)
+
+        let result = r.get(atom)
+        assert(AsyncResult.isSuccess(result))
+        assert.strictEqual(result.value, expected)
+        assert.strictEqual(runs, expected)
+
+        r.refresh(atom)
+        result = r.get(atom)
+        assert(AsyncResult.isSuccess(result))
+        assert.strictEqual(result.value, expected + 1)
+        assert.strictEqual(runs, expected + 1)
+      } finally {
+        r.dispose()
+      }
+    }
+  )
+
   it("effect initial", async () => {
     const count = Atom.make(
       Effect.succeed(1).pipe(Effect.delay(100)),
@@ -1421,6 +1460,30 @@ describe("Atom", { concurrent: false }, () => {
     r.dispose()
   })
 
+  it("initialValues skipInitialRun keeps an effect seed until a reactivity key is invalidated", () => {
+    let runs = 0
+    const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.withReactivity(["count"]))
+    const invalidate = counterRuntime.fn(() => Effect.void, { reactivityKeys: ["count"] })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { skipInitialRun: true })]
+    })
+    try {
+      r.mount(atom)
+      let result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 0)
+      assert.strictEqual(runs, 0)
+
+      r.set(invalidate, void 0)
+      result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 1)
+      assert.strictEqual(runs, 1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("does not queue an initialValues notification without listeners", () => {
     const state = Atom.make(0)
     const seen: Array<number> = []
@@ -2271,6 +2334,29 @@ describe("Atom", { concurrent: false }, () => {
     unmount2()
   })
 
+  test.each([
+    { age: 0, expected: 0 },
+    { age: 1_000, expected: 1 }
+  ])(`swr revalidates a kept initial value by staleTime (seed age: $age)`, async ({ age, expected }) => {
+    let runs = 0
+    const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.swr({ staleTime: 1_000 }))
+    const seed = AsyncResult.success(0, { timestamp: Date.now() - age })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, seed, { skipInitialRun: true })]
+    })
+    try {
+      r.mount(atom)
+      await Effect.runPromise(Effect.yieldNow)
+
+      const result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, expected)
+      assert.strictEqual(runs, expected)
+    } finally {
+      r.dispose()
+    }
+  })
+
   test(`swr cancels queued revalidation when unmounted`, async () => {
     const r = AtomRegistry.make()
     let runs = 0
@@ -3016,6 +3102,49 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(r.get(atom), 3)
     })
 
+    for (const termination of ["success", "failure", "defect", "interruption", "replacement"] as const) {
+      it.effect(`Stream mutation invalidation on ${termination}`, () =>
+        Effect.gen(function*() {
+          const r = AtomRegistry.make()
+          yield* Effect.addFinalizer(() => Effect.sync(() => r.dispose()))
+          let rebuilds = 0
+          const query = Atom.make(() => rebuilds++).pipe(
+            Atom.withReactivity(["counter"]),
+            Atom.keepAlive
+          )
+          const mutation = counterRuntime.fn(
+            () => {
+              switch (termination) {
+                case "success":
+                  return Stream.make(1, 2)
+                case "failure":
+                  return Stream.fail("boom")
+                case "defect":
+                  return Stream.die("boom")
+                default:
+                  return Stream.never
+              }
+            },
+            { reactivityKeys: ["counter"] }
+          )
+          assert.strictEqual(r.get(query), 0)
+          r.mount(mutation)
+          r.set(mutation, void 0)
+          yield* Effect.yieldNow
+
+          if (termination === "interruption") {
+            r.set(mutation, Atom.Interrupt)
+          } else if (termination === "replacement") {
+            r.set(mutation, void 0)
+          }
+          yield* Effect.yieldNow
+
+          assert.strictEqual(r.get(mutation).waiting, termination === "replacement")
+          assert.strictEqual(r.get(query), termination === "success" ? 1 : 0)
+          assert.strictEqual(rebuilds, termination === "success" ? 2 : 1)
+        }))
+    }
+
     it("rebuilds on mutation with a registry initial value", async () => {
       let rebuilds = 0
       let value = 0
@@ -3190,11 +3319,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20)
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20)
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)
@@ -3242,11 +3370,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20) // Short delay to create Initial state window
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20) // Short delay to create Initial state window
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)
@@ -3295,11 +3422,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20) // Short delay to create Initial state window
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20) // Short delay to create Initial state window
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)

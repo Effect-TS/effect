@@ -613,13 +613,20 @@ function compileJsonSchema(
         const types = representation.types.map((type, index) => recur(type, [...path, "types", index], branches))
         dependencies.push(branches)
         if (types.length === 0) return { not: {} }
-        const mode = representation.options?.mode ?? "anyOf"
-        if (mode === "anyOf" && types.length > 1) {
+        if (representation.options?.mode === "oneOf") {
+          pendingOneOf.set(types, [branches, []])
+          return { oneOf: types }
+        }
+        if (types.length > 1) {
           const compacted = compactEnums(types)
           if (compacted !== undefined) return compacted
         }
-        if (mode === "oneOf") pendingOneOf.set(types, [branches, []])
-        return { [mode]: types }
+        // A member that is only an `anyOf` adds no constraints of its own, so its alternatives can be spliced in.
+        return {
+          anyOf: types.flatMap((type) =>
+            Array.isArray(type.anyOf) && Object.keys(type).length === 1 ? type.anyOf : [type]
+          )
+        }
       }
     }
   }

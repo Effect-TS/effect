@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Layer, Ref, Schema } from "effect"
+import { Cause, Context, Effect, Fiber, Layer, Ref, RequestResolver, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { GraphQLClientError, type ResponseError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Headers from "effect/http/Headers"
+import { TestClock } from "effect/testing"
 import { graphqlResponse, httpClientLayer, protocolLayer } from "./fixtures.ts"
 
 const Repository = Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
@@ -76,22 +77,21 @@ const AuthLive = Layer.succeed(
 const repo = (nameWithOwner: string) => ({ __typename: "Repository" as const, nameWithOwner })
 
 /** Answers each request with `respond(variables)` and records the requests. */
-const makeClient = (respond: (variables: any) => unknown, headers?: Headers.Headers) =>
-  Effect.gen(function*() {
-    const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
-    const layer = protocolLayer({
-      execute: (request) =>
-        Effect.as(Ref.update(requests, (all) => [...all, request]), {
-          body: respond(request.variables),
-          status: 200,
-          headers
-        })
-    })
-    const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos, PullRequest, RepoIssues)).pipe(
-      Effect.provide(layer)
-    )
-    return { client, requests }
+const makeClient = Effect.fnUntraced(function*(respond: (variables: any) => unknown, headers?: Headers.Headers) {
+  const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
+  const layer = protocolLayer({
+    execute: (request) =>
+      Effect.as(Ref.update(requests, (all) => [...all, request]), {
+        body: respond(request.variables),
+        status: 200,
+        headers
+      })
   })
+  const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos, PullRequest, RepoIssues)).pipe(
+    Effect.provide(layer)
+  )
+  return { client, requests }
+})
 
 /** Requests every key concurrently and returns each entry's success or failure. */
 const resolveAll = <K, A, E>(keys: ReadonlyArray<K>, get: (key: K) => Effect.Effect<A, E>) =>
@@ -207,6 +207,60 @@ describe("GraphQLResolver", () => {
           assert.strictEqual(result.reason._tag, "ResponseError")
         }
       }))
+
+    it.effect("a traced caller's batch is sent under the RequestResolver.withSpan span", () =>
+      Effect.gen(function*() {
+        const spans: Array<string> = []
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(protocolLayer({
+          execute: (request) =>
+            Effect.map(Effect.currentSpan, (span) => {
+              spans.push(span.name)
+              return { body: { data: { nodes: (request.variables as { ids: Array<string> }).ids.map(repo) } } }
+            }).pipe(Effect.orDie)
+        })))
+        const get = GraphQLResolver.request(
+          GraphQLResolver.ordered(client.RepoNodes, {
+            variables: (ids: ReadonlyArray<string>) => ({ ids }),
+            path: ["nodes"]
+          }).pipe(RequestResolver.withSpan("resolver"))
+        )
+
+        const results = yield* Effect.all([get("R_1"), get("R_2")], { concurrency: "unbounded" }).pipe(
+          Effect.withSpan("caller")
+        )
+
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2")])
+        assert.deepStrictEqual(spans, ["resolver"])
+      }))
+
+    it.effect("a batch whose first caller was interrupted is sent under the remaining caller's span", () =>
+      Effect.gen(function*() {
+        const spans: Array<string> = []
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(protocolLayer({
+          execute: (request) =>
+            Effect.map(Effect.currentSpan, (span) => {
+              spans.push(span.name)
+              return { body: { data: { nodes: (request.variables as { ids: Array<string> }).ids.map(repo) } } }
+            }).pipe(Effect.orDie)
+        })))
+        const get = GraphQLResolver.request(
+          GraphQLResolver.ordered(client.RepoNodes, {
+            variables: (ids: ReadonlyArray<string>) => ({ ids }),
+            path: ["nodes"]
+          }).pipe(RequestResolver.setDelay("100 millis"))
+        )
+
+        // The first caller starts the batch, so the batch fiber inherits its span.
+        const first = yield* Effect.forkChild(Effect.withSpan(get("R_1"), "first"))
+        yield* Effect.yieldNow
+        const second = yield* Effect.forkChild(Effect.withSpan(get("R_2"), "second"))
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(first)
+        yield* TestClock.adjust("100 millis")
+
+        assert.deepStrictEqual(yield* Fiber.join(second), repo("R_2"))
+        assert.deepStrictEqual(spans, ["second"])
+      }))
   })
 
   describe("ordered, when an error nulls the whole list", () => {
@@ -266,7 +320,7 @@ describe("GraphQLResolver", () => {
   })
 
   describe("batchKey", () => {
-    it.effect("splits a batch by key and calls each group with its own services", () =>
+    it.effect("applies batchN per key for interleaved lookups and calls each group with its own services", () =>
       Effect.gen(function*() {
         const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
         const layer = protocolLayer({
@@ -279,24 +333,29 @@ describe("GraphQLResolver", () => {
         const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(Auth)).pipe(
           Effect.provide([layer, AuthLive])
         )
-        const get = GraphQLResolver.request(GraphQLResolver.ordered(client.RepoNodes, {
-          variables: (ids: ReadonlyArray<string>) => ({ ids }),
-          path: ["nodes"],
-          batchKey: (context) => Context.get(context, CurrentUser).tenant
-        }))
+        const get = GraphQLResolver.request(
+          GraphQLResolver.ordered(client.RepoNodes, {
+            variables: (ids: ReadonlyArray<string>) => ({ ids }),
+            path: ["nodes"],
+            batchKey: (context) => Context.get(context, CurrentUser).tenant
+          }).pipe(RequestResolver.batchN(2))
+        )
         const getAs = (tenant: string, id: string) => Effect.provideService(get(id), CurrentUser, { tenant })
 
-        const results = yield* Effect.all([getAs("a", "R_1"), getAs("b", "R_2"), getAs("a", "R_3")], {
-          concurrency: "unbounded"
-        })
+        const results = yield* Effect.all(
+          [getAs("a", "R_1"), getAs("b", "R_2"), getAs("a", "R_3"), getAs("b", "R_4")],
+          {
+            concurrency: "unbounded"
+          }
+        )
 
-        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3")])
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3"), repo("R_4")])
         const sent = yield* Ref.get(requests)
         assert.deepStrictEqual(
           sent.map((request) =>
             `${request.headers["authorization"]}: ${[...(request.variables as { ids: Array<string> }).ids].sort()}`
           ).sort(),
-          ["Bearer a: R_1,R_3", "Bearer b: R_2"]
+          ["Bearer a: R_1,R_3", "Bearer b: R_2,R_4"]
         )
       }))
   })
@@ -304,9 +363,9 @@ describe("GraphQLResolver", () => {
   describe("url", () => {
     const GitHubHost = Context.Reference<string>("test/GitHubHost", { defaultValue: () => "api.github.com" })
 
-    /** Looks up R_1 and R_3 on the default host and R_2 on another, returning what each request sent. */
-    const lookUpOnTwoHosts = (url: Parameters<typeof GraphQLProtocol.layerHttp>[0]["url"]) =>
-      Effect.gen(function*() {
+    /** Alternates four lookups between two hosts, returning what each request sent. */
+    const lookUpOnTwoHosts = Effect.fnUntraced(
+      function*(url: Parameters<typeof GraphQLProtocol.layerHttp>[0]["url"], limit?: number) {
         const sent: Array<string> = []
         const layer = GraphQLProtocol.layerHttp({ url }).pipe(
           Layer.provide(httpClientLayer((_, bodyText, url) => {
@@ -316,20 +375,25 @@ describe("GraphQLResolver", () => {
           }))
         )
         const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(layer))
-        const get = GraphQLResolver.request(GraphQLResolver.ordered(client.RepoNodes, {
+        const resolver = GraphQLResolver.ordered(client.RepoNodes, {
           variables: (ids: ReadonlyArray<string>) => ({ ids }),
           path: ["nodes"]
-        }))
+        })
+        const get = GraphQLResolver.request(
+          limit === undefined ? resolver : resolver.pipe(RequestResolver.batchN(limit))
+        )
 
         const results = yield* Effect.all([
           get("R_1"),
           Effect.provideService(get("R_2"), GitHubHost, "api.acme.ghe.com"),
-          get("R_3")
+          get("R_3"),
+          Effect.provideService(get("R_4"), GitHubHost, "api.acme.ghe.com")
         ], { concurrency: "unbounded" })
 
-        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3")])
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3"), repo("R_4")])
         return sent.sort()
-      })
+      }
+    )
 
     const urls = [
       [
@@ -350,20 +414,55 @@ describe("GraphQLResolver", () => {
       it.effect(`${form}: lookups whose URLs differ go in separate batches; lookups with the same URL share one`, () =>
         Effect.gen(function*() {
           const sent = yield* lookUpOnTwoHosts(url)
-          assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_2", "api.github.com: R_1,R_3"])
+          assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_2,R_4", "api.github.com: R_1,R_3"])
         }))
     }
 
-    it.effect("a batch is sent to the URL its lookups resolved to, without evaluating the URL again", () =>
+    it.effect("withCache separates the same ID by URL and reuses results on the same URL", () =>
+      Effect.gen(function*() {
+        const sent: Array<string> = []
+        const layer = GraphQLProtocol.layerHttp({
+          url: ({ context }) => `http://${Context.get(context, GitHubHost)}/graphql`
+        }).pipe(
+          Layer.provide(httpClientLayer((_, bodyText, url) => {
+            const { ids } = JSON.parse(bodyText!).variables as { ids: Array<string> }
+            sent.push(`${url.host}: ${ids}`)
+            return graphqlResponse({ data: { nodes: ids.map((id) => repo(`${url.host}/${id}`)) } })
+          }))
+        )
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(layer))
+        const resolver = yield* GraphQLResolver.ordered(client.RepoNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"]
+        }).pipe(RequestResolver.withCache({ capacity: 2 }))
+        const get = GraphQLResolver.request(resolver)
+
+        const first = yield* get("R_1")
+        const otherHost = yield* Effect.provideService(get("R_1"), GitHubHost, "api.acme.ghe.com")
+        const cached = yield* get("R_1")
+
+        assert.deepStrictEqual([first, otherHost, cached], [
+          repo("api.github.com/R_1"),
+          repo("api.acme.ghe.com/R_1"),
+          repo("api.github.com/R_1")
+        ])
+        assert.deepStrictEqual(sent, ["api.github.com: R_1", "api.acme.ghe.com: R_1"])
+      }))
+
+    it.effect("applies batchN per asynchronous URL with an implicit default host and evaluates each URL once", () =>
       Effect.gen(function*() {
         let evaluations = 0
-        const sent = yield* lookUpOnTwoHosts(Effect.gen(function*() {
-          evaluations++
-          return `http://${yield* GitHubHost}/graphql`
-        }))
-        assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_2", "api.github.com: R_1,R_3"])
+        const sent = yield* lookUpOnTwoHosts(
+          Effect.gen(function*() {
+            evaluations++
+            yield* Effect.promise(() => Promise.resolve())
+            return `http://${yield* GitHubHost}/graphql`
+          }),
+          2
+        )
         // Once per lookup, and not again when each batch is sent.
-        assert.strictEqual(evaluations, 3)
+        assert.strictEqual(evaluations, 4)
+        assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_2,R_4", "api.github.com: R_1,R_3"])
       }))
 
     it.effect("a direct call made while a batch is sent resolves its own URL", () =>

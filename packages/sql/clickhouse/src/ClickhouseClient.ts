@@ -521,7 +521,7 @@ const typeFromUnknown = (value: unknown): string => {
       return "Bool"
     case "object":
       if (value instanceof Date) {
-        return "DateTime()"
+        return "DateTime"
       }
       return "String"
     default:

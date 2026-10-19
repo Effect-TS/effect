@@ -6192,6 +6192,14 @@ Expected a value between -2147483648 and 2147483647`
     })
   })
 
+  it("FormData guard", () => {
+    const is = Schema.is(Schema.FormData)
+    assertTrue(is(new FormData()))
+    for (const value of [undefined, null, {}, [], { append() {}, entries() {} }]) {
+      assertFalse(is(value))
+    }
+  })
+
   it("fromFormData", async () => {
     const schema = Schema.fromFormData(Schema.Struct({
       a: Schema.NonEmptyString,
@@ -9663,10 +9671,7 @@ pointed message
                 Schema.Struct({ event: Schema.Literal("B"), b: Schema.String }),
                 Schema.Struct({ event: Schema.Literal("A"), c: Schema.String })
               ])
-            ]).pipe(
-              // @ts-expect-error Duplicate discriminants are also rejected at compile time.
-              Schema.toTaggedUnion("event")
-            ),
+            ]).pipe(Schema.toTaggedUnion("event")),
           "Duplicate discriminant: A"
         )
         throws(
@@ -9674,10 +9679,7 @@ pointed message
             Schema.Union([
               Schema.Struct({ event: Schema.Literal(1) }),
               Schema.Struct({ event: Schema.Literal("1") })
-            ]).pipe(
-              // @ts-expect-error Numeric and string discriminants share the same property key.
-              Schema.toTaggedUnion("event")
-            ),
+            ]).pipe(Schema.toTaggedUnion("event")),
           "Duplicate discriminant: 1"
         )
       })

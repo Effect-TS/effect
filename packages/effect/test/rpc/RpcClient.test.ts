@@ -7,10 +7,12 @@ import {
   Effect,
   Exit,
   Fiber,
+  identity,
   Layer,
   Queue,
   Schedule,
   Schema,
+  SchemaTransformation,
   Scope,
   Stream,
   Tracer
@@ -37,30 +39,45 @@ const ChunkGroup = RpcGroup.make(
   Rpc.make("Unary", { success: Schema.String })
 )
 
-const makeChunkProtocol = (beforeInterrupt: Effect.Effect<void> = Effect.void) =>
-  Effect.gen(function*() {
-    const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
-    const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
-    const protocol = RpcClient.Protocol.of({
-      codecFor: RpcSerialization.json.codecFor,
-      supportsAck: false,
-      supportsTransferables: false,
-      run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
-      send: (_clientId, message) =>
-        Effect.andThen(
-          message._tag === "Interrupt" ? beforeInterrupt : Effect.void,
-          Effect.asVoid(Queue.offer(sent, message))
-        )
-    })
-    const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
-    const handle = yield* Deferred.await(received)
-    return { client, handle, sent }
+const makeChunkProtocol = Effect.fnUntraced(function*(beforeInterrupt: Effect.Effect<void> = Effect.void) {
+  const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+  const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+  const protocol = RpcClient.Protocol.of({
+    codecFor: RpcSerialization.json.codecFor,
+    supportsAck: false,
+    supportsTransferables: false,
+    run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+    send: (_clientId, message) =>
+      Effect.andThen(
+        message._tag === "Interrupt" ? beforeInterrupt : Effect.void,
+        Effect.asVoid(Queue.offer(sent, message))
+      )
   })
+  const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+  const handle = yield* Deferred.await(received)
+  return { client, handle, sent }
+})
 
 const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
   assert(message._tag === "Request")
   return message.id
 }
+
+const makeSocketProtocol = Effect.gen(function*() {
+  const frames = yield* Queue.unbounded<string>()
+  const socket = Socket.make({
+    reader: Effect.succeed({
+      pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+      upgrade: Socket.SocketUpgradeError.unsupported
+    }),
+    writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+  })
+  const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+    Effect.provideService(Socket.Socket, socket),
+    Effect.provideService(RpcSerialization.RpcSerialization, RpcSerialization.json)
+  )
+  return { protocol, frames }
+})
 
 const makeHttpClient = (body: string): HttpClient.HttpClient =>
   HttpClient.make((request) =>
@@ -86,26 +103,25 @@ const makeProtocolLayer = (
   body: string
 ) => makeProtocolLayerWithClient(serializationLayer, makeHttpClient(body))
 
-const assertEmptyResponseFailsRequest = (
+const assertEmptyResponseFailsRequest = Effect.fnUntraced(function*(
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
   body: string
-) =>
-  Effect.gen(function*() {
-    const client = yield* RpcClient.make(TestGroup).pipe(
-      Effect.provide(makeProtocolLayer(serializationLayer, body))
-    )
+) {
+  const client = yield* RpcClient.make(TestGroup).pipe(
+    Effect.provide(makeProtocolLayer(serializationLayer, body))
+  )
 
-    const cause = yield* client.Ping().pipe(
-      Effect.timeout("1 second"),
-      Effect.sandbox,
-      Effect.flip
-    )
+  const cause = yield* client.Ping().pipe(
+    Effect.timeout("1 second"),
+    Effect.sandbox,
+    Effect.flip
+  )
 
-    const error = Cause.squash(cause)
-    assert.instanceOf(error, RpcClientError)
-    assert.strictEqual(error.reason._tag, "RpcClientDefect")
-    assert.strictEqual(error.reason.message, "Received empty HTTP response from RPC server")
-  })
+  const error = Cause.squash(cause)
+  assert.instanceOf(error, RpcClientError)
+  assert.strictEqual(error.reason._tag, "RpcClientDefect")
+  assert.strictEqual(error.reason.message, "Received empty HTTP response from RPC server")
+})
 
 describe("RpcClient", () => {
   it.effect("does not fail a new request started synchronously during connection defect delivery", () =>
@@ -172,25 +188,165 @@ describe("RpcClient", () => {
   it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
+      const delivery = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
       const error = new RpcClientError({
         reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
       })
       const caller = yield* client.Unary().pipe(
-        Effect.catch((received) => {
+        Effect.catch(Effect.fnUntraced(function*(received) {
           assert.strictEqual(received, error)
-          return client.Unary()
-        }),
+          const receiver = yield* Deferred.await(delivery)
+          yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+          return yield* client.Unary()
+        })),
         Effect.exit,
         Effect.forkChild
       )
       takeRequestId(yield* Queue.take(sent))
-      // Let the first call suspend before delivering the error.
+      // Queue completion introduces an interruption boundary between unary deliveries.
+      yield* client.Good(undefined, { asQueue: true })
+      takeRequestId(yield* Queue.take(sent))
+      const last = yield* client.Unary().pipe(Effect.forkChild)
+      takeRequestId(yield* Queue.take(sent))
       yield* Effect.yieldNow
-      yield* handle({ _tag: "ClientProtocolError", error })
+      const receiver = yield* Effect.withFiber((fiber) =>
+        Deferred.succeed(delivery, fiber).pipe(
+          Effect.andThen(handle({ _tag: "ClientProtocolError", error }))
+        )
+      ).pipe(Effect.forkChild)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      const lastExit = last.pollUnsafe()
+      assert(lastExit !== undefined, "all original callers must finish before client shutdown")
+      assert(Exit.isFailure(lastExit))
+      assert.strictEqual(Cause.squash(lastExit.cause), error)
 
       const retryRequestId = takeRequestId(yield* Queue.take(sent))
       yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert(caller.pollUnsafe() !== undefined, "the retry must remain reachable after error delivery")
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
+  it.effect("ignores late replies after terminal failures", () =>
+    Effect.gen(function*() {
+      let decodedReplies = 0
+      const success = Schema.String.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transform({
+          decode: (value) => {
+            decodedReplies++
+            return value
+          },
+          encode: identity
+        })
+      ))
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      let failSend = true
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "send failed", cause: undefined })
+      })
+      const client = yield* RpcClient.make(RpcGroup.make(Rpc.make("Ping", { success }))).pipe(Effect.provideService(
+        RpcClient.Protocol,
+        RpcClient.Protocol.of({
+          codecFor: RpcSerialization.json.codecFor,
+          supportsAck: false,
+          supportsTransferables: false,
+          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+          send: (_clientId, message) =>
+            Queue.offer(sent, message).pipe(Effect.andThen(failSend ? Effect.fail(error) : Effect.void))
+        })
+      ))
+      const handle = yield* Deferred.await(received)
+      assert.strictEqual(yield* client.Ping().pipe(Effect.flip), error)
+      const failedRequestId = takeRequestId(yield* Queue.take(sent))
+      // A retained request would still decode the late reply using its caller's context.
+      yield* handle({ _tag: "Exit", requestId: failedRequestId, exit: { _tag: "Success", value: "late" } })
+      assert.strictEqual(decodedReplies, 0)
+
+      failSend = false
+      for (
+        const terminal of [
+          { _tag: "Defect", defect: "connection defect" },
+          { _tag: "ClientProtocolError", error }
+        ] as const
+      ) {
+        const caller = yield* client.Ping().pipe(Effect.forkChild)
+        const requestId = takeRequestId(yield* Queue.take(sent))
+        yield* Effect.yieldNow
+        yield* handle(terminal)
+        const exit = caller.pollUnsafe()
+        assert(exit !== undefined, "terminal delivery must complete the caller before client shutdown")
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(Cause.squash(exit.cause), terminal._tag === "Defect" ? terminal.defect : error)
+        yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: "late" } })
+        assert.strictEqual(decodedReplies, 0, `${terminal._tag} must release the response decoder`)
+      }
+    }))
+
+  it.effect("releases socket routing after an encoding defect", () =>
+    Effect.gen(function*() {
+      const { protocol, frames } = yield* makeSocketProtocol
+      const received = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+      yield* protocol.run(2, (message) => Queue.offer(received, message)).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      const defect = new Error("encoding failed")
+      const exit = yield* protocol.send(1, {
+        _tag: "Request",
+        id: "old",
+        tag: "Ping",
+        payload: {
+          toJSON() {
+            throw defect
+          }
+        },
+        headers: []
+      }).pipe(Effect.exit)
+      assert(Exit.isFailure(exit))
+      assert.strictEqual(Cause.squash(exit.cause), defect)
+      yield* protocol.send(2, { _tag: "Request", id: "healthy", tag: "Ping", payload: undefined, headers: [] })
+      const late = { _tag: "Exit", requestId: "old", exit: { _tag: "Success", value: "late" } } as const
+      const healthy = { _tag: "Exit", requestId: "healthy", exit: { _tag: "Success", value: "ok" } } as const
+      yield* Queue.offer(frames, JSON.stringify([late, healthy]))
+      // A stale route delivers the healthy reply first, failing without hanging.
+      assert.deepStrictEqual(yield* Queue.take(received), late)
+      assert.deepStrictEqual(yield* Queue.take(received), healthy)
+    }))
+
+  it.effect("releases socket routing after a connection defect", () =>
+    Effect.gen(function*() {
+      const { protocol, frames } = yield* makeSocketProtocol
+      const received = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+      yield* protocol.run(2, (message) => Queue.offer(received, message)).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* protocol.send(1, { _tag: "Request", id: "old", tag: "Ping", payload: undefined, headers: [] })
+      const defect = { _tag: "Defect", defect: "boom" } as const
+      yield* Queue.offer(frames, JSON.stringify(defect))
+      assert.deepStrictEqual(yield* Queue.take(received), defect)
+      yield* protocol.send(2, { _tag: "Request", id: "healthy", tag: "Ping", payload: undefined, headers: [] })
+      const late = { _tag: "Exit", requestId: "old", exit: { _tag: "Success", value: "late" } } as const
+      const healthy = { _tag: "Exit", requestId: "healthy", exit: { _tag: "Success", value: "ok" } } as const
+      yield* Queue.offer(frames, JSON.stringify([late, healthy]))
+      assert.deepStrictEqual(yield* Queue.take(received), late)
+      assert.deepStrictEqual(yield* Queue.take(received), healthy)
+    }))
+
+  it.effect("does not deliver an earlier socket defect to a client registered during delivery", () =>
+    Effect.gen(function*() {
+      const { protocol, frames } = yield* makeSocketProtocol
+      const received = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
+      yield* protocol.run(1, (message) =>
+        message._tag === "Defect"
+          ? protocol.run(2, (response) => Queue.offer(received, response)).pipe(
+            Effect.forkChild({ startImmediately: true }),
+            Effect.asVoid
+          )
+          : Effect.void).pipe(Effect.forkChild({ startImmediately: true }))
+      const reply = { _tag: "Exit", requestId: "new", exit: { _tag: "Success", value: "ok" } } as const
+      yield* Queue.offer(frames, JSON.stringify([{ _tag: "Defect", defect: "boom" }, reply]))
+      assert.deepStrictEqual(yield* Queue.take(received), reply)
     }))
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
@@ -264,23 +420,46 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
     }))
 
+  it.effect("does not send Interrupt when a failed streaming send closes its scope", () =>
+    Effect.gen(function*() {
+      const sent: Array<string> = []
+      const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
+        onFromClient: ({ message }) => {
+          sent.push(message._tag)
+          return message._tag === "Request" ? Effect.die("send failed") : Effect.void
+        }
+      })
+      const exit = yield* client.Events(undefined, { asQueue: true }).pipe(
+        Effect.flatMap(Queue.take),
+        Effect.scoped,
+        Effect.exit
+      )
+      assert(Exit.isFailure(exit))
+      assert.strictEqual(Cause.squash(exit.cause), "send failed")
+      assert.deepStrictEqual(sent, ["Request"])
+    }))
+
   for (const consumer of ["queue", "stream"] as const) {
     it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
       Effect.gen(function*() {
         const writing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const sent: Array<string> = []
         const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
-          onFromClient: ({ message }) =>
-            message._tag === "Request"
+          onFromClient: ({ message }) => {
+            sent.push(message._tag)
+            return message._tag === "Request"
               ? Effect.withFiber((fiber) => Deferred.succeed(writing, fiber).pipe(Effect.andThen(Effect.never)))
               : Effect.void
+          }
         })
         const reader = yield* (consumer === "queue"
           ? client.Events(undefined, { asQueue: true }).pipe(Effect.flatMap(Queue.take), Effect.asVoid)
-          : Stream.runDrain(client.Events())).pipe(Effect.forkChild)
+          : Stream.runDrain(client.Events())).pipe(Effect.scoped, Effect.forkChild)
         const writer = yield* Deferred.await(writing)
         yield* Fiber.interrupt(writer)
         const readExit = yield* Fiber.await(reader)
         assert(Exit.isFailure(readExit) && Cause.hasInterruptsOnly(readExit.cause))
+        assert.deepStrictEqual(sent, ["Request", "Interrupt"])
       }))
   }
 
@@ -465,17 +644,16 @@ describe("RpcClient", () => {
       const requestSent = yield* Deferred.make<void>()
       const frames = yield* Queue.unbounded<string>()
       let pings = 0
-      const write: Socket.Writer["write"] = (data) =>
-        Effect.gen(function*() {
-          if (Socket.isCloseEvent(data)) return
-          const message = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data))
-          if (message._tag === "Ping") {
-            pings++
-            yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
-          } else if (message._tag === "Request") {
-            yield* Deferred.succeed(requestSent, void 0)
-          }
-        })
+      const write: Socket.Writer["write"] = Effect.fnUntraced(function*(data) {
+        if (Socket.isCloseEvent(data)) return
+        const message = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data))
+        if (message._tag === "Ping") {
+          pings++
+          yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
+        } else if (message._tag === "Request") {
+          yield* Deferred.succeed(requestSent, void 0)
+        }
+      })
       const socket = Socket.make({
         reader: Effect.succeed({
           pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),

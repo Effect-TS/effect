@@ -815,8 +815,8 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  *
  * **Gotchas**
  *
- * The search is strict: if the supplied date/time already matches the schedule,
- * the result is the earlier occurrence.
+ * The search is strict: if the supplied date/time is exactly an occurrence of
+ * the schedule, the result is the earlier occurrence.
  *
  * @see {@link next} for finding the next scheduled occurrence
  *
@@ -866,7 +866,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     }).epochMilliseconds <= zoned.epochMilliseconds
 
   const result = dateTime.mutate(zoned, (current) => {
-    current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
+    // Start from the nearest whole second strictly past the input in the search
+    // direction. Going backward, a fractional input already has one.
+    const offset = reverse && current.getUTCMilliseconds() > 0 ? 0 : tick
+    current.setUTCSeconds(current.getUTCSeconds() + offset, 0)
 
     for (let i = 0; i < 10_000; i++) {
       if (cron.seconds.size !== 0) {

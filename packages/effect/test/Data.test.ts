@@ -42,6 +42,23 @@ describe("Data", () => {
       const p = new Person({ name: "D", age: 2 })
       assert.deepStrictEqual(Object.keys(p).sort(), ["age", "name"])
     })
+
+    it("copies own enumerable string and symbol keys only", () => {
+      const sym = Symbol("sym")
+      const args: any = { name: "E", age: 3, [sym]: "value" }
+      Object.defineProperty(args, "hidden", { value: 1, enumerable: false })
+      const p: any = new Person(args)
+      assert.strictEqual(p[sym], "value")
+      assert.deepStrictEqual(Reflect.ownKeys(p), ["name", "age", sym])
+    })
+
+    it("keeps the class prototype when args has an own __proto__ key", () => {
+      const args = JSON.parse(`{"name":"F","age":4,"__proto__":{"polluted":true}}`)
+      const p = new Person(args)
+      assert.strictEqual(Object.getPrototypeOf(p), Person.prototype)
+      assert.strictEqual(Object.getOwnPropertyDescriptor(p, "__proto__")?.value, args.__proto__)
+      assert.strictEqual(p.name, "F")
+    })
   })
 
   describe("TaggedClass", () => {

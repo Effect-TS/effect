@@ -27,16 +27,15 @@ const provider = (patch: string): DiscoveredProvider => ({
   outputPath: "Generated.ts"
 })
 
-const generateWithPatch = (patch: string) =>
-  Effect.gen(function*() {
-    const generator = yield* Generator.CodeGenerator
-    const output = yield* generator.generate(provider(patch), {
-      openapi: "3.1.0",
-      info: { title: "Before", version: "1.0.0" },
-      paths: {}
-    })
-    return JSON.parse(output)
+const generateWithPatch = Effect.fnUntraced(function*(patch: string) {
+  const generator = yield* Generator.CodeGenerator
+  const output = yield* generator.generate(provider(patch), {
+    openapi: "3.1.0",
+    info: { title: "Before", version: "1.0.0" },
+    paths: {}
   })
+  return JSON.parse(output)
+})
 
 describe("CodeGenerator patch inputs", () => {
   it.effect("accepts inline patches with leading whitespace", () =>

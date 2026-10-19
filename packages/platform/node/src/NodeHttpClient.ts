@@ -30,10 +30,11 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as Http from "node:http"
-import * as Https from "node:https"
+import type * as Http from "node:http"
+import type * as Https from "node:https"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import { http, https } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -205,15 +206,15 @@ export const UndiciOptions = Context.Reference<Partial<Undici.Dispatcher.Request
 export const makeUndici = Effect.gen(function*() {
   const dispatcher = yield* Dispatcher
   return Client.make((request, url, signal, fiber) =>
-    convertBody(request.body).pipe(
-      Effect.flatMap((body) =>
+    convertBody(request).pipe(
+      Effect.flatMap(({ body, headers }) =>
         Effect.tryPromise({
           try: () =>
             dispatcher.request({
               ...fiber.getRef(UndiciOptions),
               signal,
               method: request.method,
-              headers: request.headers,
+              headers,
               origin: url.origin,
               path: url.pathname + url.search,
               body,
@@ -235,24 +236,37 @@ export const makeUndici = Effect.gen(function*() {
   )
 })
 
-function convertBody(
-  body: Body.HttpBody
-): Effect.Effect<Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>> {
+function convertBody(request: HttpClientRequest): Effect.Effect<{
+  readonly body: Exclude<Undici.Dispatcher.DispatchOptions["body"], undefined>
+  readonly headers: Headers.Headers
+}> {
+  const { body, headers } = request
   switch (body._tag) {
     case "Empty": {
-      return Effect.succeed(null)
+      return Effect.succeed({ body: null, headers })
     }
     case "Uint8Array":
     case "Raw": {
-      return Effect.succeed(body.body as Uint8Array)
+      return Effect.succeed({ body: body.body as Uint8Array, headers })
     }
     case "FormData": {
-      return Effect.succeed(body.formData as any)
+      return Effect.map(loadUndici, (undici) => ({
+        body: convertFormData(body.formData, undici),
+        headers: Headers.remove(headers, "content-type")
+      }))
     }
     case "Stream": {
-      return NodeStream.toReadable(body.stream)
+      return Effect.map(NodeStream.toReadable(body.stream), (body) => ({ body, headers }))
     }
   }
+}
+
+const convertFormData = (formData: FormData, undici: typeof Undici): Undici.FormData => {
+  const converted = new undici.FormData()
+  for (const [key, value] of formData) {
+    converted.append(key, value)
+  }
+  return converted
 }
 
 function noopErrorHandler(_: any) {}
@@ -505,11 +519,11 @@ export interface HttpAgentOptions extends Https.AgentOptions {
 export const makeAgent = (options?: HttpAgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
   Effect.zipWith(
     Effect.acquireRelease(
-      Effect.sync(() => new Http.Agent(options)),
+      Effect.sync(() => new http.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
     Effect.acquireRelease(
-      Effect.sync(() => new Https.Agent(options)),
+      Effect.sync(() => new https.Agent(options)),
       (agent) => Effect.sync(() => agent.destroy())
     ),
     (http, https) => ({ http, https })
@@ -550,13 +564,13 @@ export const makeNodeHttp = Effect.gen(function*() {
   const agent = yield* HttpAgent
   return Client.make((request, url, signal) => {
     const nodeRequest = url.protocol === "https:" ?
-      Https.request(url, {
+      https.request(url, {
         agent: agent.https,
         method: request.method,
         headers: request.headers,
         signal
       }) :
-      Http.request(url, {
+      http.request(url, {
         agent: agent.http,
         method: request.method,
         headers: request.headers,
@@ -589,21 +603,20 @@ const sendBody = (
         return waitForFinish(nodeRequest, request)
       }
       case "FormData": {
-        const response = new globalThis.Response(body.formData)
+        return Effect.flatMap(loadUndici, (undici) => {
+          const response = new undici.Response(convertFormData(body.formData, undici))
+          nodeRequest.setHeader("content-type", response.headers.get("content-type")!)
 
-        response.headers.forEach((value, key) => {
-          nodeRequest.setHeader(key, value)
-        })
-
-        return Effect.tryPromise({
-          try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
-          catch: (cause) =>
-            new Error.HttpClientError({
-              reason: new Error.TransportError({
-                request,
-                cause
+          return Effect.tryPromise({
+            try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
+            catch: (cause) =>
+              new Error.HttpClientError({
+                reason: new Error.TransportError({
+                  request,
+                  cause
+                })
               })
-            })
+          })
         })
       }
       case "Stream": {
@@ -617,6 +630,9 @@ const sendBody = (
             })),
           NodeSink.fromWritable({
             evaluate: () => nodeRequest,
+            // The request race owns destruction, so a body failure must reach
+            // it before destroying the request can produce a transport error.
+            endOnDone: false,
             onError: (cause) =>
               new Error.HttpClientError({
                 reason: new Error.TransportError({
@@ -625,7 +641,10 @@ const sendBody = (
                 })
               })
           })
-        )
+        ).pipe(Effect.andThen(() => {
+          nodeRequest.end()
+          return waitForFinish(nodeRequest, request)
+        }))
       }
     }
   })

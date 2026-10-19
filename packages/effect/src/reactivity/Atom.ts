@@ -31,7 +31,6 @@ import * as KeyValueStore from "../persistence/KeyValueStore.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
-import type { ReadonlyRecord } from "../Record.ts"
 import { UnhandledLogLevel } from "../References.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Schema from "../Schema.ts"
@@ -279,7 +278,7 @@ const RuntimeProto = {
 
   fn(this: AtomRuntime<any, any>, arg: any, options?: {
     readonly initialValue?: unknown
-    readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+    readonly reactivityKeys?: Reactivity.KeysInput | undefined
     readonly concurrent?: boolean | undefined
   }) {
     if (arguments.length === 0) {
@@ -340,7 +339,7 @@ const makeFnRuntime = (
     | Stream.Stream<any, any, AtomRegistry>,
   options?: {
     readonly initialValue?: unknown
-    readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+    readonly reactivityKeys?: Reactivity.KeysInput | undefined
   }
 ) => {
   const [read, write, argAtom] = makeResultFn(
@@ -349,7 +348,7 @@ const makeFnRuntime = (
         const effect = arg(a, get)
         return Effect.isEffect(effect)
           ? Reactivity.mutation(effect, options.reactivityKeys!)
-          : Stream.ensuring(effect, Reactivity.invalidate(options.reactivityKeys!))
+          : Stream.onEnd(effect, Reactivity.invalidate(options.reactivityKeys!))
       }) as any :
       arg,
     options
@@ -562,8 +561,11 @@ function makeEffect<A, E>(
   services: Context.Context<never> | LazyArg<Context.Context<never>> = Context.empty(),
   uninterruptible = false
 ): AsyncResult.AsyncResult<A, E> {
-  const getServices = typeof services === "function" ? services : constant(services)
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
+  if (previous._tag === "Some" && Registry.consumeSkipInitialRun(ctx)) {
+    return previous.value
+  }
+  const getServices = typeof services === "function" ? services : constant(services)
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
     Effect.runForkWith(getServices())(closeScope(scope))
@@ -677,7 +679,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
         fn: (arg: Arg, get: FnContext) => Effect.Effect<A, E, Scope.Scope | AtomRegistry | Reactivity.Reactivity | R>,
         options?: {
           readonly initialValue?: A | undefined
-          readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+          readonly reactivityKeys?: Reactivity.KeysInput | undefined
           readonly concurrent?: boolean | undefined
         }
       ): AtomResultFn<Arg, A, E | ER>
@@ -685,7 +687,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
         fn: (arg: Arg, get: FnContext) => Stream.Stream<A, E, AtomRegistry | Reactivity.Reactivity | R>,
         options?: {
           readonly initialValue?: A | undefined
-          readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+          readonly reactivityKeys?: Reactivity.KeysInput | undefined
           readonly concurrent?: boolean | undefined
         }
       ): AtomResultFn<Arg, A, E | ER | Cause.NoSuchElementError>
@@ -694,7 +696,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
       fn: (arg: Arg, get: FnContext) => Effect.Effect<A, E, Scope.Scope | AtomRegistry | Reactivity.Reactivity | R>,
       options?: {
         readonly initialValue?: A | undefined
-        readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly concurrent?: boolean | undefined
       }
     ): AtomResultFn<Arg, A, E | ER>
@@ -702,7 +704,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
       fn: (arg: Arg, get: FnContext) => Stream.Stream<A, E, AtomRegistry | Reactivity.Reactivity | R>,
       options?: {
         readonly initialValue?: A | undefined
-        readonly reactivityKeys?: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>> | undefined
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly concurrent?: boolean | undefined
       }
     ): AtomResultFn<Arg, A, E | ER | Cause.NoSuchElementError>
@@ -747,7 +749,7 @@ export interface RuntimeFactory {
    * the keys change.
    */
   readonly withReactivity: (
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+    keys: Reactivity.KeysInput
   ) => <A extends Atom<any>>(atom: A) => A
 }
 
@@ -848,17 +850,15 @@ export function context(options?: {
       )
     )
   )
-  factory.withReactivity =
-    (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) =>
-    <A extends Atom<any>>(atom: A): A =>
-      transform(atom, (get) => {
-        const reactivity = AsyncResult.getOrThrow(get(reactivityAtom))
-        get.addFinalizer(reactivity.registerUnsafe(keys, () => {
-          get.refresh(atom)
-        }))
-        get.subscribe(atom, (value) => get.setSelf(value))
-        return get.once(atom)
-      }, { initialValueTarget: atom }) as any as A
+  factory.withReactivity = (keys: Reactivity.KeysInput) => <A extends Atom<any>>(atom: A): A =>
+    transform(atom, (get) => {
+      const reactivity = AsyncResult.getOrThrow(get(reactivityAtom))
+      get.addFinalizer(reactivity.registerUnsafe(keys, () => {
+        get.refresh(atom)
+      }))
+      get.subscribe(atom, (value) => get.setSelf(value))
+      return get.once(atom)
+    }, { initialValueTarget: atom }) as any as A
   return factory as any
 }
 
@@ -885,7 +885,7 @@ export const runtime: RegistryRuntimeFactory = context()
  * @since 4.0.0
  */
 export const withReactivity: (
-  keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  keys: Reactivity.KeysInput
 ) => <A extends Atom<any>>(atom: A) => A = runtime.withReactivity
 
 // -----------------------------------------------------------------------------
@@ -913,6 +913,9 @@ function makeStream<A, E>(
   services = Context.empty()
 ): AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
+  if (previous._tag === "Some" && Registry.consumeSkipInitialRun(ctx)) {
+    return previous.value
+  }
   services = Context.add(services, AtomRegistry, ctx.registry)
 
   const run = Effect.scopedWith((scope) =>
@@ -1672,6 +1675,29 @@ export const withLabel: {
   }))
 
 /**
+ * Options for seeding an effect or stream atom through registry initial values
+ * or hydration.
+ *
+ * **Details**
+ *
+ * By default a seeded effect or stream atom still runs its effect on mount,
+ * because the dependencies read inside the effect are only known once it has
+ * run. With `skipInitialRun`, the atom keeps the seeded value until it is
+ * refreshed or one of its dependencies changes. The factory and any wrappers
+ * still build, so `get(...)` calls in the factory and `withReactivity` keys are
+ * tracked; only the first effect or stream run is skipped. Dependencies read
+ * inside the effect are tracked from its first real run. An `Initial` seed
+ * never skips the effect.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface InitialValueOptions {
+  readonly skipInitialRun?: boolean | undefined
+}
+
+/**
  * Pairs an atom with an initial value for registry initialization.
  *
  * **When to use**
@@ -1681,7 +1707,9 @@ export const withLabel: {
  * **Details**
  *
  * The returned tuple can be supplied to `AtomRegistry` initial values so the atom
- * starts with the provided value before it is first rebuilt.
+ * starts with the provided value before it is first rebuilt. Pass
+ * `{ skipInitialRun: true }` to keep the value of an effect or stream atom
+ * instead of running its effect on mount (see {@link InitialValueOptions}).
  *
  * @stability unstable
  * @category combinators
@@ -1690,10 +1718,12 @@ export const withLabel: {
 export const initialValue: {
   <A>(initialValue: A): (self: Atom<A>) => readonly [Atom<A>, A]
   <A>(self: Atom<A>, initialValue: A): readonly [Atom<A>, A]
-} = dual<
-  <A>(initialValue: A) => (self: Atom<A>) => readonly [Atom<A>, A],
-  <A>(self: Atom<A>, initialValue: A) => readonly [Atom<A>, A]
->(2, (self, initialValue) => [self, initialValue])
+  <A>(self: Atom<A>, initialValue: A, options: InitialValueOptions): readonly [Atom<A>, A, InitialValueOptions]
+} = dual(
+  (args) => args.length >= 2,
+  <A>(self: Atom<A>, initialValue: A, options?: InitialValueOptions) =>
+    options === undefined ? [self, initialValue] : [self, initialValue, options]
+)
 
 /**
  * Creates a derived atom by reading another atom with a custom `AtomContext`
@@ -2588,7 +2618,7 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
  * **Details**
  *
  * The key identifies the atom in dehydrated state, and the encode/decode
- * functions convert between the atom value and the schema encoded value.
+ * functions convert between the atom value and its JSON encoding.
  *
  * @stability unstable
  * @category models
@@ -2597,8 +2627,9 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
 export interface Serializable<S extends Schema.Constraint> {
   readonly [SerializableTypeId]: {
     readonly key: string
-    readonly encode: (value: S["Type"]) => S["Encoded"]
-    readonly decode: (value: S["Encoded"]) => S["Type"]
+    readonly encode: (value: S["Type"]) => Schema.Json
+    readonly decode: (value: Schema.Json) => S["Type"]
+    readonly skipInitialRun?: boolean | undefined
   }
 }
 
@@ -2618,24 +2649,34 @@ export const isSerializable = (self: Atom<any>): self is Atom<any> & Serializabl
  *
  * The schema is converted to a JSON codec for synchronous encode/decode, and the
  * key is also used as the atom label when the atom does not already have one.
+ * Set `skipInitialRun` to keep a hydrated value of an effect or stream atom
+ * instead of running its effect on mount (see {@link InitialValueOptions}).
  *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
 export const serializable: {
-  <R extends Atom<any>, S extends Schema.ConstraintCodec<Type<R>, any>>(options: {
+  <R extends Atom<any>, S extends Schema.ConstraintCodec<Type<R>, any>>(
+    options: {
+      readonly key: string
+      readonly schema: S
+    } & InitialValueOptions
+  ): (self: R) => R & Serializable<S>
+  <R extends Atom<any>, S extends Schema.ConstraintCodec<Type<R>, any>>(
+    self: R,
+    options: {
+      readonly key: string
+      readonly schema: S
+    } & InitialValueOptions
+  ): R & Serializable<S>
+} = dual(2, <R extends Atom<any>, A, I>(
+  self: R,
+  options: {
     readonly key: string
-    readonly schema: S
-  }): (self: R) => R & Serializable<S>
-  <R extends Atom<any>, S extends Schema.ConstraintCodec<Type<R>, any>>(self: R, options: {
-    readonly key: string
-    readonly schema: S
-  }): R & Serializable<S>
-} = dual(2, <R extends Atom<any>, A, I>(self: R, options: {
-  readonly key: string
-  readonly schema: Schema.ConstraintCodec<A, I>
-}): R & Serializable<any> => {
+    readonly schema: Schema.ConstraintCodec<A, I>
+  } & InitialValueOptions
+): R & Serializable<any> => {
   const codecJson = Schema.toCodecJson(options.schema)
   return Object.assign(Object.create(Object.getPrototypeOf(self)), {
     ...self,
@@ -2643,7 +2684,8 @@ export const serializable: {
     [SerializableTypeId]: {
       key: options.key,
       encode: Schema.encodeSync(codecJson),
-      decode: Schema.decodeSync(codecJson)
+      decode: Schema.decodeSync(codecJson),
+      skipInitialRun: options.skipInitialRun
     }
   })
 })

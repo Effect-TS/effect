@@ -220,6 +220,44 @@ describe("AiError", () => {
       })
     })
 
+    describe("InvalidResponseError", () => {
+      const http = {
+        request: {
+          method: "POST" as const,
+          url: "https://api.example.com/v1/chat",
+          urlParams: [],
+          hash: undefined,
+          headers: {}
+        },
+        response: { status: 200, headers: { "x-request-id": "req_123" } },
+        body: "{\"choices\":\"none\"}"
+      }
+
+      it.effect("should create from SchemaError", () =>
+        Effect.gen(function*() {
+          const TestSchema = Schema.Struct({ choices: Schema.Array(Schema.String) })
+          const schemaError = yield* Schema.decodeUnknownEffect(TestSchema)({ choices: "none" }).pipe(Effect.flip)
+          const error = AiError.InvalidResponseError.fromSchemaError(schemaError)
+          assert.strictEqual(error._tag, "InvalidResponseError")
+          assert.strictEqual(error.description, schemaError.message)
+          assert.isFalse(error.isRetryable)
+          assert.isFalse(AiError.make({ module: "Test", method: "test", reason: error }).isRetryable)
+          assert.isTrue(AiError.isAiErrorReason(error))
+        }))
+
+      it("should preserve classification and HTTP context through schema round trip", () => {
+        const error = new AiError.InvalidResponseError({
+          description: "Unexpected response envelope",
+          http
+        })
+        const encoded = Schema.encodeUnknownSync(AiError.AiErrorReason)(error)
+        const decoded = Schema.decodeUnknownSync(AiError.AiErrorReason)(encoded)
+        assert(decoded._tag === "InvalidResponseError")
+        assert.isFalse(decoded.isRetryable)
+        assert.deepStrictEqual(decoded.http, http)
+      })
+    })
+
     describe("UnknownError", () => {
       it("should not be retryable", () => {
         const error = new AiError.UnknownError({})

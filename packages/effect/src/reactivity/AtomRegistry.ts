@@ -132,7 +132,7 @@ export interface Node<A> {
  */
 export const make = (
   options?: {
-    readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any]> | undefined
+    readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]> | undefined
     readonly scheduleTask?: ((f: () => void) => () => void) | undefined
     readonly timeoutResolution?: number | undefined
     readonly defaultIdleTTL?: number | undefined
@@ -172,7 +172,7 @@ export const AtomRegistry = Context.Service<AtomRegistry>(TypeId)
  * @since 4.0.0
  */
 export const layerOptions = (options?: {
-  readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any]> | undefined
+  readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]> | undefined
   readonly scheduleTask?: ((f: () => void) => () => void) | undefined
   readonly timeoutResolution?: number | undefined
   readonly defaultIdleTTL?: number | undefined
@@ -367,7 +367,7 @@ class RegistryImpl implements AtomRegistry {
   onNodeRemoved?: ((node: Node<any>) => void) | undefined
 
   constructor(
-    initialValues?: Iterable<readonly [Atom.Atom<any>, any]>,
+    initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]>,
     scheduleTask?: (cb: () => void) => () => void,
     timeoutResolution?: number,
     defaultIdleTTL?: number
@@ -384,12 +384,12 @@ class RegistryImpl implements AtomRegistry {
       this.timeoutResolution = timeoutResolution ?? 1000
     }
     if (initialValues !== undefined) {
-      for (const [atom, value] of initialValues) {
+      for (const [atom, value, options] of initialValues) {
         let target = atom
         while (target.initialValueTarget) {
           target = target.initialValueTarget
         }
-        this.ensureNode(target).setInitialValue(value)
+        this.ensureNode(target).setInitialValue(value, options?.skipInitialRun)
       }
     }
   }
@@ -476,9 +476,10 @@ class RegistryImpl implements AtomRegistry {
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
       const encoded = this.preloadedSerializable.get(key)
       this.preloadedSerializable.delete(key)
+      const serializable = (atom as any as Atom.Serializable<any>)[SerializableTypeId]
       let decoded: A
       try {
-        decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
+        decoded = serializable.decode(encoded as Schema.Json)
       } catch (error) {
         if (Schema.isSchemaError(error)) return node
         throw error
@@ -489,11 +490,7 @@ class RegistryImpl implements AtomRegistry {
       }
       const targetNode = target === atom ? node : this.ensureNode(target)
       if (shouldHydrate(targetNode._value, decoded)) {
-        if (target === atom) {
-          node.setValue(decoded)
-        } else {
-          targetNode.setInitialValue(decoded)
-        }
+        targetNode.setInitialValue(decoded, serializable.skipInitialRun)
       }
     }
     return node
@@ -511,7 +508,9 @@ class RegistryImpl implements AtomRegistry {
   }
 
   invalidateAtom = <A>(atom: Atom.Atom<A>): void => {
-    this.ensureNode(atom).invalidate()
+    const node = this.ensureNode(atom)
+    node.skipInitialRun = false
+    node.invalidate()
   }
 
   scheduleAtomRemoval(atom: Atom.Atom<any>): void {
@@ -662,6 +661,10 @@ class NodeImpl<A> {
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
+  skipInitialRun = false
+  // the parents, and their lifetimes, of a build that kept the seed without
+  // reaching the effect, such as one waiting for a runtime
+  keptParents: Array<readonly [NodeImpl<any>, Lifetime<any> | undefined]> | undefined
   invalidatedDuringBuild = false
   failed = false
 
@@ -748,6 +751,9 @@ class NodeImpl<A> {
     if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
       if (this.preserveInitialValueOnBuild) {
         this.preserveInitialValueOnBuild = false
+        if (this.skipInitialRun) {
+          this.keptParents = Array.from(this.parents, (parent) => [parent, parent.lifetime] as const)
+        }
         this.failed = false
         this.state = NodeState.valid
       } else {
@@ -821,9 +827,10 @@ class NodeImpl<A> {
     return Option.some(this._value)
   }
 
-  setInitialValue(value: A): void {
+  setInitialValue(value: A, skipInitialRun = false): void {
     if ((this.state & NodeFlags.initialized) === 0) {
       this.preserveInitialValueOnBuild = true
+      this.skipInitialRun = skipInitialRun
       this.state = NodeState.stale
       this._value = value
       if (this.listeners.size > 0) {
@@ -980,6 +987,25 @@ class NodeImpl<A> {
       }
     }
   }
+}
+
+/**
+ * Whether the build keeps the node's seeded value instead of running its
+ * effect or stream. Consumed by the first run, so later rebuilds run it. A
+ * parent rebuilt since the seed was kept, such as a reconfigured runtime, is a
+ * real change and runs it too.
+ *
+ * @internal
+ */
+export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
+  const lifetime = ctx as Lifetime<any>
+  const node = lifetime.node
+  if (!node.skipInitialRun) return false
+  const keptParents = node.keptParents
+  node.skipInitialRun = false
+  node.keptParents = undefined
+  return !lifetime.isFn && !Result.isInitial(node._value) &&
+    (keptParents === undefined || keptParents.every(([parent, lifetime]) => parent.lifetime === lifetime))
 }
 
 interface Lifetime<A> extends Atom.AtomContext {

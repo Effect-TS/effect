@@ -18,7 +18,7 @@ import { identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
-import { Reactivity } from "../reactivity/Reactivity.ts"
+import { type KeysInput, Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
@@ -70,6 +70,21 @@ export interface SqlClient extends Constructor {
 
   /**
    * With the given effect, ensure all sql queries are run in a transaction.
+   *
+   * **Details**
+   *
+   * Inside the transaction, `Reactivity.invalidate` and `Reactivity.mutation`
+   * invalidate once the outermost transaction commits, and not at all if it
+   * rolls back.
+   *
+   * **Gotchas**
+   *
+   * Deferred invalidations run individually after the commit and don't join an
+   * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
+   * the transaction's context defers, and a fiber that outlives the
+   * transaction can't defer through it, as with `afterCommit`. Transactions
+   * that don't go through `makeWithTransaction`, such as those of
+   * `@effect/sql-sqlite-do`, invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -126,7 +141,7 @@ export interface SqlClient extends Constructor {
    * Use the Reactivity service to create a reactive query.
    */
   readonly reactive: <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Stream.Stream<A, E, R>
 
@@ -135,7 +150,7 @@ export interface SqlClient extends Constructor {
    * query.
    */
   readonly reactiveMailbox: <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<Queue.Dequeue<A, E>, never, R | Scope.Scope>
 }
@@ -257,14 +272,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const withTransaction = makeWithTransaction({
     transactionService,
     spanAttributes: options.spanAttributes,
-    acquireConnection: Effect.flatMap(
-      Scope.make(),
-      (scope) =>
-        Scope.provide(transactionAcquirer!, scope).pipe(
-          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),
-          Effect.map((conn) => [scope, conn] as const)
-        )
-    ),
+    acquireConnection: (restore) => restore(transactionAcquirer!),
     begin: (conn) => control(conn, beginTransaction),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
@@ -276,25 +284,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
 
-  const afterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
-    Effect.withFiber((fiber) => {
-      const transaction = Context.getOrUndefined(fiber.context, transactionService)
-      const buffer = transaction && afterCommitBuffers.get(transaction)
-      // Outside a transaction, or in one that doesn't buffer callbacks.
-      if (buffer === undefined) {
-        return runAfterCommit(effect)
-      }
-      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
-        if (!current.open) {
-          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
-        }
-      }
-      // Runs later with the services in scope now, without the transaction.
-      buffer.callbacks.push(
-        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
-      )
-      return Effect.void
-    })
+  const afterCommit = makeAfterCommit(transactionService)
 
   const reactivity = yield* Reactivity
   // A statement inside a transaction has to run on that transaction's
@@ -490,6 +480,28 @@ const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect
       return Effect.void
     }))
 
+const makeAfterCommit =
+  (transactionService: Context.Key<any, any>) =>
+  <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
+    Effect.withFiber((fiber) => {
+      const transaction = Context.getOrUndefined(fiber.context, transactionService)
+      const buffer = transaction && afterCommitBuffers.get(transaction)
+      // Outside a transaction, or in one that doesn't buffer callbacks.
+      if (buffer === undefined) {
+        return runAfterCommit(effect)
+      }
+      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
+        if (!current.open) {
+          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+        }
+      }
+      // Runs later with the services in scope now, without the transaction.
+      buffer.callbacks.push(
+        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
+      )
+      return Effect.void
+    })
+
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
@@ -503,7 +515,16 @@ const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect
 export const makeWithTransaction = <I, S>(options: {
   readonly transactionService: Context.Key<I, readonly [conn: S, counter: number]>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
-  readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
+  /**
+   * Acquires the connection for a top-level transaction. Runs under the
+   * transaction's uninterruptible mask; wrap the wait for a connection in
+   * `restore` so a queued transaction can be interrupted, and register
+   * releases on the provided scope. The scope closes with the transaction, or
+   * immediately when acquisition fails or is interrupted.
+   */
+  readonly acquireConnection: (
+    restore: <XA, XE, XR>(effect: Effect.Effect<XA, XE, XR>) => Effect.Effect<XA, XE, XR>
+  ) => Effect.Effect<S, SqlError, Scope.Scope>
   readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
   /**
@@ -521,6 +542,12 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
+  const afterCommit = makeAfterCommit(options.transactionService)
+  const deferInvalidations = (reactivity: Reactivity): Reactivity => {
+    const invalidate = (keys: Parameters<Reactivity["invalidate"]>[0]) =>
+      afterCommit(Effect.sync(() => reactivity.invalidateUnsafe(keys)))
+    return { ...reactivity, invalidate, mutation: (keys, effect) => Effect.tap(effect, invalidate(keys)) }
+  }
   return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
@@ -532,11 +559,16 @@ export const makeWithTransaction = <I, S>(options: {
               span.attribute(key, value)
             }
             const services = fiber.context
+            const reactivity = Context.getOrUndefined(services, Reactivity)
             const clock = fiber.getRef(Clock)
             const connOption = Context.getOption(services, options.transactionService)
-            const conn = connOption._tag === "Some"
+            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
-              : options.acquireConnection
+              : Effect.flatMap(Scope.make(), (scope) =>
+                Scope.provide(options.acquireConnection(restore), scope).pipe(
+                  Effect.map((conn) => [scope, conn] as const),
+                  Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
+                ))
             const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
             const buffer: AfterCommitBuffer = {
               callbacks: [],
@@ -558,6 +590,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
                         )

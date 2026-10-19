@@ -153,28 +153,27 @@ describe.concurrent("HttpRunner", () => {
 })
 
 describe.concurrent("RunnerServer", () => {
-  const makeRequest = (options: {
+  const makeRequest = Effect.fnUntraced(function*(options: {
     readonly entityId: string
     readonly tag: string
-  }) =>
-    Effect.gen(function*() {
-      const sharding = yield* Sharding.Sharding
-      const snowflakeGen = yield* Snowflake.Generator
-      const entityId = EntityId.make(options.entityId)
-      const address = EntityAddress.make({
-        shardId: sharding.getShardId(entityId, BadReplyEntity.getShardGroup(entityId)),
-        entityType: EntityType.make("BadReplyEntity"),
-        entityId
-      })
-      return {
-        _tag: "Request",
-        requestId: snowflakeGen.nextUnsafe(),
-        address,
-        tag: options.tag,
-        payload: { id: 1 },
-        headers: Headers.empty
-      } as Envelope.PartialRequest
+  }) {
+    const sharding = yield* Sharding.Sharding
+    const snowflakeGen = yield* Snowflake.Generator
+    const entityId = EntityId.make(options.entityId)
+    const address = EntityAddress.make({
+      shardId: sharding.getShardId(entityId, BadReplyEntity.getShardGroup(entityId)),
+      entityType: EntityType.make("BadReplyEntity"),
+      entityId
     })
+    return {
+      _tag: "Request",
+      requestId: snowflakeGen.nextUnsafe(),
+      address,
+      tag: options.tag,
+      payload: { id: 1 },
+      headers: Headers.empty
+    } as Envelope.PartialRequest
+  })
 
   it.effect("a reply that fails to serialize fails only its own request", () =>
     Effect.gen(function*() {

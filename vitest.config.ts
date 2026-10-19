@@ -87,6 +87,7 @@ export default defineConfig({
   test: {
     passWithNoTests: true,
     projects: [
+      ...project("scripts", "scripts", true, {}, undefined, ["codemods/jsdoc.test.ts"]),
       ...project(
         "effect",
         "packages/effect",

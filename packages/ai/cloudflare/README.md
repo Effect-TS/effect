@@ -57,3 +57,7 @@ Instructions and descriptions can be strings, JSON objects, or JSON arrays. A ra
 The client unwraps Cloudflare's REST envelope and maps failures to `AiError`. It does not retry automatically. Rate-limit errors include `Retry-After` when provided. The decision model validates answers and rescales small probability drift from four-decimal rounding.
 
 Cloudflare limits each request to 64 questions, classification to 2–255 choices, and ratings to 2–10 levels. See the [Clef API documentation](https://developers.cloudflare.com/workers-ai/models/clef/) for request limits.
+
+## AI Gateway
+
+Set `CLOUDFLARE_AI_GATEWAY_ID` when using `CloudflareClient.layerConfig()` to route requests through a Cloudflare AI Gateway. You can also pass `gatewayId` to `CloudflareClient.layer`. The client adds the `cf-aig-gateway-id` header. Use `transformClient` to add other `cf-aig-*` headers.

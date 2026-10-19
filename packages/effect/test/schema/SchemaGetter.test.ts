@@ -17,6 +17,19 @@ function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
 }
 
 describe("SchemaGetter", () => {
+  it.effect("BigInt rejects invalid strings and numbers with InvalidValue", () =>
+    Effect.gen(function*() {
+      const getter = SchemaGetter.BigInt()
+      for (const input of ["abc", 1.5]) {
+        const issue = yield* SchemaGetter.run(getter, Option.some(input), {
+          reportInput: true
+        }).pipe(Effect.flip)
+        assert.instanceOf(issue, SchemaIssue.InvalidValue)
+        assert(SchemaIssue.hasInput(issue))
+        assert.strictEqual(issue.input, input)
+      }
+    }))
+
   it.effect("forbiddenEncoding", () =>
     Effect.gen(function*() {
       const getter: SchemaGetter.Getter<string, number> = SchemaGetter.forbiddenEncoding

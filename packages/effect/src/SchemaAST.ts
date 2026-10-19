@@ -814,7 +814,13 @@ export const Declaration: new(
     let run: ReturnType<typeof this.run>
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
-      return (run ??= this.run(this.typeParameters))(input, this, options)
+      // Keep this declaration's initialization errors outside its callback catch.
+      run ??= this.run(this.typeParameters)
+      try {
+        return run(input, this, options)
+      } catch (error) {
+        return Effect.die(error)
+      }
     }
   }
   private _rebuild(
@@ -3101,12 +3107,14 @@ export const Objects: new(
     // Resumes at the property whose parser suspended, without replaying the
     // properties already parsed.
     const resume = (
-      state: ObjectParserState,
+      snapshot: ObjectParserState,
       index: number,
       pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
     ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const property = properties![index]
       return Effect.flatMap(Effect.exit(pending), (exit) => {
+        // Copy the parsed prefix per execution so reruns cannot overwrite earlier results.
+        const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
         const terminal = stepProperty(state, property, exit)
         if (terminal) return terminal
         const done = () => InternalParser.succeed(state.out)

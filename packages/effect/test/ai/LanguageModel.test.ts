@@ -95,6 +95,7 @@ describe("LanguageModel", () => {
         )
         const error = yield* run(changed, "unused", true).pipe(Effect.flip)
         strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(error.isRetryable, true)
       }).pipe(TestUtils.withLanguageModel({
         generateText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }],
         streamText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }]
@@ -1125,14 +1126,13 @@ describe("LanguageModel", () => {
         const release = yield* Latch.make()
 
         const handlers = MyToolkit.toLayer({
-          MyTool: () =>
-            Effect.gen(function*() {
-              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
-              yield* Ref.update(maxActive, (n) => Math.max(n, current))
-              yield* started.open
-              yield* release.await
-              return { testSuccess: "test-success" }
-            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+          MyTool: Effect.fnUntraced(function*() {
+            const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+            yield* Ref.update(maxActive, (n) => Math.max(n, current))
+            yield* started.open
+            yield* release.await
+            return { testSuccess: "test-success" }
+          }, Effect.ensuring(Ref.update(active, (n) => n - 1)))
         })
 
         const fiber = yield* LanguageModel.streamText({
@@ -1186,16 +1186,15 @@ describe("LanguageModel", () => {
         const release = yield* Latch.make()
 
         const handlers = MyToolkit.toLayer({
-          MyTool: () =>
-            Effect.gen(function*() {
-              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
-              yield* Ref.update(maxActive, (n) => Math.max(n, current))
-              if (current === 2) {
-                yield* twoStarted.open
-              }
-              yield* release.await
-              return { testSuccess: "test-success" }
-            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+          MyTool: Effect.fnUntraced(function*() {
+            const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+            yield* Ref.update(maxActive, (n) => Math.max(n, current))
+            if (current === 2) {
+              yield* twoStarted.open
+            }
+            yield* release.await
+            return { testSuccess: "test-success" }
+          }, Effect.ensuring(Ref.update(active, (n) => n - 1)))
         })
 
         const fiber = yield* LanguageModel.streamText({
@@ -1248,17 +1247,16 @@ describe("LanguageModel", () => {
         const release = yield* Latch.make()
 
         const handlers = MyToolkit.toLayer({
-          MyTool: (_, context) =>
-            Effect.gen(function*() {
-              const toolCallId = context.toolCallId
-              assertDefined(toolCallId)
-              const ids = yield* Ref.updateAndGet(toolCallIds, (ids) => [...ids, toolCallId])
-              if (ids.length === 2) {
-                yield* twoStarted.open
-              }
-              yield* release.await
-              return { testSuccess: "test-success" }
-            })
+          MyTool: Effect.fnUntraced(function*(_, context) {
+            const toolCallId = context.toolCallId
+            assertDefined(toolCallId)
+            const ids = yield* Ref.updateAndGet(toolCallIds, (ids) => [...ids, toolCallId])
+            if (ids.length === 2) {
+              yield* twoStarted.open
+            }
+            yield* release.await
+            return { testSuccess: "test-success" }
+          })
         })
 
         const fiber = yield* LanguageModel.streamText({
@@ -1303,14 +1301,13 @@ describe("LanguageModel", () => {
         const tool = Tool.make("ApprovalConcurrencyTool", {
           parameters: Schema.Struct({ input: Schema.String }),
           success: Schema.Struct({ output: Schema.String }),
-          needsApproval: () =>
-            Effect.gen(function*() {
-              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
-              yield* Ref.update(maxActive, (n) => Math.max(n, current))
-              yield* started.open
-              yield* release.await
-              return false
-            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+          needsApproval: Effect.fnUntraced(function*() {
+            const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+            yield* Ref.update(maxActive, (n) => Math.max(n, current))
+            yield* started.open
+            yield* release.await
+            return false
+          }, Effect.ensuring(Ref.update(active, (n) => n - 1)))
         })
         const toolkit = Toolkit.make(tool)
         const handlers = toolkit.toLayer({

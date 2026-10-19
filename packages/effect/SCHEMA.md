@@ -2174,7 +2174,7 @@ This helper has some advantages over a dedicated constructor:
 - You can choose among multiple possible tag fields if present.
 - It supports unions that include nested unions.
 
-Each member must have a unique discriminant property key. `toTaggedUnion` rejects overlapping discriminant types in known member tuples at compile time, including nested unions. It also throws when it encounters a duplicate at runtime. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
+Each member must have a unique discriminant property key. `toTaggedUnion` throws when it encounters a duplicate at runtime, including in nested unions. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
 
 **Note**. If the tag is the standard `_tag` field, you can use `Schema.TaggedUnion` instead.
 
@@ -2586,7 +2586,9 @@ The default formatter chooses the error label from the level that failed:
 
 An `identifier` does not name a failed filter. Use `expected` to name the
 filter in the default formatter, or `message` to replace the filter failure
-message completely.
+message completely. A filter's `message` annotation also overrides messages
+returned by the filter, whether they are returned directly or attached to a
+nested path. Without a `message` annotation, returned messages are preserved.
 
 **Example** (Schema identifier versus filter expected message)
 

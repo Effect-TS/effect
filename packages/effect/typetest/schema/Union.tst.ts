@@ -109,6 +109,24 @@ describe("Union", () => {
 
   describe("Tagged unions", () => {
     describe("toTaggedUnion", () => {
+      it("should accept generic member lists", () => {
+        type Tagged = Schema.Constraint & { readonly Type: { readonly _tag: PropertyKey } }
+
+        const pipeForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+        const callForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.toTaggedUnion("_tag")(Schema.Union(members))
+
+        const A = Schema.TaggedStruct("A", { a: Schema.String })
+        const B = Schema.TaggedStruct("B", { b: Schema.Number })
+        const piped = pipeForm([A, B])
+        const called = callForm([A, B])
+
+        expect(piped).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+        expect(called).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+      })
+
       it("should not be callable if the tag field is invalid", () => {
         const original = Schema.Union([
           Schema.TaggedStruct("A", { a: Schema.String }),
@@ -147,37 +165,17 @@ describe("Union", () => {
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
       })
 
-      it("should reject duplicates only on the selected tag", () => {
+      it("should collect discriminants for the selected tag", () => {
         const original = Schema.Union([
           Schema.Struct({ _tag: Schema.tag("A"), kind: Schema.tag("shared") }),
           Schema.Struct({ _tag: Schema.tag("B"), kind: Schema.tag("shared") })
         ])
 
-        expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("kind"))
-
         const schema = original.pipe(Schema.toTaggedUnion("_tag"))
         expect(schema.discriminants).type.toBe<readonly ["A", "B"]>()
       })
 
-      it("should reject duplicate nested discriminants", () => {
-        const original = Schema.Union([
-          Schema.Struct({ event: Schema.Literal("A") }),
-          Schema.Union([
-            Schema.Struct({ event: Schema.Literal("B") }),
-            Schema.Struct({ event: Schema.Literal("A") })
-          ])
-        ])
-
-        expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("event"))
-      })
-
-      it("should reject numeric and string discriminants with the same property key", () => {
-        const original = Schema.Union([
-          Schema.Struct({ event: Schema.Literal(1) }),
-          Schema.Struct({ event: Schema.Literal("1") })
-        ])
-        expect(Schema.toTaggedUnion("event")).type.not.toBeCallableWith(original)
-
+      it("should preserve numeric and string discriminants", () => {
         const schema = Schema.Union([
           Schema.Struct({ event: Schema.Literal(1) }),
           Schema.Struct({ event: Schema.Literal("2") })

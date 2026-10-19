@@ -1020,7 +1020,7 @@ export const withSpan: {
           links.push({ span: span.value, attributes: {} })
         }
         return Effect.withSpan(self.runAll(entries, key), name, {
-          ...options,
+          ...opts,
           links,
           attributes: {
             batchSize: entries.length,
@@ -1183,6 +1183,9 @@ export const withCache: {
       preCheck(entry) {
         const ocached = MutableHashMap.get(cache, entry.request)
         if (ocached._tag === "None") {
+          if (self.preCheck !== undefined && !self.preCheck(entry)) {
+            return false
+          }
           const cached: CacheEntry<A> = { entry, exit: undefined, pending: [] }
           MutableHashMap.set(cache, entry.request, cached)
           const prevComplete = entry.completeUnsafe
