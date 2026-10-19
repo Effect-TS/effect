@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Layer, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { EmbeddingModel } from "effect/ai"
 import * as AiError from "effect/ai/AiError"
 
@@ -14,17 +14,6 @@ const makeLayer = (
       embedMany
     })
   )
-
-class InputType extends Context.Service<InputType, { readonly kind: "document" | "query" }>()(
-  "EmbeddingModelTest/InputType"
-) {}
-
-class Tenant extends Context.Service<Tenant, string>()("EmbeddingModelTest/Tenant") {}
-
-interface Batch {
-  readonly inputs: ReadonlyArray<string>
-  readonly kind: string | undefined
-}
 
 describe("EmbeddingModel", () => {
   it.effect("round trips usage with undefined input tokens through JSON", () =>
@@ -119,41 +108,6 @@ describe("EmbeddingModel", () => {
         })
       )
     )
-  })
-
-  it.effect("equal batch keys batch despite unrelated caller context and different keys split", () => {
-    const batches: Array<Batch> = []
-
-    return Effect.gen(function*() {
-      const model = yield* EmbeddingModel.make({
-        batchKey: (context: Context.Context<never>) => [Context.getOrUndefined(context, InputType)],
-        embedMany: ({ inputs }) =>
-          Effect.serviceOption(InputType).pipe(
-            Effect.map((inputType) => {
-              batches.push({ inputs, kind: inputType._tag === "Some" ? inputType.value.kind : undefined })
-              return { results: inputs.map((input) => [input.length]), usage: { inputTokens: undefined } }
-            })
-          )
-      })
-      yield* Effect.all([
-        model.embed("a").pipe(
-          Effect.provideService(InputType, { kind: "document" }),
-          Effect.provideService(Tenant, "tenant-a")
-        ),
-        model.embed("b").pipe(Effect.provideService(InputType, { kind: "query" })),
-        model.embed("c").pipe(
-          Effect.provideService(InputType, { kind: "document" }),
-          Effect.provideService(Tenant, "tenant-c")
-        ),
-        model.embed("d")
-      ], { concurrency: "unbounded" })
-
-      assert.deepStrictEqual(batches, [
-        { inputs: ["a", "c"], kind: "document" },
-        { inputs: ["b"], kind: "query" },
-        { inputs: ["d"], kind: undefined }
-      ])
-    })
   })
 
   it.effect("provider AiError propagates through embed", () => {

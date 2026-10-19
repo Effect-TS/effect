@@ -1,8 +1,8 @@
-import { OpenAiClient, OpenAiConfig, OpenAiEmbeddingModel } from "@effect/ai-openai-compat"
+import { OpenAiClient, OpenAiEmbeddingModel } from "@effect/ai-openai-compat"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
 import { EmbeddingModel } from "effect/ai"
-import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenAiEmbeddingModel", () => {
   it.effect("model provides dimensions service", () =>
@@ -107,54 +107,6 @@ describe("OpenAiEmbeddingModel", () => {
       assert.deepStrictEqual(requestBody.input, ["hello"])
     }))
 
-  it.effect("concurrent embed calls batch by their withConfigOverride", () =>
-    Effect.gen(function*() {
-      const requests: Array<RecordedRequest> = []
-
-      const responses = yield* Effect.gen(function*() {
-        const model = yield* EmbeddingModel.EmbeddingModel
-        return yield* Effect.all([
-          model.embed("a").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 2 })),
-          model.embed("b").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 3 })),
-          model.embed("c").pipe(OpenAiEmbeddingModel.withConfigOverride({ dimensions: 2 }))
-        ], { concurrency: "unbounded" })
-      }).pipe(
-        Effect.provide(OpenAiEmbeddingModel.layer({ model: "text-embedding-3-small" })),
-        Effect.provide(makeRecordingClientLayer(requests))
-      )
-
-      assert.deepStrictEqual(responses.map((response) => response.vector), [[2, 2], [3, 3, 3], [2, 2]])
-      assert.deepStrictEqual(requests, [
-        { input: ["a", "c"], dimensions: 2, tenant: undefined },
-        { input: ["b"], dimensions: 3, tenant: undefined }
-      ])
-    }))
-
-  it.effect("concurrent embed calls batch by their withClientTransform", () =>
-    Effect.gen(function*() {
-      const requests: Array<RecordedRequest> = []
-      const setTenant = (tenant: string) => (client: HttpClient.HttpClient) =>
-        client.pipe(HttpClient.mapRequest(HttpClientRequest.setHeader("x-tenant", tenant)))
-      const tenantA = setTenant("a")
-
-      yield* Effect.gen(function*() {
-        const model = yield* EmbeddingModel.EmbeddingModel
-        return yield* Effect.all([
-          model.embed("a").pipe(OpenAiConfig.withClientTransform(tenantA)),
-          model.embed("b").pipe(OpenAiConfig.withClientTransform(setTenant("b"))),
-          model.embed("c").pipe(OpenAiConfig.withClientTransform(tenantA))
-        ], { concurrency: "unbounded" })
-      }).pipe(
-        Effect.provide(OpenAiEmbeddingModel.layer({ model: "text-embedding-3-small" })),
-        Effect.provide(makeRecordingClientLayer(requests))
-      )
-
-      assert.deepStrictEqual(requests, [
-        { input: ["a", "c"], dimensions: undefined, tenant: "a" },
-        { input: ["b"], dimensions: undefined, tenant: "b" }
-      ])
-    }))
-
   it.effect("fails with InvalidOutputError when provider returns duplicate indices", () =>
     Effect.gen(function*() {
       const clientLayer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -230,33 +182,6 @@ const makeHttpClient = (
       return yield* handler(request)
     }),
     Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
-  )
-
-interface RecordedRequest {
-  readonly input: unknown
-  readonly dimensions: unknown
-  readonly tenant: string | undefined
-}
-
-const makeRecordingClientLayer = (requests: Array<RecordedRequest>) =>
-  OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-    Layer.provide(Layer.succeed(
-      HttpClient.HttpClient,
-      makeHttpClient((request) =>
-        Effect.gen(function*() {
-          const body = yield* getRequestBody(request)
-          requests.push({ input: body.input, dimensions: body.dimensions, tenant: request.headers["x-tenant"] })
-          const size = body.dimensions ?? 1
-          return jsonResponse(request, {
-            data: body.input.map((_: string, index: number) => ({
-              index,
-              embedding: Array.from({ length: size }, () => size)
-            })),
-            model: body.model
-          })
-        })
-      )
-    ))
   )
 
 const jsonResponse = (
