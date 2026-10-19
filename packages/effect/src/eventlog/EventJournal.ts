@@ -30,7 +30,7 @@ import type * as SchemaAST from "../SchemaAST.ts"
 import type { Scope } from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import type { StoreId } from "./EventLogMessage.ts"
-import { ConflictIndex } from "./internal/conflicts.ts"
+import { ConflictIndex, entryIdOrder } from "./internal/conflicts.ts"
 
 /**
  * Context service for storing and replaying event journal entries.
@@ -296,14 +296,7 @@ export const EntryId = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayB
  * @category ordering
  * @since 4.0.0
  */
-export const EntryIdOrder = Order.make<EntryId>((a, b) => {
-  for (let i = 0; i < 16; i++) {
-    if (a[i] !== b[i]) {
-      return (a[i] - b[i]) < 0 ? -1 : 1
-    }
-  }
-  return 0
-})
+export const EntryIdOrder: Order.Order<EntryId> = entryIdOrder
 
 let lastEntryIdMillis = 0
 let entryIdCounter = 0
@@ -604,9 +597,9 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         ? yield* options.compact(uncommittedRemotes)
         : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
-      if (compacted.length > 0) {
-        const index = new ConflictIndex(compacted, Entry.Order)
-        const oldest = index.oldest!
+      if (Arr.isReadonlyArrayNonEmpty(compacted)) {
+        const index = new ConflictIndex(compacted)
+        const oldest = index.oldest
         // Only the suffix with greater ids can conflict, unless local writes
         // left the journal unordered.
         let i = journalSorted ? journal.length : 0
@@ -855,8 +848,8 @@ export const makeIndexedDb = (options?: {
           ? yield* options.compact(uncommittedRemotes)
           : uncommittedRemotes.map((remoteEntry) => remoteEntry.entry)
 
-        if (compacted.length > 0) {
-          const index = new ConflictIndex(compacted, Entry.Order)
+        if (Arr.isReadonlyArrayNonEmpty(compacted)) {
+          const index = new ConflictIndex(compacted)
           yield* Effect.callback<void, EventJournalError>((resume) => {
             const tx = db.transaction("entries", "readonly")
             const conflicts = tx.objectStore("entries").index("conflict")

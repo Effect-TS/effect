@@ -392,8 +392,8 @@ export const make = (options?: {
         ? yield* options.compact(uncommitted)
         : uncommitted.map((remoteEntry) => remoteEntry.entry)
 
-      if (compacted.length > 0) {
-        const index = new ConflictIndex(compacted, EventJournal.Entry.Order)
+      if (Arr.isReadonlyArrayNonEmpty(compacted)) {
+        const index = new ConflictIndex(compacted)
         const primaryKeys = Array.from(new Set(compacted.map((entry) => entry.primaryKey)))
         // Match the hash index; exact predicates below rule out hash collisions.
         const hashed = sql.onDialectOrElse({
@@ -412,7 +412,7 @@ export const make = (options?: {
         ])
         const stored = yield* sql`SELECT * FROM ${entryTableSql} WHERE ${conflicts}`.pipe(
           Effect.flatMap(decodeEntryRows),
-          Effect.map(toOrderedEntries)
+          Effect.map(toEntries)
         )
         for (const entry of stored) {
           index.add(entry)

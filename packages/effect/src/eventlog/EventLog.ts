@@ -1110,50 +1110,52 @@ const make = Effect.gen(function*() {
             entries,
             compact: registry.compactors.size > 0
               ? Effect.fnUntraced(function*(remoteEntries) {
-                const finalEntries: Array<Array<Entry>> = remoteEntries.map(() => [])
-                const sourcePositions = new Map<string, number>()
+                // The journal sorts the batch by anchor, so output order is irrelevant.
+                const output: Array<Entry> = []
+                const inputs = new Map<string, Entry>()
+                const outputCounts = new Map<Entry, number>()
                 const compactable = new Map<
                   (options: {
                     readonly entries: ReadonlyArray<Entry>
                     readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
                   }) => Effect.Effect<void>,
-                  { readonly entries: Array<Entry>; readonly position: number }
+                  Array<Entry>
                 >()
 
-                for (let i = 0; i < remoteEntries.length; i++) {
-                  const remoteEntry = remoteEntries[i]
-                  const entry = remoteEntry.entry
-                  sourcePositions.set(entry.idString, i)
+                for (const { entry } of remoteEntries) {
+                  inputs.set(entry.idString, entry)
                   const compactor = registry.compactors.get(entry.event)
                   if (!compactor) {
-                    finalEntries[i].push(entry)
+                    output.push(entry)
                     continue
                   }
                   let group = compactable.get(compactor.effect)
                   if (!group) {
-                    group = { entries: [], position: i }
+                    group = []
                     compactable.set(compactor.effect, group)
                   }
-                  group.entries.push(entry)
+                  group.push(entry)
                 }
 
-                for (const [compact, { entries, position }] of compactable) {
+                for (const [compact, entries] of compactable) {
                   yield* compact({
                     entries,
                     write(entry, source) {
                       return Effect.sync(() => {
-                        // Anchor each output to its source, so the journal orders it
-                        // and checks its conflicts by the source's id, then by write
-                        // order, instead of by its own fresh id.
-                        const index = sourcePositions.get((source ?? entry).idString) ?? position
-                        setAnchor(entry, remoteEntries[index].entry, finalEntries[index].length)
-                        finalEntries[index].push(entry)
+                        // Each output is ordered and conflict-checked by its source,
+                        // then by write order, not by its own fresh id. An output
+                        // without a known source stands for the group's first entry.
+                        const anchor = inputs.get((source ?? entry).idString) ?? entries[0]
+                        const index = outputCounts.get(anchor) ?? 0
+                        outputCounts.set(anchor, index + 1)
+                        setAnchor(entry, anchor, index)
+                        output.push(entry)
                       })
                     }
                   })
                 }
 
-                return finalEntries.flat()
+                return output
               })
               : undefined,
             effect: (batch) => handlerTransaction(replayFromRemote(batch))
