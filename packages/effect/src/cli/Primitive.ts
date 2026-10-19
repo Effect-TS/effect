@@ -20,6 +20,7 @@ import { format } from "../Formatter.ts"
 import { identity } from "../Function.ts"
 import * as Path_ from "../Path.ts"
 import * as Redacted_ from "../Redacted.ts"
+import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import type { Formatter } from "../SchemaIssue.ts"
 import type * as Struct from "../Struct.ts"
@@ -686,7 +687,7 @@ export type FileParseOptions = {
 const fileParsers: Record<string, (content: string) => unknown> = {
   ini: (content: string) => Ini.parse(content),
   json: (content: string) => JSON.parse(content),
-  toml: (content: string) => Toml.parse(content),
+  toml: (content: string) => Result.getOrThrow(Toml.parse(content)),
   yml: (content: string) => Yaml.parse(content),
   yaml: (content: string) => Yaml.parse(content)
 }
