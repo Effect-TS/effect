@@ -319,6 +319,11 @@ export const makeUpgradeHandler = <
   })
 }
 
+const withAuthorityHost = (headers: Http.IncomingHttpHeaders): Http.IncomingHttpHeaders => {
+  const authority = headers[":authority"]
+  return typeof authority === "string" && headers.host !== authority ? { ...headers, host: authority } : headers
+}
+
 const absoluteTarget = (url: string): URL | undefined => {
   if (!/^https?:\/\//i.test(url)) {
     return undefined
@@ -416,7 +421,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get headers(): Headers.Headers {
-    this.headersOverride ??= this.source.headers as Headers.Headers
+    this.headersOverride ??= withAuthorityHost(this.source.headers) as Headers.Headers
     return this.headersOverride
   }
 

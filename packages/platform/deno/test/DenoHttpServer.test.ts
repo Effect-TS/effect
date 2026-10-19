@@ -28,6 +28,7 @@ import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as NetAddress from "effect/net/NetAddress"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as References from "effect/References"
 import * as Schema from "effect/Schema"
@@ -35,6 +36,8 @@ import * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+import * as Http from "node:http"
+import * as Http2 from "node:http2"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -824,6 +827,58 @@ describe("DenoHttpServer", () => {
       }).pipe(Effect.provide(DenoHttpServer.layerTest)))
   })
 
+  it.effect("takes the host header from the HTTP/2 authority", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.succeed(HttpServerResponse.text(
+            `${request.headers.host} ${Option.getOrThrow(HttpServerRequest.toURL(request)).href}`
+          ))
+        )
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+
+      for (const host of [undefined, "client.test"]) {
+        assert.strictEqual(
+          yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host }),
+          "example.test:4573 http://example.test:4573/info"
+        )
+      }
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("excludes a query from the host of an absolute-form HTTP/1.1 target", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.succeed(HttpServerResponse.text(request.headers.host))
+        )
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const host = yield* Effect.callback<string, Error>((resume) => {
+        const request = Http.get({
+          hostname: "127.0.0.1",
+          port,
+          path: "http://Target.TEST:80?q=/info",
+          headers: { host: "client.test" }
+        }, (response) => {
+          let body = ""
+          response.setEncoding("utf8")
+          response.on("data", (chunk: string) => {
+            body += chunk
+          })
+          response.on("end", () => resume(Effect.succeed(body)))
+          response.on("error", (error) => resume(Effect.fail(error)))
+        })
+        request.on("error", (error) => resume(Effect.fail(error)))
+        return Effect.sync(() => {
+          request.destroy()
+        })
+      })
+      assert.strictEqual(host, "Target.TEST:80")
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("RouterConfig", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add("GET", "/:param", Effect.succeed(HttpServerResponse.empty())).pipe(
@@ -1063,4 +1118,21 @@ const connectWebSocket = (url: string, onOpen: (socket: WebSocket) => void, mess
         return messages
       }),
     (socket) => Effect.sync(() => socket.close())
+  )
+
+const http2Get = (port: number, headers: Http2.OutgoingHttpHeaders) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
+    (session) =>
+      Effect.callback<string, Error>((resume) => {
+        const stream = session.request(headers)
+        let body = ""
+        stream.setEncoding("utf8")
+        stream.on("data", (chunk: string) => {
+          body += chunk
+        })
+        stream.on("end", () => resume(Effect.succeed(body)))
+        stream.on("error", (error) => resume(Effect.fail(error)))
+      }),
+    (session) => Effect.callback<void>((resume) => session.close(() => resume(Effect.void)))
   )

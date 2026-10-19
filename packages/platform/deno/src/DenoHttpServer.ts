@@ -378,7 +378,13 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       : Option.none())
   }
   get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
+    if (this.headersOverride === undefined) {
+      const headers = Headers.fromInput(this.source.headers)
+      // Deno builds the URL from the request authority, ahead of Host.
+      // Preserve its raw form; URL.host lowercases names and strips default ports.
+      const host = urlAuthority(this.source.url)
+      this.headersOverride = host === undefined || headers.host === host ? headers : Headers.set(headers, "host", host)
+    }
     return this.headersOverride
   }
 
@@ -601,6 +607,9 @@ const emptyReadableStream = new ReadableStream<Uint8Array>({
     controller.close()
   }
 })
+
+const authorityPattern = /^[^:/?#]+:\/\/([^/?#]*)/
+const urlAuthority = (url: string): string | undefined => authorityPattern.exec(url)?.[1]
 
 const removeHost = (url: string) => {
   if (url[0] === "/") return url
