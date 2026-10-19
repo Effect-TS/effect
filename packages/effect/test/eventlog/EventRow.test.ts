@@ -27,7 +27,7 @@ type Row = {
   readonly completed: boolean
 }
 type Fields = Partial<Omit<Row, "id">>
-type Payload = ReturnType<typeof Grocery.set> | ReturnType<typeof Grocery.patch> | ReturnType<typeof Grocery.remove>
+type Payload = EventRow.Payload<typeof Grocery.schema.fields, "id">
 type Call = readonly ["set", Row] | readonly ["patch", string, Fields] | readonly ["remove", string]
 
 const makeEntry = (msecs: number) =>
@@ -125,14 +125,14 @@ const toPayload = (op: typeof Op.Type): Payload => {
   switch (op._tag) {
     case "set": {
       const { _tag, key, ...fields } = op
-      return Grocery.set({ id: key, ...fields })
+      return Grocery.set({ id: key, ...fields }).payload
     }
     case "patch": {
       const { _tag, key, ...fields } = op
-      return Grocery.patch(key, fields)
+      return Grocery.patch(key, fields).payload
     }
     case "remove": {
-      return Grocery.remove(op.key)
+      return Grocery.remove(op.key).payload
     }
   }
 }
@@ -221,6 +221,14 @@ const makeReplica = Effect.fnUntraced(function*(compact = false) {
 })
 
 describe("EventRow", () => {
+  it("constructs tagged events for set, patch and remove", () => {
+    assert.deepStrictEqual([Grocery.set(X), Grocery.patch("g1", P), Grocery.remove("g1")], [
+      { event: "grocery", payload: { _tag: "set", row: X } },
+      { event: "grocery", payload: { _tag: "patch", key: "g1", fields: P } },
+      { event: "grocery", payload: { _tag: "remove", key: "g1" } }
+    ])
+  })
+
   it.effect("round-trips byte keys without derive through every operation", () =>
     Effect.gen(function*() {
       const rowSchema = Schema.Struct({ id: Schema.Uint8Array, value: Schema.Number })
@@ -240,7 +248,7 @@ describe("EventRow", () => {
           patch: (key, fields) => Effect.sync(() => calls.push(["patch", key, fields])),
           remove: (key) => Effect.sync(() => calls.push(["remove", key]))
         })
-        const payloads = [row.set(initial), row.patch(key, { value: 2 }), row.remove(key)]
+        const payloads = [row.set(initial).payload, row.patch(key, { value: 2 }).payload, row.remove(key).payload]
         for (const [i, payload] of payloads.entries()) {
           assert.strictEqual(row.primaryKey(payload), primaryKey)
           const entry = yield* makeEntryWith(1000 + i, row, codec, payload)
@@ -274,7 +282,13 @@ describe("EventRow", () => {
           remove: (key) => Effect.sync(() => calls.push(key))
         })
         assert.notStrictEqual(row.keyOf(key), row.keyOf({ list: "a", aisle: "b|c" }))
-        for (const payload of [row.set({ ...key, value: 1 }), row.patch(key, { value: 2 }), row.remove(key)]) {
+        for (
+          const payload of [
+            row.set({ ...key, value: 1 }).payload,
+            row.patch(key, { value: 2 }).payload,
+            row.remove(key).payload
+          ]
+        ) {
           const entry = yield* makeEntryWith(1000, row, codec, payload)
           const decoded = yield* Schema.decodeUnknownEffect(codec)(entry.payload)
           const expected = derive ? "[\"a|b\",\"c\"]" : "[\"A|B\",\"c\"]"
@@ -289,7 +303,7 @@ describe("EventRow", () => {
         schema: Schema.Struct({ id: Schema.suspend(() => Schema.Literal("a")) })
       })
       assert.strictEqual(suspended.keyOf({ id: "a" }), "a")
-      assert.strictEqual(suspended.primaryKey(suspended.set({ id: "a" })), "a")
+      assert.strictEqual(suspended.primaryKey(suspended.set({ id: "a" }).payload), "a")
     }))
 
   it.effect("compacts only shadowed entries within the same row tag and key", () =>
@@ -306,8 +320,10 @@ describe("EventRow", () => {
 
       type Input = readonly ["grocery" | "other", Payload]
       const cases: ReadonlyArray<readonly [string, ReadonlyArray<Input>, ReadonlyArray<number>]> = [
-        ...([Grocery.set(X), Grocery.patch("g1", P), Grocery.remove("g1")] as const).flatMap((older) =>
-          [Grocery.set(Y), Grocery.remove("g1")].map((newer) =>
+        ...([Grocery.set(X).payload, Grocery.patch("g1", P).payload, Grocery.remove("g1").payload] as const).flatMap((
+          older
+        ) =>
+          [Grocery.set(Y).payload, Grocery.remove("g1").payload].map((newer) =>
             [
               older._tag + " before " + newer._tag,
               [["grocery", older], ["grocery", newer]],
@@ -316,24 +332,36 @@ describe("EventRow", () => {
           )
         ),
         ["patch jointly covered by newer patches", [
-          ["grocery", Grocery.patch("g1", P)],
-          ["grocery", Grocery.patch("g1", { name: "new" })],
-          ["grocery", Grocery.patch("g1", { quantity: 4 })]
+          ["grocery", Grocery.patch("g1", P).payload],
+          ["grocery", Grocery.patch("g1", { name: "new" }).payload],
+          ["grocery", Grocery.patch("g1", { quantity: 4 }).payload]
         ], [1, 2]],
-        ["partially overlapping patches", [["grocery", Grocery.patch("g1", P)], ["grocery", Grocery.patch("g1", Q)]], [
+        ["partially overlapping patches", [["grocery", Grocery.patch("g1", P).payload], [
+          "grocery",
+          Grocery.patch("g1", Q).payload
+        ]], [
           0,
           1
         ]],
         ["set is required even before a patch of every field", [
-          ["grocery", Grocery.set(X)],
-          ["grocery", Grocery.patch("g1", { name: "new", quantity: null, completed: true })]
+          ["grocery", Grocery.set(X).payload],
+          ["grocery", Grocery.patch("g1", { name: "new", quantity: null, completed: true }).payload]
         ], [0, 1]],
-        ["remove is required before patch", [["grocery", Grocery.remove("g1")], ["grocery", Grocery.patch("g1", P)]], [
+        ["remove is required before patch", [["grocery", Grocery.remove("g1").payload], [
+          "grocery",
+          Grocery.patch("g1", P).payload
+        ]], [
           0,
           1
         ]],
-        ["different key cannot shadow", [["grocery", Grocery.set(X)], ["grocery", Grocery.remove("g2")]], [0, 1]],
-        ["different tag cannot shadow the same key", [["grocery", Grocery.set(X)], ["other", Other.remove("g1")]], [
+        ["different key cannot shadow", [["grocery", Grocery.set(X).payload], [
+          "grocery",
+          Grocery.remove("g2").payload
+        ]], [0, 1]],
+        ["different tag cannot shadow the same key", [["grocery", Grocery.set(X).payload], [
+          "other",
+          Other.remove("g1").payload
+        ]], [
           0,
           1
         ]]
@@ -370,20 +398,20 @@ describe("EventRow", () => {
       // The late entry is `set(E)`: a collapsed `set` or `remove` skips it, and
       // only a collapsed `patch` writes, as `set(E with the patch on top)`.
       const cases: ReadonlyArray<readonly [string, ReadonlyArray<Payload>, ReadonlyArray<Call>]> = [
-        ["set(X) ; set(Y) = set(Y)", [Grocery.set(X), Grocery.set(Y)], []],
-        ["set(X) ; patch(Q) = set(X with Q)", [Grocery.set(X), Grocery.patch("g1", Q)], []],
-        ["set(X) ; remove = remove", [Grocery.set(X), Grocery.remove("g1")], []],
-        ["patch(P) ; set(Y) = set(Y)", [Grocery.patch("g1", P), Grocery.set(Y)], []],
-        ["patch(P) ; patch(Q) = patch(P with Q)", [Grocery.patch("g1", P), Grocery.patch("g1", Q)], [
+        ["set(X) ; set(Y) = set(Y)", [Grocery.set(X).payload, Grocery.set(Y).payload], []],
+        ["set(X) ; patch(Q) = set(X with Q)", [Grocery.set(X).payload, Grocery.patch("g1", Q).payload], []],
+        ["set(X) ; remove = remove", [Grocery.set(X).payload, Grocery.remove("g1").payload], []],
+        ["patch(P) ; set(Y) = set(Y)", [Grocery.patch("g1", P).payload, Grocery.set(Y).payload], []],
+        ["patch(P) ; patch(Q) = patch(P with Q)", [Grocery.patch("g1", P).payload, Grocery.patch("g1", Q).payload], [
           ["set", { id: "g1", name: "q", quantity: 3, completed: true }]
         ]],
-        ["patch(P) ; remove = remove", [Grocery.patch("g1", P), Grocery.remove("g1")], []],
-        ["remove ; set(Y) = set(Y)", [Grocery.remove("g1"), Grocery.set(Y)], []],
-        ["remove ; patch(Q) = remove", [Grocery.remove("g1"), Grocery.patch("g1", Q)], []],
-        ["remove ; remove = remove", [Grocery.remove("g1"), Grocery.remove("g1")], []]
+        ["patch(P) ; remove = remove", [Grocery.patch("g1", P).payload, Grocery.remove("g1").payload], []],
+        ["remove ; set(Y) = set(Y)", [Grocery.remove("g1").payload, Grocery.set(Y).payload], []],
+        ["remove ; patch(Q) = remove", [Grocery.remove("g1").payload, Grocery.patch("g1", Q).payload], []],
+        ["remove ; remove = remove", [Grocery.remove("g1").payload, Grocery.remove("g1").payload], []]
       ]
       const actual = yield* Effect.forEach(cases, ([name, conflicts]) =>
-        Effect.map(replay(Grocery.set(E), conflicts), (calls) => [name, calls] as const))
+        Effect.map(replay(Grocery.set(E).payload, conflicts), (calls) => [name, calls] as const))
       assert.deepStrictEqual(
         actual,
         cases.map(([name, , calls]) =>
@@ -395,25 +423,30 @@ describe("EventRow", () => {
   it.effect("writes at most one callback for a late entry", () =>
     Effect.gen(function*() {
       const cases: ReadonlyArray<readonly [string, Payload, ReadonlyArray<Payload>, ReadonlyArray<Call>]> = [
-        ["empty, set(E)", Grocery.set(E), [], [["set", E]]],
-        ["empty, patch(Q)", Grocery.patch("g1", Q), [], [["patch", "g1", Q]]],
-        ["empty, remove", Grocery.remove("g1"), [], [["remove", "g1"]]],
-        ["empty, empty patch", Grocery.patch("g1", {}), [], []],
-        ["set(X), set(E)", Grocery.set(E), [Grocery.set(X)], []],
-        ["set(X), patch(Q)", Grocery.patch("g1", Q), [Grocery.set(X)], []],
-        ["set(X), remove", Grocery.remove("g1"), [Grocery.set(X)], []],
-        ["remove, set(E)", Grocery.set(E), [Grocery.remove("g1")], []],
-        ["remove, patch(Q)", Grocery.patch("g1", Q), [Grocery.remove("g1")], []],
-        ["remove, remove", Grocery.remove("g1"), [Grocery.remove("g1")], []],
+        ["empty, set(E)", Grocery.set(E).payload, [], [["set", E]]],
+        ["empty, patch(Q)", Grocery.patch("g1", Q).payload, [], [["patch", "g1", Q]]],
+        ["empty, remove", Grocery.remove("g1").payload, [], [["remove", "g1"]]],
+        ["empty, empty patch", Grocery.patch("g1", {}).payload, [], []],
+        ["set(X), set(E)", Grocery.set(E).payload, [Grocery.set(X).payload], []],
+        ["set(X), patch(Q)", Grocery.patch("g1", Q).payload, [Grocery.set(X).payload], []],
+        ["set(X), remove", Grocery.remove("g1").payload, [Grocery.set(X).payload], []],
+        ["remove, set(E)", Grocery.set(E).payload, [Grocery.remove("g1").payload], []],
+        ["remove, patch(Q)", Grocery.patch("g1", Q).payload, [Grocery.remove("g1").payload], []],
+        ["remove, remove", Grocery.remove("g1").payload, [Grocery.remove("g1").payload], []],
         // Required even when the row is missing and the newer patch did nothing.
-        ["patch(P), set(E)", Grocery.set(E), [Grocery.patch("g1", P)], [
+        ["patch(P), set(E)", Grocery.set(E).payload, [Grocery.patch("g1", P).payload], [
           ["set", { id: "g1", name: "p", quantity: 3, completed: false }]
         ]],
-        ["patch(P), patch(Q)", Grocery.patch("g1", Q), [Grocery.patch("g1", P)], [["patch", "g1", {
+        ["patch(P), patch(Q)", Grocery.patch("g1", Q).payload, [Grocery.patch("g1", P).payload], [["patch", "g1", {
           completed: true
         }]]],
-        ["patch(P), patch covered by P", Grocery.patch("g1", { name: "r" }), [Grocery.patch("g1", P)], []],
-        ["patch(P), remove", Grocery.remove("g1"), [Grocery.patch("g1", P)], [["remove", "g1"]]]
+        [
+          "patch(P), patch covered by P",
+          Grocery.patch("g1", { name: "r" }).payload,
+          [Grocery.patch("g1", P).payload],
+          []
+        ],
+        ["patch(P), remove", Grocery.remove("g1").payload, [Grocery.patch("g1", P).payload], [["remove", "g1"]]]
       ]
       const actual = yield* Effect.forEach(
         cases,
@@ -433,7 +466,7 @@ describe("EventRow", () => {
         })
       })
       const codec = EventGroup.empty.add(Task).events.task.payloadSchemaBinary
-      const payloads = [Task.patch("t1", { done: true }), Task.patch("t1", {})]
+      const payloads = [Task.patch("t1", { done: true }).payload, Task.patch("t1", {}).payload]
       const replayed = yield* Effect.forEach(payloads, (payload) =>
         Schema.encodeUnknownEffect(codec)(payload).pipe(Effect.flatMap(Schema.decodeUnknownEffect(codec))))
       assert.deepStrictEqual(replayed, payloads)
@@ -448,7 +481,7 @@ describe("EventRow", () => {
         remove: () => Effect.void
       })
       const storeId = yield* EventLog.CurrentStoreId
-      for (const payload of [Stamp.set({ id: "s1", mark: "x" }), Stamp.patch("s1", { mark: "x" })]) {
+      for (const payload of [Stamp.set({ id: "s1", mark: "x" }).payload, Stamp.patch("s1", { mark: "x" }).payload]) {
         const entry = new EventJournal.Entry({
           id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 }),
           event: "stamp",
@@ -479,13 +512,13 @@ describe("EventRow", () => {
         schema: Schema.Struct({ id: Schema.String, label: Schema.OptionFromOptionalKey(Schema.String) })
       })
       const ShelfCodec = EventGroup.empty.add(Shelf).events.shelf.payloadSchemaBinary
-      const some = Shelf.patch("s1", { label: Option.some("x") })
+      const some = Shelf.patch("s1", { label: Option.some("x") }).payload
       const replayed = yield* Schema.encodeUnknownEffect(ShelfCodec)(some).pipe(
         Effect.flatMap(Schema.decodeUnknownEffect(ShelfCodec))
       )
       // Replicas would read the omitted key as "not written", so None is refused.
       const none = yield* Effect.exit(
-        Schema.encodeUnknownEffect(ShelfCodec)(Shelf.patch("s1", { label: Option.none() }))
+        Schema.encodeUnknownEffect(ShelfCodec)(Shelf.patch("s1", { label: Option.none() }).payload)
       )
       assert.deepStrictEqual(replayed, some)
       assert.isTrue(Exit.isFailure(none))

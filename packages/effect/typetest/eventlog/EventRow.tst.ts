@@ -1,10 +1,60 @@
 import { Effect, Schema } from "effect"
+import * as EventGroup from "effect/eventlog/EventGroup"
+import type { EventJournalError } from "effect/eventlog/EventJournal"
+import * as EventLog from "effect/eventlog/EventLog"
 import * as EventRow from "effect/eventlog/EventRow"
 import { describe, expect, it } from "tstyche"
 
 const schema = Schema.Struct({ list: Schema.String, aisle: Schema.String, value: Schema.Number })
+declare const log: EventLog.EventLog["Service"]
 
 describe("EventRow", () => {
+  it("constructs typed events for write and writeMany", () => {
+    const row = EventRow.make("row", { key: "list", schema })
+    const included = EventLog.schema(EventGroup.empty.add(row))
+    const other = EventRow.make("other", { key: "list", schema })
+    const excluded = EventLog.schema(EventGroup.empty.add(other))
+    type Write = { readonly event: "row"; readonly payload: EventRow.Payload<typeof schema.fields, "list"> }
+    expect<ReturnType<typeof row.set>>().type.toBe<Write>()
+    expect<ReturnType<typeof row.patch>>().type.toBe<Write>()
+    expect<ReturnType<typeof row.remove>>().type.toBe<Write>()
+
+    const set = row.set({ list: "list", aisle: "aisle", value: 1 })
+    const patch = row.patch("list", { value: 2 })
+    const remove = row.remove("list")
+    for (const event of [set, patch, remove]) {
+      expect(log.write({ schema: included, ...event })).type.toBe<Effect.Effect<void, EventJournalError>>()
+      expect(log.write).type.not.toBeCallableWith({ schema: excluded, ...event })
+    }
+    expect(log.writeMany({ schema: included, events: [set, patch, remove] })).type.toBe<
+      Effect.Effect<[void, ...Array<void>], EventJournalError>
+    >()
+    expect(log.writeMany).type.not.toBeCallableWith({ schema: excluded, events: [set, patch, remove] })
+  })
+
+  it("preserves per-event client results and rejects mismatched inputs", () => {
+    const row = EventRow.make("row", { key: "list", schema, error: Schema.Literal("row-error") })
+    const group = EventGroup.empty.add(row).add({
+      tag: "plain",
+      primaryKey: (payload) => payload,
+      payload: Schema.String,
+      success: Schema.Number,
+      error: Schema.Literal("plain-error")
+    })
+    Effect.gen(function*() {
+      const client = yield* EventLog.makeClient(EventLog.schema(group))
+      const set = row.set({ list: "list", aisle: "aisle", value: 1 })
+      expect(client(set)).type.toBe<Effect.Effect<void, "row-error" | EventJournalError>>()
+      expect(client({ event: "plain", payload: "value" })).type.toBe<
+        Effect.Effect<number, "plain-error" | EventJournalError>
+      >()
+      expect(client).type.not.toBeCallableWith({ event: "plain", payload: set.payload })
+      expect(client).type.not.toBeCallableWith({ event: "row", payload: "value" })
+      expect(client).type.not.toBeCallableWith({ event: "missing", payload: "value" })
+      expect(client).type.not.toBeCallableWith("plain", "value")
+    })
+  })
+
   it("infers composite keys and excludes them from patches", () => {
     const row = EventRow.make("row", {
       key: {
