@@ -887,7 +887,7 @@ function handlerToHttpEffect(
         }
       }
       if (upgrade !== undefined) {
-        if (httpRequest.headers.upgrade?.toLowerCase() !== upgrade.protocol.toLowerCase()) {
+        if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
           return upgradeRequired(upgrade.protocol)
         }
         request.socket = yield* Effect.orDie(httpRequest.upgrade)
@@ -1128,6 +1128,11 @@ function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.U
     if (HttpApiSchema.isUpgrade(schema)) return schema
   }
 }
+
+// RFC 9110 §7.8: `Upgrade` only applies with an `upgrade` connection option.
+const isUpgradeRequest = (request: HttpServerRequest, protocol: string): boolean =>
+  request.headers.upgrade?.toLowerCase() === protocol.toLowerCase() &&
+  /(?:^|,)\s*upgrade\s*(?:,|$)/i.test(request.headers.connection ?? "")
 
 const upgradeRequired = (protocol: string) =>
   Response.empty({

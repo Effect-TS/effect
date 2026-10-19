@@ -753,9 +753,7 @@ export const makeNodeHttp = Effect.gen(function*() {
         )
       }),
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
-      Effect.map(([response, upgraded]) =>
-        new NodeHttpResponse(request, response, url.href.split("#")[0], upgraded)
-      )
+      Effect.map(([response, upgraded]) => new NodeHttpResponse(request, response, url.href.split("#")[0], upgraded))
     )
   })
 })
