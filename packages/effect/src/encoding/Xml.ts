@@ -121,10 +121,10 @@ export interface Doctype {
  *
  * Attribute values have their references replaced and whitespace normalized as
  * XML requires. Decoded attributes inherit nothing, so only the attributes of
- * the tag are present and `__proto__` is an ordinary key. Insertion order is document order,
- * since XML names cannot be integer-like keys; `structuredClone` restores
- * `Object.prototype` on the copy. A self-closing tag such as `<br/>` is
- * decoded as a `StartElement` followed by an `EndElement`.
+ * the tag are present and `__proto__` is an ordinary key. Their key order is
+ * document order, as XML names are never integer-like. A `structuredClone` of
+ * a decoded map gets `Object.prototype` back. A self-closing tag such as
+ * `<br/>` is decoded as a `StartElement` followed by an `EndElement`.
  *
  * @stability experimental
  * @category models
@@ -930,11 +930,9 @@ const describeToken = (s: string, i: number): string =>
 
 // Attribute maps inherit nothing, so "__proto__" is an ordinary key and no
 // attribute is inherited. Instances of a constructor are fast-mode objects in
-// V8, which are several times faster to fill and iterate than the
-// dictionary-mode objects that `Object.create(null)` makes. V8 creates a
-// hidden class for every distinct sequence of keys, so fast-mode maps are
-// used only for elements whose attributes always come in the same order, see
-// `Parser.shapes`.
+// V8, several times faster to fill and iterate than the dictionary-mode
+// objects that `Object.create(null)` makes, but V8 makes a hidden class for
+// every distinct key sequence, so `Parser.shapes` decides which tags get one.
 const Attributes = function(this: Record<string, string>) {} as unknown as new() => Record<string, string>
 Attributes.prototype = Object.freeze(Object.create(null))
 
