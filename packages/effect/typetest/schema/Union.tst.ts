@@ -109,6 +109,21 @@ describe("Union", () => {
 
   describe("Tagged unions", () => {
     describe("toTaggedUnion", () => {
+      it("should accept generic member lists in pipe and direct-call forms", () => {
+        type Tagged = Schema.Constraint & { readonly Type: { readonly _tag: PropertyKey } }
+
+        const pipeForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+        const callForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.toTaggedUnion("_tag")(Schema.Union(members))
+
+        const A = Schema.TaggedStruct("A", {})
+        const B = Schema.TaggedStruct("B", {})
+        expect(pipeForm([A, B])).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+        expect(callForm([A, B])).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+      })
+
       it("should not be callable if the tag field is invalid", () => {
         const original = Schema.Union([
           Schema.TaggedStruct("A", { a: Schema.String }),
