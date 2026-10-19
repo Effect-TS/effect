@@ -11,8 +11,11 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
+import * as Fiber from "../Fiber.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -217,6 +220,57 @@ export class Identity extends Context.Service<Identity, {
   readonly publicKey: string
   readonly privateKey: Redacted.Redacted<Uint8Array<ArrayBuffer>>
 }>()("effect/eventlog/EventLog/Identity") {}
+
+/**
+ * Failure to decode or handle an entry or its conflicts during remote replay.
+ * The entry identifies the replay being attempted; the cause retains handler
+ * errors and defects as well as schema errors.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class RemoteReplayError extends Data.TaggedError("RemoteReplayError")<{
+  readonly entry: Entry
+  readonly cause: Cause.Cause<unknown>
+}> {}
+
+/**
+ * Context reference for reporting a remote stopped by a replay failure to the app.
+ * Defaults to logging the error. Provide this reference to the EventLog layer to
+ * record sync status or request an app update. The callback should return promptly.
+ *
+ * **Details**
+ *
+ * A replay failure stops that remote's replication without committing the failed
+ * batch or advancing its cursor. Other remotes and local writes can continue.
+ * After fixing the handler or upgrading the schemas, recreate the remote
+ * registration (release the old scope first) or restart the log with the same
+ * journal. The remote redelivers from the unchanged cursor. No automatic retry
+ * is attempted for replay failures, unlike transport failures.
+ *
+ * For schema upgrades, keep decoders compatible with historical payloads as well
+ * as new ones. An older app receiving an unsupported payload (for example, a new
+ * literal value) stops at that batch until a compatible app restarts replication.
+ * This also applies to decoding stored conflicts and to decoding inside a
+ * handler. Entries already skipped and acknowledged by older EventLog versions
+ * are not recovered automatically by this policy.
+ *
+ * **Gotchas**
+ *
+ * Stopping replication does not undo arbitrary handler side effects. Use a real
+ * HandlerTransaction for projection rollback and make handlers idempotent for
+ * redelivery, including a crash between projection and journal commits.
+ *
+ * @stability unstable
+ * @category references
+ * @since 4.0.0
+ */
+export class OnRemoteReplayError extends Context.Reference<
+  (options: { readonly remoteId: RemoteId; readonly error: RemoteReplayError }) => Effect.Effect<void>
+>("effect/eventlog/EventLog/OnRemoteReplayError", {
+  defaultValue: () => ({ error }) => Effect.logError(error)
+}) {}
 
 /**
  * Type-level identifier used to brand `EventLogSchema` values.
@@ -480,25 +534,19 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
  * conflicts before the transaction starts and commits the batch after it
  * completes. Defaults to running the handlers without a transaction.
  *
- * If the transaction fails, the journal commits nothing from the batch. For a
- * replayed batch, the remote is subscribed again after a backoff of up to 10
- * seconds and the batch is delivered again, so later batches from that remote
- * wait until it succeeds; local writes and other remotes are not blocked. A
- * local write fails with the error and is not retried.
+ * If the transaction fails, the journal commits nothing from the batch. A decode
+ * or handler failure during replay stops that remote and is reported through
+ * OnRemoteReplayError. Restart replication after fixing the failure to redeliver
+ * the batch. Local writes and other remotes are not blocked. A local write fails
+ * with the error and is not retried. Transport and journal failures still retry
+ * after a backoff of up to 10 seconds.
  *
  * **Gotchas**
  *
- * - During replay, errors returned by a handler are logged and skipped. They
- *   do not fail the transaction, and the entry is still committed to the
- *   journal.
- * - In a local write, an error returned by a handler fails the transaction
- *   and the write, and the journal commits none of its events.
- * - Failures that abort the underlying transaction fail the whole batch, even
- *   when replay catches the handler's error. In IndexedDB, any failed request
- *   that is not prevented aborts the whole transaction, and in PostgreSQL so
- *   does a failed statement outside a savepoint. A replayed batch is then
- *   retried as above, so a failure that repeats on every attempt stops sync
- *   from that remote until it is fixed.
+ * - Decode failures and handler errors or defects fail the whole replay batch.
+ *   A real transaction must roll back earlier projection writes on failure;
+ *   the default wrapper does not undo any side effects. External effects such
+ *   as HTTP requests cannot be rolled back by a database transaction.
  * - Replay handlers must tolerate running more than once for the same entry.
  * - Unless the transaction and the journal share a database connection, the
  *   transaction commits before the journal does, and the two commits are not
@@ -509,8 +557,8 @@ export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/
  *   from yielding to the scheduler while it is open, by providing
  *   `References.PreventSchedulerYield` as `withTransaction` from
  *   `@effect/platform-browser` does. Otherwise it can commit partway through a
- *   batch, and the remaining handlers fail. During replay those errors are
- *   logged and skipped, leaving the projection silently out of date.
+ *   batch, and the remaining handlers fail. Stopping replay cannot roll back
+ *   projection changes that have already committed.
  * - The transaction stays open for the whole batch, so other read-write
  *   transactions on the same tables wait for it.
  * - The transaction must not change the error or success of the wrapped
@@ -924,9 +972,10 @@ export const groupReactivity = <Events extends Event.Any>(
  * **Details**
  *
  * The returned handler decodes the entry and conflicts with the registered event
- * schema, runs the matching handler with the supplied identity and store id, logs
- * failures, and invalidates configured reactivity keys. Invalidations are
- * deferred until the end of an enclosing `Reactivity.withBatch`.
+ * schema, runs the matching handler with the supplied identity and store id, and
+ * invalidates configured reactivity keys. Decode and handler failures, including
+ * defects, fail with RemoteReplayError rather than skipping the entry.
+ * Invalidations are deferred until the end of an enclosing `Reactivity.withBatch`.
  *
  * @stability unstable
  * @category handlers
@@ -1046,7 +1095,11 @@ const makeReplayEntryFromRemote = (options: Parameters<typeof makeReplayFromRemo
 
       yield* invalidateEntry(options.reactivity, options.reactivityKeys, entry)
     },
-    Effect.catchCause(Effect.logError),
+    (effect, { entry }) =>
+      Effect.catchCause(effect, (cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.failCause(cause as Cause.Cause<never>)
+          : Effect.fail(new RemoteReplayError({ entry, cause }))),
     (effect, { entry }) =>
       Effect.annotateLogs(effect, {
         ...options.logAnnotations,
@@ -1078,6 +1131,7 @@ const make = Effect.gen(function*() {
 
   const reactivity = yield* Reactivity
   const handlerTransaction = yield* HandlerTransaction
+  const onRemoteReplayError = yield* OnRemoteReplayError
   const replayFromRemote = makeReplayBatchFromRemote({
     handlers: registry.handlers,
     storeId,
@@ -1095,7 +1149,8 @@ const make = Effect.gen(function*() {
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      yield* Effect.gen(function*() {
+      let stopped = false
+      const consume = yield* Effect.gen(function*() {
         const startSequence = yield* journal.nextRemoteSequence(remote.id)
         const changes = yield* remote.changes({
           identity,
@@ -1158,7 +1213,10 @@ const make = Effect.gen(function*() {
                 return output
               })
               : undefined,
-            effect: (batch) => handlerTransaction(replayFromRemote(batch))
+            // The journal's callback only admits EventJournalError. Keep replay
+            // failures distinct from journal errors (including SQL error mapping)
+            // and recover the RemoteReplayError at the replication boundary.
+            effect: (batch) => handlerTransaction(replayFromRemote(batch)).pipe(Effect.orDie)
           }).pipe(
             Effect.tap(({ duplicateEntries }) => invalidateReactivityEntries(duplicateEntries)),
             journal.withLock(storeId),
@@ -1168,7 +1226,14 @@ const make = Effect.gen(function*() {
         }
       }).pipe(
         Effect.scoped,
-        Effect.catchCause(Effect.logError),
+        Effect.catchCause((cause) => {
+          const error = Cause.findDefect(cause)
+          if (Result.isSuccess(error) && error.success instanceof RemoteReplayError) {
+            stopped = true
+            return Effect.fail(error.success)
+          }
+          return Effect.logError(cause)
+        }),
         Effect.repeat(remoteRetrySchedule),
         Effect.annotateLogs({
           service: "EventLog",
@@ -1194,22 +1259,34 @@ const make = Effect.gen(function*() {
         Effect.tapCause(Effect.logDebug),
         Effect.retry(remoteRetrySchedule)
       )
-      yield* Effect.addFinalizer(() => Effect.ignore(write))
-      const changesSub = yield* journal.changes
-      const changes = yield* Queue.dropping<void>(1)
-      yield* PubSub.takeAll(changesSub).pipe(
-        Effect.andThen(Queue.offer(changes, undefined)),
-        Effect.forever,
-        Effect.forkScoped
-      )
-      yield* writeUntilSuccess
-      return yield* Queue.take(changes).pipe(
-        Effect.andThen(writeUntilSuccess),
-        Effect.catchCause(Effect.logError),
-        Effect.forever
-      )
+      yield* Effect.addFinalizer(() => stopped ? Effect.void : Effect.ignore(write))
+      return yield* Effect.gen(function*() {
+        const changesSub = yield* journal.changes
+        const changes = yield* Queue.dropping<void>(1)
+        yield* PubSub.takeAll(changesSub).pipe(
+          Effect.andThen(Queue.offer(changes, undefined)),
+          Effect.forever,
+          Effect.forkScoped
+        )
+        yield* writeUntilSuccess
+        return yield* Queue.take(changes).pipe(
+          Effect.andThen(writeUntilSuccess),
+          Effect.catchCause(Effect.logError),
+          Effect.forever
+        )
+      }).pipe(Effect.raceFirst(Fiber.join(consume)))
     },
     Effect.scoped,
+    (effect, remote) =>
+      Effect.catchTag(effect, "RemoteReplayError", (error) =>
+        onRemoteReplayError({ remoteId: remote.id, error }).pipe(
+          Effect.annotateLogs({
+            service: "EventLog",
+            effect: "writeFromRemote",
+            remoteId: remote.id,
+            entryId: error.entry.idString
+          })
+        )),
     Effect.provideService(Identity, identity),
     Effect.orDie
   )
