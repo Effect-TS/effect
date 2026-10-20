@@ -506,7 +506,7 @@ class YamlParser {
       const line = this.lines[end]
       if (line.raw.trim().length !== 0) {
         if (line.indent <= parentIndent) break
-        // The first non-empty line sets the indentation; only a comment may be less indented, and it ends the scalar.
+        // The first non-empty line sets the indentation; a less indented comment ends the scalar.
         contentIndent ??= line.indent
         if (line.indent < contentIndent) {
           if (line.text.length === 0) break

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Yaml.parse` block scalars taking their indentation from the least indented line, which pulled less indented comments into the value.
+Fix `Yaml.parse` block scalars including less indented comments in their value.
