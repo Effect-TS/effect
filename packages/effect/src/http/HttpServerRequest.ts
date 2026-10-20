@@ -70,7 +70,9 @@ export const TypeId = "~effect/http/HttpServerRequest"
  * Identifies one server request across modified views and body wrappers.
  * Adapters allocate a fresh token for each request, even when reusing a source.
  *
- * @internal
+ * @stability unstable
+ * @category symbols
+ * @since 4.0.0
  */
 export const RequestToken: unique symbol = Symbol.for("~effect/http/HttpServerRequest/RequestToken")
 
