@@ -1651,6 +1651,26 @@ describe("Stream", () => {
         assertTrue(values.length <= 1)
       }))
 
+    it.effect("preserves concat/suspend defects when retrying the same pull", () =>
+      Effect.gen(function*() {
+        let evaluations = 0
+        const pull = yield* Stream.toPull(Stream.concat(
+          Stream.concat(
+            Stream.empty,
+            Stream.suspend((): Stream.Stream<never> => {
+              evaluations++
+              throw "boom"
+            })
+          ),
+          Stream.make(99)
+        ))
+        const first = yield* Effect.exit(pull)
+        const second = yield* Effect.exit(pull)
+        strictEqual(evaluations, 1)
+        deepStrictEqual(first, Exit.die("boom"))
+        deepStrictEqual(second, Exit.die("boom"))
+      }))
+
     it.effect("checks for yielding between suspended parts", () =>
       Effect.gen(function*() {
         const nested = (n: number): Stream.Stream<never> => n === 0 ? Stream.empty : Stream.suspend(() => nested(n - 1))
