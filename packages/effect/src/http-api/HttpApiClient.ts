@@ -17,6 +17,7 @@ import * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
+import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
 import type * as Headers from "../http/Headers.ts"
@@ -44,7 +45,6 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
-import * as Ndjson from "./internal/ndjson.ts"
 import * as HttpApiPath from "./internal/path.ts"
 
 /**
@@ -1091,22 +1091,40 @@ function makeStreamBodyDecoder(
     const decodeElement = Schema.decodeUnknownEffect(Schema.toCodecJson(streamSchema.schema), options)
     const maxElementBytes = ByteSize.toNumberUnsafe(streamSchema.maxElementBytes)
     return (response) =>
-      Ndjson.decode(response.stream, {
-        decodeElement,
-        maxElementBytes,
-        onElementTooLarge: () =>
-          new HttpClientError.HttpClientError({
+      response.stream.pipe(
+        Stream.pipeThroughChannel(Ndjson.decode({ ignoreEmptyLines: true, maxLineBytes: maxElementBytes })),
+        Stream.mapError((error) => {
+          if (!Ndjson.isNdjsonError(error)) return error
+          if (error.reason !== "LineTooLarge") return ndjsonSchemaError(error)
+          return new HttpClientError.HttpClientError({
             reason: new HttpClientError.DecodeError({
               request: response.request,
               response,
               description: `NDJSON line exceeds maxElementBytes of ${maxElementBytes} bytes`
             })
           })
-      })
+        }),
+        Stream.mapEffect((json) => decodeElement(json))
+      )
   }
   const decoder = makeSseDecoder(streamSchema, options)
   return (response, sseOptions) => decodeSseStream(response.stream, streamSchema, decoder(sseOptions))
 }
+
+// `JSON.stringify` found no JSON representation for an encoded element
+const isNdjsonPackError = (error: unknown): error is Ndjson.NdjsonError =>
+  Ndjson.isNdjsonError(error) && error.kind === "Pack"
+
+const ndjsonSchemaError = (error: Ndjson.NdjsonError): Schema.SchemaError =>
+  new Schema.SchemaError(
+    new SchemaIssue.InvalidValue({
+      message: error.reason === "InvalidUtf8"
+        ? "Expected valid UTF-8"
+        : error.unterminated
+        ? "Expected a valid JSON line, got an unterminated final line"
+        : "Expected a valid JSON line"
+    })
+  )
 
 function makeSseDecoder(
   declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
@@ -1281,8 +1299,13 @@ function makeStreamPayloadEncoder(
   if (HttpApiSchema.isStreamUint8Array(schema)) {
     return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
   }
-  const encodeElements = Schema.encodeUnknownEffect(Schema.Array(Schema.toCodecJson(schema.schema)), options)
-  return (stream) => Ndjson.encode(stream, encodeElements)
+  const encodeElements = Schema.encodeUnknownEffect(Schema.NonEmptyArray(Schema.toCodecJson(schema.schema)), options)
+  return (stream) =>
+    stream.pipe(
+      Stream.mapArrayEffect((elements) => encodeElements(elements)),
+      Stream.pipeThroughChannel(Ndjson.encode()),
+      Stream.catchIf(isNdjsonPackError, Stream.die)
+    )
 }
 
 // The state of one streaming upload. Adapters report a failing body as a
