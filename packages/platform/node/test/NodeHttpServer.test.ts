@@ -113,6 +113,8 @@ describe("HttpServer", () => {
           // Obtaining a body accessor must not start reading the body.
           void request.stream
           void request.text
+          void request.multipart
+          void request.multipartStream
           return Effect.succeed(HttpServerResponse.empty({ status: 413 }))
         })
       ).pipe(
@@ -158,6 +160,64 @@ describe("HttpServer", () => {
         assert.isTrue(response.uploaded)
       })
   )
+
+  it.effect.each(["multipart", "multipartStream"] as const)(
+    "sends one 100 Continue when consuming %s",
+    (accessor) =>
+      Effect.gen(function*() {
+        const server = Http.createServer()
+        yield* HttpServer.serve(
+          HttpServerRequest.HttpServerRequest.use((original) => {
+            const request = original.modify({ url: "/upload" })
+            const field = accessor === "multipart"
+              ? request.multipart.pipe(Effect.map((parts) => parts.message))
+              : request.multipartStream.pipe(
+                Stream.runCollect,
+                Effect.map((parts) => parts.map((part) => Multipart.isField(part) ? part.value : "file").join(""))
+              )
+            return field.pipe(Effect.map((value) => HttpServerResponse.text(String(value))))
+          })
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+          Layer.build
+        )
+
+        const payload =
+          "--boundary\r\nContent-Disposition: form-data; name=\"message\"\r\n\r\nhello\r\n--boundary--\r\n"
+        const response = yield* expectContinueRequest(tcpPort(server), payload, {
+          "content-type": "multipart/form-data; boundary=boundary"
+        })
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(response.body, "hello")
+        assert.strictEqual(response.continues, 1)
+        assert.isTrue(response.uploaded)
+      })
+  )
+
+  it.effect("sends one 100 Continue across repeated original and modified body reads", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      yield* HttpServer.serve(
+        HttpServerRequest.HttpServerRequest.use((original) =>
+          Effect.gen(function*() {
+            const modified = original.modify({ url: "/body" })
+            // Start both readers before the client uploads, then read their cached bodies again.
+            const bodies = yield* Effect.all([original.text, modified.text], { concurrency: "unbounded" })
+            const repeated = yield* Effect.all([original.text, modified.text])
+            return HttpServerResponse.text([...bodies, ...repeated].join(","))
+          })
+        )
+      ).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+        Layer.build
+      )
+
+      const response = yield* expectContinueRequest(tcpPort(server), "hello")
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.body, "hello,hello,hello,hello")
+      assert.strictEqual(response.continues, 1)
+      assert.isTrue(response.uploaded)
+    }))
 
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
@@ -1890,7 +1950,7 @@ const rawUpgradeRequest = (port: number, path: string): Promise<string> =>
   })
 
 // Flush only headers. Like curl, upload only after the server asks for the body.
-const expectContinueRequest = (port: number, payload: string) =>
+const expectContinueRequest = (port: number, payload: string, headers: Http.OutgoingHttpHeaders = {}) =>
   Effect.callback<{ status: number; body: string; continues: number; uploaded: boolean }, Error>((resume) => {
     let continues = 0
     let uploaded = false
@@ -1899,6 +1959,7 @@ const expectContinueRequest = (port: number, payload: string) =>
       port,
       method: "POST",
       headers: {
+        ...headers,
         expect: "100-continue",
         "content-length": Buffer.Buffer.byteLength(payload),
         connection: "close"
