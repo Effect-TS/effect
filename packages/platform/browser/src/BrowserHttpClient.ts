@@ -8,6 +8,9 @@
  * XHR response type, an overridable `XMLHttpRequest` constructor service, and
  * the `layerXMLHttpRequest` layer.
  *
+ * Requests with an `Upgrade` header fail with `TransportError` before anything
+ * is sent because neither fetch nor XMLHttpRequest can hand over the connection.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -135,6 +138,16 @@ const makeXhrRequest = () => new globalThis.XMLHttpRequest()
 const makeXmlHttpRequest = HttpClient.make(
   (request, url, signal, fiber) =>
     Effect.suspend(() => {
+      if (request.headers.upgrade !== undefined) {
+        return Effect.fail(
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({
+              request,
+              description: "XMLHttpRequest cannot send an HTTP upgrade request"
+            })
+          })
+        )
+      }
       const xhr = Context.getOrElse(
         fiber.context,
         XMLHttpRequest,
