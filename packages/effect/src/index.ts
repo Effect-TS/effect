@@ -165,12 +165,6 @@ export * as Context from "./Context.ts"
 export * as Cron from "./Cron.ts"
 
 /**
- * @stability unstable
- * @since 4.0.0
- */
-export * as Crypto from "./Crypto.ts"
-
-/**
  * @stability stable
  * @since 2.0.0
  */
