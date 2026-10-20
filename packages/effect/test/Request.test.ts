@@ -7,6 +7,7 @@ import { flow, pipe } from "effect/Function"
 import { Persistable, Persistence } from "effect/persistence"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import { TestClock } from "effect/testing"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -681,6 +682,45 @@ describe("Request", { concurrent: false }, () => {
       assert.strictEqual(yield* Effect.request(new GetName(), resolver), "Bob")
       assert.strictEqual(calls, 1)
     }).pipe(Effect.provide(Persistence.layerMemory)))
+
+  for (const refresh of ["per-entry failure", "whole-batch failure", "no completions"] as const) {
+    it.effect(`persisted stale-while-revalidate persists only refresh results: ${refresh}`, () =>
+      Effect.gen(function*() {
+        class GetValue extends Persistable.Class()("StaleValue", {
+          primaryKey: () => "value",
+          success: Schema.String,
+          error: Persistence.PersistenceError
+        }) {}
+        const request = new GetValue()
+        const error = new Persistence.PersistenceError({ message: "backend failed" })
+        const options = { storeId: "stale-refresh", timeToLive: () => "1 second" as const }
+        const store = yield* (yield* Persistence.Persistence).make(options)
+        yield* store.set(request, Exit.succeed("Alice"))
+        const finished = yield* Deferred.make<void>()
+        const resolver = yield* Resolver.make<GetValue>((entries) => {
+          switch (refresh) {
+            case "whole-batch failure":
+              return Effect.fail(error)
+            case "per-entry failure":
+              return Effect.sync(() => {
+                for (const entry of entries) entry.completeUnsafe(Exit.fail(error))
+              })
+            case "no completions":
+              return Effect.void
+          }
+        }).pipe(Resolver.persisted({ ...options, staleWhileRevalidate: () => true }))
+        const persisted = resolver.pipe(
+          Resolver.around(() => Effect.void, () => Deferred.succeed(finished, undefined))
+        )
+
+        yield* TestClock.adjust("500 millis")
+        assert.strictEqual(yield* Effect.request(request, persisted), "Alice")
+        yield* Deferred.await(finished)
+        // Past the original expiry, but within the TTL of any refreshed result.
+        yield* TestClock.adjust("600 millis")
+        assert.deepStrictEqual(yield* store.get(request), refresh === "no completions" ? undefined : Exit.fail(error))
+      }).pipe(Effect.provide(Persistence.layerMemory)))
+  }
 
   it.effect("persisted propagates failures to unfinished requests", () =>
     Effect.gen(function*() {

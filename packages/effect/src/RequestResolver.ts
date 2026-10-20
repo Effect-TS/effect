@@ -1341,6 +1341,8 @@ export const persisted: {
             exit === undefined ||
             (options.staleWhileRevalidate && options.staleWhileRevalidate(exit as any, entry.request))
           ) {
+            // Deliver stale results before tracking refresh completions for persistence.
+            if (exit !== undefined) entry.completeUnsafe(exit as any)
             const prevComplete = entry.completeUnsafe
             entry.completeUnsafe = function(exit) {
               completed.add(entry)
@@ -1348,7 +1350,7 @@ export const persisted: {
               prevComplete(exit)
             }
             leftover.push(entry)
-            if (exit === undefined) continue
+            continue
           }
           entry.completeUnsafe(exit as any)
         }
