@@ -331,7 +331,7 @@ describe("HttpEffect", () => {
 
       appendPreResponseHandlerUnsafe(request, handler)
 
-      strictEqual(requestPreResponseHandlers.get(modified[HttpServerRequest.RequestToken] ?? modified.source), handler)
+      strictEqual(requestPreResponseHandlers.get(modified[HttpServerRequest.RequestToken]), handler)
     })
   })
 

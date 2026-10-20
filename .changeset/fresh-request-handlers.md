@@ -1,6 +1,8 @@
 ---
 "effect": patch
 "@effect/platform-node": patch
+"@effect/platform-bun": patch
+"@effect/platform-deno": patch
 ---
 
-Scope pre-response handlers to each server request so retries and redirects in `HttpApiTest` do not reuse handlers from earlier attempts. Preserve request identity through modified requests and decompression wrappers.
+Add `HttpServerRequest.RequestToken`, a per-request identity that `modify()` and body wrappers preserve. Pre-response handlers and logger-disabled state are keyed by it instead of `source`, so `HttpApiTest` no longer accumulates handlers across retry attempts that reuse the same client request.

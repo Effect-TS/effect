@@ -107,7 +107,7 @@ const stripSearchAndHash = (url: string): string => {
 export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | HttpServerRequest> =>
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-    loggerDisabledRequests.add(request.source)
+    loggerDisabledRequests.add(request[Request.RequestToken])
     return self
   })
 
@@ -183,7 +183,7 @@ export const logger: <E, R>(
     const path = stripSearchAndHash(request.url)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
-        if (loggerDisabledRequests.has(request.source)) {
+        if (loggerDisabledRequests.has(request[Request.RequestToken])) {
           return exit
         } else if (exit._tag === "Failure") {
           const [response, cause] = causeResponseStripped(exit.cause)

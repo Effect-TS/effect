@@ -105,7 +105,7 @@ export const groups = Effect.fnUntraced(function*<
     const response = yield* handler.pipe(
       Effect.flatMap((response) => {
         const preResponse = preResponseHandler.requestPreResponseHandlers.get(
-          serverRequest[HttpServerRequest.RequestToken] ?? serverRequest.source
+          serverRequest[HttpServerRequest.RequestToken]
         )
         return preResponse === undefined ? Effect.succeed(response) : preResponse(serverRequest, response)
       }),

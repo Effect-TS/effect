@@ -90,7 +90,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   }
 
   get [HttpServerRequest.RequestToken](): object {
-    return this.inner[HttpServerRequest.RequestToken] ?? this.inner.source
+    return this.inner[HttpServerRequest.RequestToken]
   }
 
   get url(): string {

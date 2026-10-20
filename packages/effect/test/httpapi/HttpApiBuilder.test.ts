@@ -418,16 +418,14 @@ it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
         )
       )
       let attempts = 0
+      let handlerRuns = 0
       const MiddlewareLayer = Layer.succeed(Middleware)((effect) =>
         Effect.gen(function*() {
           attempts++
-          yield* HttpEffect.appendPreResponseHandler((_request, response) =>
-            Effect.succeed(HttpServerResponse.setHeader(
-              response,
-              "x-handler-runs",
-              String(Number(response.headers["x-handler-runs"] ?? "0") + 1)
-            ))
-          )
+          yield* HttpEffect.appendPreResponseHandler((_request, response) => {
+            handlerRuns++
+            return Effect.succeed(response)
+          })
           const response = yield* effect
           return HttpServerResponse.setStatus(response, attempts === 1 ? 503 : 200)
         })
@@ -435,7 +433,8 @@ it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
       const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
         handlers.handle("get", () =>
           Effect.succeed("ok")))
-      // Resolve the URL once so the transport receives the same request on both attempts.
+      // Resolve the URL once and disable tracing, so neither prepends a base URL
+      // nor sets headers per attempt and the transport sees the same request twice.
       const client = yield* HttpApiTest.groups(Api, ["test"], { baseUrl: "" }).pipe(
         Effect.provide(GroupLayer),
         Effect.provide(MiddlewareLayer),
@@ -452,7 +451,7 @@ it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
 
       assert.strictEqual(attempts, 2)
       assert.strictEqual(response.status, 200)
-      assert.strictEqual(response.headers["x-handler-runs"], "1")
+      assert.strictEqual(handlerRuns, 2)
     }))
 
   it.effect("runs registered pre-response handlers", () =>

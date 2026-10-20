@@ -418,6 +418,7 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
 }
 
 class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
+  readonly [ServerRequest.RequestToken]: object
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
@@ -435,11 +436,13 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     bunServer: BunServer<WebSocketContext>,
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    requestToken?: object
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+    this[ServerRequest.RequestToken] = requestToken ?? this
     this.source = source
     this.resolve = resolve
     this.url = url
@@ -469,7 +472,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.bunServer,
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      this[ServerRequest.RequestToken]
     )
   }
   get method(): HttpMethod {

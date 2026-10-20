@@ -365,7 +365,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     url?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    requestToken: object = {}
+    requestToken?: object
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -376,7 +376,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         })
       }), remoteAddressOverride)
     this[Request.TypeId] = Request.TypeId
-    this[Request.RequestToken] = requestToken
+    this[Request.RequestToken] = requestToken ?? this
     this.response = response
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {

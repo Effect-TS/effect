@@ -55,7 +55,7 @@ export const toHandled = <E, R, EH, RH>(
     return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
-      const handler = preResponseHandler.requestPreResponseHandlers.get(request[Request.RequestToken] ?? request.source)
+      const handler = preResponseHandler.requestPreResponseHandlers.get(request[Request.RequestToken])
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
@@ -81,7 +81,7 @@ export const toHandled = <E, R, EH, RH>(
     request: HttpServerRequest,
     response: HttpServerResponse
   ): Effect.Effect<HttpServerResponse, EH | HttpServerError, RH> => {
-    const handler = preResponseHandler.requestPreResponseHandlers.get(request[Request.RequestToken] ?? request.source)
+    const handler = preResponseHandler.requestPreResponseHandlers.get(request[Request.RequestToken])
     if (handler === undefined) {
       ;(request as any)[handledSymbol] = true
       return Effect.mapEager(

@@ -68,7 +68,9 @@ export const TypeId = "~effect/http/HttpServerRequest"
 
 /**
  * Identifies one server request across modified views and body wrappers.
- * Adapters allocate a fresh token for each request, even when reusing a source.
+ * Root requests use themselves as the token; `modify` and wrappers carry it
+ * through, so per-request state can be keyed by it even when the `source`
+ * object is reused across requests.
  *
  * @stability unstable
  * @category symbols
@@ -91,7 +93,7 @@ export const RequestToken: unique symbol = Symbol.for("~effect/http/HttpServerRe
  */
 export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessage<HttpServerError> {
   readonly [TypeId]: typeof TypeId
-  readonly [RequestToken]?: object | undefined
+  readonly [RequestToken]: object
   readonly source: object
   readonly url: string
   readonly originalUrl: string
@@ -511,13 +513,13 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     url: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    requestToken: object = {}
+    requestToken?: object
   ) {
     super()
     this[TypeId] = TypeId
     this[HttpIncomingMessage.TypeId] = HttpIncomingMessage.TypeId
     this.source = source
-    this[RequestToken] = requestToken
+    this[RequestToken] = requestToken ?? this
     this.url = url
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
@@ -712,13 +714,13 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     urlOverride?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    requestToken: object = {}
+    requestToken?: object
   ) {
     super()
     this[TypeId] = TypeId
     this[HttpIncomingMessage.TypeId] = HttpIncomingMessage.TypeId
     this.source = source
-    this[RequestToken] = requestToken
+    this[RequestToken] = requestToken ?? this
     this.originalUrl = originalUrl
     this.urlOverride = urlOverride
     this.headersOverride = headersOverride
