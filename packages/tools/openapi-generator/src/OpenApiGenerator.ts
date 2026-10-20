@@ -918,10 +918,18 @@ const makeMultipartTransformer = (
     return Object.keys(siblings).length === 0 ? inlined : { allOf: [inlined, visit(siblings)] }
   }
 
+  // Follows component aliases so a reference to a binary string maps to the file schema too.
+  const isBinaryFile = (value: unknown, seen: Set<string> = new Set()): boolean => {
+    if (isMultipartBinaryFile(value)) return true
+    if (!Predicate.isObject(value) || !isComponentRef(value.$ref) || seen.has(value.$ref)) return false
+    seen.add(value.$ref)
+    return isBinaryFile(resolveRef(value.$ref), seen)
+  }
+
   const visit = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(visit)
     if (!Predicate.isObject(value)) return value
-    if (isMultipartBinaryFile(value)) return { $ref: singleFileRef }
+    if (isBinaryFile(value)) return { $ref: singleFileRef }
     if (isComponentRef(value.$ref) && inline(value.$ref) && !inlining.has(value.$ref)) {
       return inlineComponent(value, value.$ref)
     }
@@ -947,16 +955,19 @@ const collectNonMultipartRefs = (
     seen.add(value.$ref)
     return resolveRef(value.$ref)
   }
-  const visit = (value: unknown): void => {
+  // `names` marks maps keyed by user-chosen names, where keys are never keywords.
+  const visit = (value: unknown, names = false): void => {
     if (Array.isArray(value)) {
-      value.forEach(visit)
+      for (const item of value) visit(item)
     } else if (Predicate.isObject(value)) {
       visit(resolve(value))
       for (const [key, item] of Object.entries(value)) {
-        if (key === "requestBody") {
-          visitRequestBody(item)
-        } else {
+        if (names) {
           visit(item)
+        } else if (key === "requestBody") {
+          visitRequestBody(item)
+        } else if (!isDataKeyword(key)) {
+          visit(item, nameMapKeywords.has(key))
         }
       }
     }
@@ -974,6 +985,22 @@ const collectNonMultipartRefs = (
   visit(paths)
   return seen
 }
+
+// Keywords holding user data, such as examples, which may contain `$ref` keys that are not references.
+const isDataKeyword = (key: string): boolean =>
+  dataKeywords.has(key) || (key.startsWith("x-") && key !== "x-oai-additionalOperations")
+
+const dataKeywords = new Set(["default", "const", "enum", "example", "examples"])
+
+const nameMapKeywords = new Set([
+  "properties",
+  "patternProperties",
+  "dependentSchemas",
+  "$defs",
+  "definitions",
+  "headers",
+  "encoding"
+])
 
 const componentRefPrefix = "#/components/schemas/"
 
