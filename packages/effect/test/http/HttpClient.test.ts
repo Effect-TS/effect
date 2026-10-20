@@ -2188,6 +2188,57 @@ Missing key
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
   })
 
+  it.effect("sends stored response cookies only to the matching host", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          seen.push(request.headers.cookie)
+          const host = new URL(request.url).hostname
+          const setCookie = host === "api.example.com"
+            ? "session=secret"
+            : "session=attacker"
+          return Effect.succeed(HttpClientResponse.fromWeb(
+            request,
+            new Response(null, { status: 200, headers: { "set-cookie": setCookie } })
+          ))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/account")
+      yield* client.get("https://evil.example/hook")
+      yield* client.get("https://api.example.com/account")
+      yield* client.get("https://evil.example/hook")
+
+      assert.deepStrictEqual(seen, [undefined, undefined, "session=secret", "session=attacker"])
+    }))
+
+  it.effect("stores cookies using the final response host and default path", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          const source = new Response(null, { headers: { "set-cookie": "session=final" } })
+          Object.defineProperty(source, "url", { value: "https://login.example.com/auth/callback" })
+          return Effect.succeed(HttpClientResponse.fromWeb(request, source))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/start")
+
+      const stored = yield* Ref.get(jar)
+      const now = yield* Clock.currentTimeMillis
+      assert.strictEqual(
+        Cookies.toRequestCookieHeader(stored, "https://login.example.com/auth/next", now),
+        "session=final"
+      )
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://api.example.com/start", now), undefined)
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://login.example.com/other", now), undefined)
+    }))
+
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
     const source = new Response(null, { headers: { "content-type": "text/plain" } })
