@@ -68,6 +68,43 @@ function* assertClientError<A, E, R>(res: Effect.Effect<A, E, R>, error: E) {
 }
 
 describe("HttpApi", () => {
+  it.effect("undeclared multipart stream errors respond with 413", () => {
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: Schema.Struct({
+            file: Multipart.SingleFileSchema
+          }).pipe(HttpApiSchema.asMultipartStream({ maxFileSize: 4 }))
+        })
+      )
+    )
+    const GroupLayer = HttpApiBuilder.group(
+      Api,
+      "group",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) =>
+          // Handler types only allow declared errors; preserve the undeclared runtime failure.
+          payload.pipe(
+            Stream.filter(Multipart.isFile),
+            Stream.runForEach((file) => Stream.runDrain(file.content))
+          ) as Effect.Effect<void>)
+    )
+    const ApiLayer = HttpRouter.serve(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+      { disableListenLog: true, disableLogger: true }
+    ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+
+    return Effect.gen(function*() {
+      const data = new FormData()
+      data.append("file", new Blob(["hello"], { type: "text/plain" }), "hello.txt")
+      const response = yield* HttpClientRequest.post("/upload").pipe(
+        HttpClientRequest.bodyFormData(data),
+        HttpClient.execute
+      )
+      assert.strictEqual(response.status, 413)
+    }).pipe(Effect.provide(ApiLayer))
+  })
+
   it.effect("catch all path", () => {
     const Api = HttpApi.make("api")
       .add(

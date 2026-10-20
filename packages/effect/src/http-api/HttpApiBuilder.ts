@@ -26,6 +26,7 @@ import type { HttpPlatform } from "../http/HttpPlatform.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as Request from "../http/HttpServerRequest.ts"
 import { HttpServerRequest } from "../http/HttpServerRequest.ts"
+import * as Respondable from "../http/HttpServerRespondable.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
 import * as Multipart from "../http/Multipart.ts"
@@ -909,7 +910,10 @@ function handlerToHttpEffect(
     Effect.withErrorReporting,
     Effect.catch((error) => {
       if (HttpApiSchemaError.is(error)) return Effect.die(error)
-      return Effect.orDie(encodeError(error))
+      return Effect.catch(encodeError(error), (schemaError) =>
+        Respondable.isRespondable(error)
+          ? Respondable.toResponse(error)
+          : Effect.die(schemaError))
     }),
     Effect.provideContext(context)
   )
