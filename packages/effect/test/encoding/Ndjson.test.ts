@@ -57,6 +57,23 @@ describe("Ndjson", () => {
       assert.deepStrictEqual(values, [1, 2, 3])
     }))
 
+  it.effect("decode treats a BOM-only stream as empty but still parses a terminated empty line", () =>
+    Effect.gen(function*() {
+      const bomOnly = yield* Stream.fromArrays([new Uint8Array([0xef, 0xbb])], [new Uint8Array([0xbf])]).pipe(
+        Stream.pipeThroughChannel(Ndjson.decode()),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(bomOnly, [])
+
+      const error = yield* Stream.make(new Uint8Array([0xef, 0xbb, 0xbf, ...encoder.encode("\n")])).pipe(
+        Stream.pipeThroughChannel(Ndjson.decode()),
+        Stream.runCollect,
+        Effect.flip
+      )
+      assert.strictEqual(error.reason, "InvalidJson")
+      assert.isFalse(error.unterminated)
+    }))
+
   it.effect("decode fails invalid UTF-8 after emitting earlier lines", () =>
     Effect.gen(function*() {
       const { error, values } = yield* collect(
