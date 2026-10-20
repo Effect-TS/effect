@@ -59,6 +59,58 @@ describe("HttpApiEndpoint payload schemas", () => {
   })
 })
 
+describe("HttpApiEndpoint streaming payload schemas", () => {
+  const Item = Schema.Struct({ n: Schema.Number })
+
+  it("accepts one streaming payload beside buffered payloads of other content types", () => {
+    const endpoint = HttpApiEndpoint.post("upload", "/upload", {
+      payload: [Schema.Array(Item), HttpApiSchema.StreamNdjson({ schema: Item })]
+    })
+
+    assert.deepStrictEqual([...endpoint.payload.keys()].sort(), ["application/json", "application/x-ndjson"])
+  })
+
+  it("rejects two streaming payloads", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: [HttpApiSchema.StreamNdjson({ schema: Item }), HttpApiSchema.StreamUint8Array()]
+        }),
+      /Multiple streaming payloads/
+    )
+  })
+
+  it("rejects a streaming and a buffered payload with the same normalized media type", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: [
+            Schema.String.pipe(HttpApiSchema.asText({ contentType: "Application/X-NDJSON; charset=utf-8" })),
+            HttpApiSchema.StreamNdjson({ schema: Item })
+          ]
+        }),
+      /Cannot combine buffered and streaming payloads/
+    )
+  })
+
+  it("rejects StreamSse as a payload", () => {
+    const payload: any = HttpApiSchema.StreamSse({ events: Events })
+    assert.throws(() => HttpApiEndpoint.post("upload", "/upload", { payload }), /StreamSse/)
+  })
+
+  it("rejects streaming payloads on no-body methods, with and without codecs", () => {
+    const payload: any = HttpApiSchema.StreamUint8Array()
+    for (const method of ["GET", "HEAD", "OPTIONS", "TRACE"] as const) {
+      assert.throws(() => HttpApiEndpoint.make(method)("upload", "/upload", { payload }), new RegExp(method))
+      assert.throws(
+        () => HttpApiEndpoint.make(method)("upload", "/upload", { payload, disableCodecs: true }),
+        new RegExp(method)
+      )
+    }
+    assert.strictEqual(HttpApiEndpoint.delete("upload", "/upload", { payload }).payload.size, 1)
+  })
+})
+
 describe("HttpApiEndpoint streaming success schemas", () => {
   it("GET endpoint accepts StreamSse success", () => {
     const stream = sse()
