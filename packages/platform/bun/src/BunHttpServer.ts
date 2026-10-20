@@ -257,7 +257,11 @@ const makeResponse = (
   scope: Scope.Scope
 ): Response => {
   if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
+    request.responded = true
     return ServerResponse.toWeb(response, { withoutBody: true })
+  }
+  if (response.body._tag !== "Stream") {
+    request.responded = true
   }
   const fields: {
     headers: globalThis.Headers
@@ -303,7 +307,14 @@ const makeResponse = (
           Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
             Effect.withFiber((fiber) => {
               Fiber.runIn(fiber, scope)
-              return Channel.toTransform(body.stream.channel)(upstream, streamScope)
+              return Channel.toTransform(
+                Stream.ensuring(
+                  body.stream,
+                  Effect.sync(() => {
+                    request.responded = true
+                  })
+                ).channel
+              )(upstream, streamScope)
             })
           )),
           context,
@@ -427,7 +438,6 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
 class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
-  readonly [ServerRequest.RequestTokenKey]: ServerRequest.RequestToken
   readonly source: Request
   public resolve: (response: Response) => void
   readonly url: string
@@ -435,6 +445,10 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   private compressionThreshold: number
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private readonly bodyState: ServerRequest.BodyState
+  // Set on the root request when its response is resolved, or when a streamed
+  // response body ends. Copies share the root's body state, which reads it.
+  responded = false
 
   constructor(
     source: Request,
@@ -444,12 +458,11 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    token?: ServerRequest.RequestToken
+    bodyState?: ServerRequest.BodyState
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
-    this[ServerRequest.RequestTokenKey] = token ?? ServerRequest.makeRequestToken()
     this.source = source
     this.resolve = resolve
     this.url = url
@@ -457,6 +470,10 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.compressionThreshold = compressionThreshold
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.bodyState = bodyState ?? ServerRequest.makeBodyState({
+      bodyUsed: () => source.bodyUsed,
+      responded: () => this.responded
+    })
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -480,7 +497,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[ServerRequest.RequestTokenKey]
+      this.bodyState
     )
   }
   get method(): HttpMethod {
@@ -506,7 +523,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
-    return ServerRequest.guardBodyStream(this, this.bodyStream)
+    return ServerRequest.guardBodyStream(this.bodyState, this.bodyStream)
   }
 
   private get bodyStream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
@@ -537,7 +554,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       return this.textEffect
     }
     this.textEffect = ServerRequest.guardBodyRead(
-      this,
+      this.bodyState,
       "text",
       Effect.tryPromise({
         try: () => this.source.text(),
@@ -596,12 +613,12 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = ServerRequest.guardBodyRead(this, "multipart", BunMultipart.persisted(this.source))
+    this.multipartEffect = ServerRequest.guardBodyRead(this.bodyState, "multipart", BunMultipart.persisted(this.source))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return ServerRequest.guardBodyStream(this, BunMultipart.stream(this.source))
+    return ServerRequest.guardBodyStream(this.bodyState, BunMultipart.stream(this.source))
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
@@ -610,7 +627,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       return this.arrayBufferEffect
     }
     this.arrayBufferEffect = ServerRequest.guardBodyRead(
-      this,
+      this.bodyState,
       "arrayBuffer",
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),

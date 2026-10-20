@@ -380,12 +380,12 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   // The adapter tears the body down after the response instead.
   protected override readonly closeOnDone = false
   readonly [Request.TypeId]: typeof Request.TypeId
-  readonly [Request.RequestTokenKey]: Request.RequestToken
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
   private upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError> | undefined
   upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
+  private readonly bodyState: Request.BodyState
 
   constructor(
     source: Http.IncomingMessage,
@@ -394,7 +394,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     url?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    token?: Request.RequestToken
+    bodyState?: Request.BodyState
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -405,7 +405,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         })
       }), remoteAddressOverride)
     this[Request.TypeId] = Request.TypeId
-    this[Request.RequestTokenKey] = token ?? Request.makeRequestToken()
     this.response = response
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {
@@ -421,6 +420,10 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     }
     this.url = url
     this.headersOverride = headersOverride
+    this.bodyState = bodyState ?? Request.makeBodyState({
+      // A lazy upgrade response is not created just to answer this.
+      responded: () => typeof response !== "function" && response.writableEnded
+    })
   }
 
   private cachedCookies: Record.ReadonlyRecord<string, string> | undefined
@@ -443,7 +446,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
 
   override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
     return Request.guardBodyStream(
-      this,
+      this.bodyState,
       Stream.suspend(() => {
         this.writeContinue()
         const source = this.source
@@ -457,10 +460,9 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     )
   }
 
-  private guardedArrayBuffer: Effect.Effect<ArrayBuffer, HttpServerError> | undefined
   override get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
-    return this.guardedArrayBuffer ??= Request.guardBodyRead(
-      this,
+    return Request.guardBodyRead(
+      this.bodyState,
       "arrayBuffer",
       Effect.suspend(() => {
         this.writeContinue()
@@ -483,7 +485,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[Request.RequestTokenKey]
+      this.bodyState
     )
   }
 
@@ -523,7 +525,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       return this.multipartEffect
     }
     this.multipartEffect = Request.guardBodyRead(
-      this,
+      this.bodyState,
       "multipart",
       Effect.suspend(() => {
         this.writeContinue()
@@ -535,7 +537,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Request.guardBodyStream(
-      this,
+      this.bodyState,
       Stream.suspend(() => {
         this.writeContinue()
         return NodeMultipart.stream(this.source, this.source.headers)

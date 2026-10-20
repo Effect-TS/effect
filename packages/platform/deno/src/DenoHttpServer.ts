@@ -180,7 +180,9 @@ const makeResponse = Effect.fnUntraced(function*(
   context: Context.Context<never>,
   scope: Scope.Scope
 ) {
+  const denoRequest = request as DenoServerRequest
   if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
+    denoRequest.responded = true
     yield* cancelResponseBody(response.body)
     return ServerResponse.toWeb(response, { withoutBody: true })
   }
@@ -201,6 +203,9 @@ const makeResponse = Effect.fnUntraced(function*(
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
   const body = response.body
+  if (body._tag !== "Stream") {
+    denoRequest.responded = true
+  }
   switch (body._tag) {
     case "Empty":
       return new Response(undefined, fields)
@@ -224,7 +229,14 @@ const makeResponse = Effect.fnUntraced(function*(
           Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
             Effect.withFiber((fiber) => {
               Fiber.runIn(fiber, scope)
-              return Channel.toTransform(stream.channel)(upstream, streamScope)
+              return Channel.toTransform(
+                Stream.ensuring(
+                  stream,
+                  Effect.sync(() => {
+                    denoRequest.responded = true
+                  })
+                ).channel
+              )(upstream, streamScope)
             })
           )),
           context
@@ -325,7 +337,6 @@ export const layerConfig = (
 class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
-  readonly [ServerRequest.RequestTokenKey]: ServerRequest.RequestToken
   readonly source: Request
   readonly remoteAddr: Deno.NetAddr | Deno.UnixAddr
   readonly url: string
@@ -333,6 +344,10 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   public resolve: (response: Response) => void
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private readonly bodyState: ServerRequest.BodyState
+  // Set on the root request when its response is resolved, or when a streamed
+  // response body ends. Copies share the root's body state, which reads it.
+  responded = false
 
   constructor(
     source: Request,
@@ -342,12 +357,11 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    token?: ServerRequest.RequestToken
+    bodyState?: ServerRequest.BodyState
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
-    this[ServerRequest.RequestTokenKey] = token ?? ServerRequest.makeRequestToken()
     this.source = source
     this.remoteAddr = remoteAddr
     this.resolve = resolve
@@ -355,6 +369,10 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     this.websocketOptions = websocketOptions
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.bodyState = bodyState ?? ServerRequest.makeBodyState({
+      bodyUsed: () => source.bodyUsed,
+      responded: () => this.responded
+    })
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -376,7 +394,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       this.websocketOptions,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[ServerRequest.RequestTokenKey]
+      this.bodyState
     )
   }
   get method(): HttpMethod {
@@ -407,7 +425,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
-    return ServerRequest.guardBodyStream(this, this.bodyStream)
+    return ServerRequest.guardBodyStream(this.bodyState, this.bodyStream)
   }
 
   private get bodyStream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
@@ -432,7 +450,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
     return this.textEffect ??= ServerRequest.guardBodyRead(
-      this,
+      this.bodyState,
       "text",
       Effect.tryPromise({
         try: () => this.source.text(),
@@ -472,17 +490,21 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    return this.multipartEffect ??= ServerRequest.guardBodyRead(this, "multipart", DenoMultipart.persisted(this.source))
+    return this.multipartEffect ??= ServerRequest.guardBodyRead(
+      this.bodyState,
+      "multipart",
+      DenoMultipart.persisted(this.source)
+    )
   }
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return ServerRequest.guardBodyStream(this, DenoMultipart.stream(this.source))
+    return ServerRequest.guardBodyStream(this.bodyState, DenoMultipart.stream(this.source))
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
     if (this.arrayBufferEffect) return this.arrayBufferEffect
     this.arrayBufferEffect = ServerRequest.guardBodyRead(
-      this,
+      this.bodyState,
       "arrayBuffer",
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),

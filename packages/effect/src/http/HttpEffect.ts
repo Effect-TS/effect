@@ -55,7 +55,7 @@ export const toHandled = <E, R, EH, RH>(
     return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
-      const handler = frame.state.preResponseHandler
+      const handler = frame.preResponseHandler
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
@@ -82,7 +82,7 @@ export const toHandled = <E, R, EH, RH>(
     response: HttpServerResponse
   ): Effect.Effect<HttpServerResponse, EH | HttpServerError, RH> => {
     const request = frame.request
-    const handler = frame.state.preResponseHandler
+    const handler = frame.preResponseHandler
     if (handler === undefined) {
       ;(request as any)[handledSymbol] = true
       return Effect.mapEager(
@@ -150,22 +150,19 @@ export const toHandled = <E, R, EH, RH>(
     Effect.onExitPrimitive(effect, (exit) => {
       fiber.setContext(frame.prev)
       if (scopeEjected in frame.scope) return undefined
-      frame.state.responded = true
       return Scope.closeUnsafe(frame.scope, frame.cause === undefined ? exit : Exit.failCause(frame.cause))
     }, true)
 
-  class RequestFrame {
+  class RequestFrame extends requestState.RequestState {
     readonly scope: Scope.Closeable
     readonly prev: Context.Context<never>
     readonly request: HttpServerRequest
-    readonly state: requestState.RequestState
     cause: Cause.Cause<E | EH | HttpServerError> | undefined
     constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
+      super()
       this.scope = scope
       this.prev = prev
       this.request = request
-      // Requests from other adapters may not carry a token.
-      this.state = requestState.fromRequest(request) ?? new requestState.RequestState()
     }
     [contA](response: HttpServerResponse, fiber: Fiber.Fiber<unknown, unknown>) {
       const sent = sendResponse(this, response)
@@ -173,7 +170,6 @@ export const toHandled = <E, R, EH, RH>(
       if (effectIsExit(sent) && sent._tag === "Success") {
         fiber.setContext(this.prev)
         if (scopeEjected in this.scope) return sent
-        this.state.responded = true
         const closed = Scope.closeUnsafe(this.scope, sent)
         return closed === undefined ? sent : Effect.flatMap(closed, () => sent)
       }
@@ -188,9 +184,7 @@ export const toHandled = <E, R, EH, RH>(
     fiberEnterUninterruptibleUnsafe(fiber)
     const scope = Scope.makeUnsafe()
     const frame = new RequestFrame(scope, fiber.context, Context.getUnsafe(fiber.context, HttpServerRequest))
-    fiber.setContext(
-      Context.add(Context.add(frame.prev, Scope.Scope, scope), requestState.CurrentRequestState, frame.state)
-    )
+    fiber.setContext(Context.add(Context.add(frame.prev, Scope.Scope, scope), requestState.CurrentRequestState, frame))
     // The native tracer has no backend, so its spans are unobservable.
     const currentTracer = fiber.cache.tracer
     if (
@@ -237,15 +231,11 @@ export const scopeTransferToStream = (
   }
   const fiber = Fiber.getCurrent()!
   const scope = Context.getUnsafe(fiber.context, Scope.Scope) as Scope.Closeable
-  const state = Context.getOrUndefined(fiber.context, requestState.CurrentRequestState)
   scopeDisableClose(scope)
   return Response.setBodyKeepHeaders(
     response,
     HttpBody.stream(
-      Stream.onExit(response.body.stream, (exit) => {
-        if (state !== undefined) state.responded = true
-        return Scope.close(scope, exit)
-      }),
+      Stream.onExit(response.body.stream, (exit) => Scope.close(scope, exit)),
       response.body.contentType,
       response.body.contentLength
     )
@@ -328,11 +318,27 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
   : (request: Request, context: Context.Context<ReqR>) => Promise<globalThis.Response> =>
 {
   const resolveSymbol = Symbol.for("@effect/platform/HttpApp/resolve")
+  const respondedSymbol = Symbol.for("@effect/platform/HttpApp/responded")
   const httpApp = toHandled(self, (request, response) => {
     const withoutBody = request.method === "HEAD"
-    if (!Response.omitsBody(response, withoutBody)) {
+    const markResponded: () => void = (request as any)[respondedSymbol]
+    if (Response.omitsBody(response, withoutBody)) {
+      markResponded()
+    } else {
       // The transferred request scope closes when an abort interrupts the body, even if it is no longer read.
       response = scopeTransferToStream(response)
+      if (response.body._tag === "Stream") {
+        response = Response.setBodyKeepHeaders(
+          response,
+          HttpBody.stream(
+            Stream.ensuring(response.body.stream, Effect.sync(markResponded)),
+            response.body.contentType,
+            response.body.contentLength
+          )
+        )
+      } else {
+        markResponded()
+      }
     }
     ;(request as any)[resolveSymbol](
       Response.toWeb(response, { withoutBody, context, signal: (request.source as globalThis.Request).signal })
@@ -347,9 +353,14 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
           reqContext = Context.addUnsafe(reqContext, key, value)
         }
       }
-      const httpServerRequest = Request.fromWeb(request)
+      // Set once the response is resolved, or once a streamed body ends.
+      let responded = false
+      const httpServerRequest = Request.fromWebWith(request, () => responded)
       reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
+      ;(httpServerRequest as any)[respondedSymbol] = () => {
+        responded = true
+      }
       const fiber = Effect.runForkWith(reqContext)(httpApp as any)
       const signal = request.signal
       if (fiber.pollUnsafe() === undefined && signal) {
