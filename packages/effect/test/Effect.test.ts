@@ -5075,6 +5075,89 @@ describe("Effect", () => {
         assert.strictEqual(yield* cached, 3)
         assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
       }))
+
+    it.effect("recomputes after an invalidation during an in-flight run", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.suspend(() => {
+            const run = ++runs
+            if (run > 1) return Effect.succeed(run)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Deferred.await(release)),
+              Effect.as(run)
+            )
+          }),
+          "1 hour"
+        )
+
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        yield* invalidate
+        yield* Deferred.succeed(release, void 0)
+        assert.strictEqual(yield* Fiber.join(first), 1)
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(runs, 2)
+      }))
+
+    it.effect("keeps existing callers on the invalidated run without letting it replace the new value", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.suspend(() => {
+            const run = ++runs
+            if (run > 1) return Effect.succeed(run)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Deferred.await(release)),
+              Effect.as(run)
+            )
+          }),
+          "1 hour"
+        )
+
+        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        const waiter = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* invalidate
+        const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.succeed(release, void 0)
+        assert.strictEqual(yield* Fiber.join(owner), 1)
+        assert.strictEqual(yield* Fiber.join(waiter), 1)
+        assert.strictEqual(yield* Fiber.join(fresh), 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(runs, 2)
+      }))
+
+    it.effect("interrupts an invalidated run when its last caller is interrupted", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const interrupted: Array<number> = []
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.suspend(() => {
+            const run = ++runs
+            return Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupted.push(run))))
+          }),
+          "1 hour"
+        )
+
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* invalidate
+        const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        assert.deepStrictEqual(interrupted, [1])
+
+        const third = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 2)
+        yield* Fiber.interrupt(second)
+        assert.deepStrictEqual(interrupted, [1])
+        yield* Fiber.interrupt(third)
+        assert.deepStrictEqual(interrupted, [1, 2])
+      }))
   })
 
   describe("updateServiceScoped", () => {

@@ -4502,9 +4502,9 @@ const makeCachedUnsafe = <A, E, R>(
     run.awaiters++
     onExitUnsafe(fiber, () => {
       // Abandon the run once every caller has left, unless it already finished.
-      if (--run.awaiters > 0 || current !== run) return
+      if (--run.awaiters > 0 || run.fiber._exit !== undefined) return
       // Detach before interruption so new callers start a fresh run.
-      current = undefined
+      if (current === run) current = undefined
       return fiberInterrupt(run.fiber)
     })
     return fiberJoin(run.fiber)
@@ -4543,6 +4543,7 @@ const makeCachedUnsafe = <A, E, R>(
       return run.fiber._exit ?? joined
     }),
     sync(() => {
+      current = undefined
       exit = undefined
     })
   ]
