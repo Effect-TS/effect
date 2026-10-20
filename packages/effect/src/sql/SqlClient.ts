@@ -428,17 +428,18 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     )
   }
 
-  const transactionEnded = (conn: C, error: SqlError): Effect.Effect<boolean> => {
-    if (isTransaction) return Effect.succeed(!isTransaction(conn))
+  // Succeeds when the transaction has already ended, otherwise keeps the error.
+  const onRollbackFailure = (conn: C, error: SqlError): Effect.Effect<void, SqlError> => {
+    if (isTransaction) return isTransaction(conn) ? Effect.fail(error) : Effect.void
     const message = errorMessage(error)
-    if (noTransactionError.test(message)) return Effect.succeed(true)
-    if (!noSavepointError.test(message)) return Effect.succeed(false)
+    if (noTransactionError.test(message)) return Effect.void
+    if (!noSavepointError.test(message)) return Effect.fail(error)
     // A missing savepoint alone doesn't mean the transaction ended, but BEGIN
     // only succeeds outside one.
     return conn.executeUnprepared("BEGIN", [], undefined).pipe(
       Effect.andThen(conn.executeUnprepared("ROLLBACK", [], undefined)),
-      Effect.as(true),
-      Effect.orElseSucceed(() => false)
+      Effect.asVoid,
+      Effect.mapError(() => error)
     )
   }
 
@@ -466,8 +467,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     borrower: (f) => semaphore.withPermit(Effect.flatMap(available, f)),
     transactionAcquirer: lease,
     onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause))),
-    onRollbackFailure: (conn, error) =>
-      Effect.flatMap(transactionEnded(conn as C, error), (ended) => ended ? Effect.void : Effect.fail(error))
+    onRollbackFailure: (conn, error) => onRollbackFailure(conn as C, error)
   }
 }
 
