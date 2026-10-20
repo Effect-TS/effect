@@ -14,6 +14,7 @@ import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -41,6 +42,7 @@ import * as EventLogEncryption from "./EventLogEncryption.ts"
 import { StoreId } from "./EventLogMessage.ts"
 import type { EventLogRemote } from "./EventLogRemote.ts"
 import { setAnchor } from "./internal/conflicts.ts"
+import { RemoteMode } from "./internal/remoteCompaction.ts"
 
 /**
  * Service for writing typed event-log events through registered handlers.
@@ -107,6 +109,15 @@ export class Registry extends Context.Service<Registry, {
 
   readonly registerCompaction: (options: {
     readonly events: ReadonlyArray<string>
+    /**
+     * Also run this compactor over a remote's whole history to build
+     * snapshots. The entries it keeps must depend only on the set of input
+     * entries and compose: `drop(drop(a) ++ b)` keeps the same entries as
+     * `drop(a ++ b)`, also when `b` holds entries older than `a`. Remote
+     * compaction keeps a call's whole input when it writes an entry that is
+     * not one of its inputs.
+     */
+    readonly remote?: boolean | undefined
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
       // Pass an input entry as source to anchor replacements during remote replay.
@@ -117,6 +128,7 @@ export class Registry extends Context.Service<Registry, {
 
   readonly compactors: ReadonlyMap<string, {
     readonly events: ReadonlySet<string>
+    readonly remote: boolean
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
       readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
@@ -145,6 +157,7 @@ export const layerRegistry = Layer.effect(
     const handlers = new Map<string, Handlers.Item<any>>()
     const compactors = new Map<string, {
       readonly events: ReadonlySet<string>
+      readonly remote: boolean
       readonly effect: (options: {
         readonly entries: ReadonlyArray<Entry>
         readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
@@ -166,6 +179,7 @@ export const layerRegistry = Layer.effect(
           const events = new Set(options.events)
           const compactor = {
             events,
+            remote: options.remote ?? false,
             effect: options.effect
           }
           for (const event of options.events) {
@@ -684,7 +698,8 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
     readonly forward: (entry: Entry) => Effect.Effect<void>
-  }) => Effect.Effect<void, never, R>
+  }) => Effect.Effect<void, never, R>,
+  options: { readonly remote?: boolean | undefined } | undefined
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   Layer.effectDiscard(
     Effect.gen(function*() {
@@ -693,10 +708,16 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
 
       yield* registry.registerCompaction({
         events: Object.keys(group.events),
+        remote: options?.remote,
         effect: Effect.fnUntraced(function*({ entries, write }): Effect.fn.Return<void> {
+          // A remote compaction treats unknown fields as undecodable and keeps
+          // undecodable entries whatever the effect outputs.
+          const remote = yield* RemoteMode
           const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
-            Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
+            Schema.decodeUnknownEffect(
+              remote ? SchemaBinary.toCodecStrict(group.events[tag].payload) : group.events[tag].payloadSchemaBinary
+            )(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input))
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
           const writeFrom = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
@@ -726,6 +747,7 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
               continue
             }
             const payload = yield* Effect.result(decodePayload(entry.event, entry.payload))
+            if (remote && Result.isFailure(payload)) yield* forward(entry)
             batch.push({
               entry,
               event: Result.isFailure(payload)
@@ -794,14 +816,31 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
     readonly forward: (entry: Entry) => Effect.Effect<void>
-  }) => Effect.Effect<void, never, R>
+  }) => Effect.Effect<void, never, R>,
+  options?: {
+    /**
+     * Also run this compactor over a remote's whole history to build
+     * snapshots.
+     *
+     * Opting in commits the compactor to a contract the library cannot check:
+     * the entries it keeps depend only on the set of input entries, never on
+     * services, the clock or input order, and compaction composes, so
+     * `drop(drop(a) ++ b)` keeps the same entries as `drop(a ++ b)`, also
+     * when `b` holds entries older than `a`.
+     *
+     * Remote compaction only drops entries. A call that uses `write` keeps
+     * its whole input, and entries that fail to decode, including entries
+     * with fields the schema does not know, are always kept.
+     */
+    readonly remote?: boolean | undefined
+  }
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   registerBatchCompaction(group, ({ entries, writeFrom, forward }) =>
     effect({
       entries,
       write: (tag, payload) => writeFrom(entries[0].entry, tag, payload),
       forward
-    }))
+    }), options)
 
 /**
  * Registers a compaction handler for an event group.
@@ -848,7 +887,24 @@ export const groupCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
     readonly forward: (entry: Entry) => Effect.Effect<void>
-  }) => Effect.Effect<void, never, R>
+  }) => Effect.Effect<void, never, R>,
+  options?: {
+    /**
+     * Also run this compactor over a remote's whole history to build
+     * snapshots.
+     *
+     * Opting in commits the compactor to a contract the library cannot check:
+     * the entries it keeps depend only on the set of input entries, never on
+     * services, the clock or input order, and compaction composes, so
+     * `drop(drop(a) ++ b)` keeps the same entries as `drop(a ++ b)`, also
+     * when `b` holds entries older than `a`.
+     *
+     * Remote compaction only drops entries. A call that uses `write` keeps
+     * its whole input, and entries that fail to decode, including entries
+     * with fields the schema does not know, are always kept.
+     */
+    readonly remote?: boolean | undefined
+  }
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   registerBatchCompaction(
     group,
@@ -883,7 +939,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
           forward
         })
       }
-    })
+    }),
+    options
   )
 
 type ReactivityKeyName = [keyof ReactivityLayer.Keys] extends [never] ? string : keyof ReactivityLayer.Keys

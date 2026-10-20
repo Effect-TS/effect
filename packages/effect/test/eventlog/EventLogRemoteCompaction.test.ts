@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Schema, Stream } from "effect"
+import type * as Event from "effect/eventlog/Event"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -45,7 +46,7 @@ const run = (
   }).pipe(Effect.provide(layer.pipe(Layer.provideMerge(EventLog.layerRegistry))))
 
 // Keeps the newest decoded entry of each primary key.
-const keepLatest = (group: EventGroup.EventGroup<any>) =>
+const keepLatest = <Events extends Event.Any>(group: EventGroup.EventGroup<Events>) =>
   EventLog.groupBatchCompaction(group, ({ entries, forward }) => {
     const latest = new Map<string, EventJournal.Entry>()
     for (const { entry, event } of entries) {
