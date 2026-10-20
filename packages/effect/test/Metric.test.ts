@@ -327,7 +327,7 @@ describe("Metric", () => {
         [[1, 0], [2, 0]],
         [[2, 0], [3, 0]]
       ])
-    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())), { concurrent: false })
 
   it.effect("should be referentially transparent", () =>
     Effect.gen(function*() {
