@@ -55,6 +55,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   readonly onError: (error: unknown) => E
   readonly remoteAddressOverride?: Option.Option<string> | undefined
   protected readonly destroyOnOverflow: boolean = true
+  protected readonly closeOnDone: boolean = true
 
   constructor(
     source: Http.IncomingMessage,
@@ -112,7 +113,8 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   get stream(): Stream.Stream<Uint8Array, E> {
     return NodeStream.fromReadable({
       evaluate: () => this.source,
-      onError: this.onError
+      onError: this.onError,
+      closeOnDone: this.closeOnDone
     })
   }
 

@@ -226,6 +226,10 @@ export const makeHandler = <
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
+      if (nodeRequest.httpVersionMajor === 1) {
+        // Prepended so it runs before Node's own `finish` listener drains or destroys.
+        nodeResponse.prependListener("finish", () => teardownBody(nodeRequest, nodeResponse))
+      }
       const context = Context.add(services, HttpServerRequest, new ServerRequestImpl(nodeRequest, nodeResponse))
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handled), options.scope)
       if (fiber.pollUnsafe() === undefined) {
@@ -368,8 +372,13 @@ const absoluteTarget = (url: string): URL | undefined => {
 // the entry and body readers acknowledge only once.
 const pendingContinue = new WeakSet<Http.IncomingMessage>()
 
+// Body bytes pulled through `stream`, shared by modified requests.
+const bodyBytesRead = new WeakMap<Http.IncomingMessage, number>()
+
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
   protected override readonly destroyOnOverflow = false
+  // The adapter tears the body down after the response instead.
+  protected override readonly closeOnDone = false
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
   private upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError> | undefined
@@ -432,7 +441,13 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
     return Stream.suspend(() => {
       this.writeContinue()
-      return super.stream
+      const source = this.source
+      return Stream.mapArray(super.stream, (chunk) => {
+        let bytes = bodyBytesRead.get(source) ?? 0
+        for (const item of chunk) bytes += item.length
+        bodyBytesRead.set(source, bytes)
+        return chunk
+      })
     })
   }
 
@@ -716,11 +731,10 @@ const writeResponse = (
       return end(nodeResponse, response)
     }
     case "Raw": {
-      writeHead(nodeResponse, response, headers)
-      if (
-        typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
+      const piped = typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
         typeof body.body.pipe === "function"
-      ) {
+      writeHead(nodeResponse, response, headers, piped)
+      if (piped) {
         return Effect.tryPromise({
           try: (signal) => pipeTo(body.body as Readable, nodeResponse, headers, signal),
           catch: (cause) =>
@@ -773,7 +787,7 @@ const writeResponse = (
       )
     }
     case "Stream": {
-      writeHead(nodeResponse, response, headers)
+      writeHead(nodeResponse, response, headers, true)
       const drainLatch = Latch.makeUnsafe()
       nodeResponse.on("drain", () => drainLatch.openUnsafe())
       return body.stream.pipe(
@@ -804,12 +818,87 @@ const invalidStatusError = (status: number) => new RangeError(`Invalid final res
 const writeHead = (
   nodeResponse: Http.ServerResponse,
   response: HttpServerResponse,
-  headers: Record<string, string | Array<string>>
+  headers: Record<string, string | Array<string>>,
+  streaming = false
 ): void => {
   if (!isFinalStatus(response.status)) {
     throw invalidStatusError(response.status)
   }
-  nodeResponse.writeHead(response.status, response.statusText, headers)
+  nodeResponse.writeHead(
+    response.status,
+    response.statusText,
+    closesConnection(nodeResponse.req, streaming) ? { ...headers, connection: "close" } : headers
+  )
+}
+
+// Unread request body discarded after the response to keep the connection alive. Past this it closes.
+const maxDrainBytes = 256 * 1024
+
+// Time the client gets to read the response after the FIN, before a destroy can reset the connection.
+const closeGracePeriod = 500
+
+// Decided when the headers are written, while `Connection: close` can still be sent. A streaming
+// response may still read the body, so only a pending 100 Continue closes it here.
+const closesConnection = (request: Http.IncomingMessage | undefined, streaming: boolean): boolean => {
+  if (request === undefined || request.httpVersionMajor !== 1 || request.complete) {
+    return false
+  }
+  if (pendingContinue.has(request)) {
+    return true
+  }
+  const contentLength = request.headers["content-length"]
+  return !streaming && contentLength !== undefined &&
+    Number(contentLength) - (bodyBytesRead.get(request) ?? 0) > maxDrainBytes
+}
+
+// Node internals read by its own `finish` listener, which runs right after `teardownBody`.
+interface IncomingMessageInternals {
+  _consuming: boolean
+}
+interface ServerResponseInternals {
+  _last: boolean
+}
+
+// Node drains an untouched body in full, leaves a partly read one unread, and
+// destroys a closing socket as soon as the response is flushed, which resets the
+// connection while body bytes are queued and can lose the response.
+const teardownBody = (request: Http.IncomingMessage, response: Http.ServerResponse): void => {
+  if (request.complete || request.destroyed) {
+    return
+  }
+  const socket = request.socket
+  if ((response as unknown as ServerResponseInternals)._last) {
+    // Skips Node's `_dump`. Unlike `_dumped`, it keeps the parser applying backpressure.
+    ;(request as unknown as IncomingMessageInternals)._consuming = true
+    ;(response as unknown as ServerResponseInternals)._last = false
+    return closeSocket(socket)
+  }
+  let bytes = 0
+  const onData = (chunk: Buffer) => {
+    bytes += chunk.length
+    if (bytes <= maxDrainBytes) return
+    cleanup()
+    request.pause()
+    closeSocket(socket)
+  }
+  const cleanup = () => {
+    request.off("data", onData)
+    request.off("end", cleanup)
+    request.off("close", cleanup)
+  }
+  request.on("data", onData)
+  request.once("end", cleanup)
+  request.once("close", cleanup)
+  request.resume()
+}
+
+const closeSocket = (socket: Net.Socket): void => {
+  if (socket.destroyed) {
+    return
+  }
+  socket.end()
+  const timer = setTimeout(() => socket.destroy(), closeGracePeriod)
+  socket.once("close", () => clearTimeout(timer))
 }
 
 const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<void> => {
@@ -876,7 +965,11 @@ const handleCause = (
         response = internalServerError
       }
       try {
-        nodeResponse.writeHead(response.status, response.statusText)
+        nodeResponse.writeHead(
+          response.status,
+          response.statusText,
+          closesConnection(nodeResponse.req, false) ? { connection: "close" } : undefined
+        )
       } catch {
         // HTTP/2 keeps the headers of a rejected `writeHead`, so the fallback can throw too
         abort = true
