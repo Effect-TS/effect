@@ -17,29 +17,23 @@ import * as Stream from "effect/Stream"
 
 describe("Channel", () => {
   describe("repetition", () => {
-    for (const kind of ["repeat", "forever"] as const) {
-      const repeated = (source: Channel.Channel<Arr.NonEmptyArray<number>>) =>
-        kind === "repeat" ? Channel.repeat(source, Schedule.forever) : Channel.forever(source)
-
+    const source = Channel.succeed(Arr.make(1))
+    for (
+      const [kind, channel] of Object.entries({
+        repeat: Channel.repeat(source, Schedule.forever),
+        forever: Channel.forever(source),
+        retry: Channel.retry(Channel.concat(source, Channel.fail("boom")), Schedule.forever)
+      })
+    ) {
       it.effect(kind + " work per repetition does not grow", () =>
         Effect.gen(function*() {
-          const stream = Stream.fromChannel(repeated(Channel.succeed(Arr.make(1))))
+          const stream = Stream.fromChannel(channel)
           const ops = (n: number) => countOps(stream.pipe(Stream.take(n), Stream.runDrain))
           const small = yield* ops(1_000)
           const large = yield* ops(2_000)
           assert.isBelow(large / small, 2.5)
         }))
     }
-
-    it.effect("retry work per attempt does not grow", () =>
-      Effect.gen(function*() {
-        const flaky = Channel.concat(Channel.succeed(Arr.make(1)), Channel.fail("boom"))
-        const stream = Stream.fromChannel(Channel.retry(flaky, Schedule.forever))
-        const ops = (n: number) => countOps(stream.pipe(Stream.take(n), Stream.runDrain))
-        const small = yield* ops(1_000)
-        const large = yield* ops(2_000)
-        assert.isBelow(large / small, 2.5)
-      }))
 
     it.effect("retry closes schedule resources with the channel", () =>
       Effect.gen(function*() {
@@ -50,10 +44,9 @@ describe("Channel", () => {
           Schedule.forever,
           () => Effect.addFinalizer(() => Effect.sync(() => events.push("schedule finalizer")))
         )
-        yield* Effect.scoped(Effect.gen(function*() {
-          yield* Channel.runCollect(Channel.retry(flaky, schedule))
-          events.push("run completed")
-        }))
+        const result = yield* Channel.runCollect(Channel.retry(flaky, schedule))
+        events.push("run completed")
+        assert.deepStrictEqual(result, [1])
         assert.deepStrictEqual(events, ["schedule finalizer", "run completed"])
       }))
   })
