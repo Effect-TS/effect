@@ -5,6 +5,7 @@ import {
   Array,
   ByteSize,
   Cause,
+  Clock,
   Context,
   DateTime,
   Effect,
@@ -21,6 +22,7 @@ import {
   Struct
 } from "effect"
 import {
+  CookieJar,
   Cookies,
   HttpBody,
   HttpClient,
@@ -1377,11 +1379,15 @@ describe("HttpApi", () => {
     describe("security", () => {
       it.effect("security middleware sets current user", () =>
         Effect.gen(function*() {
-          const ref = yield* Ref.make(Cookies.empty.pipe(
-            Cookies.setUnsafe("token", "foo")
+          const server = yield* HttpServer.HttpServer
+          const ref = yield* Ref.make(CookieJar.setFromResponse(
+            CookieJar.empty,
+            HttpServer.formatAddress(server.address),
+            Cookies.fromSetCookie("token=foo; Path=/"),
+            yield* Clock.currentTimeMillis
           ))
           const client = yield* HttpApiClient.makeWith(Api, {
-            httpClient: HttpClient.withCookiesRef(yield* HttpClient.HttpClient, ref)
+            httpClient: HttpClient.withCookieJar(yield* HttpClient.HttpClient, ref)
           })
           const user = yield* client.users.findById({ params: { id: -1 } })
           assert.strictEqual(user.name, "foo")

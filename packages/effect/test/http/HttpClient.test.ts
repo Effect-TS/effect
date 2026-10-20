@@ -1,7 +1,15 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Cause, Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
+import {
+  CookieJar,
+  Cookies,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  UrlParams
+} from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -1953,14 +1961,14 @@ Missing key
 
   it.effect("sends stored response cookies only to the matching host", () =>
     Effect.gen(function*() {
-      const jar = yield* Ref.make(Cookies.empty)
+      const jar = yield* Ref.make(CookieJar.empty)
       const seen: Array<string | undefined> = []
-      const client = HttpClient.withCookiesRef(
+      const client = HttpClient.withCookieJar(
         HttpClient.make((request) => {
           seen.push(request.headers.cookie)
           const host = new URL(request.url).hostname
           const setCookie = host === "api.example.com"
-            ? "session=secret; Domain=api.example.com; Path=/"
+            ? "session=secret"
             : "session=attacker"
           return Effect.succeed(HttpClientResponse.fromWeb(
             request,
@@ -1975,10 +1983,7 @@ Missing key
       yield* client.get("https://api.example.com/account")
       yield* client.get("https://evil.example/hook")
 
-      assert.strictEqual(seen[0], undefined)
-      assert.strictEqual(seen[1], undefined)
-      assert.strictEqual(seen[2], "session=secret")
-      assert.strictEqual(seen[3], "session=attacker")
+      assert.deepStrictEqual(seen, [undefined, undefined, "session=secret", "session=attacker"])
     }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
