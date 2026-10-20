@@ -1986,6 +1986,27 @@ Missing key
       assert.deepStrictEqual(seen, [undefined, undefined, "session=secret", "session=attacker"])
     }))
 
+  it.effect("stores cookies using the final response host and default path", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make(CookieJar.empty)
+      const client = HttpClient.withCookieJar(
+        HttpClient.make((request) => {
+          const source = new Response(null, { headers: { "set-cookie": "session=final" } })
+          Object.defineProperty(source, "url", { value: "https://login.example.com/auth/callback" })
+          return Effect.succeed(HttpClientResponse.fromWeb(request, source))
+        }),
+        jar
+      )
+
+      yield* client.get("https://api.example.com/start")
+
+      const stored = yield* Ref.get(jar)
+      const now = yield* Clock.currentTimeMillis
+      assert.strictEqual(CookieJar.toCookieHeader(stored, "https://login.example.com/auth/next", now), "session=final")
+      assert.strictEqual(CookieJar.toCookieHeader(stored, "https://api.example.com/start", now), undefined)
+      assert.strictEqual(CookieJar.toCookieHeader(stored, "https://login.example.com/other", now), undefined)
+    }))
+
   it("reads cookies when Headers has no getSetCookie", () => {
     // React Native's Headers implementation does not provide getSetCookie.
     const source = new Response(null, { headers: { "content-type": "text/plain" } })
