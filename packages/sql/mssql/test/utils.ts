@@ -12,7 +12,7 @@ export class ContainerError extends Data.TaggedError("ContainerError")<{
 // output. Keep the tail of it so startup failures report why sqlservr exited.
 const maxLogLines = 200
 
-const makeLogBuffer = () => {
+export const makeLogBuffer = () => {
   const lines: Array<string> = []
   let partial = ""
   let done: Promise<void> | undefined
