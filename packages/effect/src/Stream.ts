@@ -3466,8 +3466,7 @@ export const zipWith: {
   f: (left: AL, right: AR) => A
 ): Stream<A, EL | ER, RL | RR> =>
   suspend(() => {
-    // Leftovers are the original chunks; the cursors record how much of each
-    // has been consumed, so no suffix is copied on every pull.
+    // Track consumed elements with cursors instead of slicing leftovers
     let leftIndex = 0
     let rightIndex = 0
     return zipWithArray(left, right, (leftArr, rightArr) => {
