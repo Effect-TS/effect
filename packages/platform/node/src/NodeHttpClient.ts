@@ -578,8 +578,8 @@ export const makeNodeHttp = Effect.gen(function*() {
         signal
       })
     return Effect.gen(function*() {
-      // Headers must not interrupt the upload. The request owns the fiber until
-      // the response closes (including cancellation through the abort signal).
+      // Headers must not interrupt the upload. Keep it alive until the response
+      // is consumed or either side closes (including cancellation).
       const upload = yield* sendBody(nodeRequest, request, request.body).pipe(
         Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
         Effect.forkDetach
@@ -587,10 +587,18 @@ export const makeNodeHttp = Effect.gen(function*() {
       const onClose = () => upload.interruptUnsafe()
       nodeRequest.once("close", onClose)
       upload.addObserver(() => nodeRequest.off("close", onClose))
-      return yield* Effect.raceFirst(
+      const response = yield* Effect.raceFirst(
         waitForResponse(nodeRequest, request),
         Fiber.join(upload).pipe(Effect.andThen(Effect.never))
       )
+      // A keep-alive request may not close while its upload is unfinished, even
+      // after the response has been fully consumed.
+      response.once("close", onClose)
+      upload.addObserver(() => response.off("close", onClose))
+      if (response.destroyed || response.readableEnded) {
+        onClose()
+      }
+      return response
     }).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
