@@ -584,7 +584,7 @@ describe("OpenApi", () => {
       spec.paths["/encoded"]?.get?.responses[404]?.headers?.["x-error-id"]?.schema,
       {
         type: "string",
-        pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
+        pattern: "^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?$"
       }
     )
     assert.deepStrictEqual(
@@ -615,7 +615,7 @@ describe("OpenApi", () => {
       "x-retry-after": {
         schema: {
           type: "string",
-          pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
+          pattern: "^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?$"
         },
         required: true
       }
@@ -798,7 +798,7 @@ describe("OpenApi", () => {
       "x-stream-id": {
         schema: {
           type: "string",
-          pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
+          pattern: "^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?$"
         },
         required: true
       }
