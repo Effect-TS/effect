@@ -14,6 +14,7 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
+  HttpIncomingMessage,
   HttpMiddleware,
   HttpPlatform,
   HttpRouter,
@@ -55,6 +56,43 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  for (const accessor of ["text", "json", "arrayBuffer", "urlParamsBody"] as const) {
+    it.effect(`returns 413 when a buffered ${accessor} body exceeds MaxBodySize`, () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.add(
+          "POST",
+          "/body",
+          HttpServerRequest.HttpServerRequest.use((request) =>
+            Effect.gen(function*() {
+              yield* request[accessor]
+              return HttpServerResponse.empty()
+            })
+          ).pipe(Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4)))
+        ).pipe(HttpRouter.serve, Layer.build)
+        const client = yield* HttpClient.HttpClient
+
+        const atLimit = yield* client.post("/body", { body: HttpBody.text("1234") })
+        assert.strictEqual(atLimit.status, 204)
+
+        const oversized = yield* client.post("/body", { body: HttpBody.text("12345") })
+        assert.strictEqual(oversized.status, 413)
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  }
+
+  it.effect("returns 400 for malformed JSON within MaxBodySize", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.json, HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const client = yield* HttpClient.HttpClient
+      const response = yield* client.post("/body", { body: HttpBody.text("{") })
+      assert.strictEqual(response.status, 400)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()
