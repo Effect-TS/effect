@@ -573,7 +573,8 @@ export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint
  * Builds the request object accepted by a generated client method, including the
  * params, query, headers, and payload required by the endpoint, plus optional
  * response mode and SSE decoding options. Multipart payloads are supplied as
- * `FormData`.
+ * `FormData`, and streaming payloads as a `Stream` that fails with
+ * `PayloadE` and requires `PayloadR`.
  *
  * @stability unstable
  * @category utility types
@@ -584,7 +585,9 @@ export type ClientRequest<
   Query extends Schema.Constraint,
   Payload extends Schema.Constraint,
   Headers extends Schema.Constraint,
-  ResponseMode extends ClientResponseMode
+  ResponseMode extends ClientResponseMode,
+  PayloadE = unknown,
+  PayloadR = never
 > = (
   & ([Params["Type"]] extends [never] ? {} : { readonly params: Params["Type"] })
   & ([Query["Type"]] extends [never] ? {} : { readonly query: Query["Type"] })
@@ -593,8 +596,8 @@ export type ClientRequest<
     : Payload["Type"] extends infer P ?
       P extends Brand<HttpApiSchema.MultipartTypeId> | Brand<HttpApiSchema.MultipartStreamTypeId>
         ? { readonly payload: FormData }
-      : { readonly payload: Payload["Type"] }
-    : { readonly payload: Payload["Type"] })
+      : { readonly payload: ClientPayload<Payload, PayloadE, PayloadR> }
+    : { readonly payload: ClientPayload<Payload, PayloadE, PayloadR> })
 ) extends infer Req ? keyof Req extends never ? (void | {
       readonly responseMode?: ResponseMode
       readonly sseOptions?: Sse.DecodeOptions | undefined
@@ -604,6 +607,11 @@ export type ClientRequest<
     readonly sseOptions?: Sse.DecodeOptions | undefined
   } :
   void
+
+type ClientPayload<Payload extends Schema.Constraint, E, R> = Payload extends HttpApiSchema.StreamUint8Array
+  ? Stream.Stream<Uint8Array, E, R>
+  : Payload extends HttpApiSchema.StreamNdjson<infer S> ? Stream.Stream<S["Type"], E, R>
+  : Payload["Type"]
 
 /**
  * Controls what a generated client method returns: the decoded success value,

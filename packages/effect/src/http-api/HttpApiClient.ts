@@ -15,6 +15,7 @@ import * as Arr from "../Array.ts"
 import * as ByteSize from "../ByteSize.ts"
 import * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
@@ -82,26 +83,31 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
  * success schema, including headers, streaming Server-Sent Events, and
  * streaming byte responses.
  *
+ * `PayloadE` is the error of a streaming request payload. The upload can still
+ * be running while a streaming response is read, so a streaming response can
+ * also fail with it.
+ *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
-export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
+export type SuccessType<S, PayloadE = never> = S extends HttpApiSchema.WithHeaders<
   infer _Inner,
   infer _Headers
-> ? HttpApiSchema.withHeaders<SuccessType<_Inner>, _Headers["Type"]>
+> ? HttpApiSchema.withHeaders<SuccessType<_Inner, PayloadE>, _Headers["Type"]>
   : S extends HttpApiSchema.StreamSse<
     infer _Events,
     infer _Error,
     infer _Value
   > ? Stream.Stream<
       _Value,
-      _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
+      _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError | PayloadE,
       never
     >
-  : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
+  : S extends HttpApiSchema.StreamUint8Array ?
+    Stream.Stream<Uint8Array, HttpClientError.HttpClientError | PayloadE, never>
   : S extends HttpApiSchema.StreamNdjson<infer _S> ?
-    Stream.Stream<_S["Type"], HttpClientError.HttpClientError | Schema.SchemaError, never>
+    Stream.Stream<_S["Type"], HttpClientError.HttpClientError | Schema.SchemaError | PayloadE, never>
   : S extends HttpApiSchema.Upgrade ? Upgraded
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -188,15 +194,19 @@ export declare namespace Client {
     Endpoint extends HttpApiEndpoint.ConstraintRequest,
     E,
     R,
-    Mode extends ResponseMode
+    Mode extends ResponseMode,
+    PayloadE,
+    PayloadR
   > = Effect.Effect<
-    Response<SuccessType<Endpoint["~Success"]>, Mode>,
+    Response<SuccessType<Endpoint["~Success"], PayloadE>, Mode>,
     | HttpApiMiddleware.Error<Endpoint["~Middleware"]>
     | HttpApiMiddleware.ClientError<Endpoint["~Middleware"]>
     | E
+    | PayloadE
     | HttpClientError.HttpClientError
     | ([Mode] extends ["response-only"] ? never : Endpoint["~Error"]["Type"] | Schema.SchemaError),
     | R
+    | PayloadR
     | Endpoint["~Params"]["EncodingServices"]
     | Endpoint["~Query"]["EncodingServices"]
     | Endpoint["~Payload"]["EncodingServices"]
@@ -213,6 +223,9 @@ export declare namespace Client {
    * error, and service channels reflect the endpoint schemas, middleware, and
    * selected response mode.
    *
+   * The error and services of a streaming `payload` are inferred and added to
+   * the returned effect.
+   *
    * @stability unstable
    * @category models
    * @since 4.0.0
@@ -221,17 +234,19 @@ export declare namespace Client {
     Endpoint extends HttpApiEndpoint.ConstraintRequest,
     E,
     R
-  > = <Mode extends ResponseMode = "decoded-only">(
+  > = <Mode extends ResponseMode = "decoded-only", PayloadE = never, PayloadR = never>(
     request: Simplify<
       HttpApiEndpoint.ClientRequest<
         Endpoint["~Params"],
         Endpoint["~Query"],
         Endpoint["~Payload"],
         Endpoint["~Headers"],
-        Mode
+        Mode,
+        PayloadE,
+        PayloadR
       >
     >
-  ) => MethodReturn<Endpoint, E, R, Mode>
+  ) => MethodReturn<Endpoint, E, R, Mode, PayloadE, PayloadR>
 
   /**
    * Extracts client methods for endpoints in top-level groups so they can be exposed
@@ -450,7 +465,19 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           (schema) => Schema.encodeUnknownEffect(schema, parseOptions.params)
         )
 
-        const payloadSchemas = HttpApiEndpoint.getPayloadSchemas(endpoint)
+        const payloadSchemas: Array<Schema.Top> = []
+        let streamPayload: StreamPayloadSchema | undefined
+        for (const schema of HttpApiEndpoint.getPayloadSchemas(endpoint)) {
+          if (HttpApiSchema.isStreamUint8Array(schema) || HttpApiSchema.isStreamNdjson(schema)) {
+            streamPayload = schema
+          } else {
+            payloadSchemas.push(schema)
+          }
+        }
+        const streamPayloadEncoder = UndefinedOr.map(streamPayload, (schema) => ({
+          contentType: schema.contentType,
+          encode: makeStreamPayloadEncoder(schema, parseOptions.payload)
+        }))
         const encodePayload = Arr.isArrayNonEmpty(payloadSchemas) ?
           Schema.encodeUnknownEffect(
             HttpMethod.hasBody(endpoint.method)
@@ -482,6 +509,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+          let upload: Upload | undefined
 
           if (request !== undefined) {
             // params
@@ -491,7 +519,18 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             }
 
             // payload
-            if (encodePayload !== undefined) {
+            if (streamPayloadEncoder !== undefined && Stream.isStream(request.payload)) {
+              upload = { failure: undefined, stop: yield* Deferred.make<void>() }
+              const body = makeUploadBody(
+                upload,
+                streamPayloadEncoder.encode(request.payload),
+                yield* Effect.context<never>()
+              )
+              httpRequest = HttpClientRequest.setBody(
+                httpRequest,
+                HttpBody.stream(body, streamPayloadEncoder.contentType)
+              )
+            } else if (encodePayload !== undefined) {
               if (HttpMethod.hasBody(endpoint.method)) {
                 if (request.payload instanceof FormData) {
                   httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
@@ -503,6 +542,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                 const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
                 httpRequest = HttpClientRequest.appendUrlParams(httpRequest, urlParams)
               }
+            } else if (streamPayloadEncoder !== undefined) {
+              return yield* new Schema.SchemaError(
+                new SchemaIssue.InvalidValue({ message: "Expected a Stream payload" }, request.payload)
+              )
             }
 
             // headers
@@ -522,24 +565,28 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             httpRequest = HttpClientRequest.upgrade(httpRequest, upgrade.protocol)
           }
 
-          const response = yield* executeMiddleware(
-            group,
-            endpoint,
-            httpRequest,
-            middlewareKeys,
-            middlewareKeys.length - 1
-          )
+          const exchange = Effect.gen(function*() {
+            const response = yield* executeMiddleware(
+              group,
+              endpoint,
+              httpRequest,
+              middlewareKeys,
+              middlewareKeys.length - 1
+            )
 
-          if (request?.responseMode === "response-only") {
-            return response
-          }
+            if (request?.responseMode === "response-only") {
+              return response
+            }
 
-          const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, request?.sseOptions)
-          const value = yield* (options.transformResponse === undefined
-            ? decoded
-            : options.transformResponse(decoded))
+            const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, request?.sseOptions)
+            const value = yield* (options.transformResponse === undefined
+              ? decoded
+              : options.transformResponse(decoded))
 
-          return request?.responseMode === "decoded-and-response" ? [value, response] : value
+            return request?.responseMode === "decoded-and-response" ? [value, response] : value
+          })
+
+          return yield* (upload === undefined ? exchange : withUpload(exchange, upload, request?.responseMode))
         })
 
         options.onEndpoint({
@@ -1203,6 +1250,90 @@ const statusOrElse = (response: HttpClientResponse.HttpClientResponse) =>
   )
 
 const $HttpBody = Schema.declare(HttpBody.isHttpBody)
+
+type StreamPayloadSchema = HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>
+
+function makeStreamPayloadEncoder(
+  schema: StreamPayloadSchema,
+  options: SchemaAST.ParseOptions | undefined
+): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<Uint8Array, unknown, unknown> {
+  if (HttpApiSchema.isStreamUint8Array(schema)) {
+    return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
+  }
+  const encodeElements = Schema.encodeUnknownEffect(Schema.Array(Schema.toCodecJson(schema.schema)), options)
+  return (stream) => Ndjson.encode(stream, encodeElements)
+}
+
+// The state of one streaming upload. Adapters report a failing body as a
+// transport or encode error, so the client keeps the source failure itself.
+interface Upload {
+  failure: Cause.Cause<unknown> | undefined
+  readonly stop: Deferred.Deferred<void>
+}
+
+const uploadStopped = Symbol.for("effect/http-api/HttpApiClient/uploadStopped")
+
+function makeUploadBody(
+  upload: Upload,
+  source: Stream.Stream<Uint8Array, unknown, unknown>,
+  context: Context.Context<never>
+): Stream.Stream<Uint8Array, unknown> {
+  return Stream.suspend(() => {
+    // retries and redirects run the body again
+    upload.failure = undefined
+    return source.pipe(
+      Stream.catchCause((cause) => {
+        if (!Cause.hasInterruptsOnly(cause)) upload.failure = cause
+        return Stream.failCause(cause)
+      }),
+      // fail rather than end, so the adapter aborts instead of sending a
+      // truncated body as complete
+      Stream.interruptWhen(Effect.andThen(Deferred.await(upload.stop), Effect.fail(uploadStopped))),
+      Stream.provideContext(context as Context.Context<unknown>)
+    )
+  })
+}
+
+const replaceWithUploadFailure = (upload: Upload) => (cause: Cause.Cause<unknown>): Cause.Cause<unknown> =>
+  upload.failure !== undefined && !Cause.hasInterruptsOnly(cause) ? upload.failure : cause
+
+// With a streaming response the upload runs until either side ends. Otherwise
+// it stops once the response has been decoded.
+function withUpload(
+  exchange: Effect.Effect<unknown, unknown, unknown>,
+  upload: Upload,
+  responseMode: HttpApiEndpoint.ClientResponseMode | undefined
+): Effect.Effect<unknown, unknown, unknown> {
+  const replace = replaceWithUploadFailure(upload)
+  const stop = Deferred.succeed(upload.stop, undefined)
+  const bindStream = (stream: Stream.Stream<unknown, unknown, unknown>) =>
+    stream.pipe(
+      Stream.catchCause((cause) => Stream.failCause(replace(cause))),
+      Stream.ensuring(stop)
+    )
+  // Returns undefined when the value has no response stream
+  const bindValue = (value: unknown): unknown => {
+    if (Stream.isStream(value)) return bindStream(value)
+    if (HttpApiSchema.isWithHeadersValue(value) && Stream.isStream(value.body)) {
+      return HttpApiSchema.withHeaders({ body: bindStream(value.body), headers: value.headers })
+    }
+    return undefined
+  }
+  return exchange.pipe(
+    Effect.catchCause((cause) => Effect.failCause(replace(cause))),
+    Effect.onError(() => stop),
+    Effect.flatMap((result) => {
+      if (responseMode === "response-only") return Effect.succeed(result)
+      if (responseMode === "decoded-and-response") {
+        const [value, response] = result as [unknown, unknown]
+        const bound = bindValue(value)
+        return bound === undefined ? Effect.as(stop, result) : Effect.succeed([bound, response])
+      }
+      const bound = bindValue(result)
+      return bound === undefined ? Effect.as(stop, result) : Effect.succeed(bound)
+    })
+  )
+}
 
 function getEncodePayloadSchema(
   schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>],
