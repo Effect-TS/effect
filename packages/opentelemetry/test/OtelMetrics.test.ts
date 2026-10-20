@@ -398,6 +398,29 @@ describe("Metrics", () => {
       assert.deepStrictEqual([firstValue, secondValue], [1, 1])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
+  it.effect("reports a removed and recreated series from zero with delta temporality", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "delta")
+      const collect = Effect.promise(() => producer.collect())
+      const counter = Metric.counter("requests")
+      const histogram = Metric.histogram("latency", { boundaries: [10] })
+
+      yield* Metric.update(counter, 5)
+      yield* Metric.update(histogram, 5)
+      yield* collect
+      yield* Metric.remove(counter)
+      yield* Metric.remove(histogram)
+      yield* collect
+      yield* Metric.update(counter, 7)
+      yield* Metric.update(histogram, 7)
+      const result = yield* collect
+
+      assert.strictEqual(findMetric(result, "requests").dataPoints[0].value, 7)
+      const histogramValue = findMetric(result, "latency").dataPoints[0].value
+      assert.deepStrictEqual([histogramValue.count, histogramValue.sum], [1, 7])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect.each(["delta", "cumulative"] as const)(
     "histogram extrema with %s temporality",
     (temporality) =>
