@@ -17,11 +17,12 @@
  * response with `Connection: close`, such as the early `413` from
  * `HttpApiBuilder`, is handled differently: Bun closes the socket as soon as
  * the response is written, with no grace period. The client's next write
- * fails, and a client that is still sending the body can lose the response.
+ * fails, and a client that is still sending the body can lose the response
+ * (oven-sh/bun#46242).
  *
  * Before Bun 1.4.1, a response stream that failed could end the response
  * cleanly, so the client couldn't tell a failed body from a complete one.
- * Bun 1.4.1 and later abort the connection instead.
+ * Bun 1.4.1 and later abort the connection instead (oven-sh/bun#40596).
  *
  * @stability unstable
  * @since 4.0.0

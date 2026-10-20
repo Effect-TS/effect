@@ -1519,9 +1519,9 @@ The payload stream's errors are added to the handler's error channel automatical
 
 - Middleware runs first, then params, headers and query, then the payload. A params, headers or query failure answers `400` without reading a body byte, and the handler always gets the body unread.
 - Read the payload stream once. The body is never buffered for a replay, so a repeated read keeps the adapter's native behavior: an empty body, a typed `RequestParseError`, or a replay of the caller's stream under `HttpApiTest`. Don't rely on any of them.
-- A handler can respond without reading the whole body, for example to reject an upload early. Over HTTP/1.1 the Node server then drains up to 256 KiB of what is left. Past that it sends `Connection: close` and closes the socket. Bun and Deno don't cap the drain:
-  - Bun reads the rest of the body in full and keeps the connection, so rejecting a large upload still costs the whole upload. A response with `Connection: close`, such as the early `413`, is the exception. Bun closes the socket as soon as that response is written, and a client that is still sending can lose the response.
-  - Deno reads the rest of the body in full, even when it closes the connection afterwards, so the early `413` doesn't save the upload either. It ignores a `Connection: close` set by the handler, keeps or closes the connection by its own rules, and sends the header twice when it closes.
+- A handler can respond without reading the whole body, for example to reject an upload early. Over HTTP/1.1 the Node server then drains up to 256 KiB of what is left. Past that it sends `Connection: close` and closes the socket. Bun and Deno don't cap that drain:
+  - Bun reads the rest of the body in full and keeps the connection, so rejecting a large upload still costs the whole upload. A response with `Connection: close`, such as the early `413`, is the exception. Bun closes the socket as soon as that response is written, and a client that is still sending can lose the response (oven-sh/bun#46242).
+  - Deno reads the rest of the body in full, even when it closes the connection afterwards, so the early `413` doesn't save the upload either (denoland/deno#37049). It ignores a `Connection: close` set by the handler, keeps or closes the connection by its own rules, and sends the header twice when it closes (denoland/deno#37050).
 
 ### Mixing Buffered and Streaming Payloads
 
