@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix progressively slower retries in `Stream.retry` and `Channel.retry`.
+Keep `Stream.retry` and `Channel.retry` work constant per attempt instead of growing with every retry.

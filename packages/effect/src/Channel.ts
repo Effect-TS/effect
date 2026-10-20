@@ -3365,8 +3365,7 @@ const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, E, Out
         const runScope = Scope.forkUnsafe(scope)
         return Effect.flatMap(toTransform(self)(upstream, runScope), (pull) => {
           currentPull = Effect.catchCause(pull, (cause) => {
-            const done = Pull.filterDoneLeftover(cause)
-            const exit = Result.isSuccess(done) ? Exit.succeed(done.success as OutDone) : Exit.failCause(done.failure)
+            const exit = Pull.doneExitFromCause(cause) as Exit.Exit<OutDone, OutErr>
             return Scope.close(runScope, exit).pipe(
               Effect.flatMap(() => onExit(exit, scope)),
               Effect.flatMap(makePull)
