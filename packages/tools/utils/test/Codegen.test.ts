@@ -115,11 +115,7 @@ export * as Unstable from "./Unstable.ts"
       yield* fs.writeFileString(
         path.join(directory, "Disposable.ts"),
         `/// <reference lib="esnext.disposable" preserve="true" />
-
 /**
- * Module that needs a library reference.
- *
- * @stability stable
  * @since 2.0.0
  */
 export const disposable = 1
@@ -134,7 +130,6 @@ export const disposable = 1
         `// @barrel
 
 /**
- * @stability stable
  * @since 2.0.0
  */
 export * as Disposable from "./Disposable.ts"
