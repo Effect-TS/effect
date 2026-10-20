@@ -183,6 +183,33 @@ export const make = Effect.fnUntraced(function*<
   // Entities finishing their in-flight requests after removal, which still
   // accept interrupts and acks
   const drainingServers = new Map<EntityId, EntityState>()
+
+  // Registered before the entities resource map, so the series is removed
+  // only after every entity has drained on shutdown.
+  yield* Effect.acquireRelease(
+    Effect.sync(() =>
+      Metric.registerUnsafe(
+        Metric.withAttributes(ClusterMetrics.entityMailboxSizeMax, { type: entity.type }),
+        context as Context.Context<never>,
+        {
+          get: () => {
+            let max = 0
+            for (const state of activeServers.values()) {
+              if (state.activeRequests.size > max) max = state.activeRequests.size
+            }
+            for (const state of drainingServers.values()) {
+              if (state.activeRequests.size > max) max = state.activeRequests.size
+            }
+            return { value: BigInt(max) }
+          },
+          update: constVoid,
+          modify: constVoid
+        }
+      )
+    ),
+    (registration) => Effect.sync(registration.remove)
+  )
+
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Latch.Latch
     readonly force: Latch.Latch

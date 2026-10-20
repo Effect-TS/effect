@@ -74,12 +74,52 @@ export const entities = Metric.gauge("effect_cluster_entities", { bigint: true }
  * registry without distinct metric attributes overwrite each other's series.
  *
  * @see {@link entities} for the number of resident entities per type
+ * @see {@link entityMailboxSizeMax} for the always-on per-type maximum
  *
  * @stability unstable
  * @category metrics
  * @since 4.0.6
  */
 export const entityMailboxSize = Metric.gauge("effect_cluster_entity_mailbox_size", { bigint: true })
+
+/**
+ * Represents a gauge tracking the largest mailbox size among the entities of
+ * each type resident on the current runner.
+ *
+ * **When to use**
+ *
+ * Use to alert on entity types whose mailboxes back up, before sends start
+ * failing with `MailboxFull`, without paying for a series per entity.
+ *
+ * **Details**
+ *
+ * Bigint gauge named `effect_cluster_entity_mailbox_size_max`, with one series
+ * per registered entity type tagged with `type`. The value is the largest
+ * mailbox size that {@link entityMailboxSize} would report for the type,
+ * including entities draining in-flight requests during shutdown, or `0` when
+ * the type has no resident entities.
+ *
+ * The value is computed when metrics are snapshotted, by visiting each
+ * resident entity of the type, so it adds no work per message. Entities
+ * draining during shutdown keep their slot until they finish, so the visit is
+ * bounded by `ShardingConfig.maxResidentEntities` across all types, unless it
+ * is `"unbounded"`. The series is removed when the entity type shuts down.
+ *
+ * **Gotchas**
+ *
+ * Always on. `Metric.update` and `Metric.modify` on this gauge do nothing for
+ * series the runtime registered.
+ *
+ * Like the other runner gauges it has no runner attribute: runners sharing a
+ * registry without distinct metric attributes overwrite each other's series.
+ *
+ * @see {@link entityMailboxSize} for the opt-in per-entity mailbox sizes
+ *
+ * @stability unstable
+ * @category metrics
+ * @since 4.0.6
+ */
+export const entityMailboxSizeMax = Metric.gauge("effect_cluster_entity_mailbox_size_max", { bigint: true })
 
 /**
  * Creates a gauge tracking the number of singleton processes currently running on the
