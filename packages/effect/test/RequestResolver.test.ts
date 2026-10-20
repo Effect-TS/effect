@@ -35,12 +35,22 @@ describe("RequestResolver.fromEffect", () => {
   it.effect("preserves resolver services and span over caller spans without leaking caller services", () =>
     Effect.gen(function*() {
       class Wrapper extends Context.Service<Wrapper, string>()("test/RequestResolver/Wrapper") {}
-      class GetContext extends Request.Class<{ id: number }, { tenant: string; wrapper: string; span: string }> {}
+      class ContextWrapper extends Context.Service<ContextWrapper, string>()("test/RequestResolver/ContextWrapper") {}
+      const additions = Array.from({ length: 10 }, (_, i) => Context.Service<number>(`test/RequestResolver/Added${i}`))
+      class GetContext extends Request.Class<
+        { id: number },
+        { tenant: string; wrapper: string; contextWrapper: string; additions: Array<number>; span: string }
+      > {}
       const base = RequestResolver.fromEffect<GetContext>(() =>
         Effect.gen(function*() {
           return {
             tenant: yield* currentTenant,
             wrapper: yield* Effect.map(Effect.serviceOption(Wrapper), Option.getOrElse(() => "missing")),
+            contextWrapper: yield* Effect.map(Effect.serviceOption(ContextWrapper), Option.getOrElse(() => "missing")),
+            additions: yield* Effect.forEach(
+              additions,
+              (service) => Effect.map(Effect.serviceOption(service), Option.getOrElse(() => -1))
+            ),
             span: (yield* Effect.orDie(Effect.currentSpan)).name
           }
         })
@@ -50,24 +60,46 @@ describe("RequestResolver.fromEffect", () => {
         ...base,
         runAll: (entries, key) => {
           batches.push(entries.length)
-          return base.runAll(entries, key).pipe(Effect.provideService(Wrapper, "wrapper"))
+          let effect = base.runAll(entries, key).pipe(
+            Effect.provideService(Wrapper, "wrapper"),
+            Effect.provideContext(Context.make(ContextWrapper, "context-wrapper"))
+          )
+          // Enough nested additions to cross Context's overlay-flattening threshold.
+          for (let i = 0; i < additions.length; i++) {
+            effect = Effect.provideService(effect, additions[i], i)
+          }
+          return effect
         }
       }).pipe(RequestResolver.withSpan("resolver"))
       const values = yield* Effect.all([
         Effect.request(new GetContext({ id: 1 }), resolver).pipe(
           Effect.provideService(Tenant, "private-tenant"),
           Effect.provideService(Wrapper, "wrapper"),
+          Effect.provideService(ContextWrapper, "context-wrapper"),
           Effect.withSpan("first-caller")
         ),
         Effect.request(new GetContext({ id: 2 }), resolver).pipe(
           Effect.provideService(Wrapper, "caller"),
+          Effect.provideService(ContextWrapper, "caller"),
           Effect.withSpan("second-caller")
         )
       ], { concurrency: "unbounded" })
 
       assert.deepStrictEqual(values, [
-        { tenant: "private-tenant", wrapper: "wrapper", span: "resolver" },
-        { tenant: "missing", wrapper: "wrapper", span: "resolver" }
+        {
+          tenant: "private-tenant",
+          wrapper: "wrapper",
+          contextWrapper: "context-wrapper",
+          additions: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+          span: "resolver"
+        },
+        {
+          tenant: "missing",
+          wrapper: "wrapper",
+          contextWrapper: "context-wrapper",
+          additions: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+          span: "resolver"
+        }
       ])
       assert.deepStrictEqual(batches, [2])
     }))
