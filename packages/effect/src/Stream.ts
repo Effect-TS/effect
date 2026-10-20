@@ -823,8 +823,13 @@ export const sync = <A>(evaluate: LazyArg<A>): Stream<A> => fromChannel(Channel.
  * @category constructors
  * @since 2.0.0
  */
-export const suspend = <A, E, R>(stream: LazyArg<Stream<A, E, R>>): Stream<A, E, R> =>
-  fromChannel(Channel.suspend(() => stream().channel))
+export const suspend = <A, E, R>(stream: LazyArg<Stream<A, E, R>>): Stream<A, E, R> => {
+  const suspended = fromChannel(Channel.suspend(() => stream().channel))
+  suspendedStreams.set(suspended, stream)
+  return suspended
+}
+
+const suspendedStreams = new WeakMap<Stream<any, any, any>, LazyArg<Stream<any, any, any>>>()
 
 /**
  * Terminates with the specified error.
@@ -2992,14 +2997,30 @@ export const concat: {
 // a single layer instead of one layer per call
 const concatParts = new WeakMap<Stream<any, any, any>, readonly [Stream<any, any, any>, Stream<any, any, any>]>()
 
-// Yields the channel of each non-`concat` stream in a chain, in order
+// Yields the channel of each non-`concat` stream in a chain, in order. A
+// `suspend` part is evaluated when it is reached and its result joins the chain
 function* concatChannels<A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) {
   const stack = [that, self]
   while (stack.length > 0) {
     const stream = stack.pop()!
     const parts = concatParts.get(stream)
-    if (parts === undefined) yield stream.channel
-    else stack.push(parts[1], parts[0])
+    if (parts !== undefined) {
+      stack.push(parts[1], parts[0])
+      continue
+    }
+    const evaluate = suspendedStreams.get(stream)
+    if (evaluate === undefined) {
+      yield stream.channel
+      continue
+    }
+    // Evaluated here rather than in an effect, so retrying an interrupted pull
+    // cannot evaluate it twice. `Channel.empty` keeps a yield point
+    try {
+      stack.push(evaluate())
+    } catch (defect) {
+      stack.push(die(defect))
+    }
+    yield Channel.empty
   }
 }
 
