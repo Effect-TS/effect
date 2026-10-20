@@ -115,12 +115,14 @@ const makeHarness = (options: {
 
 /**
  * Builds a client over a stub connection that records the transaction control
- * statements, the connection release, and `after(name)` for each callback
- * registered with `after`, along with the `Reactivity` service the client uses.
+ * statements, as `prepared(sql)` when prepared, the connection release, and
+ * `after(name)` for each callback registered with `after`, along with the
+ * `Reactivity` service the client uses.
  */
 const makeClient = (options: {
   readonly acquire?: Effect.Effect<void, never, Scope.Scope> | undefined
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
+  readonly prepareTransactionControls?: boolean | undefined
   readonly release?: Effect.Effect<void> | undefined
 } = {}) => {
   const calls: Array<string> = []
@@ -130,7 +132,7 @@ const makeClient = (options: {
     })
   const execute = (sql: string) => Effect.as(record(sql), [])
   const connection: SqlConnection.Connection = {
-    execute,
+    execute: (sql) => execute(`prepared(${sql})`),
     executeRaw: execute,
     executeValues: execute,
     executeUnprepared: execute,
@@ -149,6 +151,7 @@ const makeClient = (options: {
     ),
     compiler: Statement.makeCompilerSqlite(),
     spanAttributes: [],
+    prepareTransactionControls: options.prepareTransactionControls,
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
     Effect.flatMap((sql) =>
@@ -393,6 +396,50 @@ describe("SqlClient", () => {
 
         assert.strictEqual(result, 1)
         assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
+      }))
+  })
+
+  describe("withTransaction begin", () => {
+    it.effect("starts only the top-level transaction with the given statement, unprepared", () =>
+      Effect.gen(function*() {
+        const { calls, sql } = yield* makeClient({ prepareTransactionControls: true })
+
+        yield* sql.withTransaction(
+          sql.withTransaction(Effect.void, { begin: "BEGIN READ ONLY" }),
+          { begin: "BEGIN ISOLATION LEVEL SERIALIZABLE" }
+        )
+        yield* sql.withTransaction(Effect.void)
+
+        assert.deepStrictEqual(calls, [
+          "BEGIN ISOLATION LEVEL SERIALIZABLE",
+          "prepared(SAVEPOINT effect_sql_1)",
+          "prepared(COMMIT)",
+          "release",
+          "prepared(BEGIN)",
+          "prepared(COMMIT)",
+          "release"
+        ])
+      }))
+
+    it.effect("rolls back on failure or interruption and reports a failed COMMIT after the given statement", () =>
+      Effect.gen(function*() {
+        const begin = { begin: "BEGIN READ ONLY" }
+
+        const failed = yield* makeClient()
+        assertTypedFailure(yield* Effect.exit(failed.sql.withTransaction(Effect.fail("boom" as const), begin)), "boom")
+        assert.deepStrictEqual(failed.calls, ["BEGIN READ ONLY", "ROLLBACK", "release"])
+
+        const interrupted = yield* makeClient()
+        const fiber = yield* Effect.forkChild(interrupted.sql.withTransaction(Effect.never, begin), {
+          startImmediately: true
+        })
+        yield* Fiber.interrupt(fiber)
+        assert.deepStrictEqual(interrupted.calls, ["BEGIN READ ONLY", "ROLLBACK", "release"])
+
+        const commitError = sqlError("commit rejected")
+        const failedCommit = yield* makeClient({ commit: Effect.fail(commitError) })
+        assertTypedFailure(yield* Effect.exit(failedCommit.sql.withTransaction(Effect.void, begin)), commitError)
+        assert.deepStrictEqual(failedCommit.calls, ["BEGIN READ ONLY", "COMMIT", "release"])
       }))
   })
 

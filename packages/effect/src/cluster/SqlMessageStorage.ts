@@ -648,7 +648,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL
           WHERE request_id = ${id} AND last_reply_id = ${expected}`
       },
-      sql.withTransaction,
+      (effect) => sql.withTransaction(effect),
       PersistenceError.refail,
       withTracerDisabled
     ),

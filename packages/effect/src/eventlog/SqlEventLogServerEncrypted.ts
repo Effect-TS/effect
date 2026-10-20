@@ -279,7 +279,7 @@ export const makeStorage = (options?: {
             Effect.as(signingPublicKey)
           )
         },
-        sql.withTransaction,
+        (effect) => sql.withTransaction(effect),
         withTracerDisabled,
         Effect.orDie
       ),

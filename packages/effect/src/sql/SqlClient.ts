@@ -71,13 +71,32 @@ export interface SqlClient extends Constructor {
   /**
    * With the given effect, ensure all sql queries are run in a transaction.
    *
+   * **When to use**
+   *
+   * Use when one transaction needs its own isolation level or access mode:
+   * pass the statement that sets it as `begin`, as in
+   * `sql.withTransaction(effect, { begin: "BEGIN ISOLATION LEVEL SERIALIZABLE" })`
+   * on PostgreSQL, rather than following the client's `BEGIN` with a
+   * `SET TRANSACTION`, which costs another round trip.
+   *
    * **Details**
    *
    * Inside the transaction, `Reactivity.invalidate` and `Reactivity.mutation`
    * invalidate once the outermost transaction commits, and not at all if it
    * rolls back.
    *
+   * `begin` replaces the client's statement that starts a top-level
+   * transaction, for this call only, and runs unprepared.
+   *
    * **Gotchas**
+   *
+   * A nested transaction ignores `begin` and keeps its savepoint.
+   * `@effect/sql-libsql`, `@effect/sql-mssql` and `@effect/sql-sqlite-do`
+   * don't start transactions with a SQL statement, and ignore it too. `begin`
+   * is sent as raw SQL, so never build it from untrusted input.
+   *
+   * `Effect.fn` passes its function's arguments to each pipeline step after
+   * the effect, so use `(effect) => sql.withTransaction(effect)` as a step.
    *
    * Deferred invalidations run individually after the commit and don't join an
    * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
@@ -87,7 +106,8 @@ export interface SqlClient extends Constructor {
    * `@effect/sql-sqlite-do`, invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
-    self: Effect.Effect<A, E, R>
+    self: Effect.Effect<A, E, R>,
+    options?: { readonly begin?: string | undefined } | undefined
   ) => Effect.Effect<A, E | SqlError, R>
 
   /**
@@ -273,7 +293,9 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     transactionService,
     spanAttributes: options.spanAttributes,
     acquireConnection: (restore) => restore(transactionAcquirer!),
-    begin: (conn) => control(conn, beginTransaction),
+    // Unlike the client's own, a per-call statement isn't fixed, so it isn't prepared.
+    begin: (conn, statement) =>
+      statement === undefined ? control(conn, beginTransaction) : conn.executeUnprepared(statement, [], undefined),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
@@ -525,7 +547,12 @@ export const makeWithTransaction = <I, S>(options: {
   readonly acquireConnection: (
     restore: <XA, XE, XR>(effect: Effect.Effect<XA, XE, XR>) => Effect.Effect<XA, XE, XR>
   ) => Effect.Effect<S, SqlError, Scope.Scope>
-  readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+  /**
+   * Starts a top-level transaction. `statement` is the `begin` passed to
+   * `withTransaction`, if any; a driver that doesn't start transactions with a
+   * SQL statement ignores it.
+   */
+  readonly begin: (conn: NoInfer<S>, statement: string | undefined) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
   /**
    * Releases a nested savepoint after success or a successful rollback.
@@ -548,7 +575,10 @@ export const makeWithTransaction = <I, S>(options: {
       afterCommit(Effect.sync(() => reactivity.invalidateUnsafe(keys)))
     return { ...reactivity, invalidate, mutation: (keys, effect) => Effect.tap(effect, invalidate(keys)) }
   }
-  return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
+  return <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    transactionOptions?: { readonly begin?: string | undefined } | undefined
+  ): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
         "sql.transaction",
@@ -581,7 +611,7 @@ export const makeWithTransaction = <I, S>(options: {
               (
                 [scope, conn]
               ) =>
-                (id === 0 ? options.begin(conn) : options.savepoint(conn, id)).pipe(
+                (id === 0 ? options.begin(conn, transactionOptions?.begin) : options.savepoint(conn, id)).pipe(
                   Effect.flatMap(() => {
                     const level = [conn, id] as const
                     afterCommitBuffers.set(level, buffer)

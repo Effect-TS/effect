@@ -476,7 +476,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
           Effect.as(signingPublicKey)
         )
       },
-      sql.withTransaction,
+      (effect) => sql.withTransaction(effect),
       Effect.orDie,
       withTracerDisabled
     ),
