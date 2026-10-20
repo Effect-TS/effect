@@ -16,6 +16,8 @@ runs:
       env:
         npm_config_audit: "false"
         npm_config_fund: "false"
+        # `pnpm self-update` downloads the 47 MB @pnpm/linux-x64 tarball; keep in sync with pnpm-workspace.yaml
+        pnpm_config_fetch_timeout: "180000"
     - name: Install node
       uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:
