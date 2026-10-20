@@ -8,7 +8,8 @@ import { TestClock } from "effect/testing"
 
 const storeId = EventLogMessage.StoreId.make("store-a")
 const minute = 60_000
-const day = 24 * 60 * minute
+const hour = 60 * minute
+const day = 24 * hour
 
 // `marker` identifies the stored bytes, so a test can tell a snapshot batch
 // from the original holding the same ids.
@@ -68,8 +69,9 @@ const makeStore = Effect.gen(function*() {
   return { compaction, publicKey, ids, changes, commitSnapshot }
 })
 
+// The tests share one TestClock, so they run one at a time.
 export const suite = (name: string, storage: Layer.Layer<EventLogServerEncrypted.Storage, unknown>) =>
-  it.layer(storage, { timeout: "60 seconds" })(`Encrypted compaction storage (${name})`, (it) => {
+  it.layer(storage, { concurrent: false, timeout: "60 seconds" })(`Encrypted compaction storage (${name})`, (it) => {
     it.effect("slides a stage's claim on each Part and rejects a stale Part after a steal", () =>
       Effect.gen(function*() {
         const { compaction, ids, publicKey } = yield* makeStore
@@ -105,6 +107,59 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerEncrypted
 
         assert.deepStrictEqual(results, ["Stored", "AlreadyStored"])
         assert.deepStrictEqual(staged.map((header) => header.entryIds), [[ids[1]]])
+      }))
+
+    it.effect("releases the claim on abort and no-op, and answers a retried commit until the sweep removes the stage", () =>
+      Effect.gen(function*() {
+        const { compaction, ids, publicKey } = yield* makeStore
+        const aborted = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+        yield* compaction.abort(publicKey, storeId, aborted.stageId)
+        const noOp = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+        yield* compaction.recordNoOp(publicKey, storeId, noOp.stageId)
+        const afterNoOp = (yield* compaction.status(publicKey, storeId)).noOp
+        const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+        yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1])])
+
+        const results = [
+          yield* compaction.commit(publicKey, storeId, stageId, [1]),
+          yield* compaction.commit(publicKey, storeId, stageId, [1])
+        ]
+        const afterCommit = (yield* compaction.status(publicKey, storeId)).noOp
+        yield* TestClock.adjust(2 * hour)
+        const late = yield* compaction.commit(publicKey, storeId, stageId, [1]).pipe(Effect.flip)
+
+        assert.deepStrictEqual(afterNoOp, { at: 4, count: 1 })
+        assert.deepStrictEqual(results, ["Committed", "Committed"])
+        assert.strictEqual(afterCommit, undefined)
+        assert.strictEqual(late._tag, "CompactionNotFound")
+      }))
+
+    it.effect("reports as the lag head the last sequence of each storage hour once it ended a lag ago", () =>
+      Effect.gen(function*() {
+        const now = yield* Clock.currentTimeMillis
+        // 30 minutes into an hour, so the store's first writes share it.
+        yield* TestClock.adjust(hour - (now % hour) + 30 * minute)
+        const { compaction, publicKey } = yield* makeStore
+        const storage = yield* EventLogServerEncrypted.Storage
+        yield* TestClock.adjust(hour)
+        yield* storage.write(publicKey, storeId, [makeBatch(6, ...makeIds(1))])
+        const lagHead = Effect.map(compaction.status(publicKey, storeId), (status) => status.lagHead)
+
+        // It's now 30 minutes into the second hour, so the first one ended 30
+        // minutes ago and passes the lag in 23 hours and 30 minutes.
+        yield* TestClock.adjust(23 * hour + 29 * minute)
+        const beforeFirst = yield* lagHead
+        yield* TestClock.adjust(2 * minute)
+        const afterFirst = yield* lagHead
+        yield* TestClock.adjust(hour - 2 * minute)
+        const beforeSecond = yield* lagHead
+        yield* TestClock.adjust(2 * minute)
+        const afterSecond = yield* lagHead
+
+        assert.deepStrictEqual(
+          { beforeFirst, afterFirst, beforeSecond, afterSecond },
+          { beforeFirst: -1, afterFirst: 5, beforeSecond: 5, afterSecond: 6 }
+        )
       }))
 
     it.effect("withdraws a stage when a Part repeats an id staged earlier, releasing busy", () =>
@@ -200,7 +255,7 @@ export const suite = (name: string, storage: Layer.Layer<EventLogServerEncrypted
 
         yield* TestClock.adjust(30 * day - minute)
         const beforeGrace = (yield* compaction.history(publicKey, storeId))[0].restorable
-        yield* TestClock.adjust(2 * 60 * minute)
+        yield* TestClock.adjust(2 * hour)
         const afterGrace = (yield* compaction.history(publicKey, storeId))[0].restorable
         const rollback = yield* compaction.rollback(publicKey, storeId, snapshot.activationId).pipe(Effect.flip)
         const served = yield* changes(0, 3)
