@@ -603,6 +603,14 @@ export const makeStorage = (options?: {
     })
     const top = sql.onDialectOrElse({ mssql: () => sql.literal(`TOP (${pageSize})`), orElse: () => sql.literal("") })
     const limit = sql.onDialectOrElse({ mssql: () => sql.literal(""), orElse: () => sql.literal(`LIMIT ${pageSize}`) })
+    const chunkTop = sql.onDialectOrElse({
+      mssql: () => sql.literal(`TOP (${pruneChunkRows})`),
+      orElse: () => sql.literal("")
+    })
+    const chunkLimit = sql.onDialectOrElse({
+      mssql: () => sql.literal(""),
+      orElse: () => sql.literal(`LIMIT ${pruneChunkRows}`)
+    })
     // Streams rows in key order, one page per statement.
     const paged = <A>(
       first: number,
@@ -1221,20 +1229,39 @@ export const makeStorage = (options?: {
         UPDATE ${activationsSql} SET superseded_at = ${now}, prunable_at = ${now + graceMillis}
         WHERE id = ${activationId}`
 
+    // Deletes the first `pruneChunkRows` rows matching `where` in key order,
+    // and returns whether there were any. Nothing inserts rows matching
+    // `where` any more, so a later call picks up where an interrupted one
+    // stopped.
+    const deleteChunk = Effect.fnUntraced(function*(
+      tableSql: Statement.Identifier,
+      key: string,
+      where: Statement.Fragment
+    ) {
+      const keys = yield* query(sql`
+        SELECT ${chunkTop} ${sql(key)} AS chunk_key FROM ${tableSql}
+        WHERE ${where} ORDER BY ${sql(key)} ${chunkLimit}`)
+      if (keys.length === 0) return false
+      yield* sql`DELETE FROM ${tableSql} WHERE ${where} AND ${sql(key)} <= ${keys[keys.length - 1].chunk_key}`
+      return true
+    })
+
     // Runs one chunk of a prune under the store row lock, if this sweeper
     // still holds the lease and the active activation hasn't changed.
-    const pruneChunk = (
+    const pruneChunk = <A>(
       scope: string,
       now: number,
       lease: { readonly owner: string; readonly activeActivation: string },
-      f: Effect.Effect<unknown, SqlError.SqlError>
+      f: Effect.Effect<A, SqlError.SqlError>
     ) =>
       sql.withTransaction(Effect.gen(function*() {
         const store = yield* lockStore(scope)
-        if (store.sweepLeaseOwner !== lease.owner || store.activeActivation !== lease.activeActivation) return false
-        yield* f
+        if (store.sweepLeaseOwner !== lease.owner || store.activeActivation !== lease.activeActivation) {
+          return Option.none<A>()
+        }
+        const value = yield* f
         yield* sql`UPDATE ${storesSql} SET sweep_lease_until = ${now + sweepIntervalMillis} WHERE scope = ${scope}`
-        return true
+        return Option.some(value)
       }))
 
     // Prunes what no activation still needs: the batch sets of generations
@@ -1276,13 +1303,16 @@ export const makeStorage = (options?: {
       }))
       if (plan === undefined) return
       for (const set of plan.sets) {
-        const held = yield* pruneChunk(
-          scope,
-          now,
-          plan.lease,
-          sql`DELETE FROM ${snapshotTableSql} WHERE batch_set = ${set}`
-        )
-        if (!held) return
+        while (true) {
+          const deleted = yield* pruneChunk(
+            scope,
+            now,
+            plan.lease,
+            deleteChunk(snapshotTableSql, "batch_position", sql`batch_set = ${set}`)
+          )
+          if (Option.isNone(deleted)) return
+          if (!deleted.value) break
+        }
       }
       for (let start = plan.prunedThrough; start < plan.keptBase; start += pruneChunkSequences) {
         const end = Math.min(start + pruneChunkSequences, plan.keptBase)
@@ -1297,7 +1327,7 @@ export const makeStorage = (options?: {
               WHERE scope = ${scope}`)
           )
         )
-        if (!held) return
+        if (Option.isNone(held)) return
       }
       yield* sql.withTransaction(Effect.gen(function*() {
         const store = yield* lockStore(scope)
@@ -1312,8 +1342,23 @@ export const makeStorage = (options?: {
       }))
     })
 
+    // Deletes a closed stage's rows matching `where`, one chunk per
+    // transaction, each under the store row lock to keep the lock order.
+    const deleteStaged = Effect.fnUntraced(function*(
+      scope: string,
+      tableSql: Statement.Identifier,
+      key: string,
+      where: Statement.Fragment
+    ) {
+      while (yield* sql.withTransaction(Effect.andThen(lockStore(scope), deleteChunk(tableSql, key, where)))) {
+        // Repeat until no rows match.
+      }
+    })
+
     // Expires stages past their claim, then deletes stages that left `open`
-    // one stage TTL ago, with what they staged unless it was committed.
+    // one stage TTL ago, with what they staged unless it was committed. A
+    // closed stage's staged rows are read by nothing, so they go first in
+    // short chunks, and the stage row last.
     const sweepStages = Effect.fnUntraced(function*(now: number) {
       const expired = yield* query(sql`
         SELECT id, scope FROM ${stagesSql} WHERE state = ${"open"} AND expires_at <= ${now}`)
@@ -1335,13 +1380,13 @@ export const makeStorage = (options?: {
         const scope = String(row.scope)
         const stageId = String(row.id)
         const { snapshotTableSql, stageIdsTableSql } = scopeTables(scope)
+        yield* deleteStaged(scope, stageIdsTableSql, "entry_id", sql`stage = ${stageId}`)
+        if (row.result !== "Committed") {
+          yield* deleteStaged(scope, snapshotTableSql, "batch_position", sql`batch_set = ${stageId}`)
+        }
         yield* sql.withTransaction(Effect.gen(function*() {
           yield* lockStore(scope)
-          yield* sql`DELETE FROM ${stageIdsTableSql} WHERE stage = ${stageId}`
           yield* sql`DELETE FROM ${segmentsSql} WHERE stage = ${stageId}`
-          if (row.result !== "Committed") {
-            yield* sql`DELETE FROM ${snapshotTableSql} WHERE batch_set = ${stageId}`
-          }
           yield* sql`DELETE FROM ${stagesSql} WHERE id = ${stageId}`
         }))
       }
@@ -1523,6 +1568,8 @@ const lagHour = (now: number, lagMillis: number) => Math.floor((now - lagMillis)
 const pageSize = 500
 // Sequences of originals deleted per prune chunk.
 const pruneChunkSequences = 10_000
+// Snapshot or staged rows deleted per prune chunk.
+const pruneChunkRows = 200
 // A staged batch's position packs its segment index and its index in the
 // segment, as in `EventLogServerEncrypted`.
 const positionsPerSegment = 2 ** 20
