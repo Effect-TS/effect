@@ -321,7 +321,7 @@ describe("HttpEffect", () => {
       strictEqual(await response.text(), "420")
     })
 
-    test("pre-response handlers are keyed by request source", () => {
+    test("pre-response handlers share a request token across modified views", () => {
       const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
       const modified = request.modify({ url: "/updated" })
       const handler = (
@@ -331,7 +331,7 @@ describe("HttpEffect", () => {
 
       appendPreResponseHandlerUnsafe(request, handler)
 
-      strictEqual(requestPreResponseHandlers.get(modified.source), handler)
+      strictEqual(requestPreResponseHandlers.get(modified[HttpServerRequest.RequestToken] ?? modified.source), handler)
     })
   })
 
