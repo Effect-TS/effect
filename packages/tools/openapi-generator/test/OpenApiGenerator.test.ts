@@ -2570,6 +2570,42 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         ]
       ))
 
+    for (
+      const [position, link] of [
+        ["requestBody", { operationId: "createJson", requestBody: { $ref: "#/this/is/arbitrary-user-data" } }],
+        ["parameters", {
+          operationId: "createJson",
+          parameters: { payload: { $ref: "#/this/is/arbitrary-user-data" } }
+        }]
+      ] as const
+    ) {
+      it.effect(`treats $ref inside link ${position} as data`, () => {
+        const spec = sharedMultipartSpec(
+          { type: "object", properties: { file: { type: "string", format: "binary" } } },
+          {},
+          { schema: { type: "object", properties: { name: { type: "string" } } } }
+        )
+        const operation = spec.paths["/json"].post!
+        return assertHttpApiIncludes(
+          {
+            ...spec,
+            paths: {
+              ...spec.paths,
+              "/json": {
+                post: {
+                  ...operation,
+                  responses: { "204": { description: "Created", links: { next: link } } } as any
+                }
+              }
+            }
+          },
+          [
+            `export type CreateJsonRequestJson = { readonly "name"?: string }`
+          ]
+        )
+      })
+    }
+
     it.effect("copies self-recursive components shared by JSON and multipart bodies", () =>
       assertHttpApiIncludes(
         sharedMultipartSpec({ $ref: "#/components/schemas/Node" }, {
@@ -3458,6 +3494,31 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
           ]
         ))
     }
+
+    it.effect("maps aliased binary string components to multipart files for generated clients", () =>
+      assertRuntimeIncludes(
+        sharedMultipartSpec(
+          {
+            type: "object",
+            properties: {
+              file: { $ref: "#/components/schemas/Upload" },
+              files: { type: "array", items: { $ref: "#/components/schemas/Upload" } }
+            },
+            required: ["file", "files"],
+            additionalProperties: false
+          },
+          {
+            Upload: { $ref: "#/components/schemas/BinaryData" },
+            BinaryData: { type: "string", format: "binary" }
+          },
+          { schema: { $ref: "#/components/schemas/Upload" } }
+        ),
+        [
+          `export type Upload = string`,
+          `export type CreateJsonRequestJson = Upload`,
+          `export type UploadRequestFormData = { readonly "file": __ClientMultipartFile, readonly "files": ReadonlyArray<__ClientMultipartFile> }`
+        ]
+      ))
 
     it.effect(
       "types multipart binary arrays as File | Blob arrays for generated clients",
