@@ -200,7 +200,15 @@ describe("Schema.toJsonSchemaDocument", () => {
 
     assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
       type: "string",
-      contentMediaType: "application/json"
+      contentMediaType: "application/json",
+      contentSchema: {
+        type: "object",
+        properties: {
+          value: { type: "string" }
+        },
+        required: ["value"],
+        additionalProperties: true
+      }
     })
   })
 

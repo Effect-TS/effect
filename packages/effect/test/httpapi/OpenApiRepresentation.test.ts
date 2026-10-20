@@ -44,12 +44,12 @@ describe("OpenApi representation v2 consumer", () => {
     )
   })
 
-  it("deduplicates JSON encoding definitions across regular and SSE responses", () => {
+  it("shares content definitions across regular JSON and SSE responses", () => {
     const Content = Schema.Struct({ text: Schema.String }).annotate({ identifier: "Tool.Content" })
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
         HttpApiEndpoint.get("content", "/content", {
-          success: Schema.fromJsonString(Content)
+          success: Content
         }),
         HttpApiEndpoint.get("stream", "/stream", {
           success: HttpApiSchema.StreamSse({ data: Content })
@@ -59,14 +59,21 @@ describe("OpenApi representation v2 consumer", () => {
     const spec = OpenApi.fromApi(Api)
 
     assert.deepStrictEqual(spec.components.schemas, {
+      "Tool.Content": {
+        type: "object",
+        properties: { text: { type: "string" } },
+        required: ["text"],
+        additionalProperties: false
+      },
       "Tool.ContentEncoded": {
         type: "string",
-        contentMediaType: "application/json"
+        contentMediaType: "application/json",
+        contentSchema: { $ref: "#/components/schemas/Tool.Content" }
       }
     })
     assert.deepStrictEqual(
       spec.paths["/content"]?.get?.responses[200]?.content?.["application/json"]?.schema,
-      { $ref: "#/components/schemas/Tool.ContentEncoded" }
+      { $ref: "#/components/schemas/Tool.Content" }
     )
     assert.deepStrictEqual(
       spec.paths["/stream"]?.get?.responses[200]?.content?.["text/event-stream"]?.schema,

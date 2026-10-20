@@ -1,6 +1,6 @@
 import { assert } from "@effect/vitest"
 import type { Options as AjvOptions } from "ajv"
-import { Effect, JsonSchema, Option, Predicate, Schema, SchemaGetter } from "effect"
+import { Effect, JsonSchema, Option, Predicate, Schema, SchemaGetter, SchemaTransformation } from "effect"
 import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, throws } from "../utils/assert.ts"
 
@@ -4013,13 +4013,16 @@ describe("toJsonSchemaDocument", () => {
   })
 
   describe("fromJsonString", () => {
-    it("top level fromJsonString", () => {
+    it("uses the encoded side of the content schema", () => {
       assertJsonSchemaDocument(
         Schema.fromJsonString(Schema.FiniteFromString),
         {
           schema: {
             "type": "string",
-            "contentMediaType": "application/json"
+            "contentMediaType": "application/json",
+            "contentSchema": {
+              "type": "string"
+            }
           }
         }
       )
@@ -4037,9 +4040,24 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyEventEncoded"
           },
           definitions: {
+            "MyEvent": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
             "MyEventEncoded": {
               "type": "string",
-              "contentMediaType": "application/json"
+              "contentMediaType": "application/json",
+              "contentSchema": {
+                "$ref": "#/$defs/MyEvent"
+              }
             }
           }
         }
@@ -4061,10 +4079,252 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyWireEvent"
           },
           definitions: {
+            "MyEvent": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
             "MyWireEvent": {
               "type": "string",
-              "contentMediaType": "application/json"
+              "contentMediaType": "application/json",
+              "contentSchema": {
+                "$ref": "#/$defs/MyEvent"
+              }
             }
+          }
+        }
+      )
+    })
+
+    it("nested fromJsonString", () => {
+      assertJsonSchemaDocument(
+        Schema.Struct({
+          payload: Schema.fromJsonString(Schema.Struct({
+            value: Schema.FiniteFromString
+          }))
+        }),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "type": "string",
+                "contentMediaType": "application/json",
+                "contentSchema": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["value"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["payload"],
+            "additionalProperties": false
+          }
+        }
+      )
+    })
+
+    it("nested JSON string transformations", () => {
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.fromJsonString(Schema.Boolean)),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {
+              "type": "string",
+              "contentMediaType": "application/json",
+              "contentSchema": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      )
+    })
+
+    it("unconstrained content", () => {
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.Unknown),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {}
+          }
+        }
+      )
+    })
+
+    it("checks added after fromJsonString", () => {
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.String).check(Schema.isMinLength(3)),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {
+              "type": "string",
+              "minLength": 3
+            }
+          }
+        }
+      )
+    })
+
+    it("omits checks that cannot describe the encoded content", () => {
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.FiniteFromString).check(Schema.isGreaterThan(0)),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {
+              "type": "string"
+            }
+          }
+        }
+      )
+    })
+
+    it("transformations added after fromJsonString", () => {
+      const schema = Schema.fromJsonString(Schema.Boolean).pipe(
+        Schema.decodeTo(
+          Schema.Literals(["yes", "no"]),
+          SchemaTransformation.transform({
+            decode: (value) => value ? "yes" : "no",
+            encode: (value) => value === "yes"
+          })
+        )
+      )
+
+      assertJsonSchemaDocument(schema, {
+        schema: {
+          "type": "string",
+          "contentMediaType": "application/json",
+          "contentSchema": {
+            "type": "boolean"
+          }
+        }
+      })
+    })
+
+    it("custom JSON parse and stringify options", () => {
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.Boolean, {
+          reviver: (_key, value) => value
+        }),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json"
+          }
+        }
+      )
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.Boolean, {
+          replacer: (_key, value) => value
+        }),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json"
+          }
+        }
+      )
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(Schema.Boolean, { space: 2 }),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {
+              "type": "boolean"
+            }
+          }
+        }
+      )
+    })
+
+    it("prefers an explicit contentSchema annotation", () => {
+      const schema = Schema.flip(
+        Schema.flip(Schema.fromJsonString(Schema.Boolean)).annotate({
+          contentSchema: { type: "string", format: "custom" }
+        })
+      )
+
+      assertJsonSchemaDocument(
+        schema,
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {
+              "type": "string",
+              "format": "custom"
+            }
+          }
+        }
+      )
+    })
+
+    it("toEncoded removes the content relationship", () => {
+      assertJsonSchemaDocument(
+        Schema.toEncoded(Schema.fromJsonString(Schema.Boolean)),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json"
+          }
+        }
+      )
+    })
+
+    it("flip moves the content string to the type side", () => {
+      assertJsonSchemaDocument(
+        Schema.flip(Schema.fromJsonString(Schema.Struct({ value: Schema.Boolean }))),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "boolean"
+              }
+            },
+            "required": ["value"],
+            "additionalProperties": false
+          }
+        }
+      )
+    })
+
+    it("uses normal approximation rules for content", () => {
+      const OpaqueString = Schema.declare((input): input is string => typeof input === "string", {
+        representation: {
+          id: "test/schema/fromJsonStringOpaqueString",
+          payload: null
+        }
+      })
+
+      assertJsonSchemaDocument(
+        Schema.fromJsonString(OpaqueString),
+        {
+          schema: {
+            "type": "string",
+            "contentMediaType": "application/json",
+            "contentSchema": {}
           }
         }
       )
