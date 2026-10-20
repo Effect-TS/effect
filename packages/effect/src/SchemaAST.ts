@@ -2737,7 +2737,8 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  * **Gotchas**
  *
  * Using `Schema.optionalKey` on the value type is not allowed for index
- * signatures (throws at construction); use `Schema.optional` instead.
+ * signatures (`Schema.Record` throws at construction); use `Schema.optional`
+ * instead.
  *
  * @see {@link Objects}
  * @see {@link PropertySignature}
@@ -2770,9 +2771,6 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
     }
     this.parameter = parameter
     this.type = type
-    if (isOptional(type) && !containsUndefined(type)) {
-      throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
-    }
   }
 }
 
@@ -4625,6 +4623,9 @@ function parseParameter(ast: AST): {
 /** @internal */
 export function record(key: AST, value: AST): Objects {
   const { literals, parameters: indexSignatures } = parseParameter(key)
+  if (indexSignatures.length > 0 && isOptional(value) && !containsUndefined(value)) {
+    throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+  }
   return new Objects(
     literals.map((literal) => new PropertySignature(literal, value)),
     indexSignatures.map((parameter) => new IndexSignature(parameter, value))

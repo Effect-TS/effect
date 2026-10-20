@@ -4064,6 +4064,13 @@ Expected a value between -2147483648 and 2147483647`
       )
     })
 
+    it("Record(String, optionalKey(flip(toCodecJson(Undefined)))) should throw", async () => {
+      throws(
+        () => Schema.Record(Schema.String, Schema.optionalKey(Schema.flip(Schema.toCodecJson(Schema.Undefined)))),
+        new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+      )
+    })
+
     it("Record(String, optional(Number))", async () => {
       const schema = Schema.Record(Schema.String, Schema.optional(Schema.Number))
       const asserts = new TestSchema.Asserts(schema)
