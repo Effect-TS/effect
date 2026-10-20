@@ -3509,7 +3509,7 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
 export const requiresOwnProperty = (key: PropertyKey): boolean => Object.hasOwn(Object.prototype, key)
 
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
-  requiresOwnProperty(key) ? Object.hasOwn(input, key) : key in input
+  Object.hasOwn(input, key) || (key in input && !requiresOwnProperty(key))
 
 /** @internal */
 export function getCandidateIndex(types: ReadonlyArray<AST>): CandidateIndex {
