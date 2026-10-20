@@ -54,6 +54,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   readonly source: Http.IncomingMessage
   readonly onError: (error: unknown) => E
   readonly remoteAddressOverride?: Option.Option<string> | undefined
+  protected readonly destroyOnOverflow: boolean = true
 
   constructor(
     source: Http.IncomingMessage,
@@ -123,6 +124,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     this.arrayBufferEffect = Effect.withFiber((fiber) =>
       NodeStream.toArrayBuffer(() => this.source, {
         onError: this.onError,
+        destroyOnOverflow: this.destroyOnOverflow,
         maxBytes: fiber.getRef(IncomingMessage.MaxBodySize)
       })
     ).pipe(

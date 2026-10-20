@@ -68,6 +68,7 @@ import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
 import * as NodeMultipart from "./NodeMultipart.ts"
 import * as NodeServices from "./NodeServices.ts"
 import { NodeWS } from "./NodeSocket.ts"
+import * as NodeStream from "./NodeStream.ts"
 
 /**
  * Options accepted by the Node `HttpServer` constructors and layers.
@@ -336,6 +337,7 @@ const absoluteTarget = (url: string): URL | undefined => {
 }
 
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
+  protected override readonly destroyOnOverflow = false
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
   private upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError> | undefined
@@ -355,6 +357,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       new HttpServerError({
         reason: new RequestParseError({
           request: this,
+          reason: cause instanceof NodeStream.MaxBytesError ? "BodyTooLarge" : "Parse",
           cause
         })
       }), remoteAddressOverride)

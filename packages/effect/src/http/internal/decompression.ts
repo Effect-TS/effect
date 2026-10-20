@@ -207,6 +207,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     const error = new HttpServerError({
       reason: new RequestParseError({
         request: this,
+        reason: multipartReason,
         ...(description === undefined ? undefined : { description }),
         ...(cause === undefined ? undefined : { cause })
       })
