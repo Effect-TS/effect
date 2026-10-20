@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { flow } from "effect/Function"
 import {
+  FetchHttpClient,
   HttpBody,
   HttpClient,
   HttpClientRequest,
@@ -636,16 +637,22 @@ describe("NodeHttpClient upgrade", () => {
     })
   })
 
-  it.live("fetch cannot hand over an upgraded connection", () =>
+  it.effect("fetch rejects an upgrade request before calling fetch", () =>
     Effect.gen(function*() {
-      yield* Effect.succeed(HttpServerResponse.empty()).pipe(HttpServer.serveEffect())
-      const error = yield* HttpClient.post("/attach").pipe(
-        Effect.flatMap((response) => response.upgrade),
+      let calls = 0
+      const error = yield* HttpClient.execute(
+        HttpClientRequest.post("http://127.0.0.1:1/attach").pipe(HttpClientRequest.upgrade("tcp"))
+      ).pipe(
+        Effect.provideService(
+          FetchHttpClient.Fetch,
+          Object.assign(() => {
+            calls++
+            return Promise.resolve(new Response(""))
+          }, { preconnect: () => {} })
+        ),
         Effect.flip
       )
-      assert.strictEqual(error.reason._tag, "StatusCodeError")
-    }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
-      Layer.provide(NodeClient.layerFetch),
-      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
-    ))))
+      assert.strictEqual(error.reason._tag, "TransportError")
+      assert.strictEqual(calls, 0)
+    }).pipe(Effect.provide(NodeClient.layerFetch)))
 })

@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Cookies from "effect/http/Cookies"
 import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import * as MXHR from "mock-xmlhttprequest"
@@ -134,14 +135,19 @@ describe("BrowserHttpClient", () => {
       }]
     }))))
 
-  it.effect("cannot hand over an upgraded connection", () =>
-    Effect.gen(function*() {
-      const error = yield* HttpClient.post("http://localhost:8080/attach").pipe(
-        Effect.flatMap((response) => response.upgrade),
-        Effect.flip
-      )
-      assert.strictEqual(error.reason._tag, "StatusCodeError")
+  it.effect("rejects an upgrade request before sending it", () => {
+    let hits = 0
+    return Effect.gen(function*() {
+      const error = yield* HttpClient.execute(
+        HttpClientRequest.post("http://localhost:8080/attach").pipe(HttpClientRequest.upgrade("tcp"))
+      ).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "TransportError")
+      assert.strictEqual(hits, 0)
     }).pipe(Effect.provide(layer({
-      post: ["http://localhost:8080/attach", { status: 200, body: "" }]
-    }))))
+      post: ["http://localhost:8080/attach", (request) => {
+        hits++
+        request.respond(200)
+      }]
+    })))
+  })
 })
