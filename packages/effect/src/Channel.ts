@@ -6228,39 +6228,49 @@ export const retry: {
       $: <O, SE, R>(_: Schedule.Schedule<O, Types.NoInfer<OutErr>, SE, R>) => Schedule.Schedule<O, OutErr, SE, R>
     ) => Schedule.Schedule<SO, Types.NoInfer<OutErr>, SE, SR>)
 ): Channel<OutElem, OutErr | SE, OutDone, InElem, InErr, InDone, Env | SR> =>
-  suspend(() => {
-    let step: ((input: OutErr) => Pull.Pull<Schedule.Metadata<SO, OutErr>, SE, SO, SR>) | undefined = undefined
-    let meta = Schedule.CurrentMetadata.defaultValue()
-    const selfWithMeta = provideServiceEffect(self, Schedule.CurrentMetadata, Effect.sync(() => meta))
-    const withReset = onFirst(selfWithMeta, () => {
-      step = undefined
-      return Effect.void
-    })
-    const resolvedSchedule = typeof schedule === "function" ? schedule(identity_) : schedule
-    const loop: Channel<
-      OutElem,
-      OutErr | SE,
-      OutDone,
-      InElem,
-      InErr,
-      InDone,
-      Env | SR
-    > = catch_(
-      withReset,
-      Effect.fnUntraced(
-        function*(error) {
+  fromTransform((upstream, scope) =>
+    Effect.sync(() => {
+      let step: ((input: OutErr) => Pull.Pull<Schedule.Metadata<SO, OutErr>, SE, SO, SR>) | undefined = undefined
+      let meta = Schedule.CurrentMetadata.defaultValue()
+      const selfWithMeta = provideServiceEffect(self, Schedule.CurrentMetadata, Effect.sync(() => meta))
+      const withReset = onFirst(selfWithMeta, () => {
+        step = undefined
+        return Effect.void
+      })
+      const resolvedSchedule = typeof schedule === "function" ? schedule(identity_) : schedule
+      const stepSchedule = Effect.fnUntraced(
+        function*(error: OutErr) {
           if (!step) {
             step = yield* Schedule.toStepWithMetadata(resolvedSchedule)
           }
           meta = yield* step(error)
-          return loop
         },
-        (effect, error) => Pull.catchDone(effect, () => Effect.succeed(fail(error))),
-        unwrap
+        (effect, error) => Pull.catchDone(effect, () => Effect.fail(error)),
+        Scope.provide(scope)
       )
-    )
-    return loop
-  }))
+      let currentPull: Pull.Pull<OutElem, OutErr | SE, OutDone, Env | SR> | undefined
+      const makePull = (): Pull.Pull<OutElem, OutErr | SE, OutDone, Env | SR> => {
+        const runScope = Scope.forkUnsafe(scope)
+        return Effect.flatMap(toTransform(withReset)(upstream, runScope), (pull) => {
+          currentPull = Effect.catchCause(pull, (cause) => {
+            if (Pull.isDoneCause(cause)) {
+              return Effect.failCause(cause)
+            }
+            const error = findRecoverableError(cause as Cause.Cause<OutErr>)
+            return Scope.close(runScope, Exit.failCause(cause)).pipe(
+              Effect.andThen(
+                Result.isFailure(error)
+                  ? Effect.failCause(error.failure)
+                  : Effect.flatMap(stepSchedule(error.success), makePull)
+              )
+            )
+          })
+          return currentPull
+        })
+      }
+      return Effect.suspend(() => currentPull ?? makePull())
+    })
+  ))
 
 /**
  * Maps each output element to a channel and emits values from the most recent

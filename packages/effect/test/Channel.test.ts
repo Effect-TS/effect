@@ -30,6 +30,32 @@ describe("Channel", () => {
           assert.isBelow(large / small, 2.5)
         }))
     }
+
+    it.effect("retry work per attempt does not grow", () =>
+      Effect.gen(function*() {
+        const flaky = Channel.concat(Channel.succeed(Arr.make(1)), Channel.fail("boom"))
+        const stream = Stream.fromChannel(Channel.retry(flaky, Schedule.forever))
+        const ops = (n: number) => countOps(stream.pipe(Stream.take(n), Stream.runDrain))
+        const small = yield* ops(1_000)
+        const large = yield* ops(2_000)
+        assert.isBelow(large / small, 2.5)
+      }))
+
+    it.effect("retry closes schedule resources with the channel", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        let attempts = 0
+        const flaky = Channel.suspend(() => attempts++ === 0 ? Channel.fail("boom") : Channel.succeed(1))
+        const schedule = Schedule.tap(
+          Schedule.forever,
+          () => Effect.addFinalizer(() => Effect.sync(() => events.push("schedule finalizer")))
+        )
+        yield* Effect.scoped(Effect.gen(function*() {
+          yield* Channel.runCollect(Channel.retry(flaky, schedule))
+          events.push("run completed")
+        }))
+        assert.deepStrictEqual(events, ["schedule finalizer", "run completed"])
+      }))
   })
 
   describe("constructors", () => {
