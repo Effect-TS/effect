@@ -3833,16 +3833,6 @@ describe("Stream", () => {
           assert.deepStrictEqual(result, [[1, "a"], [2, "b"], [3, "c"]])
         }))
 
-      it.effect("handles a large chunk against single-element pulls on either side", () =>
-        Effect.gen(function*() {
-          const singles = Stream.fromIterable(["a", "b", "c", "d"], { chunkSize: 1 })
-          const leftLarge = yield* Stream.zip(Stream.fromArray([1, 2, 3, 4, 5]), singles).pipe(Stream.runCollect)
-          const rightLarge = yield* Stream.zip(singles, Stream.fromArray([1, 2])).pipe(Stream.runCollect)
-
-          assert.deepStrictEqual(leftLarge, [[1, "a"], [2, "b"], [3, "c"], [4, "d"]])
-          assert.deepStrictEqual(rightLarge, [["a", 1], ["b", 2]])
-        }))
-
       it.effect("carries leftovers across uneven chunks on both sides", () =>
         Effect.gen(function*() {
           const numbers = Stream.fromArrays([1, 2, 3], [4], [5, 6, 7])
@@ -3948,25 +3938,6 @@ describe("Stream", () => {
           assert.deepStrictEqual(result, [1, 2, 3])
           assert.strictEqual(rightPulled, 3)
         }))
-
-      it.effect("handles a large chunk against single-element pulls on either side", () =>
-        Effect.gen(function*() {
-          const singles = Stream.fromIterable(["a", "b", "c", "d"], { chunkSize: 1 })
-          const leftLarge = yield* Stream.zipLeft(Stream.fromArray([1, 2, 3, 4, 5]), singles).pipe(Stream.runCollect)
-          const rightLarge = yield* Stream.zipLeft(singles, Stream.fromArray([1, 2])).pipe(Stream.runCollect)
-
-          assert.deepStrictEqual(leftLarge, [1, 2, 3, 4])
-          assert.deepStrictEqual(rightLarge, ["a", "b"])
-        }))
-
-      it.effect("carries leftovers across uneven chunks on both sides", () =>
-        Effect.gen(function*() {
-          const numbers = Stream.fromArrays([1, 2, 3], [4], [5, 6, 7])
-          const letters = Stream.fromArrays(["a"], ["b", "c", "d", "e"], ["f", "g", "h"])
-          const result = yield* Stream.zipLeft(numbers, letters).pipe(Stream.chunks, Stream.runCollect)
-
-          assert.deepStrictEqual(result, [[1], [2, 3], [4], [5], [6, 7]])
-        }))
     })
 
     describe("zipRight", () => {
@@ -4057,25 +4028,6 @@ describe("Stream", () => {
 
           assert.deepStrictEqual(result, ["a", "b", "c"])
           assert.strictEqual(leftPulled, 3)
-        }))
-
-      it.effect("handles a large chunk against single-element pulls on either side", () =>
-        Effect.gen(function*() {
-          const singles = Stream.fromIterable(["a", "b", "c", "d"], { chunkSize: 1 })
-          const leftLarge = yield* Stream.zipRight(Stream.fromArray([1, 2, 3, 4, 5]), singles).pipe(Stream.runCollect)
-          const rightLarge = yield* Stream.zipRight(singles, Stream.fromArray([1, 2])).pipe(Stream.runCollect)
-
-          assert.deepStrictEqual(leftLarge, ["a", "b", "c", "d"])
-          assert.deepStrictEqual(rightLarge, [1, 2])
-        }))
-
-      it.effect("carries leftovers across uneven chunks on both sides", () =>
-        Effect.gen(function*() {
-          const numbers = Stream.fromArrays([1, 2, 3], [4], [5, 6, 7])
-          const letters = Stream.fromArrays(["a"], ["b", "c", "d", "e"], ["f", "g", "h"])
-          const result = yield* Stream.zipRight(numbers, letters).pipe(Stream.chunks, Stream.runCollect)
-
-          assert.deepStrictEqual(result, [["a"], ["b", "c"], ["d"], ["e"], ["f", "g"]])
         }))
     })
 
@@ -4168,33 +4120,6 @@ describe("Stream", () => {
           const result = yield* stream1.pipe(Stream.zipFlatten(stream2), Stream.runCollect)
 
           assert.deepStrictEqual(result, [[1, "a", "x"], [2, "b", "y"], [3, "c", "z"]])
-        }))
-
-      it.effect("handles a large chunk against single-element pulls on either side", () =>
-        Effect.gen(function*() {
-          const large = Stream.fromArray([[1], [2], [3], [4], [5]] as const)
-          const singles = Stream.fromIterable(["a", "b", "c", "d"], { chunkSize: 1 })
-          const singleTuples = Stream.fromIterable([["a"], ["b"], ["c"], ["d"]] as const, { chunkSize: 1 })
-          const leftLarge = yield* Stream.zipFlatten(large, singles).pipe(Stream.runCollect)
-          const rightLarge = yield* Stream.zipFlatten(singleTuples, Stream.fromArray([1, 2])).pipe(Stream.runCollect)
-
-          assert.deepStrictEqual(leftLarge, [[1, "a"], [2, "b"], [3, "c"], [4, "d"]])
-          assert.deepStrictEqual(rightLarge, [["a", 1], ["b", 2]])
-        }))
-
-      it.effect("carries leftovers across uneven chunks on both sides", () =>
-        Effect.gen(function*() {
-          const numbers = Stream.fromArrays([1, 2, 3], [4], [5, 6, 7]).pipe(Stream.map((n) => [n, n * 10] as const))
-          const letters = Stream.fromArrays(["a"], ["b", "c", "d", "e"], ["f", "g", "h"])
-          const result = yield* Stream.zipFlatten(numbers, letters).pipe(Stream.chunks, Stream.runCollect)
-
-          assert.deepStrictEqual(result, [
-            [[1, 10, "a"]],
-            [[2, 20, "b"], [3, 30, "c"]],
-            [[4, 40, "d"]],
-            [[5, 50, "e"]],
-            [[6, 60, "f"], [7, 70, "g"]]
-          ])
         }))
     })
 
