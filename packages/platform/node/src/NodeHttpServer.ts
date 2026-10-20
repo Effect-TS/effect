@@ -874,21 +874,14 @@ const teardownBody = (request: Http.IncomingMessage, response: Http.ServerRespon
     return closeSocket(socket)
   }
   let bytes = 0
-  const onData = (chunk: Buffer) => {
+  request.on("data", (chunk: Buffer) => {
     bytes += chunk.length
-    if (bytes <= maxDrainBytes) return
-    cleanup()
-    request.pause()
-    closeSocket(socket)
-  }
-  const cleanup = () => {
-    request.off("data", onData)
-    request.off("end", cleanup)
-    request.off("close", cleanup)
-  }
-  request.on("data", onData)
-  request.once("end", cleanup)
-  request.once("close", cleanup)
+    if (bytes > maxDrainBytes) {
+      // Pausing stops further `data` events, so this runs once.
+      request.pause()
+      closeSocket(socket)
+    }
+  })
   request.resume()
 }
 
