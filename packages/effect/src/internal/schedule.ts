@@ -29,18 +29,17 @@ export const repeatOrElse: {
 ): Effect<B, E3, R | R2 | R3> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
-    const selfWithMeta = effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta))
-    const loop: Effect<B, E | E2, R | R2> = effect.flatMap(selfWithMeta, (input) =>
+    const loop = (input: A): Effect<B, E | E2, R | R2> =>
       Pull.matchEffect(step(input), {
         onSuccess(meta_) {
           meta = meta_
-          return loop
+          return effect.flatMap(effect.provideService(self, Schedule.CurrentMetadata, meta), loop)
         },
         onFailure: effect.failCause,
         onDone: effect.succeed
-      }))
+      })
     return effect.catchCauseFilter(
-      loop,
+      effect.flatMap(effect.provideService(self, Schedule.CurrentMetadata, meta), loop),
       effect.findRecoverableError,
       (error) => orElse(error, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
     )
@@ -196,14 +195,9 @@ export const scheduleFrom = dual<
   schedule: Schedule.Schedule<Output, Input, Error, Env>
 ): Effect<Output, E | Error, R | Env> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
-    let meta = Schedule.CurrentMetadata.defaultValue()
-    const selfWithMeta = effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta))
     const loop = (input: Input): Effect<Output, E | Error, R | Env> =>
       Pull.matchEffect(step(input), {
-        onSuccess(meta_) {
-          meta = meta_
-          return effect.flatMap(selfWithMeta, loop)
-        },
+        onSuccess: (meta) => effect.flatMap(effect.provideService(self, Schedule.CurrentMetadata, meta), loop),
         onFailure: effect.failCause,
         onDone: effect.succeed
       })
