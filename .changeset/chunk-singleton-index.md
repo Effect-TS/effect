@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Chunk.get` throwing on an in-range fractional index of a one-element chunk, and treat non-finite indexes as out of bounds.
+Fix `Chunk.get` and `Chunk.getUnsafe` throwing on in-range fractional indexes of one-element chunks, and treat `NaN` and infinite indexes as out of bounds.

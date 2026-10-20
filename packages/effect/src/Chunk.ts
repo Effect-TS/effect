@@ -523,8 +523,8 @@ export const reverse: <S extends Chunk<any>>(self: S) => Chunk.With<S, Chunk.Inf
  *
  * **Details**
  *
- * The index is floored to an integer. `NaN` and other non-finite indexes are out
- * of bounds. This never throws.
+ * The index is floored to an integer. `NaN` and infinite indexes are out of
+ * bounds. This never throws.
  *
  * **Example** (Accessing elements safely)
  *
@@ -631,8 +631,8 @@ export const fromNonEmptyArrayUnsafe = <A>(self: NonEmptyReadonlyArray<A>): NonE
  *
  * **Gotchas**
  *
- * Throws if the index is out of bounds. The index is floored to an integer
- * before that check, and a non-finite index throws.
+ * Throws if the floored index is out of bounds, including for `NaN` and
+ * infinite indexes.
  *
  * **Example** (Accessing elements unsafely)
  *
