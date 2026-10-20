@@ -560,6 +560,78 @@ describe("Atom", { concurrent: false }, () => {
     expect(result.value).toEqual(1)
   })
 
+  for (const form of ["effect", "function", "runtime"] as const) {
+    it.effect(`effect initial value survives asynchronous failure (${form})`, () =>
+      Effect.gen(function*() {
+        const release = yield* Latch.make()
+        const fail = release.await.pipe(Effect.andThen(Effect.fail("boom")))
+        const count = form === "effect"
+          ? Atom.make(fail, { initialValue: 0 })
+          : form === "function"
+          ? Atom.make(() => fail, { initialValue: 0 })
+          : Atom.runtime(Layer.empty).atom(fail, { initialValue: 0 })
+        const r = AtomRegistry.make()
+        try {
+          r.mount(count)
+          const waiting = r.get(count)
+          assert(AsyncResult.isSuccess(waiting))
+          assert.strictEqual(waiting.value, 0)
+          assert.strictEqual(waiting.waiting, true)
+
+          yield* release.open
+          yield* Effect.yieldNow
+          const failure = r.get(count)
+          assert(AsyncResult.isFailure(failure))
+          assert.strictEqual(failure.waiting, false)
+          assert.deepStrictEqual(Cause.findErrorOption(failure.cause), Option.some("boom"))
+          assert.deepStrictEqual(AsyncResult.value(failure), Option.some(0))
+        } finally {
+          r.dispose()
+        }
+      }))
+  }
+
+  it.effect("effect failure retains the latest success published with setSelf", () =>
+    Effect.gen(function*() {
+      const publish = yield* Latch.make()
+      const release = yield* Latch.make()
+      const count = Atom.make((get) =>
+        Effect.gen(function*() {
+          yield* publish.await
+          get.setSelf(AsyncResult.success(1))
+          yield* release.await
+          return yield* Effect.fail("boom")
+        }), { initialValue: 0 })
+      const r = AtomRegistry.make()
+      try {
+        r.mount(count)
+        assert.deepStrictEqual(AsyncResult.value(r.get(count)), Option.some(0))
+        yield* publish.open
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(AsyncResult.value(r.get(count)), Option.some(1))
+
+        yield* release.open
+        yield* Effect.yieldNow
+        const failure = r.get(count)
+        assert(AsyncResult.isFailure(failure))
+        assert.deepStrictEqual(AsyncResult.value(failure), Option.some(1))
+      } finally {
+        r.dispose()
+      }
+    }))
+
+  it("effect synchronous failure does not retain an unexposed initial value", () => {
+    const count = Atom.make(Effect.fail("boom"), { initialValue: 0 })
+    const r = AtomRegistry.make()
+    try {
+      const failure = r.get(count)
+      assert(AsyncResult.isFailure(failure))
+      assert.deepStrictEqual(AsyncResult.value(failure), Option.none())
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("effectFn", async () => {
     const count = Atom.fn((n: number) => Effect.succeed(n + 1))
     const r = AtomRegistry.make()
