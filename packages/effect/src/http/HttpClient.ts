@@ -1612,9 +1612,9 @@ export const tapRequest: {
  *
  * **Details**
  *
- * Response cookies are stored for the URL of the request that received them.
- * Before each request, the cookies the jar selects for its URL are set as the
- * `cookie` header. Expiry uses the current `Clock`.
+ * Response cookies are stored for the response URL. Before each request, the
+ * cookies the jar selects for the request URL are set as the `cookie` header.
+ * Expiry uses the current `Clock`.
  *
  * @stability unstable
  * @category cookies
@@ -1633,7 +1633,7 @@ export const withCookieJar: {
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(self.postprocess(request), (response) => {
           const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
-          return Ref.update(ref, CookieJar.setFromResponse(response.request.url, response.cookies, now))
+          return Ref.update(ref, CookieJar.setFromResponse(response.url, response.cookies, now))
         }),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>

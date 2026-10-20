@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add `CookieJar` and replace `HttpClient.withCookiesRef` with `HttpClient.withCookieJar`, so response cookies are only sent to a matching host, path and scheme. `withCookiesRef` is removed because its name-keyed `Ref<Cookies>` sent every cookie to every host.
+Replace `HttpClient.withCookiesRef` with `HttpClient.withCookieJar`, backed by the new `CookieJar` module, so stored response cookies are sent only to a matching host, path and scheme. Migrate by holding a `Ref<CookieJar>` instead of a `Ref<Cookies>`, seeding it with `CookieJar.setFromResponse` where needed.

@@ -9,9 +9,10 @@
  *
  * **Gotchas**
  *
- * - There is no public suffix list. A `Domain` attribute is rejected only when
- *   it does not domain-match the request host, has a single label, or the
- *   request host is an IP address, so `foo.co.uk` can set `Domain=co.uk`.
+ * - There is no public suffix list. A `Domain` attribute is accepted whenever
+ *   the request host domain-matches it, unless the host is an IP address or the
+ *   domain is a single label such as `com`, so `foo.co.uk` can set
+ *   `Domain=co.uk`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -138,11 +139,10 @@ export const setFromResponse: {
     const index = entries.findIndex((existing) =>
       existing.cookie.name === cookie.name && existing.domain === entry.domain && existing.path === entry.path
     )
-    const expired = entry.expiresAt !== undefined && entry.expiresAt <= now
-    if (index === -1) {
-      if (!expired) entries.push(entry)
-    } else if (expired) {
-      entries.splice(index, 1)
+    if (entry.expiresAt !== undefined && entry.expiresAt <= now) {
+      if (index !== -1) entries.splice(index, 1)
+    } else if (index === -1) {
+      entries.push(entry)
     } else {
       entries[index] = entry
     }
@@ -245,27 +245,20 @@ const makeEntry = (url: URL, cookie: Cookies.Cookie, now: number): Entry | undef
     if (isIpAddress(host) || !domainMatches(host, attribute)) {
       return undefined
     }
-    if (!attribute.includes(".")) {
-      // a single-label domain is treated like a public suffix
-      if (attribute !== host) return undefined
-    } else {
+    if (attribute.includes(".")) {
       domain = attribute
       hostOnly = false
+    } else if (attribute !== host) {
+      // a single-label domain such as "com" is treated like a public suffix
+      return undefined
     }
-  }
-  let expiresAt: number | undefined
-  if (options?.maxAge !== undefined) {
-    const millis = Duration.toMillis(Duration.fromInputUnsafe(options.maxAge))
-    expiresAt = millis <= 0 ? -Infinity : now + millis
-  } else if (options?.expires !== undefined) {
-    expiresAt = options.expires.getTime()
   }
   return {
     cookie,
     domain,
     hostOnly,
     path: options?.path?.startsWith("/") ? options.path : defaultPath(url.pathname),
-    expiresAt
+    expiresAt: options?.maxAge !== undefined ? now + Duration.toMillis(options.maxAge) : options?.expires?.getTime()
   }
 }
 
