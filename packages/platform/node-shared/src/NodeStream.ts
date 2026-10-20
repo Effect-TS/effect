@@ -275,8 +275,7 @@ export const toString = <E = Cause.UnknownError>(
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         stream.off("data", onData)
         if (options?.destroyOnOverflow === false) {
-          cleanup()
-          drainReadable(stream)
+          drainReadable(stream, cleanup)
         } else {
           destroyReadable(stream, cleanup)
         }
@@ -337,8 +336,7 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         stream.off("data", onData)
         if (options?.destroyOnOverflow === false) {
-          cleanup()
-          drainReadable(stream)
+          drainReadable(stream, cleanup)
         } else {
           destroyReadable(stream, cleanup)
         }
@@ -374,8 +372,11 @@ export const toUint8Array = <E = Cause.UnknownError>(
 // internal
 // ----------------------------------------------------------------------------
 
-const drainReadable = (stream: Readable): void => {
-  const cleanup = finished(stream, { readable: true, writable: false }, () => cleanup())
+// Keep consuming after the consumer's listeners are removed, so the producer
+// can finish and any late error stays handled.
+const drainReadable = (stream: Readable, cleanup: () => void): void => {
+  cleanup()
+  const done = finished(stream, { readable: true, writable: false }, () => done())
   stream.resume()
 }
 

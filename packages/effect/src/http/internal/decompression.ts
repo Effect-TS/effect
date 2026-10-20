@@ -186,10 +186,15 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Stream.pipeThroughChannel(
-      Stream.mapError(
-        this.stream,
-        (cause) => Multipart.MultipartError.fromReason(multipartReasons.get(cause) ?? "InternalError", cause)
-      ),
+      Stream.mapError(this.stream, (cause) =>
+        // Failures raised by this request come from the client's data. Failures
+        // passed through from the inner request are transport errors.
+        Multipart.MultipartError.fromReason(
+          cause.reason instanceof RequestParseError && cause.reason.request === this
+            ? cause.reason.reason ?? "Parse"
+            : "InternalError",
+          cause
+        )),
       Multipart.makeChannel(this.headers)
     )
   }
@@ -202,26 +207,17 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   private parseError(
     cause: unknown,
     description?: string,
-    multipartReason: MultipartReason = "Parse"
+    reason: RequestParseError["reason"] = "Parse"
   ): HttpServerError {
-    const error = new HttpServerError({
+    return new HttpServerError({
       reason: new RequestParseError({
         request: this,
-        reason: multipartReason,
+        reason,
         ...(description === undefined ? undefined : { description }),
         ...(cause === undefined ? undefined : { cause })
       })
     })
-    multipartReasons.set(error, multipartReason)
-    return error
   }
 }
 
 const textDecoder = new TextDecoder()
-
-type MultipartReason = "Parse" | "BodyTooLarge"
-
-// Failures caused by the client's data, keyed to the multipart reason they map
-// to. Transport errors from the inner request are absent and map to
-// `InternalError`.
-const multipartReasons = new WeakMap<HttpServerError, MultipartReason>()
