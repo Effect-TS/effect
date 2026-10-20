@@ -1607,7 +1607,10 @@ export const tapRequest: {
  * **When to use**
  *
  * Use to add shared cookie storage to a client so response cookies are retained
- * and sent by later requests.
+ * and sent by later requests to a matching host, path, and scheme. A cookie
+ * without a `Domain` stays on the response host. A `Secure` cookie is not sent
+ * on `http`. Cookies already in the ref with no domain are still sent on every
+ * request.
  *
  * @stability unstable
  * @category cookies
@@ -1624,19 +1627,16 @@ export const withCookiesRef: {
   ): HttpClient.With<E, R> =>
     makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
-        Effect.tap(
-          self.postprocess(request),
-          (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
-        ),
+        Effect.tap(self.postprocess(request), (response) =>
+          Ref.update(ref, (cookies) =>
+            Cookies.storeFromResponse(cookies, response.cookies, response.url, Date.now())
+          )),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>
-          Effect.map(
-            Ref.get(ref),
-            (cookies) =>
-              Cookies.isEmpty(cookies)
-                ? request
-                : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
-          ))
+          Effect.map(Ref.get(ref), (cookies) => {
+            const header = Cookies.toRequestCookieHeader(cookies, request.url, Date.now())
+            return header === undefined ? request : HttpClientRequest.setHeader(request, "cookie", header)
+          }))
     )
 )
 
