@@ -303,6 +303,27 @@ const hangOnDelete = (table: string, reached: Deferred.Deferred<void>, deleteNum
 const served = (batches: ReadonlyArray<EventLogEncryption.EncryptedRemoteBatch>) =>
   batches.map((batch) => ({ sequence: batch.sequence, marker: batch.encryptedBatch[0] }))
 
+// Follows `changes` from `startSequence` up to the batch carrying `last`,
+// returning once the live subscription is open.
+const followChanges = Effect.fnUntraced(function*(
+  storage: EventLogServerEncrypted.Storage["Service"],
+  publicKey: string,
+  startSequence: number,
+  last: EventJournal.EntryId
+) {
+  const subscribed = yield* Deferred.make<void>()
+  const lastKey = Array.from(last).join(",")
+  const fiber = yield* storage.changes(publicKey, storeId, startSequence).pipe(
+    Stream.tap(() => Deferred.succeed(subscribed, undefined)),
+    Stream.takeUntil((batch) => ids([batch])[0].includes(lastKey)),
+    Stream.runCollect,
+    Effect.forkChild
+  )
+  // The first batch comes from the initial query, which runs after subscribing.
+  yield* Deferred.await(subscribed)
+  return fiber
+})
+
 // SQL-only compaction scenarios, run under the TestClock.
 export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unknown>) =>
   it.layer(
@@ -476,6 +497,56 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         ])
         assert.deepStrictEqual(ids(reappended), ids([...originals, tail, makeBatch(after)]))
       }), { timeout: 60_000 })
+
+    it.effect("publishes nothing from a write whose outer transaction aborts", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const { options, publicKey } = yield* makeNamespace()
+        const storage = yield* SqlEventLogServerEncrypted.makeStorage(options)
+        const [first, reverted, after] = makeIds(3)
+        const [written] = yield* storage.write(publicKey, storeId, [makeBatch(first)])
+        const live = yield* followChanges(storage, publicKey, written.sequence, after)
+
+        const aborted = yield* sql.withTransaction(
+          Effect.andThen(storage.write(publicKey, storeId, [makeBatch(reverted)]), Effect.fail("abort"))
+        ).pipe(Effect.exit)
+        const next = yield* storage.write(publicKey, storeId, [makeBatch(after)])
+        const published = yield* Fiber.join(live)
+
+        assert.isTrue(Exit.isFailure(aborted))
+        assert.deepStrictEqual(next.map((batch) => batch.sequence), [written.sequence + 1])
+        assert.deepStrictEqual(ids(published), ids([makeBatch(first), makeBatch(after)]))
+        assert.deepStrictEqual(published.map((batch) => batch.sequence), [written.sequence, written.sequence + 1])
+      }))
+
+    it.effect("publishes nothing from a rollback whose outer transaction aborts", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const { options, publicKey } = yield* makeNamespace()
+        const storage = yield* SqlEventLogServerEncrypted.makeStorage(options)
+        const compaction = storage.compaction ?? assert.fail("Storage does not provide compaction")
+        const [first, kept, after] = makeIds(3)
+        yield* storage.write(publicKey, storeId, [makeBatch(first), makeBatch(kept)])
+        yield* commitSnapshot(storage, publicKey, kept)
+        const { head } = yield* compaction.status(publicKey, storeId)
+        const snapshot = (yield* compaction.history(publicKey, storeId)).find((activation) => activation.active)!
+        const live = yield* followChanges(storage, publicKey, head, after)
+
+        const aborted = yield* sql.withTransaction(
+          Effect.andThen(compaction.rollback(publicKey, storeId, snapshot.activationId), Effect.fail("abort"))
+        ).pipe(Effect.exit)
+        const next = yield* storage.write(publicKey, storeId, [makeBatch(after)])
+        const published = yield* Fiber.join(live)
+        const history = yield* compaction.history(publicKey, storeId)
+
+        assert.isTrue(Exit.isFailure(aborted))
+        assert.deepStrictEqual(next.map((batch) => batch.sequence), [head + 1])
+        assert.deepStrictEqual(served(published), [
+          { sequence: head, marker: snapshotMarker },
+          { sequence: head + 1, marker: 1 }
+        ])
+        assert.isTrue(history.find((activation) => activation.activationId === snapshot.activationId)!.active)
+      }))
 
     it.effect("resumes a partially pruned snapshot after its sweeper dies without deleting originals", () =>
       Effect.gen(function*() {
