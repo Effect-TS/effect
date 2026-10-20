@@ -924,6 +924,34 @@ describe("HttpApiClient", () => {
       >()
     })
 
+    it("returns decoded streams with element decoding services for StreamNdjson successes", () => {
+      type Item = { readonly text: string }
+
+      const Item = hole<Schema.Codec<Item, Item, "ItemDecoding", never>>()
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: HttpApiSchema.StreamNdjson({ schema: Item })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+      const f = client.group.a
+
+      type ClientStream = Stream.Stream<Item, HttpClientError.HttpClientError | Schema.SchemaError>
+
+      expect(f()).type.toBe<
+        Effect.Effect<ClientStream, HttpClientError.HttpClientError | Schema.SchemaError, "ItemDecoding">
+      >()
+      expect(f({ responseMode: "response-only" })).type.toBe<
+        Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
+      >()
+    })
+
     it("omits StreamSse decoding services in response-only mode", () => {
       type Event = { readonly event: "user.created"; readonly data: string }
       type StreamError = { readonly reason: string }

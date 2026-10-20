@@ -739,6 +739,126 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("StreamNdjson responses", () => {
+    const Item = Schema.Struct({ text: Schema.String })
+    const NdjsonApi = HttpApi.make("NdjsonApi").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("items", "/items", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item })
+        }),
+        HttpApiEndpoint.get("limited", "/limited", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item, maxElementBytes: 13 })
+        })
+      )
+    )
+    const makeClient = (body: () => ReadableStream<Uint8Array>) =>
+      HttpApiClient.makeWith(NdjsonApi, {
+        baseUrl: "http://test",
+        httpClient: clientFromResponse(() =>
+          new Response(body(), { status: 200, headers: { "content-type": "application/x-ndjson" } })
+        )
+      })
+    const collectUntilFailure = <A, E>(stream: Stream.Stream<A, E>) =>
+      Effect.gen(function*() {
+        const delivered: Array<A> = []
+        const error = yield* stream.pipe(
+          Stream.runForEach((item) => Effect.sync(() => delivered.push(item))),
+          Effect.flip
+        )
+        return { delivered, error }
+      })
+
+    it.effect("decodes every line ending, skips empty lines and strips a leading BOM", () =>
+      Effect.gen(function*() {
+        const body = textEncoder.encode(
+          "﻿{\"text\":\"a\"}\n\n{\"text\":\"é\"}\r\n{\"text\":\"c\"}\r{\"text\":\"d\"}"
+        )
+        // split inside the BOM, inside the two-byte "é" and between "\r" and "\n"
+        const chunks = splitBytes(body, [1, body.indexOf(0xc3) + 1, body.indexOf(0x0d) + 1])
+        const client = yield* makeClient(() => byteStream(chunks))
+
+        const items = yield* client.test.items().pipe(Effect.flatMap(Stream.runCollect))
+
+        assert.deepStrictEqual(items, [{ text: "a" }, { text: "é" }, { text: "c" }, { text: "d" }])
+      }))
+
+    const badLines: ReadonlyArray<{
+      readonly name: string
+      readonly body: Uint8Array
+      readonly delivered: ReadonlyArray<typeof Item.Type>
+      readonly message?: string
+    }> = [
+      {
+        name: "malformed JSON",
+        body: textEncoder.encode("{\"text\":\"a\"}\n{\"text\":\"b\"}\nnope\n{\"text\":\"c\"}\n"),
+        delivered: [{ text: "a" }, { text: "b" }]
+      },
+      {
+        name: "a whitespace-only line",
+        body: textEncoder.encode("{\"text\":\"a\"}\n  \n{\"text\":\"c\"}\n"),
+        delivered: [{ text: "a" }]
+      },
+      {
+        name: "an element that fails to decode",
+        body: textEncoder.encode("{\"text\":\"a\"}\n{\"text\":1}\n{\"text\":\"c\"}\n"),
+        delivered: [{ text: "a" }]
+      },
+      {
+        name: "invalid UTF-8",
+        body: new Uint8Array([...textEncoder.encode("{\"text\":\"a\"}\n"), 0xff, 0x0a]),
+        delivered: [{ text: "a" }]
+      },
+      {
+        name: "an unterminated final line that does not parse",
+        body: textEncoder.encode("{\"text\":\"a\"}\n{\"text\":"),
+        delivered: [{ text: "a" }],
+        message: "unterminated final line"
+      }
+    ]
+    for (const { body, delivered, message, name } of badLines) {
+      it.effect(`fails with a SchemaError on ${name} after delivering the earlier lines in the chunk`, () =>
+        Effect.gen(function*() {
+          const client = yield* makeClient(() => byteStream([body]))
+
+          const result = yield* client.test.items().pipe(Effect.flatMap(collectUntilFailure))
+
+          assert.deepStrictEqual(result.delivered, delivered)
+          assert.instanceOf(result.error, Schema.SchemaError)
+          if (message !== undefined) {
+            assert.include(result.error.message, message)
+          }
+        }))
+    }
+
+    it.effect("fails with a DecodeError when a line exceeds maxElementBytes in UTF-8 bytes", () =>
+      Effect.gen(function*() {
+        // 13 bytes plus a terminator, then 13 characters encoded as 15 bytes
+        const client = yield* makeClient(() =>
+          textStream(["{\"text\":\"é\"}\r\n{\"text\":\"éé\"}\n{\"text\":\"a\"}\n"])
+        )
+
+        const result = yield* client.test.limited().pipe(Effect.flatMap(collectUntilFailure))
+
+        assert.deepStrictEqual(result.delivered, [{ text: "é" }])
+        assert.instanceOf(result.error, HttpClientError.HttpClientError)
+        assert.strictEqual(result.error.reason._tag, "DecodeError")
+      }))
+
+    it.effect("fails with a DecodeError before a line without a terminator outgrows the 1 MiB default", () =>
+      Effect.gen(function*() {
+        const filler = "a".repeat(64 * 1024)
+        // 2 MiB without a newline after the first line
+        const chunks = ["{\"text\":\"a\"}\n{\"text\":\"", ...Array.from({ length: 32 }, () => filler)]
+        const client = yield* makeClient(() => textStream(chunks))
+
+        const result = yield* client.test.items().pipe(Effect.flatMap(collectUntilFailure))
+
+        assert.deepStrictEqual(result.delivered, [{ text: "a" }])
+        assert.instanceOf(result.error, HttpClientError.HttpClientError)
+        assert.strictEqual(result.error.reason._tag, "DecodeError")
+      }))
+  })
+
   describe("error responses", () => {
     const makeClient = (response: () => Response) =>
       HttpApiClient.makeWith(ErrorContentTypeApi, {
@@ -1284,4 +1404,15 @@ const byteStream = (chunks: ReadonlyArray<Uint8Array>): ReadableStream<Uint8Arra
       }
     }
   })
+}
+
+const splitBytes = (bytes: Uint8Array, offsets: ReadonlyArray<number>): ReadonlyArray<Uint8Array> => {
+  const chunks: Array<Uint8Array> = []
+  let start = 0
+  for (const offset of offsets) {
+    chunks.push(bytes.subarray(start, offset))
+    start = offset
+  }
+  chunks.push(bytes.subarray(start))
+  return chunks
 }

@@ -1096,6 +1096,49 @@ describe("HttpApi", () => {
         })
       })
     })
+
+    describe("StreamNdjson", () => {
+      const Item = Schema.Struct({ text: Schema.String })
+      const Api = HttpApi.make("api").add(
+        HttpApiGroup.make("group").add(
+          HttpApiEndpoint.get("failing", "/failing", {
+            success: HttpApiSchema.StreamNdjson({ schema: Item })
+          }),
+          HttpApiEndpoint.get("oversized", "/oversized", {
+            success: HttpApiSchema.StreamNdjson({ schema: Item, maxElementBytes: 16 })
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "group", (handlers) =>
+        handlers
+          .handle("failing", () => Effect.succeed(Stream.make({ text: "a" }).pipe(Stream.concat(Stream.die("boom")))))
+          .handle("oversized", () => Effect.succeed(Stream.make({ text: "a" }, { text: "x".repeat(32) }))))
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+        { disableListenLog: true, disableLogger: true }
+      ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+
+      it.effect("a server failure mid-stream reaches the client as a body read error, not a clean end", () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.make(Api)
+          const stream = yield* client.group.failing()
+          const error = yield* stream.pipe(Stream.runDrain, Effect.flip)
+          assert.strictEqual(error._tag, "HttpClientError")
+        }).pipe(Effect.provide(ApiLayer)))
+
+      it.effect("an element over maxElementBytes fails the client stream with a DecodeError", () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.make(Api)
+          const stream = yield* client.group.oversized()
+          const delivered: Array<typeof Item.Type> = []
+          const error = yield* stream.pipe(
+            Stream.runForEach((item) => Effect.sync(() => delivered.push(item))),
+            Effect.flip
+          )
+          assert.deepStrictEqual(delivered, [{ text: "a" }])
+          assert(error._tag === "HttpClientError" && error.reason._tag === "DecodeError")
+        }).pipe(Effect.provide(ApiLayer)))
+    })
   })
 
   describe("error option", () => {

@@ -408,6 +408,39 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
+  it.effect("encodes each element as a JSON line with the declared content type", () =>
+    Effect.gen(function*() {
+      const Item = Schema.Struct({ text: Schema.String })
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("items", "/items", {
+            success: HttpApiSchema.StreamNdjson({ schema: Item })
+          }),
+          HttpApiEndpoint.get("lines", "/lines", {
+            success: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "application/jsonl" })
+          })
+        )
+      )
+      const items = Stream.make({ text: "a" }, { text: "b" })
+      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
+        handlers
+          .handle("items", () => Effect.succeed(items))
+          .handle("lines", () => Effect.succeed(items)))
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      const response = yield* client.test.items({ responseMode: "response-only" })
+      assert.strictEqual(response.headers["content-type"], "application/x-ndjson")
+      assert.strictEqual(yield* response.text, "{\"text\":\"a\"}\n{\"text\":\"b\"}\n")
+
+      const jsonl = yield* client.test.lines({ responseMode: "response-only" })
+      assert.strictEqual(jsonl.headers["content-type"], "application/jsonl")
+
+      const decoded = yield* client.test.items().pipe(Effect.flatMap(Stream.runCollect))
+      assert.deepStrictEqual(decoded, [{ text: "a" }, { text: "b" }])
+    }))
+})
+
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
   it.effect("runs pre-response handlers once per response across retries", () =>
     Effect.gen(function*() {
