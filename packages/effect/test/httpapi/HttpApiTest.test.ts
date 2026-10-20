@@ -3,10 +3,10 @@ import { Cause, Deferred, Effect, FileSystem, Layer, Path, Schema, Stream } from
 import {
   Etag,
   HttpClient,
-  HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
   HttpPlatform,
+  HttpServerError,
   HttpServerResponse
 } from "effect/http"
 import {
@@ -87,8 +87,8 @@ it.layer(TestServices)("HttpApiTest streaming", (it) => {
           assert.notStrictEqual(error, failure)
           assert.isFalse(Cause.hasInterruptsOnly(exit.cause))
           if (!streaming) {
-            assert(HttpClientError.isHttpClientError(error), `Expected HttpClientError, got ${String(error)}`)
-            assert.strictEqual(error.response?.status, 500)
+            assert(HttpServerError.isHttpServerError(error), `Expected HttpServerError, got ${String(error)}`)
+            assert.strictEqual(error.reason._tag, "RequestParseError")
           }
         }
       }))

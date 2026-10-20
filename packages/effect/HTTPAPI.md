@@ -1679,7 +1679,7 @@ On Deno, an HTTP/1.1 request body read can stall while the handler returns a str
 
 ### Testing with HttpApiTest
 
-`HttpApiTest` passes a `Stream` payload to the handler unbuffered, pulling each element from the caller's stream as the handler reads it. Limits, the `400` and both `413` paths work in memory. The early `413` needs a `content-length`, which the client doesn't send for streams, so set one through `HttpClient.mapRequest`. When the caller's stream fails, the handler's read of the payload fails, which the handler turns into a `500`, and the client fails with an `HttpClientError` for it. Inside a streaming response, the response body fails instead.
+`HttpApiTest` passes a `Stream` payload to the handler unbuffered, pulling each element from the caller's stream as the handler reads it. Limits, the `400` and both `413` paths work in memory. The early `413` needs a `content-length`, which the client doesn't send for streams, so set one through `HttpClient.mapRequest`. When the caller's stream fails, the handler's read of the payload fails as a defect and the test call dies with it, because `HttpApiTest` doesn't turn defects into responses. Inside a streaming response, the response body fails instead.
 
 Socket behavior and client aborts are not emulated: no draining of unread bodies, no `Connection: close`, no interrupted handler, and no `499`.
 
