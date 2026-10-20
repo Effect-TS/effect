@@ -208,23 +208,26 @@ export const makeRunMain = (
     readonly disableErrorReporting?: boolean | undefined
     readonly teardown?: Teardown | undefined
   }) => {
-    const fiber = options?.disableErrorReporting === true
-      ? Effect.runFork(effect)
-      : Effect.runFork(
-        Effect.tapCause(effect, (cause) => {
-          if (Cause.hasInterruptsOnly(cause)) return Effect.void
-          const isReported = getErrorReported(Cause.squash(cause))
-          return isReported ? Effect.logError(cause) : Effect.void
-        })
-      )
-    try {
-      const keepAlive = globalThis.setInterval(constVoid, 2_147_483_647)
-      fiber.addObserver(() => {
-        clearInterval(keepAlive)
+    const main = options?.disableErrorReporting === true
+      ? effect
+      : Effect.tapCause(effect, (cause) => {
+        if (Cause.hasInterruptsOnly(cause)) return Effect.void
+        const isReported = getErrorReported(Cause.squash(cause))
+        return isReported ? Effect.logError(cause) : Effect.void
       })
-    } catch {}
     const teardown = options?.teardown ?? defaultTeardown
-    return f({ fiber, teardown })
+    // Run the platform setup before the program's first synchronous segment,
+    // so that signal handlers are in place before any user code executes.
+    Effect.runFork(Effect.withFiber((fiber) => {
+      try {
+        const keepAlive = globalThis.setInterval(constVoid, 2_147_483_647)
+        fiber.addObserver(() => {
+          clearInterval(keepAlive)
+        })
+      } catch {}
+      f({ fiber, teardown })
+      return main
+    }))
   })
 
 declare global {
