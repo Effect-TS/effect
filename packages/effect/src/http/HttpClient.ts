@@ -1612,8 +1612,8 @@ export const tapRequest: {
  *
  * **Details**
  *
- * Response cookies are stored with `Cookies.storeFromResponse` for the
- * response URL. Before each request, `Cookies.toRequestCookieHeader` selects
+ * Response cookies are merged into the ref with `Cookies.mergeIntoArray` for
+ * the response URL. Before each request, `Cookies.toRequestCookieHeader` selects
  * the cookies for the request URL and sets them as the `cookie` header. Expiry
  * uses the current `Clock`.
  *
@@ -1634,7 +1634,7 @@ export const withCookiesRef: {
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(self.postprocess(request), (response) => {
           const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
-          return Ref.update(ref, Cookies.storeFromResponse(response.url, response.cookies, now))
+          return Ref.update(ref, Cookies.mergeIntoArray(response.url, response.cookies, now))
         }),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>

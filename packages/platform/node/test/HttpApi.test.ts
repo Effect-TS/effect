@@ -1381,7 +1381,7 @@ describe("HttpApi", () => {
           const server = yield* HttpServer.HttpServer
           const url = new URL(HttpServer.formatAddress(server.address))
           url.hostname = "127.0.0.1"
-          const ref = yield* Ref.make(Cookies.storeFromResponse(
+          const ref = yield* Ref.make(Cookies.mergeIntoArray(
             [],
             url.origin,
             Cookies.fromSetCookie("token=foo; Path=/"),

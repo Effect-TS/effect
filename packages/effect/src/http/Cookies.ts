@@ -7,7 +7,7 @@
  * `Set-Cookie` headers, and provides helpers for adding, removing, merging, and
  * expiring cookies.
  *
- * For client-side storage, `storeFromResponse` and `toRequestCookieHeader`
+ * For client-side storage, `mergeIntoArray` and `toRequestCookieHeader`
  * work on a plain array of cookies scoped by domain, path and scheme, following
  * RFC 6265.
  *
@@ -866,20 +866,25 @@ export const toRecord = (self: Cookies): Record<string, string> => {
 export const toSetCookieHeaders = (self: Cookies): Array<string> => Object.values(self.cookies).map(serializeCookie)
 
 /**
- * Stores the cookies from a response received from `url` in an array of
- * client cookies.
+ * Merges cookies set by `url` into an array of client cookies, returning a new
+ * array.
+ *
+ * **When to use**
+ *
+ * Use to record the cookies of a response, or to seed an array of client
+ * cookies from `Set-Cookie` values for a base URL.
  *
  * **Details**
  *
- * A cookie without a `Domain` attribute is stored as `hostOnly` for the exact
- * request host. A `Domain` attribute is accepted only when the request host
+ * A cookie without a `Domain` attribute is scoped as `hostOnly` to the exact
+ * host of `url`. A `Domain` attribute is accepted only when the host of `url`
  * domain-matches it. Without a `Path` attribute the cookie uses the default
- * path of `url`. `Max-Age` takes precedence over `Expires`, and both are stored
- * as an absolute `expires` computed from `now` (epoch milliseconds).
+ * path of `url`. `Max-Age` takes precedence over `Expires`, and both are
+ * converted to an absolute `expires` computed from `now` (epoch milliseconds).
  *
- * A cookie replaces the stored cookie with the same name, domain and path,
- * keeping its position. A cookie that is already expired removes that stored
- * cookie instead. The cookies are returned unchanged when `url` is not a valid
+ * A cookie replaces the existing cookie with the same name, domain and path,
+ * keeping its position. A cookie that is already expired removes that existing
+ * cookie instead. The array is returned unchanged when `url` is not a valid
  * absolute URL.
  *
  * **Gotchas**
@@ -893,7 +898,7 @@ export const toSetCookieHeaders = (self: Cookies): Array<string> => Object.value
  * @category client storage
  * @since 4.0.0
  */
-export const storeFromResponse: {
+export const mergeIntoArray: {
   (url: string, cookies: Cookies, now: number): (self: ReadonlyArray<Cookie>) => ReadonlyArray<Cookie>
   (self: ReadonlyArray<Cookie>, url: string, cookies: Cookies, now: number): ReadonlyArray<Cookie>
 } = dual(4, (self: ReadonlyArray<Cookie>, url: string, cookies: Cookies, now: number): ReadonlyArray<Cookie> => {

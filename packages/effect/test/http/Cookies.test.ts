@@ -171,7 +171,7 @@ describe("Cookies", () => {
     const header = (jar: ReadonlyArray<Cookies.Cookie>, url: string) => Cookies.toRequestCookieHeader(jar, url, now)
 
     it("isolates host-only cookies without overwriting another host's session", () => {
-      const api = Cookies.storeFromResponse(
+      const api = Cookies.mergeIntoArray(
         [],
         "https://api.example.com/account",
         Cookies.fromSetCookie("session=secret"),
@@ -179,7 +179,7 @@ describe("Cookies", () => {
       )
       assert.strictEqual(header(api, "https://evil.example/hook"), undefined)
 
-      const both = Cookies.storeFromResponse(
+      const both = Cookies.mergeIntoArray(
         api,
         "https://evil.example/hook",
         Cookies.fromSetCookie("session=attacker"),
@@ -191,7 +191,7 @@ describe("Cookies", () => {
     })
 
     it("accepts matching Domain cookies but rejects foreign, single-label and IP domains", () => {
-      const jar = Cookies.storeFromResponse(
+      const jar = Cookies.mergeIntoArray(
         [],
         "https://www.example.com/",
         Cookies.fromSetCookie("session=secret; Domain=example.com; Path=/"),
@@ -209,7 +209,7 @@ describe("Cookies", () => {
           ["http://127.0.0.1/", "127.0.0.1"]
         ]
       ) {
-        const rejected = Cookies.storeFromResponse(
+        const rejected = Cookies.mergeIntoArray(
           [],
           url,
           Cookies.fromSetCookie("session=secret; Domain=" + domain),
@@ -225,7 +225,7 @@ describe("Cookies", () => {
       for (
         const jar of [
           seeded,
-          Cookies.storeFromResponse([], "https://api.example.com/", Cookies.fromIterable(seeded), now)
+          Cookies.mergeIntoArray([], "https://api.example.com/", Cookies.fromIterable(seeded), now)
         ]
       ) {
         assert.deepStrictEqual(
@@ -241,7 +241,7 @@ describe("Cookies", () => {
 
     it("uses the response's default path and matches explicit paths on segment boundaries", () => {
       for (const cookie of ["session=secret", "session=secret; Path=/account"]) {
-        const jar = Cookies.storeFromResponse(
+        const jar = Cookies.mergeIntoArray(
           [],
           "https://api.example.com/account/settings",
           Cookies.fromSetCookie(cookie),
@@ -255,7 +255,7 @@ describe("Cookies", () => {
     })
 
     it("replaces a Domain cookie with a host-only cookie of the same name and path", () => {
-      const domain = Cookies.storeFromResponse(
+      const domain = Cookies.mergeIntoArray(
         [],
         "https://example.com/",
         Cookies.fromSetCookie("session=domain; Domain=example.com; Path=/"),
@@ -263,7 +263,7 @@ describe("Cookies", () => {
       )
       assert.strictEqual(Cookies.toRequestCookieHeader(domain, "https://sub.example.com/", now), "session=domain")
 
-      const replaced = Cookies.storeFromResponse(
+      const replaced = Cookies.mergeIntoArray(
         domain,
         "https://example.com/",
         Cookies.fromSetCookie("session=host; Path=/"),
@@ -275,13 +275,13 @@ describe("Cookies", () => {
     })
 
     it("serializes same-name cookies longest path first", () => {
-      const root = Cookies.storeFromResponse(
+      const root = Cookies.mergeIntoArray(
         [],
         "https://example.com/",
         Cookies.fromSetCookie("session=root; Path=/"),
         now
       )
-      const jar = Cookies.storeFromResponse(
+      const jar = Cookies.mergeIntoArray(
         root,
         "https://example.com/account",
         Cookies.fromSetCookie("session=account; Path=/account"),
@@ -294,7 +294,7 @@ describe("Cookies", () => {
     })
 
     it("sends Secure cookies only over HTTPS", () => {
-      const jar = Cookies.storeFromResponse(
+      const jar = Cookies.mergeIntoArray(
         [],
         "https://api.example.com/",
         Cookies.fromSetCookie("session=secret; Secure"),
@@ -305,20 +305,20 @@ describe("Cookies", () => {
     })
 
     it("deletes cookies with Max-Age=0 and does not send expired cookies", () => {
-      const stored = Cookies.storeFromResponse(
+      const stored = Cookies.mergeIntoArray(
         [],
         "https://api.example.com/",
         Cookies.fromSetCookie("session=secret; Path=/"),
         now
       )
       assert.strictEqual(header(stored, "https://api.example.com/"), "session=secret")
-      const removed = Cookies.storeFromResponse(
+      const removed = Cookies.mergeIntoArray(
         stored,
         "https://api.example.com/",
         Cookies.fromSetCookie("session=; Path=/; Max-Age=0"),
         now
       )
-      const expired = Cookies.storeFromResponse(
+      const expired = Cookies.mergeIntoArray(
         [],
         "https://api.example.com/",
         Cookies.fromSetCookie("session=secret; Expires=Mon, 01 Jan 2024 00:00:00 GMT"),
