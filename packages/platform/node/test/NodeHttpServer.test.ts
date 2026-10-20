@@ -25,6 +25,7 @@ import {
   Multipart,
   UrlParams
 } from "effect/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 import * as HttpApiError from "effect/http-api/HttpApiError"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
@@ -56,6 +57,145 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect.each([8 * 1024, 512 * 1024])(
+    "delivers a partial-read 413 and drains or closes for %i leftover bytes",
+    (leftoverBytes) =>
+      Effect.gen(function*() {
+        const server = Http.createServer()
+        const body = "rejected".repeat(16 * 1024)
+        yield* HttpServer.serve(
+          HttpServerRequest.HttpServerRequest.use((request) =>
+            request.url === "/next"
+              ? Effect.succeed(HttpServerResponse.text("next"))
+              : request.stream.pipe(
+                Stream.take(1),
+                Stream.runDrain,
+                Effect.as(HttpServerResponse.text(body, { status: 413 }))
+              )
+          )
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+          Layer.build
+        )
+        const agent = yield* Effect.acquireRelease(
+          Effect.sync(() => new Http.Agent({ keepAlive: true, maxSockets: 1 })),
+          (agent) => Effect.sync(() => agent.destroy())
+        )
+        const large = leftoverBytes > 256 * 1024
+        yield* Effect.callback<void, Error>((resume) => {
+          const fail = (error: Error) => resume(Effect.fail(error))
+          const request = Http.request({
+            host: "127.0.0.1",
+            port: tcpPort(server),
+            method: "POST",
+            headers: { "content-length": leftoverBytes + 1 },
+            agent
+          })
+          let ended = false
+          let fin = false
+          request.on("error", fail)
+          request.on("socket", (socket) => {
+            socket.on("error", fail)
+            socket.once("end", () => {
+              fin = true
+              if (large && ended) resume(Effect.void)
+            })
+          })
+          request.on("response", (response) => {
+            let received = ""
+            response.setEncoding("utf8")
+            response.on("data", (chunk: string) => received += chunk)
+            response.on("error", fail)
+            response.on("end", () => {
+              assert.strictEqual(response.statusCode, 413)
+              assert.strictEqual(received, body)
+              ended = true
+              if (large) {
+                assert.strictEqual(response.headers.connection, "close")
+                if (fin) resume(Effect.void)
+                return
+              }
+              const next = Http.get({ host: "127.0.0.1", port: tcpPort(server), path: "/next", agent }, (response) => {
+                response.on("error", fail)
+                response.on("end", () => {
+                  assert.strictEqual(response.statusCode, 200)
+                  assert.isTrue(next.reusedSocket)
+                  resume(Effect.void)
+                })
+                response.resume()
+              })
+              next.on("error", fail)
+            })
+            // The first chunk must be consumed on its own, not coalesced with the leftover body.
+            request.end(Buffer.Buffer.alloc(leftoverBytes))
+          })
+          request.write("x")
+          return Effect.sync(() => request.destroy())
+        }).pipe(Effect.timeout("3 seconds"))
+      })
+  )
+
+  it.effect("rejects an oversized streaming payload before requesting its body", () => {
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.post("upload", "/", { payload: HttpApiSchema.StreamUint8Array({ maxBytes: 4 }) })
+      )
+    )
+    let handled = false
+    const Group = HttpApiBuilder.group(Api, "group", (handlers) =>
+      handlers.handle("upload", () =>
+        Effect.sync(() => {
+          handled = true
+        })))
+    return Effect.gen(function*() {
+      const server = Http.createServer()
+      let drained = false
+      // Observing resume does not put IncomingMessage into flowing mode like a data listener would.
+      server.on("request", (request) =>
+        request.on("resume", () => {
+          drained = true
+        }))
+      yield* HttpRouter.serve(HttpApiBuilder.layer(Api).pipe(Layer.provide(Group)), {
+        disableListenLog: true,
+        disableLogger: true
+      }).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+        Layer.build
+      )
+      const response = yield* Effect.callback<{ status: number | undefined; connection: string | undefined }, Error>(
+        (resume) => {
+          const request = Http.request({
+            host: "127.0.0.1",
+            port: tcpPort(server),
+            method: "POST",
+            headers: {
+              "content-length": 5,
+              "content-type": "application/octet-stream",
+              connection: "keep-alive"
+            },
+            agent: false
+          }, (response) => {
+            response.on("error", (error) => resume(Effect.fail(error)))
+            response.on("end", () =>
+              resume(Effect.succeed({
+                status: response.statusCode,
+                connection: response.headers.connection
+              })))
+            response.resume()
+          })
+          request.on("error", (error) => resume(Effect.fail(error)))
+          // No Expect header: ordinary rejected uploads must not be drained either.
+          request.flushHeaders()
+          return Effect.sync(() => request.destroy())
+        }
+      ).pipe(Effect.timeout("3 seconds"))
+      assert.strictEqual(response.status, 413)
+      assert.strictEqual(response.connection, "close")
+      assert.isFalse(handled)
+      assert.isFalse(drained)
+    })
+  })
+
   it.effect("returns 413 before a chunked upload finishes", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
