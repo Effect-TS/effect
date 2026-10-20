@@ -43,7 +43,7 @@ const TestEntityLayer = TestEntity.toLayer({
 
 const StorageLayer = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
-  Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
+  Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layerDigest])
 )
 
 const truncate = Effect.gen(function*() {
@@ -121,7 +121,7 @@ describe("SqlMessageStorage", () => {
             Effect.gen(function*() {
               yield* truncate
               const sql = yield* SqlClient.SqlClient
-              const storage = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+              const storage = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layerDigest))
               // Heap order is the reverse of the claim query's rowid order.
               yield* sql`
                 INSERT INTO cluster_messages
@@ -608,7 +608,7 @@ describe("SqlMessageStorage", () => {
           const storage = yield* MessageStorage.MessageStorage
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
-          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layerDigest))
           const shardId = request.envelope.address.shardId.toString()
           const messages = yield* encoded.unprocessedMessages([shardId], Date.now(), { addresses: [] })
           expect(messages).toHaveLength(0)
@@ -624,7 +624,7 @@ describe("SqlMessageStorage", () => {
           const storage = yield* MessageStorage.MessageStorage
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
-          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layerDigest))
           const shardId = request.envelope.address.shardId.toString()
           const claimed = yield* encoded.unprocessedMessages([shardId], Date.now())
           expect(claimed).toHaveLength(1)
@@ -719,7 +719,7 @@ describe("SqlMessageStorage", () => {
           const ack = yield* makeAckChunk(request, chunk)
           yield* storage.saveEnvelope(ack)
 
-          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layerDigest))
           const acknowledgements = yield* encoded.unprocessedMessagesById([ack.envelope.id], 0)
           expect(acknowledgements).toHaveLength(1)
           assert(acknowledgements[0].envelope._tag === "AckChunk")
