@@ -1392,8 +1392,12 @@ export const layerStoreRedis: (
  * **Details**
  *
  * The store creates the queue table and indexes, acquires rows with
- * per-worker locks, refreshes active locks while scoped takes are running, and
- * retries or completes rows according to the processing exit.
+ * per-acquisition locks, refreshes active locks while scoped takes are running,
+ * and retries or completes rows according to the processing exit.
+ *
+ * Settlements and refreshes only apply to the acquisition a handler received,
+ * so a handler whose lock lapsed can still settle or renew its claim until
+ * another poll re-claims the row.
  *
  * Offer and retry delays are measured with the database clock and rounded up
  * to whole seconds.
@@ -1429,8 +1433,6 @@ export const makeStoreSql: (
     options?.lockExpiration ? Duration.fromInputUnsafe(options.lockExpiration) : Duration.minutes(2),
     Duration.millis(1)
   )
-  const workerId = crypto.randomUUID()
-
   const ackRetrySchedule = makeAckRetrySchedule(lockExpiration)
 
   yield* Effect.orDie(
@@ -1511,75 +1513,101 @@ export const makeStoreSql: (
   })
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
 
-  const workerIdSql = stringLiteral(workerId)
-  const elementIds = new Set<number | string>()
+  // Each poll claims its rows under a fresh lock, so a settlement or refresh
+  // only matches the acquisition it belongs to, even after the same store
+  // re-claims a lapsed row.
+  type Claim = {
+    readonly sequence: number | string
+    readonly lock: string
+  }
+  const claims = new Map<string, Set<number | string>>()
+  const groupClaims = (elements: Iterable<Claim>) => {
+    const groups = new Map<string, Set<number | string>>()
+    for (const { lock, sequence } of elements) {
+      let sequences = groups.get(lock)
+      if (sequences === undefined) {
+        sequences = new Set()
+        groups.set(lock, sequences)
+      }
+      sequences.add(sequence)
+    }
+    return groups
+  }
+  // `groups` must be non-empty, since an empty OR chain matches every row
+  const claimsWhere = (groups: ReadonlyMap<string, ReadonlySet<number | string>>) =>
+    sql.or(
+      Array.from(groups, ([lock, sequences]) =>
+        sql`(sequence IN (${sql.literal(Array.from(sequences).join(","))}) AND acquired_by = ${stringLiteral(lock)})`)
+    )
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
-    if (elementIds.size === 0) return Effect.void
-    const ids = Array.from(elementIds)
+    if (claims.size === 0) return Effect.void
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = ${sqlNow}
-      WHERE sequence IN (${sql.literal(ids.join(","))})
-      AND acquired_by = ${workerIdSql}
+      WHERE ${claimsWhere(claims)}
     `
   })
   const ack = (
     statement: Effect.Effect<unknown, SqlError>,
-    sequences: ReadonlyArray<number | string>
+    elements: ReadonlyArray<Claim>
   ): Effect.Effect<void> =>
     statement.pipe(
       Effect.retry(ackRetrySchedule),
       Effect.orDie,
       Effect.ensuring(Effect.sync(() => {
-        for (const sequence of sequences) {
-          elementIds.delete(sequence)
+        for (const { lock, sequence } of elements) {
+          const sequences = claims.get(lock)
+          if (sequences === undefined) continue
+          sequences.delete(sequence)
+          if (sequences.size === 0) {
+            claims.delete(lock)
+          }
         }
       })),
       Effect.asVoid
     )
-  const complete = (sequence: number | string) =>
+  const complete = (element: Claim) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'completed'
-        WHERE sequence = ${sequence}
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [sequence]
+      [element]
     )
-  const fail = (sequence: number | string, cause: Cause.Cause<any>) =>
+  const fail = (element: Claim, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, state = 'failed', last_failure = ${
         Cause.pretty(cause)
       }
-        WHERE sequence = ${sequence}
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [sequence]
+      [element]
     )
-  const retry = (sequence: number | string, delay: Duration.Duration, cause: Cause.Cause<any>) =>
+  const retry = (element: Claim, delay: Duration.Duration, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, visible_at = ${
         secondsFromNow(Duration.toSeconds(delay))
       }, last_failure = ${Cause.pretty(cause)}
-        WHERE sequence = ${sequence}
-        AND acquired_by = ${workerIdSql}
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [sequence]
+      [element]
     )
-  const interrupt = (ids: Array<number | string>) =>
+  const interrupt = (elements: ReadonlyArray<Claim>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
         SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
-        WHERE sequence IN (${sql.literal(ids.join(","))})
-        AND acquired_by = ${workerIdSql}
+        WHERE ${claimsWhere(groupClaims(elements))}
       `,
-      ids
+      elements
     )
 
   yield* refreshLocks.pipe(
@@ -1599,6 +1627,7 @@ export const makeStoreSql: (
     readonly sequence: number | string
     readonly element: string
     attempts: number
+    lock: string
   }
   const queueStates = makeQueueStates()
   const mailboxes = yield* RcMap.make({
@@ -1614,7 +1643,7 @@ export const makeStoreSql: (
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(Queue.clear(queue), (elements) => {
           if (elements.length === 0) return Effect.void
-          return interrupt(Array.from(elements, (e) => e.sequence))
+          return interrupt(Array.from(elements))
         })
       )
 
@@ -1637,11 +1666,11 @@ export const makeStoreSql: (
       )
 
       const poll = sql.onDialectOrElse({
-        pg: () => (size: number) =>
+        pg: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
               UPDATE ${tableNameSql}
-              SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
+              SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
               WHERE sequence IN (
                 SELECT sequence FROM ${tableNameSql}
                 WHERE queue_name = ${name}
@@ -1658,7 +1687,7 @@ export const makeStoreSql: (
             SELECT sequence, id, element, attempts FROM cte
             ORDER BY visible_at ASC, sequence ASC
           `,
-        mysql: () => (size: number) =>
+        mysql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             SELECT sequence, id, element, attempts FROM ${tableNameSql} q
             WHERE queue_name = ${name}
@@ -1674,7 +1703,7 @@ export const makeStoreSql: (
               if (rows.length === 0) return Effect.void
               return sql`
                 UPDATE ${tableNameSql}
-                SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
+                SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
                 WHERE sequence IN (${sql.literal(rows.map((r) => r.sequence).join(","))})
               `.unprepared
             }),
@@ -1686,7 +1715,7 @@ export const makeStoreSql: (
             }),
             sql.withTransaction
           ),
-        mssql: () => (size: number) =>
+        mssql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
               SELECT TOP ${sql.literal(size.toString())} sequence FROM ${tableNameSql}
@@ -1698,16 +1727,16 @@ export const makeStoreSql: (
               ORDER BY visible_at ASC, sequence ASC
             )
             UPDATE q
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = q.attempts + 1
+            SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = q.attempts + 1
             OUTPUT inserted.sequence, inserted.id, inserted.element, inserted.attempts
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
           `,
         // sqlite
-        orElse: () => (size: number) =>
+        orElse: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             UPDATE ${tableNameSql}
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}, attempts = attempts + 1
+            SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
             WHERE sequence IN (
               SELECT sequence FROM ${tableNameSql}
               WHERE queue_name = ${name}
@@ -1727,16 +1756,20 @@ export const makeStoreSql: (
           yield* pollLatch.await
           yield* Effect.yieldNow
           nudge.closeUnsafe()
-          const results = takers.current === 0 ? [] : yield* poll(takers.current)
+          const lock = crypto.randomUUID()
+          const results = takers.current === 0 ? [] : yield* poll(takers.current, stringLiteral(lock))
           if (results.length === 0) {
             yield* Effect.race(Effect.sleep(pollInterval), nudge.await)
             continue
           }
           takenLatch.closeUnsafe()
+          const sequences = new Set<number | string>()
           for (const row of results) {
             row.attempts = Number(row.attempts)
-            elementIds.add(row.sequence)
+            row.lock = lock
+            sequences.add(row.sequence)
           }
+          claims.set(lock, sequences)
           yield* Queue.offerAll(queue, results)
           yield* takenLatch.await
           yield* Effect.yieldNow
@@ -1875,26 +1908,26 @@ export const makeStoreSql: (
             } catch (defect) {
               // a row that cannot be parsed will never succeed, so dead-letter
               // it and take the next element
-              return Effect.andThen(fail(element.sequence, Cause.die(defect)), loop)
+              return Effect.andThen(fail(element, Cause.die(defect)), loop)
             }
             return Effect.as(
               Effect.addFinalizer((exit) => {
                 if (exit._tag === "Success") {
-                  return complete(element.sequence)
+                  return complete(element)
                 }
                 const dead = deadLetterFromCause(exit.cause)
                 if (dead !== undefined) {
-                  return fail(element.sequence, dead.cause)
+                  return fail(element, dead.cause)
                 }
                 if (Cause.hasInterruptsOnly(exit.cause)) {
-                  return interrupt([element.sequence])
+                  return interrupt([element])
                 }
                 if (element.attempts >= options.maxAttempts) {
-                  return fail(element.sequence, exit.cause)
+                  return fail(element, exit.cause)
                 }
                 return Effect.flatMap(
                   options.retryDelay(element.attempts),
-                  (delay) => retry(element.sequence, delay, exit.cause)
+                  (delay) => retry(element, delay, exit.cause)
                 )
               }),
               { id: element.id, attempts: element.attempts, element: parsed }
