@@ -855,6 +855,166 @@ describe("HttpApi", () => {
         yield* assertClientJson(client.group.a({ payload: new Uint8Array([1, 2, 3]) }), { 0: 1, 1: 2, 2: 3 })
       }).pipe(Effect.provide(ApiLayer))
     })
+
+    describe("streaming", () => {
+      const Item = Schema.Struct({ n: Schema.Number })
+      const Api = HttpApi.make("api").add(
+        HttpApiGroup.make("group").add(
+          HttpApiEndpoint.post("ndjson", "/ndjson", {
+            payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+            success: Schema.Array(Item)
+          }),
+          HttpApiEndpoint.post("bytes", "/bytes", {
+            payload: HttpApiSchema.StreamUint8Array(),
+            success: Schema.Number
+          }),
+          HttpApiEndpoint.post("echo", "/echo", {
+            payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+            success: HttpApiSchema.StreamNdjson({ schema: Item })
+          }),
+          HttpApiEndpoint.post("ignore", "/ignore", {
+            payload: HttpApiSchema.StreamUint8Array(),
+            success: Schema.String
+          }),
+          HttpApiEndpoint.post("reject", "/reject", {
+            payload: HttpApiSchema.StreamUint8Array(),
+            error: HttpApiError.Forbidden
+          }),
+          HttpApiEndpoint.post("flaky", "/flaky", {
+            payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+            success: Schema.Array(Item),
+            error: HttpApiError.ServiceUnavailable
+          }),
+          HttpApiEndpoint.post("mixed", "/mixed", {
+            payload: [Schema.Array(Item), HttpApiSchema.StreamNdjson({ schema: Item })],
+            success: Schema.String
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "group",
+        Effect.fnUntraced(function*(handlers) {
+          const flakyCalls = yield* Ref.make(0)
+          return handlers
+            .handle("ndjson", ({ payload }) => Stream.runCollect(payload))
+            .handle("bytes", ({ payload }) => Stream.runFold(payload, () => 0, (total, chunk) => total + chunk.length))
+            .handle("echo", ({ payload }) => Effect.succeed(payload))
+            .handle("ignore", () => Effect.succeed("ok"))
+            .handle("reject", () => Effect.fail(new HttpApiError.Forbidden()))
+            .handle("flaky", ({ payload }) =>
+              Effect.gen(function*() {
+                const items = yield* Stream.runCollect(payload)
+                if ((yield* Ref.getAndUpdate(flakyCalls, (n) => n + 1)) === 0) {
+                  return yield* new HttpApiError.ServiceUnavailable()
+                }
+                return items
+              }))
+            .handle("mixed", ({ payload }) =>
+              Stream.isStream(payload)
+                ? Effect.map(Stream.runCollect(payload), (items) => `stream:${items.length}`)
+                : Effect.succeed(`array:${payload.length}`))
+        })
+      )
+      ;[
+        { name: "node:http", layer: NodeHttpClient.layerNodeHttp },
+        { name: "undici", layer: NodeHttpClient.layerUndici }
+      ].forEach(({ layer, name }) => {
+        describe(name, () => {
+          const ApiLayer = HttpRouter.serve(
+            HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+            { disableListenLog: true, disableLogger: true }
+          ).pipe(
+            Layer.provideMerge(HttpServer.layerTestClient),
+            Layer.provide(layer),
+            Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+          )
+
+          it.effect("uploads a caller's stream", () =>
+            Effect.gen(function*() {
+              const client = yield* HttpApiClient.make(Api)
+              const items = yield* client.group.ndjson({ payload: Stream.make({ n: 1 }, { n: 2 }, { n: 3 }) })
+              assert.deepStrictEqual(items, [{ n: 1 }, { n: 2 }, { n: 3 }])
+              const total = yield* client.group.bytes({
+                payload: Stream.make(new Uint8Array(2), new Uint8Array(3))
+              })
+              assert.strictEqual(total, 5)
+            }).pipe(Effect.provide(ApiLayer)))
+
+          it.effect("fails with the source error when the source fails before the method returns", () =>
+            Effect.gen(function*() {
+              const client = yield* HttpApiClient.make(Api)
+              const error = yield* client.group.ndjson({
+                payload: Stream.make({ n: 1 }).pipe(Stream.concat(Stream.fail("SourceError" as const)))
+              }).pipe(Effect.flip)
+              assert.strictEqual(error, "SourceError")
+            }).pipe(Effect.provide(ApiLayer)))
+
+          it.effect("fails the response stream with the source error when the source fails after the method returns", () =>
+            Effect.gen(function*() {
+              const client = yield* HttpApiClient.make(Api)
+              const echoed = yield* Deferred.make<void>()
+              const stream = yield* client.group.echo({
+                payload: Stream.make({ n: 1 }).pipe(
+                  Stream.concat(Stream.fromEffectDrain(Deferred.await(echoed))),
+                  Stream.concat(Stream.fail("SourceError" as const))
+                )
+              })
+              const received: Array<typeof Item.Type> = []
+              const error = yield* stream.pipe(
+                Stream.runForEach((item) =>
+                  Effect.sync(() => received.push(item)).pipe(Effect.andThen(Deferred.succeed(echoed, undefined)))
+                ),
+                Effect.flip
+              )
+              assert.deepStrictEqual(received, [{ n: 1 }])
+              assert.strictEqual(error, "SourceError")
+            }).pipe(Effect.provide(ApiLayer)))
+
+          it.live("interrupts the upload once a buffered or error response is decoded", () =>
+            Effect.gen(function*() {
+              const client = yield* HttpApiClient.make(Api)
+              const endless = (finalized: Deferred.Deferred<void>) =>
+                Stream.make(new Uint8Array(1)).pipe(
+                  Stream.concat(Stream.never),
+                  Stream.ensuring(Deferred.succeed(finalized, undefined))
+                )
+
+              const successFinalized = yield* Deferred.make<void>()
+              assert.strictEqual(yield* client.group.ignore({ payload: endless(successFinalized) }), "ok")
+              yield* Deferred.await(successFinalized).pipe(Effect.timeout("1 second"))
+
+              const errorFinalized = yield* Deferred.make<void>()
+              const error = yield* client.group.reject({ payload: endless(errorFinalized) }).pipe(Effect.flip)
+              assert.deepStrictEqual(error, new HttpApiError.Forbidden())
+              yield* Deferred.await(errorFinalized).pipe(Effect.timeout("1 second"))
+            }).pipe(Effect.provide(ApiLayer)))
+
+          it.effect("replays the stream on retry", () =>
+            Effect.gen(function*() {
+              const client = yield* HttpApiClient.make(Api, {
+                transformClient: (client) => HttpClient.retryTransient(client, { times: 1 })
+              })
+              let runs = 0
+              const items = yield* client.group.flaky({
+                payload: Stream.suspend(() => {
+                  runs++
+                  return Stream.make({ n: 1 }, { n: 2 })
+                })
+              })
+              assert.deepStrictEqual(items, [{ n: 1 }, { n: 2 }])
+              assert.strictEqual(runs, 2)
+            }).pipe(Effect.provide(ApiLayer)))
+
+          it.effect("sends the buffered or streaming member of a mixed payload", () =>
+            Effect.gen(function*() {
+              const client = yield* HttpApiClient.make(Api)
+              assert.strictEqual(yield* client.group.mixed({ payload: [{ n: 1 }, { n: 2 }] }), "array:2")
+              assert.strictEqual(yield* client.group.mixed({ payload: Stream.make({ n: 1 }, { n: 2 }) }), "stream:2")
+            }).pipe(Effect.provide(ApiLayer)))
+        })
+      })
+    })
   })
 
   describe("params option", () => {
