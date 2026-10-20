@@ -1,9 +1,50 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, Deferred, Effect, Exit, Fiber, Request, RequestResolver } from "effect"
+import { Context, Data, Deferred, Effect, Exit, Fiber, Option, Request, RequestResolver } from "effect"
 import type { Tracer } from "effect"
 
 class Key extends Data.Class<{ id: number }> {}
 class GetValue extends Request.Class<{ key: Key }, number> {}
+class Tenant extends Context.Service<Tenant, string>()("test/RequestResolver/Tenant") {}
+class GetTenant extends Request.Class<{ id: number }, string> {}
+
+const currentTenant = Effect.map(Effect.serviceOption(Tenant), Option.getOrElse(() => "missing"))
+
+describe("RequestResolver.fromEffect", () => {
+  it.effect("runs each entry with its caller context", () =>
+    Effect.gen(function*() {
+      const resolver = RequestResolver.fromEffect<GetTenant>(() => currentTenant)
+      const values = yield* Effect.all([
+        Effect.request(new GetTenant({ id: 1 }), resolver).pipe(Effect.provideService(Tenant, "first")),
+        Effect.request(new GetTenant({ id: 2 }), resolver).pipe(Effect.provideService(Tenant, "second"))
+      ], { concurrency: "unbounded" })
+
+      assert.deepStrictEqual(values, ["first", "second"])
+    }))
+})
+
+for (const constructor of ["make", "makeGrouped"] as const) {
+  describe(`RequestResolver.${constructor}`, () => {
+    it.effect("uses the first caller context whether the batch reaches its cutoff or not", () =>
+      Effect.gen(function*() {
+        const runAll = (entries: ReadonlyArray<Request.Entry<GetTenant>>) =>
+          Effect.map(currentTenant, (tenant) => {
+            const value = `${tenant}:${entries.map((entry) => entry.request.id).join(",")}`
+            for (const entry of entries) entry.completeUnsafe(Exit.succeed(value))
+          })
+        const resolver = (constructor === "make"
+          ? RequestResolver.make<GetTenant>(runAll)
+          : RequestResolver.makeGrouped<GetTenant, string>({ key: () => "shared", resolver: runAll }))
+          .pipe(RequestResolver.batchN(2))
+        const values = yield* Effect.all([
+          Effect.request(new GetTenant({ id: 1 }), resolver).pipe(Effect.provideService(Tenant, "first")),
+          Effect.request(new GetTenant({ id: 2 }), resolver).pipe(Effect.provideService(Tenant, "second")),
+          Effect.request(new GetTenant({ id: 3 }), resolver).pipe(Effect.provideService(Tenant, "third"))
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(values, ["first:1,2", "first:1,2", "third:3"])
+      }))
+  })
+}
 
 describe("RequestResolver.makeGrouped", () => {
   it.effect("keeps equal keys batched across derived resolvers and releases them before the next window", () =>
