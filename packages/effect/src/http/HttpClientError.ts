@@ -297,47 +297,6 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
 }
 
 /**
- * Error for requests that ask for an HTTP/1.1 upgrade when the client backend
- * cannot hand over the connection.
- *
- * **Details**
- *
- * Fetch and `XMLHttpRequest` cannot send `Connection: Upgrade` requests or
- * expose the connection behind a `101 Switching Protocols` response. Clients
- * built on them fail upgrade requests with this reason before sending them,
- * and their responses fail `upgrade` with it.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.6
- */
-export class UpgradeNotSupportedError extends Data.TaggedError("UpgradeNotSupportedError")<{
-  readonly request: HttpClientRequest.HttpClientRequest
-  readonly cause?: unknown
-  readonly description?: string
-}> {
-  /**
-   * Formats the request method and URL for upgrade error messages.
-   *
-   * @stability unstable
-   * @since 4.0.6
-   */
-  get methodAndUrl() {
-    return formatMethodAndUrl(this.request)
-  }
-
-  /**
-   * Builds the upgrade error message from the optional description and request details.
-   *
-   * @stability unstable
-   * @since 4.0.6
-   */
-  override get message() {
-    return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
-  }
-}
-
-/**
  * Union of HTTP client errors that occur before a response is available.
  *
  * @stability unstable
@@ -362,7 +321,7 @@ export type ResponseError = StatusCodeError | DecodeError | EmptyBodyError
  * @category errors
  * @since 4.0.0
  */
-export type HttpClientErrorReason = RequestError | ResponseError | UpgradeNotSupportedError
+export type HttpClientErrorReason = RequestError | ResponseError
 
 /**
  * Schema for serializable HTTP client errors, preserving the specific error kind
@@ -381,8 +340,7 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
       "TransportError",
       "InvalidUrlError",
       "StatusCodeError",
-      "EmptyBodyError",
-      "UpgradeNotSupportedError"
+      "EmptyBodyError"
     ] satisfies ReadonlyArray<HttpClientErrorReason["_tag"]>
   ),
   cause: Schema.optional(Schema.Defect())

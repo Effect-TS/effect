@@ -149,15 +149,6 @@ export const mapHttpClientError = dual<
         })
       }))
     }
-    case "UpgradeNotSupportedError": {
-      return Effect.fail(AiError.make({
-        module: "OpenRouterClient",
-        method,
-        reason: new AiError.InvalidRequestError({
-          description: reason.message
-        })
-      }))
-    }
   }
 })
 

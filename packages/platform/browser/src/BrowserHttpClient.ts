@@ -132,21 +132,9 @@ export class XMLHttpRequest extends Context.Service<
 
 const makeXhrRequest = () => new globalThis.XMLHttpRequest()
 
-const upgradeNotSupported = (request: HttpClientRequest.HttpClientRequest) =>
-  new HttpClientError.HttpClientError({
-    reason: new HttpClientError.UpgradeNotSupportedError({
-      request,
-      description: "XMLHttpRequest cannot perform an HTTP upgrade"
-    })
-  })
-
 const makeXmlHttpRequest = HttpClient.make(
   (request, url, signal, fiber) =>
     Effect.suspend(() => {
-      if (request.headers.upgrade !== undefined) {
-        // Reject before sending: XMLHttpRequest silently drops the Upgrade header.
-        return Effect.fail(upgradeNotSupported(request))
-      }
       const xhr = Context.getOrElse(
         fiber.context,
         XMLHttpRequest,
@@ -442,7 +430,15 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpClientError.HttpClientError> {
-    return Effect.fail(upgradeNotSupported(this.request))
+    return Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.StatusCodeError({
+          request: this.request,
+          response: this,
+          description: "XMLHttpRequest cannot hand over the connection of an HTTP upgrade"
+        })
+      })
+    )
   }
 
   override toString(): string {

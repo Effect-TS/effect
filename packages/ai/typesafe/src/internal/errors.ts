@@ -68,9 +68,6 @@ export const mapHttpClientError = Effect.fnUntraced(
           description: source.description ?? "Failed to decode TypeSafe response"
         })
         break
-      case "UpgradeNotSupportedError":
-        reason = new AiError.InvalidRequestError({ description: source.message })
-        break
       case "StatusCodeError": {
         const { request, response } = source
         const body = yield* response.text.pipe(Effect.catch(() => Effect.succeed(source.description)))

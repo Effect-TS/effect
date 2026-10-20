@@ -636,11 +636,16 @@ describe("NodeHttpClient upgrade", () => {
     })
   })
 
-  it.effect("fetch fails an upgrade request before sending it", () =>
+  it.live("fetch cannot hand over an upgraded connection", () =>
     Effect.gen(function*() {
-      const error = yield* HttpClient.execute(
-        HttpClientRequest.post("http://127.0.0.1:1/attach").pipe(HttpClientRequest.upgrade("tcp"))
-      ).pipe(Effect.flip)
-      assert.strictEqual(error.reason._tag, "UpgradeNotSupportedError")
-    }).pipe(Effect.provide(NodeClient.layerFetch)))
+      yield* Effect.succeed(HttpServerResponse.empty()).pipe(HttpServer.serveEffect())
+      const error = yield* HttpClient.post("/attach").pipe(
+        Effect.flatMap((response) => response.upgrade),
+        Effect.flip
+      )
+      assert.strictEqual(error.reason._tag, "StatusCodeError")
+    }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
+      Layer.provide(NodeClient.layerFetch),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    ))))
 })

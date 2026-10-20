@@ -602,7 +602,7 @@ const upgradeSocket = (
     new Error.HttpClientError({
       reason: response.status === 101
         // Bun before 1.4 reports 101 without handing over the connection.
-        ? new Error.UpgradeNotSupportedError({
+        ? new Error.TransportError({
           request: response.request,
           description: "the runtime did not hand over the connection of the upgrade"
         })

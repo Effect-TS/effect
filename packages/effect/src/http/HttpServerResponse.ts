@@ -1389,8 +1389,9 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   get upgrade(): Effect.Effect<Socket.Socket, HttpClientError.HttpClientError> {
     return Effect.fail(
       new HttpClientError.HttpClientError({
-        reason: new HttpClientError.UpgradeNotSupportedError({
+        reason: new HttpClientError.StatusCodeError({
           request: this.request,
+          response: this,
           description: "a server response has no connection to hand over"
         })
       })

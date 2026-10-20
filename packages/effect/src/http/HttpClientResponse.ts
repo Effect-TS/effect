@@ -97,9 +97,8 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
    * also closes it.
    *
    * Fails with a `StatusCodeError` for any other status, so a refusal can be
-   * read from the response body as usual. Fails with an
-   * `UpgradeNotSupportedError` when the client backend cannot hand over the
-   * connection.
+   * read from the response body as usual. Backends that cannot hand over a
+   * connection, such as fetch, never produce a `101` and fail the same way.
    */
   readonly upgrade: Effect.Effect<Socket.Socket, Error.HttpClientError>
 }
@@ -439,8 +438,9 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
   get upgrade(): Effect.Effect<Socket.Socket, Error.HttpClientError> {
     return Effect.fail(
       new Error.HttpClientError({
-        reason: new Error.UpgradeNotSupportedError({
+        reason: new Error.StatusCodeError({
           request: this.request,
+          response: this,
           description: "fetch cannot hand over the connection of an HTTP upgrade"
         })
       })

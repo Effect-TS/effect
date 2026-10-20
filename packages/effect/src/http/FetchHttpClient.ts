@@ -54,17 +54,6 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
 ) {}
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
-  if (request.headers.upgrade !== undefined) {
-    // Reject before sending: fetch may silently drop the Upgrade header.
-    return Effect.fail(
-      new HttpClientError.HttpClientError({
-        reason: new HttpClientError.UpgradeNotSupportedError({
-          request,
-          description: "fetch cannot send an HTTP upgrade request"
-        })
-      })
-    )
-  }
   const fetch = fiber.getRef(Fetch)
   const options: globalThis.RequestInit = Context.getOrUndefined(fiber.context, RequestInit) ?? {}
   let headers = options.headers
@@ -131,10 +120,6 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * target allows `b3` and `traceparent`. Stream request bodies are sent as Web
  * streams with `duplex: "half"`, and any `content-length` header is removed
  * before calling `fetch`.
- *
- * Fetch cannot perform HTTP/1.1 upgrades. Requests built with
- * `HttpClientRequest.upgrade` fail with an `UpgradeNotSupportedError` before
- * anything is sent.
  *
  * @see {@link Fetch} for supplying the fetch implementation used by this layer
  * @see {@link RequestInit} for default `RequestInit` options applied before request-specific fields
