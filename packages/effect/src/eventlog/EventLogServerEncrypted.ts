@@ -289,7 +289,7 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
         withCompaction("CompactionPart", request, client, (compaction) =>
           Effect.gen(function*() {
             const { publicKey, stageId, storeId } = request
-            const data = ChunkedMessage.join(getPendingSegments(client, stageId), request.chunk)
+            const data = ChunkedMessage.join(getPendingSegments(client, request), request.chunk)
             if (data === undefined) {
               return
             }
@@ -305,13 +305,13 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
           })),
       "EventLog.CompactionAbort": (request, { client }) =>
         withCompaction("CompactionAbort", request, client, (compaction) => {
-          releasePendingSegments(client, request.stageId)
+          releasePendingSegments(client, request)
           return compaction.abort(request.publicKey, request.storeId, request.stageId)
         }),
       "EventLog.CompactionCommit": (request, { client }) =>
         withCompaction("CompactionCommit", request, client, (compaction) => {
           const { publicKey, stageId, storeId } = request
-          releasePendingSegments(client, stageId)
+          releasePendingSegments(client, request)
           if (request.result._tag === "NoOp") {
             return Effect.as(compaction.recordNoOp(publicKey, storeId, stageId), "Committed" as const)
           }
@@ -328,11 +328,7 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
                   // from its first one, or fails with `CompactionNotFound`.
                   : compaction.commit(publicKey, storeId, stageId, []),
               onSuccess: (snapshot) =>
-                compaction.commit(publicKey, storeId, stageId, snapshot.virtualSequences).pipe(
-                  Effect.tap((result) =>
-                    logCommit(compaction, { publicKey, storeId, result, ...snapshot })
-                  )
-                )
+                compaction.commit(publicKey, storeId, stageId, snapshot.virtualSequences)
             })
           )
         })
@@ -432,19 +428,16 @@ const checkSnapshot = Effect.fnUntraced(function*(
   }
 }, Effect.scoped)
 
-const logCommit = Effect.fnUntraced(function*(compaction: StorageCompaction, options: {
+const logCommit = (options: {
   readonly publicKey: string
   readonly storeId: StoreId
   readonly result: "Committed" | "Superseded"
   readonly through: number
   readonly inputCount: number
   readonly keptCount: number
-}) {
-  const activationId = options.result === "Committed"
-    ? (yield* compaction.history(options.publicKey, options.storeId)).find((activation) => activation.active)
-      ?.activationId
-    : undefined
-  yield* Effect.logInfo(
+  readonly activationId: string | undefined
+}) =>
+  Effect.logInfo(
     options.result === "Committed" ? "Committed compaction snapshot" : "Compaction snapshot superseded"
   ).pipe(
     Effect.annotateLogs({
@@ -454,33 +447,46 @@ const logCommit = Effect.fnUntraced(function*(compaction: StorageCompaction, opt
       inputCount: options.inputCount,
       keptCount: options.keptCount,
       through: options.through,
-      activationId
+      activationId: options.activationId
     })
   )
-})
 
-// Pieces of compaction segments not yet joined, by stage, for one connection.
+// Pieces of compaction segments not yet joined, by identity, store and stage,
+// for one connection. Tuple encoding keeps the scope components unambiguous.
 class PendingSegments extends Context.Service<
   PendingSegments,
   Map<string, ReturnType<typeof ChunkedMessage.initialJoinState>>
 >()("effect/eventlog/EventLogServerEncrypted/PendingSegments") {}
 
-const getPendingSegments = (client: Rpc.ServerClient, stageId: string) => {
+const pendingSegmentsKey = (
+  request: { readonly publicKey: string; readonly storeId: StoreId; readonly stageId: string }
+) => JSON.stringify([request.publicKey, request.storeId, request.stageId])
+
+const getPendingSegments = (client: Rpc.ServerClient, request: {
+  readonly publicKey: string
+  readonly storeId: StoreId
+  readonly stageId: string
+}) => {
   let stages = Context.getOrUndefined(client.annotations, PendingSegments)
   if (stages === undefined) {
     stages = new Map()
     client.annotate(PendingSegments, stages)
   }
-  let pending = stages.get(stageId)
+  const key = pendingSegmentsKey(request)
+  let pending = stages.get(key)
   if (pending === undefined) {
     pending = ChunkedMessage.initialJoinState()
-    stages.set(stageId, pending)
+    stages.set(key, pending)
   }
   return pending
 }
 
-const releasePendingSegments = (client: Rpc.ServerClient, stageId: string) => {
-  Context.getOrUndefined(client.annotations, PendingSegments)?.delete(stageId)
+const releasePendingSegments = (client: Rpc.ServerClient, request: {
+  readonly publicKey: string
+  readonly storeId: StoreId
+  readonly stageId: string
+}) => {
+  Context.getOrUndefined(client.annotations, PendingSegments)?.delete(pendingSegmentsKey(request))
 }
 
 /**
@@ -651,6 +657,8 @@ export interface StorageCompaction {
   ) => Stream.Stream<{ readonly position: number; readonly entryIds: ReadonlyArray<EntryId> }, CompactionNotFound>
   /**
    * Answers a retried commit from the activation the stage created.
+   * Logs the first outcome with operation-bound counts, through sequence and
+   * activation id, without reading the active generation after committing.
    */
   readonly commit: (
     publicKey: string,
@@ -658,6 +666,10 @@ export interface StorageCompaction {
     stageId: string,
     virtualSequences: ReadonlyArray<number>
   ) => Effect.Effect<"Committed" | "Superseded", CompactionNotFound>
+  /**
+   * Records and logs the first no-op with its identity, store, stage and through
+   * sequence. Retries do not advance backoff or emit another audit record.
+   */
   readonly recordNoOp: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void, CompactionNotFound>
   /**
    * Releases an open stage. A late abort is a no-op.
@@ -1107,6 +1119,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           pinned: journal.active,
           through,
           expiresAt: now + stageTtlMillis,
+          inputCount: 0,
           inputBytes: 0,
           stagedBytes: 0,
           segments: new Map(),
@@ -1115,6 +1128,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           closedAt: undefined
         }
         const input = inputBatches(journal, stage)
+        stage.inputCount = input.reduce((count, batch) => count + batch.entryIds.length, 0)
         stage.inputBytes = input.reduce((bytes, batch) => bytes + batch.encryptedBatch.byteLength, 0)
         stages.set(stage.id, stage)
         journal.openStage = stage
@@ -1122,7 +1136,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         return {
           _tag: "Started",
           stageId: stage.id,
-          entryCount: input.reduce((count, batch) => count + batch.entryIds.length, 0),
+          entryCount: stage.inputCount,
           batchCount: input.length
         }
       }),
@@ -1212,21 +1226,34 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
         const { journal, stage } = found
         if (stage.pinned !== journal.active) {
+          const keptCount = stagedBatches(stage).reduce((count, { batch }) => count + batch.entryIds.length, 0)
           stage.result = "Superseded"
           closeStage(journal, stage, "committed", now)
-          return Effect.succeed("Superseded" as const)
+          return Effect.as(
+            logCommit({
+              publicKey,
+              storeId,
+              result: "Superseded",
+              through: stage.through,
+              inputCount: stage.inputCount,
+              keptCount,
+              activationId: undefined
+            }),
+            "Superseded" as const
+          )
         }
         const staged = stagedBatches(stage)
         if (staged.length !== virtualSequences.length) {
           return Effect.die(new Cause.IllegalArgumentError("Expected one virtual sequence per staged batch"))
         }
+        const keptCount = staged.reduce((count, { batch }) => count + batch.entryIds.length, 0)
         const activation: MemoryActivation = {
           id: Uuid.v4String(),
           set: {
             batches: staged.map(({ batch }, i): EncryptedRemoteBatch => ({ ...batch, sequence: virtualSequences[i] }))
           },
           base: stage.through,
-          keptCount: staged.reduce((count, { batch }) => count + batch.entryIds.length, 0),
+          keptCount,
           previous: journal.active,
           supersededAt: undefined,
           pruneStartedAt: undefined
@@ -1238,7 +1265,20 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         schedulePrune(journal, now + graceMillis)
         stage.result = "Committed"
         closeStage(journal, stage, "committed", now)
-        return Effect.succeed("Committed" as const)
+        // Capture this operation's activation before yielding to the logger. A
+        // concurrent rollback must not relabel the commit with its activation.
+        return Effect.as(
+          logCommit({
+            publicKey,
+            storeId,
+            result: "Committed",
+            through: stage.through,
+            inputCount: stage.inputCount,
+            keptCount,
+            activationId: activation.id
+          }),
+          "Committed" as const
+        )
       }),
     recordNoOp: (publicKey, storeId, stageId) =>
       Effect.flatMap(Clock.currentTimeMillis, (now) => {
@@ -1252,7 +1292,15 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         }
         stage.result = "NoOp"
         closeStage(journal, stage, "committed", now)
-        return Effect.void
+        return Effect.logInfo("Committed compaction no-op").pipe(
+          Effect.annotateLogs({
+            service: "EventLogServerEncrypted",
+            publicKey,
+            storeId,
+            stageId,
+            through: stage.through
+          })
+        )
       }),
     abort: (publicKey, storeId, stageId) => withdraw(publicKey, storeId, stageId),
     withdraw: (publicKey, storeId, stageId) => withdraw(publicKey, storeId, stageId),
@@ -1289,7 +1337,9 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
               keptCount: activation.keptCount,
               base: activation.base,
               activationId: activation.id,
-              withdrawnActivationId: withdrawn.id
+              withdrawnActivationId: withdrawn.id,
+              withdrawnBase: withdrawn.base,
+              withdrawnKeptCount: withdrawn.keptCount
             })
           ),
           activation.id
@@ -1428,6 +1478,7 @@ interface MemoryStage {
   readonly pinned: MemoryActivation
   readonly through: number
   expiresAt: number
+  inputCount: number
   inputBytes: number
   stagedBytes: number
   readonly segments: Map<number, ReadonlyArray<EncryptedBatch>>
