@@ -1,6 +1,6 @@
 import type * as Cause from "../Cause.ts"
 import type { Effect, Repeat, Retry } from "../Effect.ts"
-import { constant, constTrue, dual, identity } from "../Function.ts"
+import { constant, constVoid, dual, identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
@@ -29,19 +29,31 @@ export const repeatOrElse: {
 ): Effect<B, E3, R | R2 | R3> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
-    return effect.catchCauseFilter(
+    let done = false
+    let output: B
+    const stepOrFinish = (input: A) =>
       Pull.catchDone(
-        effect.forever(
-          effect.tap(
-            effect.flatMap(effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)), step),
-            (meta_) =>
-              effect.sync(() => {
-                meta = meta_
-              })
-          ),
-          { disableYield: true }
-        ),
-        (out) => effect.succeed(out as B)
+        effect.map(step(input), (meta_) => {
+          meta = meta_
+        }),
+        (out) => {
+          done = true
+          output = out as B
+          return effect.void
+        }
+      )
+    const body = constant(effect.flatMap(
+      effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)),
+      stepOrFinish
+    ))
+    return effect.catchCauseFilter(
+      effect.map(
+        effect.whileLoop({
+          while: () => !done,
+          body,
+          step: constVoid
+        }),
+        () => output
       ),
       effect.findRecoverableError,
       (error) => orElse(error, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
@@ -199,23 +211,29 @@ export const scheduleFrom = dual<
 ): Effect<Output, E | Error, R | Env> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
+    let done = false
+    let output: Output
     const selfWithMeta = effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta))
-    return Pull.catchDone(
-      effect.flatMap(
-        step(initial),
-        (meta_) => {
+    const stepOrFinish = (input: Input) =>
+      Pull.catchDone(
+        effect.map(step(input), (meta_) => {
           meta = meta_
-          const body = constant(effect.flatMap(selfWithMeta, step))
-          return effect.whileLoop({
-            while: constTrue,
-            body,
-            step(meta_) {
-              meta = meta_
-            }
-          }) as Effect<never, E | Error | Cause.Done<Output>, R | Env>
+        }),
+        (out) => {
+          done = true
+          output = out as Output
+          return effect.void
         }
-      ),
-      (out) => effect.succeed(out as Output)
+      )
+    const body = constant(effect.flatMap(selfWithMeta, stepOrFinish))
+    return effect.map(
+      effect.flatMap(stepOrFinish(initial), () =>
+        effect.whileLoop({
+          while: () => !done,
+          body,
+          step: constVoid
+        })),
+      () => output
     )
   }))
 

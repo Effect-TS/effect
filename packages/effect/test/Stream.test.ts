@@ -18,7 +18,7 @@ import {
   Logger,
   type LogLevel,
   Option,
-  type Pull,
+  Pull,
   Queue,
   Ref,
   References,
@@ -2417,7 +2417,8 @@ describe("Stream", () => {
               yield* pipe(
                 pull,
                 Effect.flatMap((chunk) => Ref.update(ref, Array.appendAll(chunk))),
-                Effect.repeat({ times: 7 })
+                Effect.forever,
+                Pull.catchDone(() => Effect.void)
               )
               const result3 = yield* (Ref.get(ref))
               return { result1, result2, result3 }
