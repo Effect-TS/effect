@@ -54,6 +54,7 @@ import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import * as Ndjson from "./internal/ndjson.ts"
 import * as HttpApiPath from "./internal/path.ts"
 import * as OpenApi from "./OpenApi.ts"
 
@@ -1086,25 +1087,7 @@ function makeStreamEncoder(
   const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
-  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
-    return (response, context) => {
-      if (!Stream.isStream(response)) {
-        return hasBuffered ? undefined : new Schema.SchemaError(
-          new SchemaIssue.InvalidValue({ message: "Expected a streaming response" })
-        )
-      }
-
-      return Effect.succeed(Response.stream(
-        Stream.provideContext(
-          response as Stream.Stream<Uint8Array, unknown, unknown>,
-          context as Context.Context<unknown>
-        ),
-        { status, contentType }
-      ))
-    }
-  }
-
-  const sseEncoder = makeSseEncoder(streamSchema, options)
+  const encodeBody = makeStreamBodyEncoder(streamSchema, options)
 
   return (response, context) => {
     if (!Stream.isStream(response)) {
@@ -1115,12 +1098,31 @@ function makeStreamEncoder(
 
     return Effect.succeed(Response.stream(
       Stream.provideContext(
-        encodeSseStream(response, sseEncoder),
+        encodeBody(response),
         context as Context.Context<unknown>
       ),
       { status, contentType }
     ))
   }
+}
+
+function makeStreamBodyEncoder(
+  streamSchema: HttpApiSchema.StreamSchema,
+  options: SchemaAST.ParseOptions | undefined
+): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<Uint8Array, unknown, unknown> {
+  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
+    return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
+  }
+  if (HttpApiSchema.isStreamNdjson(streamSchema)) {
+    const encodeElements = Schema.encodeUnknownEffect(
+      Schema.Array(Schema.toCodecJson(streamSchema.schema)),
+      options
+    )
+    // There is no error schema, so a bad element aborts the response
+    return (stream) => Ndjson.encode(stream, (elements) => Effect.orDie(encodeElements(elements)))
+  }
+  const sseEncoder = makeSseEncoder(streamSchema, options)
+  return (stream) => encodeSseStream(stream, sseEncoder)
 }
 
 function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {

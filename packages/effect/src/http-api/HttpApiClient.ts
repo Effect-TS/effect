@@ -12,6 +12,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as ByteSize from "../ByteSize.ts"
 import * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -42,6 +43,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import * as Ndjson from "./internal/ndjson.ts"
 import * as HttpApiPath from "./internal/path.ts"
 
 /**
@@ -98,6 +100,8 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
       never
     >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
+  : S extends HttpApiSchema.StreamNdjson<infer _S> ?
+    Stream.Stream<_S["Type"], HttpClientError.HttpClientError | Schema.SchemaError, never>
   : S extends HttpApiSchema.Upgrade ? Upgraded
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -129,6 +133,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
     | _Events["DecodingServices"]
     | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
+  : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["DecodingServices"]
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
 
@@ -987,18 +992,11 @@ function streamToResponse(
 ) {
   const isWithHeaders = isWithHeadersStreamSuccess(successSchema)
   const streamSchema = isWithHeaders ? successSchema.schema : successSchema
-  const sse = HttpApiSchema.isStreamUint8Array(streamSchema)
-    ? undefined
-    : {
-      declaration: streamSchema,
-      decoder: makeSseDecoder(streamSchema, options)
-    }
+  const decodeBody = makeStreamBodyDecoder(streamSchema, options)
   const toStream: ResponseDecoder = (response, sseOptions) =>
     Effect.map(Effect.context<never>(), (context) =>
       Stream.provideContext(
-        sse === undefined ?
-          response.stream :
-          decodeSseStream(response.stream, sse.declaration, sse.decoder(sseOptions)),
+        decodeBody(response, sseOptions),
         context as Context.Context<unknown>
       ))
   if (!isWithHeaders) return toStream
@@ -1009,6 +1007,37 @@ function streamToResponse(
       decodeHeaders(response.headers),
       (headers) => Effect.map(toStream(response, sseOptions), (body) => HttpApiSchema.withHeaders({ body, headers }))
     )
+}
+
+function makeStreamBodyDecoder(
+  streamSchema: HttpApiSchema.StreamSchema,
+  options: SchemaAST.ParseOptions | undefined
+): (
+  response: HttpClientResponse.HttpClientResponse,
+  sseOptions: Sse.DecodeOptions | undefined
+) => Stream.Stream<unknown, unknown, unknown> {
+  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
+    return (response) => response.stream
+  }
+  if (HttpApiSchema.isStreamNdjson(streamSchema)) {
+    const decodeElement = Schema.decodeUnknownEffect(Schema.toCodecJson(streamSchema.schema), options)
+    const maxElementBytes = ByteSize.toNumberUnsafe(streamSchema.maxElementBytes)
+    return (response) =>
+      Ndjson.decode(response.stream, {
+        decodeElement,
+        maxElementBytes,
+        onElementTooLarge: () =>
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.DecodeError({
+              request: response.request,
+              response,
+              description: `NDJSON line exceeds maxElementBytes of ${maxElementBytes} bytes`
+            })
+          })
+      })
+  }
+  const decoder = makeSseDecoder(streamSchema, options)
+  return (response, sseOptions) => decodeSseStream(response.stream, streamSchema, decoder(sseOptions))
 }
 
 function makeSseDecoder(
