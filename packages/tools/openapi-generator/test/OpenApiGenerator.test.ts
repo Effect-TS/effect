@@ -608,6 +608,30 @@ function multipartSpec(schema: JsonSchema.JsonSchema, schemas: JsonSchema.Defini
   }
 }
 
+function sharedMultipartSpec(
+  schema: JsonSchema.JsonSchema,
+  schemas: JsonSchema.Definitions,
+  json: Record<string, unknown> = { schema }
+): OpenAPISpec {
+  const spec = multipartSpec(schema, schemas)
+  return {
+    ...spec,
+    paths: {
+      ...spec.paths,
+      "/json": {
+        post: {
+          operationId: "createJson",
+          parameters: [],
+          requestBody: { required: true, content: { "application/json": json } } as any,
+          responses: { "204": { description: "Created" } },
+          tags: ["Upload"],
+          security: []
+        }
+      }
+    }
+  }
+}
+
 const attachmentRef = { $ref: "#/components/schemas/Attachment" }
 
 function attachmentSpec(paths: Record<string, OpenAPISpecPathItem>): OpenAPISpec {
@@ -2481,6 +2505,89 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         ],
         [
           `__HttpApiMultipartFiles`
+        ]
+      ))
+
+    it.effect("keeps multipart copies of shared components nested in other shared components", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec({ $ref: "#/components/schemas/Outer" }, {
+          Outer: {
+            type: "object",
+            properties: { inner: { $ref: "#/components/schemas/Inner" } },
+            required: ["inner"],
+            additionalProperties: false
+          },
+          Inner: {
+            type: "object",
+            properties: { file: { type: "string", format: "binary" } },
+            required: ["file"],
+            additionalProperties: false
+          }
+        }),
+        [
+          `export type Inner = { readonly "file": string }`,
+          `export type Outer = { readonly "inner": Inner }`,
+          `export type InnerMultipart = { readonly "file": __HttpApiMultipartSingleFile }`,
+          `export type OuterMultipart = { readonly "inner": InnerMultipart }`,
+          `export const UploadRequestFormData = OuterMultipart`
+        ]
+      ))
+
+    it.effect("maps shared binary string components to Multipart file schemas", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec(
+          {
+            type: "object",
+            properties: {
+              file: { $ref: "#/components/schemas/BinaryData" },
+              files: { type: "array", items: { $ref: "#/components/schemas/BinaryData" } }
+            },
+            required: ["file", "files"],
+            additionalProperties: false
+          },
+          { BinaryData: { type: "string", format: "binary" } },
+          { schema: { $ref: "#/components/schemas/BinaryData" } }
+        ),
+        [
+          `export type BinaryData = string`,
+          `export const CreateJsonRequestJson = BinaryData`,
+          `export type UploadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`
+        ]
+      ))
+
+    it.effect("treats $ref inside media type examples as data", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec(
+          { type: "object", properties: { file: { type: "string", format: "binary" } } },
+          {},
+          {
+            schema: { type: "object", properties: { name: { type: "string" } } },
+            example: { $ref: "#/this/is/arbitrary-user-data" }
+          }
+        ),
+        [
+          `export type CreateJsonRequestJson = { readonly "name"?: string }`
+        ]
+      ))
+
+    it.effect("copies self-recursive components shared by JSON and multipart bodies", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec({ $ref: "#/components/schemas/Node" }, {
+          Node: {
+            type: "object",
+            properties: {
+              file: { type: "string", format: "binary" },
+              child: { $ref: "#/components/schemas/Node" }
+            },
+            required: ["file"],
+            additionalProperties: false
+          }
+        }),
+        [
+          `export type Node = { readonly "file": string, readonly "child"?: Node }`,
+          `export type NodeMultipart = { readonly "file": __HttpApiMultipartSingleFile, readonly "child"?: NodeMultipart }`,
+          `export const CreateJsonRequestJson = Node`,
+          `export const UploadRequestFormData = NodeMultipart`
         ]
       ))
 
