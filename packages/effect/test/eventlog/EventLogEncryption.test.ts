@@ -1,6 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit } from "effect"
-import type * as EventJournal from "effect/eventlog/EventJournal"
+import { Cause, Effect, Exit, Layer } from "effect"
+import * as Aead from "effect/crypto/Aead"
+import * as Digest from "effect/crypto/Digest"
+import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 
@@ -65,4 +68,39 @@ describe("EventLogEncryption", () => {
 
       assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("encrypts in the recorded format on the crypto services in context", () =>
+    Effect.gen(function*() {
+      const encryption = yield* EventLogEncryption.EventLogEncryption
+      const batches = yield* encryption.encrypt(identity, "default", [
+        new EventJournal.Entry({
+          id: entryId(0x10),
+          event: "UserCreated",
+          primaryKey: "user-1",
+          payload: Uint8Array.of(1, 2, 3)
+        }),
+        new EventJournal.Entry({
+          id: entryId(0x20),
+          event: "UserRenamed",
+          primaryKey: "user-1",
+          payload: Uint8Array.of(4, 5)
+        })
+      ])
+
+      assert.deepStrictEqual(batches, [{
+        entryIds: recordedBatch.entryIds,
+        iv: recordedBatch.iv,
+        encryptedBatch: recordedBatch.encryptedBatch
+      }])
+    }).pipe(
+      Effect.provide(EventLogEncryption.layer.pipe(
+        Layer.provide([Aead.layerWebCrypto, Digest.layerWebCrypto]),
+        // Supplies the recorded nonce, so the output is deterministic.
+        Layer.provideMerge(
+          Layer.mock(SecureRandom.SecureRandom)({
+            randomBytes: () => Effect.succeed(recordedBatch.iv)
+          })
+        )
+      ))
+    ))
 })
