@@ -500,28 +500,26 @@ class YamlParser {
     const explicitIndent = Number.parseInt(indicator.replace(/[^1-9]/g, ""), 10)
     const start = this.index
     let end = start
-    let contentIndent = Number.isNaN(explicitIndent) ? Number.POSITIVE_INFINITY : parentIndent + explicitIndent
+    let contentIndent = Number.isNaN(explicitIndent) ? undefined : parentIndent + explicitIndent
 
     while (end < this.lines.length) {
       const line = this.lines[end]
       if (line.raw.trim().length !== 0) {
         if (line.indent <= parentIndent) break
         // The first non-empty line sets the indentation; only a comment may be less indented, and it ends the scalar.
-        if (contentIndent === Number.POSITIVE_INFINITY) contentIndent = line.indent
-        else if (line.indent < contentIndent) {
+        contentIndent ??= line.indent
+        if (line.indent < contentIndent) {
           if (line.text.length === 0) break
           this.fail(line, `Expected block scalar indentation of ${contentIndent} spaces`)
         }
       }
       end++
     }
-    if (contentIndent === Number.POSITIVE_INFINITY) contentIndent = parentIndent + 1
+    contentIndent ??= parentIndent + 1
 
-    const content: Array<string> = []
-    for (let index = start; index < end; index++) {
-      const line = this.lines[index]
-      content.push(line.raw.trim().length === 0 ? "" : line.raw.slice(contentIndent))
-    }
+    const content = this.lines.slice(start, end).map((line) =>
+      line.raw.trim().length === 0 ? "" : line.raw.slice(contentIndent)
+    )
     this.index = end
 
     let contentEnd = content.length
