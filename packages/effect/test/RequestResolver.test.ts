@@ -32,6 +32,41 @@ describe("RequestResolver.fromEffect", () => {
       assert.deepStrictEqual(values, ["private-tenant", "missing"])
     }))
 
+  for (const merge of ["merge", "mergeAll"] as const) {
+    for (const position of ["first", "second"] as const) {
+      it.effect(`isolates callers when the current context is the ${position} operand of Context.${merge}`, () =>
+        Effect.gen(function*() {
+          class Wrapper extends Context.Service<Wrapper, string>()("test/RequestResolver/MergeWrapper") {}
+          const base = RequestResolver.fromEffect<GetTenant>(() =>
+            Effect.gen(function*() {
+              const tenant = yield* currentTenant
+              const wrapper = yield* Effect.map(Effect.serviceOption(Wrapper), Option.getOrElse(() => "missing"))
+              return `${tenant}:${wrapper}`
+            })
+          )
+          const batches: Array<number> = []
+          const resolver = RequestResolver.makeWith({
+            ...base,
+            runAll: (entries, key) => {
+              batches.push(entries.length)
+              return Effect.updateContext(base.runAll(entries, key), (context) => {
+                const wrapper = Context.make(Wrapper, "wrapper")
+                const [first, second] = position === "first" ? [context, wrapper] : [wrapper, context]
+                return merge === "merge" ? Context.merge(first, second) : Context.mergeAll(first, second)
+              })
+            }
+          })
+          const values = yield* Effect.all([
+            Effect.request(new GetTenant({ id: 1 }), resolver).pipe(Effect.provideService(Tenant, "private-tenant")),
+            Effect.request(new GetTenant({ id: 2 }), resolver)
+          ], { concurrency: "unbounded" })
+
+          assert.deepStrictEqual(batches, [2])
+          assert.deepStrictEqual(values, ["private-tenant:wrapper", "missing:wrapper"])
+        }))
+    }
+  }
+
   it.effect("preserves resolver services and span over caller spans without leaking caller services", () =>
     Effect.gen(function*() {
       class Wrapper extends Context.Service<Wrapper, string>()("test/RequestResolver/Wrapper") {}
