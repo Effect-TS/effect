@@ -265,7 +265,7 @@ export const makeMemory = (
       })
     })
 
-    const { acquirer, borrower, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, isTransaction, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: Effect.succeed(yield* makeConnection),
       semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
@@ -279,6 +279,7 @@ export const makeMemory = (
         compiler,
         transactionAcquirer,
         onCommitFailure,
+        isTransaction,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
