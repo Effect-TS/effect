@@ -1097,6 +1097,55 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
   })
 
+  it.effect("reports the largest mailbox size across entities sharing an id on different shards", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    return Effect.gen(function*() {
+      const release = yield* Deferred.make<void>()
+      const send = yield* makeMailboxMaxManager("MailboxMaxDuplicateId", Deferred.await(release))
+      yield* TestClock.adjust(1)
+      yield* send(ShardId.make("default", 1))
+      yield* send(ShardId.make("default", 1))
+      yield* send(ShardId.make("workflow", 1))
+      yield* TestClock.adjust(1)
+
+      // Let the entities drain when the test scope closes, even if the assertion fails
+      yield* Effect.sync(() =>
+        assert.deepStrictEqual(entityMailboxSizeMaxSeries(registry), [
+          [{ type: "MailboxMaxDuplicateId" }, { value: BigInt(2) }]
+        ])
+      ).pipe(Effect.ensuring(Deferred.succeed(release, undefined)))
+    }).pipe(Effect.provide(BlockedRebuildSharding), Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
+  it.effect("keeps reporting the largest mailbox size until entities drain on shutdown", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    return Effect.gen(function*() {
+      const release = yield* Deferred.make<void>()
+      const scope = yield* Scope.make()
+      const send = yield* makeMailboxMaxManager("MailboxMaxDrain", Deferred.await(release)).pipe(
+        Scope.provide(scope)
+      )
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(entityMailboxSizeMaxSeries(registry), [
+        [{ type: "MailboxMaxDrain" }, { value: BigInt(0) }]
+      ])
+
+      yield* send(ShardId.make("default", 1))
+      yield* TestClock.adjust(1)
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      // Stay within the termination timeout, so the entity is still draining
+      yield* TestClock.adjust(1)
+      yield* Effect.sync(() =>
+        assert.deepStrictEqual(entityMailboxSizeMaxSeries(registry), [
+          [{ type: "MailboxMaxDrain" }, { value: BigInt(1) }]
+        ])
+      ).pipe(Effect.ensuring(Deferred.succeed(release, undefined)))
+
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(entityMailboxSizeMaxSeries(registry), [])
+    }).pipe(Effect.provide(BlockedRebuildSharding), Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
   it.effect("durable messages are retried when mailbox is full", () =>
     Effect.gen(function*() {
       const requestedIds = yield* Queue.make<Array<Snowflake.Snowflake>>()
@@ -4202,6 +4251,42 @@ const BlockedRebuildSharding = Layer.mergeAll(
   Snowflake.layerGenerator,
   ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 1000 })
 ).pipe(Layer.provideMerge(UnregisteredSharding({})))
+
+const entityMailboxSizeMaxSeries = (registry: Metric.MetricRegistry) =>
+  Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
+    .filter((metric) => metric.id === ClusterMetrics.entityMailboxSizeMax.id)
+    .map((metric) => [metric.attributes, metric.state])
+
+// Owns every shard, so one entity id can be resident on several shards at once.
+// Returns a function sending a `run` request to entity "1" on a given shard.
+const makeMailboxMaxManager = Effect.fnUntraced(function*(type: string, handler: Effect.Effect<void>) {
+  const run = Rpc.make("run")
+  const entity = Entity.make(type, [run])
+  const sharding = yield* Sharding.Sharding
+  const manager = yield* EntityManager.make(entity, Effect.succeed(entity.of({ run: () => handler })), {
+    sharding: { ...sharding, hasShardId: () => true },
+    storage: MessageStorage.noop,
+    runnerAddress: RunnerAddress.make("localhost", 1234),
+    residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+    maxIdleTime: Infinity
+  })
+  return Effect.fnUntraced(function*(shardId: ShardId.ShardId) {
+    yield* manager.sendLocal(
+      new Message.IncomingRequestLocal<typeof run>({
+        envelope: Envelope.makeRequest<typeof run>({
+          requestId: yield* sharding.getSnowflake,
+          address: EntityAddress.make({ shardId, entityType: EntityType.make(type), entityId: EntityId.make("1") }),
+          tag: "run",
+          payload: undefined,
+          headers: Headers.empty
+        }),
+        lastSentReply: Option.none(),
+        annotations: Context.empty(),
+        respond: () => Effect.void
+      })
+    )
+  })
+})
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
 
