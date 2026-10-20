@@ -447,8 +447,8 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
           )
           return yield* compaction.commit(publicKey, storeId, begun.stageId, virtualSequences)
         })
-        // More than one 200-row chunk, each kept by g+1 as its own snapshot batch.
-        const entries = makeIds(201)
+        // More than one 500-row page, each kept by g+1 as its own snapshot batch.
+        const entries = makeIds(501)
         const originals = entries.map((id) => makeBatch(id))
         const written = yield* storage.write(publicKey, storeId, originals)
         yield* commit(
@@ -471,8 +471,8 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
 
         assert.deepStrictEqual(served(reappended), [
           ...entries.map((_, i) => ({ sequence: head + 1 + i, marker: snapshotMarker })),
-          { sequence: head + 202, marker: 2 },
-          { sequence: head + 204, marker: 1 }
+          { sequence: head + entries.length + 1, marker: 2 },
+          { sequence: head + entries.length + 3, marker: 1 }
         ])
         assert.deepStrictEqual(ids(reappended), ids([...originals, tail, makeBatch(after)]))
       }), { timeout: 60_000 })
