@@ -1,5 +1,6 @@
 import { assert, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Layer, Stream } from "effect"
+import * as Digest from "effect/crypto/Digest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import type { StoreId } from "effect/eventlog/EventLogMessage"
@@ -80,7 +81,7 @@ const competingWrites = Effect.fnUntraced(function*(
 
 export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unknown>) =>
   it.layer(
-    Layer.mergeAll(Reactivity.layer, EventLogEncryption.layerSubtle, layer),
+    Layer.mergeAll(Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto, layer),
     { timeout: "60 seconds", excludeTestServices: true }
   )(`SqlEventLogServerEncrypted storage (${name})`, (it) => {
     it.effect("stores a batch with more ids than one statement can bind", () =>
