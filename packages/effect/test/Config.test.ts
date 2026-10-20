@@ -1565,6 +1565,31 @@ Expected "Infinity" | "-Infinity" | "NaN"
       )
     })
 
+    it("matches record keys through the encoded key schema", async () => {
+      const provider = ConfigProvider.fromUnknown({ a: { 80: "http", 443: "https", 1.5: "skipped", abc: "skipped" } })
+
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.Int, Schema.String), "a"),
+        provider,
+        { 80: "http", 443: "https" }
+      )
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.Number, Schema.String), "a"),
+        provider,
+        { 80: "http", 443: "https", 1.5: "skipped" }
+      )
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.NumberFromString, Schema.String), "a"),
+        ConfigProvider.fromUnknown({ a: { 80: "http", 443: "https" } }),
+        { 80: "http", 443: "https" }
+      )
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.TemplateLiteral(["port-", Schema.Number]), Schema.String), "a"),
+        ConfigProvider.fromUnknown({ a: { "port-80": "http", other: "skipped" } }),
+        { "port-80": "http" }
+      )
+    })
+
     describe("built-in schema-backed constructors", () => {
       it("decodes supported boolean spellings", async () => {
         const provider = ConfigProvider.fromUnknown({

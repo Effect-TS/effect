@@ -706,7 +706,7 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
     seen.add(ast)
     switch (ast._tag) {
       case "Objects": {
-        const matchesIndex = ast.indexSignatures.map((is) => SchemaParser._is(is.parameter))
+        const indexParameters = ast.indexSignatures.map((is) => is.parameter)
         const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
           if (cursor.node?._tag !== "Record") {
             return undefined
@@ -716,9 +716,15 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
           for (const property of ast.propertySignatures) {
             if (typeof property.name === "string") keys.add(property.name)
           }
-          if (matchesIndex.length > 0) {
+          if (indexParameters.length > 0) {
+            const input: Record<string, undefined> = {}
             for (const key of node.keys) {
-              if (matchesIndex.some((matches) => matches(key))) keys.add(key)
+              InternalRecord.assignProperty(input, key, undefined)
+            }
+            for (const parameter of indexParameters) {
+              for (const key of SchemaAST.getIndexSignatureKeys(input, parameter)) {
+                if (typeof key === "string") keys.add(key)
+              }
             }
           }
           const out: Record<string, ConfigCursor> = {}
