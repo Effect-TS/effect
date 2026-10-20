@@ -1046,6 +1046,20 @@ describe("SchemaAST", () => {
   })
 
   describe("IndexSignature", () => {
+    it("rejects optionalKey values", () => {
+      throws(
+        () => new SchemaAST.IndexSignature(Schema.String.ast, Schema.optionalKey(Schema.Number).ast),
+        new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+      )
+    })
+
+    it("preserves the public prototype when converting to encoded", () => {
+      const ast = Schema.Record(Schema.String, Schema.NumberFromString).ast
+      const encoded = SchemaAST.toEncoded(ast) as SchemaAST.Objects
+
+      strictEqual(encoded.indexSignatures[0] instanceof SchemaAST.IndexSignature, true)
+    })
+
     it("accepts valid parameters on both type and encoded side", () => {
       doesNotThrow(() => new SchemaAST.IndexSignature(Schema.String.ast, Schema.Number.ast))
       doesNotThrow(() => new SchemaAST.IndexSignature(Schema.NumberFromString.ast, Schema.Number.ast))
