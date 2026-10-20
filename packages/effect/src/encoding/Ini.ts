@@ -77,7 +77,6 @@ const unquote = (input: string | undefined): string => {
       output += character
     }
   }
-  // A final backslash does not escape anything, so it is part of the value.
   if (escaped) {
     output += "\\"
   }
