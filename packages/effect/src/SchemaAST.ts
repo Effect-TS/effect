@@ -2737,8 +2737,7 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  * **Gotchas**
  *
  * Using `Schema.optionalKey` on the value type is not allowed for index
- * signatures (`Schema.Record` throws at construction); use `Schema.optional`
- * instead.
+ * signatures (throws at construction); use `Schema.optional` instead.
  *
  * @see {@link Objects}
  * @see {@link PropertySignature}
@@ -2751,14 +2750,9 @@ export interface IndexSignature {
   readonly type: AST
 }
 
-/**
- * Constructs a {@link IndexSignature}.
- *
- * @stability stable
- * @category constructors
- * @since 4.0.0
- */
-export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = class {
+// Skips the optional value check so derived ASTs (e.g. encoded sides where
+// `undefined` was transformed away) can be rebuilt from validated signatures
+class IndexSignatureBase {
   readonly parameter: IndexSignatureParameter
   readonly type: AST
 
@@ -2771,6 +2765,25 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
     }
     this.parameter = parameter
     this.type = type
+  }
+}
+
+/**
+ * Constructs a {@link IndexSignature}.
+ *
+ * @stability stable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = class extends IndexSignatureBase {
+  constructor(
+    parameter: AST,
+    type: AST
+  ) {
+    super(parameter, type)
+    if (isOptional(type) && !containsUndefined(type)) {
+      throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+    }
   }
 }
 
@@ -3178,7 +3191,7 @@ export const Objects: new(
       const t = recur(is.type)
       return p === is.parameter && t === is.type
         ? is
-        : new IndexSignature(p, t)
+        : new IndexSignatureBase(p, t)
     })
 
     return props === this.propertySignatures && indexes === this.indexSignatures && checks === this.checks &&
@@ -4623,9 +4636,6 @@ function parseParameter(ast: AST): {
 /** @internal */
 export function record(key: AST, value: AST): Objects {
   const { literals, parameters: indexSignatures } = parseParameter(key)
-  if (indexSignatures.length > 0 && isOptional(value) && !containsUndefined(value)) {
-    throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
-  }
   return new Objects(
     literals.map((literal) => new PropertySignature(literal, value)),
     indexSignatures.map((parameter) => new IndexSignature(parameter, value))
