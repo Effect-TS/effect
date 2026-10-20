@@ -364,10 +364,23 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
       endpoint: HttpApiEndpoint.Top,
       request: HttpClientRequest.HttpClientRequest,
       middlewareKeys: ReadonlyArray<string>,
-      index: number
+      index: number,
+      upload?: Upload
     ): Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> {
       if (index === -1) {
-        return httpClient.execute(request) as unknown as Effect.Effect<
+        const response = httpClient.execute(request)
+        return (upload === undefined ? response : response.pipe(
+          Effect.catchCause((cause) =>
+            Effect.failCause(
+              cause.reasons.every((reason) =>
+                  Cause.isFailReason(reason) && HttpClientError.isHttpClientError(reason.error) &&
+                  (reason.error.reason._tag === "TransportError" || reason.error.reason._tag === "EncodeError")
+                )
+                ? replaceWithUploadFailure(upload)(cause)
+                : cause
+            )
+          )
+        )) as unknown as Effect.Effect<
           HttpClientResponse.HttpClientResponse,
           HttpClientError.HttpClientError
         >
@@ -376,14 +389,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         | HttpApiMiddleware.HttpApiMiddlewareClient<any, any, any>
         | undefined
       if (middleware === undefined) {
-        return executeMiddleware(group, endpoint, request, middlewareKeys, index - 1)
+        return executeMiddleware(group, endpoint, request, middlewareKeys, index - 1, upload)
       }
       return middleware({
         endpoint,
         group,
         request,
         next(request) {
-          return executeMiddleware(group, endpoint, request, middlewareKeys, index - 1)
+          return executeMiddleware(group, endpoint, request, middlewareKeys, index - 1, upload)
         }
       }) as Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
     }
@@ -571,14 +584,18 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               endpoint,
               httpRequest,
               middlewareKeys,
-              middlewareKeys.length - 1
+              middlewareKeys.length - 1,
+              upload
             )
 
             if (request?.responseMode === "response-only") {
               return response
             }
 
-            const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(response, request?.sseOptions)
+            // Replace only failures of the body read, before status/schema
+            // decoding or user transformations can introduce independent errors.
+            const decodingResponse = upload === undefined ? response : uploadResponse(response, upload)
+            const decoded = (decodeMap[response.status] ?? decodeMap.orElse)(decodingResponse, request?.sseOptions)
             const value = yield* (options.transformResponse === undefined
               ? decoded
               : options.transformResponse(decoded))
@@ -1297,6 +1314,17 @@ function makeUploadBody(
 const replaceWithUploadFailure = (upload: Upload) => (cause: Cause.Cause<unknown>): Cause.Cause<unknown> =>
   upload.failure !== undefined && !Cause.hasInterruptsOnly(cause) ? upload.failure : cause
 
+function uploadResponse(
+  response: HttpClientResponse.HttpClientResponse,
+  upload: Upload
+): HttpClientResponse.HttpClientResponse {
+  const replace = replaceWithUploadFailure(upload)
+  return Object.create(response, {
+    arrayBuffer: { get: () => Effect.catchCause(response.arrayBuffer, (cause) => Effect.failCause(replace(cause))) },
+    stream: { get: () => Stream.catchCause(response.stream, (cause) => Stream.failCause(replace(cause))) }
+  })
+}
+
 // With a streaming response the upload runs until either side ends. Otherwise
 // it stops once the response has been decoded.
 function withUpload(
@@ -1304,13 +1332,8 @@ function withUpload(
   upload: Upload,
   responseMode: HttpApiEndpoint.ClientResponseMode | undefined
 ): Effect.Effect<unknown, unknown, unknown> {
-  const replace = replaceWithUploadFailure(upload)
   const stop = Deferred.succeed(upload.stop, undefined)
-  const bindStream = (stream: Stream.Stream<unknown, unknown, unknown>) =>
-    stream.pipe(
-      Stream.catchCause((cause) => Stream.failCause(replace(cause))),
-      Stream.ensuring(stop)
-    )
+  const bindStream = (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.ensuring(stream, stop)
   // Returns undefined when the value has no response stream
   const bindValue = (value: unknown): unknown => {
     if (Stream.isStream(value)) return bindStream(value)
@@ -1320,7 +1343,6 @@ function withUpload(
     return undefined
   }
   return exchange.pipe(
-    Effect.catchCause((cause) => Effect.failCause(replace(cause))),
     Effect.onError(() => stop),
     Effect.flatMap((result) => {
       if (responseMode === "response-only") return Effect.succeed(result)
