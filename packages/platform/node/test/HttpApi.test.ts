@@ -7,6 +7,7 @@ import {
   Cause,
   Context,
   DateTime,
+  Deferred,
   Effect,
   Equal,
   FileSystem,
@@ -1109,22 +1110,40 @@ describe("HttpApi", () => {
           })
         )
       )
-      const GroupLayer = HttpApiBuilder.group(Api, "group", (handlers) =>
-        handlers
-          .handle("failing", () => Effect.succeed(Stream.make({ text: "a" }).pipe(Stream.concat(Stream.die("boom")))))
-          .handle("oversized", () => Effect.succeed(Stream.make({ text: "a" }, { text: "x".repeat(32) }))))
-      const ApiLayer = HttpRouter.serve(
-        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
-        { disableListenLog: true, disableLogger: true }
-      ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+      const makeApiLayer = (firstItemReceived: Effect.Effect<void> = Effect.never) => {
+        const GroupLayer = HttpApiBuilder.group(Api, "group", (handlers) =>
+          handlers
+            .handle("failing", () =>
+              Effect.succeed(
+                Stream.make({ text: "a" }).pipe(
+                  Stream.concat(Stream.fromEffect(firstItemReceived.pipe(Effect.andThen(Effect.die("boom")))))
+                )
+              ))
+            .handle("oversized", () => Effect.succeed(Stream.make({ text: "a" }, { text: "x".repeat(32) }))))
+        return HttpRouter.serve(
+          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+          { disableListenLog: true, disableLogger: true }
+        ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+      }
 
       it.effect("a server failure mid-stream reaches the client as a body read error, not a clean end", () =>
         Effect.gen(function*() {
-          const client = yield* HttpApiClient.make(Api)
-          const stream = yield* client.group.failing()
-          const error = yield* stream.pipe(Stream.runDrain, Effect.flip)
-          assert.strictEqual(error._tag, "HttpClientError")
-        }).pipe(Effect.provide(ApiLayer)))
+          const firstItemReceived = yield* Deferred.make<void>()
+          yield* Effect.gen(function*() {
+            const client = yield* HttpApiClient.make(Api)
+            const stream = yield* client.group.failing()
+            const delivered: Array<typeof Item.Type> = []
+            const error = yield* stream.pipe(
+              Stream.runForEach((item) => {
+                delivered.push(item)
+                return Deferred.succeed(firstItemReceived, undefined)
+              }),
+              Effect.flip
+            )
+            assert.deepStrictEqual(delivered, [{ text: "a" }])
+            assert(error._tag === "HttpClientError" && error.reason._tag === "DecodeError")
+          }).pipe(Effect.provide(makeApiLayer(Deferred.await(firstItemReceived))))
+        }))
 
       it.effect("an element over maxElementBytes fails the client stream with a DecodeError", () =>
         Effect.gen(function*() {
@@ -1137,7 +1156,7 @@ describe("HttpApi", () => {
           )
           assert.deepStrictEqual(delivered, [{ text: "a" }])
           assert(error._tag === "HttpClientError" && error.reason._tag === "DecodeError")
-        }).pipe(Effect.provide(ApiLayer)))
+        }).pipe(Effect.provide(makeApiLayer())))
     })
   })
 

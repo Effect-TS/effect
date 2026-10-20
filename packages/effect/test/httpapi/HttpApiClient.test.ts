@@ -758,15 +758,14 @@ describe("HttpApiClient", () => {
           new Response(body(), { status: 200, headers: { "content-type": "application/x-ndjson" } })
         )
       })
-    const collectUntilFailure = <A, E>(stream: Stream.Stream<A, E>) =>
-      Effect.gen(function*() {
-        const delivered: Array<A> = []
-        const error = yield* stream.pipe(
-          Stream.runForEach((item) => Effect.sync(() => delivered.push(item))),
-          Effect.flip
-        )
-        return { delivered, error }
-      })
+    const collectUntilFailure = Effect.fnUntraced(function*<A, E>(stream: Stream.Stream<A, E>) {
+      const delivered: Array<A> = []
+      const error = yield* stream.pipe(
+        Stream.runForEach((item) => Effect.sync(() => delivered.push(item))),
+        Effect.flip
+      )
+      return { delivered, error }
+    })
 
     it.effect("decodes every line ending, skips empty lines and strips a leading BOM", () =>
       Effect.gen(function*() {
