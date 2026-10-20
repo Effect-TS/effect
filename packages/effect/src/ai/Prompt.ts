@@ -465,10 +465,8 @@ export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions
    */
   readonly fileName?: string | undefined
   /**
-   * File data as base64 string of data, a byte array, or a URL.
-   *
-   * Encoding produces JSON-safe tagged objects for byte arrays and URLs, so
-   * that they can be distinguished from string data after serialization.
+   * File data as a base64 string, a byte array, a URL, or the tagged JSON
+   * form that encoding produces for byte arrays and URLs.
    */
   readonly data:
     | string
@@ -504,18 +502,9 @@ export const FilePart: Schema.Struct<{
       Schema.String,
       Schema.decodeTo<
         Schema.Uint8Array,
-        Schema.Struct<{
-          readonly _tag: Schema.Literal<"Uint8Array">
-          readonly base64: Schema.Uint8ArrayFromBase64
-        }>
+        Schema.TaggedStruct<"Uint8Array", { readonly base64: Schema.Uint8ArrayFromBase64 }>
       >,
-      Schema.decodeTo<
-        Schema.URL,
-        Schema.Struct<{
-          readonly _tag: Schema.Literal<"URL">
-          readonly href: Schema.URLFromString
-        }>
-      >,
+      Schema.decodeTo<Schema.URL, Schema.TaggedStruct<"URL", { readonly href: Schema.URLFromString }>>,
       Schema.Uint8Array,
       Schema.URL
     ]
@@ -536,20 +525,14 @@ export const FilePart: Schema.Struct<{
   // while the raw members keep decoding byte arrays and URLs directly
   data: Schema.Union([
     Schema.String,
-    Schema.Struct({
-      _tag: Schema.Literal("Uint8Array"),
-      base64: Schema.Uint8ArrayFromBase64
-    }).pipe(Schema.decodeTo(
+    Schema.TaggedStruct("Uint8Array", { base64: Schema.Uint8ArrayFromBase64 }).pipe(Schema.decodeTo(
       Schema.Uint8Array,
       SchemaTransformation.transform({
         decode: ({ base64 }) => base64,
         encode: (base64) => ({ _tag: "Uint8Array", base64 }) as const
       })
     )),
-    Schema.Struct({
-      _tag: Schema.Literal("URL"),
-      href: Schema.URLFromString
-    }).pipe(Schema.decodeTo(
+    Schema.TaggedStruct("URL", { href: Schema.URLFromString }).pipe(Schema.decodeTo(
       Schema.URL,
       SchemaTransformation.transform({
         decode: ({ href }) => href,
