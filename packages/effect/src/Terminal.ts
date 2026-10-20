@@ -12,13 +12,14 @@
  */
 import type * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
-import type * as Effect from "./Effect.ts"
+import * as Effect from "./Effect.ts"
 import type * as Option from "./Option.ts"
 import type { PlatformError } from "./PlatformError.ts"
 import * as Predicate from "./Predicate.ts"
 import type * as Queue from "./Queue.ts"
 import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
+import * as Stream from "./Stream.ts"
 
 const TypeId = "~effect/Terminal"
 
@@ -43,6 +44,12 @@ export interface Terminal {
 
   readonly rows: Effect.Effect<number>
   /**
+   * Emits the current terminal dimensions followed by size changes. Dimensions
+   * unavailable on the platform are reported as zero. Slow subscribers may skip
+   * intermediate sizes.
+   */
+  readonly size: Stream.Stream<Size>
+  /**
    * Reads input events from the default standard input.
    */
   readonly readInput: Effect.Effect<Queue.Dequeue<UserInput, Cause.Done>, never, Scope.Scope>
@@ -54,6 +61,18 @@ export interface Terminal {
    * Displays text to the default standard output.
    */
   readonly display: (text: string) => Effect.Effect<void, PlatformError>
+}
+
+/**
+ * Terminal dimensions measured in character cells.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Size {
+  readonly columns: number
+  readonly rows: number
 }
 
 /**
@@ -184,13 +203,20 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * **Details**
  *
  * The implementation object supplies `columns`, `rows`, `readInput`,
- * `readLine`, and `display`; `make` attaches the `Terminal` service marker so
- * the result can be provided through the `Terminal` context service.
+ * `readLine`, and `display`, with an optional `size` stream. When `size` is
+ * omitted, each subscription reads the current `columns` and `rows`, emits
+ * that snapshot, and completes. `make` attaches the `Terminal` service marker
+ * so the result can be provided through the `Terminal` context service.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<Terminal, typeof TypeId>
-): Terminal => Terminal.of({ ...impl, [TypeId]: TypeId })
+  impl: Omit<Terminal, typeof TypeId | "size"> & { readonly size?: Stream.Stream<Size> | undefined }
+): Terminal =>
+  Terminal.of({
+    ...impl,
+    size: impl.size ?? Stream.fromEffect(Effect.all({ columns: impl.columns, rows: impl.rows })),
+    [TypeId]: TypeId
+  })

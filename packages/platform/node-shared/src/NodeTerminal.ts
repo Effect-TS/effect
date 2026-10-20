@@ -19,6 +19,7 @@ import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as RcRef from "effect/RcRef"
 import type * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import * as Terminal from "effect/Terminal"
 import * as readline from "node:readline"
 
@@ -90,6 +91,18 @@ export const make: (
 
     const columns = Effect.sync(() => stdout.columns ?? 0)
     const rows = Effect.sync(() => stdout.rows ?? 0)
+    const size = Stream.callback<Terminal.Size>((queue) =>
+      Effect.acquireRelease(
+        Effect.sync(() => {
+          const onResize = () => Queue.offerUnsafe(queue, { columns: stdout.columns ?? 0, rows: stdout.rows ?? 0 })
+          stdout.on("resize", onResize)
+          onResize()
+          return onResize
+        }),
+        (onResize) => Effect.sync(() => stdout.off("resize", onResize))
+      ), { bufferSize: 1, strategy: "sliding" }).pipe(
+        Stream.changesWith((a, b) => a.columns === b.columns && a.rows === b.rows)
+      )
 
     const readInput = Effect.gen(function*() {
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
@@ -157,6 +170,7 @@ export const make: (
       )
 
     return Terminal.make({
+      size,
       columns,
       rows,
       readInput,
