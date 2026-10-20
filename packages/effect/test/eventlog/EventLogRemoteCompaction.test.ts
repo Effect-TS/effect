@@ -20,7 +20,7 @@ const makeEntry = Effect.fnUntraced(function*(
   msecs: number,
   event: string,
   codec: Schema.Codec<any, Uint8Array<ArrayBuffer>>,
-  payload: { readonly id: string; readonly value: number; readonly note?: string }
+  payload: { readonly id: string; readonly [key: string]: unknown }
 ) {
   return new EventJournal.Entry({
     id: EventJournal.makeEntryIdUnsafe({ msecs }),
@@ -34,19 +34,20 @@ const makeEntry = Effect.fnUntraced(function*(
 // compactors `layer` registers.
 const run = (
   layer: Layer.Layer<never, never, EventLog.Registry>,
-  entries: ReadonlyArray<EventJournal.Entry>
+  entries: ReadonlyArray<EventJournal.Entry>,
+  chunkSize = 100
 ) =>
   Effect.gen(function*() {
     const registry = yield* EventLog.Registry
     return yield* RemoteCompaction.run({
       compactors: registry.compactors,
       entries: Stream.fromIterable(entries),
-      chunkSize: 100
+      chunkSize
     })
   }).pipe(Effect.provide(layer.pipe(Layer.provideMerge(EventLog.layerRegistry))))
 
 // Keeps the newest decoded entry of each primary key.
-const keepLatest = <Events extends Event.Any>(group: EventGroup.EventGroup<Events>) =>
+const keepLatest = <Events extends Event.Any>(group: EventGroup.EventGroup<Events>, options = { remote: true }) =>
   EventLog.groupBatchCompaction(group, ({ entries, forward }) => {
     const latest = new Map<string, EventJournal.Entry>()
     for (const { entry, event } of entries) {
@@ -55,7 +56,15 @@ const keepLatest = <Events extends Event.Any>(group: EventGroup.EventGroup<Event
       if (current === undefined || EventJournal.Entry.Order(current, entry) < 0) latest.set(entry.primaryKey, entry)
     }
     return Effect.forEach(latest.values(), forward, { discard: true })
-  }, { remote: true })
+  }, options)
+
+// An `ItemSet` group whose payload also has `fields`.
+const itemsWith = (fields: Record<string, Schema.Codec<any, any>>) =>
+  EventGroup.empty.add({
+    tag: "ItemSet",
+    primaryKey: (payload: { readonly id: string }) => payload.id,
+    payload: Schema.Struct({ ...Item.fields, ...fields })
+  })
 
 describe("RemoteCompaction", () => {
   it.effect("keeps the whole input of a call that outputs a new entry and carries on", () =>
@@ -91,6 +100,85 @@ describe("RemoteCompaction", () => {
       const newer = yield* makeEntry(3000, "ItemSet", Items.events.ItemSet.payloadSchemaBinary, { id: "a", value: 3 })
       const kept = yield* run(keepLatest(Items), [older, skewed, newer])
       assert.deepStrictEqual(kept, [skewed, newer])
+    }))
+
+  it.effect("keeps entries holding values the schema cannot read", () =>
+    Effect.gen(function*() {
+      const A = Schema.Struct({ _tag: Schema.Literal("A"), n: Schema.Number })
+      const B = Schema.Struct({ _tag: Schema.Literal("B"), text: Schema.String })
+      // Each case: reader fields, newer writer fields, and the newer value.
+      const cases: ReadonlyArray<
+        readonly [string, Record<string, Schema.Codec<any, any>>, Record<string, Schema.Codec<any, any>>, object]
+      > = [
+        [
+          "a record key no index signature matches",
+          { attrs: Schema.optionalKey(Schema.Record(Schema.TemplateLiteral(["keep", Schema.String]), Schema.String)) },
+          { attrs: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)) },
+          { attrs: { keep1: "a", drop: "b" } }
+        ],
+        [
+          "an unknown union member",
+          { event: Schema.optionalKey(Schema.Union([A])) },
+          { event: Schema.optionalKey(Schema.Union([A, B])) },
+          { event: { _tag: "B", text: "new" } }
+        ],
+        [
+          "an unknown field in an array of structs",
+          { rows: Schema.optionalKey(Schema.Array(Schema.Struct({ n: Schema.Number }))) },
+          { rows: Schema.optionalKey(Schema.Array(Schema.Struct({ n: Schema.Number, later: Schema.String }))) },
+          { rows: [{ n: 1, later: "x" }, { n: 2, later: "y" }] }
+        ],
+        [
+          "a field whose wire type changed",
+          { size: Schema.optionalKey(Schema.String) },
+          { size: Schema.optionalKey(Schema.Number) },
+          { size: 5 }
+        ]
+      ]
+      for (const [name, readerFields, writerFields, value] of cases) {
+        const Reader = itemsWith(readerFields)
+        const Writer = itemsWith(writerFields)
+        const older = yield* makeEntry(1000, "ItemSet", Reader.events.ItemSet.payloadSchemaBinary, {
+          id: "a",
+          value: 1
+        })
+        const skewed = yield* makeEntry(2000, "ItemSet", Writer.events.ItemSet.payloadSchemaBinary, {
+          id: "a",
+          value: 2,
+          ...value
+        })
+        const newer = yield* makeEntry(3000, "ItemSet", Reader.events.ItemSet.payloadSchemaBinary, {
+          id: "a",
+          value: 3
+        })
+        const kept = yield* run(keepLatest(Reader), [older, skewed, newer])
+        assert.deepStrictEqual(kept, [skewed, newer], name)
+      }
+    }))
+
+  it.effect("folds chunks into the entries kept so far", () =>
+    Effect.gen(function*() {
+      const item = (msecs: number, id: string) =>
+        makeEntry(msecs, "ItemSet", Items.events.ItemSet.payloadSchemaBinary, { id, value: msecs })
+      const note = (msecs: number) =>
+        makeEntry(msecs, "NoteSet", Notes.events.NoteSet.payloadSchemaBinary, { id: "a", value: msecs })
+      const entries = [
+        yield* item(3000, "a"),
+        // No compactor is registered for this event.
+        yield* makeEntry(1000, "Observed", Items.events.ItemSet.payloadSchemaBinary, { id: "a", value: 1 }),
+        // Older than the kept entry for "a", in a later chunk.
+        yield* item(1000, "a"),
+        yield* note(1000),
+        yield* note(2000),
+        yield* item(500, "b"),
+        yield* item(2000, "a")
+      ]
+      const kept = yield* run(
+        Layer.mergeAll(keepLatest(Items), keepLatest(Notes, { remote: false })),
+        entries,
+        2
+      )
+      assert.deepStrictEqual(kept, [entries[0], entries[1], entries[3], entries[4], entries[5]])
     }))
 
   it.effect("fails the run when the kept set does not survive another pass", () =>
