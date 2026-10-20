@@ -2795,7 +2795,7 @@ export const update: {
  * only while the registry still holds this registration. Calling it again, or
  * after another registration has replaced the series, does nothing.
  *
- * @stability experimental
+ * @stability unstable
  * @category models
  * @since 4.0.6
  */
@@ -2845,7 +2845,7 @@ export interface Registration {
  *
  * @see {@link removeUnsafe} for removing a series with an explicit `Context`
  *
- * @stability experimental
+ * @stability unstable
  * @category mutations
  * @since 4.0.6
  */
@@ -2863,7 +2863,7 @@ export const remove = <Input, State>(self: Metric<Input, State>): Effect<void> =
  *
  * @see {@link remove} for the `Effect` version
  *
- * @stability experimental
+ * @stability unstable
  * @category mutations
  * @since 4.0.6
  */
@@ -2918,7 +2918,7 @@ export const removeUnsafe = <Input, State>(self: Metric<Input, State>, context: 
  *
  * @see {@link remove} for removing a series updated with `update`
  *
- * @stability experimental
+ * @stability unstable
  * @category mutations
  * @since 4.0.6
  */
