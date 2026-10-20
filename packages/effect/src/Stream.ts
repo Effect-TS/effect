@@ -3009,8 +3009,14 @@ function* concatChannels<A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) 
       continue
     }
     const evaluate = suspendedStreams.get(stream)
-    if (evaluate === undefined) yield stream.channel
-    else yield Channel.fromEffectDone(Effect.sync(() => stack.push(evaluate() as Stream<A, E, R>)))
+    if (evaluate === undefined) {
+      yield stream.channel
+    } else {
+      // Evaluated within `next` so an interrupted pull cannot repeat it, then
+      // `Channel.empty` keeps a yield point between suspended parts
+      stack.push(evaluate() as Stream<A, E, R>)
+      yield Channel.empty
+    }
   }
 }
 
