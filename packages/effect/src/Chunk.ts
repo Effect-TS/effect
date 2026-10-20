@@ -521,6 +521,11 @@ export const reverse: <S extends Chunk<any>>(self: S) => Chunk.With<S, Chunk.Inf
  * Gets the value at an index in a `Chunk` safely, returning `None` when the index is
  * out of bounds.
  *
+ * **Details**
+ *
+ * The index is floored to an integer. `NaN` and other non-finite indexes are out
+ * of bounds. This never throws.
+ *
  * **Example** (Accessing elements safely)
  *
  * ```ts import.meta.vitest
@@ -545,8 +550,10 @@ export const get: {
   <A>(self: Chunk<A>, index: number): Option<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, index: number): Option<A> =>
-    index < 0 || index >= self.length ? O.none() : O.some(getUnsafe(self, index))
+  <A>(self: Chunk<A>, index: number): Option<A> => {
+    const i = Math.floor(index)
+    return Number.isFinite(i) && i >= 0 && i < self.length ? O.some(getUnsafe(self, i)) : O.none()
+  }
 )
 
 /**
@@ -624,7 +631,8 @@ export const fromNonEmptyArrayUnsafe = <A>(self: NonEmptyReadonlyArray<A>): NonE
  *
  * **Gotchas**
  *
- * Throws if the index is out of bounds.
+ * Throws if the index is out of bounds. The index is floored to an integer
+ * before that check, and a non-finite index throws.
  *
  * **Example** (Accessing elements unsafely)
  *
@@ -649,12 +657,15 @@ export const getUnsafe: {
   <A>(self: Chunk<A>, index: number): A
 } = dual(2, <A>(self: Chunk<A>, index: number): A => {
   const i = Math.floor(index)
+  if (!Number.isFinite(i)) {
+    throw new Error(`Index out of bounds: ${i}`)
+  }
   switch (self.backing._tag) {
     case "IEmpty": {
       throw new Error(`Index out of bounds: ${i}`)
     }
     case "ISingleton": {
-      if (index !== 0) {
+      if (i !== 0) {
         throw new Error(`Index out of bounds: ${i}`)
       }
       return self.backing.a

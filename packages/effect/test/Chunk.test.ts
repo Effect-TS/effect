@@ -229,6 +229,22 @@ describe("Chunk", () => {
         assertNone(pipe(chunk, Chunk.get(4)))
       })
     })
+
+    describe("Given a singleton Chunk and a fractional index in range", () => {
+      const chunk = Chunk.make(1)
+
+      it("should return the value at the floored index", () => {
+        assertSome(Chunk.get(chunk, 0.5), 1)
+      })
+    })
+
+    describe("Given a non-finite index", () => {
+      it("should return a None", () => {
+        assertNone(Chunk.get(Chunk.empty(), Number.NaN))
+        assertNone(Chunk.get(Chunk.make(1), Number.NaN))
+        assertNone(Chunk.get(Chunk.make(1, 2, 3), Number.NaN))
+      })
+    })
   })
 
   describe("getUnsafe", () => {
@@ -327,6 +343,22 @@ describe("Chunk", () => {
 
       it("should return the value", () => {
         strictEqual(pipe(chunk, Chunk.getUnsafe(index)), 1)
+      })
+    })
+
+    describe("Given a singleton Chunk and a fractional index in range", () => {
+      const chunk = Chunk.make(1)
+
+      it("should return the value at the floored index", () => {
+        strictEqual(Chunk.getUnsafe(chunk, 0.5), 1)
+      })
+    })
+
+    describe("Given a non-finite index", () => {
+      it("should throw", () => {
+        throws(() => Chunk.getUnsafe(Chunk.empty(), Number.NaN))
+        throws(() => Chunk.getUnsafe(Chunk.make(1), Number.NaN))
+        throws(() => Chunk.getUnsafe(Chunk.make(1, 2), Number.NaN))
       })
     })
 
