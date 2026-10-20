@@ -174,15 +174,21 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
+      const checkContinueHandler = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
+        pendingContinue.add(request)
+        handler(request, response)
+      }
       yield* Scope.addFinalizerExit(serveScope, () =>
         Effect.ensuring(
           preemptiveShutdown,
           Effect.sync(() => {
             server.off("request", handler)
+            server.off("checkContinue", checkContinueHandler)
             server.off("upgrade", upgradeHandler)
           })
         ))
       server.on("request", handler)
+      server.on("checkContinue", checkContinueHandler)
       server.on("upgrade", upgradeHandler)
     })
   })
@@ -336,6 +342,12 @@ const absoluteTarget = (url: string): URL | undefined => {
   }
 }
 
+// Requests dispatched by our checkContinue listener that have not been
+// acknowledged yet. Standalone makeHandler users leave acknowledgement to Node
+// or their own listener. Keyed by the Node request so modified requests share
+// the entry and body readers acknowledge only once.
+const pendingContinue = new WeakSet<Http.IncomingMessage>()
+
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
   protected override readonly destroyOnOverflow = false
   readonly [Request.TypeId]: typeof Request.TypeId
@@ -391,6 +403,26 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     return typeof this.response === "function" ? this.response() : this.response
   }
 
+  private writeContinue(): void {
+    if (pendingContinue.delete(this.source) && !this.resolvedResponse.headersSent) {
+      this.resolvedResponse.writeContinue()
+    }
+  }
+
+  override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
+    return Stream.suspend(() => {
+      this.writeContinue()
+      return super.stream
+    })
+  }
+
+  override get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
+    return Effect.suspend(() => {
+      this.writeContinue()
+      return super.arrayBuffer
+    })
+  }
+
   modify(
     options: {
       readonly url?: string | undefined
@@ -444,13 +476,19 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      NodeMultipart.persisted(this.source, this.source.headers)
+      Effect.suspend(() => {
+        this.writeContinue()
+        return NodeMultipart.persisted(this.source, this.source.headers)
+      })
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return NodeMultipart.stream(this.source, this.source.headers)
+    return Stream.suspend(() => {
+      this.writeContinue()
+      return NodeMultipart.stream(this.source, this.source.headers)
+    })
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
