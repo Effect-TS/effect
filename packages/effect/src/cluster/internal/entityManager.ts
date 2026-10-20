@@ -160,6 +160,22 @@ export const make = Effect.fnUntraced(function*<
   const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
+  // The series reads the mailbox size on snapshot, so delivery does no extra work.
+  const registerMailboxSize = (address: EntityAddress, activeRequests: EntityState["activeRequests"]) =>
+    Metric.registerUnsafe(
+      Metric.withAttributes(ClusterMetrics.entityMailboxSize, {
+        type: entity.type,
+        id: address.entityId,
+        shard: address.shardId.toString()
+      }),
+      context as Context.Context<never>,
+      {
+        get: () => ({ value: BigInt(activeRequests.size) }),
+        update: constVoid,
+        modify: constVoid
+      }
+    )
+
   // add internal rpcs
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
@@ -201,25 +217,16 @@ export const make = Effect.fnUntraced(function*<
       closing: false
     }
 
+    // Finalizers run in reverse, so the mailbox series is removed only after
+    // the drain finalizer below has finished.
+    let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
         releaseEntity(address)
+        mailboxSeries?.remove()
       })
     )
-
-    // Finalizers run in reverse, so the series is removed only after the drain
-    // finalizer below has finished.
-    let mailboxSeries: Metric.Registration | undefined
-    if (mailboxMetrics) {
-      yield* Scope.addFinalizer(
-        scope,
-        Effect.sync(() => {
-          mailboxSeries?.remove()
-          mailboxSeries = undefined
-        })
-      )
-    }
 
     // on shutdown, reset the storage for the entity
     yield* Scope.addFinalizerExit(
@@ -529,25 +536,6 @@ export const make = Effect.fnUntraced(function*<
 
     return state
   }, Effect.provideService(CurrentLogAnnotations, {})))
-
-  // The series reads the mailbox size on snapshot, so delivery does no extra work.
-  const metricContext = context as Context.Context<never>
-  const metricAttributes = Context.get(metricContext, Metric.CurrentMetricAttributes)
-  const registerMailboxSize = (address: EntityAddress, activeRequests: EntityState["activeRequests"]) =>
-    Metric.registerUnsafe(
-      ClusterMetrics.entityMailboxSize,
-      Context.add(metricContext, Metric.CurrentMetricAttributes, {
-        ...metricAttributes,
-        type: entity.type,
-        id: address.entityId,
-        shard: address.shardId.toString()
-      }),
-      {
-        get: () => ({ value: BigInt(activeRequests.size) }),
-        update: constVoid,
-        modify: constVoid
-      }
-    )
 
   const reaper = yield* EntityReaper
   const maxIdleTime = Duration.toMillis(

@@ -3,6 +3,7 @@ import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Context, Duration, Fiber, Layer, Metric, Ref, String } from "effect"
 import * as Effect from "effect/Effect"
+import { constVoid } from "effect/Function"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
 import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/observability"
 import { TestClock } from "effect/testing"
@@ -203,22 +204,15 @@ describe("Metric", () => {
     const context = Context.make(Metric.MetricRegistry, new Map())
     const gauge = Metric.gauge(nextId(), { bigint: true })
     const values = () => Metric.snapshotUnsafe(context).map((snapshot) => snapshot.state)
+    const callback = (get: () => Metric.GaugeState<bigint>) => ({ get, update: constVoid, modify: constVoid })
     let size = BigInt(1)
 
-    const first = Metric.registerUnsafe(gauge, context, {
-      get: () => ({ value: size }),
-      update: () => {},
-      modify: () => {}
-    })
+    const first = Metric.registerUnsafe(gauge, context, callback(() => ({ value: size })))
     assert.deepStrictEqual(values(), [{ value: BigInt(1) }])
     size = BigInt(2)
     assert.deepStrictEqual(values(), [{ value: BigInt(2) }])
 
-    const second = Metric.registerUnsafe(gauge, context, {
-      get: () => ({ value: BigInt(3) }),
-      update: () => {},
-      modify: () => {}
-    })
+    const second = Metric.registerUnsafe(gauge, context, callback(() => ({ value: BigInt(3) })))
     first.remove()
     assert.deepStrictEqual(values(), [{ value: BigInt(3) }])
     second.remove()

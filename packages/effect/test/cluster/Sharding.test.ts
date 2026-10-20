@@ -1026,7 +1026,7 @@ describe.concurrent("Sharding", () => {
     const registry: Metric.MetricRegistry = new Map()
     const mailboxSizes = () =>
       Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
-        .filter((metric) => metric.id === "effect_cluster_entity_mailbox_size")
+        .filter((metric) => metric.id === ClusterMetrics.entityMailboxSize.id)
         .map((metric) => [metric.attributes, metric.state])
         .sort((a, b) => JSON.stringify(a[0]) < JSON.stringify(b[0]) ? -1 : 1)
     return Effect.gen(function*() {
@@ -1067,7 +1067,7 @@ describe.concurrent("Sharding", () => {
 
       assert.strictEqual(yield* sharding.activeEntityCount, 1)
       const snapshots = Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
-      assert.isFalse(snapshots.some((metric) => metric.id === "effect_cluster_entity_mailbox_size"))
+      assert.isFalse(snapshots.some((metric) => metric.id === ClusterMetrics.entityMailboxSize.id))
     }).pipe(Effect.provide(TestSharding), Effect.provideService(Metric.MetricRegistry, registry))
   })
 
