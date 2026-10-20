@@ -226,9 +226,8 @@ export declare namespace SqlClient {
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /**
-     * Reports whether a transaction is open on the connection. When provided,
-     * ROLLBACK, ROLLBACK TO SAVEPOINT and RELEASE SAVEPOINT are skipped once the
-     * database has already ended the transaction itself.
+     * Reports whether a transaction is open. If false, rollback and savepoint
+     * cleanup are skipped.
      */
     readonly isTransaction?: ((conn: Connection.Connection) => boolean) | undefined
     readonly savepoint?: ((name: string) => string) | undefined
@@ -382,9 +381,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  *
  * Pass `isTransaction` when the driver can report whether a transaction is
  * open. Without it, ROLLBACK always runs and SQLite's "no transaction is
- * active" error counts as clean. It is also returned for `SqlClient.make`, which
- * then skips transaction cleanup after SQLite rolls back the whole transaction
- * itself, for example after `INSERT OR ROLLBACK` or `RAISE(ROLLBACK, ...)`.
+ * active" error counts as clean.
  *
  * @stability unstable
  * @category constructors
