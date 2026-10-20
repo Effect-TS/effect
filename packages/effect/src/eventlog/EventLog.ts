@@ -22,10 +22,11 @@
  * minutes. It reads the input from the server, takes entries the journal
  * already holds from the journal and fetches the rest, runs the opted-in
  * compactors over it, and uploads the entries they keep. A device runs one
- * compaction per remote and store at a time: browsers share the lock between
- * tabs with Web Locks, and elsewhere it is shared by `EventLog`s using the
- * same journal. `EventLog.compact` runs one now, for example from a worker
- * holding the identity.
+ * compaction per remote and store at a time. Where Web Locks exist, as in
+ * browsers and Node, the lock is shared within one Web Locks scope, such as a
+ * browser origin or a process. Elsewhere it is shared only by `EventLog`s
+ * using the same journal object. `EventLog.compact` runs one now, for example
+ * from a worker holding the identity.
  *
  * An operator can roll a bad snapshot back on the server. The status poll
  * reports a new rollback epoch, and every client that polls, opted out or not,
@@ -51,6 +52,12 @@
  *   the server only compacts data older than its lag.
  * - A client that stops partway through a run holds the server's busy claim
  *   until its stage expires.
+ * - The device lock doesn't reach past one Web Locks scope, or past one
+ *   journal object where Web Locks don't exist. Processes sharing a SQL
+ *   journal, or separate journal objects without Web Locks, can start
+ *   compaction runs at the same time. The server's busy claim usually stops
+ *   the second one, and the commit compare-and-swap keeps snapshots correct
+ *   either way, so the cost is duplicate work, not a wrong snapshot.
  *
  * @stability unstable
  * @since 4.0.0
