@@ -716,17 +716,15 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     }
     return found
   }
-  // A stage whose input can still be read.
+  // Call within the same execution-time block that captures the input rows.
   const findInputStage = (
     publicKey: string,
     storeId: StoreId,
-    stageId: string
-  ): Effect.Effect<{ readonly stage: MemoryStage; readonly journal: MemoryJournal }, CompactionNotFound> => {
-    const found = findStage(publicKey, storeId, stageId)
-    if (found === undefined || found.stage.state !== "open" || found.stage.pinned.pruneStartedAt !== undefined) {
-      return Effect.fail(new CompactionNotFound({ stageId }))
-    }
-    return Effect.succeed(found)
+    stageId: string,
+    now: number
+  ) => {
+    const found = findOpenStage(publicKey, storeId, stageId, now)
+    return found?.stage.pinned.pruneStartedAt === undefined ? found : undefined
   }
 
   const compaction: StorageCompaction = {
@@ -784,20 +782,26 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         }
       }),
     inputHeaders: (publicKey, storeId, stageId) =>
-      findInputStage(publicKey, storeId, stageId).pipe(
-        Effect.map(({ journal, stage }) =>
-          Stream.fromArray(
+      Clock.currentTimeMillis.pipe(
+        Effect.flatMap((now) => {
+          const found = findInputStage(publicKey, storeId, stageId, now)
+          if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
+          const { journal, stage } = found
+          return Effect.succeed(Stream.fromArray(
             inputBatches(journal, stage).map((batch): CompactionBatchHeader => ({
               sequence: batch.sequence,
               entryIds: batch.entryIds
             }))
-          )
-        ),
+          ))
+        }),
         Stream.unwrap
       ),
     fetch: (publicKey, storeId, stageId, sequences) =>
-      findInputStage(publicKey, storeId, stageId).pipe(
-        Effect.map(({ journal, stage }) => {
+      Clock.currentTimeMillis.pipe(
+        Effect.flatMap((now) => {
+          const found = findInputStage(publicKey, storeId, stageId, now)
+          if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
+          const { journal, stage } = found
           const fetched: Array<EncryptedRemoteBatch> = []
           for (const sequence of sequences) {
             const batch = sequence <= stage.pinned.base
@@ -807,7 +811,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
               : undefined
             if (batch !== undefined) fetched.push(batch)
           }
-          return Stream.fromArray(fetched)
+          return Effect.succeed(Stream.fromArray(fetched))
         }),
         Stream.unwrap
       ),
@@ -842,9 +846,9 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         return Effect.succeed("Stored" as const)
       }),
     stagedHeaders: (publicKey, storeId, stageId) =>
-      Effect.suspend(() => {
-        const found = findStage(publicKey, storeId, stageId)
-        if (found === undefined || found.stage.state !== "open") {
+      Effect.flatMap(Clock.currentTimeMillis, (now) => {
+        const found = findOpenStage(publicKey, storeId, stageId, now)
+        if (found === undefined) {
           return Effect.fail(new CompactionNotFound({ stageId }))
         }
         return Effect.succeed(Stream.fromArray(
