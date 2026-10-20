@@ -19,7 +19,7 @@ SqlEventLogServerEncryptedStorageTest.suite("mssql", MssqlContainer.layerClient)
 
 CompactionTest.suite(
   "mssql",
-  (options) => SqlEventLogServerEncrypted.layerStorage(options).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+  (options) => SqlEventLogServerEncrypted.layerStorage(options).pipe(Layer.provide(Digest.layerWebCrypto)),
   MssqlContainer.layerClient
 )
 

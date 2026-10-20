@@ -148,11 +148,12 @@ const makeIds = (count: number) => Array.from({ length: count }, () => EventJour
 // Every compaction test gets its own tables, the global ones included, so
 // stores and sweeps from other tests stay out of its way.
 const makeNamespace = Effect.fnUntraced(function*(compaction?: EventLogServerEncrypted.CompactionOptions) {
-  const encryption = yield* EventLogEncryption.EventLogEncryption
+  const digest = yield* Digest.Digest
   const publicKey = crypto.randomUUID()
   const namespace = `compaction_${++nextNamespace}`
   const entryTablePrefix = `${namespace}_events`
-  const scopeHash = (yield* encryption.sha256String(new TextEncoder().encode(`${publicKey}/${storeId}`))).slice(0, 16)
+  const scopeHash = (yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(`${publicKey}/${storeId}`)))
+    .slice(0, 16)
   return {
     publicKey,
     options: { entryTablePrefix, remoteIdTable: `${namespace}_remote_id`, compaction },
@@ -308,6 +309,7 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
     Layer.mergeAll(
       Reactivity.layer,
       EventLogEncryption.layerSubtle,
+      Digest.layerWebCrypto,
       // Only the SQL client uses real time; storage still observes TestClock.
       Layer.provide(layer, Layer.succeed(Clock.Clock)(Clock.Clock.defaultValue()))
     ),

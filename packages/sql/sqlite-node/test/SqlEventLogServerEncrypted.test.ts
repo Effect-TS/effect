@@ -3,8 +3,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Queue, Redacted, Stream } from "effect"
 import * as CompactionTest from "effect-test/eventlog/EventLogServerEncryptedCompactionTest"
 import * as EncryptedTest from "effect-test/eventlog/EventLogServerEncryptedTest"
-import * as Digest from "effect/crypto/Digest"
 import * as SqlEventLogServerEncryptedStorageTest from "effect-test/eventlog/SqlEventLogServerEncryptedStorageTest"
+import * as Digest from "effect/crypto/Digest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -30,7 +30,7 @@ EncryptedTest.suite(
 
 CompactionTest.suite(
   "SQLite",
-  (options) => SqlEventLogServer.layerStorage(options).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+  (options) => SqlEventLogServer.layerStorage(options).pipe(Layer.provide(Digest.layerWebCrypto)),
   SqliteClient.layer({ filename: ":memory:" })
 )
 

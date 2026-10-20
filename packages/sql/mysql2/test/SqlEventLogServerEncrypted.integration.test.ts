@@ -19,7 +19,7 @@ SqlEventLogServerEncryptedStorageTest.suite("mysql2", MysqlContainer.layerClient
 
 CompactionTest.suite(
   "mysql2",
-  (options) => SqlEventLogServerEncrypted.layerStorage(options).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+  (options) => SqlEventLogServerEncrypted.layerStorage(options).pipe(Layer.provide(Digest.layerWebCrypto)),
   MysqlContainer.layerClient
 )
 

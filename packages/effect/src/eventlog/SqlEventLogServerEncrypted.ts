@@ -15,9 +15,10 @@ import * as Arr from "../Array.ts"
 import type { NonEmptyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
+import * as Digest from "../crypto/Digest.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PubSub from "../PubSub.ts"
@@ -31,7 +32,7 @@ import * as SqlError from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import * as Stream from "../Stream.ts"
 import { type EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.ts"
-import * as EventLogEncryption from "./EventLogEncryption.ts"
+import type * as EventLogEncryption from "./EventLogEncryption.ts"
 import type { StoreId, WriteAck } from "./EventLogMessage.ts"
 import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
 
@@ -73,10 +74,10 @@ export const makeStorage = (options?: {
 }): Effect.Effect<
   EventLogServerEncrypted.Storage["Service"],
   SqlError.SqlError,
-  SqlClient.SqlClient | EventLogEncryption.EventLogEncryption | Scope.Scope
+  SqlClient.SqlClient | Digest.Digest | Scope.Scope
 > =>
   Effect.gen(function*() {
-    const encryptions = yield* EventLogEncryption.EventLogEncryption
+    const digest = yield* Digest.Digest
     const sql = (yield* SqlClient.SqlClient).withoutTransforms()
     const config = yield* EventLogServerEncrypted.makeCompactionConfig(options?.compaction)
     const graceMillis = Duration.toMillis(config.grace)
@@ -283,7 +284,7 @@ export const makeStorage = (options?: {
     type ScopeTables = ReturnType<typeof scopeTables>
 
     const lookup = Effect.fnUntraced(function*(scopeKey: string) {
-      const scope = (yield* encryptions.sha256String(new TextEncoder().encode(scopeKey))).slice(0, 16)
+      const scope = (yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(scopeKey))).slice(0, 16)
       const table = `${tablePrefix}_${scope}`
       const tables = scopeTables(scope)
       const { idsTableSql, tableSql } = tables
@@ -462,7 +463,7 @@ export const makeStorage = (options?: {
       const now = yield* Clock.currentTimeMillis
       yield* sql.withTransaction(Effect.gen(function*() {
         const lastSequence = yield* maxLastSequence(tables.tableSql)
-        const originals = Uuid.v4String()
+        const originals = SecureRandom.uuidV4Unsafe()
         const inserted = yield* insertIgnore(storesSql, {
           scope,
           next_sequence: lastSequence + 1,
@@ -707,7 +708,7 @@ export const makeStorage = (options?: {
           yield* closeStage(scope, open.id)
         }
       }
-      const stageId = Uuid.v4String()
+      const stageId = SecureRandom.uuidV4Unsafe()
       yield* sql`INSERT INTO ${stagesSql} ${
         sql.insert({
           id: stageId,
@@ -883,7 +884,7 @@ export const makeStorage = (options?: {
           UPDATE ${snapshotTableSql} SET sequence = ${sequence}, last_sequence = ${lastSequence}
           WHERE batch_set = ${stageId} AND batch_position = ${Number(staged[i].batch_position)}`
       }
-      const activationId = Uuid.v4String()
+      const activationId = SecureRandom.uuidV4Unsafe()
       yield* insertActivation(scope, {
         id: activationId,
         batch_set: stageId,
@@ -939,7 +940,7 @@ export const makeStorage = (options?: {
       if (target.pruneStartedAt !== undefined) {
         return { _tag: "Refused", reason: "PruneStarted" } as const
       }
-      const activationId = Uuid.v4String()
+      const activationId = SecureRandom.uuidV4Unsafe()
       yield* insertActivation(scope, {
         id: activationId,
         batch_set: target.batchSet ?? null,
@@ -1196,7 +1197,7 @@ export const makeStorage = (options?: {
     // kept. Deletes are idempotent, so a later sweep finishes one that died.
     const pruneStore = Effect.fnUntraced(function*(scope: string, now: number) {
       const { snapshotTableSql, tableSql } = scopeTables(scope)
-      const owner = Uuid.v4String()
+      const owner = SecureRandom.uuidV4Unsafe()
       // Claim the store and mark what this prune removes before deleting anything.
       const plan = yield* sql.withTransaction(Effect.gen(function*() {
         const store = yield* lockStore(scope)
@@ -1648,12 +1649,12 @@ export const layerStorage = (options?: {
 }): Layer.Layer<
   EventLogServerEncrypted.Storage,
   SqlError.SqlError,
-  SqlClient.SqlClient | EventLogEncryption.EventLogEncryption
+  SqlClient.SqlClient | Digest.Digest
 > => Layer.effect(EventLogServerEncrypted.Storage)(makeStorage(options))
 
 /**
  * Provides SQL-backed encrypted server `Storage` and supplies the default Web
- * Crypto `EventLogEncryption` layer.
+ * Crypto `Digest` layer.
  *
  * @stability unstable
  * @category layers
@@ -1665,7 +1666,7 @@ export const layerStorageSubtle = (options?: {
   readonly compaction?: EventLogServerEncrypted.CompactionOptions | undefined
 }): Layer.Layer<EventLogServerEncrypted.Storage, SqlError.SqlError, SqlClient.SqlClient> =>
   layerStorage(options).pipe(
-    Layer.provide(EventLogEncryption.layerSubtle)
+    Layer.provide(Digest.layerWebCrypto)
   )
 
 const makeEncryptedScopeKey = (

@@ -15,6 +15,7 @@ import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -898,7 +899,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     let journal = journals.get(scopeKey)
     if (journal) return journal
     const originals: MemoryActivation = {
-      id: Uuid.v4String(),
+      id: SecureRandom.uuidV4Unsafe(),
       set: undefined,
       base: -1,
       keptCount: undefined,
@@ -1061,7 +1062,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           closeStage(journal, open)
         }
         const stage: MemoryStage = {
-          id: Uuid.v4String(),
+          id: SecureRandom.uuidV4Unsafe(),
           scopeKey,
           pinned: journal.active,
           through,
@@ -1171,7 +1172,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         }
         const keptCount = staged.reduce((count, { batch }) => count + batch.entryIds.length, 0)
         const activation: MemoryActivation = {
-          id: Uuid.v4String(),
+          id: SecureRandom.uuidV4Unsafe(),
           set: {
             batches: staged.map(({ batch }, i): EncryptedRemoteBatch => ({ ...batch, sequence: virtualSequences[i] }))
           },
@@ -1245,7 +1246,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         }
         const activation: MemoryActivation = {
           ...target,
-          id: Uuid.v4String(),
+          id: SecureRandom.uuidV4Unsafe(),
           supersededAt: undefined,
           pruneStartedAt: undefined
         }

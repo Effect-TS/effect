@@ -19,7 +19,7 @@ SqlEventLogServerEncryptedStorageTest.suite("pg", PgContainer.layerClient)
 
 CompactionTest.suite(
   "pg",
-  (options) => SqlEventLogServerEncrypted.layerStorage(options).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+  (options) => SqlEventLogServerEncrypted.layerStorage(options).pipe(Layer.provide(Digest.layerWebCrypto)),
   PgContainer.layerClient
 )
 
