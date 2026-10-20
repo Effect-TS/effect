@@ -389,7 +389,8 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  * Pass `isTransaction` when the driver can report whether a transaction is
  * open. Without it, ROLLBACK always runs and SQLite's "no transaction is
  * active" error counts as clean. Rollback cleanup also accepts "no such
- * savepoint".
+ * savepoint", but only once a probing `BEGIN` succeeds, showing that the
+ * transaction has ended.
  *
  * @stability unstable
  * @category constructors
@@ -427,6 +428,20 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     )
   }
 
+  const transactionEnded = (conn: C, error: SqlError): Effect.Effect<boolean> => {
+    if (isTransaction) return Effect.succeed(!isTransaction(conn))
+    const message = errorMessage(error)
+    if (noTransactionError.test(message)) return Effect.succeed(true)
+    if (!noSavepointError.test(message)) return Effect.succeed(false)
+    // A missing savepoint alone doesn't mean the transaction ended, but BEGIN
+    // only succeeds outside one.
+    return conn.executeUnprepared("BEGIN", [], undefined).pipe(
+      Effect.andThen(conn.executeUnprepared("ROLLBACK", [], undefined)),
+      Effect.as(true),
+      Effect.orElseSucceed(() => false)
+    )
+  }
+
   const available = Effect.flatMap(options.connection, (conn) => {
     if (poisoned === undefined) return Effect.succeed(conn)
     return Effect.matchCauseEffect(rollback(conn), {
@@ -452,14 +467,12 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     transactionAcquirer: lease,
     onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause))),
     onRollbackFailure: (conn, error) =>
-      (isTransaction ? !isTransaction(conn as C) : noTransactionOrSavepointError.test(errorMessage(error)))
-        ? Effect.void
-        : Effect.fail(error)
+      Effect.flatMap(transactionEnded(conn as C, error), (ended) => ended ? Effect.void : Effect.fail(error))
   }
 }
 
 const noTransactionError = /no transaction is active/i
-const noTransactionOrSavepointError = /no transaction is active|no such savepoint/i
+const noSavepointError = /no such savepoint/i
 
 const errorMessage = (error: SqlError): string => {
   const cause = error.reason.cause
