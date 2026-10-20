@@ -3465,46 +3465,23 @@ export const zipWith: {
   right: Stream<AR, ER, RR>,
   f: (left: AL, right: AR) => A
 ): Stream<A, EL | ER, RL | RR> =>
-  fromChannel(Channel.fromTransformBracket(Effect.fnUntraced(function*(_, scope) {
-    const pullLeft = yield* Channel.toPullScoped(left.channel, scope)
-    const pullRight = yield* Channel.toPullScoped(right.channel, scope)
-    const pullBoth = Effect.gen(function*() {
-      const fiberLeft = yield* Effect.forkIn(pullLeft, scope)
-      const fiberRight = yield* Effect.forkIn(pullRight, scope)
-      return (yield* Fiber.joinAll([fiberLeft, fiberRight])) as [
-        Arr.NonEmptyReadonlyArray<AL>,
-        Arr.NonEmptyReadonlyArray<AR>
-      ]
-    })
-
-    let leftArray: Arr.NonEmptyReadonlyArray<AL> | undefined
-    let rightArray: Arr.NonEmptyReadonlyArray<AR> | undefined
+  suspend(() => {
+    // Leftovers are the original chunks; the cursors record how much of each
+    // has been consumed, so no suffix is copied on every pull.
     let leftIndex = 0
     let rightIndex = 0
-
-    const pull: Effect.Effect<
-      Arr.NonEmptyReadonlyArray<A>,
-      EL | ER | Cause.Done,
-      RL | RR
-    > = Effect.gen(function*() {
-      const [leftArr, rightArr] = leftArray
-        ? [leftArray, rightArray ?? (yield* pullRight)]
-        : rightArray
-        ? [yield* pullLeft, rightArray]
-        : yield* pullBoth
+    return zipWithArray(left, right, (leftArr, rightArr) => {
       const length = Math.min(leftArr.length - leftIndex, rightArr.length - rightIndex)
       const output = Arr.makeBy(length, (i) => f(leftArr[leftIndex + i], rightArr[rightIndex + i]))
       leftIndex += length
       rightIndex += length
-      leftArray = leftIndex < leftArr.length ? leftArr : undefined
-      rightArray = rightIndex < rightArr.length ? rightArr : undefined
-      if (leftArray === undefined) leftIndex = 0
-      if (rightArray === undefined) rightIndex = 0
-      return output
+      const leftDone = leftIndex === leftArr.length
+      const rightDone = rightIndex === rightArr.length
+      if (leftDone) leftIndex = 0
+      if (rightDone) rightIndex = 0
+      return [output, leftDone ? [] : leftArr, rightDone ? [] : rightArr]
     })
-
-    return pull
-  }))))
+  }))
 
 /**
  * Zips two streams by applying a function to non-empty arrays of elements.
