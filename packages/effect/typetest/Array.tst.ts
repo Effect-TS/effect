@@ -841,11 +841,13 @@ describe("Array", () => {
   })
 
   it("unionWith", () => {
+    expect(Array.unionWith).type.not.toBeCallableWith(strings, numbers, (a: string, b: number) => a.length === b)
+
     // Array + Array
     expect(
       Array.unionWith(strings, numbers, (a, b) => {
-        expect(a).type.toBe<string>()
-        expect(b).type.toBe<number>()
+        expect(a).type.toBe<string | number>()
+        expect(b).type.toBe<string | number>()
         return true
       })
     ).type.toBe<Array<string | number>>()
@@ -853,8 +855,8 @@ describe("Array", () => {
       pipe(
         strings,
         Array.unionWith(numbers, (a, b) => {
-          expect(a).type.toBe<string>()
-          expect(b).type.toBe<number>()
+          expect(a).type.toBe<string | number>()
+          expect(b).type.toBe<string | number>()
           return true
         })
       )
@@ -863,8 +865,8 @@ describe("Array", () => {
     // NonEmptyArray + Array
     expect(
       Array.unionWith(nonEmptyStrings, numbers, (a, b) => {
-        expect(a).type.toBe<string>()
-        expect(b).type.toBe<number>()
+        expect(a).type.toBe<string | number>()
+        expect(b).type.toBe<string | number>()
         return true
       })
     ).type.toBe<[string | number, ...Array<string | number>]>()
@@ -872,8 +874,8 @@ describe("Array", () => {
       pipe(
         nonEmptyStrings,
         Array.unionWith(numbers, (a, b) => {
-          expect(a).type.toBe<string>()
-          expect(b).type.toBe<number>()
+          expect(a).type.toBe<string | number>()
+          expect(b).type.toBe<string | number>()
           return true
         })
       )
@@ -882,8 +884,8 @@ describe("Array", () => {
     // Array + NonEmptyArray
     expect(
       Array.unionWith(strings, nonEmptyNumbers, (a, b) => {
-        expect(a).type.toBe<string>()
-        expect(b).type.toBe<number>()
+        expect(a).type.toBe<string | number>()
+        expect(b).type.toBe<string | number>()
         return true
       })
     ).type.toBe<[string | number, ...Array<string | number>]>()
@@ -891,8 +893,8 @@ describe("Array", () => {
       pipe(
         strings,
         Array.unionWith(nonEmptyNumbers, (a, b) => {
-          expect(a).type.toBe<string>()
-          expect(b).type.toBe<number>()
+          expect(a).type.toBe<string | number>()
+          expect(b).type.toBe<string | number>()
           return true
         })
       )
@@ -901,8 +903,8 @@ describe("Array", () => {
     // NonEmptyArray + NonEmptyArray
     expect(
       Array.unionWith(nonEmptyStrings, nonEmptyNumbers, (a, b) => {
-        expect(a).type.toBe<string>()
-        expect(b).type.toBe<number>()
+        expect(a).type.toBe<string | number>()
+        expect(b).type.toBe<string | number>()
         return true
       })
     ).type.toBe<[string | number, ...Array<string | number>]>()
@@ -910,8 +912,8 @@ describe("Array", () => {
       pipe(
         nonEmptyStrings,
         Array.unionWith(nonEmptyNumbers, (a, b) => {
-          expect(a).type.toBe<string>()
-          expect(b).type.toBe<number>()
+          expect(a).type.toBe<string | number>()
+          expect(b).type.toBe<string | number>()
           return true
         })
       )
