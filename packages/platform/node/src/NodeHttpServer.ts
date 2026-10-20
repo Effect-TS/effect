@@ -179,10 +179,12 @@ export const make = Effect.fnUntraced(function*(
           preemptiveShutdown,
           Effect.sync(() => {
             server.off("request", handler)
+            server.off("checkContinue", handler)
             server.off("upgrade", upgradeHandler)
           })
         ))
       server.on("request", handler)
+      server.on("checkContinue", handler)
       server.on("upgrade", upgradeHandler)
     })
   })
@@ -344,6 +346,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
+  private readonly continueState: { sent: boolean }
 
   constructor(
     source: Http.IncomingMessage,
@@ -351,7 +354,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
     url?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    continueState = { sent: false }
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -363,6 +367,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       }), remoteAddressOverride)
     this[Request.TypeId] = Request.TypeId
     this.response = response
+    this.continueState = continueState
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {
       const target = absoluteTarget(source.url!)
@@ -391,6 +396,33 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     return typeof this.response === "function" ? this.response() : this.response
   }
 
+  private writeContinue(): void {
+    if (this.continueState.sent || !/\b100-continue\b/i.test(this.source.headers.expect ?? "")) {
+      return
+    }
+    const response = this.resolvedResponse
+    if (response.headersSent || response.writableEnded || response.destroyed) {
+      return
+    }
+    // Modified requests share this state, so body readers acknowledge only once.
+    this.continueState.sent = true
+    response.writeContinue()
+  }
+
+  override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
+    return Stream.suspend(() => {
+      this.writeContinue()
+      return super.stream
+    })
+  }
+
+  override get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
+    return Effect.suspend(() => {
+      this.writeContinue()
+      return super.arrayBuffer
+    })
+  }
+
   modify(
     options: {
       readonly url?: string | undefined
@@ -404,7 +436,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      this.continueState
     )
   }
 
@@ -444,13 +477,19 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       return this.multipartEffect
     }
     this.multipartEffect = Effect.runSync(Effect.cached(
-      NodeMultipart.persisted(this.source, this.source.headers)
+      Effect.suspend(() => {
+        this.writeContinue()
+        return NodeMultipart.persisted(this.source, this.source.headers)
+      })
     ))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return NodeMultipart.stream(this.source, this.source.headers)
+    return Stream.suspend(() => {
+      this.writeContinue()
+      return NodeMultipart.stream(this.source, this.source.headers)
+    })
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
