@@ -10443,12 +10443,37 @@ describe("Getter", () => {
 })
 
 describe("Check", () => {
-  it("isStringFinite", async () => {
+  describe("isStringFinite", () => {
     const schema = Schema.String.check(Schema.isStringFinite())
+    const isFiniteString = Schema.is(schema)
+    // Number record keys also accept the non-finite literals
+    const decodeNumberKeys = Schema.decodeUnknownSync(Schema.Record(Schema.Number, Schema.String))
+    const isNumberKey = (s: string) => Object.keys(decodeNumberKeys({ [s]: "" })).length === 1
 
-    deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
-      id: "effect/schema/isStringFinite",
-      payload: null
+    it("representation", () => {
+      deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
+        id: "effect/schema/isStringFinite",
+        payload: null
+      })
+    })
+
+    it("accepts finite number strings", () => {
+      for (const s of ["1", "-1", "+01", "1.5", ".5", "1e5", "-.5E+5"]) {
+        assertTrue(isFiniteString(s), s)
+      }
+      for (const s of ["", ".", "1.", "1..5", "1e", "e5", "1.e5", " 1", "Infinity", "NaN"]) {
+        assertFalse(isFiniteString(s), s)
+      }
+    })
+
+    it("rejects long digit runs in linear time", () => {
+      const digits = "1".repeat(100_000)
+      for (const s of [`${digits}x`, `${digits}.`, `${digits}e`, `-${digits}x`]) {
+        assertFalse(isFiniteString(s))
+        assertFalse(isNumberKey(s))
+      }
+      assertTrue(isFiniteString(digits))
+      assertTrue(isNumberKey(digits))
     })
   })
 
