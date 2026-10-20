@@ -348,8 +348,8 @@ const isCompactionWanted = (status: CompactionStoreStatus, thresholdFloor: numbe
 
 // Checks a snapshot's staged batches against the stage's input in one pass
 // over both, and assigns each batch its virtual start sequence. Kept ids must
-// be a non-empty subset of the input, strictly ascending by input sequence,
-// in segments 0 to segmentCount - 1.
+// be a non-empty subset of the input without repeats that, in order, is a
+// subsequence of the input's ids, in segments 0 to segmentCount - 1.
 const checkSnapshot = Effect.fnUntraced(function*(
   compaction: StorageCompaction,
   publicKey: string,

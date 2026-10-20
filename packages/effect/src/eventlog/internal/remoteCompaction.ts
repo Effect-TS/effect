@@ -2,6 +2,8 @@ import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import { constFalse } from "../../Function.ts"
+import type * as Option from "../../Option.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as Stream from "../../Stream.ts"
 import type { Entry } from "../EventJournal.ts"
 import type { Registry } from "../EventLog.ts"
@@ -88,4 +90,41 @@ export const run = <E, R>(options: {
     }
     return kept
   })
+}
+
+const deviceLocks = new WeakMap<object, Map<string, Semaphore.Semaphore>>()
+
+/**
+ * Runs `effect` holding the device lock `key`, or returns `None` without
+ * running it when another run holds the lock. Browsers use Web Locks, as the
+ * IndexedDB journal does, so tabs share the lock. Elsewhere the lock is shared
+ * by everything using the same `journal`.
+ */
+export const withDeviceLock = (journal: object, key: string) =>
+<A, E, R>(
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<Option.Option<A>, E, R> => {
+  if (typeof navigator !== "undefined" && "locks" in navigator) {
+    return Effect.callback<Option.Option<A>, E, R>((resume, signal) => {
+      navigator.locks.request(key, { ifAvailable: true }, (lock) => {
+        if (lock === null) return resume(Effect.succeedNone)
+        // An interrupted caller never runs `effect`, so the lock is released now.
+        if (signal.aborted) return
+        return new Promise<void>((resolve) => {
+          resume(Effect.onExit(Effect.asSome(effect), () => Effect.sync(resolve)))
+        })
+      }).catch((defect) => resume(Effect.die(defect)))
+    })
+  }
+  let locks = deviceLocks.get(journal)
+  if (locks === undefined) {
+    locks = new Map()
+    deviceLocks.set(journal, locks)
+  }
+  let semaphore = locks.get(key)
+  if (semaphore === undefined) {
+    semaphore = Semaphore.makeUnsafe(1)
+    locks.set(key, semaphore)
+  }
+  return semaphore.withPermitsIfAvailable(1)(effect)
 }

@@ -7,6 +7,50 @@
  * committed only after the handler succeeds. This module also contains the
  * layers and helpers needed to assemble that runtime.
  *
+ * **Remote compaction**
+ *
+ * An encrypted remote whose server sets `HelloResponse.compaction` can hold a
+ * compacted snapshot of its history, so a new device replays the snapshot and
+ * a recent tail instead of every write. Clients build the snapshots, because
+ * only they can decrypt the entries.
+ *
+ * Every client of such a remote polls its compaction status when it connects
+ * and about once an hour. A client compacts when it has a compactor registered
+ * with `remote: true`, its remote wasn't built with `compaction: false`, the
+ * server says compaction is wanted, and the journal has caught up with the
+ * remote. The run starts in the background after a random delay of a few
+ * minutes. It reads the input from the server, takes entries the journal
+ * already holds from the journal and fetches the rest, runs the opted-in
+ * compactors over it, and uploads the entries they keep. A device runs one
+ * compaction per remote and store at a time: browsers share the lock between
+ * tabs with Web Locks, and elsewhere it is shared by `EventLog`s using the
+ * same journal. `EventLog.compact` runs one now, for example from a worker
+ * holding the identity.
+ *
+ * An operator can roll a bad snapshot back on the server. The status poll
+ * reports a new rollback epoch, and every client that polls, opted out or not,
+ * streams the remote again from its first sequence and gets back the entries
+ * the snapshot dropped.
+ *
+ * Known limitations:
+ *
+ * - Clients from before remote compaction read snapshots but don't poll the
+ *   status, so they don't recover after a rollback. One that read the
+ *   withdrawn snapshot can stay without the entries it dropped.
+ * - A run holds every entry it keeps in memory, so a device with a large
+ *   store may not be able to compact. Opt it out with `compaction: false` and
+ *   compact from a device or worker with more memory.
+ * - The library can't check that a compactor keeps the remote compaction
+ *   contract (see the `remote` option of `groupCompaction`). The drop-only and
+ *   idempotence checks catch common mistakes. A compactor that drops too much
+ *   can only be undone by a rollback before the server prunes the history.
+ * - Changes to what a field means between schema versions aren't detected.
+ *   Strict decoding only catches fields the schema doesn't know.
+ * - A new device still replays the newest day or so of writes in full, since
+ *   the server only compacts data older than its lag.
+ * - A client that stops partway through a run holds the server's busy claim
+ *   until its stage expires.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -15,15 +59,19 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as FiberHandle from "../FiberHandle.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
+import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as PubSub from "../PubSub.ts"
 import * as Queue from "../Queue.ts"
+import * as Random from "../Random.ts"
 import { Reactivity } from "../reactivity/Reactivity.ts"
 import * as ReactivityLayer from "../reactivity/Reactivity.ts"
 import type * as Record from "../Record.ts"
@@ -34,14 +82,23 @@ import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
+import * as Stream from "../Stream.ts"
 import type { Covariant } from "../Types.ts"
 import type * as Event from "./Event.ts"
 import type * as EventGroup from "./EventGroup.ts"
 import { Entry, EventJournal, type EventJournalError, makeEntryIdUnsafe, type RemoteId } from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
-import { StoreId } from "./EventLogMessage.ts"
-import type { EventLogRemote } from "./EventLogRemote.ts"
+import { type CompactionInputHeader, type CompactionStatus, EventLogProtocolError, StoreId } from "./EventLogMessage.ts"
+import type {
+  CompactionStage,
+  EventLogRemote,
+  EventLogRemoteCompaction,
+  EventLogRemoteError
+} from "./EventLogRemote.ts"
+import { maxBatchEntries } from "./internal/batches.ts"
 import { setAnchor } from "./internal/conflicts.ts"
+import * as RemoteCompaction from "./internal/remoteCompaction.ts"
 import { RemoteMode } from "./internal/remoteCompaction.ts"
 
 /**
@@ -89,6 +146,31 @@ export class EventLog extends Context.Service<EventLog, {
   >
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
+  /**
+   * Run one remote compaction now, for every registered remote that offers
+   * compaction or for the remote with `remoteId`.
+   *
+   * Unlike the background trigger, it doesn't wait until the journal has
+   * caught up with the remote, and it works from an empty journal. Remotes
+   * that opted out of compaction are skipped, and so is every remote when no
+   * compactor was registered with `remote: true`.
+   *
+   * Each result is the outcome of the run: `Committed` or `Superseded` once a
+   * snapshot is uploaded, `NoOp` when nothing was dropped, `NotWanted` or
+   * `Busy` from the server, or `Busy` when another run on this device holds
+   * the lock. `Aborted` means the run uploaded nothing and released its stage,
+   * because a compactor died, the idempotence check failed, every entry was
+   * dropped, or the input was pruned during the run.
+   */
+  readonly compact: (options?: {
+    readonly remoteId?: RemoteId | undefined
+  }) => Effect.Effect<
+    ReadonlyArray<{
+      readonly remoteId: RemoteId
+      readonly result: "Committed" | "Superseded" | "NoOp" | "NotWanted" | "Busy" | "Aborted"
+    }>,
+    EventJournalError | EventLogRemoteError
+  >
 }>()("effect/eventlog/EventLog") {}
 
 /**
@@ -136,6 +218,7 @@ export class Registry extends Context.Service<Registry, {
   }>
 
   readonly registerRemote: (remote: EventLogRemote["Service"]) => Effect.Effect<void, never, Scope.Scope>
+  readonly remotes: ReadonlyMap<RemoteId, EventLogRemote["Service"]>
   readonly handleRemote: (handler: (remote: EventLogRemote["Service"]) => Effect.Effect<void>) => Effect.Effect<void>
 
   readonly registerReactivity: (keys: Record<string, ReadonlyArray<string>>) => Effect.Effect<void, never, Scope.Scope>
@@ -198,6 +281,7 @@ export const layerRegistry = Layer.effect(
             return FiberMap.remove(remoteFiberMap, remote.id)
           }
         ),
+      remotes,
       handleRemote(handler) {
         remoteHandler = handler
         return Effect.forEach(remotes, ([id, remote]) => FiberMap.run(remoteFiberMap, id, handler(remote)), {
@@ -830,7 +914,14 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
      *
      * Remote compaction only drops entries. A call that uses `write` keeps
      * its whole input, and entries that fail to decode, including entries
-     * with fields the schema does not know, are always kept.
+     * with fields the schema does not know, are always kept. Before uploading,
+     * a run passes the kept entries through the compactors again, and uploads
+     * nothing if that drops more. A compactor that dies also stops the run.
+     *
+     * A snapshot that drops too much can be rolled back on the server until
+     * the history it replaced is pruned. Clients from before remote
+     * compaction don't recover from a rollback. See the module docs for when
+     * runs start and the other limitations.
      */
     readonly remote?: boolean | undefined
   }
@@ -901,7 +992,14 @@ export const groupCompaction = <Events extends Event.Any, R>(
      *
      * Remote compaction only drops entries. A call that uses `write` keeps
      * its whole input, and entries that fail to decode, including entries
-     * with fields the schema does not know, are always kept.
+     * with fields the schema does not know, are always kept. Before uploading,
+     * a run passes the kept entries through the compactors again, and uploads
+     * nothing if that drops more. A compactor that dies also stops the run.
+     *
+     * A snapshot that drops too much can be rolled back on the server until
+     * the history it replaced is pruned. Clients from before remote
+     * compaction don't recover from a rollback. See the module docs for when
+     * runs start and the other limitations.
      */
     readonly remote?: boolean | undefined
   }
@@ -1131,6 +1229,22 @@ const remoteRetrySchedule = Schedule.min([
   Schedule.spaced({ seconds: 10 })
 ])
 
+type CompactionResult = Effect.Success<ReturnType<EventLog["Service"]["compact"]>>[number]["result"]
+
+// Status is polled on each (re)connect and then about hourly, jittered by up
+// to a fifth either way.
+const compactionPollMillis = 60 * 60 * 1000
+
+// A background run starts after a random delay, so devices that see `wanted`
+// at the same time don't all begin at once.
+const compactionDelayMillis = { min: 60 * 1000, max: 5 * 60 * 1000 }
+
+// How many input batch headers share one journal lookup and one fetch.
+const compactionLookupBatches = 16
+
+const isNotFound = (error: EventLogRemoteError): boolean =>
+  EventLogProtocolError.is(error.cause) && error.cause.code === "NotFound"
+
 const make = Effect.gen(function*() {
   const storeId = yield* CurrentStoreId
   const identity = yield* Identity
@@ -1154,9 +1268,196 @@ const make = Effect.gen(function*() {
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
     Effect.forEach(entries, (entry) => invalidateEntry(reactivity, registry.reactivityKeys, entry), { discard: true })
 
+  const hasRemoteCompactor = () => {
+    for (const compactor of registry.compactors.values()) {
+      if (compactor.remote) return true
+    }
+    return false
+  }
+
+  // Resolves a group of input headers to entries in input order, skipping ids
+  // already seen at a lower input sequence. The journal serves the entries it
+  // holds, and only batches with an id it lacks are fetched.
+  const resolveInput = Effect.fnUntraced(function*(
+    compaction: EventLogRemoteCompaction,
+    stage: CompactionStage,
+    headers: ReadonlyArray<CompactionInputHeader>,
+    seen: Set<string>
+  ) {
+    const known = yield* journal.entriesById(headers.flatMap((header) => header.entryIds)).pipe(
+      journal.withLock(storeId)
+    )
+    const missing: Array<number> = []
+    let offset = 0
+    for (const header of headers) {
+      for (let i = 0; i < header.entryIds.length; i++) {
+        if (known[offset + i] === undefined) {
+          missing.push(header.sequence)
+          break
+        }
+      }
+      offset += header.entryIds.length
+    }
+    const fetched = new Map<number, Entry>()
+    if (missing.length > 0) {
+      yield* Stream.runForEach(compaction.fetch(stage, missing), (remoteEntry) =>
+        Effect.sync(() => {
+          fetched.set(remoteEntry.remoteSequence, remoteEntry.entry)
+        }))
+    }
+    const entries: Array<Entry> = []
+    offset = 0
+    for (const header of headers) {
+      for (let i = 0; i < header.entryIds.length; i++) {
+        const entry = known[offset + i] ?? fetched.get(header.sequence + i)
+        if (entry === undefined) {
+          return yield* Effect.die(new Error(`Compaction input sequence ${header.sequence + i} was not fetched`))
+        }
+        if (seen.has(entry.idString)) continue
+        seen.add(entry.idString)
+        entries.push(entry)
+      }
+      offset += header.entryIds.length
+    }
+    return entries
+  })
+
+  // Folds the compactors over the stage's input, then reports a no-op or
+  // uploads and commits the kept entries.
+  const runStage = Effect.fnUntraced(function*(compaction: EventLogRemoteCompaction, stage: CompactionStage) {
+    const seen = new Set<string>()
+    const kept = yield* RemoteCompaction.run({
+      compactors: registry.compactors,
+      entries: compaction.input(stage).pipe(
+        Stream.grouped(compactionLookupBatches),
+        Stream.mapEffect((headers) => resolveInput(compaction, stage, headers, seen)),
+        Stream.flattenIterable
+      ),
+      chunkSize: maxBatchEntries
+    })
+    if (kept.length === seen.size) {
+      const result = yield* compaction.commit(stage, { _tag: "NoOp" })
+      return result === "Committed" ? "NoOp" : result
+    }
+    if (kept.length === 0) {
+      yield* Effect.logWarning("Remote compaction dropped every entry, so nothing is uploaded")
+      yield* compaction.abort(stage)
+      return "Aborted"
+    }
+    const { segmentCount } = yield* compaction.upload(stage, Stream.fromIterable(kept))
+    const result = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
+    yield* Effect.logDebug(`Remote compaction kept ${kept.length} of ${seen.size} entries: ${result}`)
+    return result
+  })
+
+  // One compaction run, shared by the background trigger and `compact`. The
+  // device lock keeps tabs sharing a journal from running together, and the
+  // journal lock is taken only to look up ids.
+  const runCompaction = (
+    remote: EventLogRemote["Service"],
+    compaction: EventLogRemoteCompaction
+  ): Effect.Effect<CompactionResult, EventJournalError | EventLogRemoteError> =>
+    Effect.gen(function*() {
+      const begin = yield* compaction.begin({ identity, storeId })
+      if (begin._tag !== "Started") return begin._tag
+      const stage: CompactionStage = { identity, storeId, stageId: begin.stageId }
+      return yield* runStage(compaction, stage).pipe(
+        Effect.onError(() => compaction.abort(stage)),
+        Effect.catchTag("IdempotenceError", (error) =>
+          Effect.as(
+            Effect.logError(
+              `A remote compactor dropped ${error.entries.length} more entries from its own output, so nothing is uploaded`
+            ),
+            "Aborted" as const
+          )),
+        Effect.catchIf(
+          (error): error is EventLogRemoteError => error._tag === "EventLogRemoteError" && isNotFound(error),
+          (error) =>
+            Effect.as(
+              Effect.logWarning("The compaction input was pruned during the run", error),
+              "Aborted" as const
+            )
+        ),
+        Effect.catchDefect((defect) =>
+          Effect.as(Effect.logError("Remote compaction died, so nothing is uploaded", defect), "Aborted" as const)
+        )
+      )
+    }).pipe(
+      RemoteCompaction.withDeviceLock(
+        journal,
+        `effect/eventlog/EventLog/compaction/${identity.publicKey}/${storeId}/${Uuid.stringify(remote.id)}`
+      ),
+      Effect.map(Option.getOrElse((): CompactionResult => "Busy")),
+      Effect.annotateLogs({
+        service: "EventLog",
+        effect: "compact",
+        remoteId: Uuid.stringify(remote.id)
+      })
+    )
+
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      yield* Effect.gen(function*() {
+      const compaction = remote.compaction
+      const consumer = yield* FiberHandle.make()
+      const recovery = yield* Semaphore.make(1)
+      const trigger = yield* FiberHandle.make()
+
+      // Starts a background run when this client compacts, the store wants
+      // compaction and the journal has caught up with the status's head.
+      const maybeTrigger = Effect.fnUntraced(function*(compaction: EventLogRemoteCompaction, status: CompactionStatus) {
+        if (compaction.optedOut || !status.wanted || !hasRemoteCompactor()) return
+        if ((yield* journal.nextRemoteSequence(remote.id)) <= status.head) return
+        yield* FiberHandle.run(
+          trigger,
+          Random.nextIntBetween(compactionDelayMillis.min, compactionDelayMillis.max).pipe(
+            Effect.flatMap((millis) => Effect.sleep(millis)),
+            Effect.andThen(runCompaction(remote, compaction)),
+            Effect.flatMap((result) => Effect.logDebug(`Remote compaction finished: ${result}`)),
+            Effect.catchCause(Effect.logWarning)
+          ),
+          { onlyIfMissing: true }
+        )
+      })
+
+      // Records the first rollback epoch seen as the baseline. When the epoch
+      // goes up, the cursor goes back to the remote's first sequence so the
+      // changes fiber streams everything again, and id dedupe keeps only what
+      // a withdrawn snapshot dropped. `restart` stops the changes fiber around
+      // the rewind and starts it again.
+      const pollStatus = Effect.fnUntraced(
+        function*(compaction: EventLogRemoteCompaction, restart: boolean) {
+          const status = yield* compaction.status({ identity, storeId })
+          const seen = yield* journal.remoteRollbackEpoch(remote.id)
+          if (seen !== undefined && status.rollbackEpoch > seen) {
+            const rewind = Effect.andThen(
+              journal.resetRemoteSequence(remote.id, remote.firstSequence ?? 0),
+              journal.setRemoteRollbackEpoch(remote.id, status.rollbackEpoch)
+            ).pipe(journal.withLock(storeId))
+            // The changes fiber starts again even when the rewind fails.
+            yield* restart
+              ? FiberHandle.clear(consumer).pipe(
+                Effect.andThen(rewind),
+                Effect.ensuring(FiberHandle.run(consumer, consume))
+              )
+              : rewind
+            yield* Effect.logInfo(
+              `The remote rolled back compaction (epoch ${status.rollbackEpoch}), streaming it again`
+            )
+          } else if (seen !== status.rollbackEpoch) {
+            yield* journal.setRemoteRollbackEpoch(remote.id, status.rollbackEpoch)
+          }
+          yield* maybeTrigger(compaction, status)
+        },
+        recovery.withPermits(1),
+        Effect.catchCause(Effect.logWarning),
+        Effect.annotateLogs({
+          service: "EventLog",
+          effect: "runRemote compaction status"
+        })
+      )
+
+      const consume: Effect.Effect<unknown> = Effect.gen(function*() {
+        if (compaction !== undefined) yield* pollStatus(compaction, false)
         const startSequence = yield* journal.nextRemoteSequence(remote.id)
         const changes = yield* remote.changes({
           identity,
@@ -1235,9 +1536,20 @@ const make = Effect.gen(function*() {
         Effect.annotateLogs({
           service: "EventLog",
           effect: "runRemote consume"
-        }),
-        Effect.forkScoped
+        })
       )
+      yield* FiberHandle.run(consumer, consume)
+
+      if (compaction !== undefined) {
+        yield* Effect.flatMap(
+          Random.nextBetween(0.8 * compactionPollMillis, 1.2 * compactionPollMillis),
+          (millis) => Effect.sleep(millis)
+        ).pipe(
+          Effect.andThen(pollStatus(compaction, true)),
+          Effect.forever,
+          Effect.forkScoped
+        )
+      }
 
       const write = journal.withRemoteUncommited(
         remote.id,
@@ -1320,7 +1632,20 @@ const make = Effect.gen(function*() {
     writeMany: ((options: { readonly events: Arr.NonEmptyReadonlyArray<any> }) =>
       writeEvents(options.events)) as EventLog["Service"]["writeMany"],
     entries: journal.entries,
-    destroy: journal.destroy
+    destroy: journal.destroy,
+    compact: (options) =>
+      Effect.suspend(() => {
+        if (!hasRemoteCompactor()) {
+          return Effect.succeed([])
+        }
+        const remoteId = options?.remoteId === undefined ? undefined : Uuid.stringify(options.remoteId)
+        const remotes = Array.from(registry.remotes.values()).filter((remote) =>
+          remote.compaction !== undefined && !remote.compaction.optedOut &&
+          (remoteId === undefined || Uuid.stringify(remote.id) === remoteId)
+        )
+        return Effect.forEach(remotes, (remote) =>
+          Effect.map(runCompaction(remote, remote.compaction!), (result) => ({ remoteId: remote.id, result })))
+      })
   })
 })
 

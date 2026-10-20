@@ -685,8 +685,8 @@ export type CompactionResult = typeof CompactionResult.Type
  *
  * Answers `Superseded` when the generation the stage was pinned to is no longer
  * active. A retried commit gets the same answer. A snapshot whose kept ids
- * aren't a non-empty, strictly ascending subset of the pinned input, or whose
- * segments are incomplete, fails with an `InvalidRequest` error and withdraws
+ * aren't a non-empty subset of the pinned input without repeats, in the order
+ * the input holds them, or whose segments are incomplete, fails with an `InvalidRequest` error and withdraws
  * the stage. An expired, withdrawn or unknown stage fails with `NotFound`.
  *
  * @stability unstable
