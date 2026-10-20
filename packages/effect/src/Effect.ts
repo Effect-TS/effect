@@ -896,13 +896,12 @@ export const whileLoop: <A, E, R>(options: {
  * Interruption aborts the provided `AbortSignal`, but the underlying
  * asynchronous operation only stops if it observes that signal.
  *
- * The `AbortSignal` is only created when `evaluate` declares at least one
- * parameter, as reported by its `length` property. `length` does not count a
- * rest parameter or any parameter from the first default value onward, so
- * `(...args) => ...` and `(signal = fallback) => ...` receive `undefined`
- * instead of a signal. Wrappers that forward arguments through rest
- * parameters lose cancellation signaling in the same way. Declare the signal
- * as an ordinary parameter, such as `(signal) => ...`.
+ * The parameter check reads the `length` property of `evaluate`, which does
+ * not count a rest parameter or any parameter from the first default value
+ * onward. `(...args) => ...` and `(signal = fallback) => ...` therefore
+ * receive `undefined` instead of a signal, as do wrappers that forward
+ * arguments through rest parameters. Declare the signal as an ordinary
+ * parameter: `(signal) => ...`.
  *
  * **Example** (Wrapping a non-rejecting Promise)
  *
@@ -959,13 +958,12 @@ export const promise: <A>(
  * defect. Return the error value you want in the error channel instead of
  * throwing it.
  *
- * The `AbortSignal` is only created when the thunk declares at least one
- * parameter, as reported by its `length` property. `length` does not count a
- * rest parameter or any parameter from the first default value onward, so
- * `(...args) => ...` and `(signal = fallback) => ...` receive `undefined`
- * instead of a signal. Wrappers that forward arguments through rest
- * parameters lose cancellation signaling in the same way. Declare the signal
- * as an ordinary parameter, such as `(signal) => ...`.
+ * The parameter check reads the thunk's `length` property, which does not
+ * count a rest parameter or any parameter from the first default value
+ * onward. `(...args) => ...` and `(signal = fallback) => ...` therefore
+ * receive `undefined` instead of a signal, as do wrappers that forward
+ * arguments through rest parameters. Declare the signal as an ordinary
+ * parameter: `(signal) => ...`.
  *
  * **Example** (Wrapping a fetch request that may fail)
  *
@@ -1258,13 +1256,12 @@ export {
  *
  * **Gotchas**
  *
- * The `AbortSignal` is only created when the registration function's `length`
- * property is at least `2`. `length` does not count a rest parameter or any
- * parameter from the first default value onward, so `(...args) => ...` and
- * `(resume, signal = fallback) => ...` receive `undefined` instead of a
- * signal. Wrappers that forward arguments through rest parameters lose
- * cancellation signaling in the same way. Declare both parameters as ordinary
- * parameters, such as `(resume, signal) => ...`.
+ * The parameter check reads the registration function's `length` property,
+ * which must be at least `2` and does not count a rest parameter or any
+ * parameter from the first default value onward. `(...args) => ...` and
+ * `(resume, signal = fallback) => ...` therefore receive `undefined` instead
+ * of a signal, as do wrappers that forward arguments through rest parameters.
+ * Declare both as ordinary parameters: `(resume, signal) => ...`.
  *
  * **Example** (Integrating callback APIs)
  *
@@ -2335,12 +2332,12 @@ export const tap: {
  *
  * **Gotchas**
  *
- * `result` only captures typed, recoverable failures. A cause that contains
- * only defects or interruptions still fails the effect. If the cause contains
- * a defect, nothing is captured and every typed error is converted to a
- * defect, preserving reason order and interrupts. An interruption alongside a
- * typed error does not prevent capture. The first typed error becomes a
- * `Result.Failure` and the interruption is discarded.
+ * `result` only captures typed, recoverable failures. If the cause contains a
+ * defect, nothing is captured and every typed error is converted to a defect,
+ * preserving reason order and interrupts. A cause with only interruptions
+ * still fails the effect, but an interruption alongside a typed error does not
+ * prevent capture. The first typed error becomes a `Result.Failure` and the
+ * interruption is discarded.
  *
  * **Example** (Capturing success or failure as Result)
  *
@@ -2382,12 +2379,12 @@ export const result: <A, E, R>(self: Effect<A, E, R>) => Effect<Result.Result<A,
  *
  * **Gotchas**
  *
- * `option` only captures typed, recoverable failures as `Option.none`. A cause
- * that contains only defects or interruptions still fails the effect. If the
+ * `option` only captures typed, recoverable failures as `Option.none`. If the
  * cause contains a defect, nothing is captured and every typed error is
- * converted to a defect, preserving reason order and interrupts. An
- * interruption alongside a typed error does not prevent capture. The effect
- * succeeds with `Option.none()` and the interruption is discarded.
+ * converted to a defect, preserving reason order and interrupts. A cause with
+ * only interruptions still fails the effect, but an interruption alongside a
+ * typed error does not prevent capture. The effect succeeds with
+ * `Option.none()` and the interruption is discarded.
  *
  * `option` also discards typed failure values. Use `result` if the failure
  * value matters.
