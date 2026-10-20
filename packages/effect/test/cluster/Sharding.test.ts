@@ -1071,6 +1071,32 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(TestSharding), Effect.provideService(Metric.MetricRegistry, registry))
   })
 
+  it.effect("reports the largest entity mailbox size per type by default", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    const mailboxSizeMax = () =>
+      Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
+        .filter((metric) => metric.id === ClusterMetrics.entityMailboxSizeMax.id)
+        .map((metric) => [metric.attributes, metric.state])
+    return Effect.gen(function*() {
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const first = yield* makeClient("1").NeverVolatile().pipe(Effect.forkChild, Effect.replicateEffect(2))
+        yield* makeClient("2").NeverVolatile().pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(mailboxSizeMax(), [[{ type: "TestEntity" }, { value: BigInt(2) }]])
+
+        yield* Fiber.interruptAll(first)
+        yield* waitForIdleReap(sharding, 1)
+        assert.deepStrictEqual(mailboxSizeMax(), [[{ type: "TestEntity" }, { value: BigInt(1) }]])
+      }).pipe(Effect.provide(CappedSharding({ entityMaxIdleTime: 1 })))
+
+      // Shutting down closes the entity manager, which removes the series
+      assert.deepStrictEqual(mailboxSizeMax(), [])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
   it.effect("durable messages are retried when mailbox is full", () =>
     Effect.gen(function*() {
       const requestedIds = yield* Queue.make<Array<Snowflake.Snowflake>>()
