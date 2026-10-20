@@ -1592,10 +1592,16 @@ describe("Stream", () => {
 
     it.effect("work per part does not grow with the length of a chain", () =>
       Effect.gen(function*() {
-        const countOps = (n: number, nest: "left" | "right") => {
+        const countdown = (n: number): Stream.Stream<number> =>
+          n === 0 ? Stream.empty : Stream.concat(Stream.make(n), Stream.suspend(() => countdown(n - 1)))
+        const countOps = (n: number, nest: "left" | "right" | "suspend") => {
           let stream: Stream.Stream<number> = Stream.make(0)
-          for (let i = 1; i < n; i++) {
-            stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+          if (nest === "suspend") {
+            stream = countdown(n)
+          } else {
+            for (let i = 1; i < n; i++) {
+              stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+            }
           }
           const scheduler = new CountingScheduler("sync")
           return Stream.runDrain(stream).pipe(
@@ -1603,7 +1609,7 @@ describe("Stream", () => {
             Effect.map(() => scheduler.ops)
           )
         }
-        for (const nest of ["left", "right"] as const) {
+        for (const nest of ["left", "right", "suspend"] as const) {
           const small = yield* countOps(1_000, nest)
           const large = yield* countOps(2_000, nest)
           assertTrue(small > 1_000, `${nest}: operations were counted`)
@@ -1611,39 +1617,38 @@ describe("Stream", () => {
         }
       }))
 
-    it.effect("work per part does not grow when a chain recurses through suspend", () =>
+    it.effect("does not duplicate a suspended part after interrupting and retrying a pull", () =>
       Effect.gen(function*() {
-        const countdown = (n: number): Stream.Stream<number> =>
-          n === 0 ? Stream.empty : Stream.concat(Stream.make(n), Stream.suspend(() => countdown(n - 1)))
-        const countOps = (n: number) => {
-          const scheduler = new CountingScheduler("sync")
-          return Stream.runDrain(countdown(n)).pipe(
-            Effect.provideService(Scheduler.Scheduler, scheduler),
-            Effect.map(() => scheduler.ops)
-          )
+        const evaluated = yield* Latch.make()
+        let evaluations = 0
+        // Yield after the thunk returns, before the child pull completes.
+        class SuspendScheduler extends Scheduler.MixedScheduler {
+          yielded = false
+          override shouldYield() {
+            if (evaluations === 0 || this.yielded) return false
+            this.yielded = true
+            return true
+          }
         }
-        const small = yield* countOps(1_000)
-        const large = yield* countOps(2_000)
-        assertTrue(small > 1_000, "operations were counted")
-        assertTrue(large / small < 2.5, `doubling the recursion multiplied the work by ${large / small}`)
-      }))
-
-    it.effect("evaluates a suspended part only when it is reached, on every run", () =>
-      Effect.gen(function*() {
-        const log: Array<string> = []
-        const stream = Stream.concat(
-          Stream.make("a").pipe(Stream.ensuring(Effect.sync(() => log.push("end a")))),
+        const pull = yield* Stream.toPull(Stream.concat(
+          Stream.empty,
           Stream.suspend(() => {
-            log.push("evaluate b")
-            return Stream.make("b")
+            evaluations++
+            evaluated.openUnsafe()
+            return Stream.make(evaluations)
           })
+        ))
+        const fiber = yield* pull.pipe(
+          Effect.provideService(Scheduler.Scheduler, new SuspendScheduler("sync")),
+          Effect.forkChild
         )
-        deepStrictEqual(log, [])
-        for (const run of ["first run", "second run"]) {
-          log.length = 0
-          deepStrictEqual(yield* Stream.runCollect(stream), ["a", "b"], run)
-          deepStrictEqual(log, ["end a", "evaluate b"], run)
-        }
+        yield* evaluated.await
+        yield* Fiber.interrupt(fiber)
+        assertTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+        const values = yield* Stream.fromPull(Effect.succeed(pull)).pipe(Stream.runCollect)
+        strictEqual(evaluations, 1)
+        // Interruption may consume the chunk, but retrying must not duplicate it.
+        assertTrue(values.length <= 1)
       }))
 
     it.effect("checks for yielding between suspended parts", () =>
@@ -1665,10 +1670,18 @@ describe("Stream", () => {
             return name
           })).pipe(Stream.ensuring(Effect.sync(() => log.push(`end ${name}`))))
         const stream = Stream.concat(
-          Stream.concat(part("a"), Stream.concat(part("b"), part("c"))),
+          Stream.concat(
+            part("a"),
+            Stream.suspend(() => {
+              log.push("evaluate b")
+              return Stream.concat(part("b"), part("c"))
+            })
+          ),
           Stream.concat(part("d"), part("e"))
         )
         const expectedLog = ["a", "b", "c", "d", "e"].flatMap((name) => [`start ${name}`, `end ${name}`])
+        expectedLog.splice(2, 0, "evaluate b")
+        deepStrictEqual(log, [])
         for (const run of ["first run", "second run"]) {
           log.length = 0
           deepStrictEqual(yield* Stream.runCollect(stream), ["a", "b", "c", "d", "e"], run)
