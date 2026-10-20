@@ -159,6 +159,9 @@ importers:
       '@effect/ai-anthropic':
         specifier: workspace:*
         version: link:../packages/ai/anthropic
+      '@effect/ai-cloudflare':
+        specifier: workspace:*
+        version: link:../packages/ai/cloudflare
       '@effect/ai-openai':
         specifier: workspace:*
         version: link:../packages/ai/openai

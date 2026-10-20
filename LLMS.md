@@ -414,7 +414,8 @@ managing the flow of a CLI application.
 
 Effect's AI modules provide a provider-agnostic interface for language models.
 You can generate text, decode structured objects with `Schema` and stream partial
-responses.
+responses. `ExtractionModel` reads, computes, and estimates typed fields from
+text with a confidence or distribution for each.
 
 - **[Using LanguageModel for text, objects, and streams](./ai-docs/src/71_ai/10_language-model.ts)**:
   Configure a provider once, then use `LanguageModel` for plain text
@@ -425,6 +426,11 @@ responses.
 - **[Stateful chat sessions](./ai-docs/src/71_ai/30_chat.ts)**:
   The AI `Chat` module maintains conversation history automatically. Build
   AI agents or chat assistants.
+- **[Extracting typed fields with ExtractionModel](./ai-docs/src/71_ai/50_extraction-model.ts)**:
+  Define the fields to read, compute, or estimate from a document with
+  `Extraction.make`, then answer them with `ExtractionModel.extract`. Each
+  answer is decoded by its field's schema and carries a confidence or a
+  distribution.
 
 ## Building distributed applications with cluster
 
