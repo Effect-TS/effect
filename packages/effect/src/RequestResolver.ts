@@ -18,6 +18,7 @@ import type * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { constTrue, dual, identity } from "./Function.ts"
+import { patches } from "./internal/context.ts"
 import { exitSucceed } from "./internal/core.ts"
 import * as Count from "./internal/count.ts"
 import * as effect from "./internal/effect.ts"
@@ -435,10 +436,11 @@ export const fromFunctionBatched = <A extends Request.Any>(
  * **Details**
  *
  * Each entry's effect runs with its own caller context, without inheriting
- * services present only in the batch creator's context. Services added or changed
- * by resolver wrappers are applied on top of each entry's context, including the
- * span created by `withSpan`. Entries with different caller contexts can still
- * share a batch.
+ * services present only in the batch creator's context. Services explicitly
+ * provided by resolver wrappers take precedence over each entry's context, even
+ * when their values equal the batch creator's values. This includes the span
+ * created by `withSpan`. Entries with different caller contexts can still share
+ * a batch.
  *
  * **Example** (Creating a resolver from an effectful function)
  *
@@ -477,12 +479,13 @@ export const fromEffect = <A extends Request.Any>(
   return make((entries) =>
     Effect.callback<void>((resume) => {
       const parent = effect.getCurrentFiber()!
-      const baseline = Context.get(parent.context, internal.currentBatchContext) ?? entries[0].context
-      // Retain wrapper changes, not services inherited from the batch creator.
+      // Context operations record explicit wrapper writes, including writes
+      // equal to the batch creator's value. An untracked replacement context
+      // was supplied in full, so all of its services are explicit overrides.
+      const patch = patches.get(parent.context)
       const services = new Map<string, unknown>()
       for (const [key, value] of parent.context.mapUnsafe) {
-        if (key === internal.currentBatchContext.key) continue
-        if (!baseline.mapUnsafe.has(key) || baseline.mapUnsafe.get(key) !== value) {
+        if (patch === undefined || patch.has(key)) {
           services.set(key, value)
         }
       }

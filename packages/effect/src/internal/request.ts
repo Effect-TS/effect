@@ -10,6 +10,7 @@ import type * as Request from "../Request.ts"
 import { makeEntry } from "../Request.ts"
 import type { RequestResolver } from "../RequestResolver.ts"
 import { Scheduler } from "../Scheduler.ts"
+import { patches } from "./context.ts"
 import { exitDie, isEffect, withFiber } from "./core.ts"
 import * as effect from "./effect.ts"
 
@@ -76,16 +77,6 @@ export const requestUnsafe = <A extends Request.Any>(
  * @internal
  */
 export const equalBatchKeys = new WeakSet<Function>()
-
-/**
- * The context before resolver wrappers run. It cannot be recovered from the
- * first remaining entry, since the batch creator may have been interrupted.
- * @internal
- */
-export const currentBatchContext = Context.Reference<Context.Context<never> | undefined>(
-  "effect/RequestResolver/currentBatchContext",
-  { defaultValue: () => undefined }
-)
 
 interface BatchMap {
   get(key: unknown): Batch | undefined
@@ -179,18 +170,22 @@ const addEntry = <A extends Request.Any>(
           (_) => runBatch(newBatch)
         ) as Effect<void>,
         run: effect.onExit(
-          withFiber((fiber) =>
-            effect.provideService(
+          withFiber((fiber) => {
+            // Start a fresh provenance boundary without changing batch lookups.
+            // Wrappers still see the creator, but only their writes propagate
+            // to per-entry effects. Do not mark the caller's shared context.
+            const context = Context.makeUnsafe(fiber.context.mapUnsafe)
+            patches.set(context, new Set())
+            return effect.setContext(
               effect.suspend(() =>
                 newBatch.resolver.runAll(
                   Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>,
                   newBatch.key
                 )
               ),
-              currentBatchContext,
-              fiber.context
+              context
             )
-          ),
+          }),
           (exit) => {
             for (const entry of newBatch.entrySet) {
               entry.completeUnsafe(
