@@ -56,9 +56,13 @@ describe("RequestResolver.fromEffect", () => {
       const values = yield* Effect.all([
         Effect.request(new GetContext({ id: 1 }), resolver).pipe(
           Effect.provideService(Tenant, "private-tenant"),
+          Effect.provideService(Wrapper, "wrapper"),
           Effect.withSpan("first-caller")
         ),
-        Effect.request(new GetContext({ id: 2 }), resolver).pipe(Effect.withSpan("second-caller"))
+        Effect.request(new GetContext({ id: 2 }), resolver).pipe(
+          Effect.provideService(Wrapper, "caller"),
+          Effect.withSpan("second-caller")
+        )
       ], { concurrency: "unbounded" })
 
       assert.deepStrictEqual(values, [
