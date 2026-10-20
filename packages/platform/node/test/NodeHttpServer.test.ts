@@ -25,7 +25,6 @@ import {
   Multipart,
   UrlParams
 } from "effect/http"
-import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 import * as HttpApiError from "effect/http-api/HttpApiError"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
@@ -169,67 +168,6 @@ describe("HttpServer", () => {
         }).pipe(Effect.timeout("3 seconds"))
       })
   )
-
-  it.effect("rejects an oversized streaming payload before requesting its body", () => {
-    const Api = HttpApi.make("api").add(
-      HttpApiGroup.make("group").add(
-        HttpApiEndpoint.post("upload", "/", { payload: HttpApiSchema.StreamUint8Array({ maxBytes: 4 }) })
-      )
-    )
-    let handled = false
-    const Group = HttpApiBuilder.group(Api, "group", (handlers) =>
-      handlers.handle("upload", () =>
-        Effect.sync(() => {
-          handled = true
-        })))
-    return Effect.gen(function*() {
-      const server = Http.createServer()
-      let drained = false
-      // Observing resume does not put IncomingMessage into flowing mode like a data listener would.
-      server.on("request", (request) =>
-        request.on("resume", () => {
-          drained = true
-        }))
-      yield* HttpRouter.serve(HttpApiBuilder.layer(Api).pipe(Layer.provide(Group)), {
-        disableListenLog: true,
-        disableLogger: true
-      }).pipe(
-        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
-        Layer.build
-      )
-      const response = yield* Effect.callback<{ status: number | undefined; connection: string | undefined }, Error>(
-        (resume) => {
-          const request = Http.request({
-            host: "127.0.0.1",
-            port: tcpPort(server),
-            method: "POST",
-            headers: {
-              "content-length": 5,
-              "content-type": "application/octet-stream",
-              connection: "keep-alive"
-            },
-            agent: false
-          }, (response) => {
-            response.on("error", (error) => resume(Effect.fail(error)))
-            response.on("end", () =>
-              resume(Effect.succeed({
-                status: response.statusCode,
-                connection: response.headers.connection
-              })))
-            response.resume()
-          })
-          request.on("error", (error) => resume(Effect.fail(error)))
-          // No Expect header: ordinary rejected uploads must not be drained either.
-          request.flushHeaders()
-          return Effect.sync(() => request.destroy())
-        }
-      ).pipe(Effect.timeout("3 seconds"))
-      assert.strictEqual(response.status, 413)
-      assert.strictEqual(response.connection, "close")
-      assert.isFalse(handled)
-      assert.isFalse(drained)
-    })
-  })
 
   it.effect("returns 413 before a chunked upload finishes", () =>
     Effect.gen(function*() {

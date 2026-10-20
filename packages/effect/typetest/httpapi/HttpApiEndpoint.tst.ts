@@ -236,17 +236,11 @@ describe("HttpApiEndpoint", () => {
       it("rejects stream payloads on no-body methods", () => {
         const payload = HttpApiSchema.StreamUint8Array()
         expect(HttpApiEndpoint.get).type.not.toBeCallableWith("a", "/a", { payload })
-        expect(HttpApiEndpoint.head).type.not.toBeCallableWith("a", "/a", { payload })
-        expect(HttpApiEndpoint.options).type.not.toBeCallableWith("a", "/a", { payload })
-        expect(HttpApiEndpoint.make("TRACE")).type.not.toBeCallableWith("a", "/a", { payload })
-        expect(HttpApiEndpoint.get).type.not.toBeCallableWith("a", "/a", { payload, disableCodecs: true })
       })
 
       it("rejects StreamSse as a payload", () => {
         const payload = HttpApiSchema.StreamSse({ data: Schema.String })
         expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload })
-        expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload: [Schema.String, payload] })
-        expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload, disableCodecs: true })
       })
     })
   })

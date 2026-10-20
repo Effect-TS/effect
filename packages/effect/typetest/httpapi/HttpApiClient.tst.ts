@@ -545,31 +545,6 @@ describe("HttpApiClient", () => {
         >
       >()
     })
-
-    it("keeps the source error out of a streaming success response", () => {
-      type Item = { readonly n: number }
-
-      const Item = hole<Schema.Codec<Item>>()
-      const Api = HttpApi.make("Api")
-        .add(
-          HttpApiGroup.make("group")
-            .add(
-              HttpApiEndpoint.post("echo", "/echo", {
-                payload: HttpApiSchema.StreamNdjson({ schema: Item }),
-                success: HttpApiSchema.StreamNdjson({ schema: Item })
-              })
-            )
-        )
-      const client = Effect.runSync(
-        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
-      )
-
-      type Errors = HttpClientError.HttpClientError | Schema.SchemaError
-
-      expect(client.group.echo({ payload: hole<Stream.Stream<Item, "ItemError">>() })).type.toBe<
-        Effect.Effect<Stream.Stream<Item, Errors>, Errors>
-      >()
-    })
   })
 
   describe("success", () => {

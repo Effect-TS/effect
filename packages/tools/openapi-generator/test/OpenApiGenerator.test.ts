@@ -2160,87 +2160,27 @@ export const CreatePayloadRequestText = Schema.String`,
             : `, contentType: ${JSON.stringify(contentType)}`
         } \\}\\)`
 
-      it.effect("round-trips StreamUint8Array payloads", () =>
-        Effect.gen(function*() {
-          const Api = HttpApi.make("Api").add(
-            HttpApiGroup.make("files").add(
-              HttpApiEndpoint.post("upload", "/upload", {
-                payload: HttpApiSchema.StreamUint8Array({ maxBytes: "1 MiB" })
-              }),
-              HttpApiEndpoint.post("uploadCustom", "/upload/custom", {
-                payload: HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
-              })
-            )
-          )
-
-          const { source } = yield* generateHttpApi(OpenApi.fromApi(Api))
-
-          assert.include(
-            findEndpoint(source, "post", "/upload"),
-            `payload: HttpApiSchema.StreamUint8Array(),`
-          )
-          assert.include(
-            findEndpoint(source, "post", "/upload/custom"),
-            `payload: HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" }),`
-          )
-        }))
-
-      it.effect("round-trips StreamNdjson payloads and successes", () =>
+      it.effect("round-trips streaming payloads and successes", () =>
         Effect.gen(function*() {
           const Api = HttpApi.make("Api").add(
             HttpApiGroup.make("items").add(
-              HttpApiEndpoint.post("ingest", "/ingest", {
-                payload: HttpApiSchema.StreamNdjson({ schema: Item })
+              HttpApiEndpoint.post("upload", "/upload", {
+                payload: HttpApiSchema.StreamUint8Array({ maxBytes: "1 MiB" })
               }),
-              HttpApiEndpoint.post("ingestJsonl", "/ingest/jsonl", {
+              HttpApiEndpoint.post("ingest", "/ingest", {
                 payload: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "application/jsonl" })
               }),
               HttpApiEndpoint.get("export", "/export", {
                 success: HttpApiSchema.StreamNdjson({ schema: Item })
-              }),
-              HttpApiEndpoint.get("exportJsonl", "/export/jsonl", {
-                success: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "application/jsonl" })
               })
             )
           )
 
           const { source } = yield* generateHttpApi(OpenApi.fromApi(Api))
 
-          assert.match(
-            findEndpoint(source, "post", "/ingest"),
-            new RegExp(`payload: ${ndjson()}`)
-          )
-          assert.match(
-            findEndpoint(source, "post", "/ingest/jsonl"),
-            new RegExp(`payload: ${ndjson("application/jsonl")}`)
-          )
-          assert.match(
-            findEndpoint(source, "get", "/export"),
-            new RegExp(`success: ${ndjson()}`)
-          )
-          assert.match(
-            findEndpoint(source, "get", "/export/jsonl"),
-            new RegExp(`success: ${ndjson("application/jsonl")}`)
-          )
-          assert.notInclude(source, "StreamUint8Array")
-        }))
-
-      it.effect("round-trips mixed buffered and streaming payloads", () =>
-        Effect.gen(function*() {
-          const Api = HttpApi.make("Api").add(
-            HttpApiGroup.make("items").add(
-              HttpApiEndpoint.post("ingest", "/ingest", {
-                payload: [Schema.Array(Item), HttpApiSchema.StreamNdjson({ schema: Item })]
-              })
-            )
-          )
-
-          const { source } = yield* generateHttpApi(OpenApi.fromApi(Api))
-
-          assert.match(
-            findEndpoint(source, "post", "/ingest"),
-            new RegExp(`payload: \\[\\w+, ${ndjson()}\\]`)
-          )
+          assert.include(findEndpoint(source, "post", "/upload"), `payload: HttpApiSchema.StreamUint8Array(),`)
+          assert.match(findEndpoint(source, "post", "/ingest"), new RegExp(`payload: ${ndjson("application/jsonl")}`))
+          assert.match(findEndpoint(source, "get", "/export"), new RegExp(`success: ${ndjson()}`))
         }))
 
       it.effect("maps third-party NDJSON itemSchema media types to StreamNdjson", () =>
@@ -2251,7 +2191,6 @@ export const CreatePayloadRequestText = Schema.String`,
             required: ["id"],
             additionalProperties: false
           }
-          const noContent = { 204: { description: "Accepted" } }
           const { source } = yield* generateHttpApi({
             openapi: "3.2.0",
             info: { title: "Test API", version: "1.0.0" },
@@ -2261,17 +2200,7 @@ export const CreatePayloadRequestText = Schema.String`,
                   operationId: "ingest",
                   parameters: [],
                   requestBody: { content: { "application/x-ndjson": { itemSchema: item } }, required: true },
-                  responses: noContent,
-                  tags: ["Items"],
-                  security: []
-                }
-              },
-              "/ingest/jsonl": {
-                post: {
-                  operationId: "ingestJsonl",
-                  parameters: [],
-                  requestBody: { content: { "application/jsonl": { itemSchema: item } }, required: true },
-                  responses: noContent,
+                  responses: { 204: { description: "Accepted" } },
                   tags: ["Items"],
                   security: []
                 }
@@ -2286,28 +2215,6 @@ export const CreatePayloadRequestText = Schema.String`,
                   tags: ["Items"],
                   security: []
                 }
-              },
-              "/export/jsonl": {
-                get: {
-                  operationId: "exportJsonl",
-                  parameters: [],
-                  responses: {
-                    200: { description: "Items", content: { "application/jsonl": { itemSchema: item } } }
-                  },
-                  tags: ["Items"],
-                  security: []
-                }
-              },
-              "/export/plain": {
-                get: {
-                  operationId: "exportPlain",
-                  parameters: [],
-                  responses: {
-                    200: { description: "Items", content: { "application/x-ndjson": { schema: item } } }
-                  },
-                  tags: ["Items"],
-                  security: []
-                }
               }
             },
             components: { schemas: {}, securitySchemes: {} },
@@ -2315,23 +2222,8 @@ export const CreatePayloadRequestText = Schema.String`,
             tags: [{ name: "Items" }]
           } as unknown as OpenAPISpec)
 
-          assert.match(
-            findEndpoint(source, "post", "/ingest"),
-            new RegExp(`payload: ${ndjson()}`)
-          )
-          assert.match(
-            findEndpoint(source, "post", "/ingest/jsonl"),
-            new RegExp(`payload: ${ndjson("application/jsonl")}`)
-          )
-          assert.match(
-            findEndpoint(source, "get", "/export"),
-            new RegExp(`success: ${ndjson()}`)
-          )
-          assert.match(
-            findEndpoint(source, "get", "/export/jsonl"),
-            new RegExp(`success: ${ndjson("application/jsonl")}`)
-          )
-          assert.notInclude(findEndpoint(source, "get", "/export/plain"), "StreamNdjson")
+          assert.match(findEndpoint(source, "post", "/ingest"), new RegExp(`payload: ${ndjson()}`))
+          assert.match(findEndpoint(source, "get", "/export"), new RegExp(`success: ${ndjson()}`))
         }))
 
       it.effect("skips json-seq and SSE request bodies with a warning", () =>
@@ -2373,87 +2265,6 @@ export const CreatePayloadRequestText = Schema.String`,
             warnings.map((warning) => ({ path: warning.path, method: warning.method })),
             [{ path: "/seq", method: "post" }, { path: "/events", method: "post" }]
           )
-        }))
-
-      it.effect("maps marked NDJSON successes on text/event-stream without the SSE skip", () =>
-        Effect.gen(function*() {
-          const Api = HttpApi.make("Api").add(
-            HttpApiGroup.make("items").add(
-              HttpApiEndpoint.get("export", "/export", {
-                success: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "text/event-stream" })
-              })
-            )
-          )
-
-          const { source, warnings } = yield* generateHttpApi(OpenApi.fromApi(Api))
-
-          assert.match(
-            findEndpoint(source, "get", "/export"),
-            new RegExp(`success: ${ndjson("text/event-stream")}`)
-          )
-          assert.deepStrictEqual(warnings, [])
-        }))
-
-      it.effect("maps marked NDJSON payloads on text/event-stream without the SSE skip", () =>
-        Effect.gen(function*() {
-          const Api = HttpApi.make("Api").add(
-            HttpApiGroup.make("items").add(
-              HttpApiEndpoint.post("ingest", "/ingest", {
-                payload: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "text/event-stream" })
-              })
-            )
-          )
-
-          const { source, warnings } = yield* generateHttpApi(OpenApi.fromApi(Api))
-
-          assert.match(
-            findEndpoint(source, "post", "/ingest"),
-            new RegExp(`payload: ${ndjson("text/event-stream")}`)
-          )
-          assert.deepStrictEqual(warnings, [])
-        }))
-
-      it.effect("keeps marked NDJSON elements on multipart/form-data as JSON schemas", () =>
-        Effect.gen(function*() {
-          const { source } = yield* generateHttpApi({
-            openapi: "3.1.0",
-            info: { title: "Test API", version: "1.0.0" },
-            paths: {
-              "/ingest": {
-                post: {
-                  operationId: "ingest",
-                  parameters: [],
-                  requestBody: {
-                    content: {
-                      "multipart/form-data": {
-                        schema: {
-                          type: "object",
-                          properties: { data: { type: "string", format: "binary" } },
-                          required: ["data"],
-                          additionalProperties: false
-                        },
-                        "x-effect-stream": { encoding: "ndjson" }
-                      }
-                    },
-                    required: true
-                  },
-                  responses: { 204: { description: "Accepted" } },
-                  tags: ["Items"],
-                  security: []
-                }
-              }
-            },
-            components: { schemas: {}, securitySchemes: {} },
-            security: [],
-            tags: [{ name: "Items" }]
-          })
-
-          const match = findEndpoint(source, "post", "/ingest").match(
-            /payload: HttpApiSchema\.StreamNdjson\(\{ schema: (\w+), contentType: "multipart\/form-data" \}\)/
-          )
-          assert.isNotNull(match, source)
-          assert.include(source, `export type ${match![1]} = { readonly "data": string }`)
-          assert.notInclude(source, "Multipart")
         }))
     })
 

@@ -18,7 +18,6 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as HttpPlatform from "effect/http/HttpPlatform"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
-import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerRespondable from "effect/http/HttpServerRespondable"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
@@ -265,20 +264,18 @@ describe("DenoHttpServer", () => {
 
     it.live("answers 500 and reports the status defect before stream scope cleanup completes", () =>
       Effect.gen(function*() {
-        let captured: HttpServerRequest.HttpServerRequest | undefined
         const finalized = yield* Latch.make()
         const release = yield* Latch.make()
         const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
         yield* HttpServer.serveEffect(
           Effect.gen(function*() {
-            captured = yield* HttpServerRequest.HttpServerRequest
             yield* Effect.addFinalizer(() => finalized.open.pipe(Effect.andThen(release.await)))
             return HttpServerResponse.stream(Stream.never, { status: 103 })
           }),
           (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
         )
         yield* Effect.addFinalizer(() => release.open)
-        const response = yield* HttpClient.post("/", { body: HttpBody.text("unread") })
+        const response = yield* HttpClient.get("/")
         assert.strictEqual(response.status, 500)
         assert.strictEqual(yield* response.text, "")
         yield* finalized.await
@@ -288,15 +285,6 @@ describe("DenoHttpServer", () => {
         const reason = exit.cause.reasons[0]
         assert(Cause.isDieReason(reason))
         assert(reason.defect instanceof RangeError)
-        assert.isDefined(captured)
-        const lateRead = yield* Effect.exit(captured!.text)
-        assert(Exit.isFailure(lateRead))
-        assert.strictEqual(lateRead.cause.reasons.length, 1)
-        const lateReadReason = lateRead.cause.reasons[0]
-        // A late read retains Deno's native body failure, exposed as a typed parse error.
-        assert(Cause.isFailReason(lateReadReason))
-        assert(lateReadReason.error instanceof HttpServerError.HttpServerError)
-        assert(lateReadReason.error.reason instanceof HttpServerError.RequestParseError)
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
   })
 

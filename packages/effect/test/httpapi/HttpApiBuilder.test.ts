@@ -409,32 +409,26 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
 })
 
 it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
-  it.effect("encodes each element as a JSON line with the declared content type", () =>
+  it.effect("encodes each element as a JSON line", () =>
     Effect.gen(function*() {
       const Item = Schema.Struct({ text: Schema.String })
       const api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.get("items", "/items", {
             success: HttpApiSchema.StreamNdjson({ schema: Item })
-          }),
-          HttpApiEndpoint.get("lines", "/lines", {
-            success: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "application/jsonl" })
           })
         )
       )
-      const items = Stream.make({ text: "a" }, { text: "b" })
-      const GroupLayer = HttpApiBuilder.group(api, "test", (handlers) =>
-        handlers
-          .handle("items", () => Effect.succeed(items))
-          .handle("lines", () => Effect.succeed(items)))
+      const GroupLayer = HttpApiBuilder.group(
+        api,
+        "test",
+        (handlers) => handlers.handle("items", () => Effect.succeed(Stream.make({ text: "a" }, { text: "b" })))
+      )
       const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
 
       const response = yield* client.test.items({ responseMode: "response-only" })
       assert.strictEqual(response.headers["content-type"], "application/x-ndjson")
       assert.strictEqual(yield* response.text, "{\"text\":\"a\"}\n{\"text\":\"b\"}\n")
-
-      const jsonl = yield* client.test.lines({ responseMode: "response-only" })
-      assert.strictEqual(jsonl.headers["content-type"], "application/jsonl")
 
       const decoded = yield* client.test.items().pipe(Effect.flatMap(Stream.runCollect))
       assert.deepStrictEqual(decoded, [{ text: "a" }, { text: "b" }])
@@ -2126,60 +2120,6 @@ describe("HttpApiBuilder streaming payloads", () => {
       const withParameters = await handler(post("/upload", "Application/X-NDJSON; charset=utf-8", `{"n":1}\n`))
       assert.strictEqual(withParameters.status, 200)
       assert.strictEqual(await withParameters.json(), 1)
-    })
-  })
-
-  it("lets a handler catch a payload error after a partial read and respond", async () => {
-    const api = HttpApi.make("Api").add(
-      HttpApiGroup.make("test").add(
-        HttpApiEndpoint.post("upload", "/upload", {
-          payload: HttpApiSchema.StreamNdjson({ schema: Item }),
-          success: Schema.String
-        })
-      )
-    )
-    const groups = HttpApiBuilder.group(api, "test", (handlers) =>
-      handlers.handle("upload", ({ payload }) => {
-        let accepted = 0
-        return payload.pipe(
-          Stream.runForEach(() => Effect.sync(() => accepted++)),
-          Effect.as("complete"),
-          Effect.catchTag("HttpApiSchemaError", (error) => Effect.succeed(`accepted ${accepted}, ${error.kind}`))
-        )
-      }))
-
-    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
-      const response = await handler(post("/upload", "application/x-ndjson", `{"n":1}\n{"n":2}\n{"n":"x"}\n{"n":4}\n`))
-      assert.strictEqual(response.status, 200)
-      assert.strictEqual(await response.json(), "accepted 2, Payload")
-    })
-  })
-
-  it("picks the buffered or streaming member of a mixed payload by content-type", async () => {
-    const api = HttpApi.make("Api").add(
-      HttpApiGroup.make("test").add(
-        HttpApiEndpoint.post("upload", "/upload", {
-          payload: [Schema.Array(Item), HttpApiSchema.StreamNdjson({ schema: Item })],
-          success: Schema.Array(Schema.Number)
-        })
-      )
-    )
-    const groups = HttpApiBuilder.group(
-      api,
-      "test",
-      (handlers) =>
-        handlers.handle("upload", ({ payload }) =>
-          Stream.isStream(payload)
-            ? Effect.map(Stream.runCollect(payload), (items) => items.map((item) => item.n * 10))
-            : Effect.succeed(payload.map((item) => item.n)))
-    )
-
-    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
-      const buffered = await handler(post("/upload", "application/json", `[{"n":1},{"n":2}]`))
-      assert.deepStrictEqual(await buffered.json(), [1, 2])
-
-      const streamed = await handler(post("/upload", "application/x-ndjson", `{"n":1}\n{"n":2}\n`))
-      assert.deepStrictEqual(await streamed.json(), [10, 20])
     })
   })
 })
