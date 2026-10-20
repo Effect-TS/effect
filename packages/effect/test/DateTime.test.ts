@@ -577,6 +577,20 @@ describe("DateTime", () => {
       const dt = DateTime.makeUnsafe("Tue, 27 Jan 2026 17:14:06 GMT")
       strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
     })
+
+    it("does not append Z to lowercase z or gmt designators", () => {
+      const cases = ["2024-01-01T00:00:00z", "2024-01-01T00:00:00.000z", "Tue, 27 Jan 2026 17:14:06 gmt"]
+      for (const input of cases) {
+        const parsed = Date.parse(input)
+        if (Number.isNaN(parsed)) {
+          throws(() => DateTime.makeUnsafe(input))
+          assertNone(DateTime.make(input))
+        } else {
+          strictEqual(DateTime.makeUnsafe(input).toJSON(), new Date(parsed).toJSON())
+          assertSomeIso(DateTime.make(input), new Date(parsed).toJSON())
+        }
+      }
+    })
   })
 
   describe("Disambiguation", () => {
