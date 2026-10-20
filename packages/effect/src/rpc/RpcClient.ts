@@ -423,6 +423,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           )
           fiber.addObserver((exit) => {
             if (exit._tag === "Failure") {
+              entries.delete(id)
               return resume(exit)
             }
           })
@@ -508,7 +509,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
     ).pipe(
       span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
-      Effect.onError((cause) => Queue.failCause(queue, cause)),
+      Effect.onError((cause) => {
+        if (!Cause.hasInterruptsOnly(cause)) entries.delete(id)
+        return Queue.failCause(queue, cause)
+      }),
       Effect.interruptible,
       Effect.forkIn(scope, { startImmediately: true })
     )
@@ -712,6 +716,10 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
                 payload,
                 headers: Object.entries(message.headers)
               }, collector && collector.readUnsafe())
+            ),
+            // An interrupted request keeps its entry until the interrupt is sent.
+            Effect.onError((cause) =>
+              Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.sync(() => entries.delete(message.id))
             )
           ) as Effect.Effect<void, RpcClientError>
         }
@@ -772,15 +780,19 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           })
         ) as Effect.Effect<void>
       }
+      // Clear entries before resuming callers, as they can start new requests
       case "Defect": {
+        entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
+        const requestIds = Array.from(entries.keys())
+        entries.clear()
         return Effect.forEach(
-          Array.from(entries.keys()),
+          requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
-        )
+        ).pipe(Effect.uninterruptible)
       }
       default: {
         return Effect.void
@@ -1089,8 +1101,13 @@ export const makeProtocolSocket = (options?: {
     })
     let currentError: RpcClientError | undefined
 
-    const broadcast = (response: FromServerEncoded) =>
-      Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+    const broadcast = (response: FromServerEncoded) => {
+      const deliver = Effect.forEach(Array.from(clientIds), (clientId) => writeResponse(clientId, response))
+      if (response._tag !== "Defect" && response._tag !== "ClientProtocolError") return deliver
+      // A terminal response ends every request; clear routing before callers can start new ones
+      requestClientMap.clear()
+      return Effect.uninterruptible(deliver)
+    }
     const broadcastError = (error: RpcClientError) => {
       currentError = error
       return broadcast({
@@ -1205,17 +1222,21 @@ export const makeProtocolSocket = (options?: {
       Effect.forkScoped
     )
 
+    const write = (request: FromClientEncoded) =>
+      Effect.suspend(() => {
+        const encoded = parser.encode(request)
+        return encoded === undefined ? Effect.void : Effect.orDie(writer.write(encoded))
+      })
+
     return {
       send(clientId, request) {
         if (currentError) {
           return Effect.fail(currentError)
         }
-        if (request._tag === "Request") {
-          requestClientMap.set(request.id, clientId)
-        }
-        const encoded = parser.encode(request)
-        if (encoded === undefined) return Effect.void
-        return Effect.orDie(writer.write(encoded))
+        if (request._tag === "Interrupt") requestClientMap.delete(request.requestId)
+        if (request._tag !== "Request") return write(request)
+        requestClientMap.set(request.id, clientId)
+        return Effect.onError(write(request), () => Effect.sync(() => requestClientMap.delete(request.id)))
       },
       supportsAck: true,
       supportsTransferables: false,

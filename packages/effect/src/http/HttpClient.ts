@@ -1818,7 +1818,11 @@ export const layerMergedContext = <E, R>(
 const responseRegistry = (() => {
   if ("FinalizationRegistry" in globalThis && globalThis.FinalizationRegistry) {
     const registry = new FinalizationRegistry((controller: AbortController) => {
-      controller.abort()
+      try {
+        controller.abort()
+      } catch {
+        // Runtimes such as workerd disallow aborting I/O outside its request context.
+      }
     })
     return {
       register(response: HttpClientResponse.HttpClientResponse, controller: AbortController) {
@@ -1916,6 +1920,10 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
 
   get arrayBuffer() {
     return this.applyInterrupt(this.original.arrayBuffer)
+  }
+
+  get upgrade() {
+    return this.applyInterrupt(this.original.upgrade)
   }
 
   get stream() {

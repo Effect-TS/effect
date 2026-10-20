@@ -68,7 +68,7 @@ const decodeOrSkip = (
   value: unknown
 ): unknown => {
   try {
-    return atom[Atom.SerializableTypeId].decode(value)
+    return atom[Atom.SerializableTypeId].decode(value as Schema.Json)
   } catch (error) {
     if (Schema.isSchemaError(error)) return Skipped
     throw error
@@ -169,6 +169,10 @@ export const hydrate = (
 ): void => {
   for (const datom of (dehydratedState as Iterable<DehydratedAtomValue>)) {
     registry.setSerializable(datom.key, datom.value)
+
+    // Apply hydration immediately to existing subscribers.
+    const existing = registry.getNodes().get(datom.key)
+    if (existing !== undefined) registry.ensureNode(existing.atom)
 
     // If there's a resultPromise, it means this was in Initial state when dehydrated
     // and we should wait for it to resolve to a non-Initial state, then update the registry

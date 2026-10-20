@@ -896,12 +896,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         to: "bob@example.com"
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
-      // resume after the clock
+      // Do not advance the sleep until its durable wake-up has been persisted.
+      yield* waitForClock(driver, "Some sleep")
       yield* TestClock.adjust("10 seconds")
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(5000)
-      // The storage poll may return before the resumed run finishes unwinding.
-      yield* advanceUntil(() => flags.get("ensuring") === true, "suspended await must run ensuring")
+      yield* pollStorageUntil(() => flags.get("ensuring") === true, "suspended await must run ensuring")
 
       // --- the workflow is suspended at this point
 
@@ -967,7 +965,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         to: "bob@example.com"
       }).pipe(Effect.forkChild)
 
-      yield* TestClock.adjust(1)
+      yield* waitForClock(driver, "Some sleep")
       yield* TestClock.adjust("10 seconds")
       yield* sharding.pollStorage
       yield* TestClock.adjust(1)
@@ -976,7 +974,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const executionId = envelope.address.entityId
       // Interrupt after the clock-backed activity completes, so the workflow is
       // suspended on EmailTrigger rather than racing the clock's completion.
-      yield* advanceUntil(
+      yield* pollStorageUntil(
         () =>
           Array.from(driver.requests.values()).some(({ envelope, replies }) =>
             envelope._tag === "Request" && envelope.tag === "activity" &&
@@ -987,8 +985,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
               (reply.exit.value as Workflow.ResultEncoded<any, any>)._tag === "Complete"
             )
           ),
-        "sleep activity must complete before interruption",
-        10
+        "sleep activity must complete before interruption"
       )
       yield* pollUntil(EmailWorkflow, executionId, "Suspended")
       yield* EmailWorkflow.interrupt(executionId)
@@ -1074,9 +1071,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
   it.effect("Activity.raceAll ignores a failure when another activity can succeed", () =>
     Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
       const fiber = yield* FailureRaceWorkflow.execute({
         id: "failure-race"
       }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      for (let i = 0; i < 2000 && fiber.pollUnsafe() === undefined; i++) {
+        yield* sharding.pollStorage
+        yield* TestClock.adjust("1 second")
+      }
+      assert(fiber.pollUnsafe() !== undefined, "failure race must complete when another activity can succeed")
 
       yield* pollUntil(FailureRaceWorkflow, yield* FailureRaceWorkflow.executionId({ id: "failure-race" }), "Complete")
 
@@ -1087,16 +1091,19 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     Effect.gen(function*() {
       const flags = yield* Flags
       const sharding = yield* Sharding.Sharding
+      const driver = yield* MessageStorage.MemoryDriver
       yield* TestClock.adjust(1)
 
       const fiber = yield* DurableRaceWorkflow.execute({
         id: "race-2"
       }).pipe(Effect.forkChild)
 
-      yield* TestClock.adjust(1)
+      yield* waitForClock(driver, "Activity3")
       yield* TestClock.adjust(1000)
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(5000)
+      yield* pollStorageUntil(
+        () => typeof flags.get("durable-race-token") === "string",
+        "durable race must reach its continuation"
+      )
 
       const token = flags.get("durable-race-token")
       assert(typeof token === "string")
@@ -1135,13 +1142,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     "DurableDeferred.raceAll lets an active branch win while the deferred stays pending",
     () =>
       Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
         const fiber = yield* MixedRaceWorkflow.execute({ id: "mixed-race-activity" }).pipe(
           Effect.forkChild({ startImmediately: true })
         )
 
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 2000 && fiber.pollUnsafe() === undefined; i++) {
+          yield* sharding.pollStorage
           yield* TestClock.adjust("1 second")
         }
+        assert(fiber.pollUnsafe() !== undefined, "active race branch must complete while the deferred stays pending")
 
         expect(yield* Fiber.join(fiber)).toEqual("activity")
       }).pipe(Effect.provide(TestWorkflowLayer)),
@@ -2510,29 +2520,28 @@ const unansweredActivityStorage = (storage: MessageStorage.MessageStorage["Servi
     saveReply: (reply) => reply.rpc._tag === "activity" ? Effect.never : storage.saveReply(reply)
   })
 
-const sendUnregisteredActivity = (workflowName: string, executionId: string) =>
-  Effect.gen(function*() {
-    const entity = Entity.make(`Workflow/${workflowName}`, [RecoveryActivityRpc])
-    const client = yield* entity.client
-    yield* client(executionId).activity({ name: "loser", attempt: 1, withTransaction: false }, { discard: true })
-    const sharding = yield* Sharding.Sharding
-    const storage = yield* MessageStorage.MessageStorage
-    const entityId = EntityId.make(executionId)
-    const requestId = yield* storage.requestIdForPrimaryKey({
-      address: EntityAddress.make({
-        entityType: EntityType.make(entity.type),
-        entityId,
-        shardId: sharding.getShardId(entityId, "default")
-      }),
-      tag: "activity",
-      id: "loser/1"
-    })
-    assert(Option.isSome(requestId))
-    return requestId.value
+const sendUnregisteredActivity = Effect.fnUntraced(function*(workflowName: string, executionId: string) {
+  const entity = Entity.make(`Workflow/${workflowName}`, [RecoveryActivityRpc])
+  const client = yield* entity.client
+  yield* client(executionId).activity({ name: "loser", attempt: 1, withTransaction: false }, { discard: true })
+  const sharding = yield* Sharding.Sharding
+  const storage = yield* MessageStorage.MessageStorage
+  const entityId = EntityId.make(executionId)
+  const requestId = yield* storage.requestIdForPrimaryKey({
+    address: EntityAddress.make({
+      entityType: EntityType.make(entity.type),
+      entityId,
+      shardId: sharding.getShardId(entityId, "default")
+    }),
+    tag: "activity",
+    id: "loser/1"
   })
+  assert(Option.isSome(requestId))
+  return requestId.value
+})
 
-const activityReply = (storage: MessageStorage.MessageStorage["Service"], requestId: Snowflake.Snowflake) =>
-  Effect.gen(function*() {
+const activityReply = Effect.fnUntraced(
+  function*(storage: MessageStorage.MessageStorage["Service"], requestId: Snowflake.Snowflake) {
     for (let i = 0; i < 200; i++) {
       const replies = yield* storage.repliesForUnfiltered([requestId])
       const reply = replies[replies.length - 1]
@@ -2542,7 +2551,8 @@ const activityReply = (storage: MessageStorage.MessageStorage["Service"], reques
       yield* TestClock.adjust(1)
     }
     assert.fail("unregistered activity must receive a terminal Suspended reply without waiting for registration")
-  })
+  }
+)
 
 const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?: {
   readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
@@ -2575,23 +2585,22 @@ const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?:
     }))
   )
 
-const pollUntil = <A extends Schema.Top, E extends Schema.Top>(
+const pollUntil = Effect.fnUntraced(function*<A extends Schema.Top, E extends Schema.Top>(
   workflow: Workflow.Workflow<any, any, A, E>,
   executionId: string,
   tag: "Suspended" | "Complete"
-) =>
-  Effect.gen(function*() {
-    const sharding = yield* Sharding.Sharding
-    let result = yield* workflow.poll(executionId)
-    for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === tag); i++) {
-      yield* Effect.yieldNow
-      yield* TestClock.adjust(1)
-      yield* sharding.pollStorage
-      result = yield* workflow.poll(executionId)
-    }
-    assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
-    return result.value
-  })
+) {
+  const sharding = yield* Sharding.Sharding
+  let result = yield* workflow.poll(executionId)
+  for (let i = 0; i < 2000 && !(Option.isSome(result) && result.value._tag === tag); i++) {
+    yield* Effect.yieldNow
+    yield* TestClock.adjust(1)
+    yield* sharding.pollStorage
+    result = yield* workflow.poll(executionId)
+  }
+  assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
+  return result.value
+})
 
 const nextStepActivity = (runs: Array<string>, label: string) =>
   Activity.make({
@@ -2609,54 +2618,72 @@ const nextStepActivity = (runs: Array<string>, label: string) =>
  * and exactly once. Deferred writes made by `body` are delayed to stand in
  * for a persistence round trip.
  */
-const expectContinuesBesideParkedSibling = (
+const expectContinuesBesideParkedSibling = Effect.fnUntraced(function*(
   name: string,
   body: Effect.Effect<string, never, WorkflowEngine | WorkflowInstance>
-) =>
-  Effect.gen(function*() {
-    const workflow = Workflow.make(name, {
-      payload: {},
-      success: Schema.String,
-      idempotencyKey: () => "one"
-    })
-    const event = DurableDeferred.make(`${name}/Event`)
-    const nextStepRuns: Array<string> = []
-    const context = yield* Layer.build(
-      workflow.toLayer(() =>
-        Effect.gen(function*() {
-          const engine = yield* WorkflowEngine
-          const delayed = Effect.provideService(body, WorkflowEngine, {
-            ...engine,
-            deferredDone: (deferred, done) => Effect.delay(engine.deferredDone(deferred, done), 10)
-          })
-          const [result] = yield* Effect.all([
-            Effect.flatMap(delayed, (value) => nextStepActivity(nextStepRuns, value)),
-            DurableDeferred.await(event)
-          ], { concurrency: "unbounded" })
-          return result
+) {
+  const workflow = Workflow.make(name, {
+    payload: {},
+    success: Schema.String,
+    idempotencyKey: () => "one"
+  })
+  const event = DurableDeferred.make(`${name}/Event`)
+  const nextStepRuns: Array<string> = []
+  const context = yield* Layer.build(
+    workflow.toLayer(() =>
+      Effect.gen(function*() {
+        const engine = yield* WorkflowEngine
+        const delayed = Effect.provideService(body, WorkflowEngine, {
+          ...engine,
+          deferredDone: (deferred, done) => Effect.delay(engine.deferredDone(deferred, done), 10)
         })
-      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
-    )
-    yield* Effect.gen(function*() {
-      const executionId = yield* workflow.execute({}, { discard: true })
-      yield* advanceUntil(() => nextStepRuns.length > 0, "next-step must run before the event", 10, 300)
-      yield* DurableDeferred.succeed(event, {
-        token: DurableDeferred.tokenFromExecutionId(event, { workflow, executionId }),
-        value: undefined
+        const [result] = yield* Effect.all([
+          Effect.flatMap(delayed, (value) => nextStepActivity(nextStepRuns, value)),
+          DurableDeferred.await(event)
+        ], { concurrency: "unbounded" })
+        return result
       })
-      assert.deepStrictEqual(
-        yield* pollUntil(workflow, executionId, "Complete"),
-        new Workflow.Complete({ exit: Exit.succeed("timer:next") })
-      )
-      assert.deepStrictEqual(nextStepRuns, ["timer"])
-    }).pipe(Effect.provide(context))
-  })
+    ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+  )
+  yield* Effect.gen(function*() {
+    const executionId = yield* workflow.execute({}, { discard: true })
+    yield* advanceUntil(() => nextStepRuns.length > 0, "next-step must run before the event", 10, 300)
+    yield* DurableDeferred.succeed(event, {
+      token: DurableDeferred.tokenFromExecutionId(event, { workflow, executionId }),
+      value: undefined
+    })
+    assert.deepStrictEqual(
+      yield* pollUntil(workflow, executionId, "Complete"),
+      new Workflow.Complete({ exit: Exit.succeed("timer:next") })
+    )
+    assert.deepStrictEqual(nextStepRuns, ["timer"])
+  }).pipe(Effect.provide(context))
+})
 
-const advanceUntil = (ready: () => boolean, message: string, step = 1, rounds = 2000) =>
-  Effect.gen(function*() {
-    for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
-    assert(ready(), message)
-  })
+const advanceUntil = Effect.fnUntraced(function*(ready: () => boolean, message: string, step = 1, rounds = 2000) {
+  for (let i = 0; i < rounds && !ready(); i++) yield* TestClock.adjust(step)
+  assert(ready(), message)
+})
+
+// pollStorage signals the storage loop; it does not await processing.
+const pollStorageUntil = Effect.fnUntraced(function*(ready: () => boolean, message: string) {
+  const sharding = yield* Sharding.Sharding
+  for (let i = 0; i < 2000 && !ready(); i++) {
+    yield* sharding.pollStorage
+    yield* TestClock.adjust(1)
+  }
+  assert(ready(), message)
+})
+
+const waitForClock = (driver: MessageStorage.MemoryDriver["Service"], name: string) =>
+  pollStorageUntil(
+    () =>
+      Array.from(driver.requests.values()).some(({ envelope }) =>
+        envelope._tag === "Request" && envelope.address.entityType === "Workflow/-/DurableClock" &&
+        (envelope.payload as { name: string }).name === name
+      ),
+    `durable clock ${name} must be persisted before advancing time`
+  )
 
 const TestWorkflowEngine = makeTestWorkflowEngine()
 

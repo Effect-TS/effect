@@ -26,6 +26,7 @@ import type { HttpPlatform } from "../http/HttpPlatform.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as Request from "../http/HttpServerRequest.ts"
 import { HttpServerRequest } from "../http/HttpServerRequest.ts"
+import * as Respondable from "../http/HttpServerRespondable.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
 import * as Multipart from "../http/Multipart.ts"
@@ -847,6 +848,7 @@ function handlerToHttpEffect(
   )
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
+  const upgrade = getUpgradeSuccessSchema(endpoint)
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
@@ -884,9 +886,19 @@ function handlerToHttpEffect(
           request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
       }
+      if (upgrade !== undefined) {
+        if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
+          return upgradeRequired(upgrade.protocol)
+        }
+        request.socket = yield* Effect.orDie(httpRequest.upgrade)
+      }
       let response = yield* handler(request)
       if (Response.isHttpServerResponse(response)) {
         return response
+      }
+      if (upgrade !== undefined) {
+        // The server replaces this with the 101 once the connection is upgraded.
+        return Response.empty()
       }
       let responseHeaders: unknown | undefined
       if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
@@ -909,7 +921,10 @@ function handlerToHttpEffect(
     Effect.withErrorReporting,
     Effect.catch((error) => {
       if (HttpApiSchemaError.is(error)) return Effect.die(error)
-      return Effect.orDie(encodeError(error))
+      return Effect.catch(encodeError(error), (schemaError) =>
+        Respondable.isRespondable(error)
+          ? Respondable.toResponse(error)
+          : Effect.die(schemaError))
     }),
     Effect.provideContext(context)
   )
@@ -1107,6 +1122,23 @@ function makeStreamEncoder(
     ))
   }
 }
+
+function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {
+  for (const schema of endpoint.success) {
+    if (HttpApiSchema.isUpgrade(schema)) return schema
+  }
+}
+
+// RFC 9110 §7.8: `Upgrade` only applies with an `upgrade` connection option.
+const isUpgradeRequest = (request: HttpServerRequest, protocol: string): boolean =>
+  request.headers.upgrade?.toLowerCase() === protocol.toLowerCase() &&
+  /(?:^|,)\s*upgrade\s*(?:,|$)/i.test(request.headers.connection ?? "")
+
+const upgradeRequired = (protocol: string) =>
+  Response.empty({
+    status: 426,
+    headers: { connection: "Upgrade", upgrade: protocol }
+  })
 
 function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
   for (const schema of endpoint.success) {

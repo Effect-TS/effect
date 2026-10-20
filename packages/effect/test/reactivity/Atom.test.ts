@@ -505,6 +505,45 @@ describe("Atom", { concurrent: false }, () => {
     assert(Effect.isEffect(result.value.get))
   })
 
+  it.each([
+    { reconfigure: false, expected: 0 },
+    { reconfigure: true, expected: 1 }
+  ])(
+    "runtime atom with skipInitialRun keeps its seed only when an async runtime resolves unchanged (reconfigure: $reconfigure)",
+    async ({ expected, reconfigure }) => {
+      const config = Atom.make(0)
+      const runtime = Atom.runtime((get) => {
+        get(config)
+        return Layer.effectDiscard(Effect.sleep(10))
+      })
+      let runs = 0
+      const atom = runtime.atom(Effect.sync(() => ++runs))
+      const r = AtomRegistry.make({
+        initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { skipInitialRun: true })]
+      })
+      try {
+        r.mount(atom)
+        if (reconfigure) {
+          r.set(config, 1)
+        }
+        await vitest.advanceTimersByTimeAsync(10)
+
+        let result = r.get(atom)
+        assert(AsyncResult.isSuccess(result))
+        assert.strictEqual(result.value, expected)
+        assert.strictEqual(runs, expected)
+
+        r.refresh(atom)
+        result = r.get(atom)
+        assert(AsyncResult.isSuccess(result))
+        assert.strictEqual(result.value, expected + 1)
+        assert.strictEqual(runs, expected + 1)
+      } finally {
+        r.dispose()
+      }
+    }
+  )
+
   it("effect initial", async () => {
     const count = Atom.make(
       Effect.succeed(1).pipe(Effect.delay(100)),
@@ -519,6 +558,78 @@ describe("Atom", { concurrent: false }, () => {
     result = r.get(count)
     assert(AsyncResult.isSuccess(result))
     expect(result.value).toEqual(1)
+  })
+
+  for (const form of ["effect", "function", "runtime"] as const) {
+    it.effect(`effect initial value survives asynchronous failure (${form})`, () =>
+      Effect.gen(function*() {
+        const release = yield* Latch.make()
+        const fail = release.await.pipe(Effect.andThen(Effect.fail("boom")))
+        const count = form === "effect"
+          ? Atom.make(fail, { initialValue: 0 })
+          : form === "function"
+          ? Atom.make(() => fail, { initialValue: 0 })
+          : Atom.runtime(Layer.empty).atom(fail, { initialValue: 0 })
+        const r = AtomRegistry.make()
+        try {
+          r.mount(count)
+          const waiting = r.get(count)
+          assert(AsyncResult.isSuccess(waiting))
+          assert.strictEqual(waiting.value, 0)
+          assert.strictEqual(waiting.waiting, true)
+
+          yield* release.open
+          yield* Effect.yieldNow
+          const failure = r.get(count)
+          assert(AsyncResult.isFailure(failure))
+          assert.strictEqual(failure.waiting, false)
+          assert.deepStrictEqual(Cause.findErrorOption(failure.cause), Option.some("boom"))
+          assert.deepStrictEqual(AsyncResult.value(failure), Option.some(0))
+        } finally {
+          r.dispose()
+        }
+      }))
+  }
+
+  it.effect("effect failure retains the latest success published with setSelf", () =>
+    Effect.gen(function*() {
+      const publish = yield* Latch.make()
+      const release = yield* Latch.make()
+      const count = Atom.make((get) =>
+        Effect.gen(function*() {
+          yield* publish.await
+          get.setSelf(AsyncResult.success(1))
+          yield* release.await
+          return yield* Effect.fail("boom")
+        }), { initialValue: 0 })
+      const r = AtomRegistry.make()
+      try {
+        r.mount(count)
+        assert.deepStrictEqual(AsyncResult.value(r.get(count)), Option.some(0))
+        yield* publish.open
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(AsyncResult.value(r.get(count)), Option.some(1))
+
+        yield* release.open
+        yield* Effect.yieldNow
+        const failure = r.get(count)
+        assert(AsyncResult.isFailure(failure))
+        assert.deepStrictEqual(AsyncResult.value(failure), Option.some(1))
+      } finally {
+        r.dispose()
+      }
+    }))
+
+  it("effect synchronous failure does not retain an unexposed initial value", () => {
+    const count = Atom.make(Effect.fail("boom"), { initialValue: 0 })
+    const r = AtomRegistry.make()
+    try {
+      const failure = r.get(count)
+      assert(AsyncResult.isFailure(failure))
+      assert.deepStrictEqual(AsyncResult.value(failure), Option.none())
+    } finally {
+      r.dispose()
+    }
   })
 
   it("effectFn", async () => {
@@ -1421,6 +1532,30 @@ describe("Atom", { concurrent: false }, () => {
     r.dispose()
   })
 
+  it("initialValues skipInitialRun keeps an effect seed until a reactivity key is invalidated", () => {
+    let runs = 0
+    const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.withReactivity(["count"]))
+    const invalidate = counterRuntime.fn(() => Effect.void, { reactivityKeys: ["count"] })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, AsyncResult.success(0), { skipInitialRun: true })]
+    })
+    try {
+      r.mount(atom)
+      let result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 0)
+      assert.strictEqual(runs, 0)
+
+      r.set(invalidate, void 0)
+      result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 1)
+      assert.strictEqual(runs, 1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("does not queue an initialValues notification without listeners", () => {
     const state = Atom.make(0)
     const seen: Array<number> = []
@@ -2269,6 +2404,29 @@ describe("Atom", { concurrent: false }, () => {
     assert.strictEqual(result.value, 2)
     assert.strictEqual(runs, 2)
     unmount2()
+  })
+
+  test.each([
+    { age: 0, expected: 0 },
+    { age: 1_000, expected: 1 }
+  ])(`swr revalidates a kept initial value by staleTime (seed age: $age)`, async ({ age, expected }) => {
+    let runs = 0
+    const atom = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.swr({ staleTime: 1_000 }))
+    const seed = AsyncResult.success(0, { timestamp: Date.now() - age })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, seed, { skipInitialRun: true })]
+    })
+    try {
+      r.mount(atom)
+      await Effect.runPromise(Effect.yieldNow)
+
+      const result = r.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, expected)
+      assert.strictEqual(runs, expected)
+    } finally {
+      r.dispose()
+    }
   })
 
   test(`swr cancels queued revalidation when unmounted`, async () => {
@@ -3233,11 +3391,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20)
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20)
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)
@@ -3285,11 +3442,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20) // Short delay to create Initial state window
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20) // Short delay to create Initial state window
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)
@@ -3338,11 +3494,10 @@ describe("Atom", { concurrent: false }, () => {
       const DelayedKVS = Layer.succeed(
         KeyValueStore.KeyValueStore,
         KeyValueStore.makeStringOnly({
-          get: (key) =>
-            Effect.gen(function*() {
-              yield* Effect.sleep(20) // Short delay to create Initial state window
-              return storage.get(key)
-            }),
+          get: Effect.fnUntraced(function*(key) {
+            yield* Effect.sleep(20) // Short delay to create Initial state window
+            return storage.get(key)
+          }),
           set: (key, value) =>
             Effect.sync(() => {
               storage.set(key, value)

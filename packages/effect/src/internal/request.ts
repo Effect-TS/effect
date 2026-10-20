@@ -10,7 +10,7 @@ import type * as Request from "../Request.ts"
 import { makeEntry } from "../Request.ts"
 import type { RequestResolver } from "../RequestResolver.ts"
 import { Scheduler } from "../Scheduler.ts"
-import { exitDie, isEffect } from "./core.ts"
+import { exitDie, isEffect, withFiber } from "./core.ts"
 import * as effect from "./effect.ts"
 
 /** @internal */
@@ -97,13 +97,14 @@ const makeBatchMap = (resolver: RequestResolver<any>): BatchMap => {
 
 interface Batch {
   key: unknown
+  context: Context.Context<never>
   resolver: RequestResolver<any>
   map: BatchMap
   readonly entrySet: Set<Request.Entry<any>>
   readonly entries: Set<Request.Entry<any>>
   readonly delayEffect: Effect<void>
   readonly run: Effect<void, unknown>
-  fiber?: Fiber<void, unknown> | undefined
+  fiber?: Fiber<unknown, unknown> | undefined
 }
 
 const batchPool: Array<Batch> = []
@@ -143,21 +144,28 @@ const addEntry = <A extends Request.Any>(
   }
   const key = resolver.batchKey(entry)
   batch = batchMap.get(key)
+  const isNewBatch = batch === undefined
   if (!batch) {
     if (batchPool.length > 0) {
       batch = batchPool.pop()!
       batch.key = key
+      batch.context = fiber.context
       batch.resolver = resolver
       batch.map = batchMap
     } else {
       const newBatch: Batch = {
         key,
+        context: fiber.context,
         resolver,
         map: batchMap,
         entrySet: new Set(),
         entries: new Set(),
         delayEffect: effect.flatMap(
-          effect.suspend(() => newBatch.resolver.delay),
+          withFiber((delayFiber) => {
+            // Reentrant delay callbacks may fill the batch and interrupt this fiber.
+            newBatch.fiber = delayFiber
+            return newBatch.resolver.delay
+          }),
           (_) => runBatch(newBatch)
         ) as Effect<void>,
         run: effect.onExit(
@@ -178,6 +186,7 @@ const addEntry = <A extends Request.Any>(
             if (batchPool.length < 128) {
               newBatch.entrySet.clear()
               newBatch.key = undefined
+              newBatch.context = undefined as any
               newBatch.fiber = undefined
               newBatch.resolver = undefined as any
               newBatch.map = undefined as any
@@ -190,15 +199,21 @@ const addEntry = <A extends Request.Any>(
       batch = newBatch
     }
     batchMap.set(key, batch)
-    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
   }
 
   batch.entrySet.add(entry)
   batch.entries.add(entry)
+  if (isNewBatch) {
+    const delayFiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
+    // A synchronous delay may have already run and recycled this batch.
+    if (completed || batchMap.get(key) !== batch) return entry
+    batch.fiber = delayFiber
+  }
+
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
   batch.fiber!.interruptUnsafe(fiber.id)
-  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.cache.scheduler })
+  effect.runForkWith(batch.context)(runBatch(batch), { scheduler: Context.get(batch.context, Scheduler) })
   return entry
 }
 
@@ -216,7 +231,7 @@ const removeEntryUnsafe = <A extends Request.Any>(
   if (!batch.entries.delete(entry)) return
   batch.entrySet.delete(entry)
 
-  let fiber: Fiber<void, unknown> | undefined
+  let fiber: Fiber<unknown, unknown> | undefined
   if (batch.entries.size === 0) {
     batchMap.delete(key)
     fiber = batch.fiber

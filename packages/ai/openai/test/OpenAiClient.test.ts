@@ -458,14 +458,15 @@ describe("OpenAiClient", () => {
         body: { error: { message: "Internal server error" } }
       }))))
 
-    it.effect("maps schema error to InvalidOutputError reason", () =>
+    it.effect("maps a malformed successful response envelope to a non-retryable InvalidResponseError reason", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
         const result = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(Effect.flip)
 
         assert.strictEqual(result._tag, "AiError")
         assert.strictEqual(result.method, "createResponse")
-        assert.strictEqual(result.reason._tag, "InvalidOutputError")
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
+        assert.isFalse(result.isRetryable)
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
         body: { invalid: "response" } as any
@@ -959,6 +960,52 @@ describe("OpenAiClient", () => {
             response: makeResponseBody()
           }
         ]
+      }))))
+
+    it.effect("maps a malformed stream event to a non-retryable InvalidResponseError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponseStream({
+          model: "gpt-4o",
+          input: "test"
+        }).pipe(
+          Effect.andThen(([_, stream]) => Stream.runDrain(stream)),
+          Effect.flip
+        )
+
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
+        assert.isFalse(result.isRetryable)
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [
+          {
+            type: "response.output_text.delta",
+            output_index: "zero",
+            item_id: "msg_123",
+            content_index: 0,
+            delta: "hello"
+          }
+        ]
+      }))))
+
+    it.effect("maps an oversized SSE event to a non-retryable InvalidResponseError", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponseStream({
+          model: "gpt-4o",
+          input: "test"
+        }).pipe(
+          Effect.andThen(([_, stream]) => Stream.runDrain(stream)),
+          Effect.flip
+        )
+
+        assert.strictEqual(result.reason._tag, "InvalidResponseError")
+        assert.isFalse(result.isRetryable)
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [],
+        // Exceed the default 10 MiB SSE limit without completing an event.
+        trailer: `data: ${"x".repeat(10 * 1024 * 1024 + 1)}`
       }))))
 
     it.effect("maps HTTP error before stream starts", () =>

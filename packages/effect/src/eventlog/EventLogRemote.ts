@@ -24,7 +24,7 @@ import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import type * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
-import type { Entry, RemoteEntry, RemoteId } from "./EventJournal.ts"
+import { type Entry, type EventJournal, type EventJournalError, RemoteEntry, type RemoteId } from "./EventJournal.ts"
 import { type Identity, Registry } from "./EventLog.ts"
 import { EventLogEncryption, layerSubtle } from "./EventLogEncryption.ts"
 import {
@@ -35,6 +35,7 @@ import {
   EventLogRemoteRpcs,
   type HelloResponse,
   type StoreId,
+  type WriteAck,
   WriteEntries,
   WriteEntriesUnencrypted
 } from "./EventLogMessage.ts"
@@ -54,22 +55,35 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * It can write local entries to the remote, stream remote changes from a sequence
  * number, and run effects only after the supplied identity has authenticated.
  *
+ * Built-in remotes acknowledge writes instead of echoing them through `changes`.
+ * Custom remotes may return `void` from `write` to confirm uploads through
+ * `changes` instead.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
 export class EventLogRemote extends Context.Service<EventLogRemote, {
   readonly id: RemoteId
+  /**
+   * The lowest sequence the remote assigns, or 0 when omitted.
+   */
+  readonly firstSequence?: number | undefined
   readonly changes: (options: {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
     readonly startSequence: number
+    /**
+     * Looks up locally stored entries by id, so the remote can reuse them
+     * instead of decoding the matching changes.
+     */
+    readonly knownEntries?: EventJournal["Service"]["entriesById"] | undefined
   }) => Effect.Effect<Queue.Dequeue<RemoteEntry, EventLogRemoteError>, never, Scope.Scope>
   readonly write: (options: {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
     readonly entries: ReadonlyArray<Entry>
-  }) => Effect.Effect<void, EventLogRemoteError>
+  }) => Effect.Effect<ReadonlyArray<WriteAck> | void, EventLogRemoteError>
   readonly whenAuthenticated: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E | EventLogRemoteError, R | Identity>
@@ -172,8 +186,10 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
   }) => Effect.Effect<Uint8Array<ArrayBuffer>, Schema.SchemaError>
   readonly decodeChanges: (
     identity: Identity["Service"],
-    data: Uint8Array<ArrayBuffer>
-  ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError>
+    storeId: StoreId,
+    data: Uint8Array<ArrayBuffer>,
+    knownEntries?: EventJournal["Service"]["entriesById"]
+  ) => Effect.Effect<ReadonlyArray<RemoteEntry>, Schema.SchemaError | EventJournalError>
 }): Effect.fn.Return<EventLogRemote["Service"], EventLogRemoteError, Scope.Scope | EventLogRemoteClient | Registry> {
   const client = yield* EventLogRemoteClient
   const registry = yield* Registry
@@ -236,6 +252,7 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
 
   const remote = EventLogRemote.of({
     id: hello.remoteId,
+    firstSequence: hello.firstSequence,
     write: Effect.fnUntraced(
       function*(options) {
         yield* ensureAuthenticated(options.identity)
@@ -243,9 +260,13 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
         if (encoded.byteLength <= ChunkedMessage.chunkSize) {
           return yield* client["EventLog.WriteSingle"]({ data: encoded })
         }
-        for (const part of ChunkedMessage.split(chunkedIdCounter++, encoded)) {
-          yield* client["EventLog.WriteChunked"](part)
-        }
+        // Only the part the server receives last carries acknowledgements.
+        const acks = yield* Effect.forEach(
+          ChunkedMessage.split(chunkedIdCounter++, encoded),
+          (part) => client["EventLog.WriteChunked"](part),
+          { concurrency: 4 }
+        )
+        return acks.flat()
       },
       retryForbidden,
       Effect.mapError((cause) => new EventLogRemoteError({ method: "write", cause }))
@@ -263,20 +284,30 @@ export const makeWith = Effect.fnUntraced(function*({ encodeWrite, decodeChanges
           startSequence: options.startSequence
         }, { asQueue: true })
 
+        // A batch can start before `startSequence`; its earlier entries are dropped.
+        const offer = Effect.fnUntraced(function*(data: Uint8Array<ArrayBuffer>) {
+          const entries = yield* decodeChanges(options.identity, options.storeId, data, options.knownEntries)
+          const first = entries.findIndex((entry) => entry.remoteSequence >= options.startSequence)
+          if (first === -1) return
+          yield* Queue.offerAll(outgoing, entries.slice(first))
+        })
+
         while (true) {
           const parts = yield* Queue.takeAll(incoming)
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i]
             if (part._tag === "Single") {
-              yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, part.data))
+              yield* offer(part.data)
               continue
             }
             const data = ChunkedMessage.join(chunkedState, part)
             if (!data) continue
-            yield* Queue.offerAll(outgoing, yield* decodeChanges(options.identity, data))
+            yield* offer(data)
           }
         }
       }).pipe(
+        // Forbidden retries resubscribe with the same `startSequence`. Other failures
+        // propagate to EventLog, which reconnects from the journal's committed sequence.
         (effect) => retryForbidden(effect, options),
         Effect.mapError((cause) => {
           if (cause._tag === "EventLogRemoteError") {
@@ -322,25 +353,50 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
 > {
   const encryption = yield* EventLogEncryption
 
+  // Skip decryption only when every entry in a batch is already stored.
+  const decodeChanges = Effect.fnUntraced(function*(
+    identity: Identity["Service"],
+    storeId: StoreId,
+    data: Uint8Array<ArrayBuffer>,
+    knownEntries?: EventJournal["Service"]["entriesById"]
+  ) {
+    const batches = yield* ChangesRpc.decodeEncrypted(data)
+    if (knownEntries === undefined) return yield* encryption.decrypt(identity, storeId, batches)
+    const stored = yield* knownEntries(batches.flatMap((batch) => batch.entryIds))
+    let offset = 0
+    const knownBatches = batches.map((batch) => {
+      const entries = stored.slice(offset, offset + batch.entryIds.length)
+      offset += batch.entryIds.length
+      return entries.every((entry): entry is Entry => entry !== undefined) ? entries : undefined
+    })
+    const decrypted = yield* encryption.decrypt(
+      identity,
+      storeId,
+      batches.filter((_, i) => knownBatches[i] === undefined)
+    )
+    let next = 0
+    return batches.flatMap((batch, i) => {
+      const entries = knownBatches[i]
+      return entries === undefined
+        ? batch.entryIds.map(() => decrypted[next++])
+        : entries.map((entry, j) =>
+          new RemoteEntry({ remoteSequence: batch.sequence + j, entry }, { disableChecks: true })
+        )
+    })
+  })
+
   return yield* makeWith({
     encodeWrite: (options) =>
-      encryption.encrypt(options.identity, options.entries).pipe(
-        Effect.flatMap((encryptedEntries) =>
+      encryption.encrypt(options.identity, options.storeId, options.entries).pipe(
+        Effect.flatMap((batches) =>
           new WriteEntries({
             publicKey: options.identity.publicKey,
             storeId: options.storeId,
-            encryptedEntries: encryptedEntries.map((entry, i) => ({
-              entryId: options.entries[i].id,
-              iv: entry.iv,
-              encryptedEntry: entry.encryptedEntry
-            }))
+            batches
           }).encoded
         )
       ),
-    decodeChanges: (identity, data) =>
-      ChangesRpc.decodeEncrypted(data).pipe(
-        Effect.flatMap((entries) => encryption.decrypt(identity, entries))
-      )
+    decodeChanges
   })
 })
 
@@ -362,7 +418,7 @@ export const makeUnencrypted: Effect.Effect<
       storeId: options.storeId,
       entries: options.entries
     }).encoded,
-  decodeChanges: (_identity, data) => ChangesRpc.decodeUnencrypted(data)
+  decodeChanges: (_identity, _storeId, data) => ChangesRpc.decodeUnencrypted(data)
 })
 
 /**

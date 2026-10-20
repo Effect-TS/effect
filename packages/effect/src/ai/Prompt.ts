@@ -465,9 +465,15 @@ export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions
    */
   readonly fileName?: string | undefined
   /**
-   * File data as base64 string of data, a byte array, or a URL.
+   * File data as a base64 string, a byte array, a URL, or the tagged JSON
+   * form that encoding produces for byte arrays and URLs.
    */
-  readonly data: string | Uint8Array | URL
+  readonly data:
+    | string
+    | Uint8Array
+    | URL
+    | { readonly _tag: "Uint8Array"; readonly base64: string }
+    | { readonly _tag: "URL"; readonly href: string }
 }
 
 /**
@@ -491,7 +497,18 @@ export const FilePart: Schema.Struct<{
   readonly type: Schema.Literal<"file">
   readonly mediaType: Schema.String
   readonly fileName: Schema.optional<Schema.String>
-  readonly data: Schema.Union<readonly [Schema.String, Schema.Uint8Array, Schema.URL]>
+  readonly data: Schema.Union<
+    readonly [
+      Schema.String,
+      Schema.decodeTo<
+        Schema.Uint8Array,
+        Schema.TaggedStruct<"Uint8Array", { readonly base64: Schema.Uint8ArrayFromBase64 }>
+      >,
+      Schema.decodeTo<Schema.URL, Schema.TaggedStruct<"URL", { readonly href: Schema.URLFromString }>>,
+      Schema.Uint8Array,
+      Schema.URL
+    ]
+  >
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
   readonly options: Schema.withDecodingDefault<
     Schema.$Record<
@@ -504,7 +521,27 @@ export const FilePart: Schema.Struct<{
   type: Schema.Literal("file"),
   mediaType: Schema.String,
   fileName: Schema.optional(Schema.String),
-  data: Schema.Union([Schema.String, Schema.Uint8Array, Schema.URL])
+  // The tagged members come first so that encoding produces JSON-safe data,
+  // while the raw members keep decoding byte arrays and URLs directly
+  data: Schema.Union([
+    Schema.String,
+    Schema.TaggedStruct("Uint8Array", { base64: Schema.Uint8ArrayFromBase64 }).pipe(Schema.decodeTo(
+      Schema.Uint8Array,
+      SchemaTransformation.transform({
+        decode: ({ base64 }) => base64,
+        encode: (base64) => ({ _tag: "Uint8Array", base64 }) as const
+      })
+    )),
+    Schema.TaggedStruct("URL", { href: Schema.URLFromString }).pipe(Schema.decodeTo(
+      Schema.URL,
+      SchemaTransformation.transform({
+        decode: ({ href }) => href,
+        encode: (href) => ({ _tag: "URL", href }) as const
+      })
+    )),
+    Schema.Uint8Array,
+    Schema.URL
+  ])
 }).annotate({ identifier: "FilePart" })
 
 /**
@@ -1407,36 +1444,7 @@ export const UserMessage: Schema.Struct<{
         never,
         never
       >,
-      Schema.$Array<
-        Schema.Union<
-          readonly [
-            Schema.Struct<{
-              readonly type: Schema.Literal<"text">
-              readonly text: Schema.String
-              readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
-              readonly options: Schema.withDecodingDefault<
-                Schema.$Record<
-                  Schema.String,
-                  Schema.NullOr<Schema.Codec<Schema.Json>>
-                >
-              >
-            }>,
-            Schema.Struct<{
-              readonly type: Schema.Literal<"file">
-              readonly mediaType: Schema.String
-              readonly fileName: Schema.optional<Schema.String>
-              readonly data: Schema.Union<readonly [Schema.String, Schema.Uint8Array, Schema.URL]>
-              readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
-              readonly options: Schema.withDecodingDefault<
-                Schema.$Record<
-                  Schema.String,
-                  Schema.NullOr<Schema.Codec<Schema.Json>>
-                >
-              >
-            }>
-          ]
-        >
-      >
+      Schema.$Array<Schema.Union<readonly [typeof TextPart, typeof FilePart]>>
     ]
   >
   readonly "~effect/ai/Prompt/Message": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Message">>

@@ -125,8 +125,8 @@ export type ConstructorDefault = "no-default" | "with-default"
  *
  * **When to use**
  *
- * Use when passing `disableChecks: true` to skip validation when you trust the
- * data. Pass `parseOptions` to control parsing behavior.
+ * Use when passing `disableChecks: true` to skip filters and checks while still
+ * parsing types and structure. Pass `parseOptions` to control parsing behavior.
  *
  * @see {@link BottomWithoutNew.makeEffect}
  * @see {@link BottomWithoutNew.make}
@@ -141,7 +141,8 @@ export interface MakeOptions {
    */
   readonly parseOptions?: SchemaAST.ParseOptions | undefined
   /**
-   * Whether to disable validation for the schema.
+   * Whether to skip filters and checks. Types and structure are still parsed,
+   * and constructor defaults still apply.
    */
   readonly disableChecks?: boolean | undefined
 
@@ -6318,12 +6319,6 @@ type Flatten<Schemas> = Schemas extends readonly [infer Head, ...infer Tail]
   ? Head extends Union<infer Inner> ? [...Flatten<Inner>, ...Flatten<Tail>]
   : [Head, ...Flatten<Tail>]
   : []
-type DiscriminantKey<T extends PropertyKey> = T extends number ? `${T}` : T
-type EnsureUniqueDiscriminants<Tags extends ReadonlyArray<PropertyKey>, Seen = never> = Tags extends
-  readonly [infer Head extends PropertyKey, ...infer Tail extends ReadonlyArray<PropertyKey>]
-  ? [DiscriminantKey<Head> & Seen] extends [never] ? EnsureUniqueDiscriminants<Tail, Seen | DiscriminantKey<Head>>
-  : never
-  : unknown
 type MatchCasesResult<Cases> = {
   [K in keyof Cases]-?: NonNullable<Cases[K]> extends (...args: Array<any>) => infer R ? R : never
 }[keyof Cases]
@@ -6408,10 +6403,9 @@ export type toTaggedUnion<
  *
  * **Gotchas**
  *
- * Rejects overlapping discriminant types in known member tuples at compile
- * time, including nested unions. Numeric and string values such as `1` and
- * `"1"` count as duplicates. Also throws at runtime if multiple members use the
- * same discriminant property key.
+ * Throws when multiple members use the same discriminant property key,
+ * including members of nested unions. Numeric and string values such as `1`
+ * and `"1"` count as duplicates.
  *
  * **Example** (Adding tagged-union utilities to an existing union)
  *
@@ -6438,7 +6432,7 @@ export type toTaggedUnion<
  */
 export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
   return <const Members extends ReadonlyArray<Constraint & { readonly Type: { readonly [K in Tag]: PropertyKey } }>>(
-    self: Union<Members> & NoInfer<EnsureUniqueDiscriminants<TaggedUnionUtils<Tag, Members>["discriminants"]>>
+    self: Union<Members>
   ): toTaggedUnion<Tag, Members> => {
     const cases: Record<PropertyKey, unknown> = {}
     const discriminants: Array<PropertyKey> = []
@@ -9941,7 +9935,9 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * @category schemas
  * @since 4.0.0
  */
-export const FormData: FormData = instanceOf(globalThis.FormData, {
+// Read the global inside the guard: resolving globalThis.FormData at module
+// scope loads undici on Node.
+export const FormData: FormData = declare((u): u is globalThis.FormData => u instanceof globalThis.FormData, {
   representation: {
     id: "effect/schema/FormData",
     payload: null
@@ -16152,16 +16148,19 @@ function makeClass<
   return out
 }
 
+/**
+ * Constructs a class instance from fields that were already validated against
+ * the class struct, without running the constructor's schema pass.
+ *
+ * @internal
+ */
+export function makeClassTrusted<Self>(self: new(input: any, options?: MakeOptions) => Self, fields: object): Self {
+  return new self(fields, { "~payload": { token: payloadToken, value: fields } })
+}
+
 function getClassTransformation(self: new(...args: ReadonlyArray<any>) => any) {
   return new SchemaTransformation.Transformation<any, any, never, never>(
-    SchemaGetter.transform((input) =>
-      new self(input, {
-        "~payload": {
-          token: payloadToken,
-          value: input
-        }
-      })
-    ),
+    SchemaGetter.transform((input) => makeClassTrusted(self, input)),
     SchemaGetter.passthrough()
   )
 }
@@ -16245,7 +16244,9 @@ function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Stru
  *
  * **Gotchas**
  *
- * Passing `disableChecks` in the options skips constructor validation.
+ * Passing `disableChecks: true` skips filters and checks, not parsing of types
+ * and structure. Wrong types and shapes are still rejected, and constructor
+ * defaults still apply.
  *
  * **Example** (Defining a basic class)
  *

@@ -96,6 +96,18 @@ export class MaxBufferSizeExceeded extends Data.TaggedError("MaxBufferSizeExceed
 }
 
 /**
+ * Error raised when a non-empty NDJSON frame is not valid JSON.
+ * The `cause` field preserves the original JSON parsing error.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class NdjsonDecodeError extends Data.TaggedError("NdjsonDecodeError")<{
+  readonly cause: unknown
+}> {}
+
+/**
  * Options shared by streaming RPC serialization formats.
  *
  * @stability unstable
@@ -150,7 +162,7 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
 export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"] => {
   const maxBufferSize = options?.maxBufferSize ?? defaultMaxBufferSize
   return RpcSerialization.of({
-    contentType: "application/ndjson",
+    contentType: "application/x-ndjson",
     includesFraming: true,
     codecFor: codecForJson,
     makeUnsafe: () => {
@@ -171,11 +183,15 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
             if (isBufferSizeExceeded(nlIndex - position, maxBufferSize)) {
               failMaxBufferSize(maxBufferSize)
             }
-            const line = buffer.slice(position, nlIndex)
+            const line = buffer.slice(position, buffer[nlIndex - 1] === "\r" ? nlIndex - 1 : nlIndex)
             position = nlIndex + 1
-            try {
-              items.push(JSON.parse(line))
-            } catch {
+            if (line.length > 0) {
+              try {
+                items.push(JSON.parse(line))
+              } catch (cause) {
+                buffer = ""
+                throw new NdjsonDecodeError({ cause })
+              }
             }
             nlIndex = buffer.indexOf("\n", position)
           }

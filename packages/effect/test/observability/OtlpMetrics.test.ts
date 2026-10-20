@@ -292,6 +292,28 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(secondMetric?.sum?.dataPoints[0].asDouble, 3)
       }).pipe(Effect.provide(TestLayerDelta)))
 
+    it.effect("reports a removed and recreated series from zero", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter("delta_removed_counter_test")
+        const histogram = Metric.histogram("delta_removed_histogram_test", { boundaries: [10] })
+
+        yield* Metric.update(counter, 5)
+        yield* Metric.update(histogram, 5)
+        yield* triggerExport
+        yield* Metric.remove(counter)
+        yield* Metric.remove(histogram)
+        yield* triggerExport
+        yield* Metric.update(counter, 7)
+        yield* Metric.update(histogram, 7)
+        yield* triggerExport
+
+        const requests = yield* MockHttpClient.requests
+        const last = requests[requests.length - 1]
+        assert.strictEqual(findMetric(last, "delta_removed_counter_test")?.sum?.dataPoints[0].asDouble, 7)
+        const histogramPoint = findMetric(last, "delta_removed_histogram_test")?.histogram?.dataPoints[0]
+        assert.deepStrictEqual([histogramPoint?.count, histogramPoint?.sum], [1, 7])
+      }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
+
     it.effect("reports histogram count and sum deltas across export intervals", () =>
       Effect.gen(function*() {
         const metricName = "delta_histogram_test"

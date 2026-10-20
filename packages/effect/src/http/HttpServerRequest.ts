@@ -72,8 +72,11 @@ export const TypeId = "~effect/http/HttpServerRequest"
  * **Details**
  *
  * It extends `HttpIncomingMessage` with request metadata, parsed cookies,
- * multipart accessors, WebSocket upgrade support, and a `modify` method for
- * creating adjusted request views.
+ * multipart accessors, connection upgrades, and a `modify` method for
+ * creating adjusted request views. `upgrade` completes a WebSocket handshake
+ * for `Upgrade: websocket`. Platforms that can hand over the connection, such
+ * as Node, answer other protocols with `101 Switching Protocols` and expose
+ * the raw connection.
  *
  * @stability unstable
  * @category models
@@ -1039,9 +1042,10 @@ const textDecoder = new TextDecoder()
  *
  * **Details**
  *
- * The host comes from the `host` header, defaulting to `localhost`, and the
- * protocol is `https` only when `x-forwarded-proto` is `https`; invalid URLs
- * return `Option.none`.
+ * Uses `host` (defaulting to `localhost`) and an exact `http` or `https` from
+ * `x-forwarded-proto`. Otherwise, infers HTTPS from a case-insensitive `https:`
+ * prefix in `originalUrl`, defaulting to HTTP. An absolute `url` keeps its own
+ * protocol and host. Invalid URLs return `Option.none`.
  *
  * @stability unstable
  * @category converting
@@ -1049,9 +1053,15 @@ const textDecoder = new TextDecoder()
  */
 export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
   const host = self.headers.host ?? "localhost"
-  const protocol = self.headers["x-forwarded-proto"] === "https" ? "https" : "http"
+  const forwardedProto = self.headers["x-forwarded-proto"]
+  const protocol = forwardedProto === "http" || forwardedProto === "https"
+    ? forwardedProto
+    : /^https:/i.test(self.originalUrl)
+    ? "https"
+    : "http"
   try {
-    return Option.some(new URL(self.url, `${protocol}://${host}`))
+    // Prefix paths with `.` so leading `//` cannot replace the host.
+    return Option.some(new URL(self.url.startsWith("/") ? `.${self.url}` : self.url, `${protocol}://${host}`))
   } catch {
     return Option.none()
   }

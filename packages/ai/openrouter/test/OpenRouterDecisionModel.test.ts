@@ -408,7 +408,7 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error.reason._tag, "InvalidUserInputError")
     }))
 
-  it.effect("maps a malformed successful response to a client InvalidOutputError", () =>
+  it.effect("maps a malformed successful response to a non-retryable client InvalidResponseError", () =>
     Effect.gen(function*() {
       const error = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
         Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
@@ -423,7 +423,7 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.module, "OpenRouterClient")
       assert.strictEqual(error.method, "createDecisions")
-      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.reason._tag, "InvalidResponseError")
     }))
 
   it.effect("make constructs a DecisionModel service", () =>
@@ -462,7 +462,7 @@ describe("OpenRouterDecisionModel", () => {
     Effect.gen(function*() {
       const { confidence: _choiceConfidence, ...department } = decisionsResponse.answers.department
       const { confidence: _scoreConfidence, legend: _legend, ...frustration } = decisionsResponse.answers.frustration
-      const { answers, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+      const { answers, id, metadata, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
         Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
         Effect.provide(makeClientLayer((request) =>
           Effect.succeed(jsonResponse(request, {
@@ -476,15 +476,18 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(answers.frustration.label, "Very angry, strong language")
       assert.strictEqual(answers.urgent.probability, 0.999)
       assert.deepStrictEqual({ ...usage }, { inputTokens: 312, outputTokens: 48 })
+      assert.isUndefined(id)
+      assert.deepStrictEqual(metadata.openrouter, {})
     }))
 
-  it.effect("drops provider-specific cost, id and provider metadata", () =>
+  it.effect("returns the response id, resolved model, cost and serving provider", () =>
     Effect.gen(function*() {
       const result = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
-        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model-latest" })),
         Effect.provide(makeClientLayer((request) =>
           Effect.succeed(jsonResponse(request, {
             ...decisionsResponse,
+            model: "test/decision-model-1.2",
             id: "decision-1",
             provider: "test-provider",
             usage: { ...decisionsResponse.usage, cost: 0.001 }
@@ -492,8 +495,9 @@ describe("OpenRouterDecisionModel", () => {
         ))
       )
       assert.deepStrictEqual({ ...result.usage }, { inputTokens: 312, outputTokens: 48 })
-      assert.isFalse("id" in result)
-      assert.isFalse("provider" in result)
+      assert.strictEqual(result.id, "decision-1")
+      assert.strictEqual(result.modelId, "test/decision-model-1.2")
+      assert.deepStrictEqual(result.metadata.openrouter, { cost: 0.001, provider: "test-provider" })
       assert.isFalse("cost" in result.answers.department)
     }))
 
@@ -771,6 +775,27 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
     }))
 
+  it.effect("decideSettled reports choice and score answers without probabilities as NoDistribution", () =>
+    Effect.gen(function*() {
+      const { probabilities: _choice, ...department } = decisionsResponse.answers.department
+      const { probabilities: _score, ...frustration } = decisionsResponse.answers.frustration
+      const { outcomes } = yield* DecisionModel.decideSettled(TicketTriage, { input: ticket }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            ...decisionsResponse,
+            answers: { ...decisionsResponse.answers, department, frustration }
+          }))
+        ))
+      )
+
+      assert.isTrue(Result.isFailure(outcomes.department) && outcomes.department.failure.reason === "NoDistribution")
+      assert.isTrue(
+        Result.isFailure(outcomes.frustration) && outcomes.frustration.failure.reason === "NoDistribution"
+      )
+      assert.isTrue(Result.isSuccess(outcomes.urgent))
+    }))
+
   it.effect("fails with InvalidOutputError when a score distribution skips a level index", () =>
     Effect.gen(function*() {
       const error = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
@@ -902,12 +927,11 @@ const jsonResponse = (
     })
   )
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag === "Uint8Array") {
-      const text = new TextDecoder().decode(body.body)
-      return JSON.parse(text)
-    }
-    return yield* Effect.die(new Error("Expected Uint8Array body"))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag === "Uint8Array") {
+    const text = new TextDecoder().decode(body.body)
+    return JSON.parse(text)
+  }
+  return yield* Effect.die(new Error("Expected Uint8Array body"))
+})

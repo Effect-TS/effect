@@ -50,13 +50,15 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.9.7
+          deno-version: v2.9.6
       - run: pnpm check
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
           GOMEMLIMIT: 4GiB
       - run: deno check .
       - run: pnpm test-types --target '>=5.9'
+        env:
+          TSTYCHE_FETCH_TIMEOUT: "120"
 
   build:
     name: Build
@@ -130,7 +132,7 @@ jobs:
             bun: ""
             command: pnpm test --max-concurrency=10
           - runtime: Deno
-            deno: v2.9.7
+            deno: v2.9.6
             bun: ""
             command: deno task test --max-concurrency=10
           - runtime: Bun
@@ -143,7 +145,7 @@ jobs:
       - name: Pre-pull test container images
         run: |
           docker pull ghcr.io/tursodatabase/libsql-server:main &
-          docker pull postgres:alpine &
+          docker pull postgres:14-alpine &
           docker pull mysql:lts &
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &

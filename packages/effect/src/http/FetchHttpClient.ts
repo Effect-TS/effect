@@ -6,6 +6,9 @@
  * runtimes, and Node.js environments where `globalThis.fetch` is available, or
  * anywhere a compatible fetch function can be supplied.
  *
+ * Requests with an `Upgrade` header fail with `TransportError` before anything
+ * is sent because fetch cannot hand over the connection.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -54,6 +57,16 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
 ) {}
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
+  if (request.headers.upgrade !== undefined) {
+    return Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.TransportError({
+          request,
+          description: "fetch cannot send an HTTP upgrade request"
+        })
+      })
+    )
+  }
   const fetch = fiber.getRef(Fetch)
   const options: globalThis.RequestInit = Context.getOrUndefined(fiber.context, RequestInit) ?? {}
   let headers = options.headers

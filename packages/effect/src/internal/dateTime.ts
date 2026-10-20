@@ -238,8 +238,12 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
  * so `makeUnsafe` appends "Z" to force UTC interpretation.
  * This check prevents appending "Z" to strings that already have a zone
  * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
+ * `Date.parse` also accepts a trailing `z` or `gmt` in any case. Only that trailing
+ * match is case-insensitive, so lowercase letters in a comment like "(xyz)" do not
+ * count as a zone.
  */
-const hasZone = (input: string): boolean => /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input)
+const hasZone = (input: string): boolean =>
+  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /z$|gmt$/i.test(input)
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)

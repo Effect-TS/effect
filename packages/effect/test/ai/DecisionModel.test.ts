@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Layer, Schema, SchemaGetter } from "effect"
+import { Context, Effect, Layer, Result, Schema, SchemaGetter } from "effect"
 import { Decision, DecisionModel, Model } from "effect/ai"
 import * as AiError from "effect/ai/AiError"
 
@@ -75,6 +75,11 @@ const succeedWith = (
 
 const failureOf = <A, E>(effect: Effect.Effect<A, E, DecisionModel.DecisionModel>) =>
   effect.pipe(Effect.match({ onFailure: (error) => error, onSuccess: () => undefined }))
+
+const unanswered = (outcome: Result.Result<unknown, Decision.Unanswered>) => {
+  assert.isTrue(Result.isFailure(outcome))
+  return Result.isFailure(outcome) ? outcome.failure : undefined
+}
 
 class Redactor extends Context.Service<Redactor, {
   readonly redact: (value: string) => string
@@ -262,7 +267,7 @@ describe("DecisionModel", () => {
 
   it.effect("decide returns answers keyed by decision with usage", () =>
     Effect.gen(function*() {
-      const { answers, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+      const { answers, metadata, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
 
       assert.deepStrictEqual(Object.keys(answers).sort(), ["department", "frustration", "urgent"])
 
@@ -281,8 +286,28 @@ describe("DecisionModel", () => {
 
       assert.strictEqual(usage.inputTokens, 12)
       assert.strictEqual(usage.outputTokens, undefined)
+      assert.deepStrictEqual(metadata, {})
     }).pipe(
       Effect.provide(succeedWith(triageAnswers, { inputTokens: 12, outputTokens: undefined }))
+    ))
+
+  it.effect("decide returns the provider's response id, model id and metadata", () =>
+    Effect.gen(function*() {
+      const response = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+
+      assert.strictEqual(response.id, "decision-1")
+      assert.strictEqual(response.modelId, "provider/model-2026")
+      assert.deepStrictEqual(response.metadata, { provider: { cost: 0.002 } })
+    }).pipe(
+      Effect.provide(makeLayer(() =>
+        Effect.succeed({
+          answers: triageAnswers,
+          usage: { inputTokens: 12, outputTokens: 3 },
+          id: "decision-1",
+          modelId: "provider/model-2026",
+          metadata: { provider: { cost: 0.002 } }
+        })
+      ))
     ))
 
   it.effect("classify and rate retain distributions when the provider omits confidence", () =>
@@ -577,7 +602,7 @@ describe("DecisionModel", () => {
     )
   })
 
-  it.effect("provider AiError propagates through decide", () => {
+  it.effect("provider AiError propagates through decide and decideSettled", () => {
     const error = AiError.make({
       module: "DecisionModelTest",
       method: "decide",
@@ -585,9 +610,8 @@ describe("DecisionModel", () => {
     })
 
     return Effect.gen(function*() {
-      const result = yield* failureOf(DecisionModel.decide(TicketTriage, { input: ticket }))
-
-      assert.strictEqual(result, error)
+      assert.strictEqual(yield* failureOf(DecisionModel.decide(TicketTriage, { input: ticket })), error)
+      assert.strictEqual(yield* failureOf(DecisionModel.decideSettled(TicketTriage, { input: ticket })), error)
     }).pipe(
       Effect.provide(makeLayer(() => Effect.fail(error)))
     )
@@ -650,6 +674,83 @@ describe("DecisionModel", () => {
       Effect.provide(succeedWith({
         ...triageAnswers,
         urgent: { _tag: "Probability" as const, probability: 1.5 }
+      }))
+    ))
+
+  it.effect("decideSettled keeps valid answers beside refused and missing decisions", () =>
+    Effect.gen(function*() {
+      const { outcomes, usage } = yield* DecisionModel.decideSettled(TicketTriage, { input: ticket })
+
+      assert.deepStrictEqual(Object.keys(outcomes).sort(), ["department", "frustration", "urgent"])
+      assert.deepStrictEqual(outcomes.frustration, Result.succeed(expectedAnswers.frustration))
+      assert.strictEqual(unanswered(outcomes.department)?.reason, "Refused")
+      assert.deepStrictEqual(unanswered(outcomes.urgent), {
+        _tag: "Unanswered",
+        reason: "Missing",
+        description: "Provider returned no answer for decision \"urgent\""
+      })
+      assert.strictEqual(usage.inputTokens, 12)
+    }).pipe(
+      Effect.provide(succeedWith({
+        department: { _tag: "Refusal" },
+        frustration: triageAnswers.frustration
+      }, { inputTokens: 12, outputTokens: undefined }))
+    ))
+
+  for (
+    const [name, key, answer, reason, description] of [
+      [
+        "an unknown label is Invalid even without probabilities",
+        "department",
+        { _tag: "Classify", label: "legal" },
+        "Invalid",
+        "Provider returned an unknown label for decision \"department\""
+      ],
+      [
+        "a classify answer without probabilities is NoDistribution",
+        "department",
+        { _tag: "Classify", label: "billing" },
+        "NoDistribution",
+        "Provider returned no probabilities for decision \"department\""
+      ],
+      [
+        "a rate answer without probabilities is NoDistribution",
+        "frustration",
+        { _tag: "Rate", rating: 1 },
+        "NoDistribution",
+        "Provider returned no probabilities for decision \"frustration\""
+      ],
+      [
+        "an incomplete distribution is Invalid",
+        "department",
+        { _tag: "Classify", label: "billing", probabilities: { billing: 1 } },
+        "Invalid",
+        "Provider returned no probability for label \"technical\" of decision \"department\""
+      ]
+    ] as const
+  ) {
+    it.effect(`${name}, with the description strict decide fails with`, () =>
+      Effect.gen(function*() {
+        const { outcomes } = yield* DecisionModel.decideSettled(TicketTriage, { input: ticket })
+        const error = yield* failureOf(DecisionModel.decide(TicketTriage, { input: ticket }))
+
+        assert.deepStrictEqual(unanswered(outcomes[key]), { _tag: "Unanswered", reason, description })
+        assert.strictEqual(error?.reason._tag === "InvalidOutputError" && error.reason.description, description)
+      }).pipe(
+        Effect.provide(succeedWith({ ...triageAnswers, [key]: answer }))
+      ))
+  }
+
+  it.effect("decide fails with ContentPolicyError for a refusal before reporting earlier invalid answers", () =>
+    Effect.gen(function*() {
+      const error = yield* failureOf(DecisionModel.decide(TicketTriage, { input: ticket }))
+
+      assert.strictEqual(error?.reason._tag, "ContentPolicyError")
+    }).pipe(
+      Effect.provide(succeedWith({
+        ...triageAnswers,
+        department: { ...triageAnswers.department, label: "legal" },
+        frustration: { _tag: "Refusal" }
       }))
     ))
 

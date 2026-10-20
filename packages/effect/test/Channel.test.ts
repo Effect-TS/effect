@@ -261,6 +261,21 @@ describe("Channel", () => {
         assertExitFailure(exit, Cause.fail(error))
       }))
 
+    it.effect("fromTransformStream - preserves upstream errors while a read is pending", () =>
+      Effect.gen(function*() {
+        const channel = Channel.fromTransformStream<string, number, number, Error>({
+          evaluate: () => new TransformStream<number, number>(),
+          onError: () => new Error("transform failed")
+        })
+        const exit = yield* Channel.fail("upstream failed").pipe(
+          Channel.pipeTo(channel),
+          Channel.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.fail("upstream failed"))
+      }))
+
     it.effect("acquireRelease", () =>
       Effect.gen(function*() {
         const acquired = yield* Ref.make(false)
@@ -787,6 +802,80 @@ describe("Channel", () => {
           Channel.runCollect
         )
         assert.deepStrictEqual(result, ["fallback: RateLimitError"])
+      }))
+  })
+
+  describe("typed recovery with mixed causes", () => {
+    class MixedError extends Data.TaggedError("MixedError") {}
+    const error = new MixedError()
+    const defect = new Error("boom")
+    const recovered = Channel.succeed("recovered")
+    const failOnce = (self: Channel.Channel<never, MixedError, never>) => {
+      let attempts = 0
+      return Channel.suspend(() => attempts++ === 0 ? self : Channel.succeed("retried"))
+    }
+    const recoveries: Record<
+      string,
+      (self: Channel.Channel<never, MixedError, never>) => Channel.Channel<unknown, unknown, unknown>
+    > = {
+      catch: (self) => Channel.catch(self, () => recovered),
+      catchTag: (self) => Channel.catchTag(self, "MixedError", () => recovered),
+      catchIf: (self) => Channel.catchIf(self, () => true, () => recovered),
+      catchFilter: (self) => Channel.catchFilter(self, Result.succeed, () => recovered),
+      ignore: (self) => Channel.ignore(self),
+      retry: (self) => Channel.retry(failOnce(self), Schedule.recurs(1))
+    }
+    const failWith = (...reasons: Array<Cause.Reason<MixedError>>) => Channel.failCause(Cause.fromReasons(reasons))
+    const reasonsOf = (exit: Exit.Exit<unknown, unknown>) =>
+      Exit.isSuccess(exit) ? exit : exit.cause.reasons.map((reason) =>
+        reason._tag === "Fail"
+          ? ["Fail", reason.error]
+          : reason._tag === "Die"
+          ? ["Die", reason.defect]
+          : ["Interrupt", reason.fiberId]
+      )
+
+    it.effect("defects take precedence over typed errors", () =>
+      Effect.gen(function*() {
+        for (const [name, recover] of Object.entries({ ...recoveries, orDie: Channel.orDie })) {
+          const failAndDie = yield* recover(failWith(Cause.makeFailReason(error), Cause.makeDieReason(defect))).pipe(
+            Channel.runDrain,
+            Effect.exit
+          )
+          assert.deepStrictEqual(reasonsOf(failAndDie), [["Die", error], ["Die", defect]], name)
+
+          const failInterruptAndDie = yield* recover(failWith(
+            Cause.makeFailReason(error),
+            Cause.makeInterruptReason(1),
+            Cause.makeDieReason(defect)
+          )).pipe(Channel.runDrain, Effect.exit)
+          assert.deepStrictEqual(
+            reasonsOf(failInterruptAndDie),
+            [["Die", error], ["Interrupt", 1], ["Die", defect]],
+            name
+          )
+        }
+      }))
+
+    it.effect("interrupts beside a typed error do not block recovery", () =>
+      Effect.gen(function*() {
+        for (const [name, recover] of Object.entries(recoveries)) {
+          const exit = yield* recover(failWith(Cause.makeFailReason(error), Cause.makeInterruptReason(1))).pipe(
+            Channel.runDrain,
+            Effect.exit
+          )
+          assert.isTrue(Exit.isSuccess(exit), name)
+        }
+      }))
+
+    it.effect("error mapping keeps defects and interrupts", () =>
+      Effect.gen(function*() {
+        const exit = yield* failWith(
+          Cause.makeFailReason(error),
+          Cause.makeInterruptReason(1),
+          Cause.makeDieReason(defect)
+        ).pipe(Channel.mapError(() => "mapped"), Channel.runDrain, Effect.exit)
+        assert.deepStrictEqual(reasonsOf(exit), [["Fail", "mapped"], ["Interrupt", 1], ["Die", defect]])
       }))
   })
 

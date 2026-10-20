@@ -904,7 +904,12 @@ function extractResponseBodies(
     const headers = HttpApiSchema.isWithHeaders(schema) ? schema.headers : annotation?.headersCodec
     const status = getStatus(schema)
     const ast = body.ast
-    if (HttpApiSchema.isStreamSchema(body)) {
+    if (HttpApiSchema.isUpgrade(body)) {
+      addNoContent(status, getDescription(ast) ?? "Switching Protocols")
+      map.get(status)!.headers.push(
+        Schema.Struct({ connection: Schema.Literal("Upgrade"), upgrade: Schema.Literal(body.protocol) })
+      )
+    } else if (HttpApiSchema.isStreamSchema(body)) {
       addStreamContent(body, status)
     } else if (HttpApiSchema.isNoContent(ast)) {
       addNoContent(status, getDescription(schema.ast) ?? getDescription(ast) ?? "<No Content>")

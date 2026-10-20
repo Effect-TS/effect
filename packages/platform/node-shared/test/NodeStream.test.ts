@@ -81,6 +81,28 @@ describe("Stream", () => {
       yield* Effect.promise(() => closed)
     }))
 
+  it.effect("handles a late upload error after overflow without leaking listeners", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ read() {} })
+      yield* Effect.addFinalizer(() => Effect.sync(() => readable.destroy()))
+      readable.push(Buffer.from("too large"))
+      const error = yield* NodeStream.toString(() => readable, {
+        maxBytes: 1,
+        destroyOnOverflow: false,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.instanceOf(error, NodeStream.MaxBytesError)
+      assert.isFalse(readable.destroyed)
+      readable.push(Buffer.from("remaining upload"))
+      const closed = new Promise<void>((resolve) => readable.once("close", resolve))
+      readable.destroy(new Error("late upload failure"))
+      yield* Effect.promise(() => closed)
+      for (const event of ["data", "end", "error", "close", "finish"]) {
+        assert.strictEqual(readable.listenerCount(event), 0)
+      }
+    }))
+
   it.effect("should read a stream", () =>
     Effect.gen(function*() {
       const stream = NodeStream.fromReadable<"error", string>({

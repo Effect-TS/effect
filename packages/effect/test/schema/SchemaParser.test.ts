@@ -1062,6 +1062,35 @@ describe("SchemaParser", () => {
       strictEqual(calls.join(","), "a,b,c")
     })
 
+    it.effect("keeps earlier results intact when a suspended Struct decoder is run again", () =>
+      Effect.gen(function*() {
+        let ids = 0
+        let names = 0
+        const id = Schema.Number.pipe(Schema.decode({
+          decode: SchemaGetter.transformEffect(() => Effect.sync(() => ++ids)),
+          encode: SchemaGetter.passthrough()
+        }))
+        const schema = Schema.Struct({
+          name: Schema.String.pipe(Schema.decode({
+            decode: SchemaGetter.transform((name) => {
+              names++
+              return name.toUpperCase()
+            }),
+            encode: SchemaGetter.passthrough()
+          })),
+          id,
+          nextId: id
+        })
+        const program = SchemaParser.decodeUnknownEffect(schema)({ name: "a", id: 0, nextId: 0 })
+        const first = yield* program
+        const second = yield* program
+        deepStrictEqual([first, second], [
+          { name: "A", id: 1, nextId: 2 },
+          { name: "A", id: 3, nextId: 4 }
+        ])
+        strictEqual(names, 1)
+      }))
+
     it("converts synchronous property parser throws into defects", () => {
       const field = Schema.declareConstructor<string>()([], () => () => {
         throw new Error("property defect")

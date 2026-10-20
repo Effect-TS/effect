@@ -3,15 +3,11 @@ import type { Effect, Repeat, Retry } from "../Effect.ts"
 import { constant, constTrue, dual, identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Pull from "../Pull.ts"
-import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import type { NoInfer } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
 import * as core from "./core.ts"
 import * as effect from "./effect.ts"
-
-const findErrorOnly = <E>(cause: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
-  cause.reasons.every(core.isFailReason) ? effect.findError(cause) : Result.fail(cause as Cause.Cause<never>)
 
 /** @internal */
 export const repeatOrElse: {
@@ -47,7 +43,7 @@ export const repeatOrElse: {
         ),
         (out) => effect.succeed(out as B)
       ),
-      findErrorOnly,
+      effect.findRecoverableError,
       (error) => orElse(error, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
     )
   }))
@@ -73,7 +69,7 @@ export const retryOrElse: {
     let lastError!: E
     const loop: Effect<A, E1 | Cause.Done<A1>, R | R1> = effect.catchCauseFilter(
       effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)),
-      findErrorOnly,
+      effect.findRecoverableError,
       (error) => {
         lastError = error
         return effect.flatMap(step(error), (meta_) => {

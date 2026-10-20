@@ -8,7 +8,7 @@ import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import { identity } from "../../Function.ts"
+import { constVoid, identity } from "../../Function.ts"
 import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Metric from "../../Metric.ts"
@@ -67,6 +67,9 @@ export interface EntityManager {
   readonly interruptShard: (shardId: ShardId, options?: {
     readonly force?: boolean
   }) => Effect.Effect<void>
+  // Whether any of the shard's entities are still open, including those that
+  // `interruptShard` is waiting on
+  readonly hasServersUnsafe: (shardId: ShardId) => boolean
 
   readonly activeEntityCount: Effect.Effect<number>
 }
@@ -137,6 +140,7 @@ export const make = Effect.fnUntraced(function*<
     readonly maxIdleTime?: Input | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
+    readonly mailboxMetrics?: boolean | undefined
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never, never> | undefined
     readonly spanAttributes?: Record<string, string> | undefined
@@ -147,6 +151,7 @@ export const make = Effect.fnUntraced(function*<
   const managerScope = yield* Effect.scope
   const storageEnabled = options.storage !== MessageStorage.noop
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
+  const mailboxMetrics = options.mailboxMetrics ?? config.entityMailboxMetrics
   const clock = yield* Clock
   const context = yield* Effect.context<Rpc.Services<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
   const defectRetryPolicy = options.defectRetryPolicy
@@ -155,6 +160,22 @@ export const make = Effect.fnUntraced(function*<
   const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
+  // The series reads the mailbox size on snapshot, so delivery does no extra work.
+  const registerMailboxSize = (address: EntityAddress, activeRequests: EntityState["activeRequests"]) =>
+    Metric.registerUnsafe(
+      Metric.withAttributes(ClusterMetrics.entityMailboxSize, {
+        type: entity.type,
+        id: address.entityId,
+        shard: address.shardId.toString()
+      }),
+      context as Context.Context<never>,
+      {
+        get: () => ({ value: BigInt(activeRequests.size) }),
+        update: constVoid,
+        modify: constVoid
+      }
+    )
+
   // add internal rpcs
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
@@ -162,6 +183,34 @@ export const make = Effect.fnUntraced(function*<
   // Entities finishing their in-flight requests after removal, which still
   // accept interrupts and acks
   const drainingServers = new Map<EntityId, EntityState>()
+  // Mailboxes of every resident entity, including draining ones. Unlike the
+  // server maps it is not keyed by entity id, which can be resident on several
+  // shards at once.
+  const residentMailboxes = new Set<EntityState["activeRequests"]>()
+
+  // Registered before the entities resource map, so the series is removed
+  // only after every entity has drained on shutdown.
+  yield* Effect.acquireRelease(
+    Effect.sync(() =>
+      Metric.registerUnsafe(
+        Metric.withAttributes(ClusterMetrics.entityMailboxSizeMax, { type: entity.type }),
+        context as Context.Context<never>,
+        {
+          get: () => {
+            let max = 0
+            for (const mailbox of residentMailboxes) {
+              if (mailbox.size > max) max = mailbox.size
+            }
+            return { value: BigInt(max) }
+          },
+          update: constVoid,
+          modify: constVoid
+        }
+      )
+    ),
+    (registration) => Effect.sync(registration.remove)
+  )
+
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Latch.Latch
     readonly force: Latch.Latch
@@ -196,10 +245,16 @@ export const make = Effect.fnUntraced(function*<
       closing: false
     }
 
+    // Finalizers run in reverse, so the mailbox series and the resident
+    // mailbox are removed only after the drain finalizer below has finished.
+    const activeRequests: EntityState["activeRequests"] = new Map()
+    let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
         releaseEntity(address)
+        mailboxSeries?.remove()
+        residentMailboxes.delete(activeRequests)
       })
     )
 
@@ -213,7 +268,6 @@ export const make = Effect.fnUntraced(function*<
       }
     )
 
-    const activeRequests: EntityState["activeRequests"] = new Map()
     const retired = Latch.makeUnsafe()
     const isActive = () => !retired.isOpen()
 
@@ -505,6 +559,10 @@ export const make = Effect.fnUntraced(function*<
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
+    residentMailboxes.add(activeRequests)
+    if (mailboxMetrics) {
+      mailboxSeries = registerMailboxSize(address, activeRequests)
+    }
 
     return state
   }, Effect.provideService(CurrentLogAnnotations, {})))
@@ -521,15 +579,18 @@ export const make = Effect.fnUntraced(function*<
     })
   }
 
-  // update metrics for active servers
-  const typeAttributes = Metric.CurrentMetricAttributes.context({ type: entity.type })
-  yield* Effect.sync(() => {
-    ClusterMetrics.entities.updateUnsafe(BigInt(activeServers.size), typeAttributes)
-  }).pipe(
-    Effect.andThen(Effect.sleep(1000)),
-    Effect.forever,
-    Effect.forkIn(managerScope)
+  // The series reads the active entity count on snapshot, so an idle runner
+  // does no work.
+  const entitiesSeries = Metric.registerUnsafe(
+    Metric.withAttributes(ClusterMetrics.entities, { type: entity.type }),
+    context as Context.Context<never>,
+    {
+      get: () => ({ value: BigInt(activeServers.size) }),
+      update: constVoid,
+      modify: constVoid
+    }
   )
+  yield* Scope.addFinalizer(managerScope, Effect.sync(entitiesSeries.remove))
 
   function sendEnvelope(server: EntityState, message: Message.IncomingEnvelope): Effect.Effect<void> {
     const entry = server.activeRequests.get(message.envelope.requestId)
@@ -751,6 +812,12 @@ export const make = Effect.fnUntraced(function*<
     },
     clearProcessed() {
       processedRequestIds.clear()
+    },
+    hasServersUnsafe(shardId) {
+      for (const address of serverCloseLatches.keys()) {
+        if (shardId[Equal.symbol](address.shardId)) return true
+      }
+      return false
     },
     isResidentUnsafe: (address) => entities.hasUnsafe(address),
     residentAddressesUnsafe: () => entities.keysUnsafe(),
