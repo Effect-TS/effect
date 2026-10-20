@@ -4502,7 +4502,7 @@ const makeCachedUnsafe = <A, E, R>(
   const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
     run.awaiters++
     onExitUnsafe(fiber, () => {
-      // Abandon the run once every caller has left, unless it already finished.
+      // Abandon the run once every caller has left, unless its source already finished.
       if (--run.awaiters > 0 || run.done) return
       // Detach before interruption so new callers start a fresh run.
       if (current === run) current = undefined
@@ -4532,7 +4532,7 @@ const makeCachedUnsafe = <A, E, R>(
       run.fiber.evaluate(
         onExitPrimitive(self, (exit_) => {
           run.done = true
-          // An abandoned run must not overwrite or clear a replacement run.
+          // A detached run must not publish its result or clear a replacement run.
           if (current !== run) return
           current = undefined
           // Interruption is abandonment, so it is never cached.
@@ -4545,6 +4545,7 @@ const makeCachedUnsafe = <A, E, R>(
       return run.fiber._exit ?? joined
     }),
     sync(() => {
+      // Existing callers keep the in-flight run; new callers start a fresh one.
       current = undefined
       exit = undefined
     })

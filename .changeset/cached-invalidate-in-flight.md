@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Make `Effect.cachedInvalidateWithTTL` recompute after an invalidation that happens while the cached effect is still running, instead of caching the stale result.
+Fix `Effect.cachedInvalidateWithTTL` caching a stale result when invalidated while the effect is running.
