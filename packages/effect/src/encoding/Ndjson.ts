@@ -375,7 +375,10 @@ export const decode = <IE = never, Done = unknown>(options?: {
         } catch (cause) {
           return new NdjsonError({ kind: "Unpack", reason: "InvalidUtf8", unterminated, cause })
         }
+        const firstLine = decoder !== utf8Decoder
         decoder = utf8Decoder
+        // A stripped BOM alone is not an unterminated record.
+        if (firstLine && unterminated && line.length === 0) return
         return parseLine(line, out, ignoreEmptyLines, unterminated)
       }
 
