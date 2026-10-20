@@ -17,4 +17,4 @@ Replace `effect/Crypto` with family-specific `effect/crypto/*` services, opaque 
 
 Existing workflow ID, activity idempotency key and event log table-name encodings are unchanged.
 
-UUIDv7 and ULID generation is now monotonic below the maximum 48-bit timestamp, including within a millisecond and across clock rollback. Ordering is per `SecureRandom` instance; unsafe helpers, model UUIDv7 defaults and `EventJournal.makeEntryIdUnsafe()` without an explicit timestamp share per-realm ordering.
+UUIDv7 and ULID generation is now monotonic below the maximum 48-bit timestamp, including within a millisecond and across clock rollback. Ordering is per `SecureRandom` instance; the unsafe helpers and model UUIDv7 defaults share per-realm ordering.

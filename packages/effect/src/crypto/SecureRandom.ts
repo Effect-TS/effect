@@ -340,9 +340,8 @@ export const uuidV4Unsafe: {
  * Below the maximum timestamp, every UUIDv7 generated in this JS realm
  * (process or worker) sorts after the previous one, as a string and as bytes,
  * using the counter described on the `SecureRandom` service's `uuidV7`. The
- * ordering is shared with
- * `Model.UuidV7WithGenerate` and `EventJournal.makeEntryIdUnsafe`, and does not
- * hold across processes or workers. Consecutive UUIDv7s reveal their
+ * ordering is shared with `Model.UuidV7WithGenerate`, and does not hold across
+ * processes or workers. Consecutive UUIDv7s reveal their
  * generation order, so never use them as secrets.
  *
  * **Gotchas**
