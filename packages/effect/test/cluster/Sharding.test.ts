@@ -3240,6 +3240,104 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
     }))
 
+  it.effect("interrupts both draining addresses with the same entity id independently", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const layer = Sharding.layer.pipe(
+        Layer.provide(Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+        )),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 2,
+          entityTerminationTimeout: 1000,
+          refreshAssignmentsInterval: 10
+        }))
+      )
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const run = Rpc.make("run", { payload: {} }).annotate(ClusterSchema.Persisted, false)
+        const entity = Entity.make("DrainingDuplicateEntityId", [run])
+        const interrupted: Array<ShardId.ShardId> = []
+        const started = yield* Queue.make<void>()
+        yield* sharding.registerEntity(
+          entity,
+          Effect.gen(function*() {
+            const address = yield* Entity.CurrentAddress
+            return entity.of({
+              run: () =>
+                Effect.andThen(Queue.offer(started, undefined), Effect.never).pipe(
+                  Effect.onInterrupt(() => Effect.sync(() => interrupted.push(address.shardId)))
+                )
+            })
+          })
+        )
+        const requests = []
+        for (const shardId of [ShardId.make("default", 1), ShardId.make("default", 2)]) {
+          while (!sharding.hasShardId(shardId)) {
+            yield* TestClock.adjust(10)
+          }
+          const address = EntityAddress.make({
+            shardId,
+            entityType: EntityType.make(entity.type),
+            entityId: EntityId.make("duplicate")
+          })
+          const requestId = yield* sharding.getSnowflake
+          yield* sharding.send(
+            new Message.IncomingRequest<typeof run>({
+              envelope: Envelope.makeRequest<typeof run>({
+                requestId,
+                address,
+                tag: "run",
+                payload: {},
+                headers: Headers.empty
+              }),
+              lastSentReply: Option.none(),
+              respond: () => Effect.void,
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+            })
+          )
+          yield* Queue.take(started)
+          requests.push({ address, requestId })
+        }
+
+        storageState.assignSelf = false
+        while ((yield* sharding.activeEntityCount) > 0) {
+          yield* TestClock.adjust(10)
+        }
+        assert.strictEqual(storageState.releaseCalls.length, 0, "both requests must still be draining")
+        assert.deepStrictEqual(interrupted, [])
+
+        for (const [index, { address, requestId }] of requests.entries()) {
+          // Deserialized control envelopes have equal addresses, not the original objects.
+          const equalAddress = EntityAddress.make({
+            shardId: ShardId.make("default", address.shardId.id),
+            entityType: EntityType.make(entity.type),
+            entityId: EntityId.make("duplicate")
+          })
+          assert.notStrictEqual(equalAddress, address)
+          yield* sharding.send(
+            new Message.IncomingEnvelope({
+              envelope: new Envelope.Interrupt({
+                id: yield* sharding.getSnowflake,
+                address: equalAddress,
+                requestId
+              })
+            })
+          )
+          // Well short of the 1000ms termination timeout: only this interrupt can release the lock.
+          yield* TestClock.adjust(100)
+          const expected = requests.slice(0, index + 1).map(({ address }) => address.shardId)
+          assert.sameMembers([...interrupted], expected)
+          assert.sameMembers([...storageState.releaseCalls], expected)
+        }
+      }).pipe(Effect.ensuring(TestClock.adjust(1000)), Effect.provide(layer))
+    }))
+
   it.effect("acknowledges stream chunks from a request still draining on the lock holder", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
