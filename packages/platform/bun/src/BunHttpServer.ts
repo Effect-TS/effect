@@ -11,6 +11,18 @@
  * combined server, configurable server options, and a test server with an
  * HTTP client.
  *
+ * When a handler responds without reading the whole request body, Bun reads
+ * the rest of it in full and keeps the connection open. Nothing caps that
+ * read, so rejecting a large upload early still costs the whole upload. A
+ * response with `Connection: close`, such as the early `413` from
+ * `HttpApiBuilder`, is handled differently: Bun closes the socket as soon as
+ * the response is written, with no grace period. The client's next write
+ * fails, and a client that is still sending the body can lose the response.
+ *
+ * Before Bun 1.4.1, a response stream that failed could end the response
+ * cleanly, so the client couldn't tell a failed body from a complete one.
+ * Bun 1.4.1 and later abort the connection instead.
+ *
  * @stability unstable
  * @since 4.0.0
  */

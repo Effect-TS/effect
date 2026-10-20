@@ -10,6 +10,20 @@
  * response while still reading the request payload can stall
  * (denoland/deno#36966).
  *
+ * When a handler responds without reading the whole request body, Deno reads
+ * the rest of it in full. Nothing caps that read, so rejecting a large upload
+ * early still costs the whole upload. If the handler never touched the body,
+ * Deno adds `connection: close` to the response but still reads the whole body
+ * before it closes the socket. If the handler read part of it, Deno keeps the
+ * connection open.
+ *
+ * Deno decides by itself whether to keep the connection open, and a
+ * `Connection: close` set by the application doesn't change that decision.
+ * When Deno keeps the connection, for example after a partly read body or a
+ * small body that had already arrived, the header is sent but the next request
+ * is served on the same connection. When Deno closes it, it appends its own
+ * `connection: close`, so the response carries the header twice.
+ *
  * @stability unstable
  * @since 4.0.0
  */
