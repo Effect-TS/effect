@@ -126,11 +126,9 @@ export const defaultTeardown: Teardown = <E, A>(
  *
  * **Details**
  *
- * The runner executes Effect programs as main entry points. The provided
- * function receives a forked fiber and a teardown callback so it can install
- * platform-specific signal handling, fiber observers, and final exit behavior.
- * It runs as the fiber's first step, before any of the program's own code, so
- * handlers it installs also cover the program's initial synchronous segment.
+ * The setup function runs before user code and receives the main fiber and a
+ * teardown callback to install platform-specific signal handlers, observers,
+ * and exit behavior.
  *
  * Most applications should use a platform-provided runner, such as
  * `NodeRuntime.runMain`, rather than constructing one directly.
@@ -218,11 +216,6 @@ export const makeRunMain = (
         return isReported ? Effect.logError(cause) : Effect.void
       })
     const teardown = options?.teardown ?? defaultTeardown
-    // Run the platform setup as the fiber's first step, so that signal
-    // handlers are in place before any user code executes. `runFork`'s
-    // `onFiberStart` cannot be used here: it fires only after the first
-    // synchronous segment, and not at all when that segment completes the
-    // fiber.
     Effect.runFork(Effect.withFiber((fiber) => {
       try {
         const keepAlive = globalThis.setInterval(constVoid, 2_147_483_647)
