@@ -829,7 +829,7 @@ export const suspend = <A, E, R>(stream: LazyArg<Stream<A, E, R>>): Stream<A, E,
   return suspended
 }
 
-const suspendedStreams = new WeakMap<Stream<unknown, unknown, unknown>, LazyArg<Stream<unknown, unknown, unknown>>>()
+const suspendedStreams = new WeakMap<Stream<any, any, any>, LazyArg<Stream<any, any, any>>>()
 
 /**
  * Terminates with the specified error.
@@ -3011,18 +3011,16 @@ function* concatChannels<A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) 
     const evaluate = suspendedStreams.get(stream)
     if (evaluate === undefined) {
       yield stream.channel
-    } else {
-      // Evaluated within `next` so an interrupted pull cannot repeat it, then
-      // `Channel.empty` keeps a yield point between suspended parts. A defect
-      // is yielded as a failing part, so pulling again fails the same way
-      try {
-        stack.push(evaluate() as Stream<A, E, R>)
-      } catch (defect) {
-        yield Channel.die(defect)
-        continue
-      }
-      yield Channel.empty
+      continue
     }
+    // Evaluated within `next` so an interrupted pull cannot repeat it, with a
+    // defect becoming a failing part. `Channel.empty` keeps a yield point
+    try {
+      stack.push(evaluate())
+    } catch (defect) {
+      stack.push(die(defect))
+    }
+    yield Channel.empty
   }
 }
 
