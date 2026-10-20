@@ -219,6 +219,22 @@ describe("Metric", () => {
     assert.deepStrictEqual(values(), [])
   })
 
+  it("registerUnsafe ignores update and modify through an input-changing transform", () => {
+    const context = Context.make(Metric.MetricRegistry, new Map())
+    const lengths = Metric.mapInput(Metric.gauge(nextId()), (input: string) => input.length)
+    const received: Array<unknown> = []
+    const record = (input: string) => {
+      received.push(input)
+    }
+
+    Metric.registerUnsafe(lengths, context, { get: () => ({ value: 1 }), update: record, modify: record })
+    lengths.updateUnsafe("hello", context)
+    lengths.modifyUnsafe("hi", context)
+
+    assert.deepStrictEqual(received, [])
+    assert.deepStrictEqual(lengths.valueUnsafe(context), { value: 1 })
+  })
+
   describe("withAttributes", () => {
     it.effect("follows the contextual attributes when they change between updates", () =>
       Effect.gen(function*() {
