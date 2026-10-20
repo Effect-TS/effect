@@ -945,16 +945,16 @@ describe("HttpApi", () => {
               assert.strictEqual(total, 5)
             }).pipe(Effect.provide(ApiLayer)))
 
-          it.effect("fails with the source error when the source fails before the method returns", () =>
+          it.effect("fails with an HttpClientError when the source fails before the method returns", () =>
             Effect.gen(function*() {
               const client = yield* HttpApiClient.make(Api)
               const error = yield* client.group.ndjson({
                 payload: Stream.make({ n: 1 }).pipe(Stream.concat(Stream.fail("SourceError" as const)))
               }).pipe(Effect.flip)
-              assert.strictEqual(error, "SourceError")
+              assert.strictEqual(error._tag, "HttpClientError")
             }).pipe(Effect.provide(ApiLayer)))
 
-          it.effect("fails the response stream with the source error when the source fails after the method returns", () =>
+          it.effect("fails the response stream with an HttpClientError when the source fails after the method returns", () =>
             Effect.gen(function*() {
               const client = yield* HttpApiClient.make(Api)
               const echoed = yield* Deferred.make<void>()
@@ -972,7 +972,7 @@ describe("HttpApi", () => {
                 Effect.flip
               )
               assert.deepStrictEqual(received, [{ n: 1 }])
-              assert.strictEqual(error, "SourceError")
+              assert.strictEqual(error._tag, "HttpClientError")
             }).pipe(Effect.provide(ApiLayer)))
 
           it.live("interrupts the upload once a buffered or error response is decoded", () =>
@@ -1060,10 +1060,7 @@ describe("HttpApi", () => {
                 Stream.ensuring(Deferred.succeed(sourceFailed, undefined))
               )
             }).pipe(Effect.timeout("1 second"), Effect.flip)
-            assert(
-              typeof error !== "string" && error._tag === "HttpClientError",
-              `Expected HttpClientError, got ${String(error)}`
-            )
+            assert(error._tag === "HttpClientError", `Expected HttpClientError, got ${error._tag}`)
             assert.strictEqual(error.reason._tag, "DecodeError")
             assert.strictEqual(error.response?.status, 413)
           }).pipe(Effect.provide(ApiLayer)))

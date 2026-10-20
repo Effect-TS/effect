@@ -1569,9 +1569,9 @@ Endpoint construction throws when:
 
 ### Sending Streams with the Derived Client
 
-The derived client takes a `Stream` as the payload: `Stream<Uint8Array, E, R>` for `StreamUint8Array`, and `Stream<A, E, R>` for `StreamNdjson`. It sends the stream as it is pulled, without buffering, with the declared content type and no `content-length`. NDJSON elements are encoded lazily, each as one line of JSON followed by `\n`.
+The derived client takes a `Stream` as the payload: `Stream<Uint8Array, unknown, R>` for `StreamUint8Array`, and `Stream<A, unknown, R>` for `StreamNdjson`. It sends the stream as it is pulled, without buffering, with the declared content type and no `content-length`. NDJSON elements are encoded lazily, each as one line of JSON followed by `\n`.
 
-The method infers `E` and `R` from the stream. When the source fails, the method fails with that `E`, not with the transport error the aborted upload causes. An element that fails to encode is a `Schema.SchemaError`.
+The method infers only `R` from the stream, plus the services the element schema needs to encode. The stream's error isn't one of the endpoint's declared errors, so it's not in the method's type. A failing source aborts the upload, and the method fails with the `HttpClientError` the adapter reports. If the source fails while a streaming success response is being read, the response stream fails with that `HttpClientError` instead. An element that fails to encode fails the upload the same way.
 
 **Example** (Uploading a Stream of Records)
 
@@ -1594,23 +1594,20 @@ const Api = HttpApi.make("myApi").add(
   )
 )
 
-class SourceError extends Schema.TaggedError<SourceError>()("SourceError", {}) {}
-
 const program = Effect.gen(function*() {
   const client = yield* HttpApiClient.make(Api, {
     baseUrl: "http://localhost:3000"
   })
 
-  // Any Stream of Events works, here one that fails halfway
+  // Any Stream of Events works
   const events = Stream.range(1, 1000).pipe(
-    Stream.map((id) => ({ id, name: `event ${id}` })),
-    Stream.concat(Stream.fail(new SourceError()))
+    Stream.map((id) => ({ id, name: `event ${id}` }))
   )
 
   const result = yield* client.group.importEvents({ payload: events })
   console.log(result)
 })
-// program: Effect<void, SourceError | HttpClientError | SchemaError, HttpClient>
+// program: Effect<void, HttpClientError | SchemaError, HttpClient>
 
 Effect.runFork(program.pipe(Effect.provide(FetchHttpClient.layer)))
 ```
@@ -1682,9 +1679,9 @@ On Deno, an HTTP/1.1 request body read can stall while the handler returns a str
 
 ### Testing with HttpApiTest
 
-`HttpApiTest` passes a `Stream` payload to the handler unbuffered, pulling each element from the caller's stream as the handler reads it. Limits, the `400` and both `413` paths work in memory. The early `413` needs a `content-length`, which the client doesn't send for streams, so set one through `HttpClient.mapRequest`. When the caller's stream fails, the handler is interrupted as a client abort and the client returns the stream's error.
+`HttpApiTest` passes a `Stream` payload to the handler unbuffered, pulling each element from the caller's stream as the handler reads it. Limits, the `400` and both `413` paths work in memory. The early `413` needs a `content-length`, which the client doesn't send for streams, so set one through `HttpClient.mapRequest`. When the caller's stream fails, the handler's read of the payload fails, which the handler turns into a `500`, and the client fails with an `HttpClientError` for it. Inside a streaming response, the response body fails instead.
 
-Socket behavior is not emulated: no draining of unread bodies, no `Connection: close`, and no `499`.
+Socket behavior and client aborts are not emulated: no draining of unread bodies, no `Connection: close`, no interrupted handler, and no `499`.
 
 ### Reading the Raw Request Body
 

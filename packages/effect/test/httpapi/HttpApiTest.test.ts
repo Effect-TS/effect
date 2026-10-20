@@ -1,6 +1,14 @@
 import { assert, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, FileSystem, Layer, Path, Schema, Stream } from "effect"
-import { Etag, HttpClient, HttpClientRequest, HttpClientResponse, HttpPlatform, HttpServerResponse } from "effect/http"
+import {
+  Etag,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpPlatform,
+  HttpServerResponse
+} from "effect/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -51,7 +59,7 @@ it.layer(TestServices)("HttpApiTest streaming", (it) => {
     }))
 
   for (const streaming of [false, true]) {
-    it.effect(`returns the original source error ${streaming ? "inside the response body" : "before the response"}`, () =>
+    it.effect(`fails ${streaming ? "inside the response body" : "before the response"} without the caller's error`, () =>
       Effect.gen(function*() {
         const failure = { _tag: "UploadFailed", message: "source failed" } as const
         const api = HttpApi.make("Api").add(
@@ -64,7 +72,6 @@ it.layer(TestServices)("HttpApiTest streaming", (it) => {
         )
         const groups = HttpApiBuilder.group(api, "test", (handlers) =>
           handlers.handle("upload", ({ payload }) => {
-            // A separate producer fiber must still abort the request handler.
             const buffered = Stream.buffer(payload, { capacity: 1 })
             return streaming
               ? Effect.succeed(buffered)
@@ -76,10 +83,13 @@ it.layer(TestServices)("HttpApiTest streaming", (it) => {
         }).pipe(Effect.flatMap(Stream.runDrain), Effect.exit)
         assert.strictEqual(exit._tag, "Failure")
         if (exit._tag === "Failure") {
-          assert.strictEqual(Cause.squash(exit.cause), failure)
-          assert.isTrue(Cause.hasFails(exit.cause))
-          assert.isFalse(Cause.hasDies(exit.cause))
-          assert.isFalse(Cause.hasInterrupts(exit.cause))
+          const error = Cause.squash(exit.cause)
+          assert.notStrictEqual(error, failure)
+          assert.isFalse(Cause.hasInterruptsOnly(exit.cause))
+          if (!streaming) {
+            assert(HttpClientError.isHttpClientError(error), `Expected HttpClientError, got ${String(error)}`)
+            assert.strictEqual(error.response?.status, 500)
+          }
         }
       }))
   }

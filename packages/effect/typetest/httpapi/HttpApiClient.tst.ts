@@ -513,7 +513,7 @@ describe("HttpApiClient", () => {
       >()
     })
 
-    it("infers source errors and services from streaming payloads", () => {
+    it("infers services but not source errors from streaming payloads", () => {
       type Item = { readonly n: number }
 
       const Item = hole<Schema.Codec<Item, Item, never, "ItemEncoding">>()
@@ -535,18 +535,18 @@ describe("HttpApiClient", () => {
 
       expect(client.group.bytes({ payload: hole<Stream.Stream<Uint8Array, "BytesError", "BytesSource">>() })).type
         .toBe<
-          Effect.Effect<void, "BytesError" | HttpClientError.HttpClientError | Schema.SchemaError, "BytesSource">
+          Effect.Effect<void, HttpClientError.HttpClientError | Schema.SchemaError, "BytesSource">
         >()
       expect(client.group.ndjson({ payload: hole<Stream.Stream<Item, "ItemError", "ItemSource">>() })).type.toBe<
         Effect.Effect<
           void,
-          "ItemError" | HttpClientError.HttpClientError | Schema.SchemaError,
+          HttpClientError.HttpClientError | Schema.SchemaError,
           "ItemSource" | "ItemEncoding"
         >
       >()
     })
 
-    it("adds the source error to a streaming success response", () => {
+    it("keeps the source error out of a streaming success response", () => {
       type Item = { readonly n: number }
 
       const Item = hole<Schema.Codec<Item>>()
@@ -564,7 +564,7 @@ describe("HttpApiClient", () => {
         HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
       )
 
-      type Errors = "ItemError" | HttpClientError.HttpClientError | Schema.SchemaError
+      type Errors = HttpClientError.HttpClientError | Schema.SchemaError
 
       expect(client.group.echo({ payload: hole<Stream.Stream<Item, "ItemError">>() })).type.toBe<
         Effect.Effect<Stream.Stream<Item, Errors>, Errors>
