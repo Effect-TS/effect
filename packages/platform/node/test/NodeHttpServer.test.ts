@@ -14,6 +14,7 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
+  HttpIncomingMessage,
   HttpMiddleware,
   HttpPlatform,
   HttpRouter,
@@ -55,6 +56,55 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("returns 413 before a chunked upload finishes", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.text, HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+
+      const response = yield* Effect.callback<{ status: number | undefined; uploadComplete: boolean }, Error>(
+        (resume) => {
+          const request = Http.request({ hostname: "127.0.0.1", port, path: "/body", method: "POST", agent: false })
+          request.on("error", (error) => resume(Effect.fail(error)))
+          request.on("response", (response) => {
+            const result = { status: response.statusCode, uploadComplete: request.writableEnded }
+            // Withhold the final chunk until the server has sent its response.
+            request.end("remaining upload")
+            response.on("error", (error) => resume(Effect.fail(error)))
+            response.on("end", () => {
+              request.destroy()
+              resume(Effect.succeed(result))
+            })
+            response.resume()
+          })
+          request.write("12345")
+          return Effect.sync(() => request.destroy())
+        }
+      )
+      assert.strictEqual(response.status, 413)
+      assert.isFalse(response.uploadComplete)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("returns 400 for malformed JSON within MaxBodySize", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/body",
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.as(request.json, HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(4))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const client = yield* HttpClient.HttpClient
+      const response = yield* client.post("/body", { body: HttpBody.text("{") })
+      assert.strictEqual(response.status, 400)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()

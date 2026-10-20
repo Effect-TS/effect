@@ -30,6 +30,23 @@ import { destroyStream as destroyReadable } from "./internal/stream.ts"
 import { pullIntoWritable } from "./NodeSink.ts"
 
 /**
+ * Error indicating that a buffered Node stream exceeded its byte limit.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class MaxBytesError extends Error {
+  readonly _tag = "MaxBytesError"
+  readonly maxBytes: number
+
+  constructor(maxBytes: number) {
+    super("maxBytes exceeded")
+    this.maxBytes = maxBytes
+  }
+}
+
+/**
  * Converts a Node readable stream into an Effect `Stream`, reading chunks with
  * an optional chunk size, mapping stream errors with `onError`, and destroying
  * the readable on completion unless `closeOnDone` is `false`.
@@ -217,6 +234,8 @@ export const toReadableNever = <E>(stream: Stream.Stream<string | Uint8Array, E,
  * Consumes a Node readable stream into a string using the selected encoding,
  * failing through `onError` on stream errors or when `maxBytes` is exceeded
  * and destroying the stream on interruption or failure.
+ * Set `destroyOnOverflow` to `false` to drain the remaining data instead of
+ * destroying the stream when the byte limit is exceeded.
  *
  * @stability unstable
  * @category converting
@@ -228,6 +247,7 @@ export const toString = <E = Cause.UnknownError>(
     readonly onError?: (error: unknown) => E
     readonly encoding?: BufferEncoding | undefined
     readonly maxBytes?: ByteSize.Input | undefined
+    readonly destroyOnOverflow?: boolean | undefined
   }
 ): Effect.Effect<string, E> => {
   const maxBytesNumber = toMaxBytes(options?.maxBytes)
@@ -254,8 +274,12 @@ export const toString = <E = Cause.UnknownError>(
       bytes += Buffer.byteLength(chunk)
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         stream.off("data", onData)
-        destroyReadable(stream, cleanup)
-        resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
+        if (options?.destroyOnOverflow === false) {
+          drainReadable(stream, cleanup)
+        } else {
+          destroyReadable(stream, cleanup)
+        }
+        resume(Effect.fail(onError(new MaxBytesError(maxBytesNumber)) as E))
       }
     }
     stream.on("data", onData)
@@ -270,6 +294,8 @@ export const toString = <E = Cause.UnknownError>(
  * Consumes a Node readable stream into an `ArrayBuffer`, failing through
  * `onError` on stream errors or when `maxBytes` is exceeded and destroying the
  * stream on interruption or failure.
+ * Set `destroyOnOverflow` to `false` to drain the remaining data instead of
+ * destroying the stream when the byte limit is exceeded.
  *
  * @stability unstable
  * @category converting
@@ -280,6 +306,7 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
   options?: {
     readonly onError?: (error: unknown) => E
     readonly maxBytes?: ByteSize.Input | undefined
+    readonly destroyOnOverflow?: boolean | undefined
   }
 ): Effect.Effect<ArrayBuffer, E> => {
   const maxBytesNumber = toMaxBytes(options?.maxBytes)
@@ -308,8 +335,12 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
       bytes += chunk.length
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
         stream.off("data", onData)
-        destroyReadable(stream, cleanup)
-        resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
+        if (options?.destroyOnOverflow === false) {
+          drainReadable(stream, cleanup)
+        } else {
+          destroyReadable(stream, cleanup)
+        }
+        resume(Effect.fail(onError(new MaxBytesError(maxBytesNumber)) as E))
       }
     }
     stream.on("data", onData)
@@ -333,12 +364,21 @@ export const toUint8Array = <E = Cause.UnknownError>(
   options?: {
     readonly onError?: (error: unknown) => E
     readonly maxBytes?: ByteSize.Input | undefined
+    readonly destroyOnOverflow?: boolean | undefined
   }
 ): Effect.Effect<Uint8Array, E> => Effect.map(toArrayBuffer(readable, options), (buffer) => new Uint8Array(buffer))
 
 // ----------------------------------------------------------------------------
 // internal
 // ----------------------------------------------------------------------------
+
+// Keep consuming after the consumer's listeners are removed, so the producer
+// can finish and any late error stays handled.
+const drainReadable = (stream: Readable, cleanup: () => void): void => {
+  cleanup()
+  const done = finished(stream, { readable: true, writable: false }, () => done())
+  stream.resume()
+}
 
 const readableToPullUnsafe = <A, E>(options: {
   readonly scope: Scope.Scope

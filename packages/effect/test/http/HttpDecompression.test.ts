@@ -146,7 +146,7 @@ describe("HttpDecompression", () => {
         body,
         { "content-encoding": "gzip" }
       )
-      assert.strictEqual(response.status, 400)
+      assert.strictEqual(response.status, 413)
     })
   }
 
@@ -160,7 +160,7 @@ describe("HttpDecompression", () => {
       await compress(bigJson, ["gzip"]),
       { "content-encoding": "gzip" }
     )
-    assert.strictEqual(response.status, 400)
+    assert.strictEqual(response.status, 413)
   })
 
   it("maps multipart decompression failures to client errors", async () => {
