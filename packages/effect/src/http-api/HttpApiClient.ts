@@ -83,6 +83,8 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
  * success schema, including headers, streaming Server-Sent Events, and
  * streaming byte responses.
  *
+ * **Details**
+ *
  * `PayloadE` is the error of a streaming request payload. The upload can still
  * be running while a streaming response is read, so a streaming response can
  * also fail with it.
@@ -222,6 +224,8 @@ export declare namespace Client {
    * shape, including optional per-call SSE decoding options. The returned effect's success,
    * error, and service channels reflect the endpoint schemas, middleware, and
    * selected response mode.
+   *
+   * **Details**
    *
    * The error and services of a streaming `payload` are inferred and added to
    * the returned effect.
