@@ -85,6 +85,10 @@ export interface SqlClient extends Constructor {
    * transaction can't defer through it, as with `afterCommit`. Transactions
    * that don't go through `makeWithTransaction`, such as those of
    * `@effect/sql-sqlite-do`, invalidate immediately.
+   *
+   * To start a top-level transaction with a statement other than the
+   * client's, such as one that sets its isolation level, provide
+   * `BeginTransaction`.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -273,7 +277,9 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     transactionService,
     spanAttributes: options.spanAttributes,
     acquireConnection: (restore) => restore(transactionAcquirer!),
-    begin: (conn) => control(conn, beginTransaction),
+    // Unlike the client's own, a provided statement isn't fixed, so it isn't prepared.
+    begin: (conn, statement) =>
+      statement === undefined ? control(conn, beginTransaction) : conn.executeUnprepared(statement, [], undefined),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
@@ -525,7 +531,12 @@ export const makeWithTransaction = <I, S>(options: {
   readonly acquireConnection: (
     restore: <XA, XE, XR>(effect: Effect.Effect<XA, XE, XR>) => Effect.Effect<XA, XE, XR>
   ) => Effect.Effect<S, SqlError, Scope.Scope>
-  readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+  /**
+   * Starts a top-level transaction. `statement` is the `BeginTransaction`
+   * provided to the transaction, if any; a driver that doesn't start
+   * transactions with a SQL statement ignores it.
+   */
+  readonly begin: (conn: NoInfer<S>, statement: string | undefined) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
   /**
    * Releases a nested savepoint after success or a successful rollback.
@@ -581,7 +592,7 @@ export const makeWithTransaction = <I, S>(options: {
               (
                 [scope, conn]
               ) =>
-                (id === 0 ? options.begin(conn) : options.savepoint(conn, id)).pipe(
+                (id === 0 ? options.begin(conn, fiber.getRef(BeginTransaction)) : options.savepoint(conn, id)).pipe(
                   Effect.flatMap(() => {
                     const level = [conn, id] as const
                     afterCommitBuffers.set(level, buffer)
@@ -710,4 +721,52 @@ export const TransactionConnection = (
  */
 export const SafeIntegers = Context.Reference<boolean>("effect/sql/SqlClient/SafeIntegers", {
   defaultValue: () => false
+})
+
+/**
+ * Context reference holding the statement that starts a top-level
+ * transaction in place of the client's `BEGIN`; defaults to `undefined`, which
+ * keeps the client's.
+ *
+ * **When to use**
+ *
+ * Use when one transaction needs its own isolation level or access mode, as
+ * in `BEGIN ISOLATION LEVEL SERIALIZABLE` on PostgreSQL, rather than following
+ * the client's `BEGIN` with a `SET TRANSACTION`, which costs another round
+ * trip.
+ *
+ * **Details**
+ *
+ * The statement runs unprepared. Nested transactions ignore it and keep their
+ * savepoints.
+ *
+ * **Gotchas**
+ *
+ * It applies to every top-level transaction started while it is provided,
+ * including in forked fibers, so provide it around the single
+ * `withTransaction` it is meant for. `@effect/sql-libsql`, `@effect/sql-mssql`
+ * and `@effect/sql-sqlite-do` don't start transactions with a SQL statement
+ * and ignore it. The statement is sent as raw SQL, so never build it from
+ * untrusted input.
+ *
+ * **Example** (Starting a serializable transaction)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { SqlClient } from "effect/sql"
+ *
+ * const program = Effect.gen(function*() {
+ *   const sql = yield* SqlClient.SqlClient
+ *   return yield* sql.withTransaction(sql`SELECT 1`).pipe(
+ *     Effect.provideService(SqlClient.BeginTransaction, "BEGIN ISOLATION LEVEL SERIALIZABLE")
+ *   )
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.6
+ */
+export const BeginTransaction = Context.Reference<string | undefined>("effect/sql/SqlClient/BeginTransaction", {
+  defaultValue: () => undefined
 })
