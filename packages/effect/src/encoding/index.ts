@@ -48,6 +48,24 @@ export * as JsonArray from "./JsonArray.ts"
 export * as Ndjson from "./Ndjson.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.6
+ */
+export * as Protobuf from "./Protobuf.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.6
+ */
+export * as ProtobufDescriptor from "./ProtobufDescriptor.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.6
+ */
+export * as ProtobufPlugin from "./ProtobufPlugin.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
