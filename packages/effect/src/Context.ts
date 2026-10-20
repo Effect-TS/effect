@@ -535,73 +535,6 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
   const map = new Map(self.mapUnsafe)
   f(map)
-  return inheritWrites(self, makeUnsafe(map))
-}
-
-// Write tracking for request batches. A context returned by `trackWrites`
-// records the keys written by later operations, so a request resolver can
-// forward the services its wrappers provided without leaking the batch
-// creator's services into other callers' entries. Writes are recorded rather
-// than inferred from values so an explicit write equal to an inherited value
-// still counts. Sets may retain removed keys; readers only consult present
-// ones. An untracked context was supplied in full, so all its services count
-// as written.
-const writes = new WeakMap<Context<any>, ReadonlySet<string>>()
-
-const inheritWrites = <B>(self: Context<any>, next: Context<B>): Context<B> => {
-  const keys = writes.get(self)
-  if (keys !== undefined) writes.set(next, keys)
-  return next
-}
-
-const recordWrite = <B>(self: Context<any>, next: Context<B>, key: string): Context<B> => {
-  const keys = writes.get(self)
-  if (keys !== undefined) writes.set(next, new Set(keys).add(key))
-  return next
-}
-
-const mergeWrites = <B>(next: Context<B>, contexts: ReadonlyArray<Context<any>>): Context<B> => {
-  if (!contexts.some((context) => writes.has(context))) return next
-  const keys = new Set<string>()
-  for (const context of contexts) {
-    const tracked = writes.get(context)
-    // The last operand containing a key supplies both its value and whether
-    // it was written, so merging never promotes an inherited value to a write.
-    for (const key of context.mapUnsafe.keys()) {
-      if (tracked === undefined || tracked.has(key)) keys.add(key)
-      else keys.delete(key)
-    }
-  }
-  writes.set(next, keys)
-  return next
-}
-
-/**
- * Returns an equivalent context that records the keys written by later
- * operations, for `writtenServices`.
- *
- * @internal
- */
-export const trackWrites = <Services>(self: Context<Services>): Context<Services> => {
-  const impl = self as ContextImpl<Services>
-  const next = makeImpl<Services>(impl.cacheRoot, impl.base, impl.overlay, impl.depth)
-  writes.set(next, new Set())
-  return next
-}
-
-/**
- * Returns the services written since `trackWrites`, or `self` when it is not
- * tracked.
- *
- * @internal
- */
-export const writtenServices = <Services>(self: Context<Services>): Context<Services> => {
-  const keys = writes.get(self)
-  if (keys === undefined) return self
-  const map = new Map<string, any>()
-  for (const [key, value] of self.mapUnsafe) {
-    if (keys.has(key)) map.set(key, value)
-  }
   return makeUnsafe(map)
 }
 
@@ -884,18 +817,14 @@ export const addUnsafe = <Services, I, S>(
     const map = new Map(impl._flat ?? impl.base)
     if (!impl._flat) applyOverlays(map, impl.overlay)
     map.set(key, service)
-    return recordWrite(self, makeImpl(cacheRoot, map, undefined, 0), key)
+    return makeImpl(cacheRoot, map, undefined, 0)
   }
 
-  return recordWrite(
-    self,
-    makeImpl(
-      cacheRoot,
-      impl.base,
-      { key, value: service, parent: impl.overlay },
-      impl.depth + 1
-    ),
-    key
+  return makeImpl(
+    cacheRoot,
+    impl.base,
+    { key, value: service, parent: impl.overlay },
+    impl.depth + 1
   )
 }
 
@@ -1238,9 +1167,7 @@ export const merge: {
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
-  const map = new Map(self.mapUnsafe)
-  that.mapUnsafe.forEach((value, key) => map.set(key, value))
-  return mergeWrites(makeUnsafe(map), [self, that])
+  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
 })
 
 /**
@@ -1292,7 +1219,7 @@ export const mergeAll = <T extends Array<unknown>>(
       map.set(key, value)
     })
   }
-  return mergeWrites(makeUnsafe(map), ctxs)
+  return makeUnsafe(map)
 }
 
 /**
@@ -1338,7 +1265,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
       const value = lookup(self, key)
       if (value !== notFound) map.set(key, value)
     }
-    return inheritWrites(self, makeUnsafe(map))
+    return makeUnsafe(map)
   }
   const keep = new Set(services.map((key) => key.key))
   return withFlat(self, (map) =>

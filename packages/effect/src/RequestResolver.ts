@@ -434,12 +434,12 @@ export const fromFunctionBatched = <A extends Request.Any>(
  *
  * **Details**
  *
- * Each entry's effect runs with its own caller context, without inheriting
- * services present only in the batch creator's context. Services explicitly
- * provided by resolver wrappers take precedence over each entry's context, even
- * when their values equal the batch creator's values. This includes the span
- * created by `withSpan`. Entries with different caller contexts can still share
- * a batch.
+ * Each entry's effect runs with its own caller context. Services provided around
+ * `runAll` are not visible to it; provide them inside `f` instead. Entries with
+ * different caller contexts can still share a batch.
+ *
+ * With `withSpan`, spans created inside `f` are children of the caller's span,
+ * not the resolver span. The resolver span still links to each caller's span.
  *
  * **Example** (Creating a resolver from an effectful function)
  *
@@ -478,15 +478,12 @@ export const fromEffect = <A extends Request.Any>(
   return make((entries) =>
     Effect.callback<void>((resume) => {
       const parent = effect.getCurrentFiber()!
-      // Services written by resolver wrappers since the batch started override
-      // each entry's caller context; the batch creator's other services do not.
-      const overrides = Context.writtenServices(parent.context)
       let done = 0
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i]
         const fiber = effect.forkUnsafe(
           parent as any,
-          effect.setContext(f(entry), Context.merge(entry.context, overrides)),
+          effect.setContext(f(entry), entry.context),
           true
         )
         fiber.addObserver((exit) => {
