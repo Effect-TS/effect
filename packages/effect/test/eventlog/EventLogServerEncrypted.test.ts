@@ -285,7 +285,7 @@ it.effect("fails Input with NotFound once the stage's pin was pruned", () =>
     assert.deepStrictEqual({ beforePrune, afterPrune }, { beforePrune: "ok", afterPrune: "NotFound" })
   }))
 
-it.effect("rejects a commit that is not a strictly ascending, non-empty subset of the pinned input", () =>
+it.effect("rejects a commit whose kept ids are not a non-empty, in-order subsequence of the pinned input", () =>
   Effect.gen(function*() {
     const server = yield* makeServer({ thresholdFloor: 1 })
     const conn = yield* server.connect
@@ -319,6 +319,28 @@ it.effect("rejects a commit that is not a strictly ascending, non-empty subset o
       "InvalidRequest"
     ])
     assert.strictEqual(status.base, undefined)
+  }))
+
+it.effect("accepts kept ids matched to a later occurrence of a repeated input id", () =>
+  Effect.gen(function*() {
+    const server = yield* makeServer({ thresholdFloor: 1 })
+    const conn = yield* server.connect
+    const [a, b, c] = makeIds(3)
+    // A partly known batch stores a again, so the input is a@0, b@1, a@2, c@3.
+    yield* conn.write([a, b])
+    yield* conn.write([a, c])
+    yield* TestClock.adjust(pastLag)
+
+    const { stageId } = started(yield* conn.begin)
+    const committed = yield* conn.snapshot(stageId, [[[b], [a], [c]]])
+    const served = yield* server.storage.changes(server.scope.publicKey, storeId, 0).pipe(
+      Stream.take(3),
+      Stream.runCollect
+    )
+    const sequenceOfA = served.find((batch) => key(batch.entryIds[0]) === key(a))!.sequence
+
+    assert.strictEqual(committed, "Committed")
+    assert.isAtLeast(sequenceOfA, 2)
   }))
 
 it.effect("answers Begin with NotWanted below the threshold and logs no-ops while backing off multiplicatively", () => {
