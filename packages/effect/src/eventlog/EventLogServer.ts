@@ -78,6 +78,8 @@ export const layerAuthMiddleware: Layer.Layer<
  *
  * Use the connection's `ConnectionWrites.track` in `onWrite` and
  * `ConnectionWrites.filter` in `changes` to suppress its own write echoes.
+ * `compaction` sets `HelloResponse.compaction`, advertising that the server
+ * also serves `EventLogCompactionRpcs`.
  *
  * @stability unstable
  * @category layers
@@ -86,6 +88,7 @@ export const layerAuthMiddleware: Layer.Layer<
 export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
   readonly firstSequence?: number | undefined
+  readonly compaction?: boolean | undefined
   readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
@@ -139,7 +142,8 @@ export const layerRpcHandlers = (options: {
         return new HelloResponse({
           remoteId: options.remoteId,
           challenge,
-          firstSequence: options.firstSequence
+          firstSequence: options.firstSequence,
+          compaction: options.compaction === true ? true : undefined
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {

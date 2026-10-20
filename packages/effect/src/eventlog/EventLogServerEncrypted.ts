@@ -23,7 +23,10 @@ import * as Uuid from "../internal/uuid.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
+import * as Pull from "../Pull.ts"
 import * as RcMap from "../RcMap.ts"
+import type * as Rpc from "../rpc/Rpc.ts"
+import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
@@ -31,8 +34,16 @@ import { type EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.
 import type { EncryptedBatch, EncryptedRemoteBatch } from "./EventLogEncryption.ts"
 import {
   ChangesRpc,
+  ChunkedMessage,
+  type CompactionInputHeader,
+  CompactionInputRpc,
+  CompactionPartRpc,
+  CompactionStatus,
+  type EventLogAuthentication,
+  EventLogCompactionRpcs,
   EventLogProtocolError,
   EventLogRemoteRpcs,
+  SingleMessage,
   type StoreId,
   type WriteAck,
   WriteEntries
@@ -48,72 +59,88 @@ import * as EventLogServer from "./EventLogServer.ts"
  * sequences. Change streams encode stored batches, excluding this connection's
  * writes.
  *
+ * It also provides the `EventLogCompactionRpcs` handlers. When `Storage`
+ * provides `compaction`, `HelloResponse.compaction` is set and the handlers
+ * apply the compaction policy on top of the storage primitives. Otherwise they
+ * fail with a `NotFound` error.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
+export const layerRpcHandlers: Layer.Layer<
+  | Rpc.ToHandler<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>>
+  | Rpc.ToHandler<RpcGroup.Rpcs<typeof EventLogCompactionRpcs>>
+  | EventLogAuthentication,
+  never,
+  Storage
+> = Layer.unwrap(Effect.gen(function*() {
   const storage = yield* Storage
   const remoteId = yield* storage.getId
 
-  return EventLogServer.layerRpcHandlers({
-    remoteId,
-    firstSequence: storage.firstSequence,
-    getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
-      storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
-    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys, writes) {
-      const request = yield* WriteEntries.decode(data).pipe(
-        Effect.mapError((_) =>
-          new EventLogProtocolError({
-            requestTag: "WriteEntries",
-            publicKey: undefined,
-            code: "InternalServerError",
-            message: "Decoding failure"
-          })
-        )
-      )
-      if (!authenticatedPublicKeys.has(request.publicKey)) {
-        return yield* new EventLogProtocolError({
-          requestTag: "WriteEntries",
-          publicKey: request.publicKey,
-          code: "Forbidden",
-          message: "Identity is not authenticated"
-        })
-      }
-      if (request.batches.length === 0) return []
-      const entryIds = request.batches.flatMap((batch) => batch.entryIds)
-      return yield* storage.write(request.publicKey, request.storeId, request.batches).pipe(
-        Effect.flatMap((stored) => toWriteAcks(storage, request.publicKey, request.storeId, request.batches, stored)),
-        (write) => writes.track({ publicKey: request.publicKey, storeId: request.storeId, entryIds }, write),
-        Effect.catchCause((_) =>
-          Effect.fail(
+  return Layer.merge(
+    EventLogServer.layerRpcHandlers({
+      remoteId,
+      firstSequence: storage.firstSequence,
+      compaction: storage.compaction !== undefined,
+      getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
+        storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
+      onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys, writes) {
+        const request = yield* WriteEntries.decode(data).pipe(
+          Effect.mapError((_) =>
             new EventLogProtocolError({
               requestTag: "WriteEntries",
-              publicKey: request.publicKey,
+              publicKey: undefined,
               code: "InternalServerError",
-              message: "Persistence failure"
+              message: "Decoding failure"
             })
           )
         )
-      )
+        if (!authenticatedPublicKeys.has(request.publicKey)) {
+          return yield* new EventLogProtocolError({
+            requestTag: "WriteEntries",
+            publicKey: request.publicKey,
+            code: "Forbidden",
+            message: "Identity is not authenticated"
+          })
+        }
+        if (request.batches.length === 0) return []
+        const entryIds = request.batches.flatMap((batch) => batch.entryIds)
+        return yield* storage.write(request.publicKey, request.storeId, request.batches).pipe(
+          Effect.flatMap((stored) => toWriteAcks(storage, request.publicKey, request.storeId, request.batches, stored)),
+          (write) => writes.track({ publicKey: request.publicKey, storeId: request.storeId, entryIds }, write),
+          Effect.catchCause((_) =>
+            Effect.fail(
+              new EventLogProtocolError({
+                requestTag: "WriteEntries",
+                publicKey: request.publicKey,
+                code: "InternalServerError",
+                message: "Persistence failure"
+              })
+            )
+          )
+        )
+      }),
+      changes: ({ publicKey, startSequence, storeId, writes }) =>
+        writes.filter(
+          {
+            publicKey,
+            storeId,
+            entryIds: (batch) => batch.entryIds,
+            sequence: (batch) => batch.sequence + batch.entryIds.length - 1
+          },
+          storage.changes(publicKey, storeId, startSequence)
+        ).pipe(
+          Stream.mapArrayEffect((batches) => Effect.map(ChangesRpc.encodeEncrypted(batches), Arr.of))
+        )
     }),
-    changes: ({ publicKey, startSequence, storeId, writes }) =>
-      writes.filter(
-        {
-          publicKey,
-          storeId,
-          entryIds: (batch) => batch.entryIds,
-          sequence: (batch) => batch.sequence + batch.entryIds.length - 1
-        },
-        storage.changes(publicKey, storeId, startSequence)
-      ).pipe(
-        Stream.mapArrayEffect((batches) => Effect.map(ChangesRpc.encodeEncrypted(batches), Arr.of))
-      )
-  })
+    layerCompactionRpcHandlers(storage)
+  )
 }))
 
 // Acknowledges each entry occurrence in request order: at its position in the
-// batch this write stored, or, for a skipped batch, where it was first stored.
+// batch this write stored, or, for a skipped batch, where it was first stored
+// if that is above the active compaction base.
 const toWriteAcks = Effect.fnUntraced(function*(
   storage: Storage["Service"],
   publicKey: string,
@@ -130,8 +157,13 @@ const toWriteAcks = Effect.fnUntraced(function*(
   const skipped = batches.flatMap((batch, i) => storedAt[i] === undefined ? batch.entryIds : [])
   const firstStored = new Map<string, number>()
   if (skipped.length > 0) {
+    // An id first stored at or below the active base may have been dropped, so
+    // acking it would move the client's cursor past kept entries.
+    const base = storage.compaction === undefined
+      ? -Infinity
+      : (yield* storage.compaction.status(publicKey, storeId)).base
     for (const ack of yield* storage.entrySequences(publicKey, storeId, skipped)) {
-      firstStored.set(Uuid.stringify(ack.entryId), ack.sequence)
+      if (ack.sequence > base) firstStored.set(Uuid.stringify(ack.entryId), ack.sequence)
     }
   }
   const acks: Array<WriteAck> = []
@@ -143,6 +175,313 @@ const toWriteAcks = Effect.fnUntraced(function*(
   )
   return acks
 })
+
+const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
+  EventLogCompactionRpcs.toLayer(Effect.sync(() => {
+    const compaction = storage.compaction
+    const firstSequence = storage.firstSequence ?? 0
+    let chunkedIdCounter = 0
+    const toFrames = (data: Uint8Array<ArrayBuffer>): Arr.NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> =>
+      data.byteLength <= ChunkedMessage.chunkSize
+        ? [new SingleMessage({ data })]
+        : ChunkedMessage.split(chunkedIdCounter++, data)
+
+    type Request = { readonly publicKey: string; readonly storeId: StoreId }
+    const protocolError = (
+      requestTag: string,
+      request: Request,
+      code: EventLogProtocolError["code"],
+      message: string
+    ) =>
+      new EventLogProtocolError({ requestTag, publicKey: request.publicKey, storeId: request.storeId, code, message })
+    const fromCompactionError =
+      (requestTag: string, request: Request) => (error: CompactionNotFound | CompactionInvalidRequest) =>
+        error._tag === "CompactionNotFound"
+          ? protocolError(requestTag, request, "NotFound", "Compaction stage not found")
+          : protocolError(requestTag, request, "InvalidRequest", error.message)
+
+    // Checks the identity, then runs the request against the storage primitives.
+    const withCompaction = <A>(
+      requestTag: string,
+      request: Request,
+      client: Rpc.ServerClient,
+      f: (compaction: StorageCompaction) => Effect.Effect<A, CompactionNotFound | CompactionInvalidRequest>
+    ): Effect.Effect<A, EventLogProtocolError> => {
+      if (!Context.getOrUndefined(client.annotations, EventLogServer.AuthenticatedIdentities)?.has(request.publicKey)) {
+        return Effect.fail(protocolError(requestTag, request, "Forbidden", "Identity is not authenticated"))
+      }
+      if (compaction === undefined) {
+        return Effect.fail(protocolError(requestTag, request, "NotFound", "Compaction is not supported"))
+      }
+      return Effect.mapError(f(compaction), fromCompactionError(requestTag, request))
+    }
+    const withCompactionStream = <A>(
+      requestTag: string,
+      request: Request,
+      client: Rpc.ServerClient,
+      f: (compaction: StorageCompaction) => Stream.Stream<A, CompactionNotFound>
+    ): Stream.Stream<A, EventLogProtocolError> =>
+      Stream.unwrap(
+        withCompaction(
+          requestTag,
+          request,
+          client,
+          (compaction) => Effect.succeed(Stream.mapError(f(compaction), fromCompactionError(requestTag, request)))
+        )
+      )
+
+    const getStatus = Effect.fnUntraced(function*(compaction: StorageCompaction, publicKey: string, storeId: StoreId) {
+      const status = yield* compaction.status(publicKey, storeId)
+      return { status, wanted: isCompactionWanted(status, compaction.config.thresholdFloor) }
+    })
+
+    return EventLogCompactionRpcs.of({
+      "EventLog.CompactionStatus": (request, { client }) =>
+        withCompaction("CompactionStatus", request, client, (compaction) =>
+          Effect.map(getStatus(compaction, request.publicKey, request.storeId), ({ status, wanted }) =>
+            new CompactionStatus({
+              wanted,
+              head: status.head,
+              base: status.base >= firstSequence ? status.base : undefined,
+              rollbackEpoch: status.rollbackEpoch
+            }))),
+      "EventLog.CompactionBegin": (request, { client }) =>
+        withCompaction("CompactionBegin", request, client, (compaction) =>
+          Effect.gen(function*() {
+            const { status, wanted } = yield* getStatus(compaction, request.publicKey, request.storeId)
+            if (!wanted) {
+              return { _tag: "NotWanted" } as const
+            }
+            const through = status.lagHead
+            const result = yield* compaction.begin(request.publicKey, request.storeId, { through })
+            if (result._tag === "Busy") {
+              const now = yield* Clock.currentTimeMillis
+              return { _tag: "Busy", retryAfter: Math.max(0, result.expiresAt - now) } as const
+            }
+            return {
+              _tag: "Started",
+              stageId: result.stageId,
+              through,
+              entryCount: result.entryCount,
+              batchCount: result.batchCount
+            } as const
+          })),
+      "EventLog.CompactionInput": (request, { client }) =>
+        withCompactionStream("CompactionInput", request, client, (compaction) =>
+          compaction.inputHeaders(request.publicKey, request.storeId, request.stageId).pipe(
+            Stream.mapArrayEffect((headers) =>
+              Effect.map(
+                Effect.orDie(
+                  CompactionInputRpc.encodeHeaders(headers as Arr.NonEmptyReadonlyArray<CompactionInputHeader>)
+                ),
+                toFrames
+              )
+            )
+          )),
+      "EventLog.CompactionFetch": (request, { client }) =>
+        withCompactionStream("CompactionFetch", request, client, (compaction) =>
+          compaction.fetch(request.publicKey, request.storeId, request.stageId, request.batches).pipe(
+            Stream.mapArrayEffect((batches) =>
+              Effect.map(Effect.orDie(ChangesRpc.encodeEncrypted(batches)), toFrames)
+            )
+          )),
+      "EventLog.CompactionPart": (request, { client }) =>
+        withCompaction("CompactionPart", request, client, (compaction) =>
+          Effect.gen(function*() {
+            const { publicKey, stageId, storeId } = request
+            const data = ChunkedMessage.join(getPendingSegments(client, stageId), request.chunk)
+            if (data === undefined) {
+              return
+            }
+            const batches = yield* CompactionPartRpc.decodeSegment(data).pipe(
+              Effect.catch(() =>
+                Effect.andThen(
+                  compaction.withdraw(publicKey, storeId, stageId),
+                  Effect.fail(new CompactionInvalidRequest({ stageId, message: "Invalid segment" }))
+                )
+              )
+            )
+            yield* compaction.stagePart(publicKey, storeId, stageId, request.chunk.id, batches)
+          })),
+      "EventLog.CompactionAbort": (request, { client }) =>
+        withCompaction("CompactionAbort", request, client, (compaction) => {
+          releasePendingSegments(client, request.stageId)
+          return compaction.abort(request.publicKey, request.storeId, request.stageId)
+        }),
+      "EventLog.CompactionCommit": (request, { client }) =>
+        withCompaction("CompactionCommit", request, client, (compaction) => {
+          const { publicKey, stageId, storeId } = request
+          releasePendingSegments(client, stageId)
+          if (request.result._tag === "NoOp") {
+            return Effect.as(compaction.recordNoOp(publicKey, storeId, stageId), "Committed" as const)
+          }
+          const segmentCount = request.result.segmentCount
+          return checkSnapshot(compaction, publicKey, storeId, stageId, segmentCount).pipe(
+            Effect.matchEffect({
+              onFailure: (error): Effect.Effect<
+                "Committed" | "Superseded",
+                CompactionNotFound | CompactionInvalidRequest
+              > =>
+                error._tag === "CompactionInvalidRequest"
+                  ? Effect.andThen(compaction.withdraw(publicKey, storeId, stageId), Effect.fail(error))
+                  // The stage has left `open`, so this answers a retried commit
+                  // from its first one, or fails with `CompactionNotFound`.
+                  : compaction.commit(publicKey, storeId, stageId, []),
+              onSuccess: (snapshot) =>
+                compaction.commit(publicKey, storeId, stageId, snapshot.virtualSequences).pipe(
+                  Effect.tap((result) =>
+                    logCommit(compaction, { publicKey, storeId, result, ...snapshot })
+                  )
+                )
+            })
+          )
+        })
+    })
+  }))
+
+// Whether a store wants compacting: the input past the lag must reach the
+// threshold, and after `k` consecutive no-ops the lag head must have moved the
+// threshold times `2^(k-1)` past the latest one.
+const isCompactionWanted = (status: CompactionStoreStatus, thresholdFloor: number): boolean => {
+  const threshold = Math.max(status.activeKeptCount, thresholdFloor)
+  const pending = status.lagHead - status.base
+  if (pending <= 0 || pending < threshold) return false
+  if (status.noOp === undefined) return true
+  return status.lagHead - status.noOp.at >= threshold * 2 ** (status.noOp.count - 1)
+}
+
+// Checks a snapshot's staged batches against the stage's input in one pass
+// over both, and assigns each batch its virtual start sequence. Kept ids must
+// be a non-empty subset of the input, strictly ascending by input sequence,
+// in segments 0 to segmentCount - 1.
+const checkSnapshot = Effect.fnUntraced(function*(
+  compaction: StorageCompaction,
+  publicKey: string,
+  storeId: StoreId,
+  stageId: string,
+  segmentCount: number
+) {
+  const invalid = (message: string) => Effect.fail(new CompactionInvalidRequest({ stageId, message }))
+  const pullInput = yield* Stream.toPull(compaction.inputHeaders(publicKey, storeId, stageId))
+  let headers: ReadonlyArray<CompactionBatchHeader> = []
+  let headerIndex = 0
+  let entryIndex = 0
+  let inputCount = 0
+  let lastInputSequence = -1
+  const nextInput = Effect.gen(function*() {
+    while (true) {
+      const header = headers[headerIndex]
+      if (header === undefined) {
+        const chunk = yield* Pull.catchDone(pullInput, () => Effect.succeed(undefined))
+        if (chunk === undefined) return undefined
+        headers = chunk
+        headerIndex = 0
+        continue
+      }
+      if (entryIndex === header.entryIds.length) {
+        headerIndex++
+        entryIndex = 0
+        continue
+      }
+      const sequence = header.sequence + entryIndex
+      const id = Uuid.stringify(header.entryIds[entryIndex++])
+      inputCount++
+      lastInputSequence = sequence
+      return { id, sequence }
+    }
+  })
+
+  // The input sequence of each batch's last kept entry, and its size.
+  const ends: Array<number> = []
+  const sizes: Array<number> = []
+  let segment = -1
+  yield* Stream.runForEach(compaction.stagedHeaders(publicKey, storeId, stageId), (header) =>
+    Effect.gen(function*() {
+      const headerSegment = Math.floor(header.position / positionsPerSegment)
+      if (headerSegment !== segment) {
+        if (headerSegment !== segment + 1 || headerSegment >= segmentCount) {
+          return yield* invalid("Unexpected segment")
+        }
+        segment = headerSegment
+      }
+      let last = -1
+      for (const entryId of header.entryIds) {
+        const id = Uuid.stringify(entryId)
+        let input = yield* nextInput
+        while (input !== undefined && input.id !== id) input = yield* nextInput
+        if (input === undefined) return yield* invalid("Kept entry is not in the input, or is out of order")
+        last = input.sequence
+      }
+      ends.push(last)
+      sizes.push(header.entryIds.length)
+    }))
+  if (ends.length === 0) return yield* invalid("Snapshot is empty")
+  if (segment !== segmentCount - 1) return yield* invalid("Missing segment")
+  while ((yield* nextInput) !== undefined) {
+    // Count the rest of the input and find where it ends.
+  }
+
+  // Each batch ends at its last kept entry's input sequence, and the final one
+  // at the end of the input, so no batch starts below its entries' input.
+  const virtualSequences = ends.map((end, i) => (i === ends.length - 1 ? lastInputSequence : end) - sizes[i] + 1)
+  return {
+    virtualSequences,
+    through: lastInputSequence,
+    inputCount,
+    keptCount: sizes.reduce((count, size) => count + size, 0)
+  }
+}, Effect.scoped)
+
+const logCommit = Effect.fnUntraced(function*(compaction: StorageCompaction, options: {
+  readonly publicKey: string
+  readonly storeId: StoreId
+  readonly result: "Committed" | "Superseded"
+  readonly through: number
+  readonly inputCount: number
+  readonly keptCount: number
+}) {
+  const activationId = options.result === "Committed"
+    ? (yield* compaction.history(options.publicKey, options.storeId)).find((activation) => activation.active)
+      ?.activationId
+    : undefined
+  yield* Effect.logInfo(
+    options.result === "Committed" ? "Committed compaction snapshot" : "Compaction snapshot superseded"
+  ).pipe(
+    Effect.annotateLogs({
+      service: "EventLogServerEncrypted",
+      publicKey: options.publicKey,
+      storeId: options.storeId,
+      inputCount: options.inputCount,
+      keptCount: options.keptCount,
+      through: options.through,
+      activationId
+    })
+  )
+})
+
+// Pieces of compaction segments not yet joined, by stage, for one connection.
+class PendingSegments extends Context.Service<
+  PendingSegments,
+  Map<string, ReturnType<typeof ChunkedMessage.initialJoinState>>
+>()("effect/eventlog/EventLogServerEncrypted/PendingSegments") {}
+
+const getPendingSegments = (client: Rpc.ServerClient, stageId: string) => {
+  let stages = Context.getOrUndefined(client.annotations, PendingSegments)
+  if (stages === undefined) {
+    stages = new Map()
+    client.annotate(PendingSegments, stages)
+  }
+  let pending = stages.get(stageId)
+  if (pending === undefined) {
+    pending = ChunkedMessage.initialJoinState()
+    stages.set(stageId, pending)
+  }
+  return pending
+}
+
+const releasePendingSegments = (client: Rpc.ServerClient, stageId: string) => {
+  Context.getOrUndefined(client.annotations, PendingSegments)?.delete(stageId)
+}
 
 /**
  * Provides an encrypted event-log RPC server using `EventLogRemoteRpcs` and the
@@ -158,7 +497,8 @@ const toWriteAcks = Effect.fnUntraced(function*(
  * This layer installs `EventLogRemoteRpcs` on the provided RPC server protocol
  * and wires those RPCs to `layerRpcHandlers`. Encrypted batches, session
  * authentication bindings, remote ids, and change streams are delegated to
- * `Storage`.
+ * `Storage`. When `Storage` provides `compaction`, it also installs
+ * `EventLogCompactionRpcs`.
  *
  * @see {@link layerRpcHandlers} for the encrypted handler layer without installing an RPC server protocol
  * @see {@link Storage} for the storage service required by this layer
@@ -168,9 +508,14 @@ const toWriteAcks = Effect.fnUntraced(function*(
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = RpcServer.layer(EventLogRemoteRpcs).pipe(
-  Layer.provide(layerRpcHandlers)
-)
+export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Layer.unwrap(
+  Effect.gen(function*() {
+    const storage = yield* Storage
+    return storage.compaction === undefined
+      ? RpcServer.layer(EventLogRemoteRpcs)
+      : RpcServer.layer(EventLogRemoteRpcs.merge(EventLogCompactionRpcs))
+  })
+).pipe(Layer.provide(layerRpcHandlers))
 
 /**
  * Defines the backing store service used by the encrypted event-log server.
@@ -935,7 +1280,20 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         journal.rollbackEpoch++
         journal.noOp = undefined
         schedulePrune(journal, now + graceMillis)
-        return Effect.succeed(activation.id)
+        return Effect.as(
+          Effect.logInfo("Rolled back compaction snapshot").pipe(
+            Effect.annotateLogs({
+              service: "EventLogServerEncrypted",
+              publicKey,
+              storeId,
+              keptCount: activation.keptCount,
+              base: activation.base,
+              activationId: activation.id,
+              withdrawnActivationId: withdrawn.id
+            })
+          ),
+          activation.id
+        )
       }),
     history: (publicKey, storeId) =>
       Effect.sync(() => {
