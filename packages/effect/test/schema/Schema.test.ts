@@ -4023,6 +4023,43 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.fail(null, "Expected object")
     })
 
+    it("Record(Enum, Number)", async () => {
+      enum Color {
+        Red = "red",
+        Green = "green"
+      }
+      const schema = Schema.Record(Schema.Enum(Color), Schema.Number)
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.succeed({ red: 1, green: 2 })
+      await decoding.fail(
+        { red: 1 },
+        `Missing key
+  at ["green"]`
+      )
+
+      const encoding = asserts.encoding()
+      await encoding.succeed({ red: 1, green: 2 })
+    })
+
+    it("Record(Enum with numeric members, String)", async () => {
+      enum Level {
+        Low = 1,
+        High = 2
+      }
+      const schema = Schema.Record(Schema.Enum(Level), Schema.String)
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.succeed({ 1: "low", 2: "high" })
+      await decoding.fail(
+        { 1: "low" },
+        `Missing key
+  at [2]`
+      )
+    })
+
     it("recursive values stay lazy", async () => {
       interface Recursive {
         readonly [key: string]: Recursive

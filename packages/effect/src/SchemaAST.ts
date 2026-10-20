@@ -4607,6 +4607,13 @@ function parseParameter(ast: AST): {
           literals.push(ast.symbol)
         }
         return
+      case "Enum":
+        for (const [, value] of ast.enums) {
+          if (!literals.includes(value)) {
+            literals.push(value)
+          }
+        }
+        return
       case "Never":
         return
       case "Union":
