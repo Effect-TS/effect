@@ -2750,8 +2750,8 @@ export interface IndexSignature {
   readonly type: AST
 }
 
-// Lets internally derived value types (e.g. encoded sides where `undefined`
-// was transformed away) skip the optional value check
+// Passed by `Objects` rebuilds: a derived value type can stay optional after
+// `undefined` is transformed away (e.g. to `null` on the JSON encoded side)
 const skipValueCheck = globalThis.Symbol()
 
 /**
