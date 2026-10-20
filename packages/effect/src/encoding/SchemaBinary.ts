@@ -4279,6 +4279,7 @@ function decodeExtraPair(
   const signature = layout.extraAll ??
     (r.indexSignatures ??= new IndexSignatureCache(r.options)).find(layout, key)
   if (signature === undefined) {
+    if (r.rejectUnknownFields) invalid("a key matching an index signature", key, r.options)
     skipFieldPayload(kind, r)
     return
   }
@@ -4375,6 +4376,7 @@ function decodeScalarField(kind: number, r: Reader): unknown {
 
 function decodeFieldPayload(layout: Layout, wireMask: number, kind: number, r: Reader): unknown {
   if ((wireMask & (1 << kind)) === 0) {
+    if (r.rejectUnknownFields) invalid("matching field wire kind", kind, r.options)
     skipFieldPayload(kind, r)
     return ABSENT
   }
@@ -4849,6 +4851,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
     const tag = r.u32le()
     const variant = layout.byTag.get(tag)
     if (variant === undefined) {
+      if (r.rejectUnknownFields) invalid("known union member", tag, r.options)
       r.take(r.remaining)
       return ABSENT
     }
@@ -4863,6 +4866,7 @@ function decodeUnion(layout: UnionLayout, r: Reader): unknown {
   }
   const member = layout.byKind.get(kind)
   if (member === undefined) {
+    if (r.rejectUnknownFields) invalid("known union member", kind, r.options)
     r.take(r.remaining)
     return ABSENT
   }
