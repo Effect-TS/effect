@@ -128,9 +128,11 @@ export const make: (options: {
     const currentSnapshotSequence = snapshotSequence++
     const nowNanos = clock.currentTimeNanosUnsafe()
     const nowTime = String(nowNanos)
-    const nextCounterState = new Map(previousCounterState)
-    const nextHistogramState = new Map(previousHistogramState)
-    const nextFrequencyState = new Map(previousFrequencyState)
+    // Only series in this snapshot carry their delta state forward, so removed
+    // series do not leak state or report a negative delta when recreated.
+    const nextCounterState = new Map<string, number | bigint>()
+    const nextHistogramState = new Map<string, PreviousHistogramState>()
+    const nextFrequencyState = new Map<string, Map<string, number>>()
     const metricData: Array<IMetric> = []
     const metricDataByName = new Map<string, IMetric>()
     const addMetricData = (data: IMetric) => {

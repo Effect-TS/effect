@@ -17,7 +17,7 @@ import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
 import type { Effect } from "./Effect.ts"
 import type { Exit } from "./Exit.ts"
-import { constUndefined, dual } from "./Function.ts"
+import { constUndefined, dual, identity } from "./Function.ts"
 import * as InternalEffect from "./internal/effect.ts"
 import * as InternalMetric from "./internal/metric.ts"
 import * as InternalRecord from "./internal/record.ts"
@@ -1376,6 +1376,23 @@ export declare namespace Metric {
   }
 
   /**
+   * Handle for a series registered with `Metric.registerUnsafe`.
+   *
+   * **Details**
+   *
+   * `remove` deletes the series from the registry it was registered into, but
+   * only while the registry still holds this registration. Calling it again, or
+   * after another registration has replaced the series, does nothing.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.0.6
+   */
+  export interface Registration {
+    readonly remove: () => void
+  }
+
+  /**
    * Protocol interface for metric snapshots containing metadata and current state.
    *
    * **Example** (Inspecting metric snapshot protocols)
@@ -1709,27 +1726,57 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   abstract createHooks(): Metric.Hooks<Input, State>
 
   hook(context: Context.Context<never>): Metric.Hooks<Input, State> {
+    const key = this.key(context)
+    // The registry owns the series, so it is looked up on every update.
+    const registry = Context.get(context, MetricRegistry)
+    let metadata = registry.get(key)
+    if (Predicate.isUndefined(metadata)) {
+      metadata = this.metadata(context, this.createHooks())
+      registry.set(key, metadata)
+    }
+    return metadata.hooks
+  }
+
+  removeUnsafe(context: Context.Context<never>): void {
+    Context.get(context, MetricRegistry).delete(this.key(context))
+  }
+
+  registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input, State>): Metric.Registration {
+    const key = this.key(context)
+    // Keep the registry from registration time, so removal does not depend on
+    // the context it is called from.
+    const registry = Context.get(context, MetricRegistry)
+    const metadata = this.metadata(context, hooks)
+    registry.set(key, metadata)
+    return {
+      remove() {
+        if (registry.get(key) === metadata) {
+          registry.delete(key)
+        }
+      }
+    }
+  }
+
+  private key(context: Context.Context<never>): string {
     const extraAttributes = Context.get(context, CurrentMetricAttributes)
     if (extraAttributes !== this.#extraAttributes) {
       this.#extraAttributes = extraAttributes
       this.#key = makeKey(this, mergeAttributes(this.attributes, extraAttributes))
     }
-    // The registry owns the series, so it is looked up on every update.
-    const registry = Context.get(context, MetricRegistry)
-    let metadata = registry.get(this.#key)
-    if (Predicate.isUndefined(metadata)) {
-      metadata = {
-        id: this.id,
-        type: this.type,
-        description: this.description,
-        attributes: Object.keys(extraAttributes).length > 0
-          ? mergeAttributes(this.attributes, extraAttributes)
-          : this.attributes,
-        hooks: this.createHooks()
-      }
-      registry.set(this.#key, metadata)
+    return this.#key
+  }
+
+  private metadata(context: Context.Context<never>, hooks: Metric.Hooks<Input, State>): Metric.Metadata<Input, State> {
+    const extraAttributes = Context.get(context, CurrentMetricAttributes)
+    return {
+      id: this.id,
+      type: this.type,
+      description: this.description,
+      attributes: Object.keys(extraAttributes).length > 0
+        ? mergeAttributes(this.attributes, extraAttributes)
+        : this.attributes,
+      hooks
     }
-    return metadata.hooks
   }
 
   pipe() {
@@ -1999,21 +2046,31 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
   override readonly updateUnsafe: (input: Input2, context: Context.Context<never>) => void
   override readonly modifyUnsafe: (input: Input2, context: Context.Context<never>) => void
 
+  readonly mapContext: (context: Context.Context<never>) => Context.Context<never>
+
   constructor(
     metric: Metric<Input, State>,
     valueUnsafe: (context: Context.Context<never>) => State,
     updateUnsafe: (input: Input2, context: Context.Context<never>) => void,
-    modifyUnsafe: (input: Input2, context: Context.Context<never>) => void
+    modifyUnsafe: (input: Input2, context: Context.Context<never>) => void,
+    mapContext: (context: Context.Context<never>) => Context.Context<never> = identity
   ) {
     super(metric.id, metric.description, metric.attributes)
     this.metric = metric
     this.valueUnsafe = valueUnsafe
     this.updateUnsafe = updateUnsafe
     this.modifyUnsafe = modifyUnsafe
+    this.mapContext = mapContext
     this.type = metric.type
   }
   createHooks(): Metric.Hooks<Input2, State> {
     return (this.metric as any).createHooks()
+  }
+  override removeUnsafe(context: Context.Context<never>): void {
+    removeUnsafe(this.metric, this.mapContext(context))
+  }
+  override registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input2, State>): Metric.Registration {
+    return registerUnsafe(this.metric, this.mapContext(context), hooks as Metric.Hooks<any, State>)
   }
 }
 
@@ -2733,6 +2790,136 @@ export const update: {
 )
 
 /**
+ * Removes the series of a metric for the current attributes from the metric
+ * registry.
+ *
+ * **When to use**
+ *
+ * Use when a series describes something that has gone away, such as a
+ * connection or an entity, so the registry and exporters stop tracking it.
+ *
+ * **Details**
+ *
+ * The series is identified the same way `update` identifies it: by the metric
+ * and its attributes merged with `CurrentMetricAttributes`. Other series of the
+ * same metric are left alone. A later update creates the series again from its
+ * initial state. Removing a series that does not exist does nothing.
+ *
+ * **Example** (Removing a series)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Metric } from "effect"
+ *
+ * const connections = Metric.gauge("connections")
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Metric.update(connections, 3).pipe(
+ *     Effect.provideService(Metric.CurrentMetricAttributes, { pool: "a" })
+ *   )
+ *   yield* Metric.update(connections, 5).pipe(
+ *     Effect.provideService(Metric.CurrentMetricAttributes, { pool: "b" })
+ *   )
+ *   yield* Metric.remove(connections).pipe(
+ *     Effect.provideService(Metric.CurrentMetricAttributes, { pool: "a" })
+ *   )
+ *   const snapshots = yield* Metric.snapshot
+ *   return snapshots.map((snapshot) => snapshot.attributes)
+ * })
+ *
+ * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => [{ pool: "b" }]
+ * ```
+ *
+ * @see {@link removeUnsafe} for removing a series with an explicit `Context`
+ *
+ * @stability experimental
+ * @category mutations
+ * @since 4.0.6
+ */
+export const remove = <Input, State>(self: Metric<Input, State>): Effect<void> =>
+  InternalEffect.contextWith((context) => InternalEffect.sync(() => removeUnsafe(self, context)))
+
+/**
+ * Removes the series of a metric for the attributes in the provided `Context`
+ * from the metric registry in that `Context`.
+ *
+ * **When to use**
+ *
+ * Use when a low-level integration already holds a `Context`. Use `remove`
+ * in application code.
+ *
+ * @see {@link remove} for the `Effect` version
+ *
+ * @stability experimental
+ * @category mutations
+ * @since 4.0.6
+ */
+export const removeUnsafe = <Input, State>(self: Metric<Input, State>, context: Context.Context<never>): void =>
+  (self as Metric$<Input, State>).removeUnsafe(context)
+
+/**
+ * Registers a series backed by caller-supplied hooks, for gauges whose value is
+ * read when metrics are snapshotted rather than pushed with updates.
+ *
+ * **When to use**
+ *
+ * Use when the value already lives in some data structure, such as a queue
+ * size, and updating a metric on every change would cost more than reading the
+ * value at export time.
+ *
+ * **Details**
+ *
+ * The series is identified the same way `update` identifies it: by the metric
+ * and its attributes merged with `CurrentMetricAttributes` from `context`. It
+ * is stored in the `MetricRegistry` from `context`, replacing any series with
+ * the same identity. `hooks.get` is called each time the series is read, for
+ * example by `snapshot` or an exporter.
+ *
+ * The returned `Registration` removes the series from the same registry, but
+ * only if the registry still holds this registration.
+ *
+ * **Gotchas**
+ *
+ * - `update`, `modify` and `value` on this series call the supplied hooks.
+ *   Pass no-op `update` and `modify` hooks, as in the example below, so that
+ *   updates to a callback series do nothing.
+ * - The registry keeps `hooks` reachable until the series is removed, along
+ *   with anything `get` closes over. Call `remove` once the source goes away.
+ *
+ * **Example** (Reporting a queue size on snapshot)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Metric } from "effect"
+ *
+ * const context = Context.make(Metric.MetricRegistry, new Map())
+ * const queueSize = Metric.gauge("queue_size")
+ * const queue: Array<string> = ["a", "b"]
+ *
+ * const registration = Metric.registerUnsafe(queueSize, context, {
+ *   get: () => ({ value: queue.length }),
+ *   update: () => {},
+ *   modify: () => {}
+ * })
+ * queue.push("c")
+ * const sizes = Metric.snapshotUnsafe(context).map((snapshot) => snapshot.state)
+ * registration.remove()
+ *
+ * sizes // => [{ value: 3 }]
+ * Metric.snapshotUnsafe(context).length // => 0
+ * ```
+ *
+ * @see {@link remove} for removing a series updated with `update`
+ *
+ * @stability experimental
+ * @category mutations
+ * @since 4.0.6
+ */
+export const registerUnsafe = <Input, State>(
+  self: Metric<Input, State>,
+  context: Context.Context<never>,
+  hooks: Metric.Hooks<Input, State>
+): Metric.Registration => (self as Metric$<Input, State>).registerUnsafe(context, hooks)
+
+/**
  * Returns a new metric that is powered by this one, but which accepts updates
  * of the specified new type, which must be transformable to the input type of
  * this metric.
@@ -2910,7 +3097,8 @@ export const withAttributes: {
     self,
     (context) => self.valueUnsafe(attributed(context)),
     (input, context) => self.updateUnsafe(input, attributed(context)),
-    (input, context) => self.modifyUnsafe(input, attributed(context))
+    (input, context) => self.modifyUnsafe(input, attributed(context)),
+    attributed
   )
 })
 
