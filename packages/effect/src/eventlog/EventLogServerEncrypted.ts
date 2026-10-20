@@ -667,8 +667,9 @@ export interface StorageCompaction {
     virtualSequences: ReadonlyArray<number>
   ) => Effect.Effect<"Committed" | "Superseded", CompactionNotFound>
   /**
-   * Records and logs the first no-op with its identity, store, stage and through
-   * sequence. Retries do not advance backoff or emit another audit record.
+   * Records and logs the first no-op with its identity, store, stage, through
+   * sequence and cached input count. Retries do not advance backoff or emit
+   * another audit record.
    */
   readonly recordNoOp: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void, CompactionNotFound>
   /**
@@ -1298,7 +1299,8 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
             publicKey,
             storeId,
             stageId,
-            through: stage.through
+            through: stage.through,
+            inputCount: stage.inputCount
           })
         )
       }),
