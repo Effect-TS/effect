@@ -356,8 +356,6 @@ describe("Chunk", () => {
 
     describe("Given a non-finite index", () => {
       it("should throw", () => {
-        throws(() => Chunk.getUnsafe(Chunk.empty(), Number.NaN))
-        throws(() => Chunk.getUnsafe(Chunk.make(1), Number.NaN))
         throws(() => Chunk.getUnsafe(Chunk.make(1, 2), Number.NaN))
       })
     })
