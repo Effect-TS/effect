@@ -6,6 +6,7 @@ import { Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import {
   HttpBody,
   HttpClient,
@@ -432,6 +433,77 @@ it.live("releases an immediately failing form data stream and connection before 
     Effect.provide(layer)
   )
 })
+
+it.live.each(["response completion", "response interruption", "upload failure"] as const)(
+  "releases an unfinished keep-alive upload after %s before layer teardown",
+  (mode) =>
+    Effect.gen(function*() {
+      const uploadBlocked = yield* Deferred.make<void>()
+      const uploadFinalized = yield* Deferred.make<void>()
+      const failUpload = yield* Deferred.make<void>()
+      const connectionClosed = yield* Deferred.make<void>()
+      const server = Http.createServer((request, response) => {
+        request.on("error", () => {})
+        request.socket.once("close", () => Deferred.doneUnsafe(connectionClosed, Effect.void))
+        request.once("data", () => {
+          response.writeHead(200, { "content-type": "text/plain" })
+          if (mode === "response completion") {
+            response.end("ready")
+          } else {
+            response.write("ready")
+          }
+        })
+      })
+      const layer = HttpServer.layerTestClient.pipe(
+        Layer.provide(NodeClient.layerNodeHttpNoAgent.pipe(
+          Layer.provide(NodeClient.layerAgentOptions({ keepAlive: true }))
+        )),
+        Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+      )
+      yield* Effect.gen(function*() {
+        const body = Stream.succeed(new TextEncoder().encode("first")).pipe(
+          Stream.concat(Stream.fromEffect(
+            Deferred.succeed(uploadBlocked, undefined).pipe(
+              Effect.andThen(Deferred.await(failUpload)),
+              Effect.andThen(Effect.fail("upload failed"))
+            )
+          )),
+          Stream.ensuring(Deferred.succeed(uploadFinalized, undefined))
+        )
+        const response = yield* HttpClient.post("/", { body: HttpBody.stream(body) })
+        yield* Deferred.await(uploadBlocked)
+        if (mode === "response completion") {
+          assert.strictEqual(yield* response.text, "ready")
+        } else if (mode === "response interruption") {
+          const reading = yield* Deferred.make<void>()
+          const reader = yield* response.stream.pipe(
+            Stream.tap(() => Deferred.succeed(reading, undefined)),
+            Stream.runDrain,
+            Effect.forkChild
+          )
+          yield* Deferred.await(reading)
+          yield* Fiber.interrupt(reader)
+        } else {
+          const error = yield* response.stream.pipe(
+            Stream.tap(() => Deferred.succeed(failUpload, undefined)),
+            Stream.runDrain,
+            Effect.timeout("1 second"),
+            Effect.flip
+          )
+          assert.strictEqual(error._tag, "HttpClientError")
+        }
+        // Check while the agent is still alive: layer teardown must not mask a leak.
+        yield* Deferred.await(uploadFinalized).pipe(Effect.timeout("1 second"))
+        if (mode !== "response completion") {
+          yield* Deferred.await(connectionClosed).pipe(Effect.timeout("1 second"))
+        }
+      }).pipe(
+        Effect.timeout("2 seconds"),
+        Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+        Effect.provide(layer)
+      )
+    })
+)
 
 it.live("returns a stream body encoding failure", () =>
   Effect.gen(function*() {
