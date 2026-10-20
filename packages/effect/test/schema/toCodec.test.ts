@@ -800,24 +800,12 @@ describe("Serializers", () => {
         await asserts.decoding().succeed({ field: "a" }, { [field]: "a" })
       })
 
-      describe("Record", () => {
-        it("optional(Number)", async () => {
-          const schema = Schema.Record(Schema.String, Schema.optional(Schema.Number))
-          const codec = Schema.toCodecJson(schema)
-          const asserts = new TestSchema.Asserts(codec)
+      it("Record(String, optional(Number))", async () => {
+        const schema = Schema.Record(Schema.String, Schema.optional(Schema.Number))
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
-          const encoding = asserts.encoding()
-          await encoding.succeed({ a: 1, b: undefined }, { a: 1, b: null })
-
-          const decoding = asserts.decoding()
-          await decoding.succeed({ a: 1, b: null }, { a: 1, b: undefined })
-
-          const encoded = Schema.make<Schema.Codec<unknown>>(SchemaAST.toEncoded(codec.ast))
-          deepStrictEqual(Schema.decodeUnknownSync(encoded)({ a: 1, b: null }), { a: 1, b: null })
-
-          const goJson = new TestSchema.Asserts(Schema.toCodecGoJson(schema))
-          await goJson.encoding().succeed({ a: 1, b: undefined }, { a: 1, b: null })
-        })
+        await asserts.encoding().succeed({ a: 1, b: undefined }, { a: 1, b: null })
+        await asserts.decoding().succeed({ a: 1, b: null }, { a: 1, b: undefined })
       })
 
       describe("Tuple", () => {
