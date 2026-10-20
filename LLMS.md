@@ -414,7 +414,8 @@ managing the flow of a CLI application.
 
 Effect's AI modules provide a provider-agnostic interface for language models.
 You can generate text, decode structured objects with `Schema` and stream partial
-responses.
+responses. `DecisionModel` answers classification, rating, and probability
+questions with probabilities.
 
 - **[Using LanguageModel for text, objects, and streams](./ai-docs/src/71_ai/10_language-model.ts)**:
   Configure a provider once, then use `LanguageModel` for plain text
@@ -425,6 +426,10 @@ responses.
 - **[Stateful chat sessions](./ai-docs/src/71_ai/30_chat.ts)**:
   The AI `Chat` module maintains conversation history automatically. Build
   AI agents or chat assistants.
+- **[Making typed decisions with DecisionModel](./ai-docs/src/71_ai/40_decision-model.ts)**:
+  Define classification, rating, and probability decisions over a `Schema`
+  input with `Decision.make`, then answer them in one provider call with
+  `DecisionModel.decide` or `DecisionModel.decideSettled`.
 
 ## Building distributed applications with cluster
 
