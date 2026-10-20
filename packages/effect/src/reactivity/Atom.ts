@@ -580,9 +580,10 @@ function makeEffect<A, E>(
     ),
     effect,
     function(exit) {
-      syncResult = AsyncResult.fromExitWithPrevious(exit, previous)
       if (isAsync) {
-        ctx.setSelf(syncResult)
+        ctx.setSelf(AsyncResult.fromExitWithPrevious(exit, ctx.self<AsyncResult.AsyncResult<A, E>>()))
+      } else {
+        syncResult = AsyncResult.fromExitWithPrevious(exit, previous)
       }
     },
     uninterruptible
