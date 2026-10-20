@@ -12,6 +12,7 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import { flow } from "effect/Function"
 import * as Cookies from "effect/http/Cookies"
 import * as Headers from "effect/http/Headers"
@@ -576,10 +577,21 @@ export const makeNodeHttp = Effect.gen(function*() {
         headers: request.headers,
         signal
       })
-    return Effect.raceFirst(
-      waitForResponse(nodeRequest, request),
-      sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
-    ).pipe(
+    return Effect.gen(function*() {
+      // Headers must not interrupt the upload. The request owns the fiber until
+      // the response closes (including cancellation through the abort signal).
+      const upload = yield* sendBody(nodeRequest, request, request.body).pipe(
+        Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
+        Effect.forkDetach
+      )
+      const onClose = () => upload.interruptUnsafe()
+      nodeRequest.once("close", onClose)
+      upload.addObserver(() => nodeRequest.off("close", onClose))
+      return yield* Effect.raceFirst(
+        waitForResponse(nodeRequest, request),
+        Fiber.join(upload).pipe(Effect.andThen(Effect.never))
+      )
+    }).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
     )
@@ -630,8 +642,7 @@ const sendBody = (
             })),
           NodeSink.fromWritable({
             evaluate: () => nodeRequest,
-            // The request race owns destruction, so a body failure must reach
-            // it before destroying the request can produce a transport error.
+            // The upload fiber owns destruction after observing body failures.
             endOnDone: false,
             onError: (cause) =>
               new Error.HttpClientError({
