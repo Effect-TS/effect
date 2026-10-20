@@ -7113,35 +7113,6 @@ export function isULID(annotations?: Annotations.Filter) {
     }
   )
 }
-
-const isAsciiAlphanumeric = (code: number): boolean =>
-  (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
-
-// "+" or "/"
-const isBase64Char = (code: number): boolean => isAsciiAlphanumeric(code) || code === 43 || code === 47
-
-// "-" or "_"
-const isBase64UrlChar = (code: number): boolean => isAsciiAlphanumeric(code) || code === 45 || code === 95
-
-// Linear equivalent of the Base64 / Base64Url patterns: V8 throws a RangeError
-// when matching their repeated group against multi-megabyte inputs.
-function isBase64Like(s: string, isAlphabetChar: (code: number) => boolean, optionalPadding: boolean): boolean {
-  let n = 0
-  while (n < s.length && isAlphabetChar(s.charCodeAt(n))) n++
-  switch (s.length - n) {
-    case 0:
-      return optionalPadding ? n % 4 !== 1 : n % 4 === 0
-    case 1:
-      return n % 4 === 3 && s[n] === "="
-    case 2:
-      return n % 4 === 2 && s.endsWith("==")
-    default:
-      return false
-  }
-}
-
-const BASE64_PATTERN = "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$"
-const BASE64URL_PATTERN = "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$"
 /**
  * Validates that a string is valid Base64 encoded data.
  *
@@ -7162,17 +7133,20 @@ const BASE64URL_PATTERN = "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-z
  * @since 4.0.0
  */
 export function isBase64(annotations?: Annotations.Filter) {
+  const pattern = "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$"
+  // Matching `pattern` directly overflows the V8 stack on large inputs
+  const regExp = /^[0-9a-zA-Z+/]*={0,2}$/
   return makeFilter(
-    (s: string) => isBase64Like(s, isBase64Char, false),
+    (s: string) => s.length % 4 === 0 && regExp.test(s),
     {
       expected: "a base64 encoded string",
       representation: {
         id: "effect/schema/isBase64",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: BASE64_PATTERN }),
+      toJsonSchema: () => ({ pattern }),
       arbitraryConstraint: {
-        patterns: [{ source: BASE64_PATTERN, flags: "" }]
+        patterns: [{ source: pattern, flags: "" }]
       },
       toCode: () => ({ runtime: "Schema.isBase64()" }),
       ...annotations
@@ -7200,17 +7174,20 @@ export function isBase64(annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isBase64Url(annotations?: Annotations.Filter) {
+  const pattern = "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$"
+  // Matching `pattern` directly overflows the V8 stack on large inputs
+  const regExp = /^[0-9a-zA-Z-_]*={0,2}$/
   return makeFilter(
-    (s: string) => isBase64Like(s, isBase64UrlChar, true),
+    (s: string) => regExp.test(s) && (s.endsWith("=") ? s.length % 4 === 0 : s.length % 4 !== 1),
     {
       expected: "a base64url encoded string",
       representation: {
         id: "effect/schema/isBase64Url",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: BASE64URL_PATTERN }),
+      toJsonSchema: () => ({ pattern }),
       arbitraryConstraint: {
-        patterns: [{ source: BASE64URL_PATTERN, flags: "" }]
+        patterns: [{ source: pattern, flags: "" }]
       },
       toCode: () => ({ runtime: "Schema.isBase64Url()" }),
       ...annotations
