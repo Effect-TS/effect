@@ -1286,6 +1286,8 @@ describe("Array", () => {
       pipe(Arr.empty(), Arr.unionWith(Arr.empty(), Equivalence.strictEqual<number>())),
       Arr.empty()
     )
+    deepStrictEqual(pipe([1, 1, 2], Arr.unionWith(Arr.empty(), Equivalence.strictEqual<number>())), [1, 2])
+    deepStrictEqual(pipe(Arr.empty(), Arr.unionWith([1, 1, 2], Equivalence.strictEqual<number>())), [1, 2])
   })
 
   it("intersectionWith", () => {
@@ -1496,6 +1498,8 @@ describe("Array", () => {
     deepStrictEqual(Arr.union([1, 2], [2, 3]), [1, 2, 3])
     deepStrictEqual(Arr.union([], [1, 2]), [1, 2])
     deepStrictEqual(Arr.union([1, 2], []), [1, 2])
+    deepStrictEqual(Arr.union([1, 1, 2], []), [1, 2])
+    deepStrictEqual(Arr.union([], [1, 1, 2]), [1, 2])
     deepStrictEqual(Arr.union([], []), [])
     deepStrictEqual(Arr.union([1, 2], [1, 2]), [1, 2])
     deepStrictEqual(pipe([1, 2], Arr.union([3, 4])), [1, 2, 3, 4])

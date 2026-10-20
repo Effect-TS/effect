@@ -3295,14 +3295,11 @@ export const unionWith: {
 } = dual(3, <A>(self: Iterable<A>, that: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
   const a = fromIterable(self)
   const b = fromIterable(that)
+  const dedupe = dedupeWith(isEquivalent)
   if (isReadonlyArrayNonEmpty(a)) {
-    if (isReadonlyArrayNonEmpty(b)) {
-      const dedupe = dedupeWith(isEquivalent)
-      return dedupe(appendAll(a, b))
-    }
-    return a
+    return isReadonlyArrayNonEmpty(b) ? dedupe(appendAll(a, b)) : dedupe(a)
   }
-  return b
+  return dedupe(b)
 })
 
 /**
@@ -3340,9 +3337,9 @@ export const union: {
     const a = fromIterable(self)
     const b = fromIterable(that)
     if (isReadonlyArrayNonEmpty(a)) {
-      return isReadonlyArrayNonEmpty(b) ? dedupe(appendAll(a, b)) : a
+      return isReadonlyArrayNonEmpty(b) ? dedupe(appendAll(a, b)) : dedupe(a)
     }
-    return b
+    return dedupe(b)
   }
 )
 
