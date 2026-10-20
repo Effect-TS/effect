@@ -17,7 +17,7 @@ import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
 import type { Effect } from "./Effect.ts"
 import type { Exit } from "./Exit.ts"
-import { constUndefined, dual, identity } from "./Function.ts"
+import { constUndefined, constVoid, dual, identity } from "./Function.ts"
 import * as InternalEffect from "./internal/effect.ts"
 import * as InternalMetric from "./internal/metric.ts"
 import * as InternalRecord from "./internal/record.ts"
@@ -1730,7 +1730,7 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
     // Keep the registry from registration time, so removal does not depend on
     // the context it is called from.
     const registry = Context.get(context, MetricRegistry)
-    const metadata = this.metadata(hooks)
+    const metadata = this.metadata({ get: hooks.get, update: constVoid, modify: constVoid })
     registry.set(key, metadata)
     return {
       remove() {
@@ -2063,7 +2063,11 @@ class MetricTransform<Input, out State, in Input2> extends Metric$<Input2, State
     removeUnsafe(this.metric, this.mapContext(context))
   }
   override registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input2, State>): Registration {
-    return registerUnsafe(this.metric, this.mapContext(context), hooks as Metric.Hooks<any, State>)
+    return registerUnsafe(this.metric, this.mapContext(context), {
+      get: hooks.get,
+      update: constVoid,
+      modify: constVoid
+    })
   }
 }
 
@@ -2882,14 +2886,13 @@ export const removeUnsafe = <Input, State>(self: Metric<Input, State>, context: 
  * from `context`, and replaces any series with the same identity. `hooks.get`
  * is called each time the series is read, for example by `snapshot` or an
  * exporter. The returned {@link Registration} removes it again.
+ * `update` and `modify` on this series do nothing; the supplied mutation hooks
+ * are ignored.
  *
  * **Gotchas**
  *
- * - `update`, `modify` and `value` on this series call the supplied hooks.
- *   Pass no-op `update` and `modify` hooks, as in the example below, so that
- *   updates to a callback series do nothing.
- * - The registry keeps `hooks` reachable until the series is removed, along
- *   with anything `get` closes over. Call `remove` once the source goes away.
+ * The registry keeps `hooks.get` reachable until the series is removed, along
+ * with anything it closes over. Call `remove` once the source goes away.
  *
  * **Example** (Reporting a queue size on snapshot)
  *
