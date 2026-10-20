@@ -1994,6 +1994,56 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
   return { manager, shardId, send, attempts, acquired: generations.acquired } as const
 })
 
+describe("Sharding entity residency", () => {
+  it.effect("idle-reaps both addresses when the same entity id is resident on two shards", () =>
+    Effect.gen(function*() {
+      const run = Rpc.make("run", { payload: {} })
+      const entity = Entity.make("IdleReapDuplicateEntityId", [run])
+      const sharding = yield* Sharding.Sharding
+      const stopped: Array<ShardId.ShardId> = []
+      yield* sharding.registerEntity(
+        entity,
+        Effect.gen(function*() {
+          const address = yield* Entity.CurrentAddress
+          yield* Effect.addFinalizer(() => Effect.sync(() => stopped.push(address.shardId)))
+          return entity.of({ run: () => Effect.void })
+        }),
+        { maxIdleTime: 1 }
+      )
+      yield* TestClock.adjust(1)
+      const shards = [ShardId.make("default", 1), ShardId.make("default", 2)]
+      for (const shardId of shards) {
+        assert.isTrue(sharding.hasShardId(shardId))
+        const replied = yield* Deferred.make<void>()
+        yield* sharding.send(
+          new Message.IncomingRequest<typeof run>({
+            envelope: Envelope.makeRequest<typeof run>({
+              requestId: yield* sharding.getSnowflake,
+              address: EntityAddress.make({
+                shardId,
+                entityType: EntityType.make(entity.type),
+                entityId: EntityId.make("duplicate")
+              }),
+              tag: "run",
+              payload: {},
+              headers: Headers.empty
+            }),
+            lastSentReply: Option.none(),
+            respond: (reply) => {
+              assert.strictEqual(reply.reply._tag, "WithExit")
+              if (reply.reply._tag === "WithExit") assert.isTrue(Exit.isSuccess(reply.reply.exit))
+              return Deferred.succeed(replied, undefined).pipe(Effect.asVoid)
+            },
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          })
+        )
+        yield* Deferred.await(replied)
+      }
+      yield* TestClock.adjust(30_000)
+      assert.sameMembers([...stopped], shards, "each idle address must release its handlers")
+    }).pipe(Effect.provide(UnregisteredSharding({ shardsPerGroup: 2, refreshAssignmentsInterval: 60_000 }))))
+})
+
 describe.concurrent("Sharding defect recovery", () => {
   it.effect("restarts again when a replayed request defects synchronously", () =>
     Effect.gen(function*() {
