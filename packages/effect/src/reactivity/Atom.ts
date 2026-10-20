@@ -581,7 +581,10 @@ function makeEffect<A, E>(
     effect,
     function(exit) {
       if (isAsync) {
-        ctx.setSelf(AsyncResult.fromExitWithPrevious(exit, ctx.self<AsyncResult.AsyncResult<A, E>>()))
+        // Read the live value rather than `previous`: while the effect was
+        // running, the atom may have exposed `initialValue` or a `setSelf`
+        // success, and a failure should retain the latest success shown.
+        ctx.setSelf(AsyncResult.fromExitWithPrevious(exit, ctx.self()))
       } else {
         syncResult = AsyncResult.fromExitWithPrevious(exit, previous)
       }
