@@ -602,7 +602,8 @@ describe("SqlEventJournal", () => {
           "effect_event_journal_sequence",
           "effect_event_journal_sources",
           "effect_event_remotes_checkpoints",
-          "effect_event_remotes_cursors"
+          "effect_event_remotes_cursors",
+          "effect_event_remotes_rollback_epochs"
         ],
         nextB: 5,
         // Never back to the source, and nothing at or below a checkpoint.
