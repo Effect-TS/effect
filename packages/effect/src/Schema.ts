@@ -19,6 +19,14 @@ import type * as Brand from "./Brand.ts"
 import * as ByteSize_ from "./ByteSize.ts"
 import * as Cause_ from "./Cause.ts"
 import * as Chunk_ from "./Chunk.ts"
+import * as Aead_ from "./crypto/Aead.ts"
+import * as Cipher_ from "./crypto/Cipher.ts"
+import type * as CryptoError_ from "./crypto/CryptoError.ts"
+import * as KeyAgreement_ from "./crypto/KeyAgreement.ts"
+import * as KeyFormat_ from "./crypto/KeyFormat.ts"
+import * as KeyWrap_ from "./crypto/KeyWrap.ts"
+import * as Mac_ from "./crypto/Mac.ts"
+import * as Signature_ from "./crypto/Signature.ts"
 import * as Data from "./Data.ts"
 import * as DateTime from "./DateTime.ts"
 import type { Differ } from "./Differ.ts"
@@ -14306,6 +14314,1040 @@ export const DnsRecord: DnsRecord = Union([
   DnsTlsaRecord,
   DnsTxtRecord
 ]).annotate({ identifier: "DnsRecord" })
+
+// -----------------------------------------------------------------------------
+// Crypto key schemas
+// -----------------------------------------------------------------------------
+
+// Match operation parameters rather than object identity. RSA modulus length
+// affects generation only, so it is ignored here as on import.
+interface CryptoAlgorithm {
+  readonly _tag?: string
+  readonly name: string
+  readonly hash?: { readonly name: string }
+  readonly modulusLength?: number
+  readonly saltLength?: number
+}
+
+const cryptoAlgorithmEquals = (self: CryptoAlgorithm, that: CryptoAlgorithm): boolean =>
+  self === that ||
+  (self.name === that.name && self.hash?.name === that.hash?.name && self.saltLength === that.saltLength)
+
+const cryptoDigestCode = (hash: { readonly name: string }) => `Digest.${hash.name.toLowerCase().replace("-", "")}`
+
+const cryptoAlgorithmCode = (family: string, algorithm: CryptoAlgorithm): string => {
+  if (algorithm.modulusLength === undefined || algorithm.hash === undefined || algorithm._tag === undefined) {
+    const code = `${family}.${algorithm.name}`
+    return algorithm.hash === undefined ? code : `{ ...${code}, hash: ${cryptoDigestCode(algorithm.hash)} }`
+  }
+  const factory = algorithm._tag.charAt(0).toLowerCase() + algorithm._tag.slice(1)
+  const saltLength = algorithm.saltLength === undefined ? "" : `, saltLength: ${algorithm.saltLength}`
+  return `${family}.${factory}({ hash: ${
+    cryptoDigestCode(algorithm.hash)
+  }, modulusLength: ${algorithm.modulusLength}${saltLength} })`
+}
+
+const cryptoAlgorithmPayload = (algorithm: CryptoAlgorithm): Json => {
+  const payload: { [key: string]: Json } = { name: algorithm.name }
+  if (algorithm.hash !== undefined) payload.hash = algorithm.hash.name
+  if (algorithm.modulusLength !== undefined) payload.modulusLength = algorithm.modulusLength
+  if (algorithm.saltLength !== undefined) payload.saltLength = algorithm.saltLength
+  return payload
+}
+
+const declareCryptoKey = <K extends { readonly algorithm: CryptoAlgorithm }>(
+  name: string,
+  family: string,
+  type: string,
+  is: (u: unknown) => boolean,
+  algorithm: CryptoAlgorithm
+): declare<K> => {
+  const code = cryptoAlgorithmCode(family, algorithm)
+  const forbidden = SchemaGetter.forbidden<never, unknown>(() =>
+    `Cannot serialize ${family}.${type} values as JSON, use Schema.${name}FromFormat to read and write keys`
+  )
+  return declare<K>(
+    (u): u is K => is(u) && cryptoAlgorithmEquals((u as K).algorithm, algorithm),
+    {
+      expected: `${family}.${type} for ${algorithm.name}`,
+      representation: { id: `effect/crypto/${name}`, payload: cryptoAlgorithmPayload(algorithm) },
+      toCode: () => ({
+        runtime: `Schema.${name}(${code})`,
+        Type: `${family}.${type}`,
+        importDeclarations: [
+          `import * as ${family} from "effect/crypto/${family}"`,
+          ...(code.includes("Digest.") ? [`import * as Digest from "effect/crypto/Digest"`] : [])
+        ]
+      }),
+      toCodecJson: () => link<K>()(Unknown, { decode: forbidden, encode: forbidden }),
+      // Keys have no Arbitrary: linking to `Never` makes derivation fail.
+      toCodecArbitrary: () => link<K>()(Never, { decode: forbidden, encode: forbidden }),
+      toFormatter: () => (key) => globalThis.String(key),
+      toEquivalence: () => (self, that) => self === that
+    }
+  )
+}
+
+const cryptoIssue = (error: CryptoError_.CryptoError, input: unknown, options: SchemaAST.ParseOptions) =>
+  new SchemaIssue.InvalidValue({ message: error.message, cause: error }, input, options)
+
+const cryptoForbiddenEncode = (name: string, key: unknown, options: SchemaAST.ParseOptions) =>
+  Effect.fail(
+    new SchemaIssue.Forbidden(
+      { message: `Schema.${name} only decodes, pass { allowEncode: true } to encode the key` },
+      key,
+      options
+    )
+  )
+
+type CryptoKeyOptions = { readonly allowEncode?: boolean | undefined }
+
+const cryptoKeyFromBytes = <To extends Codec<any>>(
+  name: string,
+  to: To,
+  fromBytes: (bytes: globalThis.Uint8Array) => Effect.Effect<To["Type"], CryptoError_.CryptoError>,
+  toBytes: ((key: To["Type"]) => Effect.Effect<globalThis.Uint8Array, CryptoError_.CryptoError>) | undefined
+): decodeTo<To, Uint8Array> =>
+  Uint8Array.pipe(decodeTo(
+    to,
+    SchemaTransformation.transformEffect({
+      decode: (bytes, options) => Effect.mapError(fromBytes(bytes), (error) => cryptoIssue(error, bytes, options)),
+      encode: (key, options) =>
+        toBytes === undefined
+          ? cryptoForbiddenEncode(name, key, options)
+          : Effect.mapError(toBytes(key), (error) => cryptoIssue(error, key, options))
+    })
+  ))
+
+const CryptoJsonWebKeyMember = optionalKey(String)
+
+// The JWK members of RFC 7517 and RFC 7518 that `KeyFormat` reads and writes.
+// Other members are dropped.
+const CryptoJsonWebKey = Struct({
+  kty: CryptoJsonWebKeyMember,
+  crv: CryptoJsonWebKeyMember,
+  alg: CryptoJsonWebKeyMember,
+  use: CryptoJsonWebKeyMember,
+  key_ops: optionalKey(ArraySchema(String)),
+  ext: optionalKey(Boolean),
+  k: CryptoJsonWebKeyMember,
+  x: CryptoJsonWebKeyMember,
+  y: CryptoJsonWebKeyMember,
+  d: CryptoJsonWebKeyMember,
+  n: CryptoJsonWebKeyMember,
+  e: CryptoJsonWebKeyMember,
+  p: CryptoJsonWebKeyMember,
+  q: CryptoJsonWebKeyMember,
+  dp: CryptoJsonWebKeyMember,
+  dq: CryptoJsonWebKeyMember,
+  qi: CryptoJsonWebKeyMember,
+  oth: optionalKey(ArraySchema(Struct({
+    r: CryptoJsonWebKeyMember,
+    d: CryptoJsonWebKeyMember,
+    t: CryptoJsonWebKeyMember
+  })))
+}) as unknown as Codec<JsonWebKey>
+
+const cryptoFormatData = <R extends KeyFormat_.Role, Data>(format: KeyFormat_.Format<R, "decode", Data>): Codec<Data> =>
+  (format._tag === "jwk" ? CryptoJsonWebKey : format.pem ? String : Uint8Array) as Codec<any>
+
+const cryptoKeyFromFormat = <To extends Codec<any>, R extends KeyFormat_.Role, Data>(
+  name: string,
+  to: To,
+  format: KeyFormat_.Format<R, "decode", Data>,
+  decode: (data: Data) => Effect.Effect<To["Type"], CryptoError_.CryptoError>,
+  canEncode: boolean
+): decodeTo<To, Codec<Data>> => {
+  // PKCS#1 and SEC1 are read only.
+  const writable = canEncode && format._tag !== "pkcs1" && format._tag !== "sec1"
+  return cryptoFormatData(format).pipe(decodeTo(
+    to,
+    SchemaTransformation.transformEffect<To["Type"], Data>({
+      decode: (data, options) =>
+        // Secret JWK decoding is synchronous, but all format schemas are async-only.
+        Effect.flatMap(Effect.promise(() => Promise.resolve()), () =>
+          Effect.mapError(decode(data), (error) => cryptoIssue(error, data, options))),
+      encode: (key, options) =>
+        writable
+          ? Effect.mapError(
+            KeyFormat_.encode(format as any, key as KeyFormat_.Key) as Effect.Effect<Data, CryptoError_.CryptoError>,
+            (error) => cryptoIssue(error, key, options)
+          )
+          : cryptoForbiddenEncode(name, key, options)
+    })
+  ))
+}
+
+/**
+ * Type-level representation of {@link MacKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface MacKey<A extends Mac_.Algorithm = Mac_.Algorithm> extends declare<Mac_.Key<A>> {
+  readonly "Rebuild": MacKey<A>
+}
+
+/**
+ * Schema for live `Mac.Key` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link MacKeyFromFormat} or {@link MacKeyFromBytes} to read and write keys.
+ * Keys display redacted, compare by reference, and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const MacKey = <A extends Mac_.Algorithm>(algorithm: A): MacKey<A> =>
+  declareCryptoKey<Mac_.Key<A>>("MacKey", "Mac", "Key", Mac_.isKey, algorithm)
+
+/**
+ * Schema that decodes raw key bytes into a `Mac.Key`.
+ *
+ * **Details**
+ *
+ * Decoding runs `Mac.key`, which is synchronous, so the schema works with
+ * `Schema.decodeSync`. Under `Config.schema` the bytes are read as base64. A
+ * `CryptoError` becomes an `InvalidValue` issue whose `cause` is the error.
+ * Encoding fails with a `Forbidden` issue unless `allowEncode` is `true`.
+ *
+ * **Example** (Reading an HMAC key from the environment)
+ *
+ * ```ts import.meta.vitest
+ * import { Config, ConfigProvider, Effect, Schema } from "effect"
+ * import { Mac } from "effect/crypto"
+ *
+ * const config = Config.schema(Schema.MacKeyFromBytes(Mac.hmacSha256), "HMAC_KEY")
+ * const provider = ConfigProvider.fromEnv({ env: { HMAC_KEY: "A".repeat(43) + "=" } })
+ * const key = await Effect.runPromise(Effect.provide(config, ConfigProvider.layer(provider)))
+ * key.algorithm.name // => "hmacSha256"
+ * ```
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const MacKeyFromBytes = <A extends Mac_.Algorithm>(
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<MacKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "MacKeyFromBytes",
+    MacKey(algorithm),
+    (bytes) => Mac_.key(algorithm, bytes),
+    options?.allowEncode === true ? Mac_.toBytes : undefined
+  )
+
+/**
+ * Schema that decodes a `Mac.Key` from a JWK with `KeyFormat.decodeSecret`.
+ *
+ * **Details**
+ *
+ * Decoding returns an Effect, so use the async decoding functions:
+ * `Schema.decodeSync` throws. A `CryptoError` becomes an `InvalidValue` issue
+ * whose `cause` is the error. Encoding fails with a `Forbidden` issue unless
+ * `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const MacKeyFromFormat = <A extends Mac_.Algorithm, Data>(
+  format: KeyFormat_.Format<"secret", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<MacKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "MacKeyFromFormat",
+    MacKey(algorithm),
+    format,
+    (data) => KeyFormat_.decodeSecret(format, algorithm, data) as Effect.Effect<Mac_.Key<A>, CryptoError_.CryptoError>,
+    options?.allowEncode === true
+  )
+
+/**
+ * Type-level representation of {@link AeadKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface AeadKey<A extends Aead_.Algorithm = Aead_.Algorithm> extends declare<Aead_.Key<A>> {
+  readonly "Rebuild": AeadKey<A>
+}
+
+/**
+ * Schema for live `Aead.Key` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link AeadKeyFromFormat} or {@link AeadKeyFromBytes} to read and write
+ * keys. Keys display redacted, compare by reference, and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const AeadKey = <A extends Aead_.Algorithm>(algorithm: A): AeadKey<A> =>
+  declareCryptoKey<Aead_.Key<A>>("AeadKey", "Aead", "Key", Aead_.isKey, algorithm)
+
+/**
+ * Schema that decodes raw key bytes into an `Aead.Key`.
+ *
+ * **Details**
+ *
+ * Decoding runs `Aead.key`, which is synchronous, so the schema works with
+ * `Schema.decodeSync`. Under `Config.schema` the bytes are read as base64. A
+ * `CryptoError` becomes an `InvalidValue` issue whose `cause` is the error.
+ * Encoding fails with a `Forbidden` issue unless `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const AeadKeyFromBytes = <A extends Aead_.Algorithm>(
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<AeadKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "AeadKeyFromBytes",
+    AeadKey(algorithm),
+    (bytes) => Aead_.key(algorithm, bytes),
+    options?.allowEncode === true ? Aead_.toBytes : undefined
+  )
+
+/**
+ * Schema that decodes an `Aead.Key` from a JWK with `KeyFormat.decodeSecret`.
+ *
+ * **Details**
+ *
+ * Decoding returns an Effect, so use the async decoding functions:
+ * `Schema.decodeSync` throws. A `CryptoError` becomes an `InvalidValue` issue
+ * whose `cause` is the error. Encoding fails with a `Forbidden` issue unless
+ * `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const AeadKeyFromFormat = <A extends Aead_.Algorithm, Data>(
+  format: KeyFormat_.Format<"secret", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<AeadKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "AeadKeyFromFormat",
+    AeadKey(algorithm),
+    format,
+    (data) => KeyFormat_.decodeSecret(format, algorithm, data) as Effect.Effect<Aead_.Key<A>, CryptoError_.CryptoError>,
+    options?.allowEncode === true
+  )
+
+/**
+ * Type-level representation of {@link CipherKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface CipherKey<A extends Cipher_.Algorithm = Cipher_.Algorithm> extends declare<Cipher_.Key<A>> {
+  readonly "Rebuild": CipherKey<A>
+}
+
+/**
+ * Schema for live `Cipher.Key` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link CipherKeyFromFormat} or {@link CipherKeyFromBytes} to read and
+ * write keys. Keys display redacted, compare by reference, and have no
+ * `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const CipherKey = <A extends Cipher_.Algorithm>(algorithm: A): CipherKey<A> =>
+  declareCryptoKey<Cipher_.Key<A>>(
+    "CipherKey",
+    "Cipher",
+    "Key",
+    Cipher_.isKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes raw key bytes into a `Cipher.Key`.
+ *
+ * **Details**
+ *
+ * Decoding runs `Cipher.key`, which is synchronous, so the schema works with
+ * `Schema.decodeSync`. Under `Config.schema` the bytes are read as base64. A
+ * `CryptoError` becomes an `InvalidValue` issue whose `cause` is the error.
+ * Encoding fails with a `Forbidden` issue unless `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const CipherKeyFromBytes = <A extends Cipher_.Algorithm>(
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<CipherKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "CipherKeyFromBytes",
+    CipherKey(algorithm),
+    (bytes) => Cipher_.key(algorithm, bytes),
+    options?.allowEncode === true ? Cipher_.toBytes : undefined
+  )
+
+/**
+ * Schema that decodes a `Cipher.Key` from a JWK with
+ * `KeyFormat.decodeSecret`.
+ *
+ * **Details**
+ *
+ * Decoding returns an Effect, so use the async decoding functions:
+ * `Schema.decodeSync` throws. A `CryptoError` becomes an `InvalidValue` issue
+ * whose `cause` is the error. Encoding fails with a `Forbidden` issue unless
+ * `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const CipherKeyFromFormat = <A extends Cipher_.Algorithm, Data>(
+  format: KeyFormat_.Format<"secret", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<CipherKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "CipherKeyFromFormat",
+    CipherKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodeSecret(format, algorithm, data) as Effect.Effect<Cipher_.Key<A>, CryptoError_.CryptoError>,
+    options?.allowEncode === true
+  )
+
+/**
+ * Type-level representation of {@link SignaturePublicKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface SignaturePublicKey<A extends Signature_.Algorithm = Signature_.Algorithm>
+  extends declare<Signature_.PublicKey<A>>
+{
+  readonly "Rebuild": SignaturePublicKey<A>
+}
+
+/**
+ * Schema for live `Signature.PublicKey` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link SignaturePublicKeyFromFormat} or {@link SignaturePublicKeyFromBytes}
+ * to read and write keys. Keys compare by reference and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const SignaturePublicKey = <A extends Signature_.Algorithm>(algorithm: A): SignaturePublicKey<A> =>
+  declareCryptoKey<Signature_.PublicKey<A>>(
+    "SignaturePublicKey",
+    "Signature",
+    "PublicKey",
+    Signature_.isPublicKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes a raw public key into a `Signature.PublicKey`: 32 bytes
+ * for Ed25519, or an uncompressed SEC1 point for ECDSA.
+ *
+ * **Details**
+ *
+ * Decoding runs `Signature.publicKey`, which is synchronous, so the schema
+ * works with `Schema.decodeSync`. Under `Config.schema` the bytes are read as
+ * base64. A `CryptoError` becomes an `InvalidValue` issue whose `cause` is
+ * the error. RSA public keys have no raw form, so passing an RSA algorithm is
+ * a type error.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const SignaturePublicKeyFromBytes = <
+  A extends Signature_.Ed25519 | Signature_.Ecdsa
+>(algorithm: A): decodeTo<SignaturePublicKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "SignaturePublicKeyFromBytes",
+    SignaturePublicKey(algorithm),
+    (bytes) => Signature_.publicKey(algorithm, bytes),
+    Signature_.toBytes
+  )
+
+/**
+ * Schema that decodes a `Signature.PublicKey` with
+ * `KeyFormat.decodePublic` and encodes it with `KeyFormat.encode`.
+ *
+ * **Details**
+ *
+ * The format must hold public keys: `KeyFormat.spki`, `KeyFormat.jwk`, or
+ * `KeyFormat.pem(KeyFormat.spki)`. A format for another role is a type
+ * error. Decoding runs the runtime's key import, so use the async decoding
+ * functions: `Schema.decodeSync` throws. A `CryptoError` becomes an
+ * `InvalidValue` issue whose `cause` is the error.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const SignaturePublicKeyFromFormat = <A extends Signature_.Algorithm, Data>(
+  format: KeyFormat_.Format<"public", "decode", Data>,
+  algorithm: A
+): decodeTo<SignaturePublicKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "SignaturePublicKeyFromFormat",
+    SignaturePublicKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodePublic(format, algorithm, data) as Effect.Effect<
+        Signature_.PublicKey<A>,
+        CryptoError_.CryptoError
+      >,
+    true
+  )
+
+/**
+ * Type-level representation of {@link SignaturePrivateKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface SignaturePrivateKey<A extends Signature_.Algorithm = Signature_.Algorithm>
+  extends declare<Signature_.PrivateKey<A>>
+{
+  readonly "Rebuild": SignaturePrivateKey<A>
+}
+
+/**
+ * Schema for live `Signature.PrivateKey` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link SignaturePrivateKeyFromFormat} or
+ * {@link SignaturePrivateKeyFromBytes} to read and write keys. Keys display
+ * redacted, compare by reference, and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const SignaturePrivateKey = <A extends Signature_.Algorithm>(algorithm: A): SignaturePrivateKey<A> =>
+  declareCryptoKey<Signature_.PrivateKey<A>>(
+    "SignaturePrivateKey",
+    "Signature",
+    "PrivateKey",
+    Signature_.isPrivateKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes an Ed25519 seed into a `Signature.PrivateKey`.
+ *
+ * **Details**
+ *
+ * Decoding runs `Signature.privateKey`, which is synchronous, so the schema
+ * works with `Schema.decodeSync`. Under `Config.schema` the bytes are read as
+ * base64. A `CryptoError` becomes an `InvalidValue` issue whose `cause` is
+ * the error. ECDSA and RSA private keys have no raw form, so passing them is
+ * a type error. Encoding fails with a `Forbidden` issue unless `allowEncode`
+ * is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const SignaturePrivateKeyFromBytes = <
+  A extends Signature_.Ed25519
+>(algorithm: A, options?: CryptoKeyOptions): decodeTo<SignaturePrivateKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "SignaturePrivateKeyFromBytes",
+    SignaturePrivateKey(algorithm),
+    (bytes) => Signature_.privateKey(algorithm, bytes),
+    options?.allowEncode === true ? Signature_.toBytes : undefined
+  )
+
+/**
+ * Schema that decodes a `Signature.PrivateKey` with
+ * `KeyFormat.decodePrivate`.
+ *
+ * **Details**
+ *
+ * The format must hold private keys: `KeyFormat.pkcs8`, `KeyFormat.jwk`,
+ * `KeyFormat.pkcs1`, `KeyFormat.sec1`, or their PEM forms. A format for
+ * another role is a type error. Decoding runs the runtime's key import, so
+ * use the async decoding functions: `Schema.decodeSync` throws. A
+ * `CryptoError` becomes an `InvalidValue` issue whose `cause` is the error.
+ * Encoding fails with a `Forbidden` issue unless `allowEncode` is `true`,
+ * and always for the read-only PKCS#1 and SEC1 formats.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const SignaturePrivateKeyFromFormat = <A extends Signature_.Algorithm, Data>(
+  format: KeyFormat_.Format<"private", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<SignaturePrivateKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "SignaturePrivateKeyFromFormat",
+    SignaturePrivateKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodePrivate(format, algorithm, data) as Effect.Effect<
+        Signature_.PrivateKey<A>,
+        CryptoError_.CryptoError
+      >,
+    options?.allowEncode === true
+  )
+
+/**
+ * Type-level representation of {@link KeyAgreementPublicKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface KeyAgreementPublicKey<A extends KeyAgreement_.Algorithm = KeyAgreement_.Algorithm>
+  extends declare<KeyAgreement_.PublicKey<A>>
+{
+  readonly "Rebuild": KeyAgreementPublicKey<A>
+}
+
+/**
+ * Schema for live `KeyAgreement.PublicKey` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link KeyAgreementPublicKeyFromFormat} or
+ * {@link KeyAgreementPublicKeyFromBytes} to read and write keys. Keys compare
+ * by reference and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyAgreementPublicKey = <A extends KeyAgreement_.Algorithm>(algorithm: A): KeyAgreementPublicKey<A> =>
+  declareCryptoKey<KeyAgreement_.PublicKey<A>>(
+    "KeyAgreementPublicKey",
+    "KeyAgreement",
+    "PublicKey",
+    KeyAgreement_.isPublicKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes a raw public key into a `KeyAgreement.PublicKey`: 32
+ * bytes for X25519, or an uncompressed SEC1 point for ECDH.
+ *
+ * **Details**
+ *
+ * Decoding runs `KeyAgreement.publicKey`, which is synchronous, so the schema
+ * works with `Schema.decodeSync`. Under `Config.schema` the bytes are read as
+ * base64. A `CryptoError` becomes an `InvalidValue` issue whose `cause` is
+ * the error.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyAgreementPublicKeyFromBytes = <A extends KeyAgreement_.Algorithm>(
+  algorithm: A
+): decodeTo<KeyAgreementPublicKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "KeyAgreementPublicKeyFromBytes",
+    KeyAgreementPublicKey(algorithm),
+    (bytes) => KeyAgreement_.publicKey(algorithm, bytes),
+    KeyAgreement_.toBytes
+  )
+
+/**
+ * Schema that decodes a `KeyAgreement.PublicKey` with
+ * `KeyFormat.decodePublic` and encodes it with `KeyFormat.encode`.
+ *
+ * **Details**
+ *
+ * The format must hold public keys: `KeyFormat.spki`, `KeyFormat.jwk`, or
+ * `KeyFormat.pem(KeyFormat.spki)`. A format for another role is a type
+ * error. Decoding runs the runtime's key import, so use the async decoding
+ * functions: `Schema.decodeSync` throws. A `CryptoError` becomes an
+ * `InvalidValue` issue whose `cause` is the error.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyAgreementPublicKeyFromFormat = <A extends KeyAgreement_.Algorithm, Data>(
+  format: KeyFormat_.Format<"public", "decode", Data>,
+  algorithm: A
+): decodeTo<KeyAgreementPublicKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "KeyAgreementPublicKeyFromFormat",
+    KeyAgreementPublicKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodePublic(format, algorithm, data) as Effect.Effect<
+        KeyAgreement_.PublicKey<A>,
+        CryptoError_.CryptoError
+      >,
+    true
+  )
+
+/**
+ * Type-level representation of {@link KeyAgreementPrivateKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface KeyAgreementPrivateKey<A extends KeyAgreement_.Algorithm = KeyAgreement_.Algorithm>
+  extends declare<KeyAgreement_.PrivateKey<A>>
+{
+  readonly "Rebuild": KeyAgreementPrivateKey<A>
+}
+
+/**
+ * Schema for live `KeyAgreement.PrivateKey` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link KeyAgreementPrivateKeyFromFormat} or
+ * {@link KeyAgreementPrivateKeyFromBytes} to read and write keys. Keys
+ * display redacted, compare by reference, and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyAgreementPrivateKey = <A extends KeyAgreement_.Algorithm>(
+  algorithm: A
+): KeyAgreementPrivateKey<A> =>
+  declareCryptoKey<KeyAgreement_.PrivateKey<A>>(
+    "KeyAgreementPrivateKey",
+    "KeyAgreement",
+    "PrivateKey",
+    KeyAgreement_.isPrivateKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes an X25519 private key into a
+ * `KeyAgreement.PrivateKey`.
+ *
+ * **Details**
+ *
+ * Decoding runs `KeyAgreement.privateKey`, which is synchronous, so the
+ * schema works with `Schema.decodeSync`. Under `Config.schema` the bytes are
+ * read as base64. A `CryptoError` becomes an `InvalidValue` issue whose
+ * `cause` is the error. ECDH private keys have no raw form, so passing them
+ * is a type error. Encoding fails with a `Forbidden` issue unless
+ * `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyAgreementPrivateKeyFromBytes = <
+  A extends KeyAgreement_.X25519
+>(algorithm: A, options?: CryptoKeyOptions): decodeTo<KeyAgreementPrivateKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "KeyAgreementPrivateKeyFromBytes",
+    KeyAgreementPrivateKey(algorithm),
+    (bytes) => KeyAgreement_.privateKey(algorithm, bytes),
+    options?.allowEncode === true ? KeyAgreement_.toBytes : undefined
+  )
+
+/**
+ * Schema that decodes a `KeyAgreement.PrivateKey` with
+ * `KeyFormat.decodePrivate`.
+ *
+ * **Details**
+ *
+ * The format must hold private keys: `KeyFormat.pkcs8`, `KeyFormat.jwk`,
+ * `KeyFormat.sec1`, or their PEM forms. A format for another role is a type
+ * error. Decoding runs the runtime's key import, so use the async decoding
+ * functions: `Schema.decodeSync` throws. A `CryptoError` becomes an
+ * `InvalidValue` issue whose `cause` is the error. Encoding fails with a
+ * `Forbidden` issue unless `allowEncode` is `true`, and always for the
+ * read-only PKCS#1 and SEC1 formats.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyAgreementPrivateKeyFromFormat = <A extends KeyAgreement_.Algorithm, Data>(
+  format: KeyFormat_.Format<"private", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<KeyAgreementPrivateKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "KeyAgreementPrivateKeyFromFormat",
+    KeyAgreementPrivateKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodePrivate(format, algorithm, data) as Effect.Effect<
+        KeyAgreement_.PrivateKey<A>,
+        CryptoError_.CryptoError
+      >,
+    options?.allowEncode === true
+  )
+
+/**
+ * Type-level representation of {@link KeyWrapKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface KeyWrapKey<A extends KeyWrap_.AesKw = KeyWrap_.AesKw> extends declare<KeyWrap_.Key<A>> {
+  readonly "Rebuild": KeyWrapKey<A>
+}
+
+/**
+ * Schema for live AES-KW `KeyWrap.Key` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link KeyWrapKeyFromFormat} or {@link KeyWrapKeyFromBytes} to read and
+ * write keys. Keys display redacted, compare by reference, and have no
+ * `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapKey = <A extends KeyWrap_.AesKw>(algorithm: A): KeyWrapKey<A> =>
+  declareCryptoKey<KeyWrap_.Key<A>>("KeyWrapKey", "KeyWrap", "Key", KeyWrap_.isKey, algorithm)
+
+/**
+ * Schema that decodes raw key bytes into an AES-KW `KeyWrap.Key`.
+ *
+ * **Details**
+ *
+ * Decoding runs `KeyWrap.key`, which is synchronous, so the schema works with
+ * `Schema.decodeSync`. Under `Config.schema` the bytes are read as base64. A
+ * `CryptoError` becomes an `InvalidValue` issue whose `cause` is the error.
+ * Encoding fails with a `Forbidden` issue unless `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapKeyFromBytes = <A extends KeyWrap_.AesKw>(
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<KeyWrapKey<A>, Uint8Array> =>
+  cryptoKeyFromBytes(
+    "KeyWrapKeyFromBytes",
+    KeyWrapKey(algorithm),
+    (bytes) => KeyWrap_.key(algorithm, bytes),
+    options?.allowEncode === true ? KeyWrap_.toBytes : undefined
+  )
+
+/**
+ * Schema that decodes an AES-KW `KeyWrap.Key` from a JWK with
+ * `KeyFormat.decodeSecret`.
+ *
+ * **Details**
+ *
+ * Decoding returns an Effect, so use the async decoding functions:
+ * `Schema.decodeSync` throws. A `CryptoError` becomes an `InvalidValue` issue
+ * whose `cause` is the error. Encoding fails with a `Forbidden` issue unless
+ * `allowEncode` is `true`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapKeyFromFormat = <A extends KeyWrap_.AesKw, Data>(
+  format: KeyFormat_.Format<"secret", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<KeyWrapKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "KeyWrapKeyFromFormat",
+    KeyWrapKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodeSecret(format, algorithm, data) as Effect.Effect<KeyWrap_.Key<A>, CryptoError_.CryptoError>,
+    options?.allowEncode === true
+  )
+
+/**
+ * Type-level representation of {@link KeyWrapPublicKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface KeyWrapPublicKey<A extends KeyWrap_.RsaOaep = KeyWrap_.RsaOaep>
+  extends declare<KeyWrap_.PublicKey<A>>
+{
+  readonly "Rebuild": KeyWrapPublicKey<A>
+}
+
+/**
+ * Schema for live RSA-OAEP `KeyWrap.PublicKey` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link KeyWrapPublicKeyFromFormat} to read and write keys. RSA-OAEP keys
+ * have no raw form. Keys compare by reference and have no `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapPublicKey = <A extends KeyWrap_.RsaOaep>(algorithm: A): KeyWrapPublicKey<A> =>
+  declareCryptoKey<KeyWrap_.PublicKey<A>>(
+    "KeyWrapPublicKey",
+    "KeyWrap",
+    "PublicKey",
+    KeyWrap_.isPublicKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes an RSA-OAEP `KeyWrap.PublicKey` with
+ * `KeyFormat.decodePublic` and encodes it with `KeyFormat.encode`.
+ *
+ * **Details**
+ *
+ * The format must hold public keys: `KeyFormat.spki`, `KeyFormat.jwk`, or
+ * `KeyFormat.pem(KeyFormat.spki)`. A format for another role is a type
+ * error. Decoding runs the runtime's key import, so use the async decoding
+ * functions: `Schema.decodeSync` throws. A `CryptoError` becomes an
+ * `InvalidValue` issue whose `cause` is the error.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapPublicKeyFromFormat = <A extends KeyWrap_.RsaOaep, Data>(
+  format: KeyFormat_.Format<"public", "decode", Data>,
+  algorithm: A
+): decodeTo<KeyWrapPublicKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "KeyWrapPublicKeyFromFormat",
+    KeyWrapPublicKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodePublic(format, algorithm, data) as Effect.Effect<
+        KeyWrap_.PublicKey<A>,
+        CryptoError_.CryptoError
+      >,
+    true
+  )
+
+/**
+ * Type-level representation of {@link KeyWrapPrivateKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface KeyWrapPrivateKey<A extends KeyWrap_.RsaOaep = KeyWrap_.RsaOaep>
+  extends declare<KeyWrap_.PrivateKey<A>>
+{
+  readonly "Rebuild": KeyWrapPrivateKey<A>
+}
+
+/**
+ * Schema for live RSA-OAEP `KeyWrap.PrivateKey` values of an algorithm.
+ *
+ * **Details**
+ *
+ * Decoding checks the key's algorithm and returns the key itself. The key has
+ * no JSON form: `toCodecJson` fails with a `Forbidden` issue, so use
+ * {@link KeyWrapPrivateKeyFromFormat} to read and write keys. RSA-OAEP keys
+ * have no raw form. Keys display redacted, compare by reference, and have no
+ * `Arbitrary`.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapPrivateKey = <A extends KeyWrap_.RsaOaep>(algorithm: A): KeyWrapPrivateKey<A> =>
+  declareCryptoKey<KeyWrap_.PrivateKey<A>>(
+    "KeyWrapPrivateKey",
+    "KeyWrap",
+    "PrivateKey",
+    KeyWrap_.isPrivateKey,
+    algorithm
+  )
+
+/**
+ * Schema that decodes an RSA-OAEP `KeyWrap.PrivateKey` with
+ * `KeyFormat.decodePrivate`.
+ *
+ * **Details**
+ *
+ * The format must hold private keys: `KeyFormat.pkcs8`, `KeyFormat.jwk`,
+ * `KeyFormat.pkcs1`, or their PEM forms. A format for another role is a type
+ * error. Decoding runs the runtime's key import, so use the async decoding
+ * functions: `Schema.decodeSync` throws. A `CryptoError` becomes an
+ * `InvalidValue` issue whose `cause` is the error. Encoding fails with a
+ * `Forbidden` issue unless `allowEncode` is `true`, and always for the
+ * read-only PKCS#1 format.
+ *
+ * @stability unstable
+ * @category crypto
+ * @since 4.0.0
+ */
+export const KeyWrapPrivateKeyFromFormat = <A extends KeyWrap_.RsaOaep, Data>(
+  format: KeyFormat_.Format<"private", "decode", Data>,
+  algorithm: A,
+  options?: CryptoKeyOptions
+): decodeTo<KeyWrapPrivateKey<A>, Codec<Data>> =>
+  cryptoKeyFromFormat(
+    "KeyWrapPrivateKeyFromFormat",
+    KeyWrapPrivateKey(algorithm),
+    format,
+    (data) =>
+      KeyFormat_.decodePrivate(format, algorithm, data) as Effect.Effect<
+        KeyWrap_.PrivateKey<A>,
+        CryptoError_.CryptoError
+      >,
+    options?.allowEncode === true
+  )
 
 // -----------------------------------------------------------------------------
 // Exit schemas
