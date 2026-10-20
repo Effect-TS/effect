@@ -12,6 +12,7 @@
 import type * as Arr from "./Array.ts"
 import * as Cause from "./Cause.ts"
 import type * as Context from "./Context.ts"
+import * as SecureRandom from "./crypto/SecureRandom.ts"
 import * as Effect from "./Effect.ts"
 import { dual } from "./Function.ts"
 import * as random from "./internal/random.ts"
@@ -345,9 +346,8 @@ function ISAAC_CSPRNG(userSeed?: string | number) {
   seed(internalSeed)
 
   function getInitialSeed() {
-    const uint32a = new Uint32Array(2)
-    crypto.getRandomValues(uint32a)
-    return uint32a[0] + uint32a[1]
+    const view = new DataView(SecureRandom.randomBytesUnsafe(8).buffer)
+    return view.getUint32(0) + view.getUint32(4)
   }
 
   function reset() {
