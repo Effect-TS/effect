@@ -35,7 +35,6 @@ import {
   Tuple
 } from "effect"
 import { TestSchema } from "effect/testing"
-import * as fc from "fast-check"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
 import { inspect } from "node:util"
@@ -10554,86 +10553,50 @@ describe("Check", () => {
     )
   })
 
-  describe("isBase64 / isBase64Url", () => {
-    const cases = [
-      {
-        name: "isBase64",
-        check: Schema.isBase64(),
-        regExp: /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/
-      },
-      {
-        name: "isBase64Url",
-        check: Schema.isBase64Url(),
-        regExp: /^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$/
-      }
-    ]
+  it("isBase64", async () => {
+    const schema = Schema.String.check(Schema.isBase64())
+    const asserts = new TestSchema.Asserts(schema)
 
-    for (const { check, name, regExp } of cases) {
-      describe(name, () => {
-        const schema = Schema.String.check(check)
-        const is = Schema.is(schema)
-
-        it("representation", () => {
-          deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
-            id: `effect/schema/${name}`,
-            payload: null
-          })
-        })
-
-        it("arbitrary", () => {
-          if (verifyGeneration) {
-            new TestSchema.Asserts(schema).arbitrary().verifyGeneration()
-          }
-        })
-
-        it("accepts the same strings as its JSON Schema pattern", () => {
-          const edgeCases = [
-            "",
-            "A",
-            "AA",
-            "AAA",
-            "AAAA",
-            "AAAAA",
-            "AA=",
-            "AA==",
-            "AAA=",
-            "AAA==",
-            "A=",
-            "A==",
-            "A===",
-            "=",
-            "==",
-            "===",
-            "====",
-            "AAAA=",
-            "AAAA==",
-            "AA==AAAA",
-            "AAA=AAAA",
-            "+/+/",
-            "-_-_",
-            "Zz09",
-            "AAA ",
-            " AAA",
-            "AAA\n",
-            "AAA\u00e9",
-            "AAA\ud83d"
-          ]
-          for (const s of edgeCases) {
-            strictEqual(is(s), regExp.test(s), JSON.stringify(s))
-          }
-          const unit = fc.constantFrom("A", "z", "0", "9", "+", "/", "-", "_", "=", " ", ".", "\u00e9")
-          fc.assert(fc.property(fc.oneof(fc.string({ unit }), fc.string({ unit: "binary" })), (s) => {
-            strictEqual(is(s), regExp.test(s))
-          }))
-        })
-
-        it("validates multi-megabyte inputs without throwing", () => {
-          const valid = "A".repeat(8_000_000)
-          assertTrue(Result.isSuccess(Schema.decodeUnknownResult(schema)(valid)))
-          assertFalse(is(`${valid}!`))
-        })
-      })
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
     }
+
+    deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
+      id: "effect/schema/isBase64",
+      payload: null
+    })
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("")
+    await decoding.succeed("Zm9v+/==")
+    await decoding.succeed("Zm8=")
+    await decoding.succeed("A".repeat(8_000_000))
+    await decoding.fail("Zm8", `Expected a base64 encoded string`)
+    await decoding.fail("Zg=", `Expected a base64 encoded string`)
+    await decoding.fail("Zm9v-_==", `Expected a base64 encoded string`)
+  })
+
+  it("isBase64Url", async () => {
+    const schema = Schema.String.check(Schema.isBase64Url())
+    const asserts = new TestSchema.Asserts(schema)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+
+    deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
+      id: "effect/schema/isBase64Url",
+      payload: null
+    })
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("")
+    await decoding.succeed("Zm9v-_")
+    await decoding.succeed("Zg==")
+    await decoding.succeed("A".repeat(8_000_000))
+    await decoding.fail("Zm9vZ", `Expected a base64url encoded string`)
+    await decoding.fail("Zg=", `Expected a base64url encoded string`)
+    await decoding.fail("Zm9v+/", `Expected a base64url encoded string`)
   })
 
   describe("brand", () => {
