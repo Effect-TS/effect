@@ -105,6 +105,33 @@ describe("HttpServer", () => {
       assert.strictEqual(response.status, 400)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
+  it.effect("does not duplicate Node's automatic 100 Continue with makeHandler", () =>
+    Effect.gen(function*() {
+      const scope = yield* Effect.scope
+      const handler = yield* NodeHttpServer.makeHandler(
+        HttpServerRequest.HttpServerRequest.use((request) => request.text.pipe(Effect.map(HttpServerResponse.text))),
+        { scope }
+      )
+      // No checkContinue listener: Node acknowledges before invoking the handler.
+      const server = yield* Effect.acquireRelease(
+        Effect.sync(() => Http.createServer(handler)),
+        (server) =>
+          Effect.callback<void>((resume) => {
+            server.close(() => resume(Effect.void))
+          })
+      )
+      yield* Effect.callback<void, Error>((resume) => {
+        server.once("error", (error) => resume(Effect.fail(error)))
+        server.listen(0, "127.0.0.1", () => resume(Effect.void))
+      })
+
+      const response = yield* expectContinueRequest(tcpPort(server), "hello")
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.body, "hello")
+      assert.isTrue(response.uploaded)
+      assert.strictEqual(response.continues, 1)
+    }))
+
   it.effect("rejects Expect: 100-continue without requesting the body", () =>
     Effect.gen(function*() {
       const server = Http.createServer()
