@@ -39,7 +39,11 @@ describe("Channel", () => {
       Effect.gen(function*() {
         const events: Array<string> = []
         let attempts = 0
-        const flaky = Channel.suspend(() => attempts++ === 0 ? Channel.fail("boom") : Channel.succeed(1))
+        const flaky = Channel.suspend(() => {
+          if (attempts++ === 0) return Channel.fail("boom")
+          events.push("second attempt")
+          return Channel.succeed(1)
+        })
         const schedule = Schedule.tap(
           Schedule.forever,
           () => Effect.addFinalizer(() => Effect.sync(() => events.push("schedule finalizer")))
@@ -47,7 +51,7 @@ describe("Channel", () => {
         const result = yield* Channel.runCollect(Channel.retry(flaky, schedule))
         events.push("run completed")
         assert.deepStrictEqual(result, [1])
-        assert.deepStrictEqual(events, ["schedule finalizer", "run completed"])
+        assert.deepStrictEqual(events, ["second attempt", "schedule finalizer", "run completed"])
       }))
   })
 
