@@ -1,6 +1,7 @@
-import { PgPool } from "@effect/sql-pg"
+import { PgClient, PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import { Duplex } from "node:stream"
 
 const backendMessage = (tag: string, payload: Buffer): Buffer => {
@@ -91,4 +92,34 @@ describe("PgPool failed startup", () => {
       })),
     10_000
   )
+})
+
+describe("PgPool acquireTimeout", () => {
+  it.live("fails a checkout that waits on an exhausted pool past acquireTimeout", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.make({
+        username: "test",
+        maxConnections: 1,
+        acquireTimeout: "100 millis",
+        stream: () => {
+          const socket = new Duplex({
+            read() {},
+            write(_chunk: Buffer, _encoding, callback) {
+              queueMicrotask(() => socket.push(ready))
+              callback()
+            }
+          })
+          return socket
+        }
+      })
+      yield* sql.reserve
+
+      const statement = yield* Effect.flip(sql`SELECT 1`)
+      assert.strictEqual(statement.reason._tag, "ConnectionError")
+      const transaction = yield* Effect.flip(sql.withTransaction(sql`SELECT 1`))
+      assert.strictEqual(transaction.reason._tag, "ConnectionError")
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ), 10_000)
 })
