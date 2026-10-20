@@ -36,7 +36,7 @@ const AppClient = Layer.unwrap(
 )
 
 const asApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.provide(effect, [AppClient, ShardingConfig.layerDefaults, NodeCrypto.layer, Snowflake.layerGenerator])
+  Effect.provide(effect, [AppClient, ShardingConfig.layerDefaults, NodeCrypto.layerDigest, Snowflake.layerGenerator])
 
 const assertMigrationDefect = (exit: Exit.Exit<unknown, unknown>) => {
   assert(Exit.isFailure(exit))
