@@ -265,7 +265,7 @@ export const makeMemory = (
       })
     })
 
-    const acquirers = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, isTransaction, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: Effect.succeed(yield* makeConnection),
       semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
@@ -274,8 +274,12 @@ export const makeMemory = (
     return Object.assign(
       (yield* Client.make({
         driver: "sqlite-wasm",
-        ...acquirers,
+        acquirer,
+        borrower,
         compiler,
+        transactionAcquirer,
+        onCommitFailure,
+        isTransaction,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -286,9 +290,9 @@ export const makeMemory = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.scoped(Effect.flatMap(acquirers.transactionAcquirer, (conn) => conn.export)),
+        export: Effect.scoped(Effect.flatMap(transactionAcquirer, (conn) => conn.export)),
         import(data: Uint8Array) {
-          return Effect.scoped(Effect.flatMap(acquirers.transactionAcquirer, (conn) => conn.import(data)))
+          return Effect.scoped(Effect.flatMap(transactionAcquirer, (conn) => conn.import(data)))
         }
       }
     )
@@ -436,7 +440,7 @@ export const make = (
 
     const connectionRef = yield* ScopedRef.fromAcquire(makeConnection)
 
-    const acquirers = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: ScopedRef.get(connectionRef),
       semaphore: yield* Semaphore.make(1)
     })
@@ -444,8 +448,11 @@ export const make = (
     return Object.assign(
       (yield* Client.make({
         driver: "sqlite-wasm",
-        ...acquirers,
+        acquirer,
+        borrower,
         compiler,
+        transactionAcquirer,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -456,9 +463,9 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.scoped(Effect.flatMap(acquirers.acquirer, (connection) => connection.export)),
+        export: Effect.scoped(Effect.flatMap(acquirer, (connection) => connection.export)),
         import(data: Uint8Array) {
-          return Effect.scoped(Effect.flatMap(acquirers.acquirer, (connection) => connection.import(data)))
+          return Effect.scoped(Effect.flatMap(acquirer, (connection) => connection.import(data)))
         }
       }
     )
