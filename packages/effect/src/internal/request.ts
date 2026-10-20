@@ -97,6 +97,7 @@ const makeBatchMap = (resolver: RequestResolver<any>): BatchMap => {
 
 interface Batch {
   key: unknown
+  context: Context.Context<never>
   resolver: RequestResolver<any>
   map: BatchMap
   readonly entrySet: Set<Request.Entry<any>>
@@ -148,11 +149,13 @@ const addEntry = <A extends Request.Any>(
     if (batchPool.length > 0) {
       batch = batchPool.pop()!
       batch.key = key
+      batch.context = fiber.context
       batch.resolver = resolver
       batch.map = batchMap
     } else {
       const newBatch: Batch = {
         key,
+        context: fiber.context,
         resolver,
         map: batchMap,
         entrySet: new Set(),
@@ -183,6 +186,7 @@ const addEntry = <A extends Request.Any>(
             if (batchPool.length < 128) {
               newBatch.entrySet.clear()
               newBatch.key = undefined
+              newBatch.context = undefined as any
               newBatch.fiber = undefined
               newBatch.resolver = undefined as any
               newBatch.map = undefined as any
@@ -209,7 +213,7 @@ const addEntry = <A extends Request.Any>(
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
   batch.fiber!.interruptUnsafe(fiber.id)
-  effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.cache.scheduler })
+  effect.runForkWith(batch.context)(runBatch(batch), { scheduler: Context.get(batch.context, Scheduler) })
   return entry
 }
 

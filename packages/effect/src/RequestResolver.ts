@@ -172,7 +172,9 @@ export const isRequestResolver = (u: unknown): u is RequestResolver<any> => hasP
  *
  * `batchKey` groups request entries, `delay` schedules batch execution,
  * `collectWhile` can end collection early, and `runAll` receives a non-empty
- * batch for one key.
+ * batch for one key. The batch runs with the context of the caller that created
+ * it, even when a later caller ends collection. Each entry retains its own
+ * caller context in `entry.context`.
  *
  * **Gotchas**
  *
@@ -208,6 +210,17 @@ const defaultKey = (_request: unknown): unknown => defaultKeyObject
 
 /**
  * Constructs a request resolver with the specified method to run requests.
+ *
+ * **Details**
+ *
+ * `runAll` runs with the context of the caller that created the batch, including
+ * when `collectWhile` ends collection early (for example with `batchN`).
+ *
+ * **Gotchas**
+ *
+ * Different caller contexts do not split batches. Use `entry.context` for
+ * per-entry services, or `makeGrouped` to separate requests by the services
+ * that affect the backend operation, such as tenant or authorization settings.
  *
  * **Example** (Creating a request resolver)
  *
@@ -256,6 +269,14 @@ export const make = <A extends Request.Any>(
  * **Details**
  *
  * The key can use the Equal trait to determine if two keys are equal.
+ * Each batch runs with the context of the caller that created that batch,
+ * whether collection ends after the delay or at a `collectWhile` cutoff.
+ *
+ * **Gotchas**
+ *
+ * Caller services that are not included in the key do not split batches. Include
+ * tenant or authorization settings in the key when they affect the backend
+ * operation, or read each caller's services from `entry.context`.
  *
  * **Example** (Grouping requests by key)
  *
@@ -411,6 +432,13 @@ export const fromFunctionBatched = <A extends Request.Any>(
 /**
  * Constructs a request resolver from an effectual function.
  *
+ * **Details**
+ *
+ * Each entry's effect is provided with its own caller context. Services in
+ * `entry.context` override the batch fiber's services; services added by resolver
+ * wrappers remain available when absent from the entry context. Entries with
+ * different caller contexts can still share a batch.
+ *
  * **Example** (Creating a resolver from an effectful function)
  *
  * ```ts import.meta.vitest
@@ -451,7 +479,7 @@ export const fromEffect = <A extends Request.Any>(
       let done = 0
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i]
-        const fiber = effect.forkUnsafe(parent as any, f(entry), true)
+        const fiber = effect.forkUnsafe(parent as any, Effect.provideContext(f(entry), entry.context), true)
         fiber.addObserver((exit) => {
           entry.completeUnsafe(exit)
           done++
