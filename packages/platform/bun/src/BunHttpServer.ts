@@ -206,10 +206,23 @@ export const make = Effect.fnUntraced(
             return Promise.resolve(new Response(null, { status: 501 }))
           }
           return new Promise<Response>((resolve, _reject) => {
+            let responded = false
             const context = Context.add(
               services,
               ServerRequest.HttpServerRequest,
-              new BunServerRequest(request, resolve, removeHost(request.url), server, compressionThreshold)
+              new BunServerRequest(
+                request,
+                resolve,
+                removeHost(request.url),
+                server,
+                compressionThreshold,
+                undefined,
+                undefined,
+                ServerRequest.makeBodyState({ bodyUsed: () => request.bodyUsed, responded: () => responded }),
+                () => {
+                  responded = true
+                }
+              )
             )
             const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
             request.signal.addEventListener("abort", () => {
@@ -257,11 +270,11 @@ const makeResponse = (
   scope: Scope.Scope
 ): Response => {
   if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
-    request.responded = true
+    request.markResponded()
     return ServerResponse.toWeb(response, { withoutBody: true })
   }
   if (response.body._tag !== "Stream") {
-    request.responded = true
+    request.markResponded()
   }
   const fields: {
     headers: globalThis.Headers
@@ -311,7 +324,7 @@ const makeResponse = (
                 Stream.ensuring(
                   body.stream,
                   Effect.sync(() => {
-                    request.responded = true
+                    request.markResponded()
                   })
                 ).channel
               )(upstream, streamScope)
@@ -446,9 +459,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
   private readonly bodyState: ServerRequest.BodyState
-  // Set on the root request when its response is resolved, or when a streamed
-  // response body ends. Copies share the root's body state, which reads it.
-  responded = false
+  // Called when the response is resolved, or when a streamed response body ends.
+  readonly markResponded: () => void
 
   constructor(
     source: Request,
@@ -458,7 +470,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    bodyState?: ServerRequest.BodyState
+    bodyState?: ServerRequest.BodyState,
+    markResponded?: () => void
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -470,10 +483,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.compressionThreshold = compressionThreshold
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.bodyState = bodyState ?? ServerRequest.makeBodyState({
-      bodyUsed: () => source.bodyUsed,
-      responded: () => this.responded
-    })
+    this.bodyState = bodyState ?? ServerRequest.makeBodyState({ bodyUsed: () => source.bodyUsed })
+    this.markResponded = markResponded ?? constVoid
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -497,7 +508,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.bodyState
+      this.bodyState,
+      this.markResponded
     )
   }
   get method(): HttpMethod {

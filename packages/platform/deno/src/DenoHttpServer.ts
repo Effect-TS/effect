@@ -136,6 +136,7 @@ export const make = Effect.fnUntraced(function*(
           onSuccess: (webResponse) => Effect.sync(() => denoRequest.resolve(webResponse)),
           // Answer the request without waiting for body cleanup, which may never settle
           onFailure: (cause) => {
+            denoRequest.markResponded()
             denoRequest.resolve(new Response(undefined, { status: 500 }))
             if (response.body._tag === "Raw" && response.body.body instanceof ReadableStream) {
               cancelStreamUnsafe(response.body.body)
@@ -150,10 +151,23 @@ export const make = Effect.fnUntraced(function*(
         info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>
       ): Promise<Response> {
         return new Promise<Response>((resolve) => {
+          let responded = false
           const context = Context.add(
             services,
             ServerRequest.HttpServerRequest,
-            new DenoServerRequest(request, info.remoteAddr, resolve, removeHost(request.url), websocket)
+            new DenoServerRequest(
+              request,
+              info.remoteAddr,
+              resolve,
+              removeHost(request.url),
+              websocket,
+              undefined,
+              undefined,
+              ServerRequest.makeBodyState({ bodyUsed: () => request.bodyUsed, responded: () => responded }),
+              () => {
+                responded = true
+              }
+            )
           )
           const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
           request.signal.addEventListener("abort", () => {
@@ -182,7 +196,7 @@ const makeResponse = Effect.fnUntraced(function*(
 ) {
   const denoRequest = request as DenoServerRequest
   if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
-    denoRequest.responded = true
+    denoRequest.markResponded()
     yield* cancelResponseBody(response.body)
     return ServerResponse.toWeb(response, { withoutBody: true })
   }
@@ -204,7 +218,7 @@ const makeResponse = Effect.fnUntraced(function*(
 
   const body = response.body
   if (body._tag !== "Stream") {
-    denoRequest.responded = true
+    denoRequest.markResponded()
   }
   switch (body._tag) {
     case "Empty":
@@ -233,7 +247,7 @@ const makeResponse = Effect.fnUntraced(function*(
                 Stream.ensuring(
                   stream,
                   Effect.sync(() => {
-                    denoRequest.responded = true
+                    denoRequest.markResponded()
                   })
                 ).channel
               )(upstream, streamScope)
@@ -345,9 +359,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
   private readonly bodyState: ServerRequest.BodyState
-  // Set on the root request when its response is resolved, or when a streamed
-  // response body ends. Copies share the root's body state, which reads it.
-  responded = false
+  // Called when the response is resolved, or when a streamed response body ends.
+  readonly markResponded: () => void
 
   constructor(
     source: Request,
@@ -357,7 +370,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    bodyState?: ServerRequest.BodyState
+    bodyState?: ServerRequest.BodyState,
+    markResponded?: () => void
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -369,10 +383,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     this.websocketOptions = websocketOptions
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.bodyState = bodyState ?? ServerRequest.makeBodyState({
-      bodyUsed: () => source.bodyUsed,
-      responded: () => this.responded
-    })
+    this.bodyState = bodyState ?? ServerRequest.makeBodyState({ bodyUsed: () => source.bodyUsed })
+    this.markResponded = markResponded ?? constVoid
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -394,7 +406,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       this.websocketOptions,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.bodyState
+      this.bodyState,
+      this.markResponded
     )
   }
   get method(): HttpMethod {
