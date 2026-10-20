@@ -506,9 +506,12 @@ class YamlParser {
       const line = this.lines[end]
       if (line.raw.trim().length !== 0) {
         if (line.indent <= parentIndent) break
-        // The first non-empty line sets the indentation; a less indented line ends the scalar.
+        // The first non-empty line sets the indentation; only a comment may be less indented, and it ends the scalar.
         if (contentIndent === Number.POSITIVE_INFINITY) contentIndent = line.indent
-        else if (line.indent < contentIndent) break
+        else if (line.indent < contentIndent) {
+          if (line.text.length === 0) break
+          this.fail(line, `Expected block scalar indentation of ${contentIndent} spaces`)
+        }
       }
       end++
     }
