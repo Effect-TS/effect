@@ -1611,6 +1611,51 @@ describe("Stream", () => {
         }
       }))
 
+    it.effect("work per part does not grow when a chain recurses through suspend", () =>
+      Effect.gen(function*() {
+        const countdown = (n: number): Stream.Stream<number> =>
+          n === 0 ? Stream.empty : Stream.concat(Stream.make(n), Stream.suspend(() => countdown(n - 1)))
+        const countOps = (n: number) => {
+          const scheduler = new CountingScheduler("sync")
+          return Stream.runDrain(countdown(n)).pipe(
+            Effect.provideService(Scheduler.Scheduler, scheduler),
+            Effect.map(() => scheduler.ops)
+          )
+        }
+        const small = yield* countOps(1_000)
+        const large = yield* countOps(2_000)
+        assertTrue(small > 1_000, "operations were counted")
+        assertTrue(large / small < 2.5, `doubling the recursion multiplied the work by ${large / small}`)
+      }))
+
+    it.effect("evaluates a suspended part only when it is reached, on every run", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const stream = Stream.concat(
+          Stream.make("a").pipe(Stream.ensuring(Effect.sync(() => log.push("end a")))),
+          Stream.suspend(() => {
+            log.push("evaluate b")
+            return Stream.make("b")
+          })
+        )
+        deepStrictEqual(log, [])
+        for (const run of ["first run", "second run"]) {
+          log.length = 0
+          deepStrictEqual(yield* Stream.runCollect(stream), ["a", "b"], run)
+          deepStrictEqual(log, ["end a", "evaluate b"], run)
+        }
+      }))
+
+    it.effect("checks for yielding between suspended parts", () =>
+      Effect.gen(function*() {
+        const nested = (n: number): Stream.Stream<never> => n === 0 ? Stream.empty : Stream.suspend(() => nested(n - 1))
+        const scheduler = new CountingScheduler("sync")
+        yield* Stream.runDrain(Stream.concat(Stream.empty, nested(1_000))).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        assertTrue(scheduler.ops >= 1_000, `only ${scheduler.ops} yield checks for 1000 suspended parts`)
+      }))
+
     it.effect("runs nested chains in order, closing each part before the next starts", () =>
       Effect.gen(function*() {
         const log: Array<string> = []
