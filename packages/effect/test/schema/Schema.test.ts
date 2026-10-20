@@ -35,6 +35,7 @@ import {
   Tuple
 } from "effect"
 import { TestSchema } from "effect/testing"
+import * as fc from "fast-check"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
 import { inspect } from "node:util"
@@ -10443,12 +10444,76 @@ describe("Getter", () => {
 })
 
 describe("Check", () => {
-  it("isStringFinite", async () => {
+  describe("isStringFinite", () => {
     const schema = Schema.String.check(Schema.isStringFinite())
+    const isFiniteString = Schema.is(schema)
+    // Number record keys also accept the non-finite literals
+    const decodeNumberKeys = Schema.decodeUnknownSync(Schema.Record(Schema.Number, Schema.String))
+    const isNumberKey = (s: string) => Object.keys(decodeNumberKeys({ [s]: "" })).length === 1
 
-    deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
-      id: "effect/schema/isStringFinite",
-      payload: null
+    const FINITE_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+    const finitePattern = new RegExp(`^${FINITE_PATTERN}$`)
+    const numberPattern = new RegExp(`^(?:${FINITE_PATTERN}|Infinity|-Infinity|NaN)$`)
+
+    it("representation", () => {
+      deepStrictEqual(Schema.resolveAnnotations(schema)?.representation, {
+        id: "effect/schema/isStringFinite",
+        payload: null
+      })
+    })
+
+    it("accepts the same strings as its JSON Schema pattern", () => {
+      const edgeCases = [
+        "",
+        "1",
+        "+1",
+        "-1",
+        "01",
+        "1.5",
+        ".5",
+        "-.5",
+        "1.",
+        ".",
+        "+",
+        "1..5",
+        "1.5.5",
+        "1e5",
+        "1E-5",
+        "1e+5",
+        ".5e5",
+        "1e",
+        "1e5.5",
+        "e5",
+        "1.e5",
+        "++1",
+        " 1",
+        "1 ",
+        "١",
+        "Infinity",
+        "-Infinity",
+        "+Infinity",
+        "NaN",
+        "-NaN"
+      ]
+      for (const s of edgeCases) {
+        strictEqual(isFiniteString(s), finitePattern.test(s), JSON.stringify(s))
+        strictEqual(isNumberKey(s), numberPattern.test(s), JSON.stringify(s))
+      }
+      const unit = fc.constantFrom("0", "1", "9", ".", "e", "E", "+", "-", "x", " ")
+      fc.assert(fc.property(fc.oneof(fc.string({ unit }), fc.string({ unit: "binary" })), (s) => {
+        strictEqual(isFiniteString(s), finitePattern.test(s))
+        strictEqual(isNumberKey(s), numberPattern.test(s))
+      }))
+    })
+
+    it("rejects long digit runs in linear time", () => {
+      const digits = "1".repeat(100_000)
+      for (const s of [`${digits}x`, `${digits}.`, `${digits}e`, `-${digits}x`]) {
+        assertFalse(isFiniteString(s))
+        assertFalse(isNumberKey(s))
+      }
+      assertTrue(isFiniteString(digits))
+      assertTrue(isNumberKey(digits))
     })
   })
 
