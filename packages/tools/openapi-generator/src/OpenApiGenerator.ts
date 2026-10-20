@@ -408,7 +408,10 @@ const parseOpenApi = (
           requestSchemaNames.set("application/json", op.payload)
         }
 
-        if (Predicate.isNotUndefined(content["multipart/form-data"]?.schema)) {
+        if (
+          Predicate.isNotUndefined(content["multipart/form-data"]?.schema) &&
+          !(isHttpApi && getEffectStreamEncoding(content["multipart/form-data"]) === "ndjson")
+        ) {
           op.payload = addSchema(
             `${schemaId}RequestFormData`,
             transformMultipart(content["multipart/form-data"].schema),
@@ -434,14 +437,17 @@ const parseOpenApi = (
             if (!Predicate.isObject(mediaType)) {
               continue
             }
-            if (unsupportedStreamingRequestMediaTypes.has(normalizeMediaType(contentType))) {
+            const streamEncoding = getEffectStreamEncoding(mediaType)
+            if (
+              streamEncoding !== "ndjson" &&
+              unsupportedStreamingRequestMediaTypes.has(normalizeMediaType(contentType))
+            ) {
               warnForOperation(emitWarning, op, {
                 code: "streaming-request-body-skipped",
                 message: `Request body media type ${contentType} was skipped because HttpApi cannot stream it.`
               })
               continue
             }
-            const streamEncoding = getEffectStreamEncoding(mediaType)
             if (streamEncoding === "uint8array") {
               representableRequestBody.push({
                 contentType,
@@ -1355,7 +1361,7 @@ const hasUnsupportedSuccessfulSseResponse = (
         }
         continue
       }
-      if (contentType === "text/event-stream") {
+      if (contentType === "text/event-stream" && streamEncoding !== "ndjson") {
         return true
       }
     }
