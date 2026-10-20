@@ -3292,15 +3292,11 @@ export const unionWith: {
     isEquivalent: (self: A, that: B) => boolean
   ): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A, that: B) => boolean): Array<A | B>
-} = dual(3, <A>(self: Iterable<A>, that: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> => {
-  const a = fromIterable(self)
-  const b = fromIterable(that)
-  const dedupe = dedupeWith(isEquivalent)
-  if (isReadonlyArrayNonEmpty(a)) {
-    return isReadonlyArrayNonEmpty(b) ? dedupe(appendAll(a, b)) : dedupe(a)
-  }
-  return dedupe(b)
-})
+} = dual(
+  3,
+  <A>(self: Iterable<A>, that: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> =>
+    dedupeWith(appendAll(self, that), isEquivalent)
+)
 
 /**
  * Computes the union of two arrays, removing duplicates using
@@ -3333,14 +3329,7 @@ export const union: {
   <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B>
 } = dual(
   2,
-  <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B> => {
-    const a = fromIterable(self)
-    const b = fromIterable(that)
-    if (isReadonlyArrayNonEmpty(a)) {
-      return isReadonlyArrayNonEmpty(b) ? dedupe(appendAll(a, b)) : dedupe(a)
-    }
-    return dedupe(b)
-  }
+  <A, B>(self: Iterable<A>, that: Iterable<B>): Array<A | B> => dedupe(appendAll(self, that))
 )
 
 /**
