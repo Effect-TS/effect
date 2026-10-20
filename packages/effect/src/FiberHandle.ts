@@ -62,6 +62,7 @@ export interface FiberHandle<out A = unknown, out E = unknown> extends Pipeable,
   state: {
     readonly _tag: "Open"
     fiber: Fiber.Fiber<A, E> | undefined
+    readonly interrupting: Set<Fiber.Fiber<A, E>>
   } | {
     readonly _tag: "Closed"
   }
@@ -105,7 +106,7 @@ const Proto = {
 
 const makeUnsafe = <A = unknown, E = unknown>(): FiberHandle<A, E> => {
   const self = Object.create(Proto)
-  self.state = { _tag: "Open", fiber: undefined }
+  self.state = { _tag: "Open", fiber: undefined, interrupting: new Set() }
   self.deferred = Deferred.makeUnsafe()
   return self
 }
@@ -154,12 +155,14 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E
       const state = handle.state
       if (state._tag === "Closed") return Effect.void
       handle.state = { _tag: "Closed" }
-      return state.fiber ?
-        Deferred.into(
-          Effect.asVoid(Fiber.interruptAs(state.fiber, internalFiberId)),
-          handle.deferred
-        ) :
-        Deferred.done(handle.deferred, Exit.void)
+      // Replaced fibers are already interrupted, but may still be running their finalizers.
+      const awaitInterrupting = Effect.asVoid(Fiber.awaitAll(state.interrupting))
+      return Deferred.into(
+        state.fiber ?
+          Effect.andThen(Fiber.interruptAs(state.fiber, internalFiberId), awaitInterrupting) :
+          awaitInterrupting,
+        handle.deferred
+      )
     }
   )
 
@@ -352,10 +355,16 @@ export const setUnsafe: {
 
   // Install the replacement before interruption can re-enter the handle through a finalizer.
   self.state.fiber = fiber
-  previous?.interruptUnsafe(internalFiberId)
+  if (previous !== undefined) {
+    self.state.interrupting.add(previous)
+    previous.interruptUnsafe(internalFiberId)
+  }
   fiber.addObserver((exit) => {
-    if (self.state._tag === "Open" && fiber === self.state.fiber) {
-      self.state.fiber = undefined
+    if (self.state._tag === "Open") {
+      self.state.interrupting.delete(fiber)
+      if (fiber === self.state.fiber) {
+        self.state.fiber = undefined
+      }
     }
     if (
       Exit.isFailure(exit) &&

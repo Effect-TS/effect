@@ -67,6 +67,7 @@ export interface FiberMap<in out K, out A = unknown, out E = unknown>
   state: {
     readonly _tag: "Open"
     readonly backing: MutableHashMap.MutableHashMap<K, Fiber.Fiber<A, E>>
+    readonly interrupting: Set<Fiber.Fiber<A, E>>
   } | {
     readonly _tag: "Closed"
   }
@@ -122,7 +123,7 @@ const makeUnsafe = <K, A = unknown, E = unknown>(
   deferred: Deferred.Deferred<void, E>
 ): FiberMap<K, A, E> => {
   const self = Object.create(Proto)
-  self.state = { _tag: "Open", backing }
+  self.state = { _tag: "Open", backing, interrupting: new Set() }
   self.deferred = deferred
   return self
 }
@@ -177,6 +178,9 @@ export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A
         if (state._tag === "Closed") return Effect.void
         map.state = { _tag: "Closed" }
         return Fiber.interruptAll(MutableHashMap.values(state.backing)).pipe(
+          // Replaced fibers are already interrupted, but may still be running their finalizers.
+          Effect.andThen(Fiber.awaitAll(state.interrupting)),
+          Effect.asVoid,
           Deferred.into(map.deferred)
         )
       })
@@ -386,12 +390,14 @@ export const setUnsafe: {
   // Install the replacement before interruption can re-enter the map through a finalizer.
   MutableHashMap.set(self.state.backing, key, fiber)
   if (previous._tag === "Some") {
+    self.state.interrupting.add(previous.value)
     previous.value.interruptUnsafe(internalFiberId)
   }
   fiber.addObserver((exit) => {
     if (self.state._tag === "Closed") {
       return
     }
+    self.state.interrupting.delete(fiber)
     const current = MutableHashMap.get(self.state.backing, key)
     if (Option.isSome(current) && fiber === current.value) {
       MutableHashMap.remove(self.state.backing, key)
