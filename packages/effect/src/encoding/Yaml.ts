@@ -506,8 +506,9 @@ class YamlParser {
     const explicitIndent = Number.parseInt(indicator.replace(/[^1-9]/g, ""), 10)
     const start = this.index
     let end = start
-    let first = -1
     let contentIndent = Number.isNaN(explicitIndent) ? undefined : parentIndent + explicitIndent
+    let leadingEmpty: Line | undefined
+    let hasContent = false
 
     while (end < this.lines.length) {
       const line = this.lines[end]
@@ -518,24 +519,26 @@ class YamlParser {
           break
         }
         // The first non-empty line sets the indentation; a less indented comment ends the scalar.
-        contentIndent ??= line.indent
+        if (contentIndent === undefined) {
+          if (leadingEmpty !== undefined && leadingEmpty.indent > line.indent) {
+            this.fail(leadingEmpty, "Leading empty lines cannot be more indented than the block scalar content")
+          }
+          contentIndent = line.indent
+        }
         if (line.indent < contentIndent) {
           if (line.tabIndent) this.fail(line, "Tabs cannot be used for YAML indentation")
           if (line.text.length === 0) break
           this.fail(line, `Expected block scalar indentation of ${contentIndent} spaces`)
         }
-        if (first === -1) first = end
+        hasContent = true
+      } else if (contentIndent === undefined && line.indent > (leadingEmpty?.indent ?? 0)) {
+        leadingEmpty = line
       }
       end++
     }
-    contentIndent ??= parentIndent + 1
 
-    const content = this.lines.slice(start, end).map((line, offset) => {
-      // Whitespace past the indentation is content, unless no content follows or the
-      // indentation was only detected after these leading lines.
-      const empty = first === -1 || (Number.isNaN(explicitIndent) && start + offset < first)
-      return empty ? "" : line.raw.slice(contentIndent)
-    })
+    // Whitespace past the indentation is content only when the scalar has content.
+    const content = this.lines.slice(start, end).map((line) => hasContent ? line.raw.slice(contentIndent) : "")
     this.index = end
 
     let contentEnd = content.length
