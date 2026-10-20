@@ -17,7 +17,7 @@ import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { inheritPatch, patches } from "./internal/context.ts"
+import { inheritPatch, mergePatches, patches } from "./internal/context.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -535,12 +535,11 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
 
 const withFlat = <B>(
   self: Context<any>,
-  f: (map: Map<string, any>) => void,
-  added?: Iterable<string>
+  f: (map: Map<string, any>) => void
 ): Context<B> => {
   const map = new Map(self.mapUnsafe)
   f(map)
-  return inheritPatch(self, makeUnsafe(map), added)
+  return inheritPatch(self, makeUnsafe(map))
 }
 
 // A private symbol so user code cannot forge a value that reads as absent
@@ -1175,8 +1174,10 @@ export const merge: {
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
   if (self.mapUnsafe.size === 0 && !patches.has(self)) return that as any
-  if (that.mapUnsafe.size === 0) return self as any
-  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)), that.mapUnsafe.keys())
+  if (that.mapUnsafe.size === 0 && !patches.has(that)) return self as any
+  const map = new Map(self.mapUnsafe)
+  that.mapUnsafe.forEach((value, key) => map.set(key, value))
+  return mergePatches(makeUnsafe(map), [self, that])
 })
 
 /**
@@ -1222,18 +1223,13 @@ export const merge: {
 export const mergeAll = <T extends Array<unknown>>(
   ...ctxs: [...{ [K in keyof T]: Context<T[K]> }]
 ): Context<T[number]> => {
-  if (ctxs.length > 0 && patches.has(ctxs[0])) {
-    let context = ctxs[0]
-    for (let i = 1; i < ctxs.length; i++) context = merge(context, ctxs[i])
-    return context
-  }
   const map = new Map()
   for (let i = 0; i < ctxs.length; i++) {
     ctxs[i].mapUnsafe.forEach((value, key) => {
       map.set(key, value)
     })
   }
-  return makeUnsafe(map)
+  return mergePatches(makeUnsafe(map), ctxs)
 }
 
 /**

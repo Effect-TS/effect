@@ -4,6 +4,22 @@ import type { Context } from "../Context.ts"
 // comparing values, preserves explicit equal-valued resolver overrides.
 export const patches = new WeakMap<Context<never>, ReadonlySet<string>>()
 
+export const mergePatches = <R>(next: Context<R>, contexts: ReadonlyArray<Context<never>>): Context<R> => {
+  if (!contexts.some((context) => patches.has(context))) return next
+  const keys = new Set<string>()
+  for (const context of contexts) {
+    const patch = patches.get(context)
+    // The last operand containing a key supplies both its value and provenance.
+    // Inherited values must not become explicit writes just by being merged.
+    for (const key of context.mapUnsafe.keys()) {
+      if (patch === undefined || patch.has(key)) keys.add(key)
+      else keys.delete(key)
+    }
+  }
+  patches.set(next, keys)
+  return next
+}
+
 export const inheritPatch = <R>(
   self: Context<never>,
   next: Context<R>,
