@@ -30,7 +30,8 @@
  * An operator can roll a bad snapshot back on the server. The status poll
  * reports a new rollback epoch, and every client that polls, opted out or not,
  * streams the remote again from its first sequence and gets back the entries
- * the snapshot dropped.
+ * the snapshot dropped. The journal records the new epoch only once that
+ * replay is done, so a replay cut short by a reload starts again.
  *
  * Known limitations:
  *
@@ -87,7 +88,14 @@ import * as Stream from "../Stream.ts"
 import type { Covariant } from "../Types.ts"
 import type * as Event from "./Event.ts"
 import type * as EventGroup from "./EventGroup.ts"
-import { Entry, EventJournal, type EventJournalError, makeEntryIdUnsafe, type RemoteId } from "./EventJournal.ts"
+import {
+  Entry,
+  EventJournal,
+  type EventJournalError,
+  makeEntryIdUnsafe,
+  nextSequenceAfter,
+  type RemoteId
+} from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
 import { type CompactionInputHeader, type CompactionStatus, EventLogProtocolError, StoreId } from "./EventLogMessage.ts"
 import type {
@@ -1402,10 +1410,33 @@ const make = Effect.gen(function*() {
       const recovery = yield* Semaphore.make(1)
       const trigger = yield* FiberHandle.make()
 
+      // The rollback replay the changes fiber owes. It streams from `next`,
+      // which starts at the remote's first sequence, instead of the journal's
+      // cursor, because another tab's subscription to the same journal can move
+      // the cursor forward again. The new `epoch` is recorded only once the
+      // replay has committed past `head`, so a replay cut short by a reload
+      // starts again on the next status poll.
+      let replay: { readonly epoch: number; readonly head: number; next: number } | undefined
+
+      const finishReplay = Effect.suspend(() => {
+        const done = replay
+        if (done === undefined || done.next <= done.head) return Effect.void
+        replay = undefined
+        return journal.remoteRollbackEpoch(remote.id).pipe(
+          Effect.flatMap((seen) =>
+            seen !== undefined && seen >= done.epoch
+              ? Effect.void
+              : journal.setRemoteRollbackEpoch(remote.id, done.epoch)
+          ),
+          journal.withLock(storeId),
+          Effect.andThen(Effect.logInfo(`Finished streaming the remote again after rollback epoch ${done.epoch}`))
+        )
+      })
+
       // Starts a background run when this client compacts, the store wants
       // compaction and the journal has caught up with the status's head.
       const maybeTrigger = Effect.fnUntraced(function*(compaction: EventLogRemoteCompaction, status: CompactionStatus) {
-        if (compaction.optedOut || !status.wanted || !hasRemoteCompactor()) return
+        if (compaction.optedOut || !status.wanted || !hasRemoteCompactor() || replay !== undefined) return
         if ((yield* journal.nextRemoteSequence(remote.id)) <= status.head) return
         yield* FiberHandle.run(
           trigger,
@@ -1420,19 +1451,23 @@ const make = Effect.gen(function*() {
       })
 
       // Records the first rollback epoch seen as the baseline. When the epoch
-      // goes up, the cursor goes back to the remote's first sequence so the
-      // changes fiber streams everything again, and id dedupe keeps only what
-      // a withdrawn snapshot dropped. `restart` stops the changes fiber around
-      // the rewind and starts it again.
+      // goes up, the changes fiber replays the remote from its first sequence,
+      // and id dedupe keeps only what a withdrawn snapshot dropped. `restart`
+      // stops the changes fiber around the rewind and starts it again.
       const pollStatus = Effect.fnUntraced(
         function*(compaction: EventLogRemoteCompaction, restart: boolean) {
           const status = yield* compaction.status({ identity, storeId })
           const seen = yield* journal.remoteRollbackEpoch(remote.id)
           if (seen !== undefined && status.rollbackEpoch > seen) {
-            const rewind = Effect.andThen(
-              journal.resetRemoteSequence(remote.id, remote.firstSequence ?? 0),
-              journal.setRemoteRollbackEpoch(remote.id, status.rollbackEpoch)
-            ).pipe(journal.withLock(storeId))
+            // A replay already under way for this epoch carries on.
+            if (replay?.epoch === status.rollbackEpoch) return yield* maybeTrigger(compaction, status)
+            const firstSequence = remote.firstSequence ?? 0
+            const rewind = Effect.sync(() => {
+              replay = { epoch: status.rollbackEpoch, head: status.head, next: firstSequence }
+            }).pipe(
+              Effect.andThen(journal.resetRemoteSequence(remote.id, firstSequence).pipe(journal.withLock(storeId))),
+              Effect.andThen(finishReplay)
+            )
             // The changes fiber starts again even when the rewind fails.
             yield* restart
               ? FiberHandle.clear(consumer).pipe(
@@ -1458,7 +1493,8 @@ const make = Effect.gen(function*() {
 
       const consume: Effect.Effect<unknown> = Effect.gen(function*() {
         if (compaction !== undefined) yield* pollStatus(compaction, false)
-        const startSequence = yield* journal.nextRemoteSequence(remote.id)
+        const owed = replay
+        const startSequence = owed !== undefined ? owed.next : yield* journal.nextRemoteSequence(remote.id)
         const changes = yield* remote.changes({
           identity,
           startSequence,
@@ -1528,6 +1564,10 @@ const make = Effect.gen(function*() {
             // Outside the lock, so queries re-run after the journal transaction commits.
             reactivity.withBatch
           )
+          if (owed !== undefined && replay === owed) {
+            owed.next = nextSequenceAfter(entries, owed.next)
+            yield* finishReplay
+          }
         }
       }).pipe(
         Effect.scoped,
