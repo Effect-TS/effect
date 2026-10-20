@@ -2720,6 +2720,12 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
   return isIndexSignatureParameterSide(ast) && isIndexSignatureParameterEncodedSide(ast)
 }
 
+function assertIndexSignatureParameter(parameter: AST): asserts parameter is IndexSignatureParameter {
+  if (!isIndexSignatureParameter(parameter)) {
+    throw new Error(`Invalid index signature parameter ${parameter._tag}`)
+  }
+}
+
 /**
  * Represents an index signature entry within an {@link Objects} node.
  *
@@ -2750,10 +2756,6 @@ export interface IndexSignature {
   readonly type: AST
 }
 
-// Passed by `Objects` rebuilds: a derived value type can stay optional after
-// `undefined` is transformed away (e.g. to `null` on the JSON encoded side)
-const skipValueCheck = globalThis.Symbol()
-
 /**
  * Constructs a {@link IndexSignature}.
  *
@@ -2767,25 +2769,24 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
 
   constructor(
     parameter: AST,
-    type: AST,
-    token?: typeof skipValueCheck
+    type: AST
   ) {
-    if (!isIndexSignatureParameter(parameter)) {
-      throw new Error(`Invalid index signature parameter ${parameter._tag}`)
-    }
+    assertIndexSignatureParameter(parameter)
     this.parameter = parameter
     this.type = type
-    if (token !== skipValueCheck && isOptional(type) && !containsUndefined(type)) {
+    if (isOptional(type) && !containsUndefined(type)) {
       throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
     }
   }
 }
 
-const IndexSignatureUnchecked = IndexSignature as new(
-  parameter: AST,
-  type: AST,
-  token: typeof skipValueCheck
-) => IndexSignature
+// Copies instead of constructing: a derived value type can stay optional after
+// `undefined` is transformed away (e.g. to `null` on the JSON encoded side),
+// which the `Schema.optionalKey` guard would reject
+function rebuildIndexSignature(is: IndexSignature, parameter: AST, type: AST): IndexSignature {
+  assertIndexSignatureParameter(parameter)
+  return Object.assign(Object.create(Object.getPrototypeOf(is)), is, { parameter, type })
+}
 
 /**
  * AST node for object-like schemas, including structs and records.
@@ -3191,7 +3192,7 @@ export const Objects: new(
       const t = recur(is.type)
       return p === is.parameter && t === is.type
         ? is
-        : new IndexSignatureUnchecked(p, t, skipValueCheck)
+        : rebuildIndexSignature(is, p, t)
     })
 
     return props === this.propertySignatures && indexes === this.indexSignatures && checks === this.checks &&
