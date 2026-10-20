@@ -137,8 +137,8 @@ export interface CompactionStage {
  */
 export interface EventLogRemoteCompaction {
   /**
-   * `true` when this client was built with `compaction: false`. It still polls
-   * `status` and recovers from rollbacks, but doesn't run compaction.
+   * `true` when this client was built with `compaction: false`. It doesn't
+   * call the compaction RPCs or run compaction.
    */
   readonly optedOut: boolean
   readonly status: (options: {
@@ -487,8 +487,7 @@ class IdentityService extends Context.Service<Identity, Identity["Service"]>()(
  *
  * The remote has a `compaction` member when the server advertises compaction
  * and the RPC client includes `EventLogCompactionRpcs`. `compaction: false` sets its
- * `optedOut` flag, so this client doesn't run compaction but still polls the
- * status and recovers from rollbacks.
+ * `optedOut` flag, so this client doesn't run compaction or poll its status.
  *
  * @stability unstable
  * @category constructors
@@ -769,8 +768,8 @@ export const makeUnencrypted: Effect.Effect<
  *
  * **Details**
  *
- * `compaction: false` stops this client running compaction. It still polls
- * the compaction status and recovers from rollbacks.
+ * `compaction: false` stops this client running compaction or polling its
+ * status.
  *
  * @stability unstable
  * @category layers

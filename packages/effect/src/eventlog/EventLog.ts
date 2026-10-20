@@ -14,31 +14,27 @@
  * a recent tail instead of every write. Clients build the snapshots, because
  * only they can decrypt the entries.
  *
- * Every client of such a remote polls its compaction status when it connects
- * and about once an hour. A client compacts when it has a compactor registered
- * with `remote: true`, its remote wasn't built with `compaction: false`, the
- * server says compaction is wanted, and the journal has caught up with the
- * remote. The run starts in the background after a random delay of a few
- * minutes. It reads the input from the server, takes entries the journal
- * already holds from the journal and fetches the rest, runs the opted-in
- * compactors over it, and uploads the entries they keep. A device runs one
- * compaction per remote and store at a time. Where Web Locks exist, as in
- * browsers and Node, the lock is shared within one Web Locks scope, such as a
- * browser origin or a process. Elsewhere it is shared only by `EventLog`s
- * using the same journal object. `EventLog.compact` runs one now, for example
- * from a worker holding the identity.
+ * A client that can compact, because it has a compactor registered with
+ * `remote: true` and its remote wasn't built with `compaction: false`, polls
+ * the compaction status when it connects and about once an hour. Other
+ * clients never call the compaction RPCs. A client compacts when the server
+ * says compaction is wanted and the journal has caught up with the remote.
+ * The run starts in the background after a random delay of a few minutes. It
+ * reads the input from the server, takes entries the journal already holds
+ * from the journal and fetches the rest, runs the opted-in compactors over it,
+ * and uploads the entries they keep. The server lets one run per store hold a
+ * stage at a time and answers the others `Busy`, so tabs or devices that start
+ * together download the input once. `EventLog.compact` runs one now, for
+ * example from a worker holding the identity.
  *
- * An operator can roll a bad snapshot back on the server. The status poll
- * reports a new rollback epoch, and every client that polls, opted out or not,
- * streams the remote again from its first sequence and gets back the entries
- * the snapshot dropped. The journal records the new epoch only once that
- * replay is done, so a replay cut short by a reload starts again.
+ * An operator can roll a bad snapshot back on the server. The server then
+ * appends the input the snapshot was built from at the head of the remote, so
+ * every client, including ones from before remote compaction, receives the
+ * entries the snapshot dropped through its ordinary stream, and skips the ones
+ * it already holds.
  *
  * Known limitations:
  *
- * - Clients from before remote compaction read snapshots but don't poll the
- *   status, so they don't recover after a rollback. One that read the
- *   withdrawn snapshot can stay without the entries it dropped.
  * - A run holds every entry it keeps in memory, so a device with a large
  *   store may not be able to compact. Opt it out with `compaction: false` and
  *   compact from a device or worker with more memory.
@@ -52,12 +48,6 @@
  *   the server only compacts data older than its lag.
  * - A client that stops partway through a run holds the server's busy claim
  *   until its stage expires.
- * - The device lock doesn't reach past one Web Locks scope, or past one
- *   journal object where Web Locks don't exist. Processes sharing a SQL
- *   journal, or separate journal objects without Web Locks, can start
- *   compaction runs at the same time. The server's busy claim usually stops
- *   the second one, and the commit compare-and-swap keeps snapshots correct
- *   either way, so the cost is duplicate work, not a wrong snapshot.
  *
  * @stability unstable
  * @since 4.0.0
@@ -73,7 +63,6 @@ import { constant, identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
-import * as Option from "../Option.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
@@ -90,21 +79,13 @@ import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Scope from "../Scope.ts"
-import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
 import type { Covariant } from "../Types.ts"
 import type * as Event from "./Event.ts"
 import type * as EventGroup from "./EventGroup.ts"
-import {
-  Entry,
-  EventJournal,
-  type EventJournalError,
-  makeEntryIdUnsafe,
-  nextSequenceAfter,
-  type RemoteId
-} from "./EventJournal.ts"
+import { Entry, EventJournal, type EventJournalError, makeEntryIdUnsafe, type RemoteId } from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
-import { type CompactionInputHeader, type CompactionStatus, EventLogProtocolError, StoreId } from "./EventLogMessage.ts"
+import { type CompactionInputHeader, EventLogProtocolError, StoreId } from "./EventLogMessage.ts"
 import type {
   CompactionStage,
   EventLogRemote,
@@ -171,9 +152,8 @@ export class EventLog extends Context.Service<EventLog, {
    * compactor was registered with `remote: true`.
    *
    * Each result is the outcome of the run: `Committed` or `Superseded` once a
-   * snapshot is uploaded, `NoOp` when nothing was dropped, `NotWanted` or
-   * `Busy` from the server, or `Busy` when another run on this device holds
-   * the lock. `Aborted` means the run uploaded nothing and released its stage,
+   * snapshot is uploaded, `NoOp` when nothing was dropped, or `NotWanted` or
+   * `Busy` from the server. `Aborted` means the run uploaded nothing and released its stage,
    * because a compactor died, the idempotence check failed, every entry was
    * dropped, or the input was pruned during the run.
    */
@@ -934,9 +914,8 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
      * nothing if that drops more. A compactor that dies also stops the run.
      *
      * A snapshot that drops too much can be rolled back on the server until
-     * the history it replaced is pruned. Clients from before remote
-     * compaction don't recover from a rollback. See the module docs for when
-     * runs start and the other limitations.
+     * the history it replaced is pruned. See the module docs for when runs
+     * start and the other limitations.
      */
     readonly remote?: boolean | undefined
   }
@@ -1012,9 +991,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
      * nothing if that drops more. A compactor that dies also stops the run.
      *
      * A snapshot that drops too much can be rolled back on the server until
-     * the history it replaced is pruned. Clients from before remote
-     * compaction don't recover from a rollback. See the module docs for when
-     * runs start and the other limitations.
+     * the history it replaced is pruned. See the module docs for when runs
+     * start and the other limitations.
      */
     readonly remote?: boolean | undefined
   }
@@ -1366,8 +1344,8 @@ const make = Effect.gen(function*() {
   })
 
   // One compaction run, shared by the background trigger and `compact`. The
-  // device lock keeps tabs sharing a journal from running together, and the
-  // journal lock is taken only to look up ids.
+  // server's busy claim keeps two runs on a store apart, and the journal lock
+  // is taken only to look up ids.
   const runCompaction = (
     remote: EventLogRemote["Service"],
     compaction: EventLogRemoteCompaction
@@ -1398,11 +1376,6 @@ const make = Effect.gen(function*() {
         )
       )
     }).pipe(
-      RemoteCompaction.withDeviceLock(
-        journal,
-        `effect/eventlog/EventLog/compaction/${identity.publicKey}/${storeId}/${Uuid.stringify(remote.id)}`
-      ),
-      Effect.map(Option.getOrElse((): CompactionResult => "Busy")),
       Effect.annotateLogs({
         service: "EventLog",
         effect: "compact",
@@ -1412,85 +1385,30 @@ const make = Effect.gen(function*() {
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      const compaction = remote.compaction
+      // Only a client that can run a compaction calls the compaction RPCs.
+      const compaction = remote.compaction?.optedOut === false ? remote.compaction : undefined
       const consumer = yield* FiberHandle.make()
-      const recovery = yield* Semaphore.make(1)
       const trigger = yield* FiberHandle.make()
 
-      // The rollback replay the changes fiber owes. It streams from `next`,
-      // which starts at the remote's first sequence, instead of the journal's
-      // cursor, because another tab's subscription to the same journal can move
-      // the cursor forward again. The new `epoch` is recorded only once the
-      // replay has committed past `head`, so a replay cut short by a reload
-      // starts again on the next status poll.
-      let replay: { readonly epoch: number; readonly head: number; next: number } | undefined
-
-      const finishReplay = Effect.suspend(() => {
-        const done = replay
-        if (done === undefined || done.next <= done.head) return Effect.void
-        replay = undefined
-        return journal.remoteRollbackEpoch(remote.id).pipe(
-          Effect.flatMap((seen) =>
-            seen !== undefined && seen >= done.epoch
-              ? Effect.void
-              : journal.setRemoteRollbackEpoch(remote.id, done.epoch)
-          ),
-          journal.withLock(storeId),
-          Effect.andThen(Effect.logInfo(`Finished streaming the remote again after rollback epoch ${done.epoch}`))
-        )
-      })
-
-      // Starts a background run when this client compacts, the store wants
-      // compaction and the journal has caught up with the status's head.
-      const maybeTrigger = Effect.fnUntraced(function*(compaction: EventLogRemoteCompaction, status: CompactionStatus) {
-        if (compaction.optedOut || !status.wanted || !hasRemoteCompactor() || replay !== undefined) return
-        if ((yield* journal.nextRemoteSequence(remote.id)) <= status.head) return
-        yield* FiberHandle.run(
-          trigger,
-          Random.nextIntBetween(compactionDelayMillis.min, compactionDelayMillis.max).pipe(
-            Effect.flatMap((millis) => Effect.sleep(millis)),
-            Effect.andThen(runCompaction(remote, compaction)),
-            Effect.flatMap((result) => Effect.logDebug(`Remote compaction finished: ${result}`)),
-            Effect.catchCause(Effect.logWarning)
-          ),
-          { onlyIfMissing: true }
-        )
-      })
-
-      // Records the first rollback epoch seen as the baseline. When the epoch
-      // goes up, the changes fiber replays the remote from its first sequence,
-      // and id dedupe keeps only what a withdrawn snapshot dropped. `restart`
-      // stops the changes fiber around the rewind and starts it again.
+      // Starts a background run when this client has a remote compactor, the
+      // store wants compaction and the journal has caught up with the status's
+      // head.
       const pollStatus = Effect.fnUntraced(
-        function*(compaction: EventLogRemoteCompaction, restart: boolean) {
+        function*(compaction: EventLogRemoteCompaction) {
+          if (!hasRemoteCompactor()) return
           const status = yield* compaction.status({ identity, storeId })
-          const seen = yield* journal.remoteRollbackEpoch(remote.id)
-          if (seen !== undefined && status.rollbackEpoch > seen) {
-            // A replay already under way for this epoch carries on.
-            if (replay?.epoch === status.rollbackEpoch) return yield* maybeTrigger(compaction, status)
-            const firstSequence = remote.firstSequence ?? 0
-            const rewind = Effect.sync(() => {
-              replay = { epoch: status.rollbackEpoch, head: status.head, next: firstSequence }
-            }).pipe(
-              Effect.andThen(journal.resetRemoteSequence(remote.id, firstSequence).pipe(journal.withLock(storeId))),
-              Effect.andThen(finishReplay)
-            )
-            // The changes fiber starts again even when the rewind fails.
-            yield* restart
-              ? FiberHandle.clear(consumer).pipe(
-                Effect.andThen(rewind),
-                Effect.ensuring(FiberHandle.run(consumer, consume))
-              )
-              : rewind
-            yield* Effect.logInfo(
-              `The remote rolled back compaction (epoch ${status.rollbackEpoch}), streaming it again`
-            )
-          } else if (seen !== status.rollbackEpoch) {
-            yield* journal.setRemoteRollbackEpoch(remote.id, status.rollbackEpoch)
-          }
-          yield* maybeTrigger(compaction, status)
+          if (!status.wanted || (yield* journal.nextRemoteSequence(remote.id)) <= status.head) return
+          yield* FiberHandle.run(
+            trigger,
+            Random.nextIntBetween(compactionDelayMillis.min, compactionDelayMillis.max).pipe(
+              Effect.flatMap((millis) => Effect.sleep(millis)),
+              Effect.andThen(runCompaction(remote, compaction)),
+              Effect.flatMap((result) => Effect.logDebug(`Remote compaction finished: ${result}`)),
+              Effect.catchCause(Effect.logWarning)
+            ),
+            { onlyIfMissing: true }
+          )
         },
-        recovery.withPermits(1),
         Effect.catchCause(Effect.logWarning),
         Effect.annotateLogs({
           service: "EventLog",
@@ -1499,12 +1417,10 @@ const make = Effect.gen(function*() {
       )
 
       const consume: Effect.Effect<unknown> = Effect.gen(function*() {
-        if (compaction !== undefined) yield* pollStatus(compaction, false)
-        const owed = replay
-        const startSequence = owed !== undefined ? owed.next : yield* journal.nextRemoteSequence(remote.id)
+        if (compaction !== undefined) yield* pollStatus(compaction)
         const changes = yield* remote.changes({
           identity,
-          startSequence,
+          startSequence: yield* journal.nextRemoteSequence(remote.id),
           storeId,
           knownEntries: journal.entriesById
         })
@@ -1571,10 +1487,6 @@ const make = Effect.gen(function*() {
             // Outside the lock, so queries re-run after the journal transaction commits.
             reactivity.withBatch
           )
-          if (owed !== undefined && replay === owed) {
-            owed.next = nextSequenceAfter(entries, owed.next)
-            yield* finishReplay
-          }
         }
       }).pipe(
         Effect.scoped,
@@ -1592,7 +1504,7 @@ const make = Effect.gen(function*() {
           Random.nextBetween(0.8 * compactionPollMillis, 1.2 * compactionPollMillis),
           (millis) => Effect.sleep(millis)
         ).pipe(
-          Effect.andThen(pollStatus(compaction, true)),
+          Effect.andThen(pollStatus(compaction)),
           Effect.forever,
           Effect.forkScoped
         )

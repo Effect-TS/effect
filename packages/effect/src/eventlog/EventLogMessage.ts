@@ -460,9 +460,7 @@ const compactionStage = {
  * **Details**
  *
  * `wanted` is `true` when the server would open a compaction stage. `head` is
- * the highest stored sequence. `base` is the last input sequence the active
- * snapshot covers, and is absent while no snapshot is active. A client rewinds
- * its cursor when `rollbackEpoch` goes up.
+ * the highest stored sequence.
  *
  * @stability unstable
  * @category protocols
@@ -471,9 +469,7 @@ const compactionStage = {
 export class CompactionStatus
   extends Schema.Class<CompactionStatus>("effect/eventlog/EventLogRemote/CompactionStatus")({
     wanted: Schema.Boolean,
-    head: Schema.Int,
-    base: Schema.optional(Schema.Natural),
-    rollbackEpoch: Schema.Natural
+    head: Schema.Int
   })
 {}
 
@@ -495,11 +491,9 @@ export class CompactionStatusRpc extends Rpc.make("EventLog.CompactionStatus", {
  *
  * **Details**
  *
- * `Started` pins the stage to the active generation and to `through`, the last
- * input sequence, and counts the input's entries and batches. `Busy` means
- * another stage is open on the store, and `retryAfter` is the number of
- * milliseconds until its claim expires. `NotWanted` means the store doesn't
- * need compacting.
+ * `Started` pins the stage to the active generation and to the last input
+ * sequence. `Busy` means another stage is open on the store. `NotWanted` means
+ * the store doesn't need compacting.
  *
  * @stability unstable
  * @category protocols
@@ -507,14 +501,9 @@ export class CompactionStatusRpc extends Rpc.make("EventLog.CompactionStatus", {
  */
 export const CompactionBeginResult = Schema.Union([
   Schema.TaggedStruct("Started", {
-    stageId: Schema.String,
-    through: Schema.Int,
-    entryCount: Schema.Natural,
-    batchCount: Schema.Natural
+    stageId: Schema.String
   }),
-  Schema.TaggedStruct("Busy", {
-    retryAfter: Schema.optional(Schema.Natural)
-  }),
+  Schema.TaggedStruct("Busy", {}),
   Schema.TaggedStruct("NotWanted", {})
 ])
 
@@ -621,8 +610,9 @@ export class CompactionFetchRpc extends Rpc.make("EventLog.CompactionFetch", {
  *
  * A segment is an encoded non-empty array of encrypted batches, and
  * `chunk.id` is its index. A segment larger than `ChunkedMessage.chunkSize` is
- * split into pieces. A segment that fails validation withdraws the stage with
- * an `InvalidRequest` error.
+ * split into pieces. A segment that is already stored is acknowledged without
+ * storing it again. A segment that fails validation aborts the stage with an
+ * `InvalidRequest` error.
  *
  * @stability unstable
  * @category protocols
@@ -684,10 +674,11 @@ export type CompactionResult = typeof CompactionResult.Type
  * **Details**
  *
  * Answers `Superseded` when the generation the stage was pinned to is no longer
- * active. A retried commit gets the same answer. A snapshot whose kept ids
- * aren't a non-empty subset of the pinned input without repeats, in the order
- * the input holds them, or whose segments are incomplete, fails with an `InvalidRequest` error and withdraws
- * the stage. An expired, withdrawn or unknown stage fails with `NotFound`.
+ * active. A snapshot whose kept ids aren't a non-empty subset of the pinned
+ * input without repeats, in the order the input holds them, or whose segments
+ * are incomplete, fails with an `InvalidRequest` error and aborts the stage. A
+ * stage that expired, was aborted or committed, or is unknown fails with
+ * `NotFound`, so a retried commit does too.
  *
  * @stability unstable
  * @category protocols

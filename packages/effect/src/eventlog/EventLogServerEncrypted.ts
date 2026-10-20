@@ -179,7 +179,6 @@ const toWriteAcks = Effect.fnUntraced(function*(
 const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
   EventLogCompactionRpcs.toLayer(Effect.sync(() => {
     const compaction = storage.compaction
-    const firstSequence = storage.firstSequence ?? 0
     let chunkedIdCounter = 0
     const toFrames = (data: Uint8Array<ArrayBuffer>): Arr.NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> =>
       data.byteLength <= ChunkedMessage.chunkSize
@@ -239,12 +238,7 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
       "EventLog.CompactionStatus": (request, { client }) =>
         withCompaction("CompactionStatus", request, client, (compaction) =>
           Effect.map(getStatus(compaction, request.publicKey, request.storeId), ({ status, wanted }) =>
-            new CompactionStatus({
-              wanted,
-              head: status.head,
-              base: status.base >= firstSequence ? status.base : undefined,
-              rollbackEpoch: status.rollbackEpoch
-            }))),
+            new CompactionStatus({ wanted, head: status.head }))),
       "EventLog.CompactionBegin": (request, { client }) =>
         withCompaction("CompactionBegin", request, client, (compaction) =>
           Effect.gen(function*() {
@@ -252,19 +246,10 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
             if (!wanted) {
               return { _tag: "NotWanted" } as const
             }
-            const through = status.lagHead
-            const result = yield* compaction.begin(request.publicKey, request.storeId, { through })
-            if (result._tag === "Busy") {
-              const now = yield* Clock.currentTimeMillis
-              return { _tag: "Busy", retryAfter: Math.max(0, result.expiresAt - now) } as const
-            }
-            return {
-              _tag: "Started",
-              stageId: result.stageId,
-              through,
-              entryCount: result.entryCount,
-              batchCount: result.batchCount
-            } as const
+            const result = yield* compaction.begin(request.publicKey, request.storeId, { through: status.lagHead })
+            return result._tag === "Busy"
+              ? { _tag: "Busy" } as const
+              : { _tag: "Started", stageId: result.stageId } as const
           })),
       "EventLog.CompactionInput": (request, { client }) =>
         withCompactionStream("CompactionInput", request, client, (compaction) =>
@@ -296,7 +281,7 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
             const batches = yield* CompactionPartRpc.decodeSegment(data).pipe(
               Effect.catch(() =>
                 Effect.andThen(
-                  compaction.withdraw(publicKey, storeId, stageId),
+                  compaction.abort(publicKey, storeId, stageId),
                   Effect.fail(new CompactionInvalidRequest({ stageId, message: "Invalid segment" }))
                 )
               )
@@ -315,21 +300,13 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
           if (request.result._tag === "NoOp") {
             return Effect.as(compaction.recordNoOp(publicKey, storeId, stageId), "Committed" as const)
           }
-          const segmentCount = request.result.segmentCount
-          return checkSnapshot(compaction, publicKey, storeId, stageId, segmentCount).pipe(
-            Effect.matchEffect({
-              onFailure: (error): Effect.Effect<
-                "Committed" | "Superseded",
-                CompactionNotFound | CompactionInvalidRequest
-              > =>
-                error._tag === "CompactionInvalidRequest"
-                  ? Effect.andThen(compaction.withdraw(publicKey, storeId, stageId), Effect.fail(error))
-                  // The stage has left `open`, so this answers a retried commit
-                  // from its first one, or fails with `CompactionNotFound`.
-                  : compaction.commit(publicKey, storeId, stageId, []),
-              onSuccess: (snapshot) =>
-                compaction.commit(publicKey, storeId, stageId, snapshot.virtualSequences)
-            })
+          return checkSnapshot(compaction, publicKey, storeId, stageId, request.result.segmentCount).pipe(
+            Effect.tapError((error) =>
+              error._tag === "CompactionInvalidRequest" ? compaction.abort(publicKey, storeId, stageId) : Effect.void
+            ),
+            Effect.flatMap((virtualSequences) =>
+              compaction.commit(publicKey, storeId, stageId, virtualSequences)
+            )
           )
         })
     })
@@ -347,7 +324,7 @@ const isCompactionWanted = (status: CompactionStoreStatus, thresholdFloor: numbe
 }
 
 // Checks a snapshot's staged batches against the stage's input in one pass
-// over both, and assigns each batch its virtual start sequence. Kept ids must
+// over both, and returns each batch's virtual start sequence. Kept ids must
 // be a non-empty subset of the input without repeats that, in order, is a
 // subsequence of the input's ids, in segments 0 to segmentCount - 1.
 const checkSnapshot = Effect.fnUntraced(function*(
@@ -362,7 +339,6 @@ const checkSnapshot = Effect.fnUntraced(function*(
   let headers: ReadonlyArray<CompactionBatchHeader> = []
   let headerIndex = 0
   let entryIndex = 0
-  let inputCount = 0
   let lastInputSequence = -1
   const nextInput = Effect.gen(function*() {
     while (true) {
@@ -381,7 +357,6 @@ const checkSnapshot = Effect.fnUntraced(function*(
       }
       const sequence = header.sequence + entryIndex
       const id = Uuid.stringify(header.entryIds[entryIndex++])
-      inputCount++
       lastInputSequence = sequence
       return { id, sequence }
     }
@@ -414,18 +389,12 @@ const checkSnapshot = Effect.fnUntraced(function*(
   if (ends.length === 0) return yield* invalid("Snapshot is empty")
   if (segment !== segmentCount - 1) return yield* invalid("Missing segment")
   while ((yield* nextInput) !== undefined) {
-    // Count the rest of the input and find where it ends.
+    // Find where the input ends.
   }
 
   // Each batch ends at its last kept entry's input sequence, and the final one
   // at the end of the input, so no batch starts below its entries' input.
-  const virtualSequences = ends.map((end, i) => (i === ends.length - 1 ? lastInputSequence : end) - sizes[i] + 1)
-  return {
-    virtualSequences,
-    through: lastInputSequence,
-    inputCount,
-    keptCount: sizes.reduce((count, size) => count + size, 0)
-  }
+  return ends.map((end, i) => (i === ends.length - 1 ? lastInputSequence : end) - sizes[i] + 1)
 }, Effect.scoped)
 
 const logCommit = (options: {
@@ -433,7 +402,6 @@ const logCommit = (options: {
   readonly storeId: StoreId
   readonly result: "Committed" | "Superseded"
   readonly through: number
-  readonly inputCount: number
   readonly keptCount: number
   readonly activationId: string | undefined
 }) =>
@@ -444,7 +412,6 @@ const logCommit = (options: {
       service: "EventLogServerEncrypted",
       publicKey: options.publicKey,
       storeId: options.storeId,
-      inputCount: options.inputCount,
       keptCount: options.keptCount,
       through: options.through,
       activationId: options.activationId
@@ -595,19 +562,24 @@ export class Storage extends Context.Service<Storage, {
  * active activation and to `through`. The stage claim expires `stageTtl` after
  * begin or the latest stored Part, and `begin` takes over an expired claim.
  * Stage-scoped primitives fail with `CompactionNotFound` once the stage has
- * expired, been withdrawn, committed (except `commit` itself) or belongs to
- * another store.
+ * expired, been aborted, committed or belongs to another store. A stage that
+ * leaves `open` is gone, so a commit is answered once.
  *
  * `stagePart` stores one segment of encrypted snapshot batches. A segment that
- * is already stored answers `AlreadyStored` and stores nothing. A Part that
- * repeats an entry id staged earlier fails with `CompactionInvalidRequest` and
- * withdraws the stage. `commit` takes the virtual start sequence of every staged
- * batch in position order, and activates the staged set only if the pinned
- * activation is still active.
+ * is already stored answers `AlreadyStored` and stores nothing. It doesn't
+ * check entry ids: the server's commit checks reject a kept id repeated beyond
+ * the input, and readers dedupe by id.
+ * `commit` takes the virtual start sequence of every staged batch in position
+ * order, and activates the staged set only if the pinned activation is still
+ * active.
  *
- * `rollback` reactivates the previous generation under a new activation id and
- * bumps `rollbackEpoch`. A sweep on `Clock` prunes a generation, with the
- * originals it replaced, `grace` after it was superseded or withdrawn.
+ * `rollback` reactivates the previous generation under a new activation id,
+ * and re-appends the input of the stage that built the withdrawn generation
+ * (the previous generation's batch set, then the originals between the two
+ * bases) at the head, at sequences allocated as writes allocate them. Clients
+ * that read the withdrawn snapshot receive what it dropped through `changes`.
+ * A sweep on `Clock` prunes a generation, with the originals it replaced,
+ * `grace` after it was superseded or withdrawn.
  *
  * @stability unstable
  * @category models
@@ -656,9 +628,8 @@ export interface StorageCompaction {
     stageId: string
   ) => Stream.Stream<{ readonly position: number; readonly entryIds: ReadonlyArray<EntryId> }, CompactionNotFound>
   /**
-   * Answers a retried commit from the activation the stage created.
-   * Logs the first outcome with operation-bound counts, through sequence and
-   * activation id, without reading the active generation after committing.
+   * Logs the outcome with the kept count, through sequence and activation id,
+   * without reading the active generation after committing.
    */
   readonly commit: (
     publicKey: string,
@@ -667,16 +638,15 @@ export interface StorageCompaction {
     virtualSequences: ReadonlyArray<number>
   ) => Effect.Effect<"Committed" | "Superseded", CompactionNotFound>
   /**
-   * Records and logs the first no-op with its identity, store, stage, through
-   * sequence and cached input count. Retries do not advance backoff or emit
-   * another audit record.
+   * Records and logs a no-op with its identity, store, stage and through
+   * sequence.
    */
   readonly recordNoOp: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void, CompactionNotFound>
   /**
-   * Releases an open stage. A late abort is a no-op.
+   * Releases an open stage and discards what it staged. Aborting a stage that
+   * has left `open` is a no-op.
    */
   readonly abort: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void>
-  readonly withdraw: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void>
   readonly rollback: (
     publicKey: string,
     storeId: StoreId,
@@ -695,8 +665,7 @@ export interface StorageCompaction {
  *
  * `base` is `firstSequence - 1` while the originals are active. `lagHead` is
  * the highest last sequence in a storage-time hour that ended before
- * `now - lag`. `nextSweepAt` is the earliest time anything in the store can be
- * pruned.
+ * `now - lag`.
  *
  * @stability unstable
  * @category models
@@ -707,10 +676,7 @@ export interface CompactionStoreStatus {
   readonly base: number
   readonly activeKeptCount: number
   readonly lagHead: number
-  readonly rollbackEpoch: number
   readonly noOp: { readonly at: number; readonly count: number } | undefined
-  readonly openStage: { readonly expiresAt: number } | undefined
-  readonly nextSweepAt: number | undefined
 }
 
 /**
@@ -723,8 +689,6 @@ export interface CompactionStoreStatus {
 export type CompactionBeginResult = {
   readonly _tag: "Started"
   readonly stageId: string
-  readonly entryCount: number
-  readonly batchCount: number
 } | {
   readonly _tag: "Busy"
   readonly expiresAt: number
@@ -764,7 +728,7 @@ export interface CompactionActivation {
 }
 
 /**
- * Error raised when a compaction stage has expired, was withdrawn or committed,
+ * Error raised when a compaction stage has expired, was aborted or committed,
  * or is unknown to the store.
  *
  * @stability unstable
@@ -926,7 +890,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
   const lagMillis = Duration.toMillis(config.lag)
   const stageTtlMillis = Duration.toMillis(config.stageTtl)
   const journals = new Map<string, MemoryJournal>()
-  // Every stage that has not been cleaned up yet, across stores.
+  // Every open stage, across stores.
   const stages = new Map<string, MemoryStage>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
   const remoteId = makeRemoteIdUnsafe()
@@ -949,7 +913,6 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
       buckets: new Map(),
       activations: [originals],
       active: originals,
-      rollbackEpoch: 0,
       noOp: undefined,
       openStage: undefined,
       nextSweepAt: undefined,
@@ -974,19 +937,13 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     journal.nextSweepAt = journal.nextSweepAt === undefined ? at : Math.min(journal.nextSweepAt, at)
     sweepPending.openUnsafe()
   }
-  const closeStage = (journal: MemoryJournal, stage: MemoryStage, state: MemoryStage["state"], now: number) => {
-    stage.state = state
-    stage.closedAt = now
-    stage.segments.clear()
-    stage.ids.clear()
+  const closeStage = (journal: MemoryJournal, stage: MemoryStage) => {
+    stages.delete(stage.id)
     if (journal.openStage === stage) journal.openStage = undefined
   }
   const sweep = (now: number) => {
-    for (const [stageId, stage] of stages) {
-      const journal = journals.get(stage.scopeKey)!
-      if (stage.state === "open" && stage.expiresAt <= now) closeStage(journal, stage, "expired", stage.expiresAt)
-      // Closed stages linger for one stage TTL so a retried commit is answered.
-      if (stage.closedAt !== undefined && stage.closedAt + stageTtlMillis <= now) stages.delete(stageId)
+    for (const stage of stages.values()) {
+      if (stage.expiresAt <= now) closeStage(journals.get(stage.scopeKey)!, stage)
     }
     for (const journal of journals.values()) {
       if (journal.nextSweepAt !== undefined && journal.nextSweepAt <= now) prune(journal, now)
@@ -1059,20 +1016,16 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
       batch.sequence > stage.pinned.base && batch.sequence + batch.entryIds.length - 1 <= stage.through
     )
   ]
-  const findStage = (publicKey: string, storeId: StoreId, stageId: string) => {
-    const stage = stages.get(stageId)
-    if (stage === undefined || stage.scopeKey !== makeEncryptedScopeKey({ publicKey, storeId })) return undefined
-    return { stage, journal: journals.get(stage.scopeKey)! }
-  }
   // A stage that Part, NoOp and Commit can act on.
   const findOpenStage = (publicKey: string, storeId: StoreId, stageId: string, now: number) => {
-    const found = findStage(publicKey, storeId, stageId)
-    if (found === undefined || found.stage.state !== "open") return undefined
-    if (found.stage.expiresAt <= now) {
-      closeStage(found.journal, found.stage, "expired", found.stage.expiresAt)
+    const stage = stages.get(stageId)
+    if (stage === undefined || stage.scopeKey !== makeEncryptedScopeKey({ publicKey, storeId })) return undefined
+    const journal = journals.get(stage.scopeKey)!
+    if (stage.expiresAt <= now) {
+      closeStage(journal, stage)
       return undefined
     }
-    return found
+    return { stage, journal }
   }
   // Call within the same execution-time block that captures the input rows.
   const findInputStage = (
@@ -1090,18 +1043,12 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     status: (publicKey, storeId) =>
       Effect.map(Clock.currentTimeMillis, (now) => {
         const journal = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId }))
-        const openStage = journal.openStage
         return {
           head: journal.nextSequence - 1,
           base: journal.active.base,
           activeKeptCount: journal.active.keptCount ?? 0,
           lagHead: lagHead(journal, now),
-          rollbackEpoch: journal.rollbackEpoch,
-          noOp: journal.noOp,
-          openStage: openStage !== undefined && openStage.expiresAt > now
-            ? { expiresAt: openStage.expiresAt }
-            : undefined,
-          nextSweepAt: journal.nextSweepAt
+          noOp: journal.noOp
         }
       }),
     begin: (publicKey, storeId, { through }) =>
@@ -1111,35 +1058,20 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         const open = journal.openStage
         if (open !== undefined) {
           if (open.expiresAt > now) return { _tag: "Busy", expiresAt: open.expiresAt }
-          closeStage(journal, open, "expired", open.expiresAt)
+          closeStage(journal, open)
         }
         const stage: MemoryStage = {
           id: Uuid.v4String(),
           scopeKey,
-          state: "open",
           pinned: journal.active,
           through,
           expiresAt: now + stageTtlMillis,
-          inputCount: 0,
-          inputBytes: 0,
-          stagedBytes: 0,
-          segments: new Map(),
-          ids: new Set(),
-          result: undefined,
-          closedAt: undefined
+          staged: new Map()
         }
-        const input = inputBatches(journal, stage)
-        stage.inputCount = input.reduce((count, batch) => count + batch.entryIds.length, 0)
-        stage.inputBytes = input.reduce((bytes, batch) => bytes + batch.encryptedBatch.byteLength, 0)
         stages.set(stage.id, stage)
         journal.openStage = stage
         sweepPending.openUnsafe()
-        return {
-          _tag: "Started",
-          stageId: stage.id,
-          entryCount: stage.inputCount,
-          batchCount: input.length
-        }
+        return { _tag: "Started", stageId: stage.id }
       }),
     inputHeaders: (publicKey, storeId, stageId) =>
       Clock.currentTimeMillis.pipe(
@@ -1180,28 +1112,23 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         const found = findOpenStage(publicKey, storeId, stageId, now)
         if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
         const { journal, stage } = found
-        if (stage.segments.has(segment)) return Effect.succeed("AlreadyStored" as const)
         const reject = (message: string) => {
-          closeStage(journal, stage, "withdrawn", now)
+          closeStage(journal, stage)
           return Effect.fail(new CompactionInvalidRequest({ stageId, message }))
         }
         if (!Number.isSafeInteger(segment) || segment < 0 || segment >= maxSegments) {
           return reject("Invalid segment index")
         }
         if (batches.length > positionsPerSegment) return reject("Too many batches in a segment")
-        const bytes = batches.reduce((bytes, batch) => bytes + batch.encryptedBatch.byteLength, 0)
-        if (stage.stagedBytes + bytes > stage.inputBytes) return reject("Staged bytes exceed the input size")
-        const ids = new Set<string>()
-        for (const batch of batches) {
-          for (const entryId of batch.entryIds) {
-            const id = Uuid.stringify(entryId)
-            if (stage.ids.has(id) || ids.has(id)) return reject("Repeated entry id")
-            ids.add(id)
-          }
-        }
-        for (const id of ids) stage.ids.add(id)
-        stage.segments.set(segment, batches)
-        stage.stagedBytes += bytes
+        // Positions are the staged rows' key, so a retried segment inserts nothing.
+        let inserted = 0
+        batches.forEach((batch, i) => {
+          const position = segment * positionsPerSegment + i
+          if (stage.staged.has(position)) return
+          stage.staged.set(position, batch)
+          inserted++
+        })
+        if (inserted === 0) return Effect.succeed("AlreadyStored" as const)
         stage.expiresAt = now + stageTtlMillis
         return Effect.succeed("Stored" as const)
       }),
@@ -1220,23 +1147,18 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
       }).pipe(Stream.unwrap),
     commit: (publicKey, storeId, stageId, virtualSequences) =>
       Effect.flatMap(Clock.currentTimeMillis, (now) => {
-        // A retried commit is answered from the stage's first one.
-        const result = findStage(publicKey, storeId, stageId)?.stage.result
-        if (result === "Committed" || result === "Superseded") return Effect.succeed(result)
         const found = findOpenStage(publicKey, storeId, stageId, now)
         if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
         const { journal, stage } = found
         if (stage.pinned !== journal.active) {
           const keptCount = stagedBatches(stage).reduce((count, { batch }) => count + batch.entryIds.length, 0)
-          stage.result = "Superseded"
-          closeStage(journal, stage, "committed", now)
+          closeStage(journal, stage)
           return Effect.as(
             logCommit({
               publicKey,
               storeId,
               result: "Superseded",
               through: stage.through,
-              inputCount: stage.inputCount,
               keptCount,
               activationId: undefined
             }),
@@ -1264,8 +1186,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         journal.active = activation
         journal.noOp = undefined
         schedulePrune(journal, now + graceMillis)
-        stage.result = "Committed"
-        closeStage(journal, stage, "committed", now)
+        closeStage(journal, stage)
         // Capture this operation's activation before yielding to the logger. A
         // concurrent rollback must not relabel the commit with its activation.
         return Effect.as(
@@ -1274,7 +1195,6 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
             storeId,
             result: "Committed",
             through: stage.through,
-            inputCount: stage.inputCount,
             keptCount,
             activationId: activation.id
           }),
@@ -1283,7 +1203,6 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
       }),
     recordNoOp: (publicKey, storeId, stageId) =>
       Effect.flatMap(Clock.currentTimeMillis, (now) => {
-        if (findStage(publicKey, storeId, stageId)?.stage.result === "NoOp") return Effect.void
         const found = findOpenStage(publicKey, storeId, stageId, now)
         if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
         const { journal, stage } = found
@@ -1291,24 +1210,30 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         if (stage.pinned === journal.active) {
           journal.noOp = { at: stage.through, count: (journal.noOp?.count ?? 0) + 1 }
         }
-        stage.result = "NoOp"
-        closeStage(journal, stage, "committed", now)
+        closeStage(journal, stage)
         return Effect.logInfo("Committed compaction no-op").pipe(
           Effect.annotateLogs({
             service: "EventLogServerEncrypted",
             publicKey,
             storeId,
             stageId,
-            through: stage.through,
-            inputCount: stage.inputCount
+            through: stage.through
           })
         )
       }),
-    abort: (publicKey, storeId, stageId) => withdraw(publicKey, storeId, stageId),
-    withdraw: (publicKey, storeId, stageId) => withdraw(publicKey, storeId, stageId),
-    rollback: (publicKey, storeId, expectedActivationId) =>
-      Effect.flatMap(Clock.currentTimeMillis, (now) => {
-        const journal = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId }))
+    abort: (publicKey, storeId, stageId) =>
+      Effect.sync(() => {
+        const stage = stages.get(stageId)
+        if (stage !== undefined && stage.scopeKey === makeEncryptedScopeKey({ publicKey, storeId })) {
+          closeStage(journals.get(stage.scopeKey)!, stage)
+        }
+      }),
+    rollback: Effect.fnUntraced(function*(publicKey, storeId, expectedActivationId) {
+      const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
+      const pubsub = yield* RcMap.get(pubsubs, scopeKey)
+      const now = yield* Clock.currentTimeMillis
+      return yield* Effect.suspend(() => {
+        const journal = ensureJournal(scopeKey)
         const withdrawn = journal.active
         if (withdrawn.id !== expectedActivationId) {
           return Effect.fail(new CompactionRollbackError({ reason: "NotActive" }))
@@ -1324,12 +1249,25 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           supersededAt: undefined,
           pruneStartedAt: undefined
         }
+        // The input of the stage that built the withdrawn generation.
+        const input = [
+          ...(target.set?.batches ?? []),
+          ...journal.batches.filter((batch) =>
+            batch.sequence > target.base && batch.sequence + batch.entryIds.length - 1 <= withdrawn.base
+          )
+        ]
         withdrawn.supersededAt = now
         journal.activations.push(activation)
         journal.active = activation
-        journal.rollbackEpoch++
         journal.noOp = undefined
         schedulePrune(journal, now + graceMillis)
+        for (const { encryptedBatch, entryIds, iv } of input) {
+          const batch: EncryptedRemoteBatch = { sequence: journal.nextSequence, entryIds, iv, encryptedBatch }
+          journal.nextSequence += entryIds.length
+          journal.batches.push(batch)
+          PubSub.publishUnsafe(pubsub, batch)
+        }
+        if (input.length > 0) recordBucket(journal, now, journal.nextSequence - 1)
         return Effect.as(
           Effect.logInfo("Rolled back compaction snapshot").pipe(
             Effect.annotateLogs({
@@ -1346,7 +1284,8 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           ),
           activation.id
         )
-      }),
+      })
+    }, Effect.scoped),
     history: (publicKey, storeId) =>
       Effect.sync(() => {
         const journal = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId }))
@@ -1360,11 +1299,6 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         }))
       })
   }
-  const withdraw = (publicKey: string, storeId: StoreId, stageId: string) =>
-    Effect.map(Clock.currentTimeMillis, (now) => {
-      const found = findStage(publicKey, storeId, stageId)
-      if (found !== undefined && found.stage.state === "open") closeStage(found.journal, found.stage, "withdrawn", now)
-    })
 
   return Storage.of({
     getId: Effect.succeed(remoteId),
@@ -1476,17 +1410,11 @@ interface MemoryActivation {
 interface MemoryStage {
   readonly id: string
   readonly scopeKey: string
-  state: "open" | "committed" | "withdrawn" | "expired"
   readonly pinned: MemoryActivation
   readonly through: number
   expiresAt: number
-  inputCount: number
-  inputBytes: number
-  stagedBytes: number
-  readonly segments: Map<number, ReadonlyArray<EncryptedBatch>>
-  readonly ids: Set<string>
-  result: "Committed" | "Superseded" | "NoOp" | undefined
-  closedAt: number | undefined
+  // Staged batches by position.
+  readonly staged: Map<number, EncryptedBatch>
 }
 
 interface MemoryJournal {
@@ -1499,7 +1427,6 @@ interface MemoryJournal {
   readonly buckets: Map<number, number>
   readonly activations: Array<MemoryActivation>
   active: MemoryActivation
-  rollbackEpoch: number
   noOp: { readonly at: number; readonly count: number } | undefined
   openStage: MemoryStage | undefined
   nextSweepAt: number | undefined
@@ -1507,9 +1434,7 @@ interface MemoryJournal {
 }
 
 const stagedBatches = (stage: MemoryStage) =>
-  Array.from(stage.segments).sort(([a], [b]) => a - b).flatMap(([segment, batches]) =>
-    batches.map((batch, i) => ({ batch, position: segment * positionsPerSegment + i }))
-  )
+  Array.from(stage.staged, ([position, batch]) => ({ batch, position })).sort((a, b) => a.position - b.position)
 
 const findBatch = (batches: ReadonlyArray<EncryptedRemoteBatch>, sequence: number) => {
   let low = 0
