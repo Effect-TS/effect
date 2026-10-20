@@ -4025,39 +4025,31 @@ Expected a value between -2147483648 and 2147483647`
 
     it("Record(Enum, Number)", async () => {
       enum Color {
+        // oxlint-disable-next-line typescript/no-duplicate-enum-values -- aliases must not produce duplicate keys
         Red = "red",
-        Green = "green"
+        Crimson = "red",
+        Green = "green",
+        Blue = 2
       }
       const schema = Schema.Record(Schema.Enum(Color), Schema.Number)
       const asserts = new TestSchema.Asserts(schema)
 
       const decoding = asserts.decoding()
-      await decoding.succeed({ red: 1, green: 2 })
+      await decoding.succeed({ red: 1, green: 2, 2: 3 })
       await decoding.fail(
-        { red: 1 },
+        { red: 1, 2: 3 },
         `Missing key
   at ["green"]`
       )
-
-      const encoding = asserts.encoding()
-      await encoding.succeed({ red: 1, green: 2 })
-    })
-
-    it("Record(Enum with numeric members, String)", async () => {
-      enum Level {
-        Low = 1,
-        High = 2
-      }
-      const schema = Schema.Record(Schema.Enum(Level), Schema.String)
-      const asserts = new TestSchema.Asserts(schema)
-
-      const decoding = asserts.decoding()
-      await decoding.succeed({ 1: "low", 2: "high" })
       await decoding.fail(
-        { 1: "low" },
+        { red: 1, green: 2 },
         `Missing key
   at [2]`
       )
+      await asserts.encoding().succeed({ red: 1, green: 2, 2: 3 })
+
+      const union = Schema.Record(Schema.Union([Schema.Enum(Color), Schema.Literal("red")]), Schema.Number)
+      await new TestSchema.Asserts(union).decoding().succeed({ red: 1, green: 2, 2: 3 })
     })
 
     it("recursive values stay lazy", async () => {
