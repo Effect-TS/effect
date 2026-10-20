@@ -757,8 +757,10 @@ export interface CompressionOptions {
  * into a new `Uint8Array` body, preserving the content type and updating
  * `Content-Length`. The compressed body does not retain the original lazy text.
  * Stream bodies are compressed lazily and have their content length removed.
- * They still require a client runtime that supports streaming request bodies
- * (Fetch requires `duplex: "half"`, which Safari and Firefox do not support).
+ * `FetchHttpClient` detects streaming request support and fails with an
+ * `EncodeError` when unsupported (including stable Safari and Firefox), unless
+ * its `StreamBodyFallback` reference is set to `"buffer"`. Supported runtimes
+ * send Web streams with `duplex: "half"`.
  *
  * Returns the original request unchanged for empty, FormData, and raw bodies,
  * bodies with a known length below `options.minSize`, or requests with any

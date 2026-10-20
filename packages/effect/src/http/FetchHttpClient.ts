@@ -34,6 +34,33 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
 })
 
 /**
+ * Context reference controlling stream bodies when the runtime does not support streaming requests.
+ *
+ * **Details**
+ *
+ * Defaults to `"error"`, which fails with an `HttpClientError` containing an
+ * `EncodeError` before consuming the stream or calling fetch. Provide `"buffer"`
+ * with `Effect.provideService` to collect the entire stream into a `Uint8Array`
+ * before sending it. Runtimes with streaming support always send the stream.
+ *
+ * **Gotchas**
+ *
+ * Buffering keeps the entire upload in memory and can exhaust memory for large
+ * or unbounded uploads. Support is detected once when this module is loaded using
+ * the global `Request` implementation, even when a custom `Fetch` is provided.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const StreamBodyFallback = Context.Reference<"error" | "buffer">(
+  "effect/http/FetchHttpClient/StreamBodyFallback",
+  {
+    defaultValue: () => "error"
+  }
+)
+
+/**
  * Service that contains default fetch options for the fetch-based HTTP client.
  *
  * **When to use**
@@ -52,6 +79,24 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
 export class RequestInit extends Context.Service<RequestInit, globalThis.RequestInit>()(
   "effect/http/FetchHttpClient/RequestInit"
 ) {}
+
+// https://developer.chrome.com/docs/capabilities/web-apis/fetch-streaming-requests
+const supportsStreamBody = (() => {
+  try {
+    let duplexAccessed = false
+    const request = new Request("https://example.com", {
+      method: "POST",
+      body: new ReadableStream(),
+      get duplex() {
+        duplexAccessed = true
+        return "half"
+      }
+    } as globalThis.RequestInit)
+    return duplexAccessed && !request.headers.has("Content-Type")
+  } catch {
+    return false
+  }
+})()
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
   const fetch = fiber.getRef(Fetch)
@@ -91,6 +136,26 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
     case "FormData":
       return send(request.body.formData)
     case "Stream":
+      if (!supportsStreamBody) {
+        if (fiber.getRef(StreamBodyFallback) === "buffer") {
+          return Stream.mkUint8Array(request.body.stream).pipe(
+            Effect.mapError((cause) =>
+              new HttpClientError.HttpClientError({
+                reason: new HttpClientError.EncodeError({ request, cause })
+              })
+            ),
+            Effect.flatMap((body) => send(body as Uint8Array<ArrayBuffer>))
+          )
+        }
+        return Effect.fail(
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.EncodeError({
+              request,
+              description: "Streaming request bodies are not supported in this runtime"
+            })
+          })
+        )
+      }
       return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
   }
   return send(undefined)
@@ -118,11 +183,16 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * redirects, abort handling, and streaming support can vary by platform. Trace
  * propagation is on by default, and a browser preflight fails unless the
  * target allows `b3` and `traceparent`. Stream request bodies are sent as Web
- * streams with `duplex: "half"`, and any `content-length` header is removed
- * before calling `fetch`.
+ * streams with `duplex: "half"` when supported. Otherwise they fail with an
+ * `EncodeError` without sending the request, unless `StreamBodyFallback` is set
+ * to `"buffer"`. Any `content-length` header is removed before calling `fetch`.
+ * Chrome passes the support check but rejects streaming uploads over HTTP/1.1;
+ * these failures surface as `TransportError`. Browsers only deliver the response
+ * after the entire request body has been sent.
  *
  * @see {@link Fetch} for supplying the fetch implementation used by this layer
  * @see {@link RequestInit} for default `RequestInit` options applied before request-specific fields
+ * @see {@link StreamBodyFallback} for opting into buffering on unsupported runtimes
  * @see {@link HttpClient.TracerPropagationEnabled} for leaving `b3` and `traceparent` off a browser request
  *
  * @stability unstable
