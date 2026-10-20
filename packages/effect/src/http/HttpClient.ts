@@ -36,7 +36,7 @@ import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type { EqualsWith, ExcludeTag, ExtractTag, NoExcessProperties, NoInfer, Tags } from "../Types.ts"
-import * as CookieJar from "./CookieJar.ts"
+import * as Cookies from "./Cookies.ts"
 import * as Headers from "./Headers.ts"
 import * as HttpBody from "./HttpBody.ts"
 import * as Error from "./HttpClientError.ts"
@@ -1602,7 +1602,7 @@ export const tapRequest: {
 )
 
 /**
- * Adds a `Ref` of a `CookieJar` to the client for handling cookies across
+ * Adds a `Ref` of stored cookies to the client for handling cookies across
  * requests.
  *
  * **When to use**
@@ -1612,34 +1612,35 @@ export const tapRequest: {
  *
  * **Details**
  *
- * Response cookies are stored for the response URL. Before each request, the
- * cookies the jar selects for the request URL are set as the `cookie` header.
- * Expiry uses the current `Clock`.
+ * Response cookies are stored with `Cookies.storeFromResponse` for the
+ * response URL. Before each request, `Cookies.toRequestCookieHeader` selects
+ * the cookies for the request URL and sets them as the `cookie` header. Expiry
+ * uses the current `Clock`.
  *
  * @stability unstable
  * @category cookies
  * @since 4.0.0
  */
-export const withCookieJar: {
-  (ref: Ref.Ref<CookieJar.CookieJar>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
-  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<CookieJar.CookieJar>): HttpClient.With<E, R>
+export const withCookiesRef: {
+  (ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): HttpClient.With<E, R>
 } = dual(
   2,
   <E, R>(
     self: HttpClient.With<E, R>,
-    ref: Ref.Ref<CookieJar.CookieJar>
+    ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>
   ): HttpClient.With<E, R> =>
     makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(self.postprocess(request), (response) => {
           const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
-          return Ref.update(ref, CookieJar.setFromResponse(response.url, response.cookies, now))
+          return Ref.update(ref, Cookies.storeFromResponse(response.url, response.cookies, now))
         }),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>
-          Effect.map(Ref.get(ref), (jar) => {
+          Effect.map(Ref.get(ref), (cookies) => {
             const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
-            const header = CookieJar.toCookieHeader(jar, request.url, now)
+            const header = Cookies.toRequestCookieHeader(cookies, request.url, now)
             return header === undefined ? request : HttpClientRequest.setHeader(request, "cookie", header)
           }))
     )
