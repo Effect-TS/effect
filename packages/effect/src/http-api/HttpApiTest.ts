@@ -9,29 +9,21 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import * as Fiber from "../Fiber.ts"
 import type { FileSystem } from "../FileSystem.ts"
 import type { Generator } from "../http/Etag.ts"
-import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
-import * as HttpClientError from "../http/HttpClientError.ts"
-import * as HttpClientRequest from "../http/HttpClientRequest.ts"
-import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpEffect from "../http/HttpEffect.ts"
 import type { HttpPlatform } from "../http/HttpPlatform.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
-import { ClientAbort } from "../http/HttpServerError.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
 import { CurrentRequestState, RequestState } from "../http/internal/requestState.ts"
 import * as Layer from "../Layer.ts"
 import type { Path } from "../Path.ts"
 import * as Scope from "../Scope.ts"
-import * as Stream from "../Stream.ts"
 import type * as HttpApi from "./HttpApi.ts"
 import type { HandlerRuntime } from "./HttpApiBuilder.ts"
 import * as HttpApiBuilder from "./HttpApiBuilder.ts"
@@ -54,10 +46,9 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
  *
  * A `Stream` payload reaches the handler unbuffered: each element is pulled
  * from the caller's stream as the handler reads it. If the caller's stream
- * fails, the handler is interrupted as a client abort and the client returns
- * the stream's error, both before the response and while reading a streaming
- * response body. Socket behavior such as draining unread bodies, closing the
- * connection, or answering with `499` is not emulated.
+ * fails, reading the request body fails with it. Client aborts and socket
+ * behavior such as draining unread bodies, closing the connection, or
+ * answering with `499` are not emulated.
  *
  * @stability unstable
  * @category testing
@@ -125,42 +116,10 @@ export const groups = Effect.fnUntraced(function*<
   const scope = yield* Effect.scope
   const httpClient = HttpClient.make((request) => {
     const requestScope = Scope.forkUnsafe(scope)
-    let fiber: Fiber.Fiber<HttpServerResponse.HttpServerResponse, unknown> | undefined
-    let abortCause: Cause.Cause<unknown> | undefined
-    let transferred = false
-
-    // A failing source is a client abort. The fiber is captured at fork time
-    // because the handler may pull the payload on another fiber.
-    const body = request.body
-    const serverRequest = HttpServerRequest.fromClientRequest(
-      body._tag === "Stream"
-        ? HttpClientRequest.setBody(
-          request,
-          HttpBody.stream(
-            Stream.catchCause(body.stream, (cause) => {
-              if (!Cause.hasInterruptsOnly(cause)) {
-                abortCause = cause
-                fiber?.interruptUnsafe(undefined, ClientAbort.annotation)
-              }
-              return Stream.failCause(cause)
-            }),
-            body.contentType,
-            body.contentLength
-          )
-        )
-        : request
-    )
-    const transportError = (cause: Cause.Cause<unknown>) =>
-      new HttpClientError.HttpClientError({
-        reason: new HttpClientError.TransportError({
-          request,
-          cause: Cause.squash(cause),
-          description: "The request body stream failed"
-        })
-      })
-
+    const serverRequest = HttpServerRequest.fromClientRequest(request)
     const state = new RequestState()
-    const handled = handler.pipe(
+    let transferred = false
+    return handler.pipe(
       Effect.flatMap((response) => {
         const preResponse = state.preResponseHandler
         return preResponse === undefined ? Effect.succeed(response) : preResponse(serverRequest, response)
@@ -168,39 +127,12 @@ export const groups = Effect.fnUntraced(function*<
       Effect.map((response) => {
         const transfer = HttpEffect.scopeTransferToStream(response)
         transferred = transfer !== response
-        return transfer
+        return HttpServerResponse.toClientResponse(transfer, { request })
       }),
       Effect.provideService(HttpServerRequest.HttpServerRequest, serverRequest),
       Effect.provideService(CurrentRequestState, state),
-      Effect.provideService(Scope.Scope, requestScope)
-    )
-
-    return Effect.forkIn(handled, requestScope).pipe(
-      Effect.flatMap((forked) => {
-        fiber = forked
-        return Fiber.await(forked)
-      }),
-      Effect.flatMap((exit): Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> => {
-        if (abortCause !== undefined) {
-          return Effect.fail(transportError(abortCause))
-        }
-        if (Exit.isFailure(exit)) {
-          return Effect.orDie(Effect.failCause(exit.cause))
-        }
-        const response = HttpServerResponse.toClientResponse(exit.value, { request })
-        if (body._tag !== "Stream") {
-          return Effect.succeed(response)
-        }
-        return Effect.succeed(Object.create(response, {
-          stream: {
-            get: () =>
-              Stream.catchCause(response.stream, (cause) =>
-                abortCause !== undefined && !Cause.hasInterruptsOnly(cause)
-                  ? Stream.fail(transportError(abortCause))
-                  : Stream.failCause(cause))
-          }
-        }))
-      }),
+      Effect.provideService(Scope.Scope, requestScope),
+      Effect.orDie,
       Effect.onExit((exit) => transferred && Exit.isSuccess(exit) ? Effect.void : Scope.close(requestScope, exit))
     )
   })

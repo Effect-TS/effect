@@ -573,8 +573,7 @@ export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint
  * Builds the request object accepted by a generated client method, including the
  * params, query, headers, and payload required by the endpoint, plus optional
  * response mode and SSE decoding options. Multipart payloads are supplied as
- * `FormData`, and streaming payloads as a `Stream` that fails with
- * `PayloadE` and requires `PayloadR`.
+ * `FormData`, and streaming payloads as a `Stream` that requires `PayloadR`.
  *
  * @stability unstable
  * @category utility types
@@ -586,7 +585,6 @@ export type ClientRequest<
   Payload extends Schema.Constraint,
   Headers extends Schema.Constraint,
   ResponseMode extends ClientResponseMode,
-  PayloadE = unknown,
   PayloadR = never
 > = (
   & ([Params["Type"]] extends [never] ? {} : { readonly params: Params["Type"] })
@@ -596,8 +594,8 @@ export type ClientRequest<
     : Payload["Type"] extends infer P ?
       P extends Brand<HttpApiSchema.MultipartTypeId> | Brand<HttpApiSchema.MultipartStreamTypeId>
         ? { readonly payload: FormData }
-      : { readonly payload: ClientPayload<Payload, PayloadE, PayloadR> }
-    : { readonly payload: ClientPayload<Payload, PayloadE, PayloadR> })
+      : { readonly payload: ClientPayload<Payload, PayloadR> }
+    : { readonly payload: ClientPayload<Payload, PayloadR> })
 ) extends infer Req ? keyof Req extends never ? (void | {
       readonly responseMode?: ResponseMode
       readonly sseOptions?: Sse.DecodeOptions | undefined
@@ -608,9 +606,9 @@ export type ClientRequest<
   } :
   void
 
-type ClientPayload<Payload extends Schema.Constraint, E, R> = Payload extends HttpApiSchema.StreamUint8Array
-  ? Stream.Stream<Uint8Array, E, R>
-  : Payload extends HttpApiSchema.StreamNdjson<infer S> ? Stream.Stream<S["Type"], E, R>
+type ClientPayload<Payload extends Schema.Constraint, R> = Payload extends HttpApiSchema.StreamUint8Array
+  ? Stream.Stream<Uint8Array, unknown, R>
+  : Payload extends HttpApiSchema.StreamNdjson<infer S> ? Stream.Stream<S["Type"], unknown, R>
   : Payload["Type"]
 
 /**
