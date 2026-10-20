@@ -1629,8 +1629,7 @@ export const withCookiesRef: {
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
         Effect.tap(self.postprocess(request), (response) =>
           Ref.update(ref, (cookies) =>
-            Cookies.storeFromResponse(cookies, response.cookies, response.url, Date.now())
-          )),
+            Cookies.storeFromResponse(cookies, response.cookies, response.url, Date.now()))),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>
           Effect.map(Ref.get(ref), (cookies) => {
