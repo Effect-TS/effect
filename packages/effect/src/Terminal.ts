@@ -16,10 +16,9 @@ import * as Effect from "./Effect.ts"
 import type * as Option from "./Option.ts"
 import type { PlatformError } from "./PlatformError.ts"
 import * as Predicate from "./Predicate.ts"
-import type * as Queue from "./Queue.ts"
+import * as Queue from "./Queue.ts"
 import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
-import * as Stream from "./Stream.ts"
 
 const TypeId = "~effect/Terminal"
 
@@ -44,11 +43,12 @@ export interface Terminal {
 
   readonly rows: Effect.Effect<number>
   /**
-   * Emits the current terminal dimensions followed by size changes. Dimensions
-   * unavailable on the platform are reported as zero. Slow subscribers may skip
-   * intermediate sizes.
+   * Subscribes to terminal size changes. The queue starts with the current
+   * dimensions and receives each resize while the scope is open, holding only
+   * the latest size if it is not taken. Dimensions unavailable on the platform
+   * are reported as zero.
    */
-  readonly size: Stream.Stream<Size>
+  readonly size: Effect.Effect<Queue.Dequeue<Size, Cause.Done>, never, Scope.Scope>
   /**
    * Reads input events from the default standard input.
    */
@@ -203,20 +203,25 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * **Details**
  *
  * The implementation object supplies `columns`, `rows`, `readInput`,
- * `readLine`, and `display`, with an optional `size` stream. When `size` is
- * omitted, each subscription reads the current `columns` and `rows`, emits
- * that snapshot, and completes. `make` attaches the `Terminal` service marker
- * so the result can be provided through the `Terminal` context service.
+ * `readLine`, and `display`, and optionally `size`. When `size` is omitted,
+ * each subscription receives a queue holding the current `columns` and `rows`
+ * that then ends. `make` attaches the `Terminal` service marker so the result
+ * can be provided through the `Terminal` context service.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<Terminal, typeof TypeId | "size"> & { readonly size?: Stream.Stream<Size> | undefined }
+  impl: Omit<Terminal, typeof TypeId | "size"> & { readonly size?: Terminal["size"] | undefined }
 ): Terminal =>
   Terminal.of({
     ...impl,
-    size: impl.size ?? Stream.fromEffect(Effect.all({ columns: impl.columns, rows: impl.rows })),
+    size: impl.size ?? Effect.gen(function*() {
+      const queue = yield* Queue.make<Size, Cause.Done>()
+      Queue.offerUnsafe(queue, yield* Effect.all({ columns: impl.columns, rows: impl.rows }))
+      Queue.endUnsafe(queue)
+      return queue
+    }),
     [TypeId]: TypeId
   })
