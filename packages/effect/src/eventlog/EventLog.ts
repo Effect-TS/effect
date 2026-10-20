@@ -57,6 +57,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as Equal from "../Equal.ts"
 import * as FiberHandle from "../FiberHandle.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, identity } from "../Function.ts"
@@ -95,7 +96,6 @@ import type {
 import { maxBatchEntries } from "./internal/batches.ts"
 import { setAnchor } from "./internal/conflicts.ts"
 import * as RemoteCompaction from "./internal/remoteCompaction.ts"
-import { RemoteMode } from "./internal/remoteCompaction.ts"
 
 /**
  * Service for writing typed event-log events through registered handlers.
@@ -148,7 +148,7 @@ export class EventLog extends Context.Service<EventLog, {
    *
    * Unlike the background trigger, it doesn't wait until the journal has
    * caught up with the remote, and it works from an empty journal. Remotes
-   * that opted out of compaction are skipped, and so is every remote when no
+   * built with `compaction: false` are skipped, and so is every remote when no
    * compactor was registered with `remote: true`.
    *
    * Each result is the outcome of the run: `Committed` or `Superseded` once a
@@ -197,6 +197,8 @@ export class Registry extends Context.Service<Registry, {
     readonly remote?: boolean | undefined
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
+      /** Set when the call is part of a remote compaction, which is drop-only. */
+      readonly remote?: boolean | undefined
       // Pass an input entry as source to anchor replacements during remote replay.
       // Without it, matching IDs retain their position; new IDs use the group start.
       readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
@@ -208,6 +210,7 @@ export class Registry extends Context.Service<Registry, {
     readonly remote: boolean
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
+      readonly remote?: boolean | undefined
       readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }>
@@ -238,6 +241,7 @@ export const layerRegistry = Layer.effect(
       readonly remote: boolean
       readonly effect: (options: {
         readonly entries: ReadonlyArray<Entry>
+        readonly remote?: boolean | undefined
         readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
       }) => Effect.Effect<void>
     }>()
@@ -788,10 +792,9 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
       yield* registry.registerCompaction({
         events: Object.keys(group.events),
         remote: options?.remote,
-        effect: Effect.fnUntraced(function*({ entries, write }): Effect.fn.Return<void> {
+        effect: Effect.fnUntraced(function*({ entries, remote = false, write }): Effect.fn.Return<void> {
           // A remote compaction treats unknown fields as undecodable and keeps
           // undecodable entries whatever the effect outputs.
-          const remote = yield* RemoteMode
           const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
             Schema.decodeUnknownEffect(
@@ -1224,8 +1227,7 @@ const remoteRetrySchedule = Schedule.min([
 
 type CompactionResult = Effect.Success<ReturnType<EventLog["Service"]["compact"]>>[number]["result"]
 
-// Status is polled on each (re)connect and then about hourly, jittered by up
-// to a fifth either way.
+// Status is polled on each (re)connect and then about hourly, jittered.
 const compactionPollMillis = 60 * 60 * 1000
 
 // A background run starts after a random delay, so devices that see `wanted`
@@ -1337,7 +1339,7 @@ const make = Effect.gen(function*() {
       yield* compaction.abort(stage)
       return "Aborted"
     }
-    const { segmentCount } = yield* compaction.upload(stage, Stream.fromIterable(kept))
+    const { segmentCount } = yield* compaction.upload(stage, kept)
     const result = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
     yield* Effect.logDebug(`Remote compaction kept ${kept.length} of ${seen.size} entries: ${result}`)
     return result
@@ -1385,9 +1387,7 @@ const make = Effect.gen(function*() {
 
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      // Only a client that can run a compaction calls the compaction RPCs.
-      const compaction = remote.compaction?.optedOut === false ? remote.compaction : undefined
-      const consumer = yield* FiberHandle.make()
+      const compaction = remote.compaction
       const trigger = yield* FiberHandle.make()
 
       // Starts a background run when this client has a remote compactor, the
@@ -1497,15 +1497,11 @@ const make = Effect.gen(function*() {
           effect: "runRemote consume"
         })
       )
-      yield* FiberHandle.run(consumer, consume)
+      yield* Effect.forkScoped(consume)
 
       if (compaction !== undefined) {
-        yield* Effect.flatMap(
-          Random.nextBetween(0.8 * compactionPollMillis, 1.2 * compactionPollMillis),
-          (millis) => Effect.sleep(millis)
-        ).pipe(
-          Effect.andThen(pollStatus(compaction)),
-          Effect.forever,
+        yield* pollStatus(compaction).pipe(
+          Effect.schedule(Schedule.jittered(Schedule.spaced(compactionPollMillis))),
           Effect.forkScoped
         )
       }
@@ -1597,10 +1593,9 @@ const make = Effect.gen(function*() {
         if (!hasRemoteCompactor()) {
           return Effect.succeed([])
         }
-        const remoteId = options?.remoteId === undefined ? undefined : Uuid.stringify(options.remoteId)
+        const remoteId = options?.remoteId
         const remotes = Array.from(registry.remotes.values()).filter((remote) =>
-          remote.compaction !== undefined && !remote.compaction.optedOut &&
-          (remoteId === undefined || Uuid.stringify(remote.id) === remoteId)
+          remote.compaction !== undefined && (remoteId === undefined || Equal.equals(remote.id, remoteId))
         )
         return Effect.forEach(remotes, (remote) =>
           Effect.map(runCompaction(remote, remote.compaction!), (result) => ({ remoteId: remote.id, result })))

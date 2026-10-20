@@ -44,12 +44,20 @@ import {
   EventLogCompactionRpcs,
   EventLogProtocolError,
   EventLogRemoteRpcs,
-  SingleMessage,
   type StoreId,
   type WriteAck,
   WriteEntries
 } from "./EventLogMessage.ts"
 import * as EventLogServer from "./EventLogServer.ts"
+import {
+  hourMillis,
+  lagHour,
+  logCommit,
+  logNoOp,
+  logRollback,
+  maxSegments,
+  positionsPerSegment
+} from "./internal/compaction.ts"
 
 /**
  * Provides RPC handlers for the encrypted event-log server.
@@ -180,11 +188,7 @@ const toWriteAcks = Effect.fnUntraced(function*(
 const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
   EventLogCompactionRpcs.toLayer(Effect.sync(() => {
     const compaction = storage.compaction
-    let chunkedIdCounter = 0
-    const toFrames = (data: Uint8Array<ArrayBuffer>): Arr.NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> =>
-      data.byteLength <= ChunkedMessage.chunkSize
-        ? [new SingleMessage({ data })]
-        : ChunkedMessage.split(chunkedIdCounter++, data)
+    const toFrames = EventLogServer.makeFramer()
 
     type Request = { readonly publicKey: string; readonly storeId: StoreId }
     const protocolError = (
@@ -398,27 +402,6 @@ const checkSnapshot = Effect.fnUntraced(function*(
   return ends.map((end, i) => (i === ends.length - 1 ? lastInputSequence : end) - sizes[i] + 1)
 }, Effect.scoped)
 
-const logCommit = (options: {
-  readonly publicKey: string
-  readonly storeId: StoreId
-  readonly result: "Committed" | "Superseded"
-  readonly through: number
-  readonly keptCount: number
-  readonly activationId: string | undefined
-}) =>
-  Effect.logInfo(
-    options.result === "Committed" ? "Committed compaction snapshot" : "Compaction snapshot superseded"
-  ).pipe(
-    Effect.annotateLogs({
-      service: "EventLogServerEncrypted",
-      publicKey: options.publicKey,
-      storeId: options.storeId,
-      keptCount: options.keptCount,
-      through: options.through,
-      activationId: options.activationId
-    })
-  )
-
 // Pieces of compaction segments not yet joined, by identity, store and stage,
 // for one connection. Tuple encoding keeps the scope components unambiguous.
 class PendingSegments extends Context.Service<
@@ -471,8 +454,8 @@ const releasePendingSegments = (client: Rpc.ServerClient, request: {
  * This layer installs `EventLogRemoteRpcs` on the provided RPC server protocol
  * and wires those RPCs to `layerRpcHandlers`. Encrypted batches, session
  * authentication bindings, remote ids, and change streams are delegated to
- * `Storage`. When `Storage` provides `compaction`, it also installs
- * `EventLogCompactionRpcs`.
+ * `Storage`. It also installs `EventLogCompactionRpcs`, which clients call
+ * only when `Storage` provides `compaction`.
  *
  * @see {@link layerRpcHandlers} for the encrypted handler layer without installing an RPC server protocol
  * @see {@link Storage} for the storage service required by this layer
@@ -482,13 +465,8 @@ const releasePendingSegments = (client: Rpc.ServerClient, request: {
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Layer.unwrap(
-  Effect.gen(function*() {
-    const storage = yield* Storage
-    return storage.compaction === undefined
-      ? RpcServer.layer(EventLogRemoteRpcs)
-      : RpcServer.layer(EventLogRemoteRpcs.merge(EventLogCompactionRpcs))
-  })
+export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = RpcServer.layer(
+  EventLogRemoteRpcs.merge(EventLogCompactionRpcs)
 ).pipe(Layer.provide(layerRpcHandlers))
 
 /**
@@ -891,8 +869,6 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
   const lagMillis = Duration.toMillis(config.lag)
   const stageTtlMillis = Duration.toMillis(config.stageTtl)
   const journals = new Map<string, MemoryJournal>()
-  // Every open stage, across stores.
-  const stages = new Map<string, MemoryStage>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
   const remoteId = makeRemoteIdUnsafe()
   const ensureJournal = (scopeKey: string) => {
@@ -916,8 +892,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
       active: originals,
       noOp: undefined,
       openStage: undefined,
-      nextSweepAt: undefined,
-      prunedThrough: -1
+      nextSweepAt: undefined
     }
     journals.set(scopeKey, journal)
     return journal
@@ -939,19 +914,16 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     sweepPending.openUnsafe()
   }
   const closeStage = (journal: MemoryJournal, stage: MemoryStage) => {
-    stages.delete(stage.id)
     if (journal.openStage === stage) journal.openStage = undefined
   }
   const sweep = (now: number) => {
-    for (const stage of stages.values()) {
-      if (stage.expiresAt <= now) closeStage(journals.get(stage.scopeKey)!, stage)
-    }
+    let pending = false
     for (const journal of journals.values()) {
+      if (journal.openStage !== undefined && journal.openStage.expiresAt <= now) closeStage(journal, journal.openStage)
       if (journal.nextSweepAt !== undefined && journal.nextSweepAt <= now) prune(journal, now)
+      pending ||= journal.openStage !== undefined || journal.nextSweepAt !== undefined
     }
-    if (stages.size === 0 && Array.from(journals.values()).every((journal) => journal.nextSweepAt === undefined)) {
-      sweepPending.closeUnsafe()
-    }
+    if (!pending) sweepPending.closeUnsafe()
   }
   // Keeps what the active generation and every generation still within grace
   // need, which is their batch sets and the originals above their bases.
@@ -969,7 +941,6 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     const keptBase = Math.min(...kept.map((activation) => activation.base))
     const first = journal.batches.findIndex((batch) => batch.sequence + batch.entryIds.length - 1 > keptBase)
     journal.batches.splice(0, first === -1 ? journal.batches.length : first)
-    journal.prunedThrough = Math.max(journal.prunedThrough, keptBase)
     journal.nextSweepAt = undefined
     for (const activation of journal.activations) {
       if (activation !== journal.active && activation.pruneStartedAt === undefined) {
@@ -989,9 +960,10 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
 
   // The highest last sequence stored in an hour that ended before now - lag.
   const lagHead = (journal: MemoryJournal, now: number) => {
+    const pastLag = lagHour(now, lagMillis)
     let head = -1
     for (const [hour, lastSequence] of journal.buckets) {
-      if ((hour + 1) * hourMillis <= now - lagMillis) head = Math.max(head, lastSequence)
+      if (hour <= pastLag) head = Math.max(head, lastSequence)
     }
     return head
   }
@@ -1004,7 +976,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
     }
     journal.buckets.set(hour, lastSequence)
     // Only the newest bucket past the lag matters for the lag head.
-    const pastLag = Array.from(journal.buckets.keys()).filter((bucket) => (bucket + 1) * hourMillis <= now - lagMillis)
+    const pastLag = Array.from(journal.buckets.keys()).filter((bucket) => bucket <= lagHour(now, lagMillis))
     const newest = Math.max(...pastLag)
     for (const bucket of pastLag) {
       if (bucket < newest) journal.buckets.delete(bucket)
@@ -1019,9 +991,9 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
   ]
   // A stage that Part, NoOp and Commit can act on.
   const findOpenStage = (publicKey: string, storeId: StoreId, stageId: string, now: number) => {
-    const stage = stages.get(stageId)
-    if (stage === undefined || stage.scopeKey !== makeEncryptedScopeKey({ publicKey, storeId })) return undefined
-    const journal = journals.get(stage.scopeKey)!
+    const journal = journals.get(makeEncryptedScopeKey({ publicKey, storeId }))
+    const stage = journal?.openStage
+    if (journal === undefined || stage === undefined || stage.id !== stageId) return undefined
     if (stage.expiresAt <= now) {
       closeStage(journal, stage)
       return undefined
@@ -1063,13 +1035,11 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         }
         const stage: MemoryStage = {
           id: SecureRandom.uuidV4Unsafe(),
-          scopeKey,
           pinned: journal.active,
           through,
           expiresAt: now + stageTtlMillis,
           staged: new Map()
         }
-        stages.set(stage.id, stage)
         journal.openStage = stage
         sweepPending.openUnsafe()
         return { _tag: "Started", stageId: stage.id }
@@ -1212,22 +1182,12 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           journal.noOp = { at: stage.through, count: (journal.noOp?.count ?? 0) + 1 }
         }
         closeStage(journal, stage)
-        return Effect.logInfo("Committed compaction no-op").pipe(
-          Effect.annotateLogs({
-            service: "EventLogServerEncrypted",
-            publicKey,
-            storeId,
-            stageId,
-            through: stage.through
-          })
-        )
+        return logNoOp({ publicKey, storeId, stageId, through: stage.through })
       }),
     abort: (publicKey, storeId, stageId) =>
       Effect.sync(() => {
-        const stage = stages.get(stageId)
-        if (stage !== undefined && stage.scopeKey === makeEncryptedScopeKey({ publicKey, storeId })) {
-          closeStage(journals.get(stage.scopeKey)!, stage)
-        }
+        const journal = journals.get(makeEncryptedScopeKey({ publicKey, storeId }))
+        if (journal?.openStage?.id === stageId) closeStage(journal, journal.openStage)
       }),
     rollback: Effect.fnUntraced(function*(publicKey, storeId, expectedActivationId) {
       const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
@@ -1269,22 +1229,7 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
           PubSub.publishUnsafe(pubsub, batch)
         }
         if (input.length > 0) recordBucket(journal, now, journal.nextSequence - 1)
-        return Effect.as(
-          Effect.logInfo("Rolled back compaction snapshot").pipe(
-            Effect.annotateLogs({
-              service: "EventLogServerEncrypted",
-              publicKey,
-              storeId,
-              keptCount: activation.keptCount,
-              base: activation.base,
-              activationId: activation.id,
-              withdrawnActivationId: withdrawn.id,
-              withdrawnBase: withdrawn.base,
-              withdrawnKeptCount: withdrawn.keptCount
-            })
-          ),
-          activation.id
-        )
+        return Effect.as(logRollback({ publicKey, storeId, activation, withdrawn }), activation.id)
       })
     }, Effect.scoped),
     history: (publicKey, storeId) =>
@@ -1392,11 +1337,6 @@ export const layerStorageMemoryWith = (options: {
   readonly compaction?: CompactionOptions | undefined
 }): Layer.Layer<Storage> => Layer.effect(Storage)(makeStorageMemoryWith(options))
 
-const hourMillis = 60 * 60 * 1000
-// A staged batch's position packs its segment index and its index in the segment.
-const positionsPerSegment = 2 ** 20
-const maxSegments = Math.floor(Number.MAX_SAFE_INTEGER / positionsPerSegment)
-
 interface MemoryActivation {
   readonly id: string
   // undefined while the originals are active.
@@ -1410,7 +1350,6 @@ interface MemoryActivation {
 
 interface MemoryStage {
   readonly id: string
-  readonly scopeKey: string
   readonly pinned: MemoryActivation
   readonly through: number
   expiresAt: number
@@ -1431,7 +1370,6 @@ interface MemoryJournal {
   noOp: { readonly at: number; readonly count: number } | undefined
   openStage: MemoryStage | undefined
   nextSweepAt: number | undefined
-  prunedThrough: number
 }
 
 const stagedBatches = (stage: MemoryStage) =>

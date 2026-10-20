@@ -35,6 +35,15 @@ import { type EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.
 import type * as EventLogEncryption from "./EventLogEncryption.ts"
 import type { StoreId, WriteAck } from "./EventLogMessage.ts"
 import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
+import {
+  hourMillis,
+  lagHour,
+  logCommit,
+  logNoOp,
+  logRollback,
+  maxSegments,
+  positionsPerSegment
+} from "./internal/compaction.ts"
 
 /**
  * Creates encrypted event-log server `Storage` backed by SQL.
@@ -240,7 +249,6 @@ export const makeStorage = (options?: {
       base_sequence ${types.int} NOT NULL,
       kept_count ${types.int} NULL,
       previous ${types.id} NULL,
-      created_by_stage ${types.id} NULL,
       superseded_at ${types.bigint} NULL,
       prunable_at ${types.bigint} NULL,
       prune_started_at ${types.bigint} NULL`,
@@ -283,10 +291,9 @@ export const makeStorage = (options?: {
     }
     type ScopeTables = ReturnType<typeof scopeTables>
 
-    const lookup = Effect.fnUntraced(function*(scopeKey: string) {
-      const scope = (yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(scopeKey))).slice(0, 16)
+    // Creates a store's tables and row.
+    const ensureTables = Effect.fnUntraced(function*(scope: string, tables: ScopeTables) {
       const table = `${tablePrefix}_${scope}`
-      const tables = scopeTables(scope)
       const { idsTableSql, tableSql } = tables
       const indexSql = sql(`${table}_last_sequence`)
 
@@ -374,6 +381,18 @@ export const makeStorage = (options?: {
         ["batch_set, last_sequence"]
       )
       yield* ensureStore(scope, tables)
+    })
+
+    // Stores whose tables and row this instance has ensured, so a store
+    // reopened after idling skips the DDL.
+    const ensured = new Set<string>()
+    const lookup = Effect.fnUntraced(function*(scopeKey: string) {
+      const scope = (yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(scopeKey))).slice(0, 16)
+      const tables = scopeTables(scope)
+      if (!ensured.has(scope)) {
+        yield* ensureTables(scope, tables)
+        ensured.add(scope)
+      }
 
       const pubsub = yield* Effect.acquireRelease(
         PubSub.unbounded<EventLogEncryption.EncryptedRemoteBatch>(),
@@ -390,33 +409,37 @@ export const makeStorage = (options?: {
     const query = (statement: Statement.Statement<unknown>) =>
       statement as unknown as Effect.Effect<ReadonlyArray<Record<string, unknown>>, SqlError.SqlError>
 
-    // Inserts a row unless one with the same key exists, and returns whether
-    // it was inserted.
-    const insertIgnore = (
+    // Inserts the rows whose `keys` are not stored yet, leaving stored rows as
+    // they are, and returns how many were inserted. Every row has the same
+    // columns, and SQL Server's MERGE needs them unique by key.
+    const insertNew = (
       tableSql: Statement.Identifier,
-      row: Record<string, unknown>,
-      key: Record<string, unknown>
+      rows: Arr.NonEmptyReadonlyArray<Record<string, unknown>>,
+      keys: ReadonlyArray<string>
     ) =>
       sql.onDialectOrElse({
         mysql: () =>
-          sql`INSERT IGNORE INTO ${tableSql} ${sql.insert(row)}`.raw.pipe(
-            Effect.map((result) => (result as { affectedRows: number }).affectedRows > 0)
+          sql`INSERT IGNORE INTO ${tableSql} ${sql.insert(rows)}`.raw.pipe(
+            Effect.map((result) => (result as { affectedRows: number }).affectedRows)
           ),
         mssql: () => {
-          const columns = Object.keys(row)
+          const columns = Object.keys(rows[0])
+          const values = sql.join(", ", false)(
+            rows.map((row) => sql`(${sql.join(", ", false)(columns.map((column) => sql`${row[column]}`))})`)
+          )
           return sql`
-            INSERT INTO ${tableSql} (${sql.literal(columns.join(", "))})
-            OUTPUT inserted.${sql.literal(Object.keys(key)[0])}
-            SELECT ${sql.join(", ", false)(columns.map((column) => sql`${row[column]}`))}
-            WHERE NOT EXISTS (
-              SELECT 1 FROM ${tableSql} WITH (UPDLOCK, HOLDLOCK)
-              WHERE ${sql.and(Object.entries(key).map(([column, value]) => sql`${sql(column)} = ${value}`))}
-            )
-          `.pipe(Effect.map((inserted) => inserted.length > 0))
+            MERGE ${tableSql} WITH (HOLDLOCK) AS target
+            USING (VALUES ${values}) AS source (${sql.literal(columns.join(", "))})
+            ON ${sql.literal(keys.map((key) => `target.${key} = source.${key}`).join(" AND "))}
+            WHEN NOT MATCHED THEN
+              INSERT (${sql.literal(columns.join(", "))})
+              VALUES (${sql.literal(columns.map((column) => `source.${column}`).join(", "))})
+            OUTPUT inserted.${sql.literal(keys[0])};
+          `.pipe(Effect.map((inserted) => inserted.length))
         },
         orElse: () =>
-          query(sql`INSERT INTO ${tableSql} ${sql.insert(row)} ON CONFLICT DO NOTHING RETURNING 1 AS inserted`).pipe(
-            Effect.map((inserted) => inserted.length > 0)
+          sql`INSERT INTO ${tableSql} ${sql.insert(rows)} ON CONFLICT DO NOTHING RETURNING ${sql(keys[0])}`.pipe(
+            Effect.map((inserted) => inserted.length)
           )
       })
 
@@ -464,7 +487,7 @@ export const makeStorage = (options?: {
       yield* sql.withTransaction(Effect.gen(function*() {
         const lastSequence = yield* maxLastSequence(tables.tableSql)
         const originals = SecureRandom.uuidV4Unsafe()
-        const inserted = yield* insertIgnore(storesSql, {
+        const inserted = yield* insertNew(storesSql, [{
           scope,
           next_sequence: lastSequence + 1,
           active_activation: originals,
@@ -478,8 +501,8 @@ export const makeStorage = (options?: {
           sweep_lease_until: null,
           sweep_lease_owner: null,
           pruned_through: 0
-        }, { scope })
-        if (!inserted) return
+        }], ["scope"])
+        if (inserted === 0) return
         yield* sql`INSERT INTO ${activationsSql} ${
           sql.insert({
             id: originals,
@@ -489,7 +512,6 @@ export const makeStorage = (options?: {
             base_sequence: 0,
             kept_count: null,
             previous: null,
-            created_by_stage: null,
             superseded_at: null,
             prunable_at: null,
             prune_started_at: null
@@ -508,17 +530,22 @@ export const makeStorage = (options?: {
         query(sql`SELECT ${storeColumns} FROM ${storesSql} WHERE scope = ${scope}`),
         ([row]) => row === undefined ? undefined : toStoreRow(row)
       )
+    // Row locks held for the rest of the transaction. SQLite transactions take
+    // the database write lock instead.
+    const lockHint = sql.onDialectOrElse({
+      mssql: () => sql.literal("WITH (UPDLOCK, ROWLOCK, HOLDLOCK)"),
+      orElse: () => sql.literal("")
+    })
+    const forUpdate = sql.onDialectOrElse({
+      pg: () => sql.literal("FOR UPDATE"),
+      mysql: () => sql.literal("FOR UPDATE"),
+      orElse: () => sql.literal("")
+    })
+    const noClause = sql.literal("")
     // Locks the store row for the rest of the transaction. Lock order is store
     // row, then stage row, then snapshot rows.
     const lockStore = (scope: string) =>
-      query(sql.onDialectOrElse({
-        pg: () => sql`SELECT ${storeColumns} FROM ${storesSql} WHERE scope = ${scope} FOR UPDATE`,
-        mysql: () => sql`SELECT ${storeColumns} FROM ${storesSql} WHERE scope = ${scope} FOR UPDATE`,
-        mssql: () =>
-          sql`SELECT ${storeColumns} FROM ${storesSql} WITH (UPDLOCK, ROWLOCK, HOLDLOCK) WHERE scope = ${scope}`,
-        // SQLite transactions take the database write lock.
-        orElse: () => sql`SELECT ${storeColumns} FROM ${storesSql} WHERE scope = ${scope}`
-      })).pipe(
+      query(sql`SELECT ${storeColumns} FROM ${storesSql} ${lockHint} WHERE scope = ${scope} ${forUpdate}`).pipe(
         Effect.flatMap(([row]) =>
           row === undefined
             ? Effect.die(new Cause.NoSuchElementError(`No compaction store row for scope ${scope}`))
@@ -528,17 +555,9 @@ export const makeStorage = (options?: {
 
     const stageColumns = sql.literal("id, scope, state, pinned, through_sequence, expires_at")
     const selectStage = (scope: string, stageId: string, lock: boolean) =>
-      query(
-        !lock
-          ? sql`SELECT ${stageColumns} FROM ${stagesSql} WHERE id = ${stageId}`
-          : sql.onDialectOrElse({
-            pg: () => sql`SELECT ${stageColumns} FROM ${stagesSql} WHERE id = ${stageId} FOR UPDATE`,
-            mysql: () => sql`SELECT ${stageColumns} FROM ${stagesSql} WHERE id = ${stageId} FOR UPDATE`,
-            mssql: () =>
-              sql`SELECT ${stageColumns} FROM ${stagesSql} WITH (UPDLOCK, ROWLOCK, HOLDLOCK) WHERE id = ${stageId}`,
-            orElse: () => sql`SELECT ${stageColumns} FROM ${stagesSql} WHERE id = ${stageId}`
-          })
-      ).pipe(
+      query(sql`
+        SELECT ${stageColumns} FROM ${stagesSql} ${lock ? lockHint : noClause}
+        WHERE id = ${stageId} ${lock ? forUpdate : noClause}`).pipe(
         Effect.map(([row]) => {
           if (row === undefined) return undefined
           const stage = toStageRow(row)
@@ -576,16 +595,13 @@ export const makeStorage = (options?: {
         SET next_sweep_at = CASE WHEN next_sweep_at IS NULL OR next_sweep_at > ${at} THEN ${at} ELSE next_sweep_at END
         WHERE scope = ${scope}`
 
-    const top = sql.onDialectOrElse({ mssql: () => sql.literal(`TOP (${pageSize})`), orElse: () => sql.literal("") })
-    const limit = sql.onDialectOrElse({ mssql: () => sql.literal(""), orElse: () => sql.literal(`LIMIT ${pageSize}`) })
-    const chunkTop = sql.onDialectOrElse({
-      mssql: () => sql.literal(`TOP (${pruneChunkRows})`),
-      orElse: () => sql.literal("")
+    // The clauses that cap a statement at `rows` rows, for `SELECT ${top} ... ${limit}`.
+    const rowCap = (rows: number) => ({
+      top: sql.onDialectOrElse({ mssql: () => sql.literal(`TOP (${rows})`), orElse: () => noClause }),
+      limit: sql.onDialectOrElse({ mssql: () => noClause, orElse: () => sql.literal(`LIMIT ${rows}`) })
     })
-    const chunkLimit = sql.onDialectOrElse({
-      mssql: () => sql.literal(""),
-      orElse: () => sql.literal(`LIMIT ${pruneChunkRows}`)
-    })
+    const { limit, top } = rowCap(pageSize)
+    const { limit: chunkLimit, top: chunkTop } = rowCap(pruneChunkRows)
     // Streams rows in key order, one page per statement.
     const paged = <A>(
       first: number,
@@ -609,32 +625,6 @@ export const makeStorage = (options?: {
             ORDER BY batch_position ${limit}`),
         (row) => Number(row.batch_position)
       )
-
-    // Returns how many of the ids were not stored yet. Stored ids keep their
-    // first sequence.
-    const insertNewIds = (idsTableSql: Statement.Identifier, rows: Arr.NonEmptyReadonlyArray<IdRow>) =>
-      sql.onDialectOrElse({
-        mysql: () =>
-          sql`INSERT IGNORE INTO ${idsTableSql} ${sql.insert(rows)}`.raw.pipe(
-            Effect.map((result) => (result as { affectedRows: number }).affectedRows)
-          ),
-        mssql: () =>
-          sql`
-            MERGE ${idsTableSql} WITH (HOLDLOCK) AS target
-            USING (VALUES ${
-            sql.join(",", false)(rows.map((row) => sql`(${row.entry_id}, ${row.sequence})`))
-          }) AS source (entry_id, sequence)
-            ON target.entry_id = source.entry_id
-            WHEN NOT MATCHED THEN
-              INSERT (entry_id, sequence) VALUES (source.entry_id, source.sequence)
-            OUTPUT inserted.entry_id;
-          `.pipe(Effect.map((inserted) => inserted.length)),
-        orElse: () =>
-          sql`
-            INSERT INTO ${idsTableSql} ${sql.insert(rows)}
-            ON CONFLICT DO NOTHING RETURNING entry_id
-          `.pipe(Effect.map((inserted) => inserted.length))
-      })
 
     const getSessionAuthBinding = (publicKey: string) =>
       sql`
@@ -787,49 +777,54 @@ export const makeStorage = (options?: {
       }))
     })
 
-    const stagePart = Effect.fnUntraced(function*(
-      { scope, snapshotTableSql }: StoreResources,
+    const stagePart = (
+      store: StoreResources,
       now: number,
       stageId: string,
       segment: number,
       batches: Arr.NonEmptyReadonlyArray<EventLogEncryption.EncryptedBatch>
-    ) {
-      yield* lockStore(scope)
-      const stage = yield* selectStage(scope, stageId, true)
-      if (stage === undefined || stage.state !== "open" || stage.expiresAt <= now) {
-        return { _tag: "NotFound" } as const
+    ): Effect.Effect<
+      "Stored" | "AlreadyStored",
+      EventLogServerEncrypted.CompactionInvalidRequest | EventLogServerEncrypted.CompactionNotFound | SqlError.SqlError
+    > => {
+      const invalid = !Number.isSafeInteger(segment) || segment < 0 || segment >= maxSegments
+        ? "Invalid segment index"
+        : batches.length > positionsPerSegment
+        ? "Too many batches in a segment"
+        : undefined
+      // A Part that fails validation closes the stage.
+      if (invalid !== undefined) {
+        return Effect.andThen(
+          abort(store, stageId),
+          Effect.fail(new EventLogServerEncrypted.CompactionInvalidRequest({ stageId, message: invalid }))
+        )
       }
-      // A Part that fails validation closes the stage in the same transaction.
-      const reject = (message: string) => Effect.as(closeStage(scope, stageId), { _tag: "Invalid", message } as const)
-      if (!Number.isSafeInteger(segment) || segment < 0 || segment >= maxSegments) {
-        return yield* reject("Invalid segment index")
-      }
-      if (batches.length > positionsPerSegment) {
-        return yield* reject("Too many batches in a segment")
-      }
-      // The snapshot table's key makes a retried segment insert nothing.
-      let inserted = 0
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i]
-        const batch_position = segment * positionsPerSegment + i
-        const stored = yield* insertIgnore(snapshotTableSql, {
+      const { scope, snapshotTableSql } = store
+      return sql.withTransaction(Effect.gen(function*() {
+        yield* lockStore(scope)
+        const stage = yield* selectStage(scope, stageId, true)
+        if (stage === undefined || stage.state !== "open" || stage.expiresAt <= now) {
+          return yield* notFound(stageId)
+        }
+        // The snapshot table's key makes a retried segment insert nothing.
+        // `sequence` and `last_sequence` stay null until commit.
+        const rows = batches.map((batch, i) => ({
           batch_set: stageId,
-          batch_position,
-          sequence: null,
-          last_sequence: null,
+          batch_position: segment * positionsPerSegment + i,
           entry_count: batch.entryIds.length,
           iv: batch.iv,
           entry_ids: concatEntryIds(batch.entryIds),
           encrypted_batch: batch.encryptedBatch
-        }, { batch_set: stageId, batch_position })
-        if (stored) inserted++
-      }
-      if (inserted === 0) {
-        return { _tag: "Done", result: "AlreadyStored" } as const
-      }
-      yield* sql`UPDATE ${stagesSql} SET expires_at = ${now + stageTtlMillis} WHERE id = ${stageId}`
-      return { _tag: "Done", result: "Stored" } as const
-    }, sql.withTransaction)
+        }))
+        let inserted = 0
+        for (const chunk of Arr.chunksOf(rows, 200)) {
+          inserted += yield* insertNew(snapshotTableSql, chunk, ["batch_set", "batch_position"])
+        }
+        if (inserted === 0) return "AlreadyStored" as const
+        yield* sql`UPDATE ${stagesSql} SET expires_at = ${now + stageTtlMillis} WHERE id = ${stageId}`
+        return "Stored" as const
+      }))
+    }
 
     const stagedHeaders = Effect.fnUntraced(function*(
       { scope, snapshotTableSql }: StoreResources,
@@ -857,12 +852,8 @@ export const makeStorage = (options?: {
     ) {
       const store = yield* lockStore(scope)
       const stage = yield* selectStage(scope, stageId, true)
-      if (stage === undefined || stage.state !== "open") {
-        return { _tag: "NotFound" } as const
-      }
-      if (stage.expiresAt <= now) {
-        yield* closeStage(scope, stageId)
-        return { _tag: "NotFound" } as const
+      if (stage === undefined || stage.state !== "open" || stage.expiresAt <= now) {
+        return yield* notFound(stageId)
       }
       const staged = yield* query(sql`
         SELECT batch_position, entry_count FROM ${snapshotTableSql}
@@ -872,7 +863,7 @@ export const makeStorage = (options?: {
       const audit = { through: stage.through, keptCount }
       if (stage.pinned !== store.activeActivation) {
         yield* closeStage(scope, stageId)
-        return { _tag: "Done", result: "Superseded", activationId: undefined, ...audit } as const
+        return { result: "Superseded", activationId: undefined, ...audit } as const
       }
       if (staged.length !== virtualSequences.length) {
         return yield* Effect.die(new Cause.IllegalArgumentError("Expected one virtual sequence per staged batch"))
@@ -890,8 +881,7 @@ export const makeStorage = (options?: {
         batch_set: stageId,
         base_sequence: stage.through,
         kept_count: keptCount,
-        previous: store.activeActivation,
-        created_by_stage: stageId
+        previous: store.activeActivation
       })
       yield* supersede(store.activeActivation, now)
       yield* sql`
@@ -904,14 +894,14 @@ export const makeStorage = (options?: {
       // The staged rows are now the active batch set.
       yield* sql`DELETE FROM ${stagesSql} WHERE id = ${stageId}`
       yield* releaseClaim(scope, stageId)
-      return { _tag: "Done", result: "Committed", activationId, ...audit } as const
+      return { result: "Committed", activationId, ...audit } as const
     }, sql.withTransaction)
 
     const recordNoOp = Effect.fnUntraced(function*({ scope }: StoreResources, now: number, stageId: string) {
       const store = yield* lockStore(scope)
       const stage = yield* selectStage(scope, stageId, true)
       if (stage === undefined || stage.state !== "open" || stage.expiresAt <= now) {
-        return { _tag: "NotFound" } as const
+        return yield* notFound(stageId)
       }
       // A rollback since begin cleared the no-op state, so a stale run leaves it.
       if (stage.pinned === store.activeActivation) {
@@ -920,7 +910,7 @@ export const makeStorage = (options?: {
           WHERE scope = ${scope}`
       }
       yield* closeStage(scope, stageId)
-      return { _tag: "Done", through: stage.through } as const
+      return stage.through
     }, sql.withTransaction)
 
     const rollbackTransaction = Effect.fnUntraced(function*(
@@ -928,26 +918,21 @@ export const makeStorage = (options?: {
       now: number,
       expectedActivationId: string
     ) {
+      const refuse = (reason: EventLogServerEncrypted.CompactionRollbackError["reason"]) =>
+        Effect.fail(new EventLogServerEncrypted.CompactionRollbackError({ reason }))
       const store = yield* lockStore(scope)
-      if (store.activeActivation !== expectedActivationId) {
-        return { _tag: "Refused", reason: "NotActive" } as const
-      }
+      if (store.activeActivation !== expectedActivationId) return yield* refuse("NotActive")
       const withdrawn = (yield* selectActivation(store.activeActivation))!
       const target = withdrawn.previous === undefined ? undefined : yield* selectActivation(withdrawn.previous)
-      if (target === undefined) {
-        return { _tag: "Refused", reason: "NoPrevious" } as const
-      }
-      if (target.pruneStartedAt !== undefined) {
-        return { _tag: "Refused", reason: "PruneStarted" } as const
-      }
+      if (target === undefined) return yield* refuse("NoPrevious")
+      if (target.pruneStartedAt !== undefined) return yield* refuse("PruneStarted")
       const activationId = SecureRandom.uuidV4Unsafe()
       yield* insertActivation(scope, {
         id: activationId,
         batch_set: target.batchSet ?? null,
         base_sequence: target.base,
         kept_count: target.keptCount ?? null,
-        previous: target.previous ?? null,
-        created_by_stage: null
+        previous: target.previous ?? null
       })
       yield* supersede(withdrawn.id, now)
       yield* sql`
@@ -963,26 +948,34 @@ export const makeStorage = (options?: {
       // at sequences taken as `write` takes them.
       let nextSequence = Math.max(store.nextSequence, (yield* maxLastSequence(tableSql)) + 1)
       const reappended: Array<EventLogEncryption.EncryptedRemoteBatch> = []
-      const reappend = (row: Record<string, unknown>) => {
-        const batch: EventLogEncryption.EncryptedRemoteBatch = {
-          sequence: nextSequence,
-          entryIds: toEntryIds(row.entry_ids as Uint8Array),
-          iv: row.iv as Uint8Array<ArrayBuffer>,
-          encryptedBatch: row.encrypted_batch as Uint8Array<ArrayBuffer>
+      const reappend = (rows: ReadonlyArray<Record<string, unknown>>) => {
+        const inserted: Array<BatchRow> = []
+        for (const row of rows) {
+          const entry_ids = row.entry_ids as Uint8Array
+          const batch: EventLogEncryption.EncryptedRemoteBatch = {
+            sequence: nextSequence,
+            entryIds: toEntryIds(entry_ids),
+            iv: row.iv as Uint8Array<ArrayBuffer>,
+            encryptedBatch: row.encrypted_batch as Uint8Array<ArrayBuffer>
+          }
+          nextSequence += batch.entryIds.length
+          reappended.push(batch)
+          inserted.push({
+            sequence: batch.sequence,
+            last_sequence: nextSequence - 1,
+            iv: batch.iv,
+            entry_ids,
+            encrypted_batch: batch.encryptedBatch
+          })
         }
-        nextSequence += batch.entryIds.length
-        reappended.push(batch)
-        const inserted: BatchRow = {
-          sequence: batch.sequence,
-          last_sequence: nextSequence - 1,
-          iv: batch.iv,
-          entry_ids: row.entry_ids as Uint8Array,
-          encrypted_batch: batch.encryptedBatch
-        }
-        return sql`INSERT INTO ${tableSql} ${sql.insert(inserted)}`
+        return Effect.forEach(
+          Arr.chunksOf(inserted, 200),
+          (chunk) => sql`INSERT INTO ${tableSql} ${sql.insert(chunk)}`,
+          { discard: true }
+        )
       }
       if (target.batchSet !== undefined) {
-        yield* Stream.runForEach(
+        yield* Stream.runForEachArray(
           paged(
             -1,
             (after) =>
@@ -996,7 +989,7 @@ export const makeStorage = (options?: {
         )
       }
       // The copies land above `withdrawn.base`, so the pages never reach them.
-      yield* Stream.runForEach(
+      yield* Stream.runForEachArray(
         paged(
           target.base,
           (after) =>
@@ -1012,17 +1005,18 @@ export const makeStorage = (options?: {
         yield* sql`UPDATE ${storesSql} SET next_sequence = ${nextSequence} WHERE scope = ${scope}`
         yield* upsertBucket(scope, Math.floor(now / hourMillis), nextSequence - 1)
       }
-      return { _tag: "Done", activationId, target, withdrawn, reappended } as const
+      return { activationId, target, withdrawn, reappended }
     }, sql.withTransaction)
 
     // Publishes the re-appended batches after the commit, under the write
     // semaphore so they reach live readers in sequence order.
     const rollback = (store: StoreResources, now: number, expectedActivationId: string) =>
-      store.semaphore.withPermits(1)(Effect.gen(function*() {
-        const outcome = yield* rollbackTransaction(store, now, expectedActivationId)
-        if (outcome._tag === "Done") yield* PubSub.publishAll(store.pubsub, outcome.reappended)
-        return outcome
-      }))
+      store.semaphore.withPermits(1)(
+        Effect.tap(
+          rollbackTransaction(store, now, expectedActivationId),
+          (outcome) => PubSub.publishAll(store.pubsub, outcome.reappended)
+        )
+      )
 
     const history = Effect.fnUntraced(function*({ scope }: StoreResources) {
       const store = (yield* selectStore(scope))!
@@ -1056,77 +1050,25 @@ export const makeStorage = (options?: {
       fetch: (publicKey, storeId, stageId, sequences) =>
         Stream.unwrap(withStore(publicKey, storeId, (store, now) => fetch(store, now, stageId, sequences))),
       stagePart: (publicKey, storeId, stageId, segment, batches) =>
-        withStore(publicKey, storeId, (store, now) => stagePart(store, now, stageId, segment, batches)).pipe(
-          Effect.flatMap((outcome): ReturnType<EventLogServerEncrypted.StorageCompaction["stagePart"]> => {
-            switch (outcome._tag) {
-              case "NotFound":
-                return notFound(stageId)
-              case "Invalid":
-                return Effect.fail(
-                  new EventLogServerEncrypted.CompactionInvalidRequest({ stageId, message: outcome.message })
-                )
-              case "Done":
-                return Effect.succeed(outcome.result)
-            }
-          })
-        ),
+        withStore(publicKey, storeId, (store, now) => stagePart(store, now, stageId, segment, batches)),
       stagedHeaders: (publicKey, storeId, stageId) =>
         Stream.unwrap(withStore(publicKey, storeId, (store, now) => stagedHeaders(store, now, stageId))),
       commit: (publicKey, storeId, stageId, virtualSequences) =>
         withStore(publicKey, storeId, (store, now) => commit(store, now, stageId, virtualSequences)).pipe(
-          Effect.flatMap((outcome) => {
-            switch (outcome._tag) {
-              case "NotFound":
-                return notFound(stageId)
-              case "Done":
-                return Effect.as(logCommit({ publicKey, storeId, ...outcome }), outcome.result)
-            }
-          })
+          Effect.tap((outcome) => logCommit({ publicKey, storeId, ...outcome })),
+          Effect.map((outcome) => outcome.result)
         ),
       recordNoOp: (publicKey, storeId, stageId) =>
         withStore(publicKey, storeId, (store, now) => recordNoOp(store, now, stageId)).pipe(
-          Effect.flatMap((outcome) => {
-            switch (outcome._tag) {
-              case "NotFound":
-                return notFound(stageId)
-              case "Done":
-                return Effect.logInfo("Committed compaction no-op").pipe(
-                  Effect.annotateLogs({
-                    service: "EventLogServerEncrypted",
-                    publicKey,
-                    storeId,
-                    stageId,
-                    through: outcome.through
-                  })
-                )
-            }
-          })
+          Effect.flatMap((through) => logNoOp({ publicKey, storeId, stageId, through }))
         ),
       abort: (publicKey, storeId, stageId) => withStore(publicKey, storeId, (store) => abort(store, stageId)),
       rollback: (publicKey, storeId, expectedActivationId) =>
         withStore(publicKey, storeId, (store, now) => rollback(store, now, expectedActivationId)).pipe(
-          Effect.flatMap((outcome) => {
-            if (outcome._tag === "Refused") {
-              return Effect.fail(new EventLogServerEncrypted.CompactionRollbackError({ reason: outcome.reason }))
-            }
-            const { activationId, target, withdrawn } = outcome
-            return Effect.as(
-              Effect.logInfo("Rolled back compaction snapshot").pipe(
-                Effect.annotateLogs({
-                  service: "EventLogServerEncrypted",
-                  publicKey,
-                  storeId,
-                  keptCount: target.keptCount,
-                  base: target.base,
-                  activationId,
-                  withdrawnActivationId: withdrawn.id,
-                  withdrawnBase: withdrawn.base,
-                  withdrawnKeptCount: withdrawn.keptCount
-                })
-              ),
-              activationId
-            )
-          })
+          Effect.tap(({ activationId, target, withdrawn }) =>
+            logRollback({ publicKey, storeId, activation: { ...target, id: activationId }, withdrawn })
+          ),
+          Effect.map((outcome) => outcome.activationId)
         ),
       history: (publicKey, storeId) => withStore(publicKey, storeId, (store) => history(store))
     }
@@ -1137,7 +1079,6 @@ export const makeStorage = (options?: {
       readonly base_sequence: number
       readonly kept_count: number | null
       readonly previous: string | null
-      readonly created_by_stage: string | null
     }) {
       const [last] = yield* query(sql`SELECT MAX(ordinal) AS ordinal FROM ${activationsSql} WHERE scope = ${scope}`)
       yield* sql`INSERT INTO ${activationsSql} ${
@@ -1388,7 +1329,8 @@ export const makeStorage = (options?: {
               }
               let inserted = 0
               for (const chunk of Arr.chunksOf(ids.values(), 200)) {
-                inserted += yield* insertNewIds(idsTableSql, chunk)
+                // Stored ids keep their first sequence.
+                inserted += yield* insertNew(idsTableSql, chunk, ["entry_id"])
               }
               if (inserted === 0) continue
               const row: BatchRow = {
@@ -1480,19 +1422,12 @@ export const makeStorage = (options?: {
     })
   }).pipe(withTracerDisabled)
 
-const hourMillis = 60 * 60 * 1000
-// The newest storage-time hour that ended at least `lag` ago.
-const lagHour = (now: number, lagMillis: number) => Math.floor((now - lagMillis) / hourMillis) - 1
 // Rows per statement when streaming compaction input or staged batches.
 const pageSize = 500
 // Sequences of originals deleted per prune chunk.
 const pruneChunkSequences = 10_000
 // Snapshot or staged rows deleted per prune chunk.
 const pruneChunkRows = 200
-// A staged batch's position packs its segment index and its index in the
-// segment, as in `EventLogServerEncrypted`.
-const positionsPerSegment = 2 ** 20
-const maxSegments = Math.floor(Number.MAX_SAFE_INTEGER / positionsPerSegment)
 
 type StageState = "open" | "closed"
 
@@ -1546,27 +1481,6 @@ const toActivationRow = (row: Record<string, unknown>) => ({
   prunableAt: optionalNumber(row.prunable_at),
   pruneStartedAt: optionalNumber(row.prune_started_at)
 })
-
-const logCommit = (options: {
-  readonly publicKey: string
-  readonly storeId: StoreId
-  readonly result: "Committed" | "Superseded"
-  readonly through: number
-  readonly keptCount: number
-  readonly activationId: string | undefined
-}) =>
-  Effect.logInfo(
-    options.result === "Committed" ? "Committed compaction snapshot" : "Compaction snapshot superseded"
-  ).pipe(
-    Effect.annotateLogs({
-      service: "EventLogServerEncrypted",
-      publicKey: options.publicKey,
-      storeId: options.storeId,
-      keptCount: options.keptCount,
-      through: options.through,
-      activationId: options.activationId
-    })
-  )
 
 type IdRow = {
   readonly entry_id: Uint8Array

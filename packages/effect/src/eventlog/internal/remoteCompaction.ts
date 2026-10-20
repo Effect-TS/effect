@@ -1,18 +1,8 @@
-import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
-import { constFalse } from "../../Function.ts"
 import * as Stream from "../../Stream.ts"
 import type { Entry } from "../EventJournal.ts"
 import type { Registry } from "../EventLog.ts"
-
-/**
- * Set while a compactor runs for a remote compaction. Library compactors then
- * decode strictly and forward every entry they cannot decode.
- */
-export const RemoteMode = Context.Reference<boolean>("effect/eventlog/internal/remoteCompaction/RemoteMode", {
-  defaultValue: constFalse
-})
 
 /** A second pass over the kept set dropped `entries`, so a compactor does not compose. */
 export class IdempotenceError extends Data.TaggedError("IdempotenceError")<{
@@ -53,12 +43,13 @@ export const run = <E, R>(options: {
       let replaced = false
       yield* compactor.effect({
         entries: input,
+        remote: true,
         write: (entry) =>
           Effect.sync(() => {
             if (inputs.has(entry)) forwarded.add(entry)
             else replaced = true
           })
-      }).pipe(Effect.provideService(RemoteMode, true))
+      })
       // Only forwarded input entries can be kept verbatim, so a call that
       // outputs anything else keeps its whole input.
       if (replaced) {
@@ -72,13 +63,11 @@ export const run = <E, R>(options: {
   })
 
   return Effect.gen(function*() {
-    let kept: ReadonlyArray<Entry> = []
-    yield* options.entries.pipe(
+    const kept = yield* options.entries.pipe(
       Stream.grouped(options.chunkSize),
-      Stream.runForEach((chunk) =>
-        Effect.map(drop([...kept, ...chunk]), (next) => {
-          kept = next
-        })
+      Stream.runFoldEffect(
+        (): ReadonlyArray<Entry> => [],
+        (kept, chunk) => drop([...kept, ...chunk])
       )
     )
     const again = yield* drop(kept)

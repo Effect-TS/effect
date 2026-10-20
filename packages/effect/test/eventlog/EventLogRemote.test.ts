@@ -619,7 +619,7 @@ describe("EventLogRemote compaction", () => {
       const { compaction, input, stage } = yield* beginWith(writer.remote, identity, entries)
 
       const kept = input.slice(1)
-      const { segmentCount } = yield* compaction.upload(stage, Stream.fromIterable(kept))
+      const { segmentCount } = yield* compaction.upload(stage, kept)
       const committed = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
       const reader = yield* server.connect(identity)
       const changes = yield* reader.remote.changes({
@@ -659,7 +659,7 @@ describe("EventLogRemote compaction", () => {
         makeEntry({ payloadSize: 600 * kb })
       ])
 
-      const { segmentCount } = yield* compaction.upload(stage, Stream.fromIterable(input.slice(1)))
+      const { segmentCount } = yield* compaction.upload(stage, input.slice(1))
       const committed = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
 
       assert.deepStrictEqual({

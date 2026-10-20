@@ -135,7 +135,6 @@ import type * as EventGroup from "./EventGroup.ts"
 import { Entry } from "./EventJournal.ts"
 import * as EventLog from "./EventLog.ts"
 import type { StoreId } from "./EventLogMessage.ts"
-import { RemoteMode } from "./internal/remoteCompaction.ts"
 
 /**
  * Required fields that can be part of a declared row key.
@@ -557,8 +556,8 @@ export const compaction = <
     yield* registry.registerCompaction({
       events: [row.tag],
       remote: true,
-      effect: Effect.fnUntraced(function*({ entries, write }) {
-        const decodePayload = (yield* RemoteMode) ? decodeStrict : decode
+      effect: Effect.fnUntraced(function*({ entries, remote, write }) {
+        const decodePayload = remote ? decodeStrict : decode
         const ops = new Map<Entry, Op>()
         for (const entry of entries) {
           const payload = yield* Effect.result(

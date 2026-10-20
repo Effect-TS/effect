@@ -51,7 +51,7 @@ import {
   WriteEntriesUnencrypted
 } from "./EventLogMessage.ts"
 import { encodeSessionAuthPayload, signSessionAuthPayloadBytes } from "./EventLogSessionAuth.ts"
-import { Batcher } from "./internal/batches.ts"
+import { toBatches } from "./internal/batches.ts"
 import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecretDerivation.ts"
 
 /**
@@ -136,11 +136,6 @@ export interface CompactionStage {
  * @since 4.0.0
  */
 export interface EventLogRemoteCompaction {
-  /**
-   * `true` when this client was built with `compaction: false`. It doesn't
-   * call the compaction RPCs or run compaction.
-   */
-  readonly optedOut: boolean
   readonly status: (options: {
     readonly identity: Identity["Service"]
     readonly storeId: StoreId
@@ -168,7 +163,7 @@ export interface EventLogRemoteCompaction {
    */
   readonly upload: (
     stage: CompactionStage,
-    entries: Stream.Stream<Entry>
+    entries: ReadonlyArray<Entry>
   ) => Effect.Effect<{ readonly segmentCount: number }, EventLogRemoteError>
   readonly commit: (
     stage: CompactionStage,
@@ -264,10 +259,8 @@ export class EventLogRemoteClient extends Context.Service<
 
 type CompactionClient = RpcClient.RpcClient<RpcGroup.Rpcs<typeof EventLogCompactionRpcs>, RpcClientError>
 
-const compactionRpcTags = Array.from(EventLogCompactionRpcs.requests.keys()) as Array<keyof CompactionClient>
-
 const getCompactionClient = (client: EventLogRemoteClient["Service"]): CompactionClient | undefined =>
-  compactionRpcTags.every((tag) => client[tag] !== undefined) ? client as CompactionClient : undefined
+  client["EventLog.CompactionStatus"] === undefined ? undefined : client as CompactionClient
 
 /**
  * Creates an `EventLogRemote` from custom write encoding and change decoding
@@ -300,12 +293,19 @@ export const makeWith = (options: {
 
 interface RemoteSession {
   readonly client: EventLogRemoteClient["Service"]
-  readonly ensureAuthenticated: (identity: Identity["Service"]) => Effect.Effect<void, EventLogRemoteError>
-  readonly retryForbidden: <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-    options: { readonly identity: Identity["Service"] }
-  ) => Effect.Effect<A, E, R>
-  readonly resetIfForbidden: (error: unknown, identity: Identity["Service"]) => Effect.Effect<void>
+  /** Authenticates, runs the request, and authenticates again after a refusal. */
+  readonly request: <A, E>(
+    method: string,
+    identity: Identity["Service"],
+    effect: Effect.Effect<A, E>
+  ) => Effect.Effect<A, EventLogRemoteError>
+  /** Authenticates, then joins and decodes a framed response stream. */
+  readonly framed: <A, E, E2>(
+    method: string,
+    identity: Identity["Service"],
+    frames: () => Stream.Stream<SingleMessage | ChunkedMessage, E>,
+    decode: (data: Uint8Array<ArrayBuffer>) => Effect.Effect<Iterable<A>, E2>
+  ) => Stream.Stream<A, EventLogRemoteError>
 }
 
 const makeRemote = Effect.fnUntraced(function*({ encodeWrite, decodeChanges, makeCompaction }: {
@@ -375,6 +375,42 @@ const makeRemote = Effect.fnUntraced(function*({ encodeWrite, decodeChanges, mak
       while: (e) => Effect.as(resetAuthentication(options.identity), isForbidden(e)),
       times: 5
     })
+
+  const toRemoteError = (method: string) => (cause: unknown) =>
+    EventLogRemoteError.is(cause) ? cause : new EventLogRemoteError({ method, cause })
+
+  const request = <A, E>(
+    method: string,
+    identity: Identity["Service"],
+    effect: Effect.Effect<A, E>
+  ): Effect.Effect<A, EventLogRemoteError> =>
+    ensureAuthenticated(identity).pipe(
+      Effect.andThen(effect),
+      (effect) => retryForbidden(effect, { identity }),
+      Effect.mapError(toRemoteError(method))
+    )
+
+  // A refused identity authenticates again on the next request.
+  const framed = <A, E, E2>(
+    method: string,
+    identity: Identity["Service"],
+    frames: () => Stream.Stream<SingleMessage | ChunkedMessage, E>,
+    decode: (data: Uint8Array<ArrayBuffer>) => Effect.Effect<Iterable<A>, E2>
+  ): Stream.Stream<A, EventLogRemoteError> =>
+    Stream.unwrap(Effect.map(ensureAuthenticated(identity), () => {
+      const state = ChunkedMessage.initialJoinState()
+      return frames().pipe(
+        Stream.filterMap((frame) => {
+          const data = frame._tag === "Single" ? frame.data : ChunkedMessage.join(state, frame)
+          return data === undefined ? Result.failVoid : Result.succeed(data)
+        }),
+        Stream.mapEffect(decode),
+        Stream.flattenIterable
+      )
+    })).pipe(
+      Stream.tapError((error) => isForbidden(error) ? resetAuthentication(identity) : Effect.void),
+      Stream.mapError(toRemoteError(method))
+    )
 
   let chunkedIdCounter = 0
 
@@ -454,14 +490,7 @@ const makeRemote = Effect.fnUntraced(function*({ encodeWrite, decodeChanges, mak
     }),
     whenAuthenticated: (effect) =>
       IdentityService.use((identity) => Effect.flatMap(ensureAuthenticated(identity), () => effect)),
-    compaction: hello.compaction === true
-      ? makeCompaction?.({
-        client,
-        ensureAuthenticated,
-        retryForbidden,
-        resetIfForbidden: (error, identity) => isForbidden(error) ? resetAuthentication(identity) : Effect.void
-      })
-      : undefined
+    compaction: hello.compaction === true ? makeCompaction?.({ client, request, framed }) : undefined
   })
 
   yield* registry.registerRemote(remote)
@@ -486,8 +515,9 @@ class IdentityService extends Context.Service<Identity, Identity["Service"]>()(
  * **Details**
  *
  * The remote has a `compaction` member when the server advertises compaction
- * and the RPC client includes `EventLogCompactionRpcs`. `compaction: false` sets its
- * `optedOut` flag, so this client doesn't run compaction or poll its status.
+ * and the RPC client includes `EventLogCompactionRpcs`, unless it was built
+ * with `compaction: false`. A client without the member never calls the
+ * compaction RPCs.
  *
  * @stability unstable
  * @category constructors
@@ -546,14 +576,9 @@ export const makeEncryptedWith = Effect.fnUntraced(function*(options: {
         )
       ),
     decodeChanges,
-    makeCompaction: (session) => {
+    makeCompaction: options.compaction === false ? undefined : (session) => {
       const client = getCompactionClient(session.client)
-      return client === undefined ? undefined : makeEncryptedCompaction({
-        session,
-        client,
-        encryption,
-        optedOut: options.compaction === false
-      })
+      return client === undefined ? undefined : makeEncryptedCompaction({ session, client, encryption })
     }
   })
 })
@@ -578,49 +603,11 @@ export const makeEncrypted: Effect.Effect<
 // piece with an `RpcClientError`, fails the upload.
 const segmentAttempts = 3
 
-const makeEncryptedCompaction = ({ client, encryption, optedOut, session }: {
+const makeEncryptedCompaction = ({ client, encryption, session: { framed, request } }: {
   readonly session: RemoteSession
   readonly client: CompactionClient
   readonly encryption: EventLogEncryption["Service"]
-  readonly optedOut: boolean
 }): EventLogRemoteCompaction => {
-  const toRemoteError = (method: string) => (cause: unknown) =>
-    EventLogRemoteError.is(cause) ? cause : new EventLogRemoteError({ method, cause })
-
-  const request = <A, E>(
-    method: string,
-    identity: Identity["Service"],
-    effect: Effect.Effect<A, E>
-  ): Effect.Effect<A, EventLogRemoteError> =>
-    session.ensureAuthenticated(identity).pipe(
-      Effect.andThen(effect),
-      (effect) => session.retryForbidden(effect, { identity }),
-      Effect.mapError(toRemoteError(method))
-    )
-
-  // Joins the framed response and decodes each message. A refused identity
-  // authenticates again on the next request.
-  const framed = <A, E, E2>(
-    method: string,
-    identity: Identity["Service"],
-    frames: () => Stream.Stream<SingleMessage | ChunkedMessage, E>,
-    decode: (data: Uint8Array<ArrayBuffer>) => Effect.Effect<Iterable<A>, E2>
-  ): Stream.Stream<A, EventLogRemoteError> =>
-    Stream.unwrap(Effect.map(session.ensureAuthenticated(identity), () => {
-      const state = ChunkedMessage.initialJoinState()
-      return frames().pipe(
-        Stream.filterMap((frame) => {
-          const data = frame._tag === "Single" ? frame.data : ChunkedMessage.join(state, frame)
-          return data === undefined ? Result.failVoid : Result.succeed(data)
-        }),
-        Stream.mapEffect(decode),
-        Stream.flattenIterable
-      )
-    })).pipe(
-      Stream.tapError((error) => session.resetIfForbidden(error, identity)),
-      Stream.mapError(toRemoteError(method))
-    )
-
   const stageRequest = (stage: CompactionStage) => ({
     publicKey: stage.identity.publicKey,
     storeId: stage.storeId,
@@ -628,7 +615,6 @@ const makeEncryptedCompaction = ({ client, encryption, optedOut, session }: {
   })
 
   return {
-    optedOut,
     status: ({ identity, storeId }) =>
       request(
         "compactionStatus",
@@ -661,7 +647,6 @@ const makeEncryptedCompaction = ({ client, encryption, optedOut, session }: {
       ),
     upload: (stage, entries) =>
       Effect.suspend(() => {
-        const batcher = new Batcher()
         let segment: Array<EncryptedBatch> = []
         let segmentBytes = 0
         let segmentCount = 0
@@ -709,17 +694,12 @@ const makeEncryptedCompaction = ({ client, encryption, optedOut, session }: {
               )
             }, { discard: true }))
 
-        return Stream.runForEach(entries, (entry) => {
-          const closed = batcher.add(entry)
-          return closed === undefined ? Effect.void : addBatch(closed)
-        }).pipe(
-          Effect.andThen(() => {
-            const last = batcher.flush()
-            return last === undefined ? Effect.void : addBatch(last)
-          }),
+        return Effect.forEach(toBatches(entries), addBatch, { discard: true }).pipe(
           Effect.andThen(sendSegment),
           Effect.map(() => ({ segmentCount })),
-          Effect.mapError(toRemoteError("compactionUpload"))
+          Effect.mapError((cause) =>
+            EventLogRemoteError.is(cause) ? cause : new EventLogRemoteError({ method: "compactionUpload", cause })
+          )
         )
       }),
     commit: (stage, result) =>
@@ -768,8 +748,8 @@ export const makeUnencrypted: Effect.Effect<
  *
  * **Details**
  *
- * `compaction: false` stops this client running compaction or polling its
- * status.
+ * `compaction: false` leaves the remote without its `compaction` member, so
+ * this client never calls the compaction RPCs.
  *
  * @stability unstable
  * @category layers
