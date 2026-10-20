@@ -100,6 +100,14 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly entityMailboxCapacity: number | "unbounded"
   /**
+   * Report the mailbox size of each resident entity with the
+   * `effect_cluster_entity_mailbox_size` gauge, unless overridden by the
+   * `mailboxMetrics` entity option.
+   *
+   * Defaults to `false`.
+   */
+  readonly entityMailboxMetrics: boolean
+  /**
    * The maximum number of entities that can be resident on this runner at the
    * same time.
    *
@@ -190,6 +198,7 @@ export const defaults: ShardingConfig["Service"] = {
   shardLockExpiration: Duration.seconds(35),
   shardLockDisableAdvisory: false,
   entityMailboxCapacity: 4096,
+  entityMailboxMetrics: false,
   maxResidentEntities: 10_000,
   unprocessedMessageBatchSize: 1024,
   entityMaxIdleTime: Duration.minutes(1),
@@ -308,6 +317,10 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   entityMailboxCapacity: Config.Int("entityMailboxCapacity").pipe(
     Config.withDefault(defaults.entityMailboxCapacity)
     // Config.withDescription("The default capacity of the mailbox for entities.")
+  ),
+  entityMailboxMetrics: Config.Boolean("entityMailboxMetrics").pipe(
+    Config.withDefault(defaults.entityMailboxMetrics)
+    // Config.withDescription("Report the mailbox size of each resident entity.")
   ),
   maxResidentEntities: Config.schema(
     Schema.Int.check(Schema.isGreaterThan(0)),

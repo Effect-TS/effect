@@ -1,8 +1,8 @@
 /**
  * Standard metric definitions used by the unstable cluster runtime. The gauges
- * track runner-local entities, singleton processes, registered runners,
- * healthy runners, acquired shards, and shards being released. The timer
- * tracks shard release duration.
+ * track runner-local entities, entity mailbox sizes, singleton processes,
+ * registered runners, healthy runners, acquired shards, and shards being
+ * released. The timer tracks shard release duration.
  *
  * This module only defines the metric handles. The runtime components that
  * manage entities, runners, singletons, and sharding update these metrics while
@@ -40,6 +40,46 @@ import * as Metric from "../Metric.ts"
  * @since 4.0.0
  */
 export const entities = Metric.gauge("effect_cluster_entities", { bigint: true })
+
+/**
+ * Represents a gauge tracking the mailbox size of each entity resident on the
+ * current runner.
+ *
+ * **When to use**
+ *
+ * Use to find entities whose mailboxes back up, before sends start failing
+ * with `MailboxFull`.
+ *
+ * **Details**
+ *
+ * Bigint gauge named `effect_cluster_entity_mailbox_size`, with one series per
+ * resident entity tagged with `type`, `id` and `shard`. The value is the
+ * number the mailbox capacity check compares against: requests admitted to the
+ * entity, whether queued or in flight, excluding internal keep-alive requests.
+ *
+ * The value is read when metrics are snapshotted, so it adds no work per
+ * message. Each series is removed when its entity is released.
+ *
+ * **Gotchas**
+ *
+ * Off by default. Enable it with `ShardingConfig.entityMailboxMetrics` or the
+ * `mailboxMetrics` option when registering an entity. One series per resident
+ * entity can mean many series on busy runners.
+ *
+ * An entity keeps reporting while it drains in-flight requests during
+ * shutdown. `Metric.update` and `Metric.modify` on this gauge do nothing for
+ * series the runtime registered.
+ *
+ * Like the other runner gauges it has no runner attribute: runners sharing a
+ * registry without distinct metric attributes overwrite each other's series.
+ *
+ * @see {@link entities} for the number of resident entities per type
+ *
+ * @stability unstable
+ * @category metrics
+ * @since 4.0.6
+ */
+export const entityMailboxSize = Metric.gauge("effect_cluster_entity_mailbox_size", { bigint: true })
 
 /**
  * Creates a gauge tracking the number of singleton processes currently running on the

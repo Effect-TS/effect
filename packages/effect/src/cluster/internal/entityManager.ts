@@ -8,7 +8,7 @@ import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import { identity } from "../../Function.ts"
+import { constVoid, identity } from "../../Function.ts"
 import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Metric from "../../Metric.ts"
@@ -140,6 +140,7 @@ export const make = Effect.fnUntraced(function*<
     readonly maxIdleTime?: Input | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
+    readonly mailboxMetrics?: boolean | undefined
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never, never> | undefined
     readonly spanAttributes?: Record<string, string> | undefined
@@ -150,6 +151,7 @@ export const make = Effect.fnUntraced(function*<
   const managerScope = yield* Effect.scope
   const storageEnabled = options.storage !== MessageStorage.noop
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
+  const mailboxMetrics = options.mailboxMetrics ?? config.entityMailboxMetrics
   const clock = yield* Clock
   const context = yield* Effect.context<Rpc.Services<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
   const defectRetryPolicy = options.defectRetryPolicy
@@ -157,6 +159,22 @@ export const make = Effect.fnUntraced(function*<
     : defaultRetryPolicy
   const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
+
+  // The series reads the mailbox size on snapshot, so delivery does no extra work.
+  const registerMailboxSize = (address: EntityAddress, activeRequests: EntityState["activeRequests"]) =>
+    Metric.registerUnsafe(
+      Metric.withAttributes(ClusterMetrics.entityMailboxSize, {
+        type: entity.type,
+        id: address.entityId,
+        shard: address.shardId.toString()
+      }),
+      context as Context.Context<never>,
+      {
+        get: () => ({ value: BigInt(activeRequests.size) }),
+        update: constVoid,
+        modify: constVoid
+      }
+    )
 
   // add internal rpcs
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
@@ -199,10 +217,14 @@ export const make = Effect.fnUntraced(function*<
       closing: false
     }
 
+    // Finalizers run in reverse, so the mailbox series is removed only after
+    // the drain finalizer below has finished.
+    let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
         releaseEntity(address)
+        mailboxSeries?.remove()
       })
     )
 
@@ -508,6 +530,9 @@ export const make = Effect.fnUntraced(function*<
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
+    if (mailboxMetrics) {
+      mailboxSeries = registerMailboxSize(address, activeRequests)
+    }
 
     return state
   }, Effect.provideService(CurrentLogAnnotations, {})))

@@ -1022,6 +1022,55 @@ describe.concurrent("Sharding", () => {
       assert.strictEqual(error._tag, "MailboxFull")
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("reports entity mailbox sizes until entities are released", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    const mailboxSizes = () =>
+      Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
+        .filter((metric) => metric.id === ClusterMetrics.entityMailboxSize.id)
+        .map((metric) => [metric.attributes, metric.state])
+        .sort((a, b) => JSON.stringify(a[0]) < JSON.stringify(b[0]) ? -1 : 1)
+    return Effect.gen(function*() {
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const first = yield* makeClient("1").NeverVolatile().pipe(Effect.forkChild, Effect.replicateEffect(2))
+        yield* makeClient("2").NeverVolatile().pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+
+        const shard = (id: string) => sharding.getShardId(EntityId.make(id), "default").toString()
+        assert.deepStrictEqual(mailboxSizes(), [
+          [{ type: "TestEntity", id: "1", shard: shard("1") }, { value: BigInt(2) }],
+          [{ type: "TestEntity", id: "2", shard: shard("2") }, { value: BigInt(1) }]
+        ])
+
+        yield* Fiber.interruptAll(first)
+        yield* waitForIdleReap(sharding, 1)
+        assert.deepStrictEqual(mailboxSizes(), [
+          [{ type: "TestEntity", id: "2", shard: shard("2") }, { value: BigInt(1) }]
+        ])
+      }).pipe(Effect.provide(CappedSharding({ entityMailboxMetrics: true, entityMaxIdleTime: 1 })))
+
+      // Shutting down releases every shard, tearing down the remaining entity
+      assert.deepStrictEqual(mailboxSizes(), [])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
+  it.effect("creates no entity mailbox series by default", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    return Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      yield* makeClient("1").NeverVolatile().pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+
+      assert.strictEqual(yield* sharding.activeEntityCount, 1)
+      const snapshots = Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
+      assert.isFalse(snapshots.some((metric) => metric.id === ClusterMetrics.entityMailboxSize.id))
+    }).pipe(Effect.provide(TestSharding), Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
   it.effect("durable messages are retried when mailbox is full", () =>
     Effect.gen(function*() {
       const requestedIds = yield* Queue.make<Array<Snowflake.Snowflake>>()
