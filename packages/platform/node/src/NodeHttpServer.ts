@@ -175,7 +175,7 @@ export const make = Effect.fnUntraced(function*(
         scope
       })
       const checkContinueHandler = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
-        deferredContinueRequests.add(request)
+        pendingContinue.add(request)
         handler(request, response)
       }
       yield* Scope.addFinalizerExit(serveScope, () =>
@@ -342,9 +342,11 @@ const absoluteTarget = (url: string): URL | undefined => {
   }
 }
 
-// Only acknowledge requests dispatched by our checkContinue listener. Standalone
-// makeHandler users leave acknowledgement to Node or their own listener.
-const deferredContinueRequests = new WeakSet<Http.IncomingMessage>()
+// Requests dispatched by our checkContinue listener that have not been
+// acknowledged yet. Standalone makeHandler users leave acknowledgement to Node
+// or their own listener. Keyed by the Node request so modified requests share
+// the entry and body readers acknowledge only once.
+const pendingContinue = new WeakSet<Http.IncomingMessage>()
 
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
   protected override readonly destroyOnOverflow = false
@@ -354,7 +356,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
-  private readonly continueState: { sent: boolean }
 
   constructor(
     source: Http.IncomingMessage,
@@ -362,8 +363,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
     url?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    continueState = { sent: false }
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -375,7 +375,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       }), remoteAddressOverride)
     this[Request.TypeId] = Request.TypeId
     this.response = response
-    this.continueState = continueState
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {
       const target = absoluteTarget(source.url!)
@@ -405,16 +404,9 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   private writeContinue(): void {
-    if (this.continueState.sent || !deferredContinueRequests.has(this.source)) {
-      return
+    if (pendingContinue.delete(this.source) && !this.resolvedResponse.headersSent) {
+      this.resolvedResponse.writeContinue()
     }
-    const response = this.resolvedResponse
-    if (response.headersSent || response.writableEnded || response.destroyed) {
-      return
-    }
-    // Modified requests share this state, so body readers acknowledge only once.
-    this.continueState.sent = true
-    response.writeContinue()
   }
 
   override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
@@ -444,8 +436,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.continueState
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
 
