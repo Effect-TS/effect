@@ -3,8 +3,8 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
+import type * as MutableHashMap from "../../MutableHashMap.ts"
 import type { EntityAddress } from "../EntityAddress.ts"
-import type { EntityId } from "../EntityId.ts"
 import type { EntityState } from "./entityManager.ts"
 import type { ResourceMap } from "./resourceMap.ts"
 
@@ -16,14 +16,14 @@ export class EntityReaper extends Context.Service<EntityReaper>()("effect/cluste
     let currentResolution = 30_000
     const registered: Array<{
       readonly maxIdleTime: number
-      readonly servers: Map<EntityId, EntityState>
+      readonly servers: MutableHashMap.MutableHashMap<EntityAddress, EntityState>
       readonly entities: ResourceMap<EntityAddress, EntityState, any>
     }> = []
     const latch = yield* Latch.make()
 
     const register = (options: {
       readonly maxIdleTime: number
-      readonly servers: Map<EntityId, EntityState>
+      readonly servers: MutableHashMap.MutableHashMap<EntityAddress, EntityState>
       readonly entities: ResourceMap<EntityAddress, EntityState, any>
     }) =>
       Effect.suspend(() => {
@@ -38,7 +38,7 @@ export class EntityReaper extends Context.Service<EntityReaper>()("effect/cluste
         yield* Effect.sleep(currentResolution)
         const now = clock.currentTimeMillisUnsafe()
         for (const { entities, maxIdleTime, servers } of registered) {
-          for (const state of servers.values()) {
+          for (const [, state] of servers) {
             const duration = now - state.lastActiveCheck
             if (state.keepAliveEnabled || state.activeRequests.size > 0 || duration < maxIdleTime) {
               continue

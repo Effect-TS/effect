@@ -12,6 +12,7 @@ import { identity } from "../../Function.ts"
 import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Metric from "../../Metric.ts"
+import * as MutableHashMap from "../../MutableHashMap.ts"
 import * as Option from "../../Option.ts"
 import { CurrentLogAnnotations } from "../../References.ts"
 import type * as Rpc from "../../rpc/Rpc.ts"
@@ -27,7 +28,6 @@ import * as ClusterSchema from "../ClusterSchema.ts"
 import type { Entity, HandlersFrom } from "../Entity.ts"
 import { CurrentAddress, CurrentRunnerAddress, KeepAliveLatch, KeepAliveRpc, Request } from "../Entity.ts"
 import type { EntityAddress } from "../EntityAddress.ts"
-import type { EntityId } from "../EntityId.ts"
 import type * as Envelope from "../Envelope.ts"
 import * as Message from "../Message.ts"
 import * as MessageStorage from "../MessageStorage.ts"
@@ -161,10 +161,10 @@ export const make = Effect.fnUntraced(function*<
   // add internal rpcs
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
-  const activeServers = new Map<EntityId, EntityState>()
+  const activeServers = MutableHashMap.empty<EntityAddress, EntityState>()
   // Entities finishing their in-flight requests after removal, which still
   // accept interrupts and acks
-  const drainingServers = new Map<EntityId, EntityState>()
+  const drainingServers = MutableHashMap.empty<EntityAddress, EntityState>()
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Latch.Latch
     readonly force: Latch.Latch
@@ -472,11 +472,11 @@ export const make = Effect.fnUntraced(function*<
     yield* Scope.addFinalizer(
       scope,
       Effect.suspend(() => {
-        activeServers.delete(address.entityId)
+        MutableHashMap.remove(activeServers, address)
         retired.openUnsafe()
         closeLatches.closing = true
         acquireEntity(address)
-        drainingServers.set(address.entityId, state)
+        MutableHashMap.set(drainingServers, address, state)
         return Effect.raceFirst(
           Effect.gen(function*() {
             for (const [requestId, request] of activeRequests) {
@@ -496,8 +496,8 @@ export const make = Effect.fnUntraced(function*<
           ),
           Effect.interruptible(closeLatches.force.await)
         ).pipe(Effect.ensuring(Effect.sync(() => {
-          if (drainingServers.get(address.entityId) === state) {
-            drainingServers.delete(address.entityId)
+          if (MutableHashMap.get(drainingServers, address).valueOrUndefined === state) {
+            MutableHashMap.remove(drainingServers, address)
           }
         })))
       })
@@ -507,7 +507,7 @@ export const make = Effect.fnUntraced(function*<
     }
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
-    activeServers.set(address.entityId, state)
+    MutableHashMap.set(activeServers, address, state)
 
     return state
   }, Effect.provideService(CurrentLogAnnotations, {})))
@@ -527,7 +527,7 @@ export const make = Effect.fnUntraced(function*<
   // update metrics for active servers
   const typeAttributes = Metric.CurrentMetricAttributes.context({ type: entity.type })
   yield* Effect.sync(() => {
-    ClusterMetrics.entities.updateUnsafe(BigInt(activeServers.size), typeAttributes)
+    ClusterMetrics.entities.updateUnsafe(BigInt(MutableHashMap.size(activeServers)), typeAttributes)
   }).pipe(
     Effect.andThen(Effect.sleep(1000)),
     Effect.forever,
@@ -561,7 +561,7 @@ export const make = Effect.fnUntraced(function*<
     message: Message.IncomingLocal<R>
   ): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> {
     if (message._tag === "IncomingEnvelope") {
-      const draining = drainingServers.get(message.envelope.address.entityId)
+      const draining = MutableHashMap.get(drainingServers, message.envelope.address).valueOrUndefined
       if (draining?.activeRequests.has(message.envelope.requestId)) {
         return sendEnvelope(draining, message)
       }
@@ -720,8 +720,7 @@ export const make = Effect.fnUntraced(function*<
             }
           })
         }
-        // Look entities up by address: `activeServers` is keyed by entity id,
-        // so an entity with the same id on another shard can hide this one.
+        // Include entities that are already closing, not just active servers.
         serverCloseLatches.forEach((latches, address) => {
           if (shardId[Equal.symbol](address.shardId)) {
             if (!latches.closing) {
@@ -740,7 +739,7 @@ export const make = Effect.fnUntraced(function*<
       ) {
         return true
       }
-      const state = activeServers.get(message.envelope.address.entityId)
+      const state = MutableHashMap.get(activeServers, message.envelope.address).valueOrUndefined
       if (!state) return false
       const request = state.activeRequests.get(message.envelope.requestId)
       if (request === undefined) {
@@ -812,7 +811,7 @@ export const make = Effect.fnUntraced(function*<
         }),
         Effect.provideContext(context as Context.Context<unknown>)
       ),
-    activeEntityCount: Effect.sync(() => activeServers.size)
+    activeEntityCount: Effect.sync(() => MutableHashMap.size(activeServers))
   })
 })
 
