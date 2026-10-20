@@ -12,11 +12,11 @@
  */
 import type * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
-import * as Effect from "./Effect.ts"
+import type * as Effect from "./Effect.ts"
 import type * as Option from "./Option.ts"
 import type { PlatformError } from "./PlatformError.ts"
 import * as Predicate from "./Predicate.ts"
-import * as Queue from "./Queue.ts"
+import type * as Queue from "./Queue.ts"
 import * as Schema from "./Schema.ts"
 import type * as Scope from "./Scope.ts"
 
@@ -201,26 +201,14 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  *
  * **Details**
  *
- * The implementation object supplies `columns`, `rows`, `readInput`,
- * `readLine`, and `display`. When `size` is omitted, each subscription receives
- * a queue holding one snapshot of `columns` and `rows` that then ends. `make`
- * attaches the `Terminal` service marker so the result can be provided through
- * the `Terminal` context service.
+ * The implementation object supplies `columns`, `rows`, `size`, `readInput`,
+ * `readLine`, and `display`; `make` attaches the `Terminal` service marker so
+ * the result can be provided through the `Terminal` context service.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<Terminal, typeof TypeId | "size"> & Partial<Pick<Terminal, "size">>
-): Terminal =>
-  Terminal.of({
-    ...impl,
-    size: impl.size ?? Effect.gen(function*() {
-      const queue = yield* Queue.make<Size, Cause.Done>()
-      Queue.offerUnsafe(queue, yield* Effect.all({ columns: impl.columns, rows: impl.rows }))
-      Queue.endUnsafe(queue)
-      return queue
-    }),
-    [TypeId]: TypeId
-  })
+  impl: Omit<Terminal, typeof TypeId>
+): Terminal => Terminal.of({ ...impl, [TypeId]: TypeId })
