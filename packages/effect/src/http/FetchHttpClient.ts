@@ -84,15 +84,17 @@ let supportsStreamBody: boolean | undefined
 const detectStreamBodySupport = () => {
   try {
     let duplexAccessed = false
+    const body = new ReadableStream()
     const request = new Request("https://example.com", {
       method: "POST",
-      body: new ReadableStream(),
+      body,
       get duplex() {
         duplexAccessed = true
         return "half"
       }
     } as globalThis.RequestInit)
-    return duplexAccessed && !request.headers.has("Content-Type")
+    // Bun and Deno preserve the stream without reading the duplex option.
+    return (duplexAccessed || request.body === body) && !request.headers.has("Content-Type")
   } catch {
     return false
   }
