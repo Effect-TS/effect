@@ -44,9 +44,8 @@ export interface Terminal {
   readonly rows: Effect.Effect<number>
   /**
    * Subscribes to terminal size changes. The queue starts with the current
-   * dimensions and receives each resize while the scope is open, holding only
-   * the latest size if it is not taken. Dimensions unavailable on the platform
-   * are reported as zero.
+   * dimensions, receives each resize until the scope closes, and keeps only the
+   * latest size.
    */
   readonly size: Effect.Effect<Queue.Dequeue<Size, Cause.Done>, never, Scope.Scope>
   /**
@@ -203,17 +202,17 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * **Details**
  *
  * The implementation object supplies `columns`, `rows`, `readInput`,
- * `readLine`, and `display`, and optionally `size`. When `size` is omitted,
- * each subscription receives a queue holding the current `columns` and `rows`
- * that then ends. `make` attaches the `Terminal` service marker so the result
- * can be provided through the `Terminal` context service.
+ * `readLine`, and `display`. When `size` is omitted, each subscription receives
+ * a queue holding one snapshot of `columns` and `rows` that then ends. `make`
+ * attaches the `Terminal` service marker so the result can be provided through
+ * the `Terminal` context service.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = (
-  impl: Omit<Terminal, typeof TypeId | "size"> & { readonly size?: Terminal["size"] | undefined }
+  impl: Omit<Terminal, typeof TypeId | "size"> & Partial<Pick<Terminal, "size">>
 ): Terminal =>
   Terminal.of({
     ...impl,
