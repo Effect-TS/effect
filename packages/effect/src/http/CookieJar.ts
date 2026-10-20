@@ -240,7 +240,7 @@ const makeEntry = (url: URL, cookie: Cookies.Cookie, now: number): Entry | undef
   const options = cookie.options
   let domain = host
   let hostOnly = true
-  const attribute = options?.domain?.toLowerCase()
+  const attribute = options?.domain?.replace(/^\./, "").toLowerCase()
   if (attribute) {
     if (isIpAddress(host) || !domainMatches(host, attribute)) {
       return undefined
