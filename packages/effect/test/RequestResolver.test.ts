@@ -31,6 +31,42 @@ describe("RequestResolver.fromEffect", () => {
 
       assert.deepStrictEqual(values, ["private-tenant", "missing"])
     }))
+
+  it.effect("preserves resolver services and span over caller spans without leaking caller services", () =>
+    Effect.gen(function*() {
+      class Wrapper extends Context.Service<Wrapper, string>()("test/RequestResolver/Wrapper") {}
+      class GetContext extends Request.Class<{ id: number }, { tenant: string; wrapper: string; span: string }> {}
+      const base = RequestResolver.fromEffect<GetContext>(() =>
+        Effect.gen(function*() {
+          return {
+            tenant: yield* currentTenant,
+            wrapper: yield* Effect.map(Effect.serviceOption(Wrapper), Option.getOrElse(() => "missing")),
+            span: (yield* Effect.orDie(Effect.currentSpan)).name
+          }
+        })
+      )
+      const batches: Array<number> = []
+      const resolver = RequestResolver.makeWith({
+        ...base,
+        runAll: (entries, key) => {
+          batches.push(entries.length)
+          return base.runAll(entries, key).pipe(Effect.provideService(Wrapper, "wrapper"))
+        }
+      }).pipe(RequestResolver.withSpan("resolver"))
+      const values = yield* Effect.all([
+        Effect.request(new GetContext({ id: 1 }), resolver).pipe(
+          Effect.provideService(Tenant, "private-tenant"),
+          Effect.withSpan("first-caller")
+        ),
+        Effect.request(new GetContext({ id: 2 }), resolver).pipe(Effect.withSpan("second-caller"))
+      ], { concurrency: "unbounded" })
+
+      assert.deepStrictEqual(values, [
+        { tenant: "private-tenant", wrapper: "wrapper", span: "resolver" },
+        { tenant: "missing", wrapper: "wrapper", span: "resolver" }
+      ])
+      assert.deepStrictEqual(batches, [2])
+    }))
 })
 
 for (const constructor of ["make", "makeGrouped"] as const) {
