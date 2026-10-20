@@ -17,4 +17,6 @@ Replace `effect/Crypto` with family-specific `effect/crypto/*` services, opaque 
 
 Existing workflow ID, activity idempotency key and event log table-name encodings are unchanged.
 
+Event log encryption, identity key derivation and session authentication now run on `Aead`, `Digest`, `Signature` and `SecureRandom`. `EventLogEncryption.make` and `EventLogEncryption.layer` take those services from context, so Node apps can use the `NodeCrypto` layers. `EventLogEncryption.layerSubtle` and the session auth functions use the Web Crypto layers on the `WebCrypto` reference instead of `globalThis.crypto`. Existing identities, derived signing keys and encrypted batches are unchanged.
+
 UUIDv7 and ULID generation is now monotonic below the maximum 48-bit timestamp, including within a millisecond and across clock rollback. Ordering is per `SecureRandom` instance; the unsafe helpers and model UUIDv7 defaults share per-realm ordering.
