@@ -204,10 +204,13 @@ it.effect("logs snapshot commit counts and the committed and rollback activation
     yield* TestClock.adjust(pastLag)
     const { stageId } = started(yield* conn.begin)
     assert.strictEqual(yield* conn.snapshot(stageId, [[[ids[1]]]]), "Committed")
+    assert.strictEqual(yield* conn.commit(stageId, { _tag: "Snapshot", segmentCount: 1 }), "Committed")
     const compaction = server.storage.compaction!
     const active = (yield* compaction.history(server.scope.publicKey, storeId)).find((a) => a.active)!
     const rollbackId = yield* compaction.rollback(server.scope.publicKey, storeId, active.activationId)
-    const commitLog = logs.find((log) => log.annotations.activationId === active.activationId)
+    const commitLogs = logs.filter((log) => log.annotations.activationId === active.activationId)
+    assert.lengthOf(commitLogs, 1, "Retrying a snapshot commit must not emit another audit record")
+    const commitLog = commitLogs[0]
     const rollbackLog = logs.find((log) => log.annotations.activationId === rollbackId)
 
     assert.isDefined(commitLog)
@@ -224,7 +227,11 @@ it.effect("logs snapshot commit counts and the committed and rollback activation
     assert.containsSubset(rollbackLog!.annotations, {
       ...server.scope,
       activationId: rollbackId,
-      withdrawnActivationId: active.activationId
+      withdrawnActivationId: active.activationId,
+      withdrawnBase: 2,
+      withdrawnKeptCount: 1,
+      base: -1,
+      keptCount: undefined
     })
   }).pipe(Effect.provide(Logger.layer([Logger.formatStructured.pipe(Logger.map((log) => {
     logs.push(log)
@@ -324,7 +331,12 @@ it.effect("answers Begin with NotWanted below the threshold and logs no-ops whil
     const begin = Effect.gen(function*() {
       const result = yield* conn.begin
       if (result._tag === "Started") {
-        yield* conn.commit(result.stageId, { _tag: "NoOp" })
+        assert.strictEqual(yield* conn.commit(result.stageId, { _tag: "NoOp" }), "Committed")
+        if (noOps.length === 0) {
+          const status = yield* conn.status
+          assert.strictEqual(yield* conn.commit(result.stageId, { _tag: "NoOp" }), "Committed")
+          assert.deepStrictEqual(yield* conn.status, status, "Retrying a no-op must not change backoff")
+        }
         noOps.push({ stageId: result.stageId, through: result.through })
       }
       return result._tag
@@ -342,10 +354,10 @@ it.effect("answers Begin with NotWanted below the threshold and logs no-ops whil
     results.push(yield* begin, yield* begin, yield* writePastLag, yield* writePastLag, yield* writePastLag)
 
     assert.deepStrictEqual(results, ["NotWanted", "Started", "NotWanted", "Started", "NotWanted", "Started"])
-    for (const noOp of noOps) {
-      const log = logs.find((log) => log.annotations.stageId === noOp.stageId && log.level === "INFO")
-      assert.isDefined(log, "NoOp commit must emit an audit log")
-      assert.containsSubset(log!.annotations, { ...server.scope, ...noOp })
+    for (const [index, noOp] of noOps.entries()) {
+      const stageLogs = logs.filter((log) => log.annotations.stageId === noOp.stageId && log.level === "INFO")
+      assert.lengthOf(stageLogs, 1, "NoOp commit must emit exactly one audit record per stage")
+      assert.containsSubset(stageLogs[0].annotations, { ...server.scope, ...noOp, inputCount: [6, 10, 18][index] })
     }
   }).pipe(Effect.provide(Logger.layer([Logger.formatStructured.pipe(Logger.map((log) => {
     logs.push(log)
