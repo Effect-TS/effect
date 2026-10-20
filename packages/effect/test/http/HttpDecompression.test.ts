@@ -84,6 +84,30 @@ const makeHandler = (
 }
 
 describe("HttpDecompression", () => {
+  it.effect("preserves the inner consumed-body defect through decompression", () =>
+    Effect.gen(function*() {
+      const body = yield* Effect.promise(() => compress("compressed payload", ["gzip"]))
+      const request = HttpServerRequest.fromClientRequest(
+        HttpClientRequest.post("http://localhost/").pipe(
+          HttpClientRequest.setHeader("content-encoding", "gzip"),
+          HttpClientRequest.bodyStream(Stream.succeed(body))
+        )
+      )
+      yield* request.arrayBuffer
+      yield* Effect.gen(function*() {
+        const decompressed = yield* HttpServerRequest.HttpServerRequest
+        const result = yield* Effect.exit(decompressed.text)
+        assert(Exit.isFailure(result))
+        assert.isTrue(Cause.hasDies(result.cause))
+        assert.isFalse(Cause.hasFails(result.cause))
+        assert.match(String(Cause.squash(result.cause)), /already read.*middleware/i)
+        return HttpServerResponse.empty()
+      }).pipe(
+        HttpMiddleware.decompression(),
+        Effect.provideService(HttpServerRequest.HttpServerRequest, request)
+      )
+    }))
+
   it.effect("shares buffered reads through modify and rejects stream reuse with a middleware defect", () =>
     Effect.gen(function*() {
       const payload = "compressed payload"
