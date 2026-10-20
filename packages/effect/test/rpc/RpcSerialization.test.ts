@@ -300,7 +300,7 @@ describe("RpcSerialization", () => {
     assert.strictEqual(RpcSerialization.ndjson.contentType, "application/x-ndjson")
   })
 
-  it("ndjson fails with a tagged error for a malformed non-empty line", () => {
+  it("ndjson fails with NdjsonDecodeError and a SyntaxError cause for a malformed non-empty line", () => {
     const parser = RpcSerialization.ndjson.makeUnsafe()
 
     let error: unknown
@@ -309,9 +309,9 @@ describe("RpcSerialization", () => {
     } catch (cause) {
       error = cause
     }
-    assert(error instanceof Error, "Expected a decode error for the malformed line")
-    assert("_tag" in error, "Expected the decode error to be tagged")
-    assert.isString(error._tag)
+    assert.instanceOf(error, RpcSerialization.NdjsonDecodeError)
+    assert.strictEqual(error._tag, "NdjsonDecodeError")
+    assert.instanceOf(error.cause, SyntaxError)
   })
 
   it.each(["\n", "\r\n"])("ndjson skips blank lines with %j line endings", (newline) => {
