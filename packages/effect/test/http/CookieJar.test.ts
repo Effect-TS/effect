@@ -70,6 +70,45 @@ describe("CookieJar", () => {
     }
   })
 
+  it("replaces a Domain cookie with a host-only cookie of the same name and path", () => {
+    const domain = CookieJar.setFromResponse(
+      CookieJar.empty,
+      "https://example.com/",
+      Cookies.fromSetCookie("session=domain; Domain=example.com; Path=/"),
+      now
+    )
+    assert.strictEqual(CookieJar.toCookieHeader(domain, "https://sub.example.com/", now), "session=domain")
+
+    const replaced = CookieJar.setFromResponse(
+      domain,
+      "https://example.com/",
+      Cookies.fromSetCookie("session=host; Path=/"),
+      now
+    )
+    assert.strictEqual(CookieJar.toCookieHeader(replaced, "https://example.com/", now), "session=host")
+    assert.isUndefined(CookieJar.toCookieHeader(replaced, "https://sub.example.com/", now))
+  })
+
+  it("serializes same-name cookies longest path first while cookiesFor keeps the most specific", () => {
+    const root = CookieJar.setFromResponse(
+      CookieJar.empty,
+      "https://example.com/",
+      Cookies.fromSetCookie("session=root; Path=/"),
+      now
+    )
+    const jar = CookieJar.setFromResponse(
+      root,
+      "https://example.com/account",
+      Cookies.fromSetCookie("session=account; Path=/account"),
+      now
+    )
+    assert.strictEqual(
+      CookieJar.toCookieHeader(jar, "https://example.com/account/settings", now),
+      "session=account; session=root"
+    )
+    assert.strictEqual(header(jar, "https://example.com/account/settings"), "session=account")
+  })
+
   it("sends Secure cookies only over HTTPS", () => {
     const jar = CookieJar.setFromResponse(
       CookieJar.empty,

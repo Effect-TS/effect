@@ -1380,9 +1380,11 @@ describe("HttpApi", () => {
       it.effect("security middleware sets current user", () =>
         Effect.gen(function*() {
           const server = yield* HttpServer.HttpServer
+          const url = new URL(HttpServer.formatAddress(server.address))
+          url.hostname = "127.0.0.1"
           const ref = yield* Ref.make(CookieJar.setFromResponse(
             CookieJar.empty,
-            HttpServer.formatAddress(server.address),
+            url.origin,
             Cookies.fromSetCookie("token=foo; Path=/"),
             yield* Clock.currentTimeMillis
           ))
