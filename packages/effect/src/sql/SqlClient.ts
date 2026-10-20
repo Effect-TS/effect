@@ -77,6 +77,10 @@ export interface SqlClient extends Constructor {
    * invalidate once the outermost transaction commits, and not at all if it
    * rolls back.
    *
+   * To start a top-level transaction with a statement other than the
+   * client's, such as one that sets its isolation level, provide
+   * `BeginTransaction`.
+   *
    * **Gotchas**
    *
    * Deferred invalidations run individually after the commit and don't join an
@@ -85,10 +89,6 @@ export interface SqlClient extends Constructor {
    * transaction can't defer through it, as with `afterCommit`. Transactions
    * that don't go through `makeWithTransaction`, such as those of
    * `@effect/sql-sqlite-do`, invalidate immediately.
-   *
-   * To start a top-level transaction with a statement other than the
-   * client's, such as one that sets its isolation level, provide
-   * `BeginTransaction`.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
