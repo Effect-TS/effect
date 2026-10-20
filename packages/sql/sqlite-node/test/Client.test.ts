@@ -168,6 +168,41 @@ describe("Client", () => {
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
     }))
 
+  it.effect.each(["ABORT", "ROLLBACK", "nested ROLLBACK"] as const)(
+    "preserves a typed constraint failure and reuses the connection after %s",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+        yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+        yield* sql`INSERT INTO items VALUES (1)`
+
+        const insert = mode === "ABORT"
+          ? sql`INSERT INTO items VALUES (1)`
+          : sql`INSERT OR ROLLBACK INTO items VALUES (1)`
+        const transaction = sql.withTransaction(
+          mode === "nested ROLLBACK" ? sql.withTransaction(insert) : insert
+        )
+        const exit = yield* Effect.exit(transaction)
+        assert.isTrue(Exit.isFailure(exit))
+        if (!Exit.isFailure(exit)) return
+        assert.isFalse(
+          Cause.hasDies(exit.cause),
+          `expected only a typed constraint failure:\n${Cause.pretty(exit.cause)}`
+        )
+        const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
+        assert.strictEqual(error._tag, "SqlError")
+        assert.strictEqual(error.reason._tag, "ConstraintError")
+
+        const recovered = yield* transaction.pipe(
+          Effect.as(false),
+          Effect.catchTag("SqlError", () => Effect.succeed(true))
+        )
+        assert.isTrue(recovered)
+        yield* sql.withTransaction(sql`INSERT INTO items VALUES (2)`)
+        assert.deepStrictEqual(yield* sql`SELECT id FROM items ORDER BY id`, [{ id: 1 }, { id: 2 }])
+      })
+  )
+
   it.effect("recovers a failed deferred commit without losing an in-memory database", () =>
     Effect.gen(function*() {
       const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
