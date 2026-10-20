@@ -912,18 +912,15 @@ const runWithRuntime = Effect.fnUntraced(function*(
     const isInitialize = rpc._tag.endsWith("/initialize")
     if (!isInitialize && !session) {
       const fiber = Fiber.getCurrent()!
-      const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
-      if (httpRequest) {
-        appendPreResponseHandlerUnsafe(
-          fiber.context,
-          () =>
-            Effect.succeed(
-              HttpServerResponse.empty({
-                status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
-              })
-            )
-        )
-      }
+      appendPreResponseHandlerUnsafe(
+        fiber.context,
+        () =>
+          Effect.succeed(
+            HttpServerResponse.empty({
+              status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
+            })
+          )
+      )
       return Effect.die(new Error(`Mcp-Session-Id does not exist`))
     }
     // RPC middleware erases the correlation between the initialize tag
@@ -1107,17 +1104,15 @@ const runWithRuntime = Effect.fnUntraced(function*(
               const isClientNotification = selectedProtocol.clientNotificationRpcs.requests.has(request.tag)
               if (rpc && isClientNotification && request.isNotification) {
                 if (!session && selectedProtocol.runtime._tag === "Stateful") {
-                  if (httpRequest) {
-                    appendPreResponseHandlerUnsafe(
-                      fiber.context,
-                      () =>
-                        Effect.succeed(
-                          HttpServerResponse.empty({
-                            status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
-                          })
-                        )
-                    )
-                  }
+                  appendPreResponseHandlerUnsafe(
+                    fiber.context,
+                    () =>
+                      Effect.succeed(
+                        HttpServerResponse.empty({
+                          status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
+                        })
+                      )
+                  )
                   return
                 }
                 const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)

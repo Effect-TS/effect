@@ -8,12 +8,8 @@ import type { PreResponseHandler } from "../HttpEffect.ts"
  * @internal
  */
 export class RequestState {
-  preResponseHandler: PreResponseHandler | undefined
-  loggerDisabled: boolean
-  constructor() {
-    this.preResponseHandler = undefined
-    this.loggerDisabled = false
-  }
+  preResponseHandler: PreResponseHandler | undefined = undefined
+  loggerDisabled = false
 }
 
 /**
@@ -22,7 +18,7 @@ export class RequestState {
  *
  * @internal
  */
-export const CurrentRequestState = Context.Service<RequestState>("effect/http/HttpEffect/RequestState")
+export const CurrentRequestState = Context.Service<RequestState>("effect/http/HttpEffect/CurrentRequestState")
 
 /**
  * @internal

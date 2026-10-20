@@ -55,7 +55,7 @@ export const toHandled = <E, R, EH, RH>(
     return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
-      const handler = frame.state.preResponseHandler
+      const handler = frame.preResponseHandler
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
@@ -82,7 +82,7 @@ export const toHandled = <E, R, EH, RH>(
     response: HttpServerResponse
   ): Effect.Effect<HttpServerResponse, EH | HttpServerError, RH> => {
     const request = frame.request
-    const handler = frame.state.preResponseHandler
+    const handler = frame.preResponseHandler
     if (handler === undefined) {
       ;(request as any)[handledSymbol] = true
       return Effect.mapEager(
@@ -153,17 +153,16 @@ export const toHandled = <E, R, EH, RH>(
       return Scope.closeUnsafe(frame.scope, frame.cause === undefined ? exit : Exit.failCause(frame.cause))
     }, true)
 
-  class RequestFrame {
+  class RequestFrame extends requestState.RequestState {
     readonly scope: Scope.Closeable
     readonly prev: Context.Context<never>
     readonly request: HttpServerRequest
-    readonly state: requestState.RequestState
     cause: Cause.Cause<E | EH | HttpServerError> | undefined
     constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
+      super()
       this.scope = scope
       this.prev = prev
       this.request = request
-      this.state = new requestState.RequestState()
     }
     [contA](response: HttpServerResponse, fiber: Fiber.Fiber<unknown, unknown>) {
       const sent = sendResponse(this, response)
@@ -185,9 +184,7 @@ export const toHandled = <E, R, EH, RH>(
     fiberEnterUninterruptibleUnsafe(fiber)
     const scope = Scope.makeUnsafe()
     const frame = new RequestFrame(scope, fiber.context, Context.getUnsafe(fiber.context, HttpServerRequest))
-    fiber.setContext(
-      Context.add(Context.add(frame.prev, Scope.Scope, scope), requestState.CurrentRequestState, frame.state)
-    )
+    fiber.setContext(Context.add(Context.add(frame.prev, Scope.Scope, scope), requestState.CurrentRequestState, frame))
     // The native tracer has no backend, so its spans are unobservable.
     const currentTracer = fiber.cache.tracer
     if (
@@ -267,10 +264,7 @@ export type PreResponseHandler = (
  * @since 4.0.0
  */
 export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Effect<void, never, HttpServerRequest> =>
-  Effect.withFiber((fiber) => {
-    appendPreResponseHandlerUnsafe(fiber.context, handler)
-    return Effect.void
-  })
+  withPreResponseHandler(Effect.void, handler)
 
 /**
  * Registers a pre-response handler for the HTTP server request that owns the
