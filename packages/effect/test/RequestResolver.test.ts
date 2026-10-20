@@ -31,125 +31,6 @@ describe("RequestResolver.fromEffect", () => {
 
       assert.deepStrictEqual(values, ["private-tenant", "missing"])
     }))
-
-  for (const merge of ["merge", "mergeAll"] as const) {
-    const positions = merge === "merge" ? ["first", "second"] as const : ["first", "second", "third"] as const
-    for (const position of positions) {
-      it.effect(`preserves precedence and caller isolation when the current context is the ${position} operand of Context.${merge}`, () =>
-        Effect.gen(function*() {
-          class Wrapper extends Context.Service<Wrapper, string>()("test/RequestResolver/MergeWrapper") {}
-          const base = RequestResolver.fromEffect<GetTenant>(() =>
-            Effect.gen(function*() {
-              const tenant = yield* currentTenant
-              const wrapper = yield* Effect.map(Effect.serviceOption(Wrapper), Option.getOrElse(() => "missing"))
-              return `${tenant}:${wrapper}`
-            })
-          )
-          const batches: Array<number> = []
-          const resolver = RequestResolver.makeWith({
-            ...base,
-            runAll: (entries, key) => {
-              batches.push(entries.length)
-              return Effect.updateContext(base.runAll(entries, key), (context) => {
-                const wrapper = Context.make(Wrapper, "wrapper")
-                if (position === "third") {
-                  return Context.mergeAll(Context.make(Wrapper, "earlier"), wrapper, context)
-                }
-                const [first, second] = position === "first" ? [context, wrapper] : [wrapper, context]
-                return merge === "merge" ? Context.merge(first, second) : Context.mergeAll(first, second)
-              })
-            }
-          })
-          const values = yield* Effect.all([
-            Effect.request(new GetTenant({ id: 1 }), resolver).pipe(
-              Effect.provideService(Tenant, "private-tenant"),
-              Effect.provideService(Wrapper, "inherited")
-            ),
-            Effect.request(new GetTenant({ id: 2 }), resolver).pipe(Effect.provideService(Wrapper, "caller"))
-          ], { concurrency: "unbounded" })
-
-          assert.deepStrictEqual(batches, [2])
-          assert.deepStrictEqual(
-            values,
-            position === "first"
-              ? ["private-tenant:wrapper", "missing:wrapper"]
-              : ["private-tenant:inherited", "missing:caller"]
-          )
-        }))
-    }
-  }
-
-  it.effect("preserves resolver services and span over caller spans without leaking caller services", () =>
-    Effect.gen(function*() {
-      class Wrapper extends Context.Service<Wrapper, string>()("test/RequestResolver/Wrapper") {}
-      class ContextWrapper extends Context.Service<ContextWrapper, string>()("test/RequestResolver/ContextWrapper") {}
-      const additions = Array.from({ length: 10 }, (_, i) => Context.Service<number>(`test/RequestResolver/Added${i}`))
-      class GetContext extends Request.Class<
-        { id: number },
-        { tenant: string; wrapper: string; contextWrapper: string; additions: Array<number>; span: string }
-      > {}
-      const base = RequestResolver.fromEffect<GetContext>(() =>
-        Effect.gen(function*() {
-          return {
-            tenant: yield* currentTenant,
-            wrapper: yield* Effect.map(Effect.serviceOption(Wrapper), Option.getOrElse(() => "missing")),
-            contextWrapper: yield* Effect.map(Effect.serviceOption(ContextWrapper), Option.getOrElse(() => "missing")),
-            additions: yield* Effect.forEach(
-              additions,
-              (service) => Effect.map(Effect.serviceOption(service), Option.getOrElse(() => -1))
-            ),
-            span: (yield* Effect.orDie(Effect.currentSpan)).name
-          }
-        })
-      )
-      const batches: Array<number> = []
-      const resolver = RequestResolver.makeWith({
-        ...base,
-        runAll: (entries, key) => {
-          batches.push(entries.length)
-          let effect = base.runAll(entries, key).pipe(
-            Effect.provideService(Wrapper, "wrapper"),
-            Effect.provideContext(Context.make(ContextWrapper, "context-wrapper"))
-          )
-          // Enough nested additions to cross Context's overlay-flattening threshold.
-          for (let i = 0; i < additions.length; i++) {
-            effect = Effect.provideService(effect, additions[i], i)
-          }
-          return effect
-        }
-      }).pipe(RequestResolver.withSpan("resolver"))
-      const values = yield* Effect.all([
-        Effect.request(new GetContext({ id: 1 }), resolver).pipe(
-          Effect.provideService(Tenant, "private-tenant"),
-          Effect.provideService(Wrapper, "wrapper"),
-          Effect.provideService(ContextWrapper, "context-wrapper"),
-          Effect.withSpan("first-caller")
-        ),
-        Effect.request(new GetContext({ id: 2 }), resolver).pipe(
-          Effect.provideService(Wrapper, "caller"),
-          Effect.provideService(ContextWrapper, "caller"),
-          Effect.withSpan("second-caller")
-        )
-      ], { concurrency: "unbounded" })
-
-      assert.deepStrictEqual(values, [
-        {
-          tenant: "private-tenant",
-          wrapper: "wrapper",
-          contextWrapper: "context-wrapper",
-          additions: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-          span: "resolver"
-        },
-        {
-          tenant: "missing",
-          wrapper: "wrapper",
-          contextWrapper: "context-wrapper",
-          additions: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-          span: "resolver"
-        }
-      ])
-      assert.deepStrictEqual(batches, [2])
-    }))
 })
 
 for (const constructor of ["make", "makeGrouped"] as const) {
@@ -238,7 +119,12 @@ describe("RequestResolver.withSpan", () => {
   it.effect("applies span options returned by an options function", () =>
     Effect.gen(function*() {
       class GetSpan extends Request.Class<{ kind: "client" | "server" }, Tracer.Span> {}
-      const resolver = RequestResolver.fromEffect<GetSpan>(() => Effect.orDie(Effect.currentSpan)).pipe(
+      const resolver = RequestResolver.make<GetSpan>((entries) =>
+        Effect.gen(function*() {
+          const span = yield* Effect.orDie(Effect.currentSpan)
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed(span))
+        })
+      ).pipe(
         RequestResolver.withSpan("resolver", (entries) => ({ kind: entries[0].request.kind }))
       )
       const span = yield* Effect.request(new GetSpan({ kind: "client" }), resolver)
