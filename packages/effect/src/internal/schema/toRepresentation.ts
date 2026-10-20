@@ -18,8 +18,10 @@ interface ReferenceCandidate {
   readonly fallback: string | undefined
   readonly content: Content | undefined
   occurrences: number
+  visiting: boolean
   isRecursive: boolean
   reference: string | undefined
+  emitted?: boolean | undefined
 }
 
 interface Content {
@@ -46,10 +48,8 @@ export function toRepresentations(
   options?: SchemaRepresentation.ToRepresentationOptions
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
-  const referenceOwners = new Map<string, ReferenceCandidate>()
-  const buildingReferences = new Set<string>()
+  const usedReferences = new Set<string>()
   const candidates = new Map<SchemaAST.AST, Array<ReferenceCandidate>>()
-  const visitingCandidates = new Set<ReferenceCandidate>()
 
   for (const ast of asts) visit(ast)
 
@@ -66,9 +66,9 @@ export function toRepresentations(
             !requestedReference.endsWith("_")
           ? "_"
           : ""
-        candidate.reference = getReference(requestedReference, candidate, separator)
+        candidate.reference = getReference(requestedReference, separator)
       } else if (candidate.isRecursive) {
-        candidate.reference = getReference(`${candidate.ast._tag}_`, candidate, "")
+        candidate.reference = getReference(`${candidate.ast._tag}_`, "")
       }
     }
   }
@@ -77,14 +77,13 @@ export function toRepresentations(
 
   return { representations, references }
 
-  function getReference(prefix: string, owner: ReferenceCandidate, separator = "_"): string {
+  function getReference(prefix: string, separator: string): string {
     let candidate = prefix
     let suffix = 0
-    while (referenceOwners.has(candidate)) {
-      if (referenceOwners.get(candidate) === owner) return candidate
+    while (usedReferences.has(candidate)) {
       candidate = `${prefix}${separator}${++suffix}`
     }
-    referenceOwners.set(candidate, owner)
+    usedReferences.add(candidate)
     return candidate
   }
 
@@ -106,47 +105,27 @@ export function toRepresentations(
       : SchemaAST.annotate(ast, { identifier: reference })
   }
 
-  function makeReference(
-    reference: string,
-    ast: SchemaAST.AST,
-    content: Content | undefined
-  ): SchemaRepresentation.Reference {
-    if (!Object.hasOwn(references, reference) && !buildingReferences.has(reference)) {
-      buildingReferences.add(reference)
-      const representation = on(ast, content)
-      buildingReferences.delete(reference)
-      InternalRecord.assignProperty(references, reference, representation)
-    }
-    return { _tag: "Reference", $ref: reference }
-  }
-
-  function project(input: SchemaAST.AST): { readonly ast: SchemaAST.AST; readonly content?: Content | undefined } {
-    const encoding = input.encoding
-    if (encoding === undefined) return { ast: input }
-    const last = encoding[encoding.length - 1]
-    const projected = project(last.to)
-    // The content describes this operation's output, before any further encoding.
-    if (last.to.encoding !== undefined) return projected
-    const content = InternalContent.getContent(last.transformation.encode)
-    if (content === undefined || projected.ast._tag !== "String") return projected
-    return {
-      ast: projected.ast,
-      content: {
-        mediaType: content.mediaType,
-        ...(content.preserveSchema
-          ? {
-            schema: getCandidate(SchemaAST.replaceEncoding(
-              input,
-              encoding.length === 1 ? undefined : [encoding[0], ...encoding.slice(1, -1)]
-            ))
+  function getCandidate(
+    input: SchemaAST.AST,
+    encodingLength = input.encoding?.length ?? 0
+  ): ReferenceCandidate {
+    let ast = input
+    let content: Content | undefined
+    while (ast.encoding !== undefined && encodingLength > 0) {
+      const last = ast.encoding[encodingLength - 1]
+      // Only retain content when this operation produces the final string.
+      if (last.to.encoding === undefined && last.to._tag === "String") {
+        const metadata = InternalContent.getContent(last.transformation.encode)
+        if (metadata !== undefined) {
+          content = {
+            mediaType: metadata.mediaType,
+            schema: metadata.preserveSchema ? getCandidate(ast, encodingLength - 1) : undefined
           }
-          : undefined)
+        }
       }
+      ast = last.to
+      encodingLength = ast.encoding?.length ?? 0
     }
-  }
-
-  function getCandidate(input: SchemaAST.AST): ReferenceCandidate {
-    const { ast, content } = project(input)
     const owner = SchemaAST.getContextOwner(ast)
     let identifier = InternalAnnotations.resolveIdentifier(ast)
     const fallback = identifier === undefined
@@ -171,6 +150,7 @@ export function toRepresentations(
         fallback,
         content,
         occurrences: 0,
+        visiting: false,
         isRecursive: false,
         reference: undefined
       }
@@ -186,12 +166,12 @@ export function toRepresentations(
   function visitCandidate(candidate: ReferenceCandidate): void {
     const ast = candidate.ast
     candidate.occurrences++
-    if (visitingCandidates.has(candidate)) {
+    if (candidate.visiting) {
       candidate.isRecursive = true
       return
     }
     if (candidate.occurrences > 1) return
-    visitingCandidates.add(candidate)
+    candidate.visiting = true
     if (candidate.content?.schema !== undefined) visitCandidate(candidate.content.schema)
     visitChecks(ast.checks)
     switch (ast._tag) {
@@ -211,7 +191,7 @@ export function toRepresentations(
         visit(ast.thunk())
         break
     }
-    visitingCandidates.delete(candidate)
+    candidate.visiting = false
   }
 
   function visitChecks(checks: SchemaAST.Checks | undefined): void {
@@ -229,8 +209,13 @@ export function toRepresentations(
     const ast = candidate.ast
     const reference = candidate.reference
     if (reference !== undefined) {
-      const annotated = candidate.identifier === undefined ? ast : annotateReference(ast, candidate, reference)
-      return makeReference(reference, annotated, candidate.content)
+      if (!candidate.emitted) {
+        candidate.emitted = true
+        const annotated = candidate.identifier === undefined ? ast : annotateReference(ast, candidate, reference)
+        const representation = on(annotated, candidate.content)
+        InternalRecord.assignProperty(references, reference, representation)
+      }
+      return { _tag: "Reference", $ref: reference }
     }
     return on(ast, candidate.content)
   }
@@ -243,27 +228,11 @@ export function toRepresentations(
           _tag: "Declaration",
           typeParameters: ast.typeParameters.map((ast) => recur(ast)),
           checks,
-          ...fromDeclarationAnnotations(ast.annotations)
+          ...fromAnnotations(ast.annotations)
         }
-      case "Null":
-      case "Undefined":
-      case "Void":
-      case "Never":
-      case "Unknown":
-      case "Any":
-      case "Boolean":
-      case "Number":
-      case "BigInt":
-      case "Symbol":
-      case "ObjectKeyword":
+      default:
         return {
           _tag: ast._tag,
-          checks,
-          ...annotationsField(ast.annotations)
-        }
-      case "String":
-        return {
-          _tag: "String",
           checks,
           ...annotationsField(ast.annotations),
           ...(content === undefined ? undefined : {
@@ -365,53 +334,27 @@ export function toRepresentations(
   function fromCheck(
     check: SchemaAST.Check<any>
   ): SchemaRepresentation.Check {
-    switch (check._tag) {
-      case "Filter":
-        return {
-          _tag: "Filter",
-          aborted: check.aborted,
-          ...fromCheckAnnotations(check.annotations)
-        }
-      case "FilterGroup":
-        return {
-          _tag: "FilterGroup",
-          checks: Arr.map(check.checks, fromCheck),
-          ...fromCheckAnnotations(check.annotations)
-        }
-    }
-  }
-
-  function fromDeclarationAnnotations<
-    A extends Schema.Annotations.Annotations & {
-      readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined
-    }
-  >(annotations: A | undefined): {
-    readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined
-    readonly annotations?: Omit<A, "representation"> | undefined
-  } | undefined {
-    if (annotations === undefined) return undefined
-    const { representation, ...ordinary } = annotations
     return {
-      ...(representation === undefined ? undefined : { representation }),
-      ...(Object.keys(ordinary).length === 0 ? undefined : { annotations: ordinary })
+      ...(check._tag === "Filter"
+        ? { _tag: check._tag, aborted: check.aborted }
+        : { _tag: check._tag, checks: Arr.map(check.checks, fromCheck) }),
+      ...fromAnnotations(check.annotations, true)
     }
   }
 
-  function fromCheckAnnotations<
+  function fromAnnotations<
     A extends Schema.Annotations.Annotations & {
       readonly representation?: SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST> | undefined
     }
-  >(annotations: A | undefined): {
+  >(annotations: A | undefined, projectSchemas = false): {
     readonly representation?: CheckRepresentationAnnotation | undefined
     readonly annotations?: Omit<A, "representation"> | undefined
   } | undefined {
     if (annotations === undefined) return undefined
     const { representation, ...ordinary } = annotations
-    const projected = representation === undefined
-      ? undefined
-      : representation.schemas === undefined
-      ? representation as CheckRepresentationAnnotation
-      : { ...representation, schemas: representation.schemas.map((schema) => recur(SchemaAST.toType(schema))) }
+    const projected = projectSchemas && representation?.schemas !== undefined
+      ? { ...representation, schemas: representation.schemas.map((schema) => recur(SchemaAST.toType(schema))) }
+      : representation as CheckRepresentationAnnotation | undefined
     return {
       ...(projected === undefined ? undefined : { representation: projected }),
       ...(Object.keys(ordinary).length === 0 ? undefined : { annotations: ordinary })
