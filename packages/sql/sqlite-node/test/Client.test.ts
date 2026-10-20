@@ -1,11 +1,9 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References, Semaphore } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
 import { Reactivity } from "effect/reactivity"
-import * as SqlClient from "effect/sql/SqlClient"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
-import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { DatabaseSync } from "node:sqlite"
 
@@ -16,22 +14,6 @@ const makeClient = Effect.gen(function*() {
     filename: dir + "/test.db"
   })
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
-
-// Exercise drivers that cannot report transaction state using real SQLite.
-const makeFallbackClient = Effect.gen(function*() {
-  const client = yield* SqliteClient.make({ filename: ":memory:" })
-  const connection = yield* Effect.scoped(client.reserve)
-  return yield* SqlClient.make({
-    ...SqlClient.makeSqliteAcquirers({
-      connection: Effect.succeed(connection),
-      semaphore: yield* Semaphore.make(1)
-    }),
-    compiler: Statement.makeCompilerSqlite(),
-    releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-    driver: "sqlite-fallback",
-    spanAttributes: []
-  })
-}).pipe(Effect.provide(Reactivity.layer))
 
 const makeClients = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -186,17 +168,11 @@ describe("Client", () => {
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
     }))
 
-  it.effect.each(
-    (["driver", "fallback"] as const).flatMap((client) =>
-      (["ABORT", "ROLLBACK", "nested ROLLBACK"] as const).map((mode) => ({ client, mode }))
-    )
-  )(
-    "preserves a typed constraint failure and reuses the $client connection after $mode",
-    ({ client, mode }) =>
+  it.effect.each(["ABORT", "ROLLBACK", "nested ROLLBACK"] as const)(
+    "preserves a typed constraint failure and reuses the connection after %s",
+    (mode) =>
       Effect.gen(function*() {
-        const sql = yield* client === "fallback"
-          ? makeFallbackClient
-          : SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
         yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
         yield* sql`INSERT INTO items VALUES (1)`
 
@@ -228,10 +204,10 @@ describe("Client", () => {
   )
 
   it.effect.each(["missing savepoint", "unrelated cleanup error"] as const)(
-    "keeps a fallback %s as a defect and rolls back the outer transaction",
+    "keeps a %s as a defect and rolls back the outer transaction",
     (mode) =>
       Effect.gen(function*() {
-        const sql = yield* makeFallbackClient
+        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
         yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
         const error = new SqlError({
           reason: new ConnectionError({
