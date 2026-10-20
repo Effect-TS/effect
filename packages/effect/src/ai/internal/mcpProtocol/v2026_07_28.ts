@@ -264,16 +264,14 @@ const projectError = (error: ProtocolError): McpSchema.McpError => {
   })
 }
 
-const failWithHttpStatus = Effect.fnUntraced(function*(status: number, error: McpProtocol.ProtocolError) {
-  const request = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
-  if (Option.isSome(request)) {
+const failWithHttpStatus = (status: number, error: McpProtocol.ProtocolError) =>
+  Effect.withFiber((fiber) => {
     appendPreResponseHandlerUnsafe(
-      request.value,
+      fiber.context,
       (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, status))
     )
-  }
-  return yield* error
-})
+    return Effect.fail(error)
+  })
 
 /**
  * @internal

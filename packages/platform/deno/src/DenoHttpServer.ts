@@ -314,7 +314,6 @@ export const layerConfig = (
   )
 
 class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
-  readonly [ServerRequest.RequestToken]: object
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
@@ -332,13 +331,11 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     url: string,
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    requestToken?: object
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
-    this[ServerRequest.RequestToken] = requestToken ?? this
     this.source = source
     this.remoteAddr = remoteAddr
     this.resolve = resolve
@@ -366,8 +363,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       options.url ?? this.url,
       this.websocketOptions,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[ServerRequest.RequestToken]
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
   get method(): HttpMethod {

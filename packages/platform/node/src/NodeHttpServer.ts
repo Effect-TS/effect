@@ -349,7 +349,6 @@ const absoluteTarget = (url: string): URL | undefined => {
 const pendingContinue = new WeakSet<Http.IncomingMessage>()
 
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
-  readonly [Request.RequestToken]: object
   protected override readonly destroyOnOverflow = false
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
@@ -364,8 +363,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
     url?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    requestToken?: object
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -376,7 +374,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         })
       }), remoteAddressOverride)
     this[Request.TypeId] = Request.TypeId
-    this[Request.RequestToken] = requestToken ?? this
     this.response = response
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {
@@ -439,8 +436,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[Request.RequestToken]
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
 

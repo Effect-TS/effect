@@ -67,18 +67,6 @@ export {
 export const TypeId = "~effect/http/HttpServerRequest"
 
 /**
- * Identifies one server request across modified views and body wrappers.
- * Root requests use themselves as the token; `modify` and wrappers carry it
- * through, so per-request state can be keyed by it even when the `source`
- * object is reused across requests.
- *
- * @stability unstable
- * @category symbols
- * @since 4.0.0
- */
-export const RequestToken: unique symbol = Symbol.for("~effect/http/HttpServerRequest/RequestToken")
-
-/**
  * Server-side representation of an incoming HTTP request.
  *
  * **Details**
@@ -93,7 +81,6 @@ export const RequestToken: unique symbol = Symbol.for("~effect/http/HttpServerRe
  */
 export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessage<HttpServerError> {
   readonly [TypeId]: typeof TypeId
-  readonly [RequestToken]: object
   readonly source: object
   readonly url: string
   readonly originalUrl: string
@@ -500,7 +487,6 @@ const removeHost = (url: string) => {
 }
 
 class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
-  readonly [RequestToken]: object
   readonly [TypeId]: typeof TypeId
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: Request
@@ -512,14 +498,12 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     source: Request,
     url: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    requestToken?: object
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[TypeId] = TypeId
     this[HttpIncomingMessage.TypeId] = HttpIncomingMessage.TypeId
     this.source = source
-    this[RequestToken] = requestToken ?? this
     this.url = url
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
@@ -542,8 +526,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       this.source,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[RequestToken]
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
   get method(): HttpMethod {
@@ -699,7 +682,6 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
 }
 
 class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
-  readonly [RequestToken]: object
   readonly [TypeId]: typeof TypeId
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId
   readonly source: HttpClientRequest.HttpClientRequest
@@ -713,14 +695,12 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     originalUrl: string,
     urlOverride?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    requestToken?: object
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[TypeId] = TypeId
     this[HttpIncomingMessage.TypeId] = HttpIncomingMessage.TypeId
     this.source = source
-    this[RequestToken] = requestToken ?? this
     this.originalUrl = originalUrl
     this.urlOverride = urlOverride
     this.headersOverride = headersOverride
@@ -747,8 +727,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       this.originalUrl,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this[RequestToken]
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
 

@@ -568,7 +568,7 @@ export const make = Effect.fnUntraced(function*(
                 const sessionId = crypto.randomUUID()
                 stateful.registerHttp(sessionId, registration)
                 appendPreResponseHandlerUnsafe(
-                  httpRequest,
+                  fiber.context,
                   (_request, response) =>
                     Effect.succeed(HttpServerResponse.setHeaders(response, {
                       [MCP_SESSION_ID_HEADER]: sessionId,

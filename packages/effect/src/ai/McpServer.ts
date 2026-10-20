@@ -915,7 +915,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
       if (httpRequest) {
         appendPreResponseHandlerUnsafe(
-          httpRequest,
+          fiber.context,
           () =>
             Effect.succeed(
               HttpServerResponse.empty({
@@ -1029,7 +1029,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           ? Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
           : undefined
         if (httpRequest !== undefined && request._tag !== "Eof") {
-          appendPreResponseHandlerUnsafe(httpRequest, (_, response) =>
+          appendPreResponseHandlerUnsafe(fiber.context, (_, response) =>
             Effect.succeed(
               response.status === 200 &&
                 response.body._tag === "Uint8Array" &&
@@ -1091,7 +1091,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 )
               }
               if (httpRequest !== undefined && session !== undefined) {
-                appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
+                appendPreResponseHandlerUnsafe(fiber.context, (_, res) =>
                   Effect.succeed(
                     runtime.resolveRequest(clientId, headers) === undefined
                       ? HttpServerResponse.empty({ status: 404 })
@@ -1109,7 +1109,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 if (!session && selectedProtocol.runtime._tag === "Stateful") {
                   if (httpRequest) {
                     appendPreResponseHandlerUnsafe(
-                      httpRequest,
+                      fiber.context,
                       () =>
                         Effect.succeed(
                           HttpServerResponse.empty({

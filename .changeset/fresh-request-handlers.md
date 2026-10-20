@@ -1,8 +1,5 @@
 ---
 "effect": patch
-"@effect/platform-node": patch
-"@effect/platform-bun": patch
-"@effect/platform-deno": patch
 ---
 
-Add `HttpServerRequest.RequestToken`, a per-request identity that `modify()` and body wrappers preserve. Pre-response handlers and logger-disabled state are keyed by it instead of `source`, so `HttpApiTest` no longer accumulates handlers across retry attempts that reuse the same client request.
+Scope pre-response handlers and `HttpMiddleware.withLoggerDisabled` to a single server request instead of keying them by `request.source`. `HttpApiTest` no longer accumulates handlers across retry attempts that reuse the same client request. `HttpEffect.appendPreResponseHandlerUnsafe` now takes the fiber context instead of the request.

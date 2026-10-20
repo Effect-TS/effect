@@ -39,7 +39,7 @@ import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
 import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
-import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts"
+import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -82,8 +82,6 @@ export declare namespace HttpMiddleware {
  */
 export const make = <M extends HttpMiddleware>(middleware: M): M => middleware
 
-const loggerDisabledRequests = new WeakSet<object>()
-
 const stripSearchAndHash = (url: string): string => {
   const queryIndex = url.indexOf("?")
   const hashIndex = url.indexOf("#")
@@ -106,8 +104,8 @@ const stripSearchAndHash = (url: string): string => {
  */
 export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | HttpServerRequest> =>
   Effect.withFiber((fiber) => {
-    const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-    loggerDisabledRequests.add(request[Request.RequestToken])
+    const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
+    if (state !== undefined) state.loggerDisabled = true
     return self
   })
 
@@ -180,10 +178,11 @@ export const logger: <E, R>(
 ) => Effect.Effect<HttpServerResponse, E, HttpServerRequest | R> = make((httpApp) =>
   Effect.withFiber((fiber) => {
     const request = Context.getUnsafe(fiber.context, HttpServerRequest)
+    const state = Context.getOrUndefined(fiber.context, CurrentRequestState)
     const path = stripSearchAndHash(request.url)
     return Effect.withLogSpan(
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
-        if (loggerDisabledRequests.has(request[Request.RequestToken])) {
+        if (state?.loggerDisabled) {
           return exit
         } else if (exit._tag === "Failure") {
           const [response, cause] = causeResponseStripped(exit.cause)
@@ -487,7 +486,7 @@ export const cors = (options?: {
           headers: headersFromRequestOptions(request)
         }))
       }
-      appendPreResponseHandlerUnsafe(request, preResponseHandler)
+      appendPreResponseHandlerUnsafe(fiber.context, preResponseHandler)
       return httpApp
     })
 }
@@ -618,9 +617,8 @@ export const compression = (
     httpApp: Effect.Effect<HttpServerResponse, E, R>
   ): Effect.Effect<HttpServerResponse, E, R | HttpServerRequest | HttpPlatform> =>
     Effect.withFiber((fiber) => {
-      const request = Context.getUnsafe(fiber.context, HttpServerRequest)
       const compression = Context.getUnsafe(fiber.context, HttpPlatform).compression
-      appendPreResponseHandlerUnsafe(request, (request, response) =>
+      appendPreResponseHandlerUnsafe(fiber.context, (request, response) =>
         transform(compression, request.headers["accept-encoding"], response))
       return httpApp
     })
