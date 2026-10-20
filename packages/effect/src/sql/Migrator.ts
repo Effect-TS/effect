@@ -231,14 +231,12 @@ ORDER BY migration_id`,
       name: string,
       effect: Effect.Effect<unknown, unknown, Client.SqlClient>
     ) =>
-      Effect.catch(effect, (error: unknown) =>
-        Effect.fail(
-          new MigrationError({
-            cause: error,
-            kind: "Failed",
-            message: `Migration "${id}_${name}" failed`
-          })
-        ))
+      Effect.mapError(effect, (error) =>
+        new MigrationError({
+          cause: error,
+          kind: "Failed",
+          message: `Migration "${id}_${name}" failed`
+        }))
 
     // === run
 
