@@ -3506,6 +3506,28 @@ describe("Stream", () => {
       })
     )
 
+    it.effect("zipWith - does not copy the unconsumed part of a chunk on every pull", () =>
+      Effect.gen(function*() {
+        let copied = 0
+        class SliceCountingArray<A> extends globalThis.Array<A> {
+          override slice(start?: number, end?: number) {
+            const result = super.slice(start, end)
+            copied += result.length
+            return result
+          }
+        }
+        const size = 1_000
+        const large = Stream.fromArray(SliceCountingArray.from(Array.range(1, size)))
+        const singles = Stream.fromIterable(Array.range(1, size), { chunkSize: 1 })
+
+        const leftLarge = yield* Stream.zipWith(large, singles, (a, b) => a + b).pipe(Stream.runCount)
+        const rightLarge = yield* Stream.zipWith(singles, large, (a, b) => a + b).pipe(Stream.runCount)
+
+        assert.strictEqual(leftLarge, size)
+        assert.strictEqual(rightLarge, size)
+        assert.isAtMost(copied, 2 * size)
+      }))
+
     describe("zipWithArray", () => {
       it.effect("basic zipping with equal length streams", () =>
         Effect.gen(function*() {
@@ -3809,6 +3831,21 @@ describe("Stream", () => {
           const result = yield* stream1.pipe(Stream.zip(stream2), Stream.runCollect)
 
           assert.deepStrictEqual(result, [[1, "a"], [2, "b"], [3, "c"]])
+        }))
+
+      it.effect("carries leftovers across uneven chunks on both sides", () =>
+        Effect.gen(function*() {
+          const numbers = Stream.fromArrays([1, 2, 3], [4], [5, 6, 7])
+          const letters = Stream.fromArrays(["a"], ["b", "c", "d", "e"], ["f", "g", "h"])
+          const result = yield* Stream.zip(numbers, letters).pipe(Stream.chunks, Stream.runCollect)
+
+          assert.deepStrictEqual(result, [
+            [[1, "a"]],
+            [[2, "b"], [3, "c"]],
+            [[4, "d"]],
+            [[5, "e"]],
+            [[6, "f"], [7, "g"]]
+          ])
         }))
     })
 

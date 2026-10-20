@@ -3464,24 +3464,23 @@ export const zipWith: {
   left: Stream<AL, EL, RL>,
   right: Stream<AR, ER, RR>,
   f: (left: AL, right: AR) => A
-): Stream<A, EL | ER, RL | RR> => zipWithArray(left, right, zipArrays(f)))
-
-const zipArrays = <AL, AR, A>(
-  f: (left: AL, right: AR) => A
-) =>
-(
-  leftArr: Arr.NonEmptyReadonlyArray<AL>,
-  rightArr: Arr.NonEmptyReadonlyArray<AR>
-) => {
-  const minLength = Math.min(leftArr.length, rightArr.length)
-  const result: Arr.NonEmptyArray<A> = [] as any
-
-  for (let i = 0; i < minLength; i++) {
-    result.push(f(leftArr[i], rightArr[i]))
-  }
-
-  return [result, leftArr.slice(minLength), rightArr.slice(minLength)] as const
-}
+): Stream<A, EL | ER, RL | RR> =>
+  suspend(() => {
+    // Track consumed elements with cursors instead of slicing leftovers
+    let leftIndex = 0
+    let rightIndex = 0
+    return zipWithArray(left, right, (leftArr, rightArr) => {
+      const length = Math.min(leftArr.length - leftIndex, rightArr.length - rightIndex)
+      const output = Arr.makeBy(length, (i) => f(leftArr[leftIndex + i], rightArr[rightIndex + i]))
+      leftIndex += length
+      rightIndex += length
+      const leftDone = leftIndex === leftArr.length
+      const rightDone = rightIndex === rightArr.length
+      if (leftDone) leftIndex = 0
+      if (rightDone) rightIndex = 0
+      return [output, leftDone ? [] : leftArr, rightDone ? [] : rightArr]
+    })
+  }))
 
 /**
  * Zips two streams by applying a function to non-empty arrays of elements.
@@ -3660,15 +3659,7 @@ export const zipLeft: {
   <AL, EL, RL, AR, ER, RR>(
     left: Stream<AL, EL, RL>,
     right: Stream<AR, ER, RR>
-  ): Stream<AL, EL | ER, RL | RR> =>
-    zipWithArray(left, right, (leftArr, rightArr) => {
-      const minLength = Math.min(leftArr.length, rightArr.length)
-      const output = leftArr.slice(0, minLength) as Arr.NonEmptyArray<AL>
-      const leftoverLeft = leftArr.slice(minLength)
-      const leftoverRight = rightArr.slice(minLength)
-
-      return [output, leftoverLeft, leftoverRight] as const
-    })
+  ): Stream<AL, EL | ER, RL | RR> => zipWith(left, right, (a) => a)
 )
 
 /**
@@ -3702,15 +3693,7 @@ export const zipRight: {
   <AL, EL, RL, AR, ER, RR>(
     left: Stream<AL, EL, RL>,
     right: Stream<AR, ER, RR>
-  ): Stream<AR, EL | ER, RL | RR> =>
-    zipWithArray(left, right, (leftArr, rightArr) => {
-      const minLength = Math.min(leftArr.length, rightArr.length)
-      const output = rightArr.slice(0, minLength) as Arr.NonEmptyArray<AR>
-      const leftoverLeft = leftArr.slice(minLength)
-      const leftoverRight = rightArr.slice(minLength)
-
-      return [output, leftoverLeft, leftoverRight] as const
-    })
+  ): Stream<AR, EL | ER, RL | RR> => zipWith(left, right, (_, a) => a)
 )
 
 /**
