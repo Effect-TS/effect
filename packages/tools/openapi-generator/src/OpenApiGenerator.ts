@@ -153,6 +153,7 @@ export const make = Effect.gen(function*() {
       const multipart = makeMultipartSchemas(spec, options.format, resolveRef)
 
       const parsed = parseOpenApi(spec, generator, resolveRef, options.format, emitWarning, multipart.transform)
+      multipart.finish(generator.schemas)
 
       // TODO: make a CLI option ?
       const importName = "Schema"
@@ -837,46 +838,25 @@ const makeMultipartSchemas = (
     return candidate
   }
   const output = { ...definitions }
-  if (format === "httpapi") {
-    const refs: HttpApiMultipartSchemaRefs = {
+  const refs: MultipartSchemaRefs = format === "httpapi"
+    ? {
       kind: "httpapi",
       singleFile: allocate("__HttpApiMultipartSingleFile"),
       files: allocate("__HttpApiMultipartFiles")
     }
-    Rec.assignProperty(output, refs.singleFile, { type: "string", format: "binary" })
-    Rec.assignProperty(output, refs.files, { type: "array", items: { $ref: toDefinitionRef(refs.singleFile) } })
-    // Components used only by multipart bodies are inlined; shared ones get a `*Multipart` copy.
-    const shared = collectNonMultipartRefs(spec.paths, resolveRef)
-    return {
-      refs,
-      definitions: output,
-      transform: makeMultipartTransformer(output, refs, allocate, resolveRef, ($ref) => !shared.has($ref))
-    }
-  }
-  const refs: MultipartSchemaRefs = { kind: "client", singleFile: allocate("__ClientMultipartFile") }
-  Rec.assignProperty(output, refs.singleFile, { type: "string", format: "binary" })
-  // The transform adds `*Multipart` copies to `output` while parsing, so render schemas after parseOpenApi.
-  return {
-    refs,
-    definitions: output,
-    transform: makeMultipartTransformer(output, refs, allocate, resolveRef, () => false)
-  }
-}
-
-const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
-
-const makeMultipartTransformer = (
-  definitions: JsonSchema.Definitions,
-  refs: MultipartSchemaRefs,
-  allocate: (base: string) => string,
-  resolveRef: (ref: string) => unknown,
-  inline: ($ref: string) => boolean
-) => {
+    : { kind: "client", singleFile: allocate("__ClientMultipartFile") }
   const singleFileRef = toDefinitionRef(refs.singleFile)
   const filesRef = refs.kind === "httpapi" ? toDefinitionRef(refs.files) : undefined
+  Rec.assignProperty(output, refs.singleFile, { type: "string", format: "binary" })
+  if (refs.kind === "httpapi") {
+    Rec.assignProperty(output, refs.files, { type: "array", items: { $ref: singleFileRef } })
+  }
+
   const binaryComponents = new Map<string, boolean>()
   const copies = new Map<string, string>()
   const inlining = new Set<string>()
+  // Components reachable from a schema that is not a multipart body, filled in by `finish`.
+  let shared: ReadonlySet<string> = new Set()
 
   const hasBinary = (value: unknown, seen: Set<string>): boolean => {
     if (Array.isArray(value)) return value.some((item) => hasBinary(item, seen))
@@ -904,12 +884,12 @@ const makeMultipartTransformer = (
     if (name === undefined) {
       name = allocate(`${JsonPointer.unescapeToken($ref.slice(componentRefPrefix.length))}Multipart`)
       copies.set($ref, name)
-      Rec.assignProperty(definitions, name, visit(resolveRef($ref)))
+      Rec.assignProperty(output, name, visit(resolveRef($ref)))
     }
     return name
   }
 
-  // Inlines the transformed component; reference siblings still apply to it.
+  // The httpapi format inlines components that only multipart bodies use; reference siblings still apply.
   const inlineComponent = (value: Record<string, unknown>, $ref: string): unknown => {
     const { $ref: _, ...siblings } = value
     inlining.add($ref)
@@ -930,7 +910,9 @@ const makeMultipartTransformer = (
     if (Array.isArray(value)) return value.map(visit)
     if (!Predicate.isObject(value)) return value
     if (isBinaryFile(value)) return { $ref: singleFileRef }
-    if (isComponentRef(value.$ref) && inline(value.$ref) && !inlining.has(value.$ref)) {
+    if (
+      filesRef !== undefined && isComponentRef(value.$ref) && !shared.has(value.$ref) && !inlining.has(value.$ref)
+    ) {
       return inlineComponent(value, value.$ref)
     }
     const out = Rec.map(value, visit)
@@ -941,95 +923,53 @@ const makeMultipartTransformer = (
     return out
   }
 
-  return (schema: JsonSchema.JsonSchema) => visit(schema) as JsonSchema.JsonSchema
+  // Whether a component is shared is only known once every schema is registered, so `transform` hands
+  // out a placeholder that `finish` fills in after parsing.
+  const pending = new Map<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
+  const transform = (schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+    const placeholder: JsonSchema.JsonSchema = {}
+    pending.set(placeholder, schema)
+    return placeholder
+  }
+  const finish = (schemas: Readonly<Record<string, JsonSchema.JsonSchema>>): void => {
+    shared = collectComponentRefs(Object.values(schemas).filter((schema) => !pending.has(schema)), resolveRef)
+    for (const [placeholder, schema] of pending) {
+      Object.assign(placeholder, visit(schema))
+    }
+  }
+
+  return { refs, definitions: output, transform, finish }
 }
 
-// Collects every reference reachable from the paths without passing through a multipart request body.
-// Only positions that hold OpenAPI objects or schemas are followed, so `$ref` keys in examples,
-// links and other application data are never resolved.
-const collectNonMultipartRefs = (
-  paths: OpenAPISpec["paths"],
+const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
+
+// Collects every component reachable from the schemas, following references through other components.
+// Only JSON Schema keywords that hold subschemas are walked, so a `$ref` inside `default`, `const` or
+// `examples` is treated as data.
+const collectComponentRefs = (
+  schemas: ReadonlyArray<JsonSchema.JsonSchema>,
   resolveRef: (ref: string) => unknown
 ): ReadonlySet<string> => {
   const seen = new Set<string>()
-  // Resolves a reference object, returning `undefined` for non-objects and already visited references.
-  const deref = (value: unknown): Record<string, unknown> | undefined => {
-    if (!Predicate.isObject(value)) return undefined
-    if (typeof value.$ref !== "string") return value
-    if (seen.has(value.$ref)) return undefined
-    seen.add(value.$ref)
-    return deref(resolveRef(value.$ref))
-  }
-  const visitSchema = (schema: unknown): void => {
+  const visit = (schema: unknown): void => {
     if (Array.isArray(schema)) {
-      for (const item of schema) visitSchema(item)
+      for (const item of schema) visit(item)
       return
     }
     if (!Predicate.isObject(schema)) return
-    if (typeof schema.$ref === "string" && !seen.has(schema.$ref)) {
+    if (isComponentRef(schema.$ref) && !seen.has(schema.$ref)) {
       seen.add(schema.$ref)
-      visitSchema(resolveRef(schema.$ref))
+      visit(resolveRef(schema.$ref))
     }
     for (const key of subschemaKeywords) {
-      visitSchema(schema[key])
+      visit(schema[key])
     }
     for (const key of subschemaMapKeywords) {
       const map = schema[key]
-      if (Predicate.isObject(map)) {
-        for (const item of Object.values(map)) visitSchema(item)
-      }
+      if (Predicate.isObject(map)) visit(Object.values(map))
     }
   }
-  const visitContent = (content: unknown, skipMultipart: boolean): void => {
-    if (!Predicate.isObject(content)) return
-    for (const [contentType, mediaType] of Object.entries(content)) {
-      if (!Predicate.isObject(mediaType)) continue
-      if (skipMultipart && getRequestMediaTypeEncoding(contentType) === "multipart") continue
-      visitSchema(mediaType.schema)
-      const stream = mediaType["x-effect-stream"]
-      if (Predicate.isObject(stream)) {
-        visitSchema(stream.errorSchema)
-      }
-    }
-  }
-  // Parameters and headers share the `schema` and `content` fields.
-  const visitParameter = (value: unknown): void => {
-    const parameter = deref(value)
-    if (parameter === undefined) return
-    visitSchema(parameter.schema)
-    visitContent(parameter.content, false)
-  }
-  const visitParameters = (parameters: unknown): void => {
-    if (Array.isArray(parameters)) {
-      for (const parameter of parameters) visitParameter(parameter)
-    }
-  }
-  const visitOperation = (operation: unknown): void => {
-    if (!Predicate.isObject(operation)) return
-    visitParameters(operation.parameters)
-    const requestBody = deref(operation.requestBody)
-    if (requestBody !== undefined) {
-      visitContent(requestBody.content, true)
-    }
-    if (!Predicate.isObject(operation.responses)) return
-    for (const value of Object.values(operation.responses)) {
-      const response = deref(value)
-      if (response === undefined) continue
-      if (Predicate.isObject(response.headers)) {
-        for (const header of Object.values(response.headers)) visitParameter(header)
-      }
-      visitContent(response.content, false)
-    }
-  }
-  for (const methods of Object.values(paths)) {
-    const pathItem: Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>> = methods
-    visitParameters(methods.parameters)
-    for (const method of methodNames) {
-      visitOperation(
-        method === "query" ? pathItem.query ?? methods["x-oai-additionalOperations"]?.QUERY : pathItem[method]
-      )
-    }
-  }
+  for (const schema of schemas) visit(schema)
   return seen
 }
 

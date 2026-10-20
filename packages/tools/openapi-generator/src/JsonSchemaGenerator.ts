@@ -258,7 +258,12 @@ function makeWithRepresentation() {
     }
   }
 
-  return { addSchema, generate, generateHttpApi } as const
+  return {
+    addSchema,
+    generate,
+    generateHttpApi,
+    schemas: store as Readonly<Record<string, JsonSchema.JsonSchema>>
+  } as const
 }
 
 function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
