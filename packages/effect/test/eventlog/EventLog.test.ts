@@ -2,7 +2,6 @@ import { assert, describe, it } from "@effect/vitest"
 import {
   Array,
   Context,
-  Deferred,
   Effect,
   Exit,
   Layer,
@@ -1411,34 +1410,25 @@ const ValueGroup = EventGroup.empty.add({
 })
 const valueSchema = EventLog.schema(ValueGroup)
 
-// Keeps the newest entry for each key. Keyed by primary key it is correct.
-// Keyed by event it over-drops, keeping one entry for the whole group.
-const keepNewest = (key: (entry: EventJournal.Entry) => string) =>
-  EventLog.groupBatchCompaction(ValueGroup, ({ entries, forward }) => {
-    const newest = new Map<string, EventJournal.Entry>()
-    for (const { entry } of entries) {
-      const current = newest.get(key(entry))
-      if (current === undefined || EventJournal.Entry.Order(current, entry) < 0) newest.set(key(entry), entry)
-    }
-    return Effect.forEach(newest.values(), forward, { discard: true })
-  }, { remote: true })
-const keepLatest = keepNewest((entry) => entry.primaryKey)
+// Keeps the newest entry for each primary key.
+const keepLatest = EventLog.groupBatchCompaction(ValueGroup, ({ entries, forward }) => {
+  const newest = new Map<string, EventJournal.Entry>()
+  for (const { entry } of entries) {
+    const current = newest.get(entry.primaryKey)
+    if (current === undefined || EventJournal.Entry.Order(current, entry) < 0) newest.set(entry.primaryKey, entry)
+  }
+  return Effect.forEach(newest.values(), forward, { discard: true })
+}, { remote: true })
 
 const CompactionRpcs = EventLogMessage.EventLogRemoteRpcs.merge(EventLogMessage.EventLogCompactionRpcs)
 type CompactionRpcs = RpcGroup.Rpcs<typeof CompactionRpcs>
 const defaultStoreId = EventLogMessage.StoreId.make("default")
 
-// An encrypted server on memory storage, serving both RPC groups. `wrap` can
-// replace storage members to observe or hold them.
-const makeCompactionServer = Effect.fnUntraced(function*(
-  wrap: (storage: EventLogServerEncrypted.Storage["Service"]) => EventLogServerEncrypted.Storage["Service"] = (_) => _
-) {
-  const storage = Layer.effect(EventLogServerEncrypted.Storage)(
-    Effect.map(
-      EventLogServerEncrypted.makeStorageMemoryWith({ compaction: { thresholdFloor: 1, stageTtl: "12 hours" } }),
-      wrap
-    )
-  )
+// An encrypted server on memory storage, serving both RPC groups.
+const makeCompactionServer = Effect.fnUntraced(function*() {
+  const storage = EventLogServerEncrypted.layerStorageMemoryWith({
+    compaction: { thresholdFloor: 1, stageTtl: "12 hours" }
+  })
   const context = yield* Layer.build(Layer.provideMerge(EventLogServerEncrypted.layerRpcHandlers, storage))
   const compaction = Context.get(context, EventLogServerEncrypted.Storage).compaction!
   const connections: Array<(response: FromServer<CompactionRpcs>) => Effect.Effect<void>> = []
@@ -1446,15 +1436,11 @@ const makeCompactionServer = Effect.fnUntraced(function*(
     onFromServer: (response) => connections[response.clientId](response)
   }).pipe(Effect.provide(context))
 
-  // Opens a connection, recording the tag of each request it sends.
-  const connect = Effect.fnUntraced(function*(requests: Array<string>) {
+  const connect = Effect.gen(function*() {
     const clientId = connections.length
     const { client, write } = yield* RpcClient.makeNoSerialization(CompactionRpcs, {
       supportsAck: true,
-      onFromClient: ({ message }) => {
-        if (message._tag === "Request") requests.push(message.tag)
-        return server.write(clientId, message)
-      }
+      onFromClient: ({ message }) => server.write(clientId, message)
     })
     connections.push(write)
     return client
@@ -1478,12 +1464,10 @@ const makeDevice = Effect.fnUntraced(function*(
   options?: {
     readonly journal?: EventJournal.EventJournal["Service"] | undefined
     readonly compactor?: Layer.Layer<never, never, EventLog.Registry> | undefined
-    readonly optOut?: boolean | undefined
     readonly handled?: Array<string> | undefined
   }
 ) {
   const handled = options?.handled ?? []
-  const requests: Array<string> = []
   const journal = options?.journal ?? (yield* EventJournal.makeMemory)
   const handlers = Layer.mergeAll(
     EventLog.group(ValueGroup, (handlers) =>
@@ -1499,8 +1483,8 @@ const makeDevice = Effect.fnUntraced(function*(
       Layer.provide(Layer.succeed(EventLog.Identity, identity))
     )
   )
-  const remote = yield* EventLogRemote.makeEncryptedWith({ compaction: options?.optOut ? false : undefined }).pipe(
-    Effect.provideService(EventLogRemote.EventLogRemoteClient, yield* server.connect(requests)),
+  const remote = yield* EventLogRemote.makeEncrypted.pipe(
+    Effect.provideService(EventLogRemote.EventLogRemoteClient, yield* server.connect),
     Effect.provide(context)
   )
   const log = Context.get(context, EventLog.EventLog)
@@ -1509,21 +1493,13 @@ const makeDevice = Effect.fnUntraced(function*(
     journal,
     remote,
     handled,
-    requests,
     write: (id: string, value: number) => log.write({ schema: valueSchema, event: "ValueSet", payload: { id, value } })
   }
 })
 
-const countRequests = (requests: ReadonlyArray<string>, tag: string) =>
-  requests.filter((request) => request === tag).length
-
 // Moves the TestClock on in 15 minute steps, giving fibers that wait on Web
 // Crypto some real time after each one.
 const step = TestClock.adjust("15 minutes").pipe(Effect.andThen(TestClock.withLive(Effect.sleep(5))))
-
-const advance = Effect.fnUntraced(function*(hours: number) {
-  for (let i = 0; i < hours * 4; i++) yield* step
-})
 
 // Steps until `done` holds, for at most 50 hours.
 const advanceUntil = Effect.fnUntraced(function*(done: Effect.Effect<boolean, unknown>, waitingFor: string) {
@@ -1532,90 +1508,6 @@ const advanceUntil = Effect.fnUntraced(function*(done: Effect.Effect<boolean, un
     yield* step
   }
   return assert.fail(`timed out waiting until ${waitingFor}`)
-})
-
-// Writes a=1 and b=1, has a worker compact them to b=1 alone, and bootstraps
-// a tab from that snapshot on a journal the test shares with it. Then it rolls
-// back to the originals and returns once the tab's replay from the first
-// sequence is held open. `moveCursor` commits a newer entry to the shared
-// journal, as another tab's live subscription would, and `drop` fails the held
-// replay like a dropped connection.
-const rollBackAndHoldReplay = Effect.fnUntraced(function*() {
-  let armed = false
-  const replaying = yield* Deferred.make<void>()
-  const dropped = yield* Deferred.make<void>()
-  const server = yield* makeCompactionServer((storage) => ({
-    ...storage,
-    changes: (publicKey, storeId, startSequence) => {
-      if (!armed || startSequence !== (storage.firstSequence ?? 0)) {
-        return storage.changes(publicKey, storeId, startSequence)
-      }
-      armed = false
-      return Stream.unwrap(
-        Deferred.succeed(replaying, undefined).pipe(
-          Effect.andThen(Deferred.await(dropped)),
-          Effect.as(Stream.die("connection dropped"))
-        )
-      )
-    }
-  }))
-  const identity = yield* EventLog.makeIdentity
-  // The writer and the worker stop before the rollback, so only the tab replays.
-  const writerScope = yield* Scope.make()
-  const writer = yield* makeDevice(server, identity).pipe(Scope.provide(writerScope))
-  yield* writer.write("a", 1)
-  yield* writer.write("b", 1)
-  yield* advance(26)
-  yield* Scope.close(writerScope, Exit.void)
-  const workerScope = yield* Scope.make()
-  const worker = yield* makeDevice(server, identity, { compactor: keepNewest((entry) => entry.event) }).pipe(
-    Scope.provide(workerScope)
-  )
-  yield* worker.log.compact()
-  yield* Scope.close(workerScope, Exit.void)
-
-  const remoteId = worker.remote.id
-  const journal = yield* EventJournal.makeMemory
-  const handled: Array<string> = []
-  const tabScope = yield* Scope.make()
-  yield* makeDevice(server, identity, { journal, handled }).pipe(Scope.provide(tabScope))
-  const epoch = journal.remoteRollbackEpoch(remoteId)
-  yield* advanceUntil(
-    Effect.map(epoch, (epoch) => epoch !== undefined && handled.includes("b=1")),
-    "the tab bootstraps and sees the baseline epoch"
-  )
-
-  armed = true
-  const history = yield* server.compaction.history(identity.publicKey, defaultStoreId)
-  yield* server.compaction.rollback(
-    identity.publicKey,
-    defaultStoreId,
-    history.find((activation) => activation.active)!.activationId
-  )
-  yield* advanceUntil(Deferred.isDone(replaying), "the tab replays from the first sequence")
-
-  const newer = new EventJournal.Entry({
-    id: EventJournal.makeEntryIdUnsafe(),
-    event: "ValueSet",
-    primaryKey: "c",
-    payload: yield* Schema.encodeUnknownEffect(ValueGroup.events.ValueSet.payloadSchemaBinary)({ id: "c", value: 1 })
-  }, { disableChecks: true })
-  const moveCursor = journal.writeFromRemote({
-    remoteId,
-    entries: [new EventJournal.RemoteEntry({ remoteSequence: 2, entry: newer })],
-    effect: () => Effect.void
-  }).pipe(journal.withLock(defaultStoreId))
-
-  return {
-    server,
-    identity,
-    journal,
-    handled,
-    tabScope,
-    epoch,
-    moveCursor,
-    drop: Deferred.succeed(dropped, undefined)
-  }
 })
 
 describe("EventLog remote compaction", () => {
@@ -1638,41 +1530,6 @@ describe("EventLog remote compaction", () => {
 
       // A full replay ends with a=4 and b=2 too, after handling all six writes.
       assert.deepStrictEqual(reader.handled, ["a=3", "b=2", "a=4"])
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
-
-  it.effect("runs one compaction at a time across tabs sharing a journal", () =>
-    Effect.gen(function*() {
-      const inputRead = yield* Deferred.make<void>()
-      const release = yield* Deferred.make<void>()
-      // Holds the first run after Begin, so it keeps its stage open.
-      const server = yield* makeCompactionServer((storage) => ({
-        ...storage,
-        compaction: {
-          ...storage.compaction!,
-          inputHeaders: (...args) =>
-            Stream.unwrap(
-              Deferred.succeed(inputRead, undefined).pipe(
-                Effect.andThen(Deferred.await(release)),
-                Effect.as(storage.compaction!.inputHeaders(...args))
-              )
-            )
-        }
-      }))
-      const identity = yield* EventLog.makeIdentity
-      const journal = yield* EventJournal.makeMemory
-      const first = yield* makeDevice(server, identity, { journal, compactor: keepLatest })
-      const second = yield* makeDevice(server, identity, { journal, compactor: keepLatest })
-      yield* first.write("a", 1)
-      yield* first.write("a", 2)
-
-      yield* advanceUntil(Deferred.isDone(inputRead), "a run reads its input")
-      // Long enough for the other tab's next status poll and start delay.
-      yield* advance(3)
-      const begins = countRequests([...first.requests, ...second.requests], "EventLog.CompactionBegin")
-      yield* Deferred.succeed(release, undefined)
-      yield* advanceUntil(Effect.map(server.snapshots(identity.publicKey), (count) => count === 1), "the run commits")
-
-      assert.strictEqual(begins, 1)
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
   it.effect("serves a device whose cursor is inside one snapshot everything kept by the next", () =>
@@ -1704,95 +1561,6 @@ describe("EventLog remote compaction", () => {
       assert.deepStrictEqual({ cursor, handled }, {
         cursor: 2,
         handled: ["k1=1", "k2=1", "k1=2", "k3=2", "k4=2"]
-      })
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
-
-  it.effect("rewinds every device, opted out or not, to restore what an over-dropping compact removed, after a rollback to the originals", () =>
-    Effect.gen(function*() {
-      const server = yield* makeCompactionServer()
-      const identity = yield* EventLog.makeIdentity
-      const writer = yield* makeDevice(server, identity)
-      yield* writer.write("a", 1)
-      yield* writer.write("b", 1)
-      yield* advance(26)
-
-      // A worker with an empty journal compacts once and stops, keeping only b=1.
-      const workerScope = yield* Scope.make()
-      const worker = yield* makeDevice(server, identity, { compactor: keepNewest((entry) => entry.event) }).pipe(
-        Scope.provide(workerScope)
-      )
-      const compacted = yield* worker.log.compact()
-      yield* Scope.close(workerScope, Exit.void)
-
-      const devices = [
-        yield* makeDevice(server, identity),
-        yield* makeDevice(server, identity, { compactor: keepLatest, optOut: true })
-      ]
-      const remoteId = worker.remote.id
-      const epochs = Effect.forEach(devices, (device) => device.journal.remoteRollbackEpoch(remoteId))
-      yield* advanceUntil(
-        Effect.map(
-          epochs,
-          (epochs) => epochs.every((epoch) => epoch !== undefined) && devices.every((_) => _.handled.includes("b=1"))
-        ),
-        "every device bootstraps and sees the baseline epoch"
-      )
-      const bootstrapped = devices.map((device) => [...device.handled])
-
-      const history = yield* server.compaction.history(identity.publicKey, defaultStoreId)
-      yield* server.compaction.rollback(
-        identity.publicKey,
-        defaultStoreId,
-        history.find((activation) => activation.active)!.activationId
-      )
-      yield* advanceUntil(
-        Effect.sync(() => devices.every((device) => device.handled.includes("a=1"))),
-        "every device restores a=1"
-      )
-      // Compaction is wanted again, and the opted-out device is caught up.
-      yield* advance(3)
-
-      assert.deepStrictEqual({
-        compacted,
-        bootstrapped,
-        handled: devices.map((device) => device.handled),
-        epochs: yield* epochs,
-        optedOutBegins: countRequests(devices[1].requests, "EventLog.CompactionBegin")
-      }, {
-        compacted: [{ remoteId, result: "Committed" }],
-        bootstrapped: [["b=1"], ["b=1"]],
-        handled: [["b=1", "a=1"], ["b=1", "a=1"]],
-        epochs: [1, 1],
-        optedOutBegins: 0
-      })
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
-
-  it.effect("finishes a rollback replay after a reconnect, though another tab moved the shared cursor meanwhile", () =>
-    Effect.gen(function*() {
-      const { drop, epoch, handled, moveCursor } = yield* rollBackAndHoldReplay()
-
-      yield* moveCursor
-      yield* drop
-      yield* advanceUntil(Effect.sync(() => handled.includes("a=1")), "the tab restores a=1")
-
-      assert.deepStrictEqual({ handled, epoch: yield* epoch }, { handled: ["b=1", "a=1"], epoch: 1 })
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
-
-  it.effect("finishes a rollback replay after a reload, though another tab moved the shared cursor meanwhile", () =>
-    Effect.gen(function*() {
-      const { epoch, handled, identity, journal, moveCursor, server, tabScope } = yield* rollBackAndHoldReplay()
-      // The rollback is still pending until the replay is done.
-      const pending = yield* epoch
-
-      yield* Scope.close(tabScope, Exit.void)
-      yield* moveCursor
-      yield* makeDevice(server, identity, { journal, handled })
-      yield* advanceUntil(Effect.sync(() => handled.includes("a=1")), "the reloaded tab restores a=1")
-
-      assert.deepStrictEqual({ pending, handled, epoch: yield* epoch }, {
-        pending: 0,
-        handled: ["b=1", "a=1"],
-        epoch: 1
       })
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 })

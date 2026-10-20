@@ -63,7 +63,6 @@ vi.mock("tedious", async (importOriginal) => {
           active_batch_set: null,
           base_sequence: 0,
           active_kept_count: 0,
-          rollback_epoch: 0,
           no_op_at: null,
           no_op_count: 0,
           open_stage: null,

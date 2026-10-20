@@ -3,7 +3,6 @@ import { Effect, Equal, Hash, Logger, Option, Schema } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import { TestClock } from "effect/testing"
 import * as ConflictsTest from "./EventJournalConflictsTest.ts"
-import * as RemoteCursorTest from "./EventJournalRemoteCursorTest.ts"
 
 // `tail` fixes the random id bytes, so entries sharing a millisecond sort in a
 // known order by id.
@@ -71,7 +70,6 @@ const maximumEntry = ({ EventJournal }: typeof Isolated) => {
 
 describe("EventJournal", () => {
   ConflictsTest.suite(EventJournal.makeMemory)
-  RemoteCursorTest.suite(EventJournal.makeMemory)
 
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {

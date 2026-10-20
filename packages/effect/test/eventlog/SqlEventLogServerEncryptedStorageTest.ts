@@ -342,11 +342,8 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         )
         const next = yield* storageB.write(publicKey, storeId, [makeBatch(entries[3])])
 
-        const expected = { head: legacyLast, base: nothing, lagHead: nothing, rollbackEpoch: 0 }
-        assert.deepStrictEqual(
-          opened.map(({ base, head, lagHead, rollbackEpoch }) => ({ head, base, lagHead, rollbackEpoch })),
-          [expected, expected]
-        )
+        const expected = { head: legacyLast, base: nothing, lagHead: nothing }
+        assert.deepStrictEqual(opened.map(({ base, head, lagHead }) => ({ head, base, lagHead })), [expected, expected])
         assert.strictEqual(histories[0].length, 1)
         assert.isTrue(histories[0][0].active)
         assert.deepStrictEqual(histories[1], histories[0])
@@ -421,6 +418,63 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         ])
       }))
 
+    it.effect("re-appends the withdrawn input in order at the head, before later writes", () =>
+      Effect.gen(function*() {
+        const { options, publicKey } = yield* makeNamespace()
+        const storage = yield* SqlEventLogServerEncrypted.makeStorage(options)
+        const compaction = storage.compaction ?? assert.fail("Storage does not provide compaction")
+        const snapshotBatch = (marker: number, ...entryIds: Array<EventJournal.EntryId>) => ({
+          ...makeBatch(...entryIds),
+          encryptedBatch: Uint8Array.of(marker)
+        })
+        const commit = Effect.fnUntraced(function*(
+          batches: ReadonlyArray<EventLogEncryption.EncryptedBatch>,
+          virtualSequences: ReadonlyArray<number>
+        ) {
+          const { head } = yield* compaction.status(publicKey, storeId)
+          const begun = yield* compaction.begin(publicKey, storeId, { through: head })
+          if (begun._tag !== "Started") {
+            return assert.fail(`expected Started, got ${begun._tag}`)
+          }
+          yield* compaction.stagePart(
+            publicKey,
+            storeId,
+            begun.stageId,
+            0,
+            batches as Arr.NonEmptyReadonlyArray<EventLogEncryption.EncryptedBatch>
+          )
+          return yield* compaction.commit(publicKey, storeId, begun.stageId, virtualSequences)
+        })
+        // More than one 200-row chunk, each kept by g+1 as its own snapshot batch.
+        const entries = makeIds(201)
+        const originals = entries.map((id) => makeBatch(id))
+        const written = yield* storage.write(publicKey, storeId, originals)
+        yield* commit(
+          entries.map((id) => snapshotBatch(snapshotMarker, id)),
+          written.map((batch) => batch.sequence)
+        )
+        const [t1, t2, after] = makeIds(3)
+        const [tail] = yield* storage.write(publicKey, storeId, [makeBatch(t1, t2)])
+        const head = tail.sequence + 1
+        yield* commit([snapshotBatch(snapshotMarker + 1, t2)], [head])
+        const active = (yield* compaction.history(publicKey, storeId)).find((activation) => activation.active)!
+
+        // Withdraws g+2, whose input is g+1's batches, then the original [t1, t2].
+        yield* compaction.rollback(publicKey, storeId, active.activationId)
+        const [later] = yield* storage.write(publicKey, storeId, [makeBatch(after)])
+        const reappended = yield* storage.changes(publicKey, storeId, head + 1).pipe(
+          Stream.takeUntil((batch) => batch.sequence === later.sequence),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual(served(reappended), [
+          ...entries.map((_, i) => ({ sequence: head + 1 + i, marker: snapshotMarker })),
+          { sequence: head + 202, marker: 2 },
+          { sequence: head + 204, marker: 1 }
+        ])
+        assert.deepStrictEqual(ids(reappended), ids([...originals, tail, makeBatch(after)]))
+      }), { timeout: 60_000 })
+
     it.effect("resumes a partially pruned snapshot after its sweeper dies without deleting originals", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
@@ -469,10 +523,11 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         assert.isFalse(withdrawn.restorable)
         assert.isAbove(beforeB, 0)
         assert.isBelow(beforeB, batches.length)
-        assert.strictEqual(yield* countRows(table), batches.length)
+        // The originals, and their copies the rollback re-appended.
+        assert.strictEqual(yield* countRows(table), 2 * batches.length)
 
         assert.strictEqual(yield* sweepUntil(remainingRows, (count) => count === 0), 0)
-        assert.strictEqual(yield* countRows(table), batches.length)
+        assert.strictEqual(yield* countRows(table), 2 * batches.length)
         const persisted = yield* storageB.changes(publicKey, storeId, storageB.firstSequence ?? 0).pipe(
           Stream.take(batches.length),
           Stream.runCollect

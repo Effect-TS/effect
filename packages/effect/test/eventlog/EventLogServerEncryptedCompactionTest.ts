@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Clock, Effect, Exit, Layer, Stream } from "effect"
+import { Clock, Effect, Exit, Fiber, Layer, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import type * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
@@ -146,7 +146,7 @@ export const suite = <R>(
           assert.deepStrictEqual(staged.map((header) => header.entryIds), [[ids[1]]])
         }))
 
-      it.effect("releases the claim on abort and no-op, and answers a retried commit until the sweep removes the stage", () =>
+      it.effect("releases the claim on abort and no-op, and clears the no-op state on commit", () =>
         Effect.gen(function*() {
           const { compaction, ids, publicKey, seq } = yield* makeStore
           const aborted = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
@@ -156,20 +156,12 @@ export const suite = <R>(
           const afterNoOp = (yield* compaction.status(publicKey, storeId)).noOp
           const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
           yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1])])
-          const commit = compaction.commit(publicKey, storeId, stageId, [seq(1)])
-
-          const results = [yield* commit, yield* commit]
+          const commit = yield* compaction.commit(publicKey, storeId, stageId, [seq(1)])
           const afterCommit = (yield* compaction.status(publicKey, storeId)).noOp
-          yield* TestClock.adjust(2 * hour)
-          const late = yield* eventually(
-            Effect.match(commit, { onFailure: (error) => error._tag, onSuccess: (result) => result }),
-            (result) => result === "CompactionNotFound"
-          )
 
           assert.deepStrictEqual(afterNoOp, { at: seq(4), count: 1 })
-          assert.deepStrictEqual(results, ["Committed", "Committed"])
+          assert.strictEqual(commit, "Committed")
           assert.strictEqual(afterCommit, undefined)
-          assert.strictEqual(late, "CompactionNotFound")
         }))
 
       it.effect("reports as the lag head the last sequence of each storage hour once it ended a lag ago", () =>
@@ -240,24 +232,6 @@ export const suite = <R>(
           assert.deepStrictEqual(afterPrune, ["CompactionNotFound", "CompactionNotFound"])
         }).pipe(Effect.provide(storage({ compaction: { grace: "25 hours", lag: "24 hours", stageTtl: "24 hours" } }))))
 
-      it.effect("withdraws a stage when a Part repeats an id staged earlier, releasing busy", () =>
-        Effect.gen(function*() {
-          const { compaction, ids, publicKey, seq } = yield* makeStore
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
-
-          yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1])])
-          const rejected = yield* compaction.stagePart(publicKey, storeId, stageId, 1, [makeBatch(13, ids[1], ids[3])])
-            .pipe(Effect.flip)
-          const withdrawn = yield* compaction.stagePart(publicKey, storeId, stageId, 2, [makeBatch(14, ids[4])]).pipe(
-            Effect.flip
-          )
-          const next = yield* compaction.begin(publicKey, storeId, { through: seq(4) })
-
-          assert.strictEqual(rejected._tag, "CompactionInvalidRequest")
-          assert.strictEqual(withdrawn._tag, "CompactionNotFound")
-          assert.strictEqual(next._tag, "Started")
-        }))
-
       it.effect("serves the snapshot at or below the base and the originals above it", () =>
         Effect.gen(function*() {
           const { changes, commitSnapshot, compaction, ids, publicKey, seq } = yield* makeStore
@@ -266,9 +240,7 @@ export const suite = <R>(
           const fromBelow = yield* changes(0, 3)
           const fromInside = yield* changes(2, 2)
           const fromAbove = yield* changes(5, 1)
-          const { batchCount, entryCount, stageId } = started(
-            yield* compaction.begin(publicKey, storeId, { through: seq(5) })
-          )
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(5) }))
           const input = yield* Stream.runCollect(compaction.inputHeaders(publicKey, storeId, stageId))
           const fetched = yield* Stream.runCollect(compaction.fetch(publicKey, storeId, stageId, [seq(3), seq(5)]))
 
@@ -278,7 +250,6 @@ export const suite = <R>(
           assert.deepStrictEqual(summarize(fromBelow), [snapshotFirst, snapshotSecond, tail])
           assert.deepStrictEqual(summarize(fromInside), [snapshotSecond, tail])
           assert.deepStrictEqual(summarize(fromAbove), [tail])
-          assert.deepStrictEqual({ entryCount, batchCount }, { entryCount: 4, batchCount: 3 })
           assert.deepStrictEqual(summarize(input), [
             header(seq(1), [ids[1]]),
             header(seq(3), [ids[3], ids[4]]),
@@ -313,10 +284,7 @@ export const suite = <R>(
           const served = yield* changes(0, 4)
 
           assert.strictEqual(commit, "Superseded")
-          assert.deepStrictEqual({ base: status.base, rollbackEpoch: status.rollbackEpoch }, {
-            base: seq(-1),
-            rollbackEpoch: 1
-          })
+          assert.strictEqual(status.base, seq(-1))
           assert.deepStrictEqual(summarize(served), [
             header(seq(0), [ids[0], ids[1]], 0),
             header(seq(2), [ids[2], ids[3]], 2),
@@ -325,12 +293,43 @@ export const suite = <R>(
           ])
         }))
 
+      it.effect("re-appends the withdrawn snapshot's input on rollback, so its readers end with every entry", () =>
+        Effect.gen(function*() {
+          const { changes, commitSnapshot, compaction, ids, publicKey, seq } = yield* makeStore
+          const storage = yield* EventLogServerEncrypted.Storage
+          yield* commitSnapshot
+          const [sentinel] = makeIds(1)
+          const all = [...ids, sentinel].map(key)
+          // Follows changes until the sentinel, written after the rollback, arrives.
+          const follow = (startSequence: number, received: Array<string>) =>
+            storage.changes(publicKey, storeId, startSequence).pipe(
+              Stream.tap((batch) => Effect.sync(() => received.push(...batch.entryIds.map(key)))),
+              Stream.takeUntil((batch) => batch.entryIds.some((id) => key(id) === key(sentinel))),
+              Stream.runDrain
+            )
+          // One reader has read the whole snapshot, [e1] [e3, e4] [e5], and stays subscribed.
+          const whole: Array<string> = []
+          const wholeFiber = yield* Effect.forkChild(follow(seq(0), whole))
+          const beforeRollback = yield* eventually(Effect.sync(() => [...whole]), (read) => read.length === 4)
+          // The other stopped after the snapshot's first batch.
+          const [first] = yield* changes(0, 1)
+          const partway = first.entryIds.map(key)
+
+          const active = (yield* compaction.history(publicKey, storeId)).find((activation) => activation.active)!
+          yield* compaction.rollback(publicKey, storeId, active.activationId)
+          yield* storage.write(publicKey, storeId, [makeBatch(6, sentinel)])
+          yield* follow(first.sequence + first.entryIds.length, partway)
+          yield* Fiber.join(wholeFiber)
+
+          assert.sameMembers(beforeRollback, [ids[1], ids[3], ids[4], ids[5]].map(key))
+          assert.sameMembers([...new Set(whole)], all)
+          assert.sameMembers([...new Set(partway)], all)
+        }))
+
       it.effect("prunes the superseded originals after grace and then refuses to roll back to them", () =>
         Effect.gen(function*() {
           const { changes, commitSnapshot, compaction, publicKey, seq } = yield* makeStore
-          const committedAt = yield* Clock.currentTimeMillis
           yield* commitSnapshot
-          const { nextSweepAt } = yield* compaction.status(publicKey, storeId)
           const [originals, snapshot] = yield* compaction.history(publicKey, storeId)
 
           yield* TestClock.adjust(30 * day - minute)
@@ -343,7 +342,6 @@ export const suite = <R>(
           const rollback = yield* compaction.rollback(publicKey, storeId, snapshot.activationId).pipe(Effect.flip)
           const served = yield* changes(0, 3)
 
-          assert.strictEqual(nextSweepAt, committedAt + 30 * day)
           assert.deepStrictEqual({ base: originals.base, active: originals.active }, { base: seq(-1), active: false })
           assert.deepStrictEqual({ beforeGrace, afterGrace }, { beforeGrace: true, afterGrace: false })
           assert.deepStrictEqual(rollback.reason, "PruneStarted")
