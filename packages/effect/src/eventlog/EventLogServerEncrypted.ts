@@ -13,6 +13,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
+import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Uuid from "../internal/uuid.ts"
@@ -189,6 +190,10 @@ export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Rp
  * whose last sequence is at or after `startSequence`, followed by newly stored
  * batches.
  *
+ * Storages that support remote compaction provide `compaction`. With an active
+ * snapshot, `changes` serves snapshot batches by their virtual sequences for a
+ * start sequence at or below the snapshot base, then the originals above it.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -218,7 +223,223 @@ export class Storage extends Context.Service<Storage, {
     storeId: StoreId,
     startSequence: number
   ) => Stream.Stream<EncryptedRemoteBatch>
+  readonly compaction?: StorageCompaction | undefined
 }>()("effect/eventlog/EventLogServer/Storage") {}
+
+/**
+ * Storage primitives for encrypted remote compaction.
+ *
+ * **Details**
+ *
+ * The server owns policy and checks: the trigger threshold, lag, no-op
+ * backoff, commit checks and virtual sequence assignment. Each primitive here
+ * is atomic per store.
+ *
+ * A store always has one active activation. Before the first commit it is the
+ * originals, with base `firstSequence - 1`. `begin` opens a stage pinned to the
+ * active activation and to `through`. The stage claim expires `stageTtl` after
+ * begin or the latest stored Part, and `begin` takes over an expired claim.
+ * Stage-scoped primitives fail with `CompactionNotFound` once the stage has
+ * expired, been withdrawn, committed (except `commit` itself) or belongs to
+ * another store.
+ *
+ * `stagePart` stores one segment of encrypted snapshot batches. A segment that
+ * is already stored answers `AlreadyStored` and stores nothing. A Part that
+ * repeats an entry id staged earlier fails with `CompactionInvalidRequest` and
+ * withdraws the stage. `commit` takes the virtual start sequence of every staged
+ * batch in position order, and activates the staged set only if the pinned
+ * activation is still active.
+ *
+ * `rollback` reactivates the previous generation under a new activation id and
+ * bumps `rollbackEpoch`. A sweep on `Clock` prunes a generation, with the
+ * originals it replaced, `grace` after it was superseded or withdrawn.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface StorageCompaction {
+  readonly status: (publicKey: string, storeId: StoreId) => Effect.Effect<CompactionStoreStatus>
+  readonly begin: (
+    publicKey: string,
+    storeId: StoreId,
+    options: { readonly through: number }
+  ) => Effect.Effect<CompactionBeginResult>
+  /**
+   * Batch headers in input order: the pinned batch set, then the originals in
+   * `(base, through]`.
+   */
+  readonly inputHeaders: (
+    publicKey: string,
+    storeId: StoreId,
+    stageId: string
+  ) => Stream.Stream<CompactionBatchHeader, CompactionNotFound>
+  /**
+   * Input batches by their input sequence: snapshot batches at or below the
+   * pinned base, originals above it.
+   */
+  readonly fetch: (
+    publicKey: string,
+    storeId: StoreId,
+    stageId: string,
+    sequences: ReadonlyArray<number>
+  ) => Stream.Stream<EncryptedRemoteBatch, CompactionNotFound>
+  readonly stagePart: (
+    publicKey: string,
+    storeId: StoreId,
+    stageId: string,
+    segment: number,
+    batches: Arr.NonEmptyReadonlyArray<EncryptedBatch>
+  ) => Effect.Effect<"Stored" | "AlreadyStored", CompactionInvalidRequest | CompactionNotFound>
+  /**
+   * Staged batch headers in position order (segment, then batch index).
+   */
+  readonly stagedHeaders: (
+    publicKey: string,
+    storeId: StoreId,
+    stageId: string
+  ) => Stream.Stream<{ readonly position: number; readonly entryIds: ReadonlyArray<EntryId> }, CompactionNotFound>
+  /**
+   * Answers a retried commit from the activation the stage created.
+   */
+  readonly commit: (
+    publicKey: string,
+    storeId: StoreId,
+    stageId: string,
+    virtualSequences: ReadonlyArray<number>
+  ) => Effect.Effect<"Committed" | "Superseded", CompactionNotFound>
+  readonly recordNoOp: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void, CompactionNotFound>
+  /**
+   * Releases an open stage. A late abort is a no-op.
+   */
+  readonly abort: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void>
+  readonly withdraw: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void>
+  readonly rollback: (
+    publicKey: string,
+    storeId: StoreId,
+    expectedActivationId: string
+  ) => Effect.Effect<string, CompactionRollbackError>
+  /**
+   * Every activation of the store, oldest first.
+   */
+  readonly history: (publicKey: string, storeId: StoreId) => Effect.Effect<ReadonlyArray<CompactionActivation>>
+}
+
+/**
+ * The compaction state of one store.
+ *
+ * **Details**
+ *
+ * `base` is `firstSequence - 1` while the originals are active. `lagHead` is
+ * the highest last sequence in a storage-time hour that ended before
+ * `now - lag`. `nextSweepAt` is the earliest time anything in the store can be
+ * pruned.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface CompactionStoreStatus {
+  readonly head: number
+  readonly base: number
+  readonly activeKeptCount: number
+  readonly lagHead: number
+  readonly rollbackEpoch: number
+  readonly noOp: { readonly at: number; readonly count: number } | undefined
+  readonly openStage: { readonly expiresAt: number } | undefined
+  readonly nextSweepAt: number | undefined
+}
+
+/**
+ * The result of opening a compaction stage.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type CompactionBeginResult = {
+  readonly _tag: "Started"
+  readonly stageId: string
+  readonly entryCount: number
+  readonly batchCount: number
+} | {
+  readonly _tag: "Busy"
+  readonly expiresAt: number
+}
+
+/**
+ * The header of one compaction input batch.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface CompactionBatchHeader {
+  readonly sequence: number
+  readonly entryIds: ReadonlyArray<EntryId>
+}
+
+/**
+ * One entry of a store's activation log.
+ *
+ * **Details**
+ *
+ * `keptCount` is `undefined` for the originals. `restorable` is `false` once
+ * the generation's prune has started.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface CompactionActivation {
+  readonly activationId: string
+  readonly base: number
+  readonly keptCount: number | undefined
+  readonly active: boolean
+  readonly supersededAt: number | undefined
+  readonly restorable: boolean
+}
+
+/**
+ * Error raised when a compaction stage has expired, was withdrawn or committed,
+ * or is unknown to the store.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class CompactionNotFound extends Data.TaggedError("CompactionNotFound")<{
+  readonly stageId: string
+}> {}
+
+/**
+ * Error raised when a compaction Part fails validation.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class CompactionInvalidRequest extends Data.TaggedError("CompactionInvalidRequest")<{
+  readonly stageId: string
+  readonly message: string
+}> {}
+
+/**
+ * Error raised when a rollback is refused.
+ *
+ * **Details**
+ *
+ * `NotActive` means the expected activation is not the active one,
+ * `NoPrevious` that there is no earlier generation, and `PruneStarted` that
+ * the previous generation has started to be pruned.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class CompactionRollbackError extends Data.TaggedError("CompactionRollbackError")<{
+  readonly reason: "NotActive" | "NoPrevious" | "PruneStarted"
+}> {}
 
 /**
  * Creates an in-memory encrypted server `Storage`.
