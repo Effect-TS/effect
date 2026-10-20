@@ -1,6 +1,9 @@
 import { afterAll, assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
@@ -81,6 +84,57 @@ const makeHandler = (
 }
 
 describe("HttpDecompression", () => {
+  it.effect("shares buffered reads through modify and rejects stream reuse with a middleware defect", () =>
+    Effect.gen(function*() {
+      const payload = "compressed payload"
+      const body = yield* Effect.promise(() => compress(payload, ["gzip"]))
+      const request = HttpServerRequest.fromClientRequest(
+        HttpClientRequest.post("http://localhost/").pipe(
+          HttpClientRequest.setHeader("content-encoding", "gzip"),
+          HttpClientRequest.bodyStream(Stream.succeed(body))
+        )
+      )
+      yield* Effect.gen(function*() {
+        const decompressed = yield* HttpServerRequest.HttpServerRequest
+        assert.strictEqual(yield* decompressed.text, payload)
+        const cached = yield* Effect.exit(decompressed.modify({ url: "/copy" }).text)
+        const reused = yield* Effect.exit(Stream.runDrain(decompressed.stream))
+        assert.deepStrictEqual({
+          cached: Exit.isSuccess(cached) ? cached.value : Cause.pretty(cached.cause),
+          defect: Exit.isFailure(reused) && Cause.hasDies(reused.cause),
+          middleware: Exit.isFailure(reused) && /middleware/i.test(String(Cause.squash(reused.cause)))
+        }, { cached: payload, defect: true, middleware: true })
+        return HttpServerResponse.empty()
+      }).pipe(
+        HttpMiddleware.decompression(),
+        Effect.provideService(HttpServerRequest.HttpServerRequest, request)
+      )
+    }))
+
+  it.effect("headers-only toWeb leaves a compressed client-backed payload readable", () =>
+    Effect.gen(function*() {
+      const payload = "compressed payload"
+      const body = yield* Effect.promise(() => compress(payload, ["gzip"]))
+      const request = HttpServerRequest.fromClientRequest(
+        HttpClientRequest.post("http://localhost/").pipe(
+          HttpClientRequest.setHeader("content-encoding", "gzip"),
+          HttpClientRequest.setHeader("x-test", "headers-only"),
+          HttpClientRequest.bodyStream(Stream.succeed(body))
+        )
+      )
+      yield* Effect.gen(function*() {
+        const decompressed = yield* HttpServerRequest.HttpServerRequest
+        const web = yield* HttpServerRequest.toWeb(decompressed)
+        assert.strictEqual(web.headers.get("x-test"), "headers-only")
+        yield* Effect.yieldNow
+        assert.strictEqual(yield* decompressed.text, payload)
+        return HttpServerResponse.empty()
+      }).pipe(
+        HttpMiddleware.decompression(),
+        Effect.provideService(HttpServerRequest.HttpServerRequest, request)
+      )
+    }))
+
   for (const accessor of ["json", "text", "arrayBuffer", "stream"] as const) {
     it(`decompresses a gzip body read via ${accessor} and hides the encoding headers`, async () => {
       const response = await post(

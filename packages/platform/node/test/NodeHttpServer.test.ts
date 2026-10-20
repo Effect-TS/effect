@@ -2,7 +2,7 @@
 import { NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, Formatter, Logger, Option, References } from "effect"
+import { ByteSize, Cause, Effect, Exit, Formatter, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -57,6 +57,28 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  for (const streaming of [false, true]) {
+    it.effect(`rejects a first request body read after a ${streaming ? "streaming" : "non-stream"} response finishes`, () =>
+      Effect.gen(function*() {
+        let captured: HttpServerRequest.HttpServerRequest | undefined
+        yield* HttpServer.serveEffect(Effect.gen(function*() {
+          captured = yield* HttpServerRequest.HttpServerRequest
+          return streaming
+            ? HttpServerResponse.stream(Stream.succeed(new TextEncoder().encode("done")))
+            : HttpServerResponse.text("done")
+        }))
+        const response = yield* HttpClient.post("/", { body: HttpBody.text("unread") })
+        assert.strictEqual(yield* response.text, "done")
+        assert.isDefined(captured)
+        const exit = yield* Effect.exit(Stream.runDrain(captured!.stream))
+        assert.isTrue(Exit.isFailure(exit), "a first read after response completion must fail")
+        if (Exit.isFailure(exit)) {
+          assert.isTrue(Cause.hasDies(exit.cause), "late reads must be defects, not typed parse errors")
+          assert.match(String(Cause.squash(exit.cause)), /after.*response|response.*finish/i)
+        }
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  }
+
   it.effect.each([8 * 1024, 512 * 1024])(
     "delivers a partial-read 413 and drains or closes for %i leftover bytes",
     (leftoverBytes) =>

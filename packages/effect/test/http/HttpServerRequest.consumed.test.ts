@@ -44,6 +44,7 @@ describe("request body consumption", () => {
           const request = makeRequest()
           assert.strictEqual(yield* request.text, payload)
           assert.strictEqual(yield* request.text, payload)
+          assert.strictEqual(yield* request.modify({ url: "/copy" }).text, payload)
           assertDefect(yield* Effect.exit(Stream.runDrain(request.stream)), /middleware|already.*read/i)
         }))
 
