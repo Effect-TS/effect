@@ -3,6 +3,7 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Exit, FileSystem, Layer, Option, PubSub, Queue, Schema } from "effect"
 import * as ConflictsTest from "effect-test/eventlog/EventJournalConflictsTest"
+import * as RemoteCursorTest from "effect-test/eventlog/EventJournalRemoteCursorTest"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -91,6 +92,7 @@ const importFromOtherProcess = (filename: string, msecs: number) => {
 
 describe("SqlEventJournal", () => {
   ConflictsTest.suite(makeJournal)
+  RemoteCursorTest.suite(makeJournal)
 
   it.effect("deduplicates overlapping remote entries within one incoming array", () =>
     Effect.gen(function*() {
