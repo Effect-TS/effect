@@ -12,7 +12,17 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import {
+  Etag,
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpEffect,
+  HttpPlatform,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse
+} from "effect/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -399,6 +409,52 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
 })
 
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
+  it.effect("runs pre-response handlers once per response across retries", () =>
+    Effect.gen(function*() {
+      class Middleware extends HttpApiMiddleware.Service<Middleware>()("PreResponseRetry", {}) {}
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/fixture", { success: Schema.String }).middleware(Middleware)
+        )
+      )
+      let attempts = 0
+      const MiddlewareLayer = Layer.succeed(Middleware)((effect) =>
+        Effect.gen(function*() {
+          attempts++
+          yield* HttpEffect.appendPreResponseHandler((_request, response) =>
+            Effect.succeed(HttpServerResponse.setHeader(
+              response,
+              "x-handler-runs",
+              String(Number(response.headers["x-handler-runs"] ?? "0") + 1)
+            ))
+          )
+          const response = yield* effect
+          return HttpServerResponse.setStatus(response, attempts === 1 ? 503 : 200)
+        })
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("get", () =>
+          Effect.succeed("ok")))
+      // Resolve the URL once so the transport receives the same request on both attempts.
+      const client = yield* HttpApiTest.groups(Api, ["test"], { baseUrl: "" }).pipe(
+        Effect.provide(GroupLayer),
+        Effect.provide(MiddlewareLayer),
+        Effect.provide(HttpApiMiddleware.layerClient(Middleware, ({ next, request }) =>
+          next(HttpClientRequest.setUrl(request, "http://localhost:3000/fixture")).pipe(
+            Effect.flatMap(HttpClientResponse.filterStatusOk),
+            Effect.retry({ times: 1 })
+          )))
+      )
+      const response = yield* client.test.get({ responseMode: "response-only" }).pipe(
+        Effect.provideService(HttpClient.TracerDisabledWhen, () =>
+          true)
+      )
+
+      assert.strictEqual(attempts, 2)
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["x-handler-runs"], "1")
+    }))
+
   it.effect("runs registered pre-response handlers", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
