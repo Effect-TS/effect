@@ -2607,7 +2607,7 @@ const wrapPropertyKeyIssue = (
  * floating point or integer, with optional exponent
  * @internal
  */
-export const FINITE_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+export const FINITE_PATTERN = "[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?"
 
 /**
  * Returns the object keys that match the index signature parameter schema.
@@ -4942,18 +4942,12 @@ const partFromString = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
  */
 export const STRING_PATTERN = "[\\s\\S]*?"
 
-// Matches the same strings as FINITE_PATTERN, in linear time. FINITE_PATTERN's
-// `\d*\.?\d+` backtracks quadratically on rejected digit runs such as "111…x",
-// so it is only published (JSON Schema, arbitrary), never run.
-const FINITE_RUNTIME_PATTERN = "[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?"
+const isStringFiniteRegExp = new globalThis.RegExp(`^${FINITE_PATTERN}$`)
 
-const isStringFiniteRegExp = new globalThis.RegExp(`^${FINITE_RUNTIME_PATTERN}$`)
-
-const isStringNumberRegExp = new globalThis.RegExp(`^(?:${FINITE_RUNTIME_PATTERN}|Infinity|-Infinity|NaN)$`)
+const isStringNumberRegExp = new globalThis.RegExp(`^(?:${FINITE_PATTERN}|Infinity|-Infinity|NaN)$`)
 
 /** @internal */
 export function isStringFinite(annotations?: Schema.Annotations.Filter) {
-  const pattern = `^${FINITE_PATTERN}$`
   return isPattern(
     isStringFiniteRegExp,
     {
@@ -4962,10 +4956,7 @@ export function isStringFinite(annotations?: Schema.Annotations.Filter) {
         id: "effect/schema/isStringFinite",
         payload: null
       },
-      toJsonSchema: () => ({ pattern }),
-      arbitraryConstraint: {
-        patterns: [{ source: pattern, flags: "" }]
-      },
+      toJsonSchema: () => ({ pattern: isStringFiniteRegExp.source }),
       ...annotations
     }
   )
