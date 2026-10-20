@@ -5079,22 +5079,18 @@ describe("Effect", () => {
     it.effect("recomputes after an invalidation during an in-flight run", () =>
       Effect.gen(function*() {
         let runs = 0
-        const started = yield* Deferred.make<void>()
         const release = yield* Deferred.make<void>()
         const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
-          Effect.suspend(() => {
+          Effect.gen(function*() {
             const run = ++runs
-            if (run > 1) return Effect.succeed(run)
-            return Deferred.succeed(started, void 0).pipe(
-              Effect.andThen(Deferred.await(release)),
-              Effect.as(run)
-            )
+            if (run === 1) yield* Deferred.await(release)
+            return run
           }),
           "1 hour"
         )
 
         const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-        yield* Deferred.await(started)
+        assert.strictEqual(runs, 1)
         yield* invalidate
         yield* Deferred.succeed(release, void 0)
         assert.strictEqual(yield* Fiber.join(first), 1)
@@ -5106,29 +5102,24 @@ describe("Effect", () => {
     it.effect("keeps existing callers on the invalidated run without letting it replace the new value", () =>
       Effect.gen(function*() {
         let runs = 0
-        const started = yield* Deferred.make<void>()
         const release = yield* Deferred.make<void>()
         const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
-          Effect.suspend(() => {
+          Effect.gen(function*() {
             const run = ++runs
-            if (run > 1) return Effect.succeed(run)
-            return Deferred.succeed(started, void 0).pipe(
-              Effect.andThen(Deferred.await(release)),
-              Effect.as(run)
-            )
+            if (run === 1) yield* Deferred.await(release)
+            return run
           }),
           "1 hour"
         )
 
         const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-        yield* Deferred.await(started)
-        const waiter = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 1)
         yield* invalidate
         const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 2)
+        assert.strictEqual(yield* Fiber.join(fresh), 2)
         yield* Deferred.succeed(release, void 0)
         assert.strictEqual(yield* Fiber.join(owner), 1)
-        assert.strictEqual(yield* Fiber.join(waiter), 1)
-        assert.strictEqual(yield* Fiber.join(fresh), 2)
         assert.strictEqual(yield* cached, 2)
         assert.strictEqual(runs, 2)
       }))
