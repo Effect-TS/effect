@@ -99,7 +99,14 @@ export const suite = <R>(
   }) => Layer.Layer<EventLogServerEncrypted.Storage, unknown, R>,
   dependencies: Layer.Layer<R, unknown>
 ) =>
-  it.layer(Layer.provideMerge(storage({}), dependencies), { concurrent: false, timeout: "60 seconds" })(
+  it.layer(
+    Layer.provideMerge(
+      storage({}),
+      // Keep client connection deadlines on real time, but storage and sweeps on TestClock.
+      Layer.provide(dependencies, Layer.succeed(Clock.Clock)(Clock.Clock.defaultValue()))
+    ),
+    { concurrent: false, timeout: "60 seconds" }
+  )(
     `Encrypted compaction storage (${name})`,
     (it) => {
       it.effect("slides a stage's claim on each Part and rejects a stale Part after a steal", () =>

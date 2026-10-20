@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Array as Arr, Deferred, Effect, Exit, Fiber, Layer, Scope, Stream } from "effect"
+import { Array as Arr, Clock, Deferred, Effect, Exit, Fiber, Layer, Scope, Stream } from "effect"
 import * as Digest from "effect/crypto/Digest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -304,8 +304,14 @@ const served = (batches: ReadonlyArray<EventLogEncryption.EncryptedRemoteBatch>)
 // SQL-only compaction scenarios, run under the TestClock.
 export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unknown>) =>
   it.layer(
-    Layer.mergeAll(Reactivity.layer, EventLogEncryption.layerSubtle, layer),
-    { timeout: "60 seconds" }
+    Layer.mergeAll(
+      Reactivity.layer,
+      EventLogEncryption.layerSubtle,
+      // Only the SQL client uses real time; storage still observes TestClock.
+      Layer.provide(layer, Layer.succeed(Clock.Clock)(Clock.Clock.defaultValue()))
+    ),
+    // Tests share TestClock, so advancing one must not expire another test's stage.
+    { concurrent: false, timeout: "60 seconds" }
   )(`SqlEventLogServerEncrypted compaction storage (${name})`, (it) => {
     it.effect("seeds a store written before the upgrade once when two instances open it together", () =>
       Effect.gen(function*() {
