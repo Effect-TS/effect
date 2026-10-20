@@ -579,15 +579,18 @@ export const make = Effect.fnUntraced(function*<
     })
   }
 
-  // update metrics for active servers
-  const typeAttributes = Metric.CurrentMetricAttributes.context({ type: entity.type })
-  yield* Effect.sync(() => {
-    ClusterMetrics.entities.updateUnsafe(BigInt(activeServers.size), typeAttributes)
-  }).pipe(
-    Effect.andThen(Effect.sleep(1000)),
-    Effect.forever,
-    Effect.forkIn(managerScope)
+  // The series reads the active entity count on snapshot, so an idle runner
+  // does no work.
+  const entitiesSeries = Metric.registerUnsafe(
+    Metric.withAttributes(ClusterMetrics.entities, { type: entity.type }),
+    context as Context.Context<never>,
+    {
+      get: () => ({ value: BigInt(activeServers.size) }),
+      update: constVoid,
+      modify: constVoid
+    }
   )
+  yield* Scope.addFinalizer(managerScope, Effect.sync(entitiesSeries.remove))
 
   function sendEnvelope(server: EntityState, message: Message.IncomingEnvelope): Effect.Effect<void> {
     const entry = server.activeRequests.get(message.envelope.requestId)

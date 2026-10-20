@@ -1071,6 +1071,30 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(TestSharding), Effect.provideService(Metric.MetricRegistry, registry))
   })
 
+  it.effect("reports the active entity count on snapshot until the entity manager closes", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    const entityCounts = () =>
+      Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
+        .filter((metric) => metric.id === ClusterMetrics.entities.id && metric.attributes?.type === "TestEntity")
+        .map((metric) => metric.state)
+    return Effect.gen(function*() {
+      yield* Effect.gen(function*() {
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        yield* makeClient("1").NeverVolatile().pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(entityCounts(), [{ value: BigInt(1) }])
+
+        // Well within a second, so the count cannot come from a periodic update
+        yield* makeClient("2").NeverVolatile().pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(entityCounts(), [{ value: BigInt(2) }])
+      }).pipe(Effect.provide(TestSharding))
+
+      assert.deepStrictEqual(entityCounts(), [])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
   it.effect("reports the largest entity mailbox size per type by default", () => {
     const registry: Metric.MetricRegistry = new Map()
     const mailboxSizeMax = () =>
