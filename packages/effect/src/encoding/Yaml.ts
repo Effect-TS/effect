@@ -455,14 +455,14 @@ class YamlParser {
       const blankLines = this.skipBlankLines()
       const next = this.lines[this.index]
       if (next === undefined || next.indent <= parentIndent) break
-      if (next.tabIndent) this.fail(next, "Tabs cannot be used for YAML indentation")
+      this.rejectTabIndent(next)
       // Quotes in plain continuations are literal.
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
       const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
       if (text.length === 0 || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(text))) break
       if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
-      this.failOnTabIndentedBlankLines(blankLines, parentIndent)
+      this.rejectTabIndentedBlankLines(blankLines, parentIndent)
       output += foldLineBreak(blankLines) + text
       this.index++
       terminated = comment !== -1
@@ -487,12 +487,12 @@ class YamlParser {
         output += line.slice(0, -1)
       } else {
         const blankLines = this.skipBlankLines()
-        this.failOnTabIndentedBlankLines(blankLines, parentIndent)
+        this.rejectTabIndentedBlankLines(blankLines, parentIndent)
         output += trimFoldedEnd(line, quote) + foldLineBreak(blankLines)
       }
       const next = this.lines[this.index++]
       if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
-      if (next.tabIndent) this.fail(next, "Tabs cannot be used for YAML indentation")
+      this.rejectTabIndent(next)
       if (next.raw.trim().length > 0 && next.indent <= parentIndent) {
         this.fail(next, "Invalid quoted scalar indentation")
       }
@@ -507,37 +507,33 @@ class YamlParser {
     const start = this.index
     let end = start
     let contentIndent = Number.isNaN(explicitIndent) ? undefined : parentIndent + explicitIndent
-    let leadingEmpty: Line | undefined
     let hasContent = false
 
     while (end < this.lines.length) {
       const line = this.lines[end]
-      // Only spaces make a line empty here; a tab after the indentation is content.
+      // Only spaces make a line empty; a tab after the indentation is content.
       if (/[^ ]/.test(line.raw)) {
-        if (line.indent <= parentIndent) {
-          if (line.tabIndent) this.fail(line, "Tabs cannot be used for YAML indentation")
-          break
-        }
-        // The first non-empty line sets the indentation; a less indented comment ends the scalar.
-        if (contentIndent === undefined) {
-          if (leadingEmpty !== undefined && leadingEmpty.indent > line.indent) {
-            this.fail(leadingEmpty, "Leading empty lines cannot be more indented than the block scalar content")
+        if (contentIndent === undefined && line.indent > parentIndent) {
+          // The first non-empty line sets the indentation, which no leading empty line may exceed.
+          const deeper = this.lines.slice(start, end).find((empty) => empty.indent > line.indent)
+          if (deeper !== undefined) {
+            this.fail(deeper, "Leading empty lines cannot be more indented than the block scalar content")
           }
           contentIndent = line.indent
         }
-        if (line.indent < contentIndent) {
-          if (line.tabIndent) this.fail(line, "Tabs cannot be used for YAML indentation")
-          if (line.text.length === 0) break
+        if (contentIndent !== undefined && line.indent >= contentIndent) {
+          hasContent = true
+        } else {
+          this.rejectTabIndent(line)
+          // A less indented line or comment ends the scalar.
+          if (line.indent <= parentIndent || line.text.length === 0) break
           this.fail(line, `Expected block scalar indentation of ${contentIndent} spaces`)
         }
-        hasContent = true
-      } else if (contentIndent === undefined && line.indent > (leadingEmpty?.indent ?? 0)) {
-        leadingEmpty = line
       }
       end++
     }
 
-    // Whitespace past the indentation is content only when the scalar has content.
+    // Whitespace past the indentation is content only once the scalar has a content line.
     const content = this.lines.slice(start, end).map((line) => hasContent ? line.raw.slice(contentIndent) : "")
     this.index = end
 
@@ -572,10 +568,14 @@ class YamlParser {
     return chomp === "clip" && contentEnd > 0 && trailingBreaks > 0 ? `${output}\n` : output
   }
 
-  private failOnTabIndentedBlankLines(count: number, parentIndent: number): void {
+  private rejectTabIndent(line: Line): void {
+    if (line.tabIndent) this.fail(line, "Tabs cannot be used for YAML indentation")
+  }
+
+  private rejectTabIndentedBlankLines(count: number, parentIndent: number): void {
     for (let index = this.index - count; index < this.index; index++) {
       const line = this.lines[index]
-      if (line.tabIndent && line.indent <= parentIndent) this.fail(line, "Tabs cannot be used for YAML indentation")
+      if (line.indent <= parentIndent) this.rejectTabIndent(line)
     }
   }
 
@@ -602,7 +602,7 @@ class YamlParser {
           this.fail(this.lines[this.index], "Multiple YAML documents are not supported")
         }
       } else {
-        if (line.tabIndent) this.fail(line, "Tabs cannot be used for YAML indentation")
+        this.rejectTabIndent(line)
         return
       }
     }
@@ -634,7 +634,7 @@ export const parse = (input: string): unknown => {
       text: stripComment(raw.slice(indentation)),
       indent: indentation,
       number: index + 1,
-      // Checked when the line is read as structure; block scalar content may hold tabs.
+      // Rejected where the line is read as structure; block scalar content may hold tabs.
       tabIndent: raw[indentation] === "\t"
     }
   })
