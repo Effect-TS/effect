@@ -20,6 +20,17 @@ describe("RequestResolver.fromEffect", () => {
 
       assert.deepStrictEqual(values, ["first", "second"])
     }))
+
+  it.effect("does not inherit a service absent from the caller context", () =>
+    Effect.gen(function*() {
+      const resolver = RequestResolver.fromEffect<GetTenant>(() => currentTenant)
+      const values = yield* Effect.all([
+        Effect.request(new GetTenant({ id: 1 }), resolver).pipe(Effect.provideService(Tenant, "private-tenant")),
+        Effect.request(new GetTenant({ id: 2 }), resolver)
+      ], { concurrency: "unbounded" })
+
+      assert.deepStrictEqual(values, ["private-tenant", "missing"])
+    }))
 })
 
 for (const constructor of ["make", "makeGrouped"] as const) {
