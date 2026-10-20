@@ -432,8 +432,18 @@ function compileJsonSchema(
         return recur(representation.thunk, [...path, "thunk"], dependencies)
       case "Never":
         return { not: {} }
-      case "String":
-        return { type: "string" }
+      case "String": {
+        const content = representation.content
+        return {
+          type: "string",
+          ...(content === undefined ? undefined : {
+            contentMediaType: content.mediaType,
+            ...(content.schema === undefined ? undefined : {
+              contentSchema: recur(content.schema, [...path, "content", "schema"], [])
+            })
+          })
+        }
+      }
       case "Number":
         return {
           anyOf: [

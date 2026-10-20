@@ -52,6 +52,18 @@ describe("SchemaRepresentation.toRepresentations", () => {
           { _tag: "Reference", $ref: "Tool.ContentEncoded" }
         ],
         references: {
+          "Tool.Content": {
+            _tag: "Objects",
+            annotations: { identifier: "Tool.Content" },
+            propertySignatures: [{
+              name: "text",
+              type: { _tag: "String", checks: [] },
+              isOptional: false,
+              isMutable: false
+            }],
+            indexSignatures: [],
+            checks: []
+          },
           "Tool.ContentEncoded": {
             _tag: "String",
             annotations: {
@@ -59,9 +71,50 @@ describe("SchemaRepresentation.toRepresentations", () => {
               contentMediaType: "application/json",
               "~identifier": "Tool.Content"
             },
-            checks: []
+            checks: [],
+            content: {
+              mediaType: "application/json",
+              schema: { _tag: "Reference", $ref: "Tool.Content" }
+            }
           }
         }
+      })
+    })
+
+    it("keeps strings with different content distinct", () => {
+      const document = SchemaRepresentation.toRepresentations([
+        Schema.fromJsonString(Schema.Boolean).ast,
+        Schema.fromJsonString(Schema.String).ast
+      ])
+
+      assert.deepStrictEqual(document, {
+        representations: [
+          {
+            _tag: "String",
+            annotations: {
+              expected: "a string that will be decoded as JSON",
+              contentMediaType: "application/json"
+            },
+            checks: [],
+            content: {
+              mediaType: "application/json",
+              schema: { _tag: "Boolean", checks: [] }
+            }
+          },
+          {
+            _tag: "String",
+            annotations: {
+              expected: "a string that will be decoded as JSON",
+              contentMediaType: "application/json"
+            },
+            checks: [],
+            content: {
+              mediaType: "application/json",
+              schema: { _tag: "String", checks: [] }
+            }
+          }
+        ],
+        references: {}
       })
     })
 

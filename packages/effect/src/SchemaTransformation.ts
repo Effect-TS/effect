@@ -20,6 +20,7 @@ import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import { format, formatDate, formatJson } from "./Formatter.ts"
 import { dual } from "./Function.ts"
+import * as InternalContent from "./internal/schema/content.ts"
 import * as Option from "./Option.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
@@ -1891,7 +1892,10 @@ export function fromJsonString(options?: {
 }): Transformation<unknown, string> {
   return new Transformation(
     SchemaGetter.parseJson(options ?? {}),
-    SchemaGetter.stringifyJson(options)
+    InternalContent.setContent(SchemaGetter.stringifyJson(options), {
+      mediaType: "application/json",
+      preserveSchema: options?.reviver === undefined && options?.replacer === undefined
+    })
   )
 }
 

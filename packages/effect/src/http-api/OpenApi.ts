@@ -792,6 +792,9 @@ function selectReferences(
 
     pushChecks(representation.checks)
     switch (representation._tag) {
+      case "String":
+        if (representation.content?.schema !== undefined) stack.push(representation.content.schema)
+        break
       case "Declaration":
         stack.push(...representation.typeParameters)
         break

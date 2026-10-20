@@ -4136,6 +4136,33 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
+    it("shares references through recursive content", () => {
+      const Node: Schema.Codec<unknown> = Schema.Struct({
+        label: Schema.String,
+        next: Schema.optionalKey(Schema.suspend(() => Schema.fromJsonString(Node)))
+      }).annotate({ identifier: "Node" })
+
+      assertJsonSchemaDocument(Schema.fromJsonString(Node), {
+        schema: { $ref: "#/$defs/NodeEncoded" },
+        definitions: {
+          Node: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              next: { $ref: "#/$defs/NodeEncoded" }
+            },
+            required: ["label"],
+            additionalProperties: false
+          },
+          NodeEncoded: {
+            type: "string",
+            contentMediaType: "application/json",
+            contentSchema: { $ref: "#/$defs/Node" }
+          }
+        }
+      })
+    })
+
     it("nested JSON string transformations", () => {
       assertJsonSchemaDocument(
         Schema.fromJsonString(Schema.fromJsonString(Schema.Boolean)),
@@ -4177,7 +4204,7 @@ describe("toJsonSchemaDocument", () => {
             "contentMediaType": "application/json",
             "contentSchema": {
               "type": "string",
-              "minLength": 3
+              "minLength": 2
             }
           }
         }
@@ -4217,6 +4244,30 @@ describe("toJsonSchemaDocument", () => {
           "contentSchema": {
             "type": "boolean"
           }
+        }
+      })
+    })
+
+    it("does not label a base64 encoded source as JSON", () => {
+      const schema = Schema.StringFromBase64.pipe(
+        Schema.decodeTo(Schema.Unknown, SchemaTransformation.fromJsonString())
+      )
+
+      assertJsonSchemaDocument(schema, {
+        schema: { type: "string" }
+      })
+    })
+
+    it("preserves the content of an encoded JSON source", () => {
+      const schema = Schema.fromJsonString(Schema.String).pipe(
+        Schema.decodeTo(Schema.Unknown, SchemaTransformation.fromJsonString())
+      )
+
+      assertJsonSchemaDocument(schema, {
+        schema: {
+          type: "string",
+          contentMediaType: "application/json",
+          contentSchema: { type: "string" }
         }
       })
     })
