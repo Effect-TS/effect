@@ -12,11 +12,15 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Cause from "../Cause.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Uuid from "../internal/uuid.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
 import * as RcMap from "../RcMap.ts"
@@ -259,6 +263,7 @@ export class Storage extends Context.Service<Storage, {
  * @since 4.0.0
  */
 export interface StorageCompaction {
+  readonly config: CompactionConfig
   readonly status: (publicKey: string, storeId: StoreId) => Effect.Effect<CompactionStoreStatus>
   readonly begin: (
     publicKey: string,
@@ -442,30 +447,156 @@ export class CompactionRollbackError extends Data.TaggedError("CompactionRollbac
 }> {}
 
 /**
- * Creates an in-memory encrypted server `Storage`.
+ * Tuning for encrypted remote compaction.
+ *
+ * **Details**
+ *
+ * `grace` is how long a superseded or withdrawn generation is kept before it
+ * is pruned (default 30 days). `lag` is how old data must be, by storage time,
+ * before it can be compacted (default 24 hours). `stageTtl` is how long a stage
+ * claim lasts after its latest Part (default 10 minutes). `thresholdFloor` is
+ * the smallest number of new entries that makes compaction wanted (default
+ * 1,000). `sweepInterval` is how often pruning runs (default 1 hour).
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface CompactionOptions {
+  readonly grace?: Duration.Input | undefined
+  readonly lag?: Duration.Input | undefined
+  readonly stageTtl?: Duration.Input | undefined
+  readonly thresholdFloor?: number | undefined
+  readonly sweepInterval?: Duration.Input | undefined
+}
+
+/**
+ * Resolved compaction tuning, shared by a storage and the server using it.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface CompactionConfig {
+  readonly grace: Duration.Duration
+  readonly lag: Duration.Duration
+  readonly stageTtl: Duration.Duration
+  readonly thresholdFloor: number
+  readonly sweepInterval: Duration.Duration
+}
+
+/**
+ * Resolves compaction options against their defaults.
+ *
+ * **Details**
+ *
+ * Dies with an `IllegalArgumentError` unless `grace` is longer than both `lag`
+ * and `stageTtl`, `stageTtl` and `sweepInterval` are positive, and
+ * `thresholdFloor` is a non-negative integer.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeCompactionConfig = (options?: CompactionOptions | undefined): Effect.Effect<CompactionConfig> =>
+  Effect.suspend(() => {
+    const config: CompactionConfig = {
+      grace: Duration.fromInputUnsafe(options?.grace ?? "30 days"),
+      lag: Duration.fromInputUnsafe(options?.lag ?? "24 hours"),
+      stageTtl: Duration.fromInputUnsafe(options?.stageTtl ?? "10 minutes"),
+      thresholdFloor: options?.thresholdFloor ?? 1000,
+      sweepInterval: Duration.fromInputUnsafe(options?.sweepInterval ?? "1 hour")
+    }
+    if (
+      !Duration.isGreaterThan(config.grace, config.lag) ||
+      !Duration.isGreaterThan(config.grace, config.stageTtl)
+    ) {
+      return Effect.die(new Cause.IllegalArgumentError("Compaction grace must be longer than lag and stageTtl"))
+    }
+    if (!Duration.isGreaterThan(config.stageTtl, Duration.zero)) {
+      return Effect.die(new Cause.IllegalArgumentError("Compaction stageTtl must be positive"))
+    }
+    if (!Duration.isGreaterThan(config.sweepInterval, Duration.zero)) {
+      return Effect.die(new Cause.IllegalArgumentError("Compaction sweepInterval must be positive"))
+    }
+    if (!Number.isSafeInteger(config.thresholdFloor) || config.thresholdFloor < 0) {
+      return Effect.die(new Cause.IllegalArgumentError("Compaction thresholdFloor must be a non-negative integer"))
+    }
+    return Effect.succeed(config)
+  })
+
+/**
+ * Creates an in-memory encrypted server `Storage` with default compaction
+ * tuning.
  *
  * **Details**
  *
  * Data, session authentication bindings, and streams are process-local and are
  * released with the surrounding scope.
  *
+ * @see {@link makeStorageMemoryWith} to configure compaction
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
-  const journals = new Map<string, {
-    // Entry id to the sequence it was first stored at.
-    readonly knownIds: Map<string, number>
-    readonly batches: Array<EncryptedRemoteBatch>
-    nextSequence: number
-  }>()
+export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.suspend(() =>
+  makeStorageMemoryWith({})
+)
+
+/**
+ * Creates an in-memory encrypted server `Storage`.
+ *
+ * **Details**
+ *
+ * Data, session authentication bindings, and streams are process-local and are
+ * released with the surrounding scope. The storage always provides
+ * `compaction`, and its sweep runs on `Clock` in the surrounding scope while
+ * any store has something left to prune or a stage left to clean up.
+ *
+ * Dies when the compaction options are invalid (see {@link makeCompactionConfig}).
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
+  readonly compaction?: CompactionOptions | undefined
+}): Effect.fn.Return<Storage["Service"], never, Scope.Scope> {
+  const config = yield* makeCompactionConfig(options.compaction)
+  const graceMillis = Duration.toMillis(config.grace)
+  const lagMillis = Duration.toMillis(config.lag)
+  const stageTtlMillis = Duration.toMillis(config.stageTtl)
+  const journals = new Map<string, MemoryJournal>()
+  // Every stage that has not been cleaned up yet, across stores.
+  const stages = new Map<string, MemoryStage>()
   const sessionAuthBindings = new Map<string, Uint8Array<ArrayBuffer>>()
   const remoteId = makeRemoteIdUnsafe()
   const ensureJournal = (scopeKey: string) => {
     let journal = journals.get(scopeKey)
     if (journal) return journal
-    journal = { knownIds: new Map(), batches: [], nextSequence: 0 }
+    const originals: MemoryActivation = {
+      id: Uuid.v4String(),
+      set: undefined,
+      base: -1,
+      keptCount: undefined,
+      previous: undefined,
+      supersededAt: undefined,
+      pruneStartedAt: undefined
+    }
+    journal = {
+      knownIds: new Map(),
+      batches: [],
+      nextSequence: 0,
+      buckets: new Map(),
+      activations: [originals],
+      active: originals,
+      rollbackEpoch: 0,
+      noOp: undefined,
+      openStage: undefined,
+      nextSweepAt: undefined,
+      prunedThrough: -1
+    }
     journals.set(scopeKey, journal)
     return journal
   }
@@ -477,6 +608,349 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
       ),
     idleTimeToLive: 60000
   })
+
+  // Open while any store has something for the sweep to do, so an idle
+  // storage never sleeps on the clock.
+  const sweepPending = Latch.makeUnsafe(false)
+  const schedulePrune = (journal: MemoryJournal, at: number) => {
+    journal.nextSweepAt = journal.nextSweepAt === undefined ? at : Math.min(journal.nextSweepAt, at)
+    sweepPending.openUnsafe()
+  }
+  const closeStage = (journal: MemoryJournal, stage: MemoryStage, state: MemoryStage["state"], now: number) => {
+    stage.state = state
+    stage.closedAt = now
+    stage.segments.clear()
+    stage.ids.clear()
+    if (journal.openStage === stage) journal.openStage = undefined
+  }
+  const sweep = (now: number) => {
+    for (const [stageId, stage] of stages) {
+      const journal = journals.get(stage.scopeKey)!
+      if (stage.state === "open" && stage.expiresAt <= now) closeStage(journal, stage, "expired", stage.expiresAt)
+      // Closed stages linger for one stage TTL so a retried commit is answered.
+      if (stage.closedAt !== undefined && stage.closedAt + stageTtlMillis <= now) stages.delete(stageId)
+    }
+    for (const journal of journals.values()) {
+      if (journal.nextSweepAt !== undefined && journal.nextSweepAt <= now) prune(journal, now)
+    }
+    if (stages.size === 0 && Array.from(journals.values()).every((journal) => journal.nextSweepAt === undefined)) {
+      sweepPending.closeUnsafe()
+    }
+  }
+  // Keeps what the active generation and every generation still within grace
+  // need, which is their batch sets and the originals above their bases.
+  const prune = (journal: MemoryJournal, now: number) => {
+    const kept = journal.activations.filter((activation) =>
+      activation === journal.active ||
+      (activation.pruneStartedAt === undefined && activation.supersededAt! + graceMillis > now)
+    )
+    const keptSets = new Set(kept.map((activation) => activation.set))
+    for (const activation of journal.activations) {
+      if (kept.includes(activation) || activation.pruneStartedAt !== undefined) continue
+      activation.pruneStartedAt = now
+      if (activation.set !== undefined && !keptSets.has(activation.set)) activation.set.batches = []
+    }
+    const keptBase = Math.min(...kept.map((activation) => activation.base))
+    const first = journal.batches.findIndex((batch) => batch.sequence + batch.entryIds.length - 1 > keptBase)
+    journal.batches.splice(0, first === -1 ? journal.batches.length : first)
+    journal.prunedThrough = Math.max(journal.prunedThrough, keptBase)
+    journal.nextSweepAt = undefined
+    for (const activation of journal.activations) {
+      if (activation !== journal.active && activation.pruneStartedAt === undefined) {
+        schedulePrune(journal, activation.supersededAt! + graceMillis)
+      }
+    }
+  }
+  yield* Effect.forkScoped(
+    Effect.forever(
+      sweepPending.await.pipe(
+        Effect.andThen(Effect.sleep(config.sweepInterval)),
+        Effect.andThen(Clock.currentTimeMillis),
+        Effect.flatMap((now) => Effect.sync(() => sweep(now)))
+      )
+    )
+  )
+
+  // The highest last sequence stored in an hour that ended before now - lag.
+  const lagHead = (journal: MemoryJournal, now: number) => {
+    let head = -1
+    for (const [hour, lastSequence] of journal.buckets) {
+      if ((hour + 1) * hourMillis <= now - lagMillis) head = Math.max(head, lastSequence)
+    }
+    return head
+  }
+  const recordBucket = (journal: MemoryJournal, now: number, lastSequence: number) => {
+    const hour = Math.floor(now / hourMillis)
+    const existing = journal.buckets.get(hour)
+    if (existing !== undefined) {
+      journal.buckets.set(hour, Math.max(existing, lastSequence))
+      return
+    }
+    journal.buckets.set(hour, lastSequence)
+    // Only the newest bucket past the lag matters for the lag head.
+    const pastLag = Array.from(journal.buckets.keys()).filter((bucket) => (bucket + 1) * hourMillis <= now - lagMillis)
+    const newest = Math.max(...pastLag)
+    for (const bucket of pastLag) {
+      if (bucket < newest) journal.buckets.delete(bucket)
+    }
+  }
+  // The input of a stage: its pinned batch set, then originals in (base, through].
+  const inputBatches = (journal: MemoryJournal, stage: MemoryStage): ReadonlyArray<EncryptedRemoteBatch> => [
+    ...(stage.pinned.set?.batches ?? []),
+    ...journal.batches.filter((batch) =>
+      batch.sequence > stage.pinned.base && batch.sequence + batch.entryIds.length - 1 <= stage.through
+    )
+  ]
+  const findStage = (publicKey: string, storeId: StoreId, stageId: string) => {
+    const stage = stages.get(stageId)
+    if (stage === undefined || stage.scopeKey !== makeEncryptedScopeKey({ publicKey, storeId })) return undefined
+    return { stage, journal: journals.get(stage.scopeKey)! }
+  }
+  // A stage that Part, NoOp and Commit can act on.
+  const findOpenStage = (publicKey: string, storeId: StoreId, stageId: string, now: number) => {
+    const found = findStage(publicKey, storeId, stageId)
+    if (found === undefined || found.stage.state !== "open") return undefined
+    if (found.stage.expiresAt <= now) {
+      closeStage(found.journal, found.stage, "expired", found.stage.expiresAt)
+      return undefined
+    }
+    return found
+  }
+  // A stage whose input can still be read.
+  const findInputStage = (
+    publicKey: string,
+    storeId: StoreId,
+    stageId: string
+  ): Effect.Effect<{ readonly stage: MemoryStage; readonly journal: MemoryJournal }, CompactionNotFound> => {
+    const found = findStage(publicKey, storeId, stageId)
+    if (found === undefined || found.stage.state !== "open" || found.stage.pinned.pruneStartedAt !== undefined) {
+      return Effect.fail(new CompactionNotFound({ stageId }))
+    }
+    return Effect.succeed(found)
+  }
+
+  const compaction: StorageCompaction = {
+    config,
+    status: (publicKey, storeId) =>
+      Effect.map(Clock.currentTimeMillis, (now) => {
+        const journal = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId }))
+        const openStage = journal.openStage
+        return {
+          head: journal.nextSequence - 1,
+          base: journal.active.base,
+          activeKeptCount: journal.active.keptCount ?? 0,
+          lagHead: lagHead(journal, now),
+          rollbackEpoch: journal.rollbackEpoch,
+          noOp: journal.noOp,
+          openStage: openStage !== undefined && openStage.expiresAt > now
+            ? { expiresAt: openStage.expiresAt }
+            : undefined,
+          nextSweepAt: journal.nextSweepAt
+        }
+      }),
+    begin: (publicKey, storeId, { through }) =>
+      Effect.map(Clock.currentTimeMillis, (now): CompactionBeginResult => {
+        const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
+        const journal = ensureJournal(scopeKey)
+        const open = journal.openStage
+        if (open !== undefined) {
+          if (open.expiresAt > now) return { _tag: "Busy", expiresAt: open.expiresAt }
+          closeStage(journal, open, "expired", open.expiresAt)
+        }
+        const stage: MemoryStage = {
+          id: Uuid.v4String(),
+          scopeKey,
+          state: "open",
+          pinned: journal.active,
+          through,
+          expiresAt: now + stageTtlMillis,
+          inputBytes: 0,
+          stagedBytes: 0,
+          segments: new Map(),
+          ids: new Set(),
+          result: undefined,
+          closedAt: undefined
+        }
+        const input = inputBatches(journal, stage)
+        stage.inputBytes = input.reduce((bytes, batch) => bytes + batch.encryptedBatch.byteLength, 0)
+        stages.set(stage.id, stage)
+        journal.openStage = stage
+        sweepPending.openUnsafe()
+        return {
+          _tag: "Started",
+          stageId: stage.id,
+          entryCount: input.reduce((count, batch) => count + batch.entryIds.length, 0),
+          batchCount: input.length
+        }
+      }),
+    inputHeaders: (publicKey, storeId, stageId) =>
+      findInputStage(publicKey, storeId, stageId).pipe(
+        Effect.map(({ journal, stage }) =>
+          Stream.fromArray(
+            inputBatches(journal, stage).map((batch): CompactionBatchHeader => ({
+              sequence: batch.sequence,
+              entryIds: batch.entryIds
+            }))
+          )
+        ),
+        Stream.unwrap
+      ),
+    fetch: (publicKey, storeId, stageId, sequences) =>
+      findInputStage(publicKey, storeId, stageId).pipe(
+        Effect.map(({ journal, stage }) => {
+          const fetched: Array<EncryptedRemoteBatch> = []
+          for (const sequence of sequences) {
+            const batch = sequence <= stage.pinned.base
+              ? findBatch(stage.pinned.set?.batches ?? [], sequence)
+              : sequence <= stage.through
+              ? findBatch(journal.batches, sequence)
+              : undefined
+            if (batch !== undefined) fetched.push(batch)
+          }
+          return Stream.fromArray(fetched)
+        }),
+        Stream.unwrap
+      ),
+    stagePart: (publicKey, storeId, stageId, segment, batches) =>
+      Effect.flatMap(Clock.currentTimeMillis, (now): ReturnType<StorageCompaction["stagePart"]> => {
+        const found = findOpenStage(publicKey, storeId, stageId, now)
+        if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
+        const { journal, stage } = found
+        if (stage.segments.has(segment)) return Effect.succeed("AlreadyStored" as const)
+        const reject = (message: string) => {
+          closeStage(journal, stage, "withdrawn", now)
+          return Effect.fail(new CompactionInvalidRequest({ stageId, message }))
+        }
+        if (!Number.isSafeInteger(segment) || segment < 0 || segment >= maxSegments) {
+          return reject("Invalid segment index")
+        }
+        if (batches.length > positionsPerSegment) return reject("Too many batches in a segment")
+        const bytes = batches.reduce((bytes, batch) => bytes + batch.encryptedBatch.byteLength, 0)
+        if (stage.stagedBytes + bytes > stage.inputBytes) return reject("Staged bytes exceed the input size")
+        const ids = new Set<string>()
+        for (const batch of batches) {
+          for (const entryId of batch.entryIds) {
+            const id = Uuid.stringify(entryId)
+            if (stage.ids.has(id) || ids.has(id)) return reject("Repeated entry id")
+            ids.add(id)
+          }
+        }
+        for (const id of ids) stage.ids.add(id)
+        stage.segments.set(segment, batches)
+        stage.stagedBytes += bytes
+        stage.expiresAt = now + stageTtlMillis
+        return Effect.succeed("Stored" as const)
+      }),
+    stagedHeaders: (publicKey, storeId, stageId) =>
+      Effect.suspend(() => {
+        const found = findStage(publicKey, storeId, stageId)
+        if (found === undefined || found.stage.state !== "open") {
+          return Effect.fail(new CompactionNotFound({ stageId }))
+        }
+        return Effect.succeed(Stream.fromArray(
+          stagedBatches(found.stage).map(({ batch, position }) => ({
+            position,
+            entryIds: batch.entryIds
+          }))
+        ))
+      }).pipe(Stream.unwrap),
+    commit: (publicKey, storeId, stageId, virtualSequences) =>
+      Effect.flatMap(Clock.currentTimeMillis, (now) => {
+        // A retried commit is answered from the stage's first one.
+        const result = findStage(publicKey, storeId, stageId)?.stage.result
+        if (result === "Committed" || result === "Superseded") return Effect.succeed(result)
+        const found = findOpenStage(publicKey, storeId, stageId, now)
+        if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
+        const { journal, stage } = found
+        if (stage.pinned !== journal.active) {
+          stage.result = "Superseded"
+          closeStage(journal, stage, "committed", now)
+          return Effect.succeed("Superseded" as const)
+        }
+        const staged = stagedBatches(stage)
+        if (staged.length !== virtualSequences.length) {
+          return Effect.die(new Cause.IllegalArgumentError("Expected one virtual sequence per staged batch"))
+        }
+        const activation: MemoryActivation = {
+          id: Uuid.v4String(),
+          set: {
+            batches: staged.map(({ batch }, i): EncryptedRemoteBatch => ({ ...batch, sequence: virtualSequences[i] }))
+          },
+          base: stage.through,
+          keptCount: staged.reduce((count, { batch }) => count + batch.entryIds.length, 0),
+          previous: journal.active,
+          supersededAt: undefined,
+          pruneStartedAt: undefined
+        }
+        journal.active.supersededAt = now
+        journal.activations.push(activation)
+        journal.active = activation
+        journal.noOp = undefined
+        schedulePrune(journal, now + graceMillis)
+        stage.result = "Committed"
+        closeStage(journal, stage, "committed", now)
+        return Effect.succeed("Committed" as const)
+      }),
+    recordNoOp: (publicKey, storeId, stageId) =>
+      Effect.flatMap(Clock.currentTimeMillis, (now) => {
+        if (findStage(publicKey, storeId, stageId)?.stage.result === "NoOp") return Effect.void
+        const found = findOpenStage(publicKey, storeId, stageId, now)
+        if (found === undefined) return Effect.fail(new CompactionNotFound({ stageId }))
+        const { journal, stage } = found
+        // A rollback since begin cleared the no-op state, so a stale run leaves it.
+        if (stage.pinned === journal.active) {
+          journal.noOp = { at: stage.through, count: (journal.noOp?.count ?? 0) + 1 }
+        }
+        stage.result = "NoOp"
+        closeStage(journal, stage, "committed", now)
+        return Effect.void
+      }),
+    abort: (publicKey, storeId, stageId) => withdraw(publicKey, storeId, stageId),
+    withdraw: (publicKey, storeId, stageId) => withdraw(publicKey, storeId, stageId),
+    rollback: (publicKey, storeId, expectedActivationId) =>
+      Effect.flatMap(Clock.currentTimeMillis, (now) => {
+        const journal = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId }))
+        const withdrawn = journal.active
+        if (withdrawn.id !== expectedActivationId) {
+          return Effect.fail(new CompactionRollbackError({ reason: "NotActive" }))
+        }
+        const target = withdrawn.previous
+        if (target === undefined) return Effect.fail(new CompactionRollbackError({ reason: "NoPrevious" }))
+        if (target.pruneStartedAt !== undefined) {
+          return Effect.fail(new CompactionRollbackError({ reason: "PruneStarted" }))
+        }
+        const activation: MemoryActivation = {
+          ...target,
+          id: Uuid.v4String(),
+          supersededAt: undefined,
+          pruneStartedAt: undefined
+        }
+        withdrawn.supersededAt = now
+        journal.activations.push(activation)
+        journal.active = activation
+        journal.rollbackEpoch++
+        journal.noOp = undefined
+        schedulePrune(journal, now + graceMillis)
+        return Effect.succeed(activation.id)
+      }),
+    history: (publicKey, storeId) =>
+      Effect.sync(() => {
+        const journal = ensureJournal(makeEncryptedScopeKey({ publicKey, storeId }))
+        return journal.activations.map((activation): CompactionActivation => ({
+          activationId: activation.id,
+          base: activation.base,
+          keptCount: activation.keptCount,
+          active: activation === journal.active,
+          supersededAt: activation === journal.active ? undefined : activation.supersededAt,
+          restorable: activation.pruneStartedAt === undefined
+        }))
+      })
+  }
+  const withdraw = (publicKey: string, storeId: StoreId, stageId: string) =>
+    Effect.map(Clock.currentTimeMillis, (now) => {
+      const found = findStage(publicKey, storeId, stageId)
+      if (found !== undefined && found.stage.state === "open") closeStage(found.journal, found.stage, "withdrawn", now)
+    })
 
   return Storage.of({
     getId: Effect.succeed(remoteId),
@@ -490,6 +964,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
     write: Effect.fnUntraced(function*(publicKey, storeId, batches) {
       const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
       const pubsub = yield* RcMap.get(pubsubs, scopeKey)
+      const now = yield* Clock.currentTimeMillis
       const journal = ensureJournal(scopeKey)
       const stored: Array<EncryptedRemoteBatch> = []
       for (const batch of batches) {
@@ -504,6 +979,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
         stored.push(remoteBatch)
         PubSub.publishUnsafe(pubsub, remoteBatch)
       }
+      if (stored.length > 0) recordBucket(journal, now, journal.nextSequence - 1)
       return stored
     }, Effect.scoped),
     entrySequences: (publicKey, storeId, entryIds) =>
@@ -520,14 +996,41 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
       const scopeKey = makeEncryptedScopeKey({ publicKey, storeId })
       const pubsub = yield* RcMap.get(pubsubs, scopeKey)
       const subscription = yield* PubSub.subscribe(pubsub)
-      const batches = ensureJournal(scopeKey).batches
+      const journal = ensureJournal(scopeKey)
+      const { base, set } = journal.active
+      const live = Stream.fromSubscription(subscription)
+      // Below the base an active snapshot replaces the originals.
+      if (set !== undefined && startSequence <= base) {
+        if (set.batches.length === 0) {
+          return Stream.die(new Error(`The active compaction snapshot of store ${storeId} has no batches`))
+        }
+        const tail = journal.batches.filter((batch) => batch.sequence > base)
+        return Stream.fromArray([
+          ...set.batches.filter((batch) => batch.sequence + batch.entryIds.length > startSequence),
+          ...tail
+        ]).pipe(Stream.concat(live))
+      }
+      const batches = journal.batches
       const first = batches.findIndex((batch) => batch.sequence + batch.entryIds.length > startSequence)
       return Stream.fromArray(first === -1 ? [] : batches.slice(first)).pipe(
-        Stream.concat(Stream.fromSubscription(subscription))
+        Stream.concat(live)
       )
-    }, Stream.unwrap)
+    }, Stream.unwrap),
+    compaction
   })
 })
+
+/**
+ * Provides encrypted server `Storage` using the in-memory implementation with
+ * default compaction tuning.
+ *
+ * @see {@link layerStorageMemoryWith} to configure compaction
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerStorageMemory: Layer.Layer<Storage> = Layer.effect(Storage)(makeStorageMemory)
 
 /**
  * Provides encrypted server `Storage` using the in-memory implementation.
@@ -536,7 +1039,73 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
  * @category layers
  * @since 4.0.0
  */
-export const layerStorageMemory: Layer.Layer<Storage> = Layer.effect(Storage)(makeStorageMemory)
+export const layerStorageMemoryWith = (options: {
+  readonly compaction?: CompactionOptions | undefined
+}): Layer.Layer<Storage> => Layer.effect(Storage)(makeStorageMemoryWith(options))
+
+const hourMillis = 60 * 60 * 1000
+// A staged batch's position packs its segment index and its index in the segment.
+const positionsPerSegment = 2 ** 20
+const maxSegments = Math.floor(Number.MAX_SAFE_INTEGER / positionsPerSegment)
+
+interface MemoryActivation {
+  readonly id: string
+  // undefined while the originals are active.
+  readonly set: { batches: ReadonlyArray<EncryptedRemoteBatch> } | undefined
+  readonly base: number
+  readonly keptCount: number | undefined
+  readonly previous: MemoryActivation | undefined
+  supersededAt: number | undefined
+  pruneStartedAt: number | undefined
+}
+
+interface MemoryStage {
+  readonly id: string
+  readonly scopeKey: string
+  state: "open" | "committed" | "withdrawn" | "expired"
+  readonly pinned: MemoryActivation
+  readonly through: number
+  expiresAt: number
+  inputBytes: number
+  stagedBytes: number
+  readonly segments: Map<number, ReadonlyArray<EncryptedBatch>>
+  readonly ids: Set<string>
+  result: "Committed" | "Superseded" | "NoOp" | undefined
+  closedAt: number | undefined
+}
+
+interface MemoryJournal {
+  // Entry id to the sequence it was first stored at. Never pruned.
+  readonly knownIds: Map<string, number>
+  // Originals, in sequence order.
+  readonly batches: Array<EncryptedRemoteBatch>
+  nextSequence: number
+  // Storage-time hour to the highest last sequence stored in it.
+  readonly buckets: Map<number, number>
+  readonly activations: Array<MemoryActivation>
+  active: MemoryActivation
+  rollbackEpoch: number
+  noOp: { readonly at: number; readonly count: number } | undefined
+  openStage: MemoryStage | undefined
+  nextSweepAt: number | undefined
+  prunedThrough: number
+}
+
+const stagedBatches = (stage: MemoryStage) =>
+  Array.from(stage.segments).sort(([a], [b]) => a - b).flatMap(([segment, batches]) =>
+    batches.map((batch, i) => ({ batch, position: segment * positionsPerSegment + i }))
+  )
+
+const findBatch = (batches: ReadonlyArray<EncryptedRemoteBatch>, sequence: number) => {
+  let low = 0
+  let high = batches.length
+  while (low < high) {
+    const mid = (low + high) >>> 1
+    if (batches[mid].sequence < sequence) low = mid + 1
+    else high = mid
+  }
+  return batches[low]?.sequence === sequence ? batches[low] : undefined
+}
 
 const makeEncryptedScopeKey = ({ publicKey, storeId }: {
   readonly publicKey: string
