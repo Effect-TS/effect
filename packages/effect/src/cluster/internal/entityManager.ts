@@ -183,6 +183,10 @@ export const make = Effect.fnUntraced(function*<
   // Entities finishing their in-flight requests after removal, which still
   // accept interrupts and acks
   const drainingServers = new Map<EntityId, EntityState>()
+  // Mailboxes of every resident entity, including draining ones. Unlike the
+  // server maps it is not keyed by entity id, which can be resident on several
+  // shards at once.
+  const residentMailboxes = new Set<EntityState["activeRequests"]>()
 
   // Registered before the entities resource map, so the series is removed
   // only after every entity has drained on shutdown.
@@ -194,11 +198,8 @@ export const make = Effect.fnUntraced(function*<
         {
           get: () => {
             let max = 0
-            for (const state of activeServers.values()) {
-              if (state.activeRequests.size > max) max = state.activeRequests.size
-            }
-            for (const state of drainingServers.values()) {
-              if (state.activeRequests.size > max) max = state.activeRequests.size
+            for (const mailbox of residentMailboxes) {
+              if (mailbox.size > max) max = mailbox.size
             }
             return { value: BigInt(max) }
           },
@@ -244,14 +245,16 @@ export const make = Effect.fnUntraced(function*<
       closing: false
     }
 
-    // Finalizers run in reverse, so the mailbox series is removed only after
-    // the drain finalizer below has finished.
+    // Finalizers run in reverse, so the mailbox series and the resident
+    // mailbox are removed only after the drain finalizer below has finished.
+    const activeRequests: EntityState["activeRequests"] = new Map()
     let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
         releaseEntity(address)
         mailboxSeries?.remove()
+        residentMailboxes.delete(activeRequests)
       })
     )
 
@@ -265,7 +268,6 @@ export const make = Effect.fnUntraced(function*<
       }
     )
 
-    const activeRequests: EntityState["activeRequests"] = new Map()
     const retired = Latch.makeUnsafe()
     const isActive = () => !retired.isOpen()
 
@@ -557,6 +559,7 @@ export const make = Effect.fnUntraced(function*<
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
+    residentMailboxes.add(activeRequests)
     if (mailboxMetrics) {
       mailboxSeries = registerMailboxSize(address, activeRequests)
     }
