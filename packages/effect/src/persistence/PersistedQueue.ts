@@ -17,6 +17,7 @@
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import { flow } from "../Function.ts"
@@ -250,7 +251,7 @@ export const makeFactory = Effect.gen(function*() {
         [TypeId]: TypeId,
         offer: (value, opts) =>
           Effect.suspend(() => {
-            const id = opts?.id ?? crypto.randomUUID()
+            const id = opts?.id ?? SecureRandom.uuidV4Unsafe()
             const delay = positiveDelay(opts?.delay)
             if (delay !== undefined && !Duration.isFinite(delay)) {
               return Effect.succeed(id)
@@ -824,7 +825,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             keys.delayed,
             keys.attempts,
             keys.owners,
-            `${prefix}lock:${crypto.randomUUID()}:`,
+            `${prefix}lock:${SecureRandom.uuidV4Unsafe()}:`,
             size,
             lockExpirationMillis,
             clock.currentTimeMillisUnsafe()
@@ -1835,7 +1836,7 @@ export const makeStoreSql: (
           yield* pollLatch.await
           yield* Effect.yieldNow
           nudge.closeUnsafe()
-          const lock = crypto.randomUUID()
+          const lock = SecureRandom.uuidV4Unsafe()
           const results = takers.current === 0 ? [] : yield* poll(takers.current, stringLiteral(lock))
           if (results.length === 0) {
             yield* Effect.race(Effect.sleep(pollInterval), nudge.await)

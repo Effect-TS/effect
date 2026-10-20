@@ -6,6 +6,7 @@
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
+import * as SecureRandom from "../../crypto/SecureRandom.ts"
 import * as Effect from "../../Effect.ts"
 import type * as Headers from "../../http/Headers.ts"
 import { appendPreResponseHandlerUnsafe } from "../../http/HttpEffect.ts"
@@ -564,7 +565,7 @@ export const make = Effect.fnUntraced(function*(
                 logLevel: options.defaultLogLevel
               }
               if (httpRequest !== undefined) {
-                const sessionId = crypto.randomUUID()
+                const sessionId = SecureRandom.uuidV4Unsafe()
                 stateful.registerHttp(sessionId, registration)
                 appendPreResponseHandlerUnsafe(
                   fiber.context,
