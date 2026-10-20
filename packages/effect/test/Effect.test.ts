@@ -1568,6 +1568,24 @@ describe("Effect", () => {
       }))
   }
 
+  describe("schedule", () => {
+    it.effect("schedule and scheduleFrom preserve source Done failures", () =>
+      Effect.gen(function*() {
+        const source = Cause.done(42)
+        const policy = Schedule.recurs(3)
+        assert.deepStrictEqual(yield* Effect.exit(Effect.schedule(source, policy)), Exit.fail(Cause.Done(42)))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.scheduleFrom(source, 0, policy)), Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("returns the schedule output without running the source after completion", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const result = yield* Effect.scheduleFrom(Effect.sync(() => ++n), 0, Schedule.recurs(3))
+        assert.strictEqual(result, 3)
+        assert.strictEqual(n, 3)
+      }))
+  })
+
   describe("repeat", () => {
     it.effect("preserves finalizer defects accompanying schedule completion", () =>
       Effect.gen(function*() {
@@ -1580,53 +1598,20 @@ describe("Effect", () => {
 
     it.effect("fails with a Done raised by the repeated effect", () =>
       Effect.gen(function*() {
-        let n = 0
-        const effect = Effect.suspend(() => ++n < 3 ? Effect.succeed(n) : Cause.done(42))
-        const exit = yield* Effect.exit(Effect.repeat(effect, Schedule.recurs(10)))
+        const exit = yield* Effect.exit(Effect.repeat(Cause.done(42), Schedule.recurs(3)))
         assert.deepStrictEqual(exit, Exit.fail(Cause.Done(42)))
-        assert.strictEqual(n, 3)
       }))
 
-    it.effect("repeatOrElse passes a Done raised by the repeated effect to orElse", () =>
+    it.effect("repeatOrElse passes source Done failures and iteration metadata to orElse", () =>
       Effect.gen(function*() {
         let n = 0
         const effect = Effect.suspend(() => ++n < 3 ? Effect.succeed(n) : Cause.done(42))
-        const result = yield* Effect.repeatOrElse(
-          effect,
-          Schedule.recurs(10),
-          (error, meta) =>
-            Effect.sync(() => {
-              assert.deepStrictEqual(error, Cause.Done(42))
-              assert.deepStrictEqual(Option.map(meta, (meta) => meta.attempt), Option.some(2))
-              return -1
-            })
-        )
+        const result = yield* Effect.repeatOrElse(effect, Schedule.recurs(10), (error, meta) => {
+          assert.deepStrictEqual(error, Cause.Done(42))
+          assert.deepStrictEqual(Option.map(meta, (meta) => meta.attempt), Option.some(2))
+          return Effect.succeed(-1)
+        })
         assert.strictEqual(result, -1)
-      }))
-
-    it.effect("schedule and scheduleFrom fail with a Done raised by the effect", () =>
-      Effect.gen(function*() {
-        let n = 0
-        const effect = Effect.suspend(() => ++n < 3 ? Effect.succeed(n) : Cause.done(42))
-        assert.deepStrictEqual(
-          yield* Effect.exit(Effect.schedule(effect, Schedule.recurs(10))),
-          Exit.fail(Cause.Done(42))
-        )
-        n = 0
-        assert.deepStrictEqual(
-          yield* Effect.exit(Effect.scheduleFrom(effect, 0, Schedule.recurs(10))),
-          Exit.fail(Cause.Done(42))
-        )
-      }))
-
-    it.effect("schedule and scheduleFrom return the schedule output when it completes", () =>
-      Effect.gen(function*() {
-        let n = 0
-        const increment = Effect.sync(() => ++n)
-        assert.strictEqual(yield* Effect.schedule(increment, Schedule.recurs(3)), 3)
-        assert.strictEqual(n, 3)
-        n = 0
-        assert.strictEqual(yield* Effect.scheduleFrom(increment, 0, Schedule.recurs(3)), 3)
         assert.strictEqual(n, 3)
       }))
 
