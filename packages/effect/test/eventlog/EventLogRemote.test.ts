@@ -158,6 +158,36 @@ describe("EventLogRemote", () => {
       request.resume(Effect.void)
       yield* Fiber.join(writeFiber)
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+  it.effect("makeEncrypted authenticates an existing identity with its bound signing key", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHarness(EventLogRemote.makeEncrypted)
+      // Servers persist the first signing key seen for a public key, so the
+      // key derived from an existing identity must not change.
+      const identity = EventLog.decodeIdentityString(
+        "eyJwdWJsaWNLZXkiOiJldmVudGxvZy1jb21wYXQiLCJwcml2YXRlS2V5IjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOD0ifQ"
+      )
+
+      yield* harness.remote.write({
+        identity,
+        storeId: defaultStoreId,
+        entries: [makeEntry()]
+      }).pipe(Effect.forkScoped)
+
+      const auth = yield* harness.take
+      assert(auth._tag === "EventLog.Authenticate")
+      const payload = auth.request as Rpc.Payload<typeof EventLogMessage.AuthenticateRpc>
+      assert.deepStrictEqual(
+        payload.signingPublicKey,
+        Uint8Array.from(
+          "166a4b5a7f8c32a6517e2a37208bcb2d02926d4c49edda85134b80547234b090".match(/../g)!,
+          (byte) => parseInt(byte, 16)
+        )
+      )
+      assert.isTrue(
+        yield* EventLogSessionAuth.verifySessionAuthenticateRequest({ remoteId, challenge, ...payload })
+      )
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 })
 
 class RemoteHarness extends Context.Service<RemoteHarness, {
