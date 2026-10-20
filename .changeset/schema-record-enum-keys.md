@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Schema.Record` throwing "Invalid index signature parameter Enum" when the key schema is a `Schema.Enum`.
+Support `Schema.Enum` keys in `Schema.Record`, declaring each enum member value as a required property instead of throwing during construction.
