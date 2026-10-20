@@ -26,8 +26,9 @@ type WriteFromRemoteOptions = Parameters<EventJournal.EventJournal["Service"]["w
  * **Details**
  *
  * Maintains `entryTable`, `${entryTable}_sequence`, `${entryTable}_sources`,
- * `${remotesTable}_checkpoints` and `remoteCursorsTable` (default
- * `${remotesTable}_cursors`) using the configured `SqlClient`.
+ * `${remotesTable}_checkpoints`, `${remotesTable}_rollback_epochs` and
+ * `remoteCursorsTable` (default `${remotesTable}_cursors`) using the
+ * configured `SqlClient`.
  *
  * **Gotchas**
  *
@@ -63,6 +64,7 @@ export const make = (options?: {
     const sequenceTable = `${entryTable}_sequence`
     const sourcesTable = `${entryTable}_sources`
     const checkpointsTable = `${remotesTable}_checkpoints`
+    const rollbackEpochsTable = `${remotesTable}_rollback_epochs`
 
     const entryTableSql = sql(entryTable)
     const remotesTableSql = sql(remotesTable)
@@ -70,6 +72,7 @@ export const make = (options?: {
     const sourcesTableSql = sql(sourcesTable)
     const checkpointsTableSql = sql(checkpointsTable)
     const remoteCursorsTableSql = sql(remoteCursorsTable)
+    const rollbackEpochsTableSql = sql(rollbackEpochsTable)
 
     // to_regclass folds unquoted names to lowercase, so pass the quoted identifier.
     const quoted = (table: string) => sql`${sql(table)}`.compile(true)[0]
@@ -83,6 +86,35 @@ export const make = (options?: {
         mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${table}, 'U') IS NOT NULL`,
         orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
       }).pipe(Effect.map((rows) => rows.length > 0))
+
+    // Added after the other tables, so journals from earlier releases create it
+    // on open.
+    const createRollbackEpochs = sql.onDialectOrElse({
+      pg: () =>
+        sql`
+          CREATE TABLE IF NOT EXISTS ${rollbackEpochsTableSql} (
+            remote_id BYTEA PRIMARY KEY,
+            rollback_epoch INT NOT NULL
+          )`,
+      mysql: () =>
+        sql`
+          CREATE TABLE IF NOT EXISTS ${rollbackEpochsTableSql} (
+            remote_id BINARY(16) PRIMARY KEY,
+            rollback_epoch INT NOT NULL
+          )`,
+      mssql: () =>
+        sql`
+          CREATE TABLE ${rollbackEpochsTableSql} (
+            remote_id UNIQUEIDENTIFIER PRIMARY KEY,
+            rollback_epoch INT NOT NULL
+          )`,
+      orElse: () =>
+        sql`
+          CREATE TABLE IF NOT EXISTS ${rollbackEpochsTableSql} (
+            remote_id BLOB PRIMARY KEY,
+            rollback_epoch INT NOT NULL
+          )`
+    })
 
     const createSchema = Effect.gen(function*() {
       const eventIndex = sql(`${entryTable}_event_idx`)
@@ -286,13 +318,18 @@ export const make = (options?: {
       yield* sql`DROP TABLE ${remotesTableSql}`
     })
 
-    // Both steps run in one transaction, so a complete schema has the sources
-    // table and no remotes table. Checking that first lets complete databases
-    // open read-only; PostgreSQL also locks and rechecks so concurrent opens
-    // migrate once.
-    const schemaState = Effect.all({ sources: tableExists(sourcesTable), remotes: tableExists(remotesTable) })
-    const isComplete = (state: { readonly sources: boolean; readonly remotes: boolean }) =>
-      state.sources && !state.remotes
+    // Every step runs in one transaction, so a complete schema has the sources
+    // and rollback epochs tables and no remotes table. Checking that first lets
+    // complete databases open read-only; PostgreSQL also locks and rechecks so
+    // concurrent opens migrate once.
+    const schemaState = Effect.all({
+      sources: tableExists(sourcesTable),
+      rollbackEpochs: tableExists(rollbackEpochsTable),
+      remotes: tableExists(remotesTable)
+    })
+    const isComplete = (
+      state: { readonly sources: boolean; readonly rollbackEpochs: boolean; readonly remotes: boolean }
+    ) => state.sources && state.rollbackEpochs && !state.remotes
     yield* Effect.gen(function*() {
       if (isComplete(yield* schemaState)) return
       yield* Effect.gen(function*() {
@@ -302,6 +339,7 @@ export const make = (options?: {
         })
         const state = yield* schemaState
         if (!state.sources) yield* createSchema
+        if (!state.rollbackEpochs) yield* createRollbackEpochs
         if (state.remotes) yield* importRemotes
       }).pipe(sql.withTransaction)
     }).pipe(withTracerDisabled)
@@ -354,6 +392,8 @@ export const make = (options?: {
         ON CONFLICT (remote_id) DO UPDATE SET next_sequence = excluded.next_sequence
         WHERE ${remoteCursorsTableSql}.next_sequence < excluded.next_sequence
       `
+
+    const decodeRollbackEpochRows = Schema.decodeUnknownEffect(RollbackEpochRowArray)
 
     const pubsub = yield* PubSub.unbounded<EventJournal.Entry>()
     const clock = yield* Clock.Clock
@@ -567,6 +607,31 @@ export const make = (options?: {
           withTracerDisabled,
           Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "nextRemoteSequence" }))
         ),
+      resetRemoteSequence: (remoteId, sequence) =>
+        sql`
+          INSERT INTO ${remoteCursorsTableSql} ${sql.insert({ remote_id: remoteId, next_sequence: sequence })}
+          ON CONFLICT (remote_id) DO UPDATE SET next_sequence = excluded.next_sequence
+        `.pipe(
+          Effect.asVoid,
+          withTracerDisabled,
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "resetRemoteSequence" }))
+        ),
+      remoteRollbackEpoch: (remoteId) =>
+        sql`SELECT rollback_epoch FROM ${rollbackEpochsTableSql} WHERE remote_id = ${remoteId}`.pipe(
+          Effect.flatMap(decodeRollbackEpochRows),
+          Effect.map((rows) => rows.length > 0 ? rows[0].rollback_epoch : undefined),
+          withTracerDisabled,
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "remoteRollbackEpoch" }))
+        ),
+      setRemoteRollbackEpoch: (remoteId, epoch) =>
+        sql`
+          INSERT INTO ${rollbackEpochsTableSql} ${sql.insert({ remote_id: remoteId, rollback_epoch: epoch })}
+          ON CONFLICT (remote_id) DO UPDATE SET rollback_epoch = excluded.rollback_epoch
+        `.pipe(
+          Effect.asVoid,
+          withTracerDisabled,
+          Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "setRemoteRollbackEpoch" }))
+        ),
       changes: PubSub.subscribe(pubsub),
       destroy: Effect.gen(function*() {
         yield* sql`DROP TABLE ${entryTableSql}`
@@ -574,6 +639,7 @@ export const make = (options?: {
         yield* sql`DROP TABLE ${sourcesTableSql}`
         yield* sql`DROP TABLE ${checkpointsTableSql}`
         yield* sql`DROP TABLE ${remoteCursorsTableSql}`
+        yield* sql`DROP TABLE ${rollbackEpochsTableSql}`
       }).pipe(
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "destroy" }))
@@ -672,6 +738,8 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
 })
 
 const CursorRowArray = Schema.Array(Schema.Struct({ next_sequence: SqlNatural }))
+
+const RollbackEpochRowArray = Schema.Array(Schema.Struct({ rollback_epoch: SqlNatural }))
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 

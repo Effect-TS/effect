@@ -157,6 +157,23 @@ export class EventJournal extends Context.Service<EventJournal, {
   readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
 
   /**
+   * Set the first unused sequence number for a remote source, moving it
+   * backwards if needed. Used only to re-stream a remote after a rollback.
+   */
+  readonly resetRemoteSequence: (remoteId: RemoteId, sequence: number) => Effect.Effect<void, EventJournalError>
+
+  /**
+   * The last rollback epoch seen for a remote source, or `undefined` before one
+   * has been recorded.
+   */
+  readonly remoteRollbackEpoch: (remoteId: RemoteId) => Effect.Effect<number | undefined, EventJournalError>
+
+  /**
+   * Record the last rollback epoch seen for a remote source.
+   */
+  readonly setRemoteRollbackEpoch: (remoteId: RemoteId, epoch: number) => Effect.Effect<void, EventJournalError>
+
+  /**
    * The entries added to the local journal.
    */
   readonly changes: Effect.Effect<PubSub.Subscription<Entry>, never, Scope>
@@ -611,7 +628,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
   }
   const clock = yield* Clock.Clock
   const byId = new Map<string, Entry>()
-  const remotes = new Map<string, { sequence: number; missing: Array<Entry> }>()
+  const remotes = new Map<string, MemoryRemote>()
   const pubsub = yield* PubSub.unbounded<Entry>()
   const storeSemaphores = new Map<StoreId, Semaphore.Semaphore>()
   const withLock = (storeId: StoreId) => {
@@ -627,7 +644,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     const remoteIdString = Uuid.stringify(remoteId)
     const remote = remotes.get(remoteIdString)
     if (remote) return remote
-    const created = { sequence: 0, missing: journal.slice() }
+    const created: MemoryRemote = { sequence: 0, missing: journal.slice() }
     remotes.set(remoteIdString, created)
     return created
   }
@@ -736,6 +753,15 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         remote.sequence = advanceSequence(remote.sequence, acks, firstSequence)
       }),
     nextRemoteSequence: (remoteId) => Effect.sync(() => ensureRemote(remoteId).sequence),
+    resetRemoteSequence: (remoteId, sequence) =>
+      Effect.sync(() => {
+        ensureRemote(remoteId).sequence = sequence
+      }),
+    remoteRollbackEpoch: (remoteId) => Effect.sync(() => remotes.get(Uuid.stringify(remoteId))?.rollbackEpoch),
+    setRemoteRollbackEpoch: (remoteId, epoch) =>
+      Effect.sync(() => {
+        ensureRemote(remoteId).rollbackEpoch = epoch
+      }),
     entriesById: (ids) => Effect.sync(() => ids.map((id) => byId.get(Uuid.stringify(id)))),
     changes: PubSub.subscribe(pubsub),
     destroy: Effect.sync(() => {
@@ -748,6 +774,12 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     withLock
   })
 })
+
+interface MemoryRemote {
+  sequence: number
+  missing: Array<Entry>
+  rollbackEpoch?: number
+}
 
 // Same result as appending `additions` and sorting by id.
 const insertOrdered = (entries: Array<Entry>, sorted: boolean, additions: ReadonlyArray<Entry>): void => {
@@ -1076,6 +1108,29 @@ export const makeIndexedDb = (options?: {
           onTransactionDone(tx, "nextRemoteSequence", resume, () => progress.result?.nextSequence ?? 0)
           return Effect.sync(() => tx.abort())
         }),
+      resetRemoteSequence: (remoteId, sequence) =>
+        Effect.callback<void, EventJournalError>((resume) => {
+          const tx = db.transaction("remoteEntryId", "readwrite")
+          setProgress(tx.objectStore("remoteEntryId"), remoteId, "nextSequence", sequence)
+          onTransactionDone(tx, "resetRemoteSequence", resume, constVoid)
+          return Effect.sync(() => tx.abort())
+        }),
+      remoteRollbackEpoch: (remoteId) =>
+        Effect.callback<number | undefined, EventJournalError>((resume) => {
+          const tx = db.transaction("remoteEntryId", "readonly")
+          const progress = tx.objectStore("remoteEntryId").get([remoteId as IDBValidKey]) as IDBRequest<
+            RemoteProgress | undefined
+          >
+          onTransactionDone(tx, "remoteRollbackEpoch", resume, () => progress.result?.rollbackEpoch)
+          return Effect.sync(() => tx.abort())
+        }),
+      setRemoteRollbackEpoch: (remoteId, epoch) =>
+        Effect.callback<void, EventJournalError>((resume) => {
+          const tx = db.transaction("remoteEntryId", "readwrite")
+          setProgress(tx.objectStore("remoteEntryId"), remoteId, "rollbackEpoch", epoch)
+          onTransactionDone(tx, "setRemoteRollbackEpoch", resume, constVoid)
+          return Effect.sync(() => tx.abort())
+        }),
       changes: PubSub.subscribe(pubsub),
       destroy: Effect.sync(() => {
         indexedDB.deleteDatabase(database)
@@ -1139,11 +1194,12 @@ const makeBrowserWithLock = Effect.fnUntraced(function*(key: string) {
   }
 })
 
-// Progress for a remote: `sequence` is the upload checkpoint and `nextSequence`
-// the download cursor.
+// Progress for a remote: `sequence` is the upload checkpoint, `nextSequence`
+// the download cursor and `rollbackEpoch` the last rollback epoch seen.
 interface RemoteProgress {
   readonly sequence?: number
   readonly nextSequence?: number
+  readonly rollbackEpoch?: number
 }
 
 // Raises one progress field within the store's transaction; progress only moves forward.
@@ -1158,6 +1214,19 @@ const advanceProgress = (
     const current = request.result?.[field] ?? 0
     const value = next(current)
     if (value > current) store.put({ ...request.result, remoteId, [field]: value })
+  }
+}
+
+// Sets one progress field within the store's transaction, in either direction.
+const setProgress = (
+  store: IDBObjectStore,
+  remoteId: RemoteId,
+  field: keyof RemoteProgress,
+  value: number
+): void => {
+  const request = store.get([remoteId as IDBValidKey]) as IDBRequest<RemoteProgress | undefined>
+  request.onsuccess = () => {
+    store.put({ ...request.result, remoteId, [field]: value })
   }
 }
 
