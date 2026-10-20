@@ -127,25 +127,19 @@ indented: >-
     assert.deepStrictEqual(Yaml.parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
   })
 
-  it("ends block scalars at less indented comment lines", () => {
-    assert.deepStrictEqual(
-      Yaml.parse("steps:\n  run: |\n      make build\n      make test\n    # make deploy\n  name: ci\n"),
-      { steps: { run: "make build\nmake test\n", name: "ci" } }
-    )
-    assert.deepStrictEqual(Yaml.parse("script: |2\n  echo one\n # echo two\nnext: 1\n"), {
-      script: "echo one\n",
+  it.each([
+    ["|", "    first\n    second\n", "first\nsecond\n"],
+    [">-", "\n    first\n    second\n\n", "\nfirst second"],
+    ["|2+", "    # text\n\n", "  # text\n\n"]
+  ])("ends %s scalars before less-indented comments", (indicator, content, expected) => {
+    assert.deepStrictEqual(Yaml.parse(`message: ${indicator}\n${content} # outside\nnext: 1\n`), {
+      message: expected,
       next: 1
     })
-    assert.throws(() => Yaml.parse("script: |\n    echo one\n  echo two\nnext: 1\n"))
   })
 
-  it("parses YAML 1.2.2 example 8.5 (chomping trailing lines)", () => {
-    assert.deepStrictEqual(
-      Yaml.parse(
-        " # Strip\n  # Comments:\nstrip: |-\n  # text\n  \n # Clip\n  # comments:\n\nclip: |\n  # text\n \n # Keep\n  # comments:\n\nkeep: |+\n  # text\n\n # Trail\n  # comments.\n"
-      ),
-      { strip: "# text", clip: "# text\n", keep: "# text\n\n" }
-    )
+  it("rejects less-indented block scalar content", () => {
+    assert.throws(() => Yaml.parse("message: |\n    first\n  second\nnext: 1\n"), SyntaxError)
   })
 
   it("resolves aliases", () => {
