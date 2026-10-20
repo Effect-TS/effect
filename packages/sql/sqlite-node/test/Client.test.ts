@@ -1,9 +1,11 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References, Semaphore } from "effect"
 import { Reactivity } from "effect/reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { DatabaseSync } from "node:sqlite"
 
@@ -14,6 +16,22 @@ const makeClient = Effect.gen(function*() {
     filename: dir + "/test.db"
   })
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
+
+// Exercise drivers that cannot report transaction state using real SQLite.
+const makeFallbackClient = Effect.gen(function*() {
+  const client = yield* SqliteClient.make({ filename: ":memory:" })
+  const connection = yield* Effect.scoped(client.reserve)
+  return yield* SqlClient.make({
+    ...SqlClient.makeSqliteAcquirers({
+      connection: Effect.succeed(connection),
+      semaphore: yield* Semaphore.make(1)
+    }),
+    compiler: Statement.makeCompilerSqlite(),
+    releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
+    driver: "sqlite-fallback",
+    spanAttributes: []
+  })
+}).pipe(Effect.provide(Reactivity.layer))
 
 const makeClients = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -168,11 +186,17 @@ describe("Client", () => {
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
     }))
 
-  it.effect.each(["ABORT", "ROLLBACK", "nested ROLLBACK"] as const)(
-    "preserves a typed constraint failure and reuses the connection after %s",
-    (mode) =>
+  it.effect.each(
+    (["driver", "fallback"] as const).flatMap((client) =>
+      (["ABORT", "ROLLBACK", "nested ROLLBACK"] as const).map((mode) => ({ client, mode }))
+    )
+  )(
+    "preserves a typed constraint failure and reuses the $client connection after $mode",
+    ({ client, mode }) =>
       Effect.gen(function*() {
-        const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+        const sql = yield* client === "fallback"
+          ? makeFallbackClient
+          : SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
         yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
         yield* sql`INSERT INTO items VALUES (1)`
 
@@ -200,6 +224,52 @@ describe("Client", () => {
         assert.isTrue(recovered)
         yield* sql.withTransaction(sql`INSERT INTO items VALUES (2)`)
         assert.deepStrictEqual(yield* sql`SELECT id FROM items ORDER BY id`, [{ id: 1 }, { id: 2 }])
+      })
+  )
+
+  it.effect.each(["missing savepoint", "unrelated cleanup error"] as const)(
+    "keeps a fallback %s as a defect and rolls back the outer transaction",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* makeFallbackClient
+        yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+        const error = new SqlError({
+          reason: new ConnectionError({
+            message: "injected cleanup failure",
+            operation: "rollback",
+            cause: new Error("injected cleanup failure")
+          })
+        })
+        if (mode === "unrelated cleanup error") {
+          const conn = yield* Effect.scoped(sql.reserve)
+          const executeUnprepared = conn.executeUnprepared
+          Object.defineProperty(conn, "executeUnprepared", {
+            configurable: true,
+            value: (...args: Parameters<typeof executeUnprepared>) =>
+              args[0].startsWith("ROLLBACK TO SAVEPOINT")
+                ? Effect.fail(error)
+                : executeUnprepared(...args)
+          })
+        }
+
+        const exit = yield* Effect.exit(sql.withTransaction(
+          sql.withTransaction(Effect.gen(function*() {
+            yield* sql`INSERT INTO items VALUES (1)`
+            if (mode === "missing savepoint") {
+              yield* sql`RELEASE SAVEPOINT effect_sql_1`.unprepared
+            }
+            return yield* Effect.fail(error)
+          })).pipe(Effect.catchTag("SqlError", () => Effect.void))
+        ))
+
+        assert.deepStrictEqual(yield* sql`SELECT id FROM items`, [])
+        assert.isTrue(Exit.isFailure(exit))
+        if (!Exit.isFailure(exit)) return
+        assert.isTrue(Cause.hasDies(exit.cause))
+        assert.match(
+          Cause.pretty(exit.cause),
+          mode === "missing savepoint" ? /no such savepoint/i : /injected cleanup failure/i
+        )
       })
   )
 
