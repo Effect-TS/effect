@@ -77,9 +77,9 @@ vi.mock("tedious", async (importOriginal) => {
     close() {
       if (!this.closed) {
         this.closed = true
-        this.emit("end")
+        // Like tedious, emit end on the next tick, after the request callback.
+        process.nextTick(() => this.emit("end"))
       }
-      // Like tedious, fail the active request after end.
       const pending = this.pending
       this.pending = undefined
       pending?.callback(new Error("Connection closed before request completed."), 0, [])
