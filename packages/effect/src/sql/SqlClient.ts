@@ -225,6 +225,15 @@ export declare namespace SqlClient {
     readonly commit?: string | ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
+    /**
+     * Recovers from a failed ROLLBACK, ROLLBACK TO SAVEPOINT, or the savepoint
+     * release after it. Succeed when the failure is harmless, such as when the
+     * database already ended the transaction; fail to keep the error, which
+     * becomes a defect.
+     */
+    readonly onRollbackFailure?:
+      | ((conn: Connection.Connection, error: SqlError) => Effect.Effect<void, SqlError>)
+      | undefined
     readonly savepoint?: ((name: string) => string) | undefined
     /**
      * SQL to release a nested savepoint after success or a successful rollback.
@@ -286,6 +295,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       : undefined,
     commit: typeof commit === "string" ? (conn) => control(conn, commit) : commit,
     onCommitFailure: options.onCommitFailure,
+    onRollbackFailure: options.onRollbackFailure,
     rollback: (conn) => control(conn, rollback),
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
@@ -370,9 +380,16 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  * until it succeeds. The database is never reopened, and transactions started with a
  * plain `BEGIN` are only touched after a failed cleanup.
  *
+ * SQLite can also roll back the whole transaction when a statement fails, for
+ * example with `INSERT OR ROLLBACK` or `RAISE(ROLLBACK, ...)`.
+ * `onRollbackFailure` then ignores the failed ROLLBACK, ROLLBACK TO SAVEPOINT
+ * and RELEASE SAVEPOINT that clean up after the statement, so only its error
+ * remains.
+ *
  * Pass `isTransaction` when the driver can report whether a transaction is
  * open. Without it, ROLLBACK always runs and SQLite's "no transaction is
- * active" error counts as clean.
+ * active" error counts as clean. Rollback cleanup also accepts "no such
+ * savepoint".
  *
  * @stability unstable
  * @category constructors
@@ -387,6 +404,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
   readonly borrower: Connection.Borrower
   readonly transactionAcquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly onCommitFailure: (conn: Connection.Connection) => Effect.Effect<void, SqlError>
+  readonly onRollbackFailure: (conn: Connection.Connection, error: SqlError) => Effect.Effect<void, SqlError>
 } => {
   const { isTransaction, semaphore } = options
   let poisoned: SqlError | undefined
@@ -405,7 +423,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     }
     return conn.executeUnprepared("ROLLBACK", [], undefined).pipe(
       Effect.asVoid,
-      Effect.catchIf(isNoTransactionError, () => Effect.void)
+      Effect.catchIf((error) => noTransactionError.test(errorMessage(error)), () => Effect.void)
     )
   }
 
@@ -432,18 +450,24 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     acquirer: lease,
     borrower: (f) => semaphore.withPermit(Effect.flatMap(available, f)),
     transactionAcquirer: lease,
-    onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause)))
+    onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause))),
+    onRollbackFailure: (conn, error) =>
+      (isTransaction ? !isTransaction(conn as C) : noTransactionOrSavepointError.test(errorMessage(error)))
+        ? Effect.void
+        : Effect.fail(error)
   }
 }
 
-const isNoTransactionError = (error: SqlError): boolean => {
+const noTransactionError = /no transaction is active/i
+const noTransactionOrSavepointError = /no transaction is active|no such savepoint/i
+
+const errorMessage = (error: SqlError): string => {
   const cause = error.reason.cause
-  const message = typeof cause === "string"
+  return typeof cause === "string"
     ? cause
     : hasProperty(cause, "message") && typeof cause.message === "string"
     ? cause.message
     : ""
-  return /no transaction is active/i.test(message)
 }
 
 /**
@@ -549,7 +573,16 @@ export const makeWithTransaction = <I, S>(options: {
   readonly onCommitFailure?: ((conn: NoInfer<S>) => Effect.Effect<void, SqlError>) | undefined
   readonly rollback: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly rollbackSavepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
+  /**
+   * Recovers from a failed rollback, or the savepoint release after it, for
+   * example when the database already ended the transaction. Errors it keeps
+   * become defects.
+   */
+  readonly onRollbackFailure?: ((conn: NoInfer<S>, error: SqlError) => Effect.Effect<void, SqlError>) | undefined
 }) => {
+  const onRollbackFailure = options.onRollbackFailure
+  const rollbackCleanup = (conn: S, effect: Effect.Effect<void, SqlError>): Effect.Effect<void> =>
+    Effect.orDie(onRollbackFailure ? Effect.catch(effect, (error) => onRollbackFailure(conn, error)) : effect)
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
@@ -626,14 +659,19 @@ export const makeWithTransaction = <I, S>(options: {
                           }
                         } else {
                           span.event("effect.sql.transaction.rollback", clock.currentTimeNanosUnsafe())
-                          effect = Effect.orDie(
+                          effect = rollbackCleanup(
+                            conn,
                             id > 0
                               ? options.rollbackSavepoint(conn, id)
                               : options.rollback(conn)
                           )
                         }
                         if (id > 0 && options.releaseSavepoint) {
-                          effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)))
+                          const release = options.releaseSavepoint(conn, id)
+                          effect = Effect.andThen(
+                            effect,
+                            Exit.isSuccess(exit) ? Effect.orDie(release) : rollbackCleanup(conn, release)
+                          )
                         }
                         return Effect.flatMap(effect, () => {
                           committed = Exit.isSuccess(exit)

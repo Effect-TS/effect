@@ -340,7 +340,7 @@ export const make = (
     })
 
     const connection = yield* makeConnection
-    const { acquirer, borrower, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const acquirers = Client.makeSqliteAcquirers({
       connection: Effect.succeed(connection),
       semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
@@ -349,11 +349,8 @@ export const make = (
     return Object.assign(
       (yield* Client.make({
         driver: "sqlite-node",
-        acquirer,
-        borrower,
+        ...acquirers,
         compiler,
-        transactionAcquirer,
-        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [
@@ -365,8 +362,9 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        backup: (destination: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.backup(destination))),
-        loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.loadExtension(path)))
+        backup: (destination: string) =>
+          Effect.scoped(Effect.flatMap(acquirers.acquirer, (_) => _.backup(destination))),
+        loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirers.acquirer, (_) => _.loadExtension(path)))
       }
     )
   })
