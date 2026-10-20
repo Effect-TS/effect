@@ -7134,7 +7134,7 @@ export function isULID(annotations?: Annotations.Filter) {
  */
 export function isBase64(annotations?: Annotations.Filter) {
   const pattern = "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$"
-  // Matching `pattern` directly overflows the V8 stack on large inputs
+  // `pattern` overflows the V8 stack on large inputs
   const regExp = /^[0-9a-zA-Z+/]*={0,2}$/
   return makeFilter(
     (s: string) => s.length % 4 === 0 && regExp.test(s),
@@ -7175,7 +7175,7 @@ export function isBase64(annotations?: Annotations.Filter) {
  */
 export function isBase64Url(annotations?: Annotations.Filter) {
   const pattern = "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$"
-  // Matching `pattern` directly overflows the V8 stack on large inputs
+  // `pattern` overflows the V8 stack on large inputs
   const regExp = /^[0-9a-zA-Z-_]*={0,2}$/
   return makeFilter(
     (s: string) => regExp.test(s) && (s.endsWith("=") ? s.length % 4 === 0 : s.length % 4 !== 1),
