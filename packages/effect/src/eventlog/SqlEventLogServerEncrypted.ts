@@ -13,6 +13,7 @@
  */
 import * as Arr from "../Array.ts"
 import type { NonEmptyArray } from "../Array.ts"
+import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -25,7 +26,7 @@ import type * as SqlError from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import * as Stream from "../Stream.ts"
 import { type EntryId, makeRemoteIdUnsafe, type RemoteId } from "./EventJournal.ts"
-import * as EventLogEncryption from "./EventLogEncryption.ts"
+import type * as EventLogEncryption from "./EventLogEncryption.ts"
 import type { WriteAck } from "./EventLogMessage.ts"
 import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
 
@@ -56,10 +57,10 @@ export const makeStorage = (options?: {
 }): Effect.Effect<
   EventLogServerEncrypted.Storage["Service"],
   SqlError.SqlError,
-  SqlClient.SqlClient | EventLogEncryption.EventLogEncryption | Scope.Scope
+  SqlClient.SqlClient | Digest.Digest | Scope.Scope
 > =>
   Effect.gen(function*() {
-    const encryptions = yield* EventLogEncryption.EventLogEncryption
+    const digest = yield* Digest.Digest
     const sql = (yield* SqlClient.SqlClient).withoutTransforms()
 
     const tablePrefix = options?.entryTablePrefix ?? "effect_events"
@@ -136,7 +137,7 @@ export const makeStorage = (options?: {
 
     const resources = yield* RcMap.make({
       lookup: Effect.fnUntraced(function*(scopeKey: string) {
-        const scopeHash = (yield* encryptions.sha256String(new TextEncoder().encode(scopeKey))).slice(0, 16)
+        const scopeHash = (yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(scopeKey))).slice(0, 16)
         const table = `${tablePrefix}_${scopeHash}`
         const tableSql = sql(table)
         const idsTableSql = sql(`${table}_ids`)
@@ -449,12 +450,12 @@ export const layerStorage = (options?: {
 }): Layer.Layer<
   EventLogServerEncrypted.Storage,
   SqlError.SqlError,
-  SqlClient.SqlClient | EventLogEncryption.EventLogEncryption
+  SqlClient.SqlClient | Digest.Digest
 > => Layer.effect(EventLogServerEncrypted.Storage)(makeStorage(options))
 
 /**
  * Provides SQL-backed encrypted server `Storage` and supplies the default Web
- * Crypto `EventLogEncryption` layer.
+ * Crypto `Digest` layer.
  *
  * @stability unstable
  * @category layers
@@ -465,7 +466,7 @@ export const layerStorageSubtle = (options?: {
   readonly remoteIdTable?: string
 }): Layer.Layer<EventLogServerEncrypted.Storage, SqlError.SqlError, SqlClient.SqlClient> =>
   layerStorage(options).pipe(
-    Layer.provide(EventLogEncryption.layerSubtle)
+    Layer.provide(Digest.layerWebCrypto)
   )
 
 const makeEncryptedScopeKey = (
