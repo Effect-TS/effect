@@ -1568,6 +1568,24 @@ describe("Effect", () => {
       }))
   }
 
+  describe("schedule", () => {
+    it.effect("schedule and scheduleFrom preserve source Done failures", () =>
+      Effect.gen(function*() {
+        const source = Cause.done(42)
+        const policy = Schedule.recurs(3)
+        assert.deepStrictEqual(yield* Effect.exit(Effect.schedule(source, policy)), Exit.fail(Cause.Done(42)))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.scheduleFrom(source, 0, policy)), Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("returns the schedule output without running the source after completion", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const result = yield* Effect.scheduleFrom(Effect.sync(() => ++n), 0, Schedule.recurs(3))
+        assert.strictEqual(result, 3)
+        assert.strictEqual(n, 3)
+      }))
+  })
+
   describe("repeat", () => {
     it.effect("preserves finalizer defects accompanying schedule completion", () =>
       Effect.gen(function*() {
@@ -1576,6 +1594,25 @@ describe("Effect", () => {
         )
         const exit = yield* Effect.exit(Effect.repeat(Effect.void, policy))
         assert.deepStrictEqual(exit, Exit.die("cleanup failed"))
+      }))
+
+    it.effect("fails with a Done raised by the repeated effect", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(Effect.repeat(Cause.done(42), Schedule.recurs(3)))
+        assert.deepStrictEqual(exit, Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("repeatOrElse passes source Done failures and iteration metadata to orElse", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const effect = Effect.suspend(() => ++n < 3 ? Effect.succeed(n) : Cause.done(42))
+        const result = yield* Effect.repeatOrElse(effect, Schedule.recurs(10), (error, meta) => {
+          assert.deepStrictEqual(error, Cause.Done(42))
+          assert.deepStrictEqual(Option.map(meta, (meta) => meta.attempt), Option.some(2))
+          return Effect.succeed(-1)
+        })
+        assert.strictEqual(result, -1)
+        assert.strictEqual(n, 3)
       }))
 
     it.effect("is interruptible", () =>
