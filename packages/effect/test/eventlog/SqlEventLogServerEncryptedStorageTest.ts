@@ -285,15 +285,16 @@ const commitSnapshot = Effect.fnUntraced(function*(
   return yield* compaction.commit(publicKey, storeId, begun.stageId, [head])
 })
 
-// Hangs the first statement that deletes from `table`, as a sweeper whose
+// Hangs the selected statement that deletes from `table`, as a sweeper whose
 // process dies mid-prune, and signals that it got there.
-const hangOnDelete = (table: string, reached: Deferred.Deferred<void>): Statement.Transformer => {
-  let hung = false
+const hangOnDelete = (table: string, reached: Deferred.Deferred<void>, deleteNumber = 1): Statement.Transformer => {
+  let deletes = 0
   return (statement, sql) => {
     const [text] = statement.compile()
     const [target] = sql`${sql(table)}`.compile()
-    if (hung || !/\bDELETE\b/i.test(text) || !text.includes(target)) return Effect.succeed(statement)
-    hung = true
+    if (!/\bDELETE\b/i.test(text) || !text.includes(target) || ++deletes !== deleteNumber) {
+      return Effect.succeed(statement)
+    }
     return Effect.andThen(Deferred.succeed(reached, undefined), Effect.never)
   }
 }
@@ -420,6 +421,66 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         ])
       }))
 
+    it.effect("resumes a partially pruned snapshot after its sweeper dies without deleting originals", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const { options, publicKey, table } = yield* makeNamespace({ grace: "2 hours", lag: "1 hour" })
+        const snapshotTable = `${table}_snapshot`
+        const reached = yield* Deferred.make<void>()
+        // Register cleanup before construction so failures also stop the sweeper
+        // and release any transaction held at the injected interruption.
+        const scopeA = yield* Effect.acquireRelease(Scope.make(), (scope) =>
+          Scope.close(scope, Exit.void))
+        const storageA = yield* SqlEventLogServerEncrypted.makeStorage(options).pipe(
+          Effect.provideService(Statement.CurrentTransformer, hangOnDelete(snapshotTable, reached, 2)),
+          Scope.provide(scopeA)
+        )
+        const compactionA = storageA.compaction ?? assert.fail("Storage does not provide compaction")
+        // More than two 200-row chunks, with one entry per snapshot row.
+        const batches = makeIds(401).map((id) => makeBatch(id))
+        const written = yield* storageA.write(publicKey, storeId, batches)
+        const begun = yield* compactionA.begin(publicKey, storeId, { through: written[400].sequence })
+        if (begun._tag !== "Started") return assert.fail(`expected Started, got ${begun._tag}`)
+        yield* compactionA.stagePart(publicKey, storeId, begun.stageId, 0, [batches[0], ...batches.slice(1)])
+        assert.strictEqual(
+          yield* compactionA.commit(publicKey, storeId, begun.stageId, written.map((batch) => batch.sequence)),
+          "Committed"
+        )
+        const snapshot = (yield* compactionA.history(publicKey, storeId)).find((activation) => activation.active)!
+        yield* compactionA.rollback(publicKey, storeId, snapshot.activationId)
+
+        // Poll only the signal while A holds a transaction (SQLite cannot query
+        // through that lock). sweepUntil bounds the missing-second-delete case.
+        const interrupted = yield* sweepUntil(Deferred.isDone(reached), (done) => done)
+        yield* Scope.close(scopeA, Exit.void)
+        assert.isTrue(interrupted, "snapshot pruning never reached a second DELETE")
+
+        const storageB = yield* SqlEventLogServerEncrypted.makeStorage(options)
+        const compactionB = storageB.compaction ?? assert.fail("Storage does not provide compaction")
+        const withdrawn = (yield* compactionB.history(publicKey, storeId)).find((activation) =>
+          activation.activationId === snapshot.activationId
+        )!
+        const remainingRows = Effect.map(
+          sql<{ n: number | string }>`
+            SELECT COUNT(*) AS n FROM ${sql(snapshotTable)} WHERE batch_set = ${begun.stageId}`,
+          ([row]) => Number(row.n)
+        )
+        const beforeB = yield* remainingRows
+        assert.isFalse(withdrawn.restorable)
+        assert.isAbove(beforeB, 0)
+        assert.isBelow(beforeB, batches.length)
+        assert.strictEqual(yield* countRows(table), batches.length)
+
+        assert.strictEqual(yield* sweepUntil(remainingRows, (count) => count === 0), 0)
+        assert.strictEqual(yield* countRows(table), batches.length)
+        const persisted = yield* storageB.changes(publicKey, storeId, storageB.firstSequence ?? 0).pipe(
+          Stream.take(batches.length),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(ids(persisted), ids(batches))
+        assert.deepStrictEqual(served(persisted), served(written))
+      }), { timeout: 60_000 })
+
     it.effect("finishes the prune of a sweeper that died in the middle of it", () =>
       Effect.gen(function*() {
         const { options, publicKey, table } = yield* makeNamespace({ grace: "2 hours", lag: "1 hour" })
@@ -436,13 +497,15 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         ])
         yield* commitSnapshot(storageA, publicKey, entries[2])
 
-        const died = yield* sweepUntil(Deferred.isDone(reached), (done) => done)
+        const died = yield* sweepUntil(Deferred.isDone(reached), (done) =>
+          done)
         yield* Scope.close(scopeA, Exit.void)
         const storageB = yield* SqlEventLogServerEncrypted.makeStorage(options)
         const compaction = storageB.compaction ?? assert.fail("Storage does not provide compaction")
         const [originals] = yield* compaction.history(publicKey, storeId)
         const beforeB = yield* countRows(table)
-        const afterB = yield* sweepUntil(countRows(table), (count) => count === 0)
+        const afterB = yield* sweepUntil(countRows(table), (count) =>
+          count === 0)
         const persisted = yield* storageB.changes(publicKey, storeId, 0).pipe(Stream.take(1), Stream.runCollect)
 
         assert.isTrue(died)
