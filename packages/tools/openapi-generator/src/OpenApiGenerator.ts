@@ -945,62 +945,114 @@ const makeMultipartTransformer = (
 }
 
 // Collects every reference reachable from the paths without passing through a multipart request body.
+// Only positions that hold OpenAPI objects or schemas are followed, so `$ref` keys in examples,
+// links and other application data are never resolved.
 const collectNonMultipartRefs = (
   paths: OpenAPISpec["paths"],
   resolveRef: (ref: string) => unknown
 ): ReadonlySet<string> => {
   const seen = new Set<string>()
-  const resolve = (value: Record<string, unknown>): unknown => {
-    if (typeof value.$ref !== "string" || !value.$ref.startsWith("#/") || seen.has(value.$ref)) return undefined
+  // Resolves a reference object, returning `undefined` for non-objects and already visited references.
+  const deref = (value: unknown): Record<string, unknown> | undefined => {
+    if (!Predicate.isObject(value)) return undefined
+    if (typeof value.$ref !== "string") return value
+    if (seen.has(value.$ref)) return undefined
     seen.add(value.$ref)
-    return resolveRef(value.$ref)
+    return deref(resolveRef(value.$ref))
   }
-  // `names` marks maps keyed by user-chosen names, where keys are never keywords.
-  const visit = (value: unknown, names = false): void => {
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item)
-    } else if (Predicate.isObject(value)) {
-      visit(resolve(value))
-      for (const [key, item] of Object.entries(value)) {
-        if (names) {
-          visit(item)
-        } else if (key === "requestBody") {
-          visitRequestBody(item)
-        } else if (!isDataKeyword(key)) {
-          visit(item, nameMapKeywords.has(key))
-        }
+  const visitSchema = (schema: unknown): void => {
+    if (Array.isArray(schema)) {
+      for (const item of schema) visitSchema(item)
+      return
+    }
+    if (!Predicate.isObject(schema)) return
+    if (typeof schema.$ref === "string" && !seen.has(schema.$ref)) {
+      seen.add(schema.$ref)
+      visitSchema(resolveRef(schema.$ref))
+    }
+    for (const key of subschemaKeywords) {
+      visitSchema(schema[key])
+    }
+    for (const key of subschemaMapKeywords) {
+      const map = schema[key]
+      if (Predicate.isObject(map)) {
+        for (const item of Object.values(map)) visitSchema(item)
       }
     }
   }
-  const visitRequestBody = (body: unknown): void => {
-    if (!Predicate.isObject(body)) return
-    visitRequestBody(resolve(body))
-    if (!Predicate.isObject(body.content)) return
-    for (const [contentType, mediaType] of Object.entries(body.content)) {
-      if (getRequestMediaTypeEncoding(contentType) !== "multipart") {
-        visit(mediaType)
+  const visitContent = (content: unknown, skipMultipart: boolean): void => {
+    if (!Predicate.isObject(content)) return
+    for (const [contentType, mediaType] of Object.entries(content)) {
+      if (!Predicate.isObject(mediaType)) continue
+      if (skipMultipart && getRequestMediaTypeEncoding(contentType) === "multipart") continue
+      visitSchema(mediaType.schema)
+      const stream = mediaType["x-effect-stream"]
+      if (Predicate.isObject(stream)) {
+        visitSchema(stream.errorSchema)
       }
     }
   }
-  visit(paths)
+  // Parameters and headers share the `schema` and `content` fields.
+  const visitParameter = (value: unknown): void => {
+    const parameter = deref(value)
+    if (parameter === undefined) return
+    visitSchema(parameter.schema)
+    visitContent(parameter.content, false)
+  }
+  const visitParameters = (parameters: unknown): void => {
+    if (Array.isArray(parameters)) {
+      for (const parameter of parameters) visitParameter(parameter)
+    }
+  }
+  const visitOperation = (operation: unknown): void => {
+    if (!Predicate.isObject(operation)) return
+    visitParameters(operation.parameters)
+    const requestBody = deref(operation.requestBody)
+    if (requestBody !== undefined) {
+      visitContent(requestBody.content, true)
+    }
+    if (!Predicate.isObject(operation.responses)) return
+    for (const value of Object.values(operation.responses)) {
+      const response = deref(value)
+      if (response === undefined) continue
+      if (Predicate.isObject(response.headers)) {
+        for (const header of Object.values(response.headers)) visitParameter(header)
+      }
+      visitContent(response.content, false)
+    }
+  }
+  for (const methods of Object.values(paths)) {
+    const pathItem: Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>> = methods
+    visitParameters(methods.parameters)
+    for (const method of methodNames) {
+      visitOperation(
+        method === "query" ? pathItem.query ?? methods["x-oai-additionalOperations"]?.QUERY : pathItem[method]
+      )
+    }
+  }
   return seen
 }
 
-// Keywords holding user data, such as examples, which may contain `$ref` keys that are not references.
-const isDataKeyword = (key: string): boolean =>
-  dataKeywords.has(key) || (key.startsWith("x-") && key !== "x-oai-additionalOperations")
+const subschemaKeywords = [
+  "items",
+  "prefixItems",
+  "additionalItems",
+  "additionalProperties",
+  "unevaluatedItems",
+  "unevaluatedProperties",
+  "contains",
+  "propertyNames",
+  "contentSchema",
+  "allOf",
+  "anyOf",
+  "oneOf",
+  "not",
+  "if",
+  "then",
+  "else"
+] as const
 
-const dataKeywords = new Set(["default", "const", "enum", "example", "examples"])
-
-const nameMapKeywords = new Set([
-  "properties",
-  "patternProperties",
-  "dependentSchemas",
-  "$defs",
-  "definitions",
-  "headers",
-  "encoding"
-])
+const subschemaMapKeywords = ["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"] as const
 
 const componentRefPrefix = "#/components/schemas/"
 
