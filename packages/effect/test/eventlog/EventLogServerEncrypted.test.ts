@@ -49,7 +49,7 @@ const key = (id: EventJournal.EntryId) => Array.from(id).join(",")
 const makeBatch = (entryIds: EntryIds): EventLogEncryption.EncryptedBatch => ({
   entryIds: entryIds as [EventJournal.EntryId, ...Array<EventJournal.EntryId>],
   iv: globalThis.crypto.getRandomValues(new Uint8Array(12)),
-  encryptedBatch: Uint8Array.of(1)
+  encryptedBatch: new Uint8Array(entryIds.length)
 })
 
 const started = <A extends { readonly _tag: string }>(result: A) =>
