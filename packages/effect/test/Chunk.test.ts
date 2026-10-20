@@ -833,11 +833,9 @@ describe("Chunk", () => {
   })
 
   it("union", () => {
-    assertEquals(Chunk.union(Chunk.make(1, 2, 3), Chunk.empty()), Chunk.make(1, 2, 3))
-    assertEquals(Chunk.union(Chunk.empty(), Chunk.make(1, 2, 3)), Chunk.make(1, 2, 3))
+    assertEquals(Chunk.union(Chunk.make(2, 1, 2), Chunk.empty()), Chunk.make(2, 1))
+    assertEquals(Chunk.union(Chunk.empty(), Chunk.make(2, 1, 2)), Chunk.make(2, 1))
     assertEquals(Chunk.union(Chunk.make(1, 2, 3), Chunk.make(2, 3, 4)), Chunk.make(1, 2, 3, 4))
-    assertEquals(Chunk.union(Chunk.make(1, 1, 2), Chunk.empty()), Chunk.make(1, 2))
-    assertEquals(Chunk.union(Chunk.empty(), Chunk.make(1, 1, 2)), Chunk.make(1, 2))
   })
 
   it("intersection", () => {
