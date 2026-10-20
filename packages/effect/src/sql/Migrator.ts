@@ -232,7 +232,7 @@ ORDER BY migration_id`,
       effect: Effect.Effect<unknown, unknown, Client.SqlClient>
     ) =>
       Effect.catch(effect, (error: unknown) =>
-        Effect.die(
+        Effect.fail(
           new MigrationError({
             cause: error,
             kind: "Failed",
