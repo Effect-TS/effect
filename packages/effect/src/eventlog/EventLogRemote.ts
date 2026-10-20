@@ -112,7 +112,7 @@ export class EventLogRemoteError extends Data.TaggedError("EventLogRemoteError")
   }
 }
 
-const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)
+const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial()
 
 const makeAuthenticate = Effect.fnUntraced(function*(options: {
   readonly identity: Identity["Service"]
