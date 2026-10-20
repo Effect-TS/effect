@@ -8,6 +8,9 @@
  * XHR response type, an overridable `XMLHttpRequest` constructor service, and
  * the `layerXMLHttpRequest` layer.
  *
+ * Requests with an `Upgrade` header fail with `TransportError` before anything
+ * is sent because neither fetch nor XMLHttpRequest can hand over the connection.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -30,6 +33,7 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Queue from "effect/Queue"
 import type * as Schema from "effect/Schema"
+import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 
 // =============================================================================
@@ -134,6 +138,16 @@ const makeXhrRequest = () => new globalThis.XMLHttpRequest()
 const makeXmlHttpRequest = HttpClient.make(
   (request, url, signal, fiber) =>
     Effect.suspend(() => {
+      if (request.headers.upgrade !== undefined) {
+        return Effect.fail(
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({
+              request,
+              description: "XMLHttpRequest cannot send an HTTP upgrade request"
+            })
+          })
+        )
+      }
       const xhr = Context.getOrElse(
         fiber.context,
         XMLHttpRequest,
@@ -426,6 +440,18 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
         try: () => new globalThis.Response(body, { headers: this.headers }).formData(),
         catch: this.onError
       }))
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, HttpClientError.HttpClientError> {
+    return Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.StatusCodeError({
+          request: this.request,
+          response: this,
+          description: "XMLHttpRequest cannot hand over the connection of an HTTP upgrade"
+        })
+      })
+    )
   }
 
   override toString(): string {

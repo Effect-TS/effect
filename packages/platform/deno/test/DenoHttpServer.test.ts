@@ -1013,6 +1013,28 @@ describe("DenoHttpServer", () => {
       assert.strictEqual(yield* Deferred.await(logged), 101)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
+  it.effect("fails upgrades to protocols other than WebSocket", () =>
+    Effect.gen(function*() {
+      // Deno.serve answers upgrade requests with a body method with 400 itself
+      yield* HttpRouter.add(
+        "GET",
+        "/attach",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const error = yield* Effect.flip(request.upgrade)
+          return HttpServerResponse.text(error.reason.message, { status: 501 })
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      // Deno's fetch sends the upgrade headers that the Effect fetch client refuses
+      const response = yield* Effect.promise(() =>
+        fetch(`http://127.0.0.1:${port}/attach`, { headers: { connection: "Upgrade", upgrade: "tcp" } })
+      )
+      assert.strictEqual(response.status, 501)
+      assert.include(yield* Effect.promise(() => response.text()), "Deno.serve only supports WebSocket upgrades")
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("preserves eager WebSocket frames across an async boundary", () =>
     Effect.gen(function*() {
       yield* serveWebSocket((socket) =>

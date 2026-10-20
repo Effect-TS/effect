@@ -25,6 +25,7 @@ import { hasProperty } from "../Predicate.ts"
 import { redact } from "../Redactable.ts"
 import type * as Schema from "../Schema.ts"
 import type { ParseOptions } from "../SchemaAST.ts"
+import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import type { Mutable } from "../Types.ts"
 import * as Cookies from "./Cookies.ts"
@@ -1383,6 +1384,18 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
   private formDataResponse?: Response
   private getFormDataResponse(): Response {
     return this.formDataResponse ??= new Response((this.response.body as Body.FormData).formData)
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, HttpClientError.HttpClientError> {
+    return Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.StatusCodeError({
+          request: this.request,
+          response: this,
+          description: "a server response has no connection to hand over"
+        })
+      })
+    )
   }
 
   pipe() {

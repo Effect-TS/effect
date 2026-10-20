@@ -1074,6 +1074,27 @@ describe("OpenAPI spec", () => {
           })
         })
 
+        it("Upgrade", () => {
+          const Api = HttpApi.make("api")
+            .add(
+              HttpApiGroup.make("group")
+                .add(
+                  HttpApiEndpoint.post("a", "/a", {
+                    success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+                  })
+                )
+            )
+          const spec = OpenApi.fromApi(Api)
+          assert.deepStrictEqual(spec.paths["/a"].post?.responses["101"], {
+            description: "Switching Protocols",
+            headers: {
+              connection: { schema: { type: "string", enum: ["Upgrade"] }, required: true },
+              upgrade: { schema: { type: "string", enum: ["tcp"] }, required: true }
+            }
+          })
+          assert.strictEqual(spec.paths["/a"].post?.responses["200"], undefined)
+        })
+
         it("StreamUint8Array with annotated status", () => {
           const Api = HttpApi.make("api")
             .add(
