@@ -10,23 +10,35 @@ export class ContainerError extends Data.TaggedError("ContainerError")<{
 
 // testcontainers removes a container that fails its wait strategy, discarding its
 // output. Keep the tail of it so startup failures report why sqlservr exited.
+// Both the number of lines and the length of each line are capped.
 const maxLogLines = 200
+const maxLineLength = 1000
 
 export const makeLogBuffer = () => {
   const lines: Array<string> = []
   let partial = ""
+  let partialTruncated = false
   let done: Promise<void> | undefined
-  const push = (line: string) => {
+  const push = (line: string, truncated = false) => {
     // sqlservr terminates lines with "\n\r"
-    lines.push(line.replace(/^\r+|\r+$/g, ""))
+    line = line.replace(/^\r+|\r+$/g, "")
+    lines.push(
+      truncated || line.length > maxLineLength ? `[truncated] ${line.slice(-maxLineLength)}` : line
+    )
     if (lines.length > maxLogLines) lines.shift()
   }
   const consume = (stream: Readable) => {
     done = new Promise((resolve) => {
       stream.on("data", (chunk: string) => {
         const parts = (partial + chunk).split("\n")
-        partial = parts.pop()!
-        parts.forEach(push)
+        const last = parts.pop()!
+        for (const line of parts) {
+          push(line, partialTruncated)
+          partialTruncated = false
+        }
+        // keep only the tail of an unterminated line so newline-free output stays bounded
+        partialTruncated = partialTruncated || last.length > maxLineLength
+        partial = last.slice(-maxLineLength)
       })
       stream.once("end", resolve)
       stream.once("close", resolve)
@@ -42,8 +54,9 @@ export const makeLogBuffer = () => {
     Effect.timeoutOption("1 second"),
     Effect.map(() => {
       if (partial !== "") {
-        push(partial)
+        push(partial, partialTruncated)
         partial = ""
+        partialTruncated = false
       }
       return lines.length === 0
         ? "Failed to start container (no container output captured)"
