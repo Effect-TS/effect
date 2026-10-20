@@ -137,6 +137,43 @@ const toPayload = (op: typeof Op.Type): Payload => {
   }
 }
 
+// An entry to compact. `rank` picks its position in a shuffled batch.
+const Draft = Schema.Struct({
+  msecs: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 3 })),
+  rank: Schema.Int,
+  op: Op
+})
+const Drafts = Schema.Array(Draft).check(Schema.isMaxLength(8))
+
+const toEntries = (drafts: ReadonlyArray<typeof Draft.Type>) =>
+  Effect.forEach(drafts, ({ msecs, op }) =>
+    Effect.map(
+      Schema.encodeUnknownEffect(Groceries.events.grocery.payloadSchemaBinary)(toPayload(op)),
+      (payload) =>
+        new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 + msecs }),
+          event: "grocery",
+          primaryKey: op.key,
+          payload
+        }, { disableChecks: true })
+    ))
+
+// Returns a function giving the ids `EventRow.compaction` keeps from a batch.
+const makeDrop = Effect.fnUntraced(function*() {
+  const registry = yield* EventLog.Registry
+  yield* Layer.build(
+    EventRow.compaction(Groceries, Grocery).pipe(Layer.provide(Layer.succeed(EventLog.Registry, registry)))
+  )
+  const compactor = registry.compactors.get("grocery")!
+  return Effect.fnUntraced(function*(entries: ReadonlyArray<EventJournal.Entry>) {
+    const kept: Array<EventJournal.Entry> = []
+    yield* compactor.effect({ entries, write: (entry) => Effect.sync(() => kept.push(entry)) })
+    return kept
+  })
+})
+
+const ids = (entries: ReadonlyArray<EventJournal.Entry>) => entries.map((entry) => entry.idString).sort()
+
 type Replica = Effect.Success<ReturnType<typeof makeReplica>>
 
 // An `EventLog` on a memory journal whose storage is a map of rows, fed by a
@@ -317,6 +354,7 @@ describe("EventRow", () => {
       yield* register(EventRow.compaction(group, Other))
       assert.deepStrictEqual([...registry.compactors.get("grocery")!.events], ["grocery"])
       assert.deepStrictEqual([...registry.compactors.get("other")!.events], ["other"])
+      assert.isTrue(registry.compactors.get("grocery")!.remote)
 
       type Input = readonly ["grocery" | "other", Payload]
       const cases: ReadonlyArray<readonly [string, ReadonlyArray<Input>, ReadonlyArray<number>]> = [
@@ -523,6 +561,39 @@ describe("EventRow", () => {
       assert.deepStrictEqual(replayed, some)
       assert.isTrue(Exit.isFailure(none))
     }))
+
+  it.effect.prop(
+    "compaction composes, including with older entries",
+    { a: Drafts, b: Drafts },
+    Effect.fnUntraced(
+      function*({ a, b }) {
+        const drop = yield* makeDrop()
+        const older = yield* toEntries(a)
+        const later = yield* toEntries(b)
+        assert.deepStrictEqual(
+          ids(yield* drop([...(yield* drop(older)), ...later])),
+          ids(yield* drop([...older, ...later]))
+        )
+      },
+      Effect.scoped,
+      Effect.provide(EventLog.layerRegistry)
+    )
+  )
+
+  it.effect.prop(
+    "compaction is independent of input order",
+    { drafts: Drafts },
+    Effect.fnUntraced(
+      function*({ drafts }) {
+        const drop = yield* makeDrop()
+        const entries = yield* toEntries(drafts)
+        const shuffled = entries.map((entry, i) => [drafts[i].rank, entry] as const).sort(([x], [y]) => x - y)
+        assert.deepStrictEqual(ids(yield* drop(shuffled.map(([, entry]) => entry))), ids(yield* drop(entries)))
+      },
+      Effect.scoped,
+      Effect.provide(EventLog.layerRegistry)
+    )
+  )
 
   it.effect.prop(
     "replicas converge to the fold of every entry in id order",
