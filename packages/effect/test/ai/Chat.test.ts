@@ -265,4 +265,17 @@ describe("Chat", () => {
       assert.instanceOf(result, Chat.ChatNotFoundError)
       assert.strictEqual(result.chatId, "chat-321")
     }).pipe(Effect.provide(PersistenceLayer)))
+
+  it.effect("should raise an error when retrieving a chat with invalid history", () =>
+    Effect.gen(function*() {
+      const backing = yield* Persistence.BackingPersistence
+      const persistence = yield* Chat.Persistence
+
+      const store = yield* backing.make("chat")
+      yield* store.set("1", { content: [{ role: "unknown" }] }, undefined)
+
+      const result = yield* Effect.flip(persistence.get("1"))
+
+      assert.instanceOf(result, Persistence.PersistenceError)
+    }).pipe(Effect.provide(PersistenceLayer)))
 })
