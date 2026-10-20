@@ -129,6 +129,12 @@ describe("SchemaJITCompiler", () => {
     strictEqual(SchemaParser.is(Schema.Struct({ constructor: Schema.optionalKey(Schema.String) }))({}), true)
   })
 
+  it("reports a missing required Object.prototype field", () => {
+    throws(() => SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.String }))({}), (error) => {
+      assertSchemaIssueError(error, `Missing key\n  at ["toString"]`)
+    })
+  })
+
   it("does not confuse a valid value with the invalid sentinel", () => {
     const schemas = [
       Schema.Union([Schema.Symbol, Schema.String]),

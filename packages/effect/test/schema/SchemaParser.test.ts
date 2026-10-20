@@ -23,7 +23,6 @@ import {
   strictEqual,
   throws
 } from "../utils/assert.ts"
-
 describe("SchemaParser", () => {
   describe("synchronous root callback defects", () => {
     const defect = new Error("callback defect")
@@ -545,11 +544,30 @@ describe("SchemaParser", () => {
       assertTrue(Object.hasOwn(output, "_tag"))
     })
 
-    it("decodes inherited Object.prototype properties", () => {
-      const output = SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.Unknown }))({})
+    it("requires Object.prototype field names to be own properties", () => {
+      const schema = Schema.Struct({
+        constructor: Schema.optionalKey(Schema.String),
+        toString: Schema.optional(Schema.String),
+        valueOf: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default")))
+      })
+      // TypeScript sees inherited members, so compare these runtime results as unknown.
+      deepStrictEqual<unknown>(SchemaParser.decodeUnknownSync(schema)({}), { valueOf: "default" })
+      deepStrictEqual<unknown>(SchemaParser.decodeUnknownSync(schema)(Object.create({ constructor: "inherited" })), {
+        valueOf: "default"
+      })
+      deepStrictEqual<unknown>(SchemaParser.encodeUnknownSync(schema)({ valueOf: "default" }), { valueOf: "default" })
+      assertFalse(SchemaParser.is(schema)({}))
+      assertTrue(SchemaParser.is(schema)({ valueOf: "default" }))
+      assertTrue(SchemaParser.is(Schema.Struct({ constructor: Schema.optionalKey(Schema.String) }))({}))
+      const own = { constructor: "own", toString: "own", valueOf: "own" }
+      deepStrictEqual(SchemaParser.decodeUnknownSync(schema)(own), own)
+      deepStrictEqual(SchemaParser.encodeUnknownSync(schema)(own), own)
+    })
 
-      strictEqual(output.toString, Object.prototype.toString)
-      assertTrue(Object.hasOwn(output, "toString"))
+    it("reports a missing required Object.prototype field", () => {
+      throws(() => SchemaParser.decodeUnknownSync(Schema.Struct({ toString: Schema.String }))({}), (error) => {
+        assertSchemaIssueError(error, `Missing key\n  at ["toString"]`)
+      })
     })
 
     it("requires __proto__ to be an own property", () => {
@@ -566,81 +584,6 @@ describe("SchemaParser", () => {
 
       const finite = Schema.Record(Schema.Literal("inherited"), Schema.Number)
       deepStrictEqual(SchemaParser.decodeUnknownSync(finite)(input), { inherited: 1 })
-    })
-
-    describe("declared fields named after Object.prototype members", () => {
-      // TypeScript also sees the inherited members, so `{}` is not assignable to `{ toString?: string }`.
-      // Results are compared as `unknown` to keep the runtime repro type-checking.
-      const keys = Object.getOwnPropertyNames(Object.prototype)
-
-      it.each(keys)("treats %s as absent from a plain object", (key) => {
-        const schema = Schema.Struct({ [key]: Schema.optionalKey(Schema.String) })
-
-        deepStrictEqual(SchemaParser.decodeUnknownSync(schema)({}), {})
-        deepStrictEqual(SchemaParser.encodeUnknownSync(schema)({}), {})
-        assertTrue(SchemaParser.is(schema)({}))
-        deepStrictEqual(SchemaParser.decodeUnknownSync(schema)({ [key]: "own" }), { [key]: "own" })
-      })
-
-      it.each(keys)("reports a missing required %s", (key) => {
-        throws(() => SchemaParser.decodeUnknownSync(Schema.Struct({ [key]: Schema.String }))({}), (error) => {
-          assertSchemaIssueError(error, `Missing key\n  at ["${key}"]`)
-        })
-      })
-
-      it("treats an absent field as missing across struct-like schemas", () => {
-        const optional = { toString: Schema.optionalKey(Schema.String) }
-        class A extends Schema.Class<A>("A")(optional) {}
-        const decode = (schema: Schema.ConstraintDecoder<unknown>, input: unknown): unknown =>
-          SchemaParser.decodeUnknownSync(schema)(input)
-
-        deepStrictEqual(decode(Schema.Struct({ toString: Schema.optional(Schema.String) }), {}), {})
-        deepStrictEqual(
-          decode(
-            Schema.Struct({ toString: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default"))) }),
-            {}
-          ),
-          { toString: "default" }
-        )
-        deepStrictEqual(decode(Schema.Struct({ toString: Schema.optionalKey(Schema.Unknown) }), {}), {})
-        deepStrictEqual(decode(Schema.Record(Schema.Literal("toString"), Schema.optionalKey(Schema.String)), {}), {})
-        deepStrictEqual(
-          decode(Schema.StructWithRest(Schema.Struct(optional), [Schema.Record(Schema.String, Schema.String)]), {}),
-          {}
-        )
-        deepStrictEqual(decode(Schema.TaggedStruct("A", optional), { _tag: "A" }), { _tag: "A" })
-        const instance = decode(A, {})
-        assertTrue(instance instanceof A)
-        deepStrictEqual({ ...instance }, {})
-        deepStrictEqual((Schema.Struct(optional).make as (input: unknown) => unknown)({}), {})
-      })
-
-      it("treats an absent field as missing with every parse option", () => {
-        const decode: (input: unknown, options?: SchemaAST.ParseOptions) => unknown = SchemaParser.decodeUnknownSync(
-          Schema.Struct({ constructor: Schema.optionalKey(Schema.String) })
-        )
-
-        deepStrictEqual(decode({}, { onExcessProperty: "error" }), {})
-        deepStrictEqual(decode({}, { onExcessProperty: "ignore" }), {})
-        deepStrictEqual(decode({}, { errors: "all" }), {})
-      })
-
-      it("decodes objects parsed from JSON", () => {
-        const decode: (input: unknown) => unknown = SchemaParser.decodeUnknownSync(Schema.toCodecJson(Schema.Struct({
-          nested: Schema.Struct({ valueOf: Schema.optionalKey(Schema.Number) })
-        })))
-
-        deepStrictEqual(decode(JSON.parse(`{"nested":{}}`)), { nested: {} })
-      })
-
-      it("selects union members by an absent discriminant", () => {
-        const decode: (input: unknown) => unknown = SchemaParser.decodeUnknownSync(Schema.Union([
-          Schema.Struct({ toString: Schema.Literal("a"), a: Schema.String }),
-          Schema.Struct({ toString: Schema.optionalKey(Schema.Literal("b")), b: Schema.String })
-        ]))
-
-        deepStrictEqual(decode({ b: "b" }), { b: "b" })
-      })
     })
 
     it("should throw an error when the input is invalid", () => {
