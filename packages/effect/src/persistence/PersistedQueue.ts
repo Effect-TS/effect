@@ -1513,28 +1513,26 @@ export const makeStoreSql: (
   })
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
 
-  // Each poll claims its rows under a fresh lock, so a settlement only matches
-  // the acquisition it belongs to, even after the same store re-claims a lapsed
-  // row. The sequences still held under each lock are refreshed together.
-  const claims = new Map<string, Set<number | string>>()
-  // A row only ever carries the lock of the poll that claimed it, so matching
-  // every registered sequence against every live lock renews just this store's
-  // own claims while keeping the statement flat
+  // Elements this store has claimed and not yet settled. Each poll claims its
+  // rows under a fresh lock, so a settlement only matches the acquisition it
+  // belongs to, even after the same store re-claims a lapsed row.
+  const held = new Set<Element>()
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
-    if (claims.size === 0) return Effect.void
-    const ids: Array<number | string> = []
-    const locks: Array<string> = []
-    for (const [lock, sequences] of claims) {
-      locks.push(wrapString(lock))
-      for (const sequence of sequences) {
-        ids.push(sequence)
-      }
+    if (held.size === 0) return Effect.void
+    const sequences = new Set<number | string>()
+    const locks = new Set<string>()
+    for (const element of held) {
+      sequences.add(element.sequence)
+      locks.add(wrapString(element.lock))
     }
+    // A row only ever carries the lock of the poll that claimed it, so matching
+    // every held sequence against every live lock renews just this store's own
+    // claims while keeping the statement flat
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = ${sqlNow}
-      WHERE sequence IN (${sql.literal(ids.join(","))})
-      AND acquired_by IN (${sql.literal(locks.join(","))})
+      WHERE sequence IN (${sql.literal(Array.from(sequences).join(","))})
+      AND acquired_by IN (${sql.literal(Array.from(locks).join(","))})
     `
   })
   const ack = (statement: Effect.Effect<unknown, SqlError>, element: Element): Effect.Effect<void> =>
@@ -1542,12 +1540,7 @@ export const makeStoreSql: (
       Effect.retry(ackRetrySchedule),
       Effect.orDie,
       Effect.ensuring(Effect.sync(() => {
-        const sequences = claims.get(element.lock)
-        if (sequences === undefined) return
-        sequences.delete(element.sequence)
-        if (sequences.size === 0) {
-          claims.delete(element.lock)
-        }
+        held.delete(element)
       })),
       Effect.asVoid
     )
@@ -1749,13 +1742,11 @@ export const makeStoreSql: (
             continue
           }
           takenLatch.closeUnsafe()
-          const sequences = new Set<number | string>()
           for (const row of results) {
             row.attempts = Number(row.attempts)
             row.lock = lock
-            sequences.add(row.sequence)
+            held.add(row)
           }
-          claims.set(lock, sequences)
           yield* Queue.offerAll(queue, results)
           yield* takenLatch.await
           yield* Effect.yieldNow
