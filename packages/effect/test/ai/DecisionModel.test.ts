@@ -527,6 +527,20 @@ describe("DecisionModel", () => {
       ))))
   }
 
+  it.effect("decideSettled rejects a locate decision for a provider without supportsLocate", () =>
+    Effect.gen(function*() {
+      const error = yield* failureOf(DecisionModel.decideSettled(FindMug, { input: scene }))
+
+      assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+      assert.strictEqual(error?.method, "decideSettled")
+    }).pipe(Effect.provide(Layer.effect(
+      DecisionModel.DecisionModel,
+      DecisionModel.make({
+        supportsImages: true,
+        decide: () => Effect.die("A rejected locate decision must not reach the provider")
+      })
+    ))))
+
   it.effect("a string input is passed to the provider as a string state", () => {
     const states: Array<unknown> = []
     const Sentiment = Decision.make({
@@ -1069,4 +1083,37 @@ describe("Decision validation contracts", () => {
         assert.strictEqual(error?.reason._tag, "InvalidOutputError")
       }).pipe(Effect.provide(locateWith(answer))))
   }
+
+  it.effect("decideSettled keeps a valid box beside an invalid one", () =>
+    Effect.gen(function*() {
+      const FindTwo = Decision.make({
+        input: Scene,
+        decisions: {
+          mug: Decision.locate({ image: "photo", instructions: "the coffee mug" }),
+          spoon: Decision.locate({ image: "photo", instructions: "the spoon" })
+        }
+      })
+      const { outcomes } = yield* DecisionModel.decideSettled(FindTwo, { input: scene })
+
+      assert.deepStrictEqual(outcomes.mug, Result.succeed({ box }))
+      assert.deepStrictEqual(unanswered(outcomes.spoon), {
+        _tag: "Unanswered",
+        reason: "Invalid",
+        description: "Provider returned a box with crossed edges for decision \"spoon\""
+      })
+    }).pipe(Effect.provide(Layer.effect(
+      DecisionModel.DecisionModel,
+      DecisionModel.make({
+        supportsImages: true,
+        supportsLocate: true,
+        decide: () =>
+          Effect.succeed({
+            answers: {
+              mug: { _tag: "Locate", box },
+              spoon: { _tag: "Locate", box: { ...box, left: 0.9 } }
+            },
+            usage: { inputTokens: undefined, outputTokens: undefined }
+          })
+      })
+    ))))
 })
