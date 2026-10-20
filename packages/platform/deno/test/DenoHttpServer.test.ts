@@ -264,18 +264,20 @@ describe("DenoHttpServer", () => {
 
     it.live("answers 500 and reports the status defect before stream scope cleanup completes", () =>
       Effect.gen(function*() {
+        let captured: HttpServerRequest.HttpServerRequest | undefined
         const finalized = yield* Latch.make()
         const release = yield* Latch.make()
         const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
         yield* HttpServer.serveEffect(
           Effect.gen(function*() {
+            captured = yield* HttpServerRequest.HttpServerRequest
             yield* Effect.addFinalizer(() => finalized.open.pipe(Effect.andThen(release.await)))
             return HttpServerResponse.stream(Stream.never, { status: 103 })
           }),
           (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
         )
         yield* Effect.addFinalizer(() => release.open)
-        const response = yield* HttpClient.get("/")
+        const response = yield* HttpClient.post("/", { body: HttpBody.text("unread") })
         assert.strictEqual(response.status, 500)
         assert.strictEqual(yield* response.text, "")
         yield* finalized.await
@@ -285,6 +287,13 @@ describe("DenoHttpServer", () => {
         const reason = exit.cause.reasons[0]
         assert(Cause.isDieReason(reason))
         assert(reason.defect instanceof RangeError)
+        assert.isDefined(captured)
+        const lateRead = yield* Effect.exit(captured!.text)
+        assert(Exit.isFailure(lateRead))
+        assert.strictEqual(lateRead.cause.reasons.length, 1)
+        const lateReadReason = lateRead.cause.reasons[0]
+        assert(Cause.isDieReason(lateReadReason))
+        assert.match(String(lateReadReason.defect), /after.*response|response.*finish/i)
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
   })
 
