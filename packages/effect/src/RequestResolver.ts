@@ -434,10 +434,11 @@ export const fromFunctionBatched = <A extends Request.Any>(
  *
  * **Details**
  *
- * Each entry's effect is provided with its own caller context. Services in
- * `entry.context` override the batch fiber's services; services added by resolver
- * wrappers remain available when absent from the entry context. Entries with
- * different caller contexts can still share a batch.
+ * Each entry's effect runs with its own caller context, without inheriting
+ * services present only in the batch creator's context. Services added or changed
+ * by resolver wrappers are applied on top of each entry's context, including the
+ * span created by `withSpan`. Entries with different caller contexts can still
+ * share a batch.
  *
  * **Example** (Creating a resolver from an effectful function)
  *
@@ -476,10 +477,24 @@ export const fromEffect = <A extends Request.Any>(
   return make((entries) =>
     Effect.callback<void>((resume) => {
       const parent = effect.getCurrentFiber()!
+      const baseline = Context.get(parent.context, internal.currentBatchContext) ?? entries[0].context
+      // Retain wrapper changes, not services inherited from the batch creator.
+      const services = new Map<string, unknown>()
+      for (const [key, value] of parent.context.mapUnsafe) {
+        if (key === internal.currentBatchContext.key) continue
+        if (!baseline.mapUnsafe.has(key) || baseline.mapUnsafe.get(key) !== value) {
+          services.set(key, value)
+        }
+      }
+      const overrides = Context.makeUnsafe(services)
       let done = 0
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i]
-        const fiber = effect.forkUnsafe(parent as any, Effect.provideContext(f(entry), entry.context), true)
+        const fiber = effect.forkUnsafe(
+          parent as any,
+          effect.setContext(f(entry), Context.merge(entry.context, overrides)),
+          true
+        )
         fiber.addObserver((exit) => {
           entry.completeUnsafe(exit)
           done++
