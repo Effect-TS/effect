@@ -1071,9 +1071,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
   it.effect("Activity.raceAll ignores a failure when another activity can succeed", () =>
     Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
       const fiber = yield* FailureRaceWorkflow.execute({
         id: "failure-race"
       }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      for (let i = 0; i < 2000 && fiber.pollUnsafe() === undefined; i++) {
+        yield* sharding.pollStorage
+        yield* TestClock.adjust("1 second")
+      }
+      assert(fiber.pollUnsafe() !== undefined, "failure race must complete when another activity can succeed")
 
       yield* pollUntil(FailureRaceWorkflow, yield* FailureRaceWorkflow.executionId({ id: "failure-race" }), "Complete")
 
