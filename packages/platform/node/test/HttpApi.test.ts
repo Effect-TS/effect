@@ -5,6 +5,7 @@ import {
   Array,
   ByteSize,
   Cause,
+  Clock,
   Context,
   DateTime,
   Deferred,
@@ -1667,8 +1668,14 @@ describe("HttpApi", () => {
     describe("security", () => {
       it.effect("security middleware sets current user", () =>
         Effect.gen(function*() {
-          const ref = yield* Ref.make(Cookies.empty.pipe(
-            Cookies.setUnsafe("token", "foo")
+          const server = yield* HttpServer.HttpServer
+          const url = new URL(HttpServer.formatAddress(server.address))
+          url.hostname = "127.0.0.1"
+          const ref = yield* Ref.make(Cookies.mergeIntoArray(
+            [],
+            url.origin,
+            Cookies.fromSetCookie("token=foo; Path=/"),
+            yield* Clock.currentTimeMillis
           ))
           const client = yield* HttpApiClient.makeWith(Api, {
             httpClient: HttpClient.withCookiesRef(yield* HttpClient.HttpClient, ref)
