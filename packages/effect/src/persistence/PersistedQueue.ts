@@ -1515,26 +1515,11 @@ export const makeStoreSql: (
 
   // Each poll claims its rows under a fresh lock, so a settlement only matches
   // the acquisition it belongs to, even after the same store re-claims a lapsed
-  // row.
-  type Claim = {
-    readonly sequence: number | string
-    readonly lock: string
-  }
+  // row. The sequences still held under each lock are refreshed together.
   const claims = new Map<string, Set<number | string>>()
-  const groupClaims = (elements: Iterable<Claim>) => {
-    const groups = new Map<string, Set<number | string>>()
-    for (const { lock, sequence } of elements) {
-      let sequences = groups.get(lock)
-      if (sequences === undefined) {
-        sequences = new Set()
-        groups.set(lock, sequences)
-      }
-      sequences.add(sequence)
-    }
-    return groups
-  }
-  // Refreshing a row under any of this store's live locks is safe, since one of
-  // its handlers is still running on it, and keeps the statement flat
+  // A row only ever carries the lock of the poll that claimed it, so matching
+  // every registered sequence against every live lock renews just this store's
+  // own claims while keeping the statement flat
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
     if (claims.size === 0) return Effect.void
     const ids: Array<number | string> = []
@@ -1552,26 +1537,21 @@ export const makeStoreSql: (
       AND acquired_by IN (${sql.literal(locks.join(","))})
     `
   })
-  const ack = (
-    statement: Effect.Effect<unknown, SqlError>,
-    elements: ReadonlyArray<Claim>
-  ): Effect.Effect<void> =>
+  const ack = (statement: Effect.Effect<unknown, SqlError>, element: Element): Effect.Effect<void> =>
     statement.pipe(
       Effect.retry(ackRetrySchedule),
       Effect.orDie,
       Effect.ensuring(Effect.sync(() => {
-        for (const { lock, sequence } of elements) {
-          const sequences = claims.get(lock)
-          if (sequences === undefined) continue
-          sequences.delete(sequence)
-          if (sequences.size === 0) {
-            claims.delete(lock)
-          }
+        const sequences = claims.get(element.lock)
+        if (sequences === undefined) return
+        sequences.delete(element.sequence)
+        if (sequences.size === 0) {
+          claims.delete(element.lock)
         }
       })),
       Effect.asVoid
     )
-  const complete = (element: Claim) =>
+  const complete = (element: Element) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
@@ -1579,9 +1559,9 @@ export const makeStoreSql: (
         WHERE sequence = ${element.sequence}
         AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [element]
+      element
     )
-  const fail = (element: Claim, cause: Cause.Cause<any>) =>
+  const fail = (element: Element, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
@@ -1591,9 +1571,9 @@ export const makeStoreSql: (
         WHERE sequence = ${element.sequence}
         AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [element]
+      element
     )
-  const retry = (element: Claim, delay: Duration.Duration, cause: Cause.Cause<any>) =>
+  const retry = (element: Element, delay: Duration.Duration, cause: Cause.Cause<any>) =>
     ack(
       sql`
         UPDATE ${tableNameSql}
@@ -1603,20 +1583,17 @@ export const makeStoreSql: (
         WHERE sequence = ${element.sequence}
         AND acquired_by = ${stringLiteral(element.lock)}
       `,
-      [element]
+      element
     )
-  // one statement per lock, so a row re-claimed under another lock is never
-  // released
-  const interrupt = (elements: ReadonlyArray<Claim>) =>
+  const interrupt = (element: Element) =>
     ack(
-      Effect.forEach(groupClaims(elements), ([lock, sequences]) =>
-        sql`
-          UPDATE ${tableNameSql}
-          SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
-          WHERE sequence IN (${sql.literal(Array.from(sequences).join(","))})
-          AND acquired_by = ${stringLiteral(lock)}
-        `, { discard: true }),
-      elements
+      sql`
+        UPDATE ${tableNameSql}
+        SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
+        WHERE sequence = ${element.sequence}
+        AND acquired_by = ${stringLiteral(element.lock)}
+      `,
+      element
     )
 
   yield* refreshLocks.pipe(
@@ -1650,10 +1627,10 @@ export const makeStoreSql: (
       const nudge = state.nudge
 
       yield* Effect.addFinalizer(() =>
-        Effect.flatMap(Queue.clear(queue), (elements) => {
-          if (elements.length === 0) return Effect.void
-          return interrupt(Array.from(elements))
-        })
+        Effect.flatMap(
+          Queue.clear(queue),
+          (elements) => Effect.forEach(elements, interrupt, { concurrency: "unbounded", discard: true })
+        )
       )
 
       // flip exhausted rows whose lock expired (worker crashed on the final
@@ -1929,7 +1906,7 @@ export const makeStoreSql: (
                   return fail(element, dead.cause)
                 }
                 if (Cause.hasInterruptsOnly(exit.cause)) {
-                  return interrupt([element])
+                  return interrupt(element)
                 }
                 if (element.attempts >= options.maxAttempts) {
                   return fail(element, exit.cause)
