@@ -234,6 +234,12 @@ export interface MssqlClientConfig {
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
   readonly connectTimeout?: Duration.Input | undefined
+  /**
+   * How long Tedious waits for the server to acknowledge a cancelled request
+   * before it closes the connection. Defaults to 5 seconds. Interrupting a
+   * request waits for that acknowledgement, so a zero duration (which disables
+   * the timer) leaves interruption unbounded rather than making it faster.
+   */
   readonly cancelTimeout?: Duration.Input | undefined
   readonly connectionRetryInterval?: Duration.Input | undefined
   readonly multiSubnetFailover?: boolean | undefined
@@ -401,6 +407,10 @@ export const make = (
           let settled = false
           let onSettled: (() => void) | undefined
           start((effect) => {
+            // A request that failed because the connection closed settles
+            // before tedious emits end. Record it now, before resuming can
+            // release the connection back to the pool.
+            if (conn.closed) Deferred.doneUnsafe(ended, Effect.void)
             settled = true
             resume(effect)
             onSettled?.()
