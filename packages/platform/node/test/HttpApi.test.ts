@@ -880,6 +880,9 @@ describe("HttpApi", () => {
             payload: HttpApiSchema.StreamUint8Array(),
             error: HttpApiError.Forbidden
           }),
+          HttpApiEndpoint.post("tooLarge", "/too-large", {
+            payload: HttpApiSchema.StreamUint8Array()
+          }),
           HttpApiEndpoint.post("flaky", "/flaky", {
             payload: HttpApiSchema.StreamNdjson({ schema: Item }),
             success: Schema.Array(Item),
@@ -902,6 +905,7 @@ describe("HttpApi", () => {
             .handle("echo", ({ payload }) => Effect.succeed(payload))
             .handle("ignore", () => Effect.succeed("ok"))
             .handle("reject", () => Effect.fail(new HttpApiError.Forbidden()))
+            .handleRaw("tooLarge", () => Effect.succeed(HttpServerResponse.empty({ status: 413 })))
             .handle("flaky", ({ payload }) =>
               Effect.gen(function*() {
                 const items = yield* Stream.runCollect(payload)
@@ -1013,6 +1017,56 @@ describe("HttpApi", () => {
               assert.strictEqual(yield* client.group.mixed({ payload: Stream.make({ n: 1 }, { n: 2 }) }), "stream:2")
             }).pipe(Effect.provide(ApiLayer)))
         })
+      })
+
+      describe("fetch", () => {
+        const ApiLayer = HttpRouter.serve(
+          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+          { disableListenLog: true, disableLogger: true }
+        ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+
+        it.live("interrupts the upload once a raw response body has been read", () =>
+          Effect.gen(function*() {
+            const client = yield* HttpApiClient.make(Api)
+            const finalized = yield* Deferred.make<void>()
+            const response = yield* client.group.ignore({
+              payload: Stream.make(new Uint8Array(1)).pipe(
+                Stream.concat(Stream.never),
+                Stream.ensuring(Deferred.succeed(finalized, undefined))
+              ),
+              responseMode: "response-only"
+            })
+            assert.strictEqual(yield* response.json, "ok")
+            yield* Deferred.await(finalized).pipe(Effect.timeout("1 second"))
+          }).pipe(Effect.provide(ApiLayer)))
+
+        it.live("keeps a received error status when the source fails while the response is decoded", () =>
+          Effect.gen(function*() {
+            const release = yield* Deferred.make<void>()
+            const sourceFailed = yield* Deferred.make<void>()
+            // Decoding waits until the source has failed after the 413 arrived
+            const client = yield* HttpApiClient.make(Api, {
+              transformResponse: (decode) =>
+                Deferred.succeed(release, undefined).pipe(
+                  Effect.andThen(Deferred.await(sourceFailed)),
+                  Effect.andThen(decode)
+                )
+            })
+            const error = yield* client.group.tooLarge({
+              payload: Stream.make(new Uint8Array(8)).pipe(
+                Stream.concat(
+                  Stream.fromEffect(Effect.andThen(Deferred.await(release), Effect.fail("SourceError" as const)))
+                ),
+                Stream.ensuring(Deferred.succeed(sourceFailed, undefined))
+              )
+            }).pipe(Effect.timeout("1 second"), Effect.flip)
+            assert(
+              typeof error !== "string" && error._tag === "HttpClientError",
+              `Expected HttpClientError, got ${String(error)}`
+            )
+            assert.strictEqual(error.reason._tag, "DecodeError")
+            assert.strictEqual(error.response?.status, 413)
+          }).pipe(Effect.provide(ApiLayer)))
       })
     })
   })
