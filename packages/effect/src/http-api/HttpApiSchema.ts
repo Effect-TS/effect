@@ -453,6 +453,10 @@ const defaultMaxElementBytes = ByteSize.mebibytes(1)
 /**
  * Creates a Server-Sent Events streaming success response schema.
  *
+ * **Details**
+ *
+ * `StreamSse` is response-only. Endpoint construction rejects it in `payload`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -523,6 +527,26 @@ export const StreamUint8Array = (options?: {
  *
  * `contentType` defaults to `application/x-ndjson` and `maxElementBytes` to 1
  * MiB. `maxBytes` has no default.
+ *
+ * **Example** (Declaring an NDJSON request payload)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
+ *
+ * const Event = Schema.Struct({ id: Schema.Number })
+ * const payload = HttpApiSchema.StreamNdjson({ schema: Event, maxBytes: "100 MiB" })
+ *
+ * // The handler receives a Stream of Events
+ * const importEvents = HttpApiEndpoint.post("importEvents", "/events", {
+ *   payload,
+ *   success: Schema.Number
+ * })
+ *
+ * importEvents.path // => "/events"
+ * payload.contentType // => "application/x-ndjson"
+ * payload.maxElementBytes // => 1048576n
+ * ```
  *
  * @stability unstable
  * @category constructors

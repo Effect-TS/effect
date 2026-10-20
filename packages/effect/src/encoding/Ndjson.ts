@@ -76,7 +76,7 @@ export class NdjsonError extends Data.TaggedError("NdjsonError")<{
  *
  * @stability unstable
  * @category errors
- * @since 4.0.0
+ * @since 4.0.6
  */
 export type NdjsonErrorReason = "InvalidJson" | "InvalidUtf8" | "LineTooLarge"
 

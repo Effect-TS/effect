@@ -1362,11 +1362,338 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 
 ## Streaming Requests
 
-To receive large or continuous data from the client, register the endpoint with `.handleRaw`, which opts out of automatic payload decoding and exposes the raw `HttpServerRequest`. The request body is then available as a `Stream` of `Uint8Array` chunks through `request.stream`, so the handler can consume it incrementally instead of buffering it in memory.
+To receive large or continuous uploads, declare the payload with a streaming schema. These are the same constructors used for [streaming responses](#streaming-responses), and the slot decides the direction:
 
-The payload schema still describes the endpoint in the generated documentation, but with `.handleRaw` the handler decides how the body is consumed. Note that the declared content type is no longer enforced at runtime: requests with a different `Content-Type` header are not rejected with `415`, so any such validation is up to the handler.
+| Declaration                                                                         | Handler receives                                          | Default content type       |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------- |
+| `HttpApiSchema.StreamUint8Array({ contentType?, maxBytes? })`                       | `Stream<Uint8Array, HttpApiPayloadTooLarge>`              | `application/octet-stream` |
+| `HttpApiSchema.StreamNdjson({ schema, contentType?, maxBytes?, maxElementBytes? })` | `Stream<A, HttpApiSchemaError \| HttpApiPayloadTooLarge>` | `application/x-ndjson`     |
 
-**Example** (Handling Streaming Requests)
+The handler gets a lazy `Stream`. The server reads the socket only as the handler pulls, with no read-ahead, so not pulling is the backpressure. `HttpApiSchema.StreamSse` is response-only and is rejected in `payload`.
+
+### Streaming Raw Bytes
+
+**Example** (Receiving a Binary Upload)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schema, Stream } from "effect"
+import { HttpRouter } from "effect/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+import { createServer } from "node:http"
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("upload", "/upload", {
+      // Stream the body as raw bytes and stop after 100 MiB
+      // (default content type: application/octet-stream)
+      payload: HttpApiSchema.StreamUint8Array({ maxBytes: "100 MiB" }),
+      success: Schema.String
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers.handle("upload", ({ payload }) =>
+      // payload: Stream<Uint8Array, HttpApiPayloadTooLarge>
+      payload.pipe(
+        // The body is read as the fold pulls, never buffered as a whole
+        Stream.runFold(() => 0, (total, chunk) => total + chunk.length),
+        Effect.map((total) => `received ${total} bytes`)
+      ))
+)
+
+const ApiLayer = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLayer),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
+
+// printf 'abc' | curl -X POST 'http://localhost:3000/upload' --data-binary @- -H "Content-Type: application/octet-stream"
+// "received 3 bytes"
+```
+
+### Streaming NDJSON
+
+`HttpApiSchema.StreamNdjson({ schema })` declares a body of newline-delimited JSON, one encoded element per line. The handler receives decoded elements, and the element schema's decoding services are added to the handler's requirements.
+
+**Example** (Importing Records Line by Line)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schema, Stream } from "effect"
+import { HttpRouter } from "effect/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+import { createServer } from "node:http"
+
+const Event = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("importEvents", "/events", {
+      // One JSON-encoded Event per line
+      // (default content type: application/x-ndjson)
+      payload: HttpApiSchema.StreamNdjson({ schema: Event }),
+      success: Schema.String
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers.handle("importEvents", ({ payload }) => {
+      // payload: Stream<Event, HttpApiSchemaError | HttpApiPayloadTooLarge>
+      let accepted = 0
+      return payload.pipe(
+        Stream.runForEach((_event) =>
+          Effect.sync(() => {
+            // store the event...
+            accepted++
+          })
+        ),
+        Effect.map(() => `accepted ${accepted} records`),
+        // A bad record ends the stream. Every record before it has already
+        // been handled, so report how far the import got
+        Effect.catchTag("HttpApiSchemaError", () =>
+          Effect.succeed(`accepted ${accepted} records, record ${accepted + 1} is invalid`))
+        // HttpApiPayloadTooLarge is not caught, so it becomes an empty 413
+      )
+    })
+)
+
+const ApiLayer = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLayer),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
+
+// printf '{"id":1,"name":"a"}\n{"id":2,"name":"b"}\nnope\n' | curl -X POST 'http://localhost:3000/events' --data-binary @- -H "Content-Type: application/x-ndjson"
+// "accepted 2 records, record 3 is invalid"
+```
+
+The wire format:
+
+- The server accepts only the declared content type, compared after normalization, and answers `415` otherwise. There are no aliases: for JSON Lines, pass `contentType: "application/jsonl"`.
+- `\n`, `\r\n` and a bare `\r` each end a line. Empty lines are skipped, so a client can send `\n` as a keep-alive. A line containing only whitespace is malformed.
+- A missing final newline is fine if the last line parses. If it doesn't, the issue message says "unterminated final line", so a truncated body is recognizable.
+- A leading UTF-8 BOM is stripped. Invalid UTF-8 is an error, never replaced with U+FFFD.
+- The first malformed line, or the first element that fails to decode, fails the stream with an `HttpApiSchemaError` (`kind: "Payload"`), after every element before it has been delivered. A failure ends the stream, so a handler can't skip a bad record and keep reading. To skip bad records, declare a lenient element schema and filter.
+- NDJSON can't detect a body that was cut cleanly at a line boundary. It looks like a shorter, complete body.
+
+### Limits and Errors
+
+Limits are set on the declaration only:
+
+- `maxBytes` caps the whole body. It has no default, and it does not fall back to `MaxBodySize`, which only applies to buffered reads.
+- `maxElementBytes` (NDJSON only) caps the UTF-8 bytes of one line, without its terminator. It defaults to 1 MiB, and a longer line fails before the rest of it is buffered.
+- Both count the bytes the handler sees, after the `HttpMiddleware.decompression` middleware.
+- Both count only bytes that are actually read. After `Stream.take(1)`, `maxBytes` never fires.
+
+If the request's `content-length` exceeds `maxBytes`, the server answers an empty `413` with `Connection: close` as soon as params, headers and query have decoded. The handler doesn't run and no body byte is read.
+
+The payload stream's errors are added to the handler's error channel automatically. A handler can catch them after a partial read, as in the example above, or let them through. The server maps the ones it lets through before responding:
+
+| Error                        | Response                             |
+| ---------------------------- | ------------------------------------ |
+| `HttpApiSchemaError`         | `400`, the same as buffered payloads |
+| `HttpApiPayloadTooLarge`     | empty `413`                          |
+| Body read failure (a defect) | `500`, reported                      |
+
+`HttpApiPayloadTooLarge` carries `limit` (`"maxBytes"` or `"maxElementBytes"`) and its configured `size`.
+
+`HttpMiddleware.decompression` also caps the decompressed body at `maxDecompressedSize`, which defaults to `MaxBodySize` and then to 10 MiB. That cap applies to streaming payloads too, and breaching it answers `413`. Raise `maxDecompressedSize` on servers that accept large compressed uploads.
+
+### Body Lifetime
+
+- Middleware runs first, then params, headers and query, then the payload. A params, headers or query failure answers `400` without reading a body byte, and the handler always gets the body unread.
+- The payload stream can be run once. Running it a second time dies with a defect, and so does reading it when middleware has already read the body. The body is never buffered for a replay.
+- The stream can only be read while the request is in flight: until the handler returns a non-stream response, or until a streaming response finishes. Reading it later dies with a defect.
+- A handler can respond without reading the whole body, for example to reject an upload early. Over HTTP/1.1 the Node server then drains up to 256 KiB of what is left. Past that it sends `Connection: close` and closes the socket.
+
+### Mixing Buffered and Streaming Payloads
+
+One streaming payload can share the `payload` array with buffered payloads that use other content types. The server picks one by the request's content type, and the handler tells them apart with `Stream.isStream`.
+
+**Example** (Accepting a JSON Array or an NDJSON Stream)
+
+```ts
+import { Effect, Schema, Stream } from "effect"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+const Event = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("importEvents", "/events", {
+      payload: [
+        // application/json: the whole batch in one body
+        Schema.Array(Event),
+        // application/x-ndjson: one event per line, streamed
+        HttpApiSchema.StreamNdjson({ schema: Event })
+      ],
+      success: Schema.Number
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers.handle("importEvents", ({ payload }) =>
+      Stream.isStream(payload)
+        ? Stream.runCount(payload)
+        : Effect.succeed(payload.length))
+)
+```
+
+Endpoint construction throws when:
+
+- two streaming payloads are declared, because the client could not choose an encoding for a `Stream`
+- a streaming and a buffered payload share a media type, compared after normalization, so `; charset=utf-8` does not make them distinct
+- the method is `GET`, `HEAD`, `OPTIONS` or `TRACE`, which is also a type error. Every other method, including `DELETE` and `QUERY`, accepts a streaming payload
+
+### Sending Streams with the Derived Client
+
+The derived client takes a `Stream` as the payload: `Stream<Uint8Array, E, R>` for `StreamUint8Array`, and `Stream<A, E, R>` for `StreamNdjson`. It sends the stream as it is pulled, without buffering, with the declared content type and no `content-length`. NDJSON elements are encoded lazily, each as one line of JSON followed by `\n`.
+
+The method infers `E` and `R` from the stream. When the source fails, the method fails with that `E`, not with the transport error the aborted upload causes. An element that fails to encode is a `Schema.SchemaError`.
+
+**Example** (Uploading a Stream of Records)
+
+```ts
+import { Effect, Schema, Stream } from "effect"
+import { FetchHttpClient } from "effect/http"
+import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+const Event = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("importEvents", "/events", {
+      payload: HttpApiSchema.StreamNdjson({ schema: Event }),
+      success: Schema.String
+    })
+  )
+)
+
+class SourceError extends Schema.TaggedError<SourceError>()("SourceError", {}) {}
+
+const program = Effect.gen(function*() {
+  const client = yield* HttpApiClient.make(Api, {
+    baseUrl: "http://localhost:3000"
+  })
+
+  // Any Stream of Events works, here one that fails halfway
+  const events = Stream.range(1, 1000).pipe(
+    Stream.map((id) => ({ id, name: `event ${id}` })),
+    Stream.concat(Stream.fail(new SourceError()))
+  )
+
+  const result = yield* client.group.importEvents({ payload: events })
+  console.log(result)
+})
+// program: Effect<void, SourceError | HttpClientError | SchemaError, HttpClient>
+
+Effect.runFork(program.pipe(Effect.provide(FetchHttpClient.layer)))
+```
+
+Things to know:
+
+- A `400` or `413` from the server is an `HttpClientError` with a `DecodeError` reason, as a buffered `400` is today. There's no client-side `HttpApiPayloadTooLarge`, because the `413` body is empty.
+- The client doesn't check `maxBytes` or `maxElementBytes` before sending. A `HttpClient.mapRequest` that sets `content-length` lets the server answer an early `413` on Node clients. `FetchHttpClient` strips `content-length`.
+- With a streaming success response, the upload runs until either side ends. Otherwise it's interrupted once the method has decoded the response, whether that's an error status or a buffered success.
+- Retries and redirects replay the stream. `HttpClient.retry` and 307/308 redirects run the payload stream again. That's right for a source that can be re-read, like a file, and wrong for a one-shot source like `Stream.fromQueue`: a retry would send only what is left in the queue. Don't retry uploads from such sources, or buffer them first.
+- On a mixed payload, a `Stream` value is always sent with the streaming member, even when a buffered member's `Type` would also accept it (`Schema.Unknown`, `Schema.Any`). A `Uint8Array` or an array is never wrapped into a stream.
+- `FetchHttpClient` needs a runtime that can send a `ReadableStream` request body. Node, Bun and Deno can. In browsers, Chrome sends streaming uploads only over HTTP/2 or later, and over HTTP/1.1 the request fails with a `TransportError`.
+
+### Streaming Both Ways
+
+A streaming payload can be combined with a streaming success response. Neither direction is buffered, and response headers go out as soon as the handler returns its stream.
+
+**Example** (Transforming an Upload as It Arrives)
+
+```ts
+import { Effect, Schema, Stream } from "effect"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+const Event = Schema.Struct({
+  id: Schema.Number,
+  name: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.post("enrich", "/enrich", {
+      payload: HttpApiSchema.StreamNdjson({ schema: Event }),
+      success: HttpApiSchema.StreamNdjson({ schema: Event })
+    }),
+    HttpApiEndpoint.post("enrichBatch", "/enrich-batch", {
+      payload: HttpApiSchema.StreamNdjson({ schema: Event }),
+      success: HttpApiSchema.StreamNdjson({ schema: Event })
+    })
+  )
+)
+
+const enrich = (event: typeof Event.Type) => ({ ...event, name: event.name.toUpperCase() })
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers
+      // Interleaved: each output line is written as its input line arrives.
+      // Needs a full-duplex client
+      .handle("enrich", ({ payload }) => Effect.succeed(Stream.map(payload, enrich)))
+      // Portable: read the whole upload, then respond
+      .handle("enrichBatch", ({ payload }) =>
+        Stream.runCollect(payload).pipe(
+          Effect.map((events) => Stream.fromIterable(events.map(enrich)))
+        ))
+)
+```
+
+Interleaving is best effort, and both ends must be full duplex. Node's `node:http` and undici, and Bun's and Deno's `fetch`, are. Browsers send uploads with `duplex: "half"` and don't read the response until the upload has ended. A handler that pipes its input to its output, like `enrich` above, then deadlocks once the data outgrows the flow-control windows. The portable pattern is the one `enrichBatch` uses: consume the upload, then respond.
+
+Once the response headers are sent, the payload stream is pulled inside the response stream. A payload failure is then a response failure: the connection is aborted and the client sees a body read error. For a `StreamSse` response, map the payload error into the declared SSE `error` schema to send it as a typed failure.
+
+On Deno, an HTTP/1.1 request body read can stall while the handler returns a streamed response (denoland/deno#36966), which affects this pattern until the fix ships.
+
+### Proxying a Streaming Upload
+
+`HttpServerRequest.toClientRequest` turns the incoming request into an outbound `HttpClientRequest` that streams the same body. A request body is a socket and can be read once, so if the outbound client retries the proxied request or follows a 307/308 redirect, the replay dies with the "consumed" defect. A proxy that needs retries has to buffer the body itself, or turn retries off.
+
+### Testing with HttpApiTest
+
+`HttpApiTest` passes a `Stream` payload to the handler unbuffered, pulling each element from the caller's stream as the handler reads it. Limits, the `400` and both `413` paths work in memory. The early `413` needs a `content-length`, which the client doesn't send for streams, so set one through `HttpClient.mapRequest`. When the caller's stream fails, the handler is interrupted as a client abort and the client returns the stream's error.
+
+Socket behavior is not emulated: no draining of unread bodies, no `Connection: close`, and no `499`.
+
+### Reading the Raw Request Body
+
+To take over body handling completely, register the endpoint with `.handleRaw`. It opts out of automatic payload decoding and exposes the raw `HttpServerRequest`, whose body is available as a `Stream` of `Uint8Array` chunks through `request.stream`.
+
+The payload schema still describes the endpoint in the generated documentation, but with `.handleRaw` the handler decides how the body is consumed. The declared content type is no longer enforced at runtime: requests with a different `Content-Type` header are not rejected with `415`, so any such validation is up to the handler.
+
+**Example** (Reading the Raw Request Body)
 
 ```ts
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
@@ -1845,6 +2172,7 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 To stream data to the client over time, declare the success schema with one of the streaming constructors:
 
 - `HttpApiSchema.StreamUint8Array()` streams raw bytes (default content type: `application/octet-stream`)
+- `HttpApiSchema.StreamNdjson({ schema })` streams typed values as newline-delimited JSON (default content type: `application/x-ndjson`)
 - `HttpApiSchema.StreamSse(options)` streams typed Server-Sent Events (default content type: `text/event-stream`)
 
 With a streaming success schema, the handler returns a `Stream` directly, and the derived client resolves to a typed `Stream` on the consuming side. The stream declaration is also rendered in the OpenAPI documentation.
@@ -1963,9 +2291,64 @@ Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
 
 To control the full event shape instead, pass an `events` schema whose Encoded side matches the SSE wire format: a required `data` string plus optional `id` and `event` fields. The handler then emits whole events.
 
+### Streaming NDJSON
+
+`HttpApiSchema.StreamNdjson({ schema })` declares a response of newline-delimited JSON. Each stream element is encoded with `schema` and written as one line of JSON followed by `\n`, including the last. The wire format is the same as for [NDJSON request payloads](#streaming-ndjson).
+
+**Example** (Implementing an NDJSON Endpoint)
+
+```ts
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer, Schedule, Schema, Stream } from "effect"
+import { HttpRouter } from "effect/http"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+import { createServer } from "node:http"
+
+const Message = Schema.Struct({
+  text: Schema.String
+})
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("group").add(
+    HttpApiEndpoint.get("getMessages", "/messages", {
+      // Each stream element is written as one line of JSON
+      // (default content type: application/x-ndjson)
+      success: HttpApiSchema.StreamNdjson({ schema: Message })
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "group",
+  (handlers) =>
+    handlers.handle("getMessages", () =>
+      Effect.succeed(
+        Stream.make({ text: "one" }, { text: "two" }, { text: "three" }).pipe(
+          Stream.schedule(Schedule.spaced("500 millis"))
+        )
+      ))
+)
+
+const ApiLayer = HttpApiBuilder.layer(Api).pipe(
+  Layer.provide(GroupLayer),
+  HttpRouter.serve,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
+)
+
+Layer.launch(ApiLayer).pipe(NodeRuntime.runMain)
+
+// curl 'http://localhost:3000/messages' --no-buffer
+// {"text":"one"}
+// {"text":"two"}
+// {"text":"three"}
+```
+
+`StreamNdjson` has no `error` schema. If the handler's stream fails after the response has started, the connection is aborted, so the client sees a body read error and never a clean end. Typed failures mid-stream need `StreamSse` (see [Typed Stream Failures](#typed-stream-failures)).
+
 ### Consuming Streams with the Derived Client
 
-For both constructors, calling the endpoint on the derived client resolves to a typed `Stream`:
+For all three constructors, calling the endpoint on the derived client resolves to a typed `Stream`:
 
 ```ts
 const events = yield * client.group.getEvents()
@@ -1973,6 +2356,18 @@ const events = yield * client.group.getEvents()
 
 yield * Stream.runForEach(events, (message) => Console.log(message.text))
 ```
+
+The element types and errors are:
+
+| Success schema             | Client stream                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `StreamUint8Array()`       | `Stream<Uint8Array, HttpClientError>`                                                                  |
+| `StreamNdjson({ schema })` | `Stream<A, HttpClientError \| SchemaError>`                                                            |
+| `StreamSse(options)`       | `Stream<A, E \| HttpClientError \| SchemaError \| Retry \| SseError>`, where `E` is the `error` schema |
+
+An NDJSON response is decoded with the same rules as an NDJSON request payload. A malformed line or an element that fails to decode is a `SchemaError`. The client also enforces the declared `maxElementBytes` (1 MiB by default), so a server that never sends `\n` can't make it buffer forever. A breach is an `HttpClientError` with a `DecodeError` reason. A server failure mid-stream is the `HttpClientError` from reading the body.
+
+If the endpoint also has a [streaming payload](#streaming-requests), the upload can still be running while the response is read, and a late failure of the payload stream fails the response stream with its error too.
 
 ### Typed Stream Failures
 
