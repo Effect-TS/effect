@@ -1376,23 +1376,6 @@ export declare namespace Metric {
   }
 
   /**
-   * Handle for a series registered with `Metric.registerUnsafe`.
-   *
-   * **Details**
-   *
-   * `remove` deletes the series from the registry it was registered into, but
-   * only while the registry still holds this registration. Calling it again, or
-   * after another registration has replaced the series, does nothing.
-   *
-   * @stability experimental
-   * @category models
-   * @since 4.0.6
-   */
-  export interface Registration {
-    readonly remove: () => void
-  }
-
-  /**
    * Protocol interface for metric snapshots containing metadata and current state.
    *
    * **Example** (Inspecting metric snapshot protocols)
@@ -1741,7 +1724,7 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
     Context.get(context, MetricRegistry).delete(this.key(context))
   }
 
-  registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input, State>): Metric.Registration {
+  registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input, State>): Registration {
     const key = this.key(context)
     // Keep the registry from registration time, so removal does not depend on
     // the context it is called from.
@@ -2069,7 +2052,7 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
   override removeUnsafe(context: Context.Context<never>): void {
     removeUnsafe(this.metric, this.mapContext(context))
   }
-  override registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input2, State>): Metric.Registration {
+  override registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input2, State>): Registration {
     return registerUnsafe(this.metric, this.mapContext(context), hooks as Metric.Hooks<any, State>)
   }
 }
@@ -2790,6 +2773,23 @@ export const update: {
 )
 
 /**
+ * Handle for a series registered with `Metric.registerUnsafe`.
+ *
+ * **Details**
+ *
+ * `remove` deletes the series from the registry it was registered into, but
+ * only while the registry still holds this registration. Calling it again, or
+ * after another registration has replaced the series, does nothing.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.6
+ */
+export interface Registration {
+  readonly remove: () => void
+}
+
+/**
  * Removes the series of a metric for the current attributes from the metric
  * registry.
  *
@@ -2917,7 +2917,7 @@ export const registerUnsafe = <Input, State>(
   self: Metric<Input, State>,
   context: Context.Context<never>,
   hooks: Metric.Hooks<Input, State>
-): Metric.Registration => (self as Metric$<Input, State>).registerUnsafe(context, hooks)
+): Registration => (self as Metric$<Input, State>).registerUnsafe(context, hooks)
 
 /**
  * Returns a new metric that is powered by this one, but which accepts updates

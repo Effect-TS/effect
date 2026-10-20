@@ -210,7 +210,7 @@ export const make = Effect.fnUntraced(function*<
 
     // Finalizers run in reverse, so the series is removed only after the drain
     // finalizer below has finished.
-    let mailboxSeries: Metric.Metric.Registration | undefined
+    let mailboxSeries: Metric.Registration | undefined
     if (mailboxMetrics) {
       yield* Scope.addFinalizer(
         scope,
