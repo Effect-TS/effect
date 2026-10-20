@@ -24,13 +24,13 @@ import * as Metric from "../Metric.ts"
  *
  * **Details**
  *
- * Bigint gauge named `effect_cluster_entities`, updated with the entity type as
- * a metric tag.
+ * Bigint gauge named `effect_cluster_entities`, tagged with the entity type.
+ * Each entity manager registers a series that reads its active entity count
+ * when metrics are snapshotted, and removes it when the manager shuts down.
  *
  * **Gotchas**
  *
- * This gauge is runner-local and sampled by the entity manager loop. Aggregate
- * across runners and expect up to roughly one polling interval of lag.
+ * This gauge is runner-local. Aggregate across runners.
  *
  * @see {@link singletons} for singleton process counts on the current runner
  * @see {@link shards} for shard ownership on the current runner
