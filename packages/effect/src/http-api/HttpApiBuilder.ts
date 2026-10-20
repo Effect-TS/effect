@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as ByteSize from "../ByteSize.ts"
 import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -48,7 +49,7 @@ import type { NoInfer } from "../Types.ts"
 import * as UndefinedOr from "../UndefinedOr.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
-import { HttpApiSchemaError } from "./HttpApiError.ts"
+import { HttpApiPayloadTooLarge, HttpApiSchemaError } from "./HttpApiError.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
@@ -741,6 +742,11 @@ type PayloadDecoder =
     readonly nullOnEmpty: boolean
     readonly decode: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
   }
+  | {
+    readonly _tag: "Stream"
+    readonly maxBytes: number | undefined
+    readonly decode: (request: HttpServerRequest) => Stream.Stream<unknown, unknown, unknown>
+  }
 
 function buildPayloadDecoders(
   payloadMap: HttpApiEndpoint.PayloadMap,
@@ -748,6 +754,15 @@ function buildPayloadDecoders(
 ): Map<string, PayloadDecoder> {
   const result = new Map<string, PayloadDecoder>()
   payloadMap.forEach(({ encoding, schemas }, contentType) => {
+    if (encoding._tag === "Stream") {
+      const schema = schemas[0] as HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>
+      result.set(contentType, {
+        _tag: "Stream",
+        maxBytes: schema.maxBytes === undefined ? undefined : ByteSize.toNumberUnsafe(schema.maxBytes),
+        decode: makePayloadStreamDecoder(schema, options)
+      })
+      return
+    }
     const schema = Schema.Union(schemas)
     const decode = Schema.decodeUnknownEffect(
       encoding._tag === "FormUrlEncoded" ? Schema.toCodecArrayFromSingle(schema) : schema,
@@ -778,6 +793,17 @@ function decodePayload(
   const existing = payloadBy.get(contentType)
   if (!existing) {
     return Response.text(`Unsupported content-type: ${contentType}`, { status: 415 })
+  }
+  if (existing._tag === "Stream") {
+    if (existing.maxBytes !== undefined && Number(httpRequest.headers["content-length"]) > existing.maxBytes) {
+      return payloadTooLargeResponse
+    }
+    // The stream can be pulled after the handler returns, inside a streaming
+    // response, so it carries the element schema's services with it.
+    return Effect.map(
+      Effect.context<unknown>(),
+      (context) => Stream.provideContext(existing.decode(httpRequest), context)
+    )
   }
   const { _tag, decode } = existing
   switch (_tag) {
@@ -824,6 +850,52 @@ function decodePayload(
         decode
       )
   }
+}
+
+const payloadTooLargeResponse = Response.empty({ status: 413, headers: { connection: "close" } })
+
+// The handler pulls the body itself, so nothing is read ahead of it. Body read
+// failures stay defects, as they are for buffered payloads.
+function makePayloadStreamDecoder(
+  schema: HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>,
+  options: SchemaAST.ParseOptions | undefined
+): (request: HttpServerRequest) => Stream.Stream<unknown, unknown, unknown> {
+  const maxBytes = schema.maxBytes
+  const readBody = (request: HttpServerRequest) => {
+    const body = Stream.orDie(request.stream)
+    return maxBytes === undefined ? body : limitBytes(body, maxBytes)
+  }
+  if (HttpApiSchema.isStreamUint8Array(schema)) {
+    return readBody
+  }
+  const decodeElement = Schema.decodeUnknownEffect(Schema.toCodecJson(schema.schema), options)
+  const maxElementBytes = schema.maxElementBytes
+  const elementTooLarge = new HttpApiPayloadTooLarge({ limit: "maxElementBytes", size: maxElementBytes })
+  return (request) =>
+    Ndjson.decode(readBody(request), {
+      decodeElement,
+      maxElementBytes: ByteSize.toNumberUnsafe(maxElementBytes),
+      onElementTooLarge: () => elementTooLarge
+    }).pipe(
+      Stream.mapError((error) =>
+        HttpApiPayloadTooLarge.is(error) ? error : new HttpApiSchemaError({ kind: "Payload", cause: error })
+      )
+    )
+}
+
+function limitBytes<E, R>(
+  self: Stream.Stream<Uint8Array, E, R>,
+  maxBytes: ByteSize.ByteSize
+): Stream.Stream<Uint8Array, E | HttpApiPayloadTooLarge, R> {
+  const limit = ByteSize.toNumberUnsafe(maxBytes)
+  const error = new HttpApiPayloadTooLarge({ limit: "maxBytes", size: maxBytes })
+  return Stream.suspend(() => {
+    let total = 0
+    return Stream.mapArrayEffect(self, (chunks) => {
+      for (const chunk of chunks) total += chunk.length
+      return total > limit ? Effect.fail(error) : Effect.succeed(chunks)
+    })
+  })
 }
 
 function handlerToHttpEffect(
@@ -921,7 +993,7 @@ function handlerToHttpEffect(
   ).pipe(
     Effect.withErrorReporting,
     Effect.catch((error) => {
-      if (HttpApiSchemaError.is(error)) return Effect.die(error)
+      if (HttpApiSchemaError.is(error) || HttpApiPayloadTooLarge.is(error)) return Effect.die(error)
       return Effect.catch(encodeError(error), (schemaError) =>
         Respondable.isRespondable(error)
           ? Respondable.toResponse(error)

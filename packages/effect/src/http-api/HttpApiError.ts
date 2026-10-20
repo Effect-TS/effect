@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import type * as ByteSize from "../ByteSize.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
@@ -28,6 +29,7 @@ const notAcceptableResponse = HttpServerResponse.empty({ status: 406 })
 const requestTimeoutResponse = HttpServerResponse.empty({ status: 408 })
 const conflictResponse = HttpServerResponse.empty({ status: 409 })
 const goneResponse = HttpServerResponse.empty({ status: 410 })
+const payloadTooLargeResponse = HttpServerResponse.empty({ status: 413 })
 const unprocessableEntityResponse = HttpServerResponse.empty({ status: 422 })
 const internalServerErrorResponse = HttpServerResponse.empty({ status: 500 })
 const notImplementedResponse = HttpServerResponse.empty({ status: 501 })
@@ -503,5 +505,58 @@ export class HttpApiSchemaError extends Data.TaggedClass("HttpApiSchemaError")<{
 
   [HttpServerRespondable.symbol]() {
     return Effect.succeed(this[ErrorReporter.ignore] ? badRequestResponse : internalServerErrorResponse)
+  }
+}
+
+/**
+ * Type-level identifier used to mark `HttpApiPayloadTooLarge` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.0.6
+ */
+export type HttpApiPayloadTooLargeTypeId = "~effect/http-api/HttpApiError/HttpApiPayloadTooLarge"
+
+/**
+ * Runtime identifier used to mark and detect `HttpApiPayloadTooLarge` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.0.6
+ */
+export const HttpApiPayloadTooLargeTypeId: HttpApiPayloadTooLargeTypeId =
+  "~effect/http-api/HttpApiError/HttpApiPayloadTooLarge"
+
+/**
+ * Error raised when a streaming request payload exceeds a limit declared on
+ * its `HttpApiSchema.StreamUint8Array` or `HttpApiSchema.StreamNdjson` schema.
+ * It responds with an empty `413 Payload Too Large` and is ignored by error
+ * reporters.
+ *
+ * **Details**
+ *
+ * `limit` names the option that was exceeded: `maxBytes` caps the whole body
+ * and `maxElementBytes` caps one NDJSON line. `size` is its configured value.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class HttpApiPayloadTooLarge extends Data.TaggedClass("HttpApiPayloadTooLarge")<{
+  readonly limit: "maxBytes" | "maxElementBytes"
+  readonly size: ByteSize.ByteSize
+}> {
+  readonly [HttpApiPayloadTooLargeTypeId]: HttpApiPayloadTooLargeTypeId = HttpApiPayloadTooLargeTypeId
+  readonly [ErrorReporter.ignore] = true
+
+  static is(u: unknown): u is HttpApiPayloadTooLarge {
+    return hasProperty(u, HttpApiPayloadTooLargeTypeId)
+  }
+
+  readonly name = "HttpApiPayloadTooLarge"
+  readonly message = `Payload exceeds ${this.limit} of ${this.size} bytes`;
+
+  [HttpServerRespondable.symbol]() {
+    return Effect.succeed(payloadTooLargeResponse)
   }
 }

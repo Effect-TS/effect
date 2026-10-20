@@ -284,6 +284,9 @@ export type StreamSseMode = "events" | "data"
  * application event. Endpoint construction rejects event schemas that declare
  * the reserved name statically.
  *
+ * `StreamSse` is response-only. The `payload` slot's type excludes it, and
+ * endpoint construction rejects it.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
@@ -341,13 +344,14 @@ export interface SseEventFromData<Data extends Schema.Constraint> extends
 {}
 
 /**
- * Schema for a streaming `Uint8Array` success response.
+ * Schema for a streaming `Uint8Array` body.
  *
  * **Details**
  *
- * This declaration stores the response content type for later endpoint,
- * server, client, and OpenAPI integrations. It is intentionally separate from
- * the buffered `asUint8Array` response encoding.
+ * It works as a success response or as a request payload. It is intentionally
+ * separate from the buffered `asUint8Array` encoding. As a payload, the handler
+ * receives the body as it is read, and `maxBytes` caps the bytes read. It has
+ * no default and does not fall back to `MaxBodySize`.
  *
  * @stability unstable
  * @category models
@@ -368,6 +372,7 @@ export interface StreamUint8Array extends
   readonly _tag: "StreamUint8Array"
   readonly mode: "uint8array"
   readonly contentType: string
+  readonly maxBytes: ByteSize.ByteSize | undefined
 }
 
 /**
@@ -384,6 +389,10 @@ export interface StreamUint8Array extends
  *
  * `maxElementBytes` caps the UTF-8 bytes of one line, without its terminator.
  * `maxBytes` caps the whole body and has no default.
+ *
+ * As a request payload, the handler receives the elements as the body is
+ * read. Malformed lines and elements that fail to decode are an
+ * `HttpApiSchemaError`, and limit breaches are an `HttpApiPayloadTooLarge`.
  *
  * **Gotchas**
  *
@@ -484,7 +493,12 @@ export const StreamSse: {
 }
 
 /**
- * Creates a streaming `Uint8Array` success response schema.
+ * Creates a streaming `Uint8Array` body schema.
+ *
+ * **Details**
+ *
+ * `contentType` defaults to `application/octet-stream`. `maxBytes` only applies
+ * to request payloads and has no default.
  *
  * @stability unstable
  * @category constructors
@@ -492,12 +506,14 @@ export const StreamSse: {
  */
 export const StreamUint8Array = (options?: {
   readonly contentType?: string | undefined
+  readonly maxBytes?: ByteSize.Input | undefined
 }): StreamUint8Array =>
   Schema.make<StreamUint8Array>(streamSchema.ast, {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamUint8Array",
     mode: "uint8array",
-    contentType: options?.contentType ?? defaultStreamContentType("uint8array")
+    contentType: options?.contentType ?? defaultStreamContentType("uint8array"),
+    maxBytes: options?.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes)
   })
 
 /**

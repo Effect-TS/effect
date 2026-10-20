@@ -18,7 +18,7 @@ import * as Context from "../Context.ts"
 import type { Effect } from "../Effect.ts"
 import type * as Sse from "../encoding/Sse.ts"
 import { identity, memoize } from "../Function.ts"
-import type { HttpMethod } from "../http/HttpMethod.ts"
+import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import type { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
@@ -31,6 +31,7 @@ import type * as Socket from "../socket/Socket.ts"
 import type * as Stream from "../Stream.ts"
 import type { Simplify } from "../Struct.ts"
 import type * as Types from "../Types.ts"
+import type * as HttpApiError from "./HttpApiError.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
@@ -124,14 +125,33 @@ type ToStringTreeCodec<S> = [S] extends [never] ? never
   : [S] extends [Schema.Constraint] ? Schema.toCodecStringTree<S>
   : never
 
-type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType, Success> =
+type ToPayloadCodec<S> = [Exclude<S, HttpApiSchema.StreamSchema>] extends [never] ?
+  Extract<S, HttpApiSchema.StreamSchema>
+  : ToJsonCodec<Exclude<S, HttpApiSchema.StreamSchema>> | Extract<S, HttpApiSchema.StreamSchema>
+
+// Stream payloads are keyed on the schema, because a stream schema's `Type`
+// describes the response direction.
+type RequestPayload<Payload> = Payload extends HttpApiSchema.StreamUint8Array ?
+  Stream.Stream<Uint8Array, HttpApiError.HttpApiPayloadTooLarge>
+  : Payload extends HttpApiSchema.StreamNdjson<infer _S> ?
+    Stream.Stream<_S["Type"], HttpApiError.HttpApiSchemaError | HttpApiError.HttpApiPayloadTooLarge>
+  : Payload extends Schema.Top ? BufferedRequestPayload<Payload["Type"]>
+  : never
+
+type BufferedRequestPayload<PayloadType> = PayloadType extends Brand<HttpApiSchema.MultipartStreamTypeId> ?
+  Stream.Stream<Multipart.Part, Multipart.MultipartError>
+  : Simplify<PayloadType>
+
+type PayloadError<Payload> = Payload extends HttpApiSchema.StreamUint8Array ? HttpApiError.HttpApiPayloadTooLarge
+  : Payload extends HttpApiSchema.StreamNdjson<infer _S> ?
+    HttpApiError.HttpApiSchemaError | HttpApiError.HttpApiPayloadTooLarge
+  : never
+
+type RequestFromParts<Endpoint, ParamsType, QueryType, Payload, HeadersType, Success> =
   & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
-  & ([PayloadType] extends [never] ? {}
-    : PayloadType extends Brand<HttpApiSchema.MultipartStreamTypeId> ?
-      { readonly payload: Stream.Stream<Multipart.Part, Multipart.MultipartError> }
-    : { readonly payload: Simplify<PayloadType> })
+  & ([Payload] extends [never] ? {} : { readonly payload: RequestPayload<Payload> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
   & {
     readonly request: HttpServerRequest
@@ -154,14 +174,26 @@ type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType, Success> 
  * Maps normalized media types to a payload encoding strategy and one or more
  * schemas. Each schema retains its declared content type in its encoding annotation.
  *
+ * **Details**
+ *
+ * A streaming payload (`HttpApiSchema.StreamUint8Array` or
+ * `HttpApiSchema.StreamNdjson`) has a `Stream` encoding and is the only schema
+ * for its media type.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type PayloadMap = ReadonlyMap<string, {
-  readonly encoding: HttpApiSchema.PayloadEncoding
-  readonly schemas: readonly [Schema.Top, ...Array<Schema.Top>]
-}>
+export type PayloadMap = ReadonlyMap<
+  string,
+  {
+    readonly encoding: HttpApiSchema.PayloadEncoding
+    readonly schemas: readonly [Schema.Top, ...Array<Schema.Top>]
+  } | {
+    readonly encoding: { readonly _tag: "Stream"; readonly contentType: string }
+    readonly schemas: readonly [HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>]
+  }
+>
 
 /**
  * Represents an API endpoint. An API endpoint is mapped to a single route on
@@ -198,7 +230,7 @@ export interface HttpApiEndpoint<
     this,
     Params["Type"],
     Query["Type"],
-    Payload["Type"],
+    Payload,
     Headers["Type"],
     Success
   >
@@ -651,7 +683,11 @@ export type ErrorServicesDecode<Endpoint> = Endpoint extends ConstraintRequest ?
  */
 export type Handler<Endpoint extends Constraint, E, R> = (
   request: Simplify<Endpoint["~Request"]>
-) => Effect<SuccessType<Endpoint["~Success"]> | HttpServerResponse, Endpoint["~Error"]["Type"] | E, R>
+) => Effect<
+  SuccessType<Endpoint["~Success"]> | HttpServerResponse,
+  Endpoint["~Error"]["Type"] | PayloadError<Payload<Endpoint>> | E,
+  R
+>
 
 /**
  * The raw server handler for an endpoint, receiving a request shape without a
@@ -1004,7 +1040,9 @@ export type QueryConstraint =
  *   encode to `string | ReadonlyArray<string> | undefined` and OpenAPI can expand
  *   it into `in: query` parameters
  * - for body methods, payload may be any `Schema.Top` (or content-type keyed
- *   schemas) and OpenAPI uses `requestBody` instead of `parameters`
+ *   schemas) and OpenAPI uses `requestBody` instead of `parameters`. This
+ *   includes one `HttpApiSchema.StreamUint8Array` or `HttpApiSchema.StreamNdjson`,
+ *   but not `HttpApiSchema.StreamSse`, which is response-only
  *
  * @stability unstable
  * @category utility types
@@ -1014,7 +1052,10 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
     string,
     Schema.Encoder<string | ReadonlyArray<string> | undefined, unknown>
   > :
-  Schema.Top | ReadonlyArray<Schema.Top>
+  PayloadSchema | ReadonlyArray<PayloadSchema>
+
+// `StreamSse` is response-only, so it is the one stream schema excluded here.
+type PayloadSchema = Schema.Top & { readonly sseMode?: never }
 
 /**
  * Payload constraint used when automatic codecs are enabled: no-body methods
@@ -1027,7 +1068,7 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
  */
 export type PayloadConstraintCodecs<Method extends HttpMethod> = Method extends HttpMethod.NoBody ?
   Record<string, Schema.Top> :
-  Schema.Top | ReadonlyArray<Schema.Top>
+  PayloadSchema | ReadonlyArray<PayloadSchema>
 
 /**
  * Constraint for success response schemas, allowing either a single schema or a
@@ -1096,7 +1137,7 @@ export const make = <Method extends HttpMethod>(method: Method): {
     Path,
     ToStringTreeCodec<Params>,
     ToStringTreeCodec<Query>,
-    Method extends HttpMethod.WithBody ? ToJsonCodec<ToSchema<Payload>>
+    Method extends HttpMethod.WithBody ? ToPayloadCodec<ToSchema<Payload>>
       : ToStringTreeCodec<ToSchema<Payload>>,
     ToStringTreeCodec<Headers>,
     ToSuccessCodec<Success>,
@@ -1208,21 +1249,46 @@ function getPayload(
 ): PayloadMap {
   const result: Map<
     string,
-    { encoding: HttpApiSchema.PayloadEncoding; schemas: [Schema.Top, ...Array<Schema.Top>] }
+    {
+      encoding: HttpApiSchema.PayloadEncoding | { readonly _tag: "Stream"; readonly contentType: string }
+      schemas: [Schema.Top, ...Array<Schema.Top>]
+    }
   > = new Map()
-  if (payload === undefined) return result
+  if (payload === undefined) return result as PayloadMap
   const schemas: Array<Schema.Top> = Array.isArray(payload)
     ? payload
     : Schema.isSchema(payload)
     ? [payload]
     : [(Schema.Struct(payload as any)).pipe(HttpApiSchema.asFormUrlEncoded())]
   const transform = disableCodecs ? identity : transformPayload
+  let hasStream = false
 
   for (const schema of schemas) {
+    if (HttpApiSchema.isStreamSchema(schema)) {
+      if (HttpApiSchema.isStreamSse(schema)) {
+        throw new Error("StreamSse is response-only and cannot be used as a payload")
+      }
+      if (!hasBody(method)) {
+        throw new Error(`${method} endpoints cannot declare a streaming payload`)
+      }
+      if (hasStream) {
+        throw new Error("Multiple streaming payloads are not supported")
+      }
+      hasStream = true
+      const contentType = MediaType.normalize(schema.contentType)
+      if (result.has(contentType)) {
+        throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${schema.contentType}`)
+      }
+      result.set(contentType, { encoding: { _tag: "Stream", contentType: schema.contentType }, schemas: [schema] })
+      continue
+    }
     const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
     const contentType = MediaType.normalize(encoding.contentType)
     const existing = result.get(contentType)
     if (existing) {
+      if (existing.encoding._tag === "Stream") {
+        throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${encoding.contentType}`)
+      }
       if (existing.encoding._tag !== encoding._tag) {
         throw new Error(`Multiple payload encodings for content-type: ${encoding.contentType}`)
       }
@@ -1234,7 +1300,7 @@ function getPayload(
       result.set(contentType, { encoding, schemas: [transform(schema, method)] })
     }
   }
-  return result
+  return result as PayloadMap
 }
 
 const reservedStreamFailureEvent = "effect/http-api/stream/failure"
