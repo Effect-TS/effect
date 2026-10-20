@@ -13,7 +13,7 @@ import { HttpServerError, RequestParseError } from "../HttpServerError.ts"
 import * as HttpServerRequest from "../HttpServerRequest.ts"
 import * as Multipart from "../Multipart.ts"
 import * as UrlParams from "../UrlParams.ts"
-import { BodyConsumedError } from "./bodyState.ts"
+import * as bodyCache from "./bodyCache.ts"
 
 /**
  * @internal
@@ -53,15 +53,15 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   readonly codings: ReadonlyArray<Coding>
   readonly maxDecompressedSize: ByteSize.ByteSize | undefined
   readonly headers: Headers.Headers
-  // Separate from the inner request's state: every read here is a stream read
-  // of the inner body, so only this state knows how the decompressed body was read.
-  private readonly bodyState: HttpServerRequest.BodyState
+  // Separate from the inner request's cache: every read here is a stream read
+  // of the inner body.
+  private readonly reads: bodyCache.BodyCache
 
   constructor(
     inner: HttpServerRequest.HttpServerRequest,
     codings: ReadonlyArray<Coding>,
     maxDecompressedSize: ByteSize.ByteSize | undefined,
-    bodyState?: HttpServerRequest.BodyState
+    reads?: bodyCache.BodyCache
   ) {
     super()
     this[HttpServerRequest.TypeId] = HttpServerRequest.TypeId
@@ -70,7 +70,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     this.codings = codings
     this.maxDecompressedSize = maxDecompressedSize
     this.headers = Headers.removeMany(inner.headers, ["content-encoding", "content-length"])
-    this.bodyState = bodyState ?? HttpServerRequest.makeBodyState()
+    this.reads = reads ?? new Map()
   }
 
   toJSON(): unknown {
@@ -88,7 +88,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
       readonly remoteAddress?: Option.Option<string>
     }
   ): HttpServerRequest.HttpServerRequest {
-    return new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize, this.bodyState)
+    return new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize, this.reads)
   }
 
   get source(): object {
@@ -126,11 +126,8 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return HttpServerRequest.guardBodyStream(this.bodyState, this.decompressedStream)
-  }
-
-  private get decompressedStream(): Stream.Stream<Uint8Array, HttpServerError> {
-    const stream = Stream.unwrap(Effect.withFiber((fiber) => {
+    // Read the inner body only once the decompressed body is pulled.
+    return bodyCache.openOnFirstPull(Stream.unwrap(Effect.withFiber((fiber) => {
       const limit = this.maxDecompressedSize ?? fiber.getRef(HttpIncomingMessage.MaxBodySize) ??
         defaultMaxDecompressedSize
       return Effect.succeed(Stream.fromReadableStream({
@@ -159,23 +156,12 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
         },
         onError: (cause) => cause instanceof HttpServerError ? cause : this.parseError(cause)
       }))
-    }))
-    // The inner request's "consumed" defect crosses the Web stream as an
-    // error. Raise it as a defect again rather than a parse error.
-    return Stream.catchIf(
-      stream,
-      (error) => error.reason instanceof RequestParseError && error.reason.cause instanceof BodyConsumedError,
-      (error) => Stream.die((error.reason as RequestParseError).cause)
-    )
+    })))
   }
 
   private bytesEffect: Effect.Effect<Uint8Array, HttpServerError> | undefined
   private get bytes(): Effect.Effect<Uint8Array, HttpServerError> {
-    return this.bytesEffect ??= HttpServerRequest.guardBodyRead(
-      this.bodyState,
-      "bytes",
-      Stream.mkUint8Array(this.decompressedStream)
-    )
+    return this.bytesEffect ??= bodyCache.cachedRead(this.reads, "bytes", Stream.mkUint8Array(this.stream))
   }
 
   get text(): Effect.Effect<string, HttpServerError> {
@@ -206,12 +192,8 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return HttpServerRequest.guardBodyStream(this.bodyState, this.multipartParts)
-  }
-
-  private get multipartParts(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Stream.pipeThroughChannel(
-      Stream.mapError(this.decompressedStream, (cause) =>
+      Stream.mapError(this.stream, (cause) =>
         // Failures raised by this request come from the client's data. Failures
         // passed through from the inner request are transport errors.
         Multipart.MultipartError.fromReason(
@@ -226,10 +208,10 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
 
   private multipartEffect: HttpServerRequest.HttpServerRequest["multipart"] | undefined
   get multipart(): HttpServerRequest.HttpServerRequest["multipart"] {
-    return this.multipartEffect ??= HttpServerRequest.guardBodyRead(
-      this.bodyState,
+    return this.multipartEffect ??= bodyCache.cachedRead(
+      this.reads,
       "multipart",
-      Multipart.toPersisted(this.multipartParts)
+      Multipart.toPersisted(this.multipartStream)
     )
   }
 

@@ -1,8 +1,6 @@
 import { afterAll, assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
-import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
@@ -84,31 +82,7 @@ const makeHandler = (
 }
 
 describe("HttpDecompression", () => {
-  it.effect("preserves the inner consumed-body defect through decompression", () =>
-    Effect.gen(function*() {
-      const body = yield* Effect.promise(() => compress("compressed payload", ["gzip"]))
-      const request = HttpServerRequest.fromClientRequest(
-        HttpClientRequest.post("http://localhost/").pipe(
-          HttpClientRequest.setHeader("content-encoding", "gzip"),
-          HttpClientRequest.bodyStream(Stream.succeed(body))
-        )
-      )
-      yield* request.arrayBuffer
-      yield* Effect.gen(function*() {
-        const decompressed = yield* HttpServerRequest.HttpServerRequest
-        const result = yield* Effect.exit(decompressed.text)
-        assert(Exit.isFailure(result))
-        assert.isTrue(Cause.hasDies(result.cause))
-        assert.isFalse(Cause.hasFails(result.cause))
-        assert.match(String(Cause.squash(result.cause)), /already read.*middleware/i)
-        return HttpServerResponse.empty()
-      }).pipe(
-        HttpMiddleware.decompression(),
-        Effect.provideService(HttpServerRequest.HttpServerRequest, request)
-      )
-    }))
-
-  it.effect("keeps headers-only toWeb lazy, shares cached text through modify and rejects stream reuse", () =>
+  it.effect("keeps headers-only toWeb lazy and shares cached text through modify", () =>
     Effect.gen(function*() {
       const payload = "compressed payload"
       const body = yield* Effect.promise(() => compress(payload, ["gzip"]))
@@ -125,13 +99,7 @@ describe("HttpDecompression", () => {
         assert.strictEqual(web.headers.get("x-test"), "headers-only")
         yield* Effect.yieldNow
         assert.strictEqual(yield* decompressed.text, payload)
-        const cached = yield* Effect.exit(decompressed.modify({ url: "/copy" }).text)
-        const reused = yield* Effect.exit(Stream.runDrain(decompressed.stream))
-        assert.deepStrictEqual({
-          cached: Exit.isSuccess(cached) ? cached.value : Cause.pretty(cached.cause),
-          defect: Exit.isFailure(reused) && Cause.hasDies(reused.cause),
-          middleware: Exit.isFailure(reused) && /middleware/i.test(String(Cause.squash(reused.cause)))
-        }, { cached: payload, defect: true, middleware: true })
+        assert.strictEqual(yield* decompressed.modify({ url: "/copy" }).text, payload)
         return HttpServerResponse.empty()
       }).pipe(
         HttpMiddleware.decompression(),

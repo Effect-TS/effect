@@ -1518,8 +1518,7 @@ The payload stream's errors are added to the handler's error channel automatical
 ### Body Lifetime
 
 - Middleware runs first, then params, headers and query, then the payload. A params, headers or query failure answers `400` without reading a body byte, and the handler always gets the body unread.
-- The payload stream can be run once. Running it a second time dies with a defect, and so does reading it when middleware has already read the body. The body is never buffered for a replay.
-- The stream can only be read while the request is in flight: until the handler returns a non-stream response, or until a streaming response finishes. Reading it later dies with a defect.
+- Read the payload stream once. The body is never buffered for a replay, so a repeated read keeps the adapter's native behavior: an empty body, a typed `RequestParseError`, or a replay of the caller's stream under `HttpApiTest`. Don't rely on any of them.
 - A handler can respond without reading the whole body, for example to reject an upload early. Over HTTP/1.1 the Node server then drains up to 256 KiB of what is left. Past that it sends `Connection: close` and closes the socket.
 
 ### Mixing Buffered and Streaming Payloads
@@ -1679,7 +1678,7 @@ On Deno, an HTTP/1.1 request body read can stall while the handler returns a str
 
 ### Proxying a Streaming Upload
 
-`HttpServerRequest.toClientRequest` turns the incoming request into an outbound `HttpClientRequest` that streams the same body. A request body is a socket and can be read once, so if the outbound client retries the proxied request or follows a 307/308 redirect, the replay dies with the "consumed" defect. A proxy that needs retries has to buffer the body itself, or turn retries off.
+`HttpServerRequest.toClientRequest` turns the incoming request into an outbound `HttpClientRequest` that streams the same body. The body is not buffered, so if the outbound client retries the proxied request or follows a 307/308 redirect, the retry resends whatever the adapter gives a second read, usually an empty body. A proxy that retries has to buffer the body itself, or turn retries off.
 
 ### Testing with HttpApiTest
 

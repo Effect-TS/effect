@@ -318,27 +318,11 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
   : (request: Request, context: Context.Context<ReqR>) => Promise<globalThis.Response> =>
 {
   const resolveSymbol = Symbol.for("@effect/platform/HttpApp/resolve")
-  const respondedSymbol = Symbol.for("@effect/platform/HttpApp/responded")
   const httpApp = toHandled(self, (request, response) => {
     const withoutBody = request.method === "HEAD"
-    const markResponded: () => void = (request as any)[respondedSymbol]
-    if (Response.omitsBody(response, withoutBody)) {
-      markResponded()
-    } else {
+    if (!Response.omitsBody(response, withoutBody)) {
       // The transferred request scope closes when an abort interrupts the body, even if it is no longer read.
       response = scopeTransferToStream(response)
-      if (response.body._tag === "Stream") {
-        response = Response.setBodyKeepHeaders(
-          response,
-          HttpBody.stream(
-            Stream.ensuring(response.body.stream, Effect.sync(markResponded)),
-            response.body.contentType,
-            response.body.contentLength
-          )
-        )
-      } else {
-        markResponded()
-      }
     }
     ;(request as any)[resolveSymbol](
       Response.toWeb(response, { withoutBody, context, signal: (request.source as globalThis.Request).signal })
@@ -353,14 +337,9 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
           reqContext = Context.addUnsafe(reqContext, key, value)
         }
       }
-      // Set once the response is resolved, or once a streamed body ends.
-      let responded = false
-      const httpServerRequest = Request.fromWebWith(request, () => responded)
+      const httpServerRequest = Request.fromWeb(request)
       reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
-      ;(httpServerRequest as any)[respondedSymbol] = () => {
-        responded = true
-      }
       const fiber = Effect.runForkWith(reqContext)(httpApp as any)
       const signal = request.signal
       if (fiber.pollUnsafe() === undefined && signal) {

@@ -385,7 +385,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
-  private readonly bodyState: Request.BodyState
+  // Buffered body reads, shared by modified requests so the body is read once.
+  private readonly reads: Map<string, Effect.Effect<any, any, any>>
 
   constructor(
     source: Http.IncomingMessage,
@@ -394,7 +395,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     url?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    bodyState?: Request.BodyState
+    reads?: Map<string, Effect.Effect<any, any, any>>
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -420,10 +421,16 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     }
     this.url = url
     this.headersOverride = headersOverride
-    this.bodyState = bodyState ?? Request.makeBodyState({
-      // A lazy upgrade response is not created just to answer this.
-      responded: () => typeof response !== "function" && response.writableEnded
-    })
+    this.reads = reads ?? new Map()
+  }
+
+  private cachedRead<A, E, R>(key: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
+    let read = this.reads.get(key)
+    if (read === undefined) {
+      read = Effect.runSync(Effect.cached(effect))
+      this.reads.set(key, read)
+    }
+    return read
   }
 
   private cachedCookies: Record.ReadonlyRecord<string, string> | undefined
@@ -445,24 +452,20 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return Request.guardBodyStream(
-      this.bodyState,
-      Stream.suspend(() => {
-        this.writeContinue()
-        const source = this.source
-        return Stream.mapArray(super.stream, (chunk) => {
-          let bytes = bodyBytesRead.get(source) ?? 0
-          for (const item of chunk) bytes += item.length
-          bodyBytesRead.set(source, bytes)
-          return chunk
-        })
+    return Stream.suspend(() => {
+      this.writeContinue()
+      const source = this.source
+      return Stream.mapArray(super.stream, (chunk) => {
+        let bytes = bodyBytesRead.get(source) ?? 0
+        for (const item of chunk) bytes += item.length
+        bodyBytesRead.set(source, bytes)
+        return chunk
       })
-    )
+    })
   }
 
   override get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
-    return Request.guardBodyRead(
-      this.bodyState,
+    return this.cachedRead(
       "arrayBuffer",
       Effect.suspend(() => {
         this.writeContinue()
@@ -485,7 +488,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.bodyState
+      this.reads
     )
   }
 
@@ -524,8 +527,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = Request.guardBodyRead(
-      this.bodyState,
+    this.multipartEffect = this.cachedRead(
       "multipart",
       Effect.suspend(() => {
         this.writeContinue()
@@ -536,13 +538,10 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return Request.guardBodyStream(
-      this.bodyState,
-      Stream.suspend(() => {
-        this.writeContinue()
-        return NodeMultipart.stream(this.source, this.source.headers)
-      })
-    )
+    return Stream.suspend(() => {
+      this.writeContinue()
+      return NodeMultipart.stream(this.source, this.source.headers)
+    })
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {

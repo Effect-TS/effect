@@ -34,7 +34,7 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
-import * as bodyStateInternal from "./internal/bodyState.ts"
+import * as bodyCache from "./internal/bodyCache.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
@@ -404,81 +404,6 @@ export const schemaBodyFormJson = <A, RD>(
 }
 
 /**
- * Opaque "consumed" state for the body of one server request.
- *
- * **Details**
- *
- * A request implementation allocates one with `makeBodyState` when it is
- * created, keeps it in a private field, and passes the same state to the copies
- * that `modify` creates. Copies then share one "consumed" flag and one cache of
- * buffered reads.
- *
- * @stability unstable
- * @category body
- * @since 4.0.6
- */
-export interface BodyState {
-  readonly _tag: "BodyState"
-}
-
-/**
- * Allocates the `BodyState` for a new server request.
- *
- * **Details**
- *
- * `bodyUsed` reports whether the body was read outside Effect, for example
- * `() => source.bodyUsed` for a Web `Request`. `responded` reports whether the
- * response has finished: a native signal such as `ServerResponse.writableEnded`,
- * or a local flag that the server sets when it resolves the response or when a
- * streamed response body ends.
- *
- * @stability unstable
- * @category body
- * @since 4.0.6
- */
-export const makeBodyState = (options?: {
-  readonly bodyUsed?: (() => boolean) | undefined
-  readonly responded?: (() => boolean) | undefined
-}): BodyState => new bodyStateInternal.BodyState(options?.bodyUsed, options?.responded)
-
-/**
- * Marks the body as consumed on the first pull of `stream`.
- *
- * **Details**
- *
- * The stream dies with a defect if the body was already read, the stream is
- * run a second time, or the response has finished. `stream` is not opened
- * until that first pull, so converting a request to a Web `Request` without
- * reading it leaves the body readable.
- *
- * @stability unstable
- * @category body
- * @since 4.0.6
- */
-export const guardBodyStream: <A, E, R>(state: BodyState, stream: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R> =
-  bodyStateInternal.guardStream as any
-
-/**
- * Reads the body once with `effect` and caches the result under `key`.
- *
- * **Details**
- *
- * Use for buffered reads such as `text` or `arrayBuffer`. The first run marks
- * the body as consumed, and dies with a defect if the body was already read or
- * the response has finished. Later reads with the same `key`, including reads
- * through `modify` copies sharing `state`, return the cached result.
- *
- * @stability unstable
- * @category body
- * @since 4.0.6
- */
-export const guardBodyRead: <A, E, R>(
-  state: BodyState,
-  key: string,
-  effect: Effect.Effect<A, E, R>
-) => Effect.Effect<A, E, R> = bodyStateInternal.guardRead as any
-
-/**
  * Creates an `HttpServerRequest` view of an `HttpClientRequest`.
  *
  * **Details**
@@ -512,20 +437,6 @@ export const fromClientRequest = (request: HttpClientRequest.HttpClientRequest):
  */
 export const fromWeb = (request: globalThis.Request): HttpServerRequest =>
   new ServerRequestImpl(request, removeHost(request.url))
-
-/**
- * Wraps a Web `Request` whose server reports when the response has finished.
- *
- * @internal
- */
-export const fromWebWith = (request: globalThis.Request, responded: () => boolean): HttpServerRequest =>
-  new ServerRequestImpl(
-    request,
-    removeHost(request.url),
-    undefined,
-    undefined,
-    makeBodyState({ bodyUsed: () => request.bodyUsed, responded })
-  )
 
 /**
  * Converts an `HttpServerRequest` into an `HttpClientRequest`.
@@ -586,14 +497,14 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   readonly url: string
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
-  private readonly bodyState: BodyState
+  private readonly reads: bodyCache.BodyCache
 
   constructor(
     source: Request,
     url: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    bodyState?: BodyState
+    reads?: bodyCache.BodyCache
   ) {
     super()
     this[TypeId] = TypeId
@@ -602,7 +513,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     this.url = url
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.bodyState = bodyState ?? makeBodyState({ bodyUsed: () => source.bodyUsed })
+    this.reads = reads ?? new Map()
   }
   toJSON(): unknown {
     return HttpIncomingMessage.inspect(this, {
@@ -623,7 +534,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.bodyState
+      this.reads
     )
   }
   get method(): HttpMethod {
@@ -649,10 +560,6 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return guardBodyStream(this.bodyState, this.bodyStream)
-  }
-
-  private get bodyStream(): Stream.Stream<Uint8Array, HttpServerError> {
     return this.source.body
       ? Stream.fromReadableStream({
         evaluate: () => this.source.body as any,
@@ -679,8 +586,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = guardBodyRead(
-      this.bodyState,
+    this.textEffect = bodyCache.cachedRead(
+      this.reads,
       "text",
       Effect.tryPromise({
         try: () => this.source.text(),
@@ -739,17 +646,13 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = guardBodyRead(this.bodyState, "multipart", Multipart.toPersisted(this.multipartParts))
+    this.multipartEffect = bodyCache.cachedRead(this.reads, "multipart", Multipart.toPersisted(this.multipartStream))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return guardBodyStream(this.bodyState, this.multipartParts)
-  }
-
-  private get multipartParts(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Stream.pipeThroughChannel(
-      Stream.mapError(this.bodyStream, (cause) => Multipart.MultipartError.fromReason("InternalError", cause)),
+      Stream.mapError(this.stream, (cause) => Multipart.MultipartError.fromReason("InternalError", cause)),
       Multipart.makeChannel(this.headers)
     )
   }
@@ -759,8 +662,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = guardBodyRead(
-      this.bodyState,
+    this.arrayBufferEffect = bodyCache.cachedRead(
+      this.reads,
       "arrayBuffer",
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
@@ -796,7 +699,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
   private urlOverride?: string | undefined
-  private readonly bodyState: BodyState
+  private readonly reads: bodyCache.BodyCache
 
   constructor(
     source: HttpClientRequest.HttpClientRequest,
@@ -804,7 +707,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     urlOverride?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    bodyState?: BodyState
+    reads?: bodyCache.BodyCache
   ) {
     super()
     this[TypeId] = TypeId
@@ -814,7 +717,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     this.urlOverride = urlOverride
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.bodyState = bodyState ?? makeBodyState()
+    this.reads = reads ?? new Map()
   }
 
   toJSON(): unknown {
@@ -838,7 +741,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.bodyState
+      this.reads
     )
   }
 
@@ -867,10 +770,6 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return guardBodyStream(this.bodyState, this.bodyStream)
-  }
-
-  private get bodyStream(): Stream.Stream<Uint8Array, HttpServerError> {
     const body = this.source.body
     switch (body._tag) {
       case "Empty": {
@@ -912,7 +811,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
         break
       }
       case "Stream": {
-        effect = Stream.mkUint8Array(this.bodyStream)
+        effect = Stream.mkUint8Array(this.stream)
         break
       }
       case "Raw": {
@@ -920,7 +819,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
         break
       }
     }
-    this.bytesEffect = guardBodyRead(this.bodyState, "bytes", effect)
+    this.bytesEffect = bodyCache.cachedRead(this.reads, "bytes", effect)
     return this.bytesEffect
   }
 
@@ -959,21 +858,17 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = guardBodyRead(this.bodyState, "multipart", Multipart.toPersisted(this.multipartParts))
+    this.multipartEffect = bodyCache.cachedRead(this.reads, "multipart", Multipart.toPersisted(this.multipartStream))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return guardBodyStream(this.bodyState, this.multipartParts)
-  }
-
-  private get multipartParts(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     const formData = this.source.body._tag === "FormData" && this.source.body.formData
     if (formData) {
       return Stream.fromIterable(formDataToParts(formData))
     }
     return Stream.pipeThroughChannel(
-      Stream.mapError(this.bodyStream, (cause) => Multipart.MultipartError.fromReason("InternalError", cause)),
+      Stream.mapError(this.stream, (cause) => Multipart.MultipartError.fromReason("InternalError", cause)),
       Multipart.makeChannel(this.headers)
     )
   }
@@ -1218,11 +1113,15 @@ export const toWebResult = (self: HttpServerRequest, options?: {
     requestInit.signal = options.signal
   }
   if (hasBody(self.method)) {
-    // A zero high-water mark pulls only when the Web body is read, so
-    // converting a request without reading it leaves the body unclaimed.
-    requestInit.body = Stream.toReadableStreamWith(self.stream, options?.context ?? Context.empty(), {
-      strategy: { highWaterMark: 0 }
-    })
+    // Opening on the first pull with a zero high-water mark reads the body only
+    // when the Web body is read, so converting a request leaves it readable.
+    requestInit.body = Stream.toReadableStreamWith(
+      bodyCache.openOnFirstPull(self.stream),
+      options?.context ?? Context.empty(),
+      {
+        strategy: { highWaterMark: 0 }
+      }
+    )
     ;(requestInit as any).duplex = "half"
   }
   return Result.succeed(new Request(url.value, requestInit))

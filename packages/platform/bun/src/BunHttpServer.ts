@@ -206,23 +206,10 @@ export const make = Effect.fnUntraced(
             return Promise.resolve(new Response(null, { status: 501 }))
           }
           return new Promise<Response>((resolve, _reject) => {
-            let responded = false
             const context = Context.add(
               services,
               ServerRequest.HttpServerRequest,
-              new BunServerRequest(
-                request,
-                resolve,
-                removeHost(request.url),
-                server,
-                compressionThreshold,
-                undefined,
-                undefined,
-                ServerRequest.makeBodyState({ bodyUsed: () => request.bodyUsed, responded: () => responded }),
-                () => {
-                  responded = true
-                }
-              )
+              new BunServerRequest(request, resolve, removeHost(request.url), server, compressionThreshold)
             )
             const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
             request.signal.addEventListener("abort", () => {
@@ -270,11 +257,7 @@ const makeResponse = (
   scope: Scope.Scope
 ): Response => {
   if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
-    request.markResponded()
     return ServerResponse.toWeb(response, { withoutBody: true })
-  }
-  if (response.body._tag !== "Stream") {
-    request.markResponded()
   }
   const fields: {
     headers: globalThis.Headers
@@ -320,14 +303,7 @@ const makeResponse = (
           Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
             Effect.withFiber((fiber) => {
               Fiber.runIn(fiber, scope)
-              return Channel.toTransform(
-                Stream.ensuring(
-                  body.stream,
-                  Effect.sync(() => {
-                    request.markResponded()
-                  })
-                ).channel
-              )(upstream, streamScope)
+              return Channel.toTransform(body.stream.channel)(upstream, streamScope)
             })
           )),
           context,
@@ -458,9 +434,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   private compressionThreshold: number
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
-  private readonly bodyState: ServerRequest.BodyState
-  // Called when the response is resolved, or when a streamed response body ends.
-  readonly markResponded: () => void
+  // Buffered body reads, shared by modified requests so the body is read once.
+  private readonly reads: Map<string, Effect.Effect<any, any, any>>
 
   constructor(
     source: Request,
@@ -470,8 +445,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>,
-    bodyState?: ServerRequest.BodyState,
-    markResponded?: () => void
+    reads?: Map<string, Effect.Effect<any, any, any>>
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -483,8 +457,16 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.compressionThreshold = compressionThreshold
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.bodyState = bodyState ?? ServerRequest.makeBodyState({ bodyUsed: () => source.bodyUsed })
-    this.markResponded = markResponded ?? constVoid
+    this.reads = reads ?? new Map()
+  }
+
+  private cachedRead<A, E, R>(key: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
+    let read = this.reads.get(key)
+    if (read === undefined) {
+      read = Effect.runSync(Effect.cached(effect))
+      this.reads.set(key, read)
+    }
+    return read
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -508,8 +490,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.bodyState,
-      this.markResponded
+      this.reads
     )
   }
   get method(): HttpMethod {
@@ -535,10 +516,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
-    return ServerRequest.guardBodyStream(this.bodyState, this.bodyStream)
-  }
-
-  private get bodyStream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
     return this.source.body
       ? BunStream.fromReadableStream({
         evaluate: () => this.source.body ?? emptyReadbleStream,
@@ -565,8 +542,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = ServerRequest.guardBodyRead(
-      this.bodyState,
+    this.textEffect = this.cachedRead(
       "text",
       Effect.tryPromise({
         try: () => this.source.text(),
@@ -625,12 +601,12 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = ServerRequest.guardBodyRead(this.bodyState, "multipart", BunMultipart.persisted(this.source))
+    this.multipartEffect = this.cachedRead("multipart", BunMultipart.persisted(this.source))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return ServerRequest.guardBodyStream(this.bodyState, BunMultipart.stream(this.source))
+    return BunMultipart.stream(this.source)
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
@@ -638,8 +614,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = ServerRequest.guardBodyRead(
-      this.bodyState,
+    this.arrayBufferEffect = this.cachedRead(
       "arrayBuffer",
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
