@@ -60,8 +60,8 @@ const makeHarness = (options: {
         Effect.flatMap(record("acquireConnection"), () => Effect.addFinalizer(() => record("closeConnection"))),
         conn
       ),
-    begin: () =>
-      Effect.flatMap(record("begin"), () => {
+    begin: (_conn, statement) =>
+      Effect.flatMap(record(statement === undefined ? "begin" : `begin(${statement})`), () => {
         if (options.begin !== undefined) {
           return Effect.fail(options.begin)
         }
@@ -115,12 +115,14 @@ const makeHarness = (options: {
 
 /**
  * Builds a client over a stub connection that records the transaction control
- * statements, the connection release, and `after(name)` for each callback
- * registered with `after`, along with the `Reactivity` service the client uses.
+ * statements, as `prepared(sql)` when prepared, the connection release, and
+ * `after(name)` for each callback registered with `after`, along with the
+ * `Reactivity` service the client uses.
  */
 const makeClient = (options: {
   readonly acquire?: Effect.Effect<void, never, Scope.Scope> | undefined
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
+  readonly prepareTransactionControls?: boolean | undefined
   readonly release?: Effect.Effect<void> | undefined
 } = {}) => {
   const calls: Array<string> = []
@@ -130,7 +132,7 @@ const makeClient = (options: {
     })
   const execute = (sql: string) => Effect.as(record(sql), [])
   const connection: SqlConnection.Connection = {
-    execute,
+    execute: (sql) => execute(`prepared(${sql})`),
     executeRaw: execute,
     executeValues: execute,
     executeUnprepared: execute,
@@ -149,6 +151,7 @@ const makeClient = (options: {
     ),
     compiler: Statement.makeCompilerSqlite(),
     spanAttributes: [],
+    prepareTransactionControls: options.prepareTransactionControls,
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
     Effect.flatMap((sql) =>
@@ -212,6 +215,26 @@ describe("SqlClient", () => {
       yield* sql.withTransaction(record("reused"))
       assert.isTrue(interruptedBeforeRelease, "interruption must complete while the holder still owns the connection")
       assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "BEGIN", "reused", "COMMIT", "release"])
+    }))
+
+  it.effect("starts only top-level transactions with the BeginTransaction statement, unprepared", () =>
+    Effect.gen(function*() {
+      const { calls, sql } = yield* makeClient({ prepareTransactionControls: true })
+
+      yield* sql.withTransaction(
+        sql.withTransaction(Effect.void).pipe(Effect.provideService(SqlClient.BeginTransaction, "BEGIN READ ONLY"))
+      ).pipe(Effect.provideService(SqlClient.BeginTransaction, "BEGIN ISOLATION LEVEL SERIALIZABLE"))
+      yield* sql.withTransaction(Effect.void)
+
+      assert.deepStrictEqual(calls, [
+        "BEGIN ISOLATION LEVEL SERIALIZABLE",
+        "prepared(SAVEPOINT effect_sql_1)",
+        "prepared(COMMIT)",
+        "release",
+        "prepared(BEGIN)",
+        "prepared(COMMIT)",
+        "release"
+      ])
     }))
 
   describe("makeWithTransaction", () => {
@@ -382,6 +405,21 @@ describe("SqlClient", () => {
           "releaseSavepoint(1)",
           "rollback",
           "closeConnection"
+        ])
+      }))
+
+    it.effect("passes the BeginTransaction statement to begin", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+
+        yield* harness.withTransaction(Effect.void)
+        yield* harness.withTransaction(Effect.void).pipe(
+          Effect.provideService(SqlClient.BeginTransaction, "BEGIN READ ONLY")
+        )
+
+        assert.deepStrictEqual(harness.calls.filter((call) => call.startsWith("begin")), [
+          "begin",
+          "begin(BEGIN READ ONLY)"
         ])
       }))
 
