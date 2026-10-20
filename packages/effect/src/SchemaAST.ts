@@ -2750,23 +2750,9 @@ export interface IndexSignature {
   readonly type: AST
 }
 
-// Skips the optional value check so derived ASTs (e.g. encoded sides where
-// `undefined` was transformed away) can be rebuilt from validated signatures
-class IndexSignatureBase {
-  readonly parameter: IndexSignatureParameter
-  readonly type: AST
-
-  constructor(
-    parameter: AST,
-    type: AST
-  ) {
-    if (!isIndexSignatureParameter(parameter)) {
-      throw new Error(`Invalid index signature parameter ${parameter._tag}`)
-    }
-    this.parameter = parameter
-    this.type = type
-  }
-}
+// Lets internally derived value types (e.g. encoded sides where `undefined`
+// was transformed away) skip the optional value check
+const skipValueCheck = globalThis.Symbol()
 
 /**
  * Constructs a {@link IndexSignature}.
@@ -2775,17 +2761,31 @@ class IndexSignatureBase {
  * @category constructors
  * @since 4.0.0
  */
-export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = class extends IndexSignatureBase {
+export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = class {
+  readonly parameter: IndexSignatureParameter
+  readonly type: AST
+
   constructor(
     parameter: AST,
-    type: AST
+    type: AST,
+    token?: typeof skipValueCheck
   ) {
-    super(parameter, type)
-    if (isOptional(type) && !containsUndefined(type)) {
+    if (!isIndexSignatureParameter(parameter)) {
+      throw new Error(`Invalid index signature parameter ${parameter._tag}`)
+    }
+    this.parameter = parameter
+    this.type = type
+    if (token !== skipValueCheck && isOptional(type) && !containsUndefined(type)) {
       throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
     }
   }
 }
+
+const IndexSignatureUnchecked = IndexSignature as new(
+  parameter: AST,
+  type: AST,
+  token: typeof skipValueCheck
+) => IndexSignature
 
 /**
  * AST node for object-like schemas, including structs and records.
@@ -3191,7 +3191,7 @@ export const Objects: new(
       const t = recur(is.type)
       return p === is.parameter && t === is.type
         ? is
-        : new IndexSignatureBase(p, t)
+        : new IndexSignatureUnchecked(p, t, skipValueCheck)
     })
 
     return props === this.propertySignatures && indexes === this.indexSignatures && checks === this.checks &&
