@@ -4,6 +4,7 @@ import Undici from "@effect/platform-node/Undici"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import {
   HttpBody,
@@ -207,6 +208,39 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name !== "fetch") {
+      it.live("continues uploading while reading a streaming response", () => {
+        const server = Http.createServer((request, response) => {
+          request.on("error", () => {})
+          response.writeHead(200, { "content-type": "text/plain" })
+          response.write("ready\n")
+          request.pipe(response)
+        })
+        const testLayer = HttpServer.layerTestClient.pipe(
+          Layer.provide(layer),
+          Layer.provideMerge(NodeHttpServer.layer(() => server, { port: 0 }))
+        )
+        return Effect.gen(function*() {
+          const readingResponse = yield* Deferred.make<void>()
+          const encoder = new TextEncoder()
+          const body = Stream.succeed(encoder.encode("first")).pipe(
+            Stream.concat(Stream.fromEffect(
+              Deferred.await(readingResponse).pipe(Effect.as(encoder.encode("second")))
+            ))
+          )
+          const response = yield* HttpClient.post("/", { body: HttpBody.stream(body) })
+          const text = yield* response.stream.pipe(
+            Stream.tap(() => Deferred.succeed(readingResponse, undefined)),
+            Stream.decodeText(),
+            Stream.mkString
+          )
+          assert.strictEqual(text, "ready\nfirstsecond")
+        }).pipe(
+          Effect.timeout("2 seconds"),
+          Effect.ensuring(Effect.sync(() => server.closeAllConnections())),
+          Effect.provide(testLayer)
+        )
+      })
+
       it.live.each([
         { source: "global", FormData: globalThis.FormData },
         { source: "undici", FormData: Undici.FormData }
