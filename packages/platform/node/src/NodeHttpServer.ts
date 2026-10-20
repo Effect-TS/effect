@@ -174,17 +174,21 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
+      const checkContinueHandler = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
+        deferredContinueRequests.add(request)
+        handler(request, response)
+      }
       yield* Scope.addFinalizerExit(serveScope, () =>
         Effect.ensuring(
           preemptiveShutdown,
           Effect.sync(() => {
             server.off("request", handler)
-            server.off("checkContinue", handler)
+            server.off("checkContinue", checkContinueHandler)
             server.off("upgrade", upgradeHandler)
           })
         ))
       server.on("request", handler)
-      server.on("checkContinue", handler)
+      server.on("checkContinue", checkContinueHandler)
       server.on("upgrade", upgradeHandler)
     })
   })
@@ -338,6 +342,10 @@ const absoluteTarget = (url: string): URL | undefined => {
   }
 }
 
+// Only acknowledge requests dispatched by our checkContinue listener. Standalone
+// makeHandler users leave acknowledgement to Node or their own listener.
+const deferredContinueRequests = new WeakSet<Http.IncomingMessage>()
+
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
   protected override readonly destroyOnOverflow = false
   readonly [Request.TypeId]: typeof Request.TypeId
@@ -397,7 +405,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   private writeContinue(): void {
-    if (this.continueState.sent || !/\b100-continue\b/i.test(this.source.headers.expect ?? "")) {
+    if (this.continueState.sent || !deferredContinueRequests.has(this.source)) {
       return
     }
     const response = this.resolvedResponse
