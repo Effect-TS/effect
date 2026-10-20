@@ -552,7 +552,7 @@ export const get: {
   2,
   <A>(self: Chunk<A>, index: number): Option<A> => {
     const i = Math.floor(index)
-    return Number.isFinite(i) && i >= 0 && i < self.length ? O.some(getUnsafe(self, i)) : O.none()
+    return i >= 0 && i < self.length ? O.some(getUnchecked(self, i)) : O.none()
   }
 )
 
@@ -657,35 +657,33 @@ export const getUnsafe: {
   <A>(self: Chunk<A>, index: number): A
 } = dual(2, <A>(self: Chunk<A>, index: number): A => {
   const i = Math.floor(index)
-  if (!Number.isFinite(i)) {
+  if (!(i >= 0 && i < self.length)) {
     throw new Error(`Index out of bounds: ${i}`)
   }
+  return getUnchecked(self, i)
+})
+
+const getUnchecked = <A>(self: Chunk<A>, i: number): A => {
   switch (self.backing._tag) {
     case "IEmpty": {
       throw new Error(`Index out of bounds: ${i}`)
     }
     case "ISingleton": {
-      if (i !== 0) {
-        throw new Error(`Index out of bounds: ${i}`)
-      }
       return self.backing.a
     }
     case "IArray": {
-      if (i >= self.length || i < 0) {
-        throw new Error(`Index out of bounds: ${i}`)
-      }
       return self.backing.array[i]!
     }
     case "IConcat": {
       return i < self.left.length
-        ? getUnsafe(self.left, i)
-        : getUnsafe(self.right, i - self.left.length)
+        ? getUnchecked(self.left, i)
+        : getUnchecked(self.right, i - self.left.length)
     }
     case "ISlice": {
-      return getUnsafe(self.backing.chunk, i + self.backing.offset)
+      return getUnchecked(self.backing.chunk, i + self.backing.offset)
     }
   }
-})
+}
 
 /**
  * Appends the specified element to the end of the `Chunk`.
