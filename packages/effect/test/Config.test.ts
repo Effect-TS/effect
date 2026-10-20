@@ -1580,6 +1580,14 @@ Expected "Infinity" | "-Infinity" | "NaN"
       )
     })
 
+    it("preserves __proto__ record keys", async () => {
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.String, Schema.String), "a"),
+        ConfigProvider.fromUnknown({ a: { ["__proto__"]: "value" } }),
+        { ["__proto__"]: "value" }
+      )
+    })
+
     describe("built-in schema-backed constructors", () => {
       it("decodes supported boolean spellings", async () => {
         const provider = ConfigProvider.fromUnknown({
