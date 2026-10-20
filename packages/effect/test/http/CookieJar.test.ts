@@ -55,6 +55,23 @@ describe("CookieJar", () => {
     }
   })
 
+  it("ignores a leading dot in constructed cookie domains", () => {
+    const jar = CookieJar.setFromResponse(
+      CookieJar.empty,
+      "https://api.example.com/",
+      Cookies.setUnsafe(Cookies.empty, "session", "secret", { domain: ".example.com", path: "/" }),
+      now
+    )
+    assert.deepStrictEqual(
+      [
+        CookieJar.toCookieHeader(jar, "https://example.com/", now),
+        CookieJar.toCookieHeader(jar, "https://www.example.com/", now),
+        CookieJar.toCookieHeader(jar, "https://notexample.com/", now)
+      ],
+      ["session=secret", "session=secret", undefined]
+    )
+  })
+
   it("uses the response's default path and matches explicit paths on segment boundaries", () => {
     for (const cookie of ["session=secret", "session=secret; Path=/account"]) {
       const jar = CookieJar.setFromResponse(
