@@ -12,6 +12,7 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import { flow } from "effect/Function"
 import * as Cookies from "effect/http/Cookies"
 import * as Headers from "effect/http/Headers"
@@ -576,10 +577,27 @@ export const makeNodeHttp = Effect.gen(function*() {
         headers: request.headers,
         signal
       })
-    return Effect.raceFirst(
-      waitForResponse(nodeRequest, request),
-      sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
-    ).pipe(
+    // Response headers must not interrupt the upload: a bidirectional server
+    // answers before it has read the whole body. The upload runs detached and
+    // is stopped once the request or the response closes.
+    return sendBody(nodeRequest, request, request.body).pipe(
+      Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
+      Effect.forkDetach,
+      Effect.flatMap((upload) => {
+        const stopUpload = () => upload.interruptUnsafe()
+        nodeRequest.once("close", stopUpload)
+        return Effect.raceFirst(
+          waitForResponse(nodeRequest, request),
+          Fiber.join(upload).pipe(Effect.andThen(Effect.never))
+        ).pipe(
+          Effect.map((response) => {
+            // A keep-alive request stays open while its upload is unfinished,
+            // even after the response has been fully consumed.
+            response.once("close", stopUpload)
+            return response
+          })
+        )
+      }),
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
     )
@@ -630,8 +648,7 @@ const sendBody = (
             })),
           NodeSink.fromWritable({
             evaluate: () => nodeRequest,
-            // The request race owns destruction, so a body failure must reach
-            // it before destroying the request can produce a transport error.
+            // The upload fiber owns destruction after observing body failures.
             endOnDone: false,
             onError: (cause) =>
               new Error.HttpClientError({
