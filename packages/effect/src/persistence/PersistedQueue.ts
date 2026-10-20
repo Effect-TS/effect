@@ -1513,9 +1513,9 @@ export const makeStoreSql: (
   })
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
 
-  // Each poll claims its rows under a fresh lock, so a settlement or refresh
-  // only matches the acquisition it belongs to, even after the same store
-  // re-claims a lapsed row.
+  // Each poll claims its rows under a fresh lock, so a settlement only matches
+  // the acquisition it belongs to, even after the same store re-claims a lapsed
+  // row.
   type Claim = {
     readonly sequence: number | string
     readonly lock: string
@@ -1533,18 +1533,23 @@ export const makeStoreSql: (
     }
     return groups
   }
-  // `groups` must be non-empty, since an empty OR chain matches every row
-  const claimsWhere = (groups: ReadonlyMap<string, ReadonlySet<number | string>>) =>
-    sql.or(
-      Array.from(groups, ([lock, sequences]) =>
-        sql`(sequence IN (${sql.literal(Array.from(sequences).join(","))}) AND acquired_by = ${stringLiteral(lock)})`)
-    )
+  // Refreshing a row under any of this store's live locks is safe, since one of
+  // its handlers is still running on it, and keeps the statement flat
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
     if (claims.size === 0) return Effect.void
+    const ids: Array<number | string> = []
+    const locks: Array<string> = []
+    for (const [lock, sequences] of claims) {
+      locks.push(wrapString(lock))
+      for (const sequence of sequences) {
+        ids.push(sequence)
+      }
+    }
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = ${sqlNow}
-      WHERE ${claimsWhere(claims)}
+      WHERE sequence IN (${sql.literal(ids.join(","))})
+      AND acquired_by IN (${sql.literal(locks.join(","))})
     `
   })
   const ack = (
@@ -1600,13 +1605,17 @@ export const makeStoreSql: (
       `,
       [element]
     )
+  // one statement per lock, so a row re-claimed under another lock is never
+  // released
   const interrupt = (elements: ReadonlyArray<Claim>) =>
     ack(
-      sql`
-        UPDATE ${tableNameSql}
-        SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
-        WHERE ${claimsWhere(groupClaims(elements))}
-      `,
+      Effect.forEach(groupClaims(elements), ([lock, sequences]) =>
+        sql`
+          UPDATE ${tableNameSql}
+          SET acquired_at = NULL, acquired_by = NULL, attempts = attempts - 1
+          WHERE sequence IN (${sql.literal(Array.from(sequences).join(","))})
+          AND acquired_by = ${stringLiteral(lock)}
+        `, { discard: true }),
       elements
     )
 
