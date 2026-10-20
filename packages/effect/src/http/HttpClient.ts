@@ -1602,41 +1602,47 @@ export const tapRequest: {
 )
 
 /**
- * Adds a `Ref` of cookies to the client for handling cookies across requests.
+ * Adds a `Ref` of stored cookies to the client for handling cookies across
+ * requests.
  *
  * **When to use**
  *
  * Use to add shared cookie storage to a client so response cookies are retained
- * and sent by later requests.
+ * and sent by later requests to a matching host, path, and scheme.
+ *
+ * **Details**
+ *
+ * Response cookies are merged into the ref with `Cookies.mergeIntoArray` for
+ * the response URL. Before each request, `Cookies.toRequestCookieHeader` selects
+ * the cookies for the request URL and sets them as the `cookie` header. Expiry
+ * uses the current `Clock`.
  *
  * @stability unstable
  * @category cookies
  * @since 4.0.0
  */
 export const withCookiesRef: {
-  (ref: Ref.Ref<Cookies.Cookies>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
-  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<Cookies.Cookies>): HttpClient.With<E, R>
+  (ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>): HttpClient.With<E, R>
 } = dual(
   2,
   <E, R>(
     self: HttpClient.With<E, R>,
-    ref: Ref.Ref<Cookies.Cookies>
+    ref: Ref.Ref<ReadonlyArray<Cookies.Cookie>>
   ): HttpClient.With<E, R> =>
     makeWith(
       (request: Effect.Effect<HttpClientRequest.HttpClientRequest, E, R>) =>
-        Effect.tap(
-          self.postprocess(request),
-          (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
-        ),
+        Effect.tap(self.postprocess(request), (response) => {
+          const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
+          return Ref.update(ref, Cookies.mergeIntoArray(response.url, response.cookies, now))
+        }),
       (request) =>
         Effect.flatMap(self.preprocess(request), (request) =>
-          Effect.map(
-            Ref.get(ref),
-            (cookies) =>
-              Cookies.isEmpty(cookies)
-                ? request
-                : HttpClientRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
-          ))
+          Effect.map(Ref.get(ref), (cookies) => {
+            const now = Fiber.getCurrent()!.getRef(Clock).currentTimeMillisUnsafe()
+            const header = Cookies.toRequestCookieHeader(cookies, request.url, now)
+            return header === undefined ? request : HttpClientRequest.setHeader(request, "cookie", header)
+          }))
     )
 )
 
