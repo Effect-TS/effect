@@ -18,7 +18,6 @@ import type * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { constTrue, dual, identity } from "./Function.ts"
-import { patches } from "./internal/context.ts"
 import { exitSucceed } from "./internal/core.ts"
 import * as Count from "./internal/count.ts"
 import * as effect from "./internal/effect.ts"
@@ -479,17 +478,9 @@ export const fromEffect = <A extends Request.Any>(
   return make((entries) =>
     Effect.callback<void>((resume) => {
       const parent = effect.getCurrentFiber()!
-      // Context operations record explicit wrapper writes, including writes
-      // equal to the batch creator's value. An untracked replacement context
-      // was supplied in full, so all of its services are explicit overrides.
-      const patch = patches.get(parent.context)
-      const services = new Map<string, unknown>()
-      for (const [key, value] of parent.context.mapUnsafe) {
-        if (patch === undefined || patch.has(key)) {
-          services.set(key, value)
-        }
-      }
-      const overrides = Context.makeUnsafe(services)
+      // Services written by resolver wrappers since the batch started override
+      // each entry's caller context; the batch creator's other services do not.
+      const overrides = Context.writtenServices(parent.context)
       let done = 0
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i]

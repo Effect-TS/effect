@@ -10,7 +10,6 @@ import type * as Request from "../Request.ts"
 import { makeEntry } from "../Request.ts"
 import type { RequestResolver } from "../RequestResolver.ts"
 import { Scheduler } from "../Scheduler.ts"
-import { patches } from "./context.ts"
 import { exitDie, isEffect, withFiber } from "./core.ts"
 import * as effect from "./effect.ts"
 
@@ -170,22 +169,14 @@ const addEntry = <A extends Request.Any>(
           (_) => runBatch(newBatch)
         ) as Effect<void>,
         run: effect.onExit(
-          withFiber((fiber) => {
-            // Start a fresh provenance boundary without changing batch lookups.
-            // Wrappers still see the creator, but only their writes propagate
-            // to per-entry effects. Do not mark the caller's shared context.
-            const context = Context.makeUnsafe(fiber.context.mapUnsafe)
-            patches.set(context, new Set())
-            return effect.setContext(
-              effect.suspend(() =>
-                newBatch.resolver.runAll(
-                  Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>,
-                  newBatch.key
-                )
-              ),
-              context
-            )
-          }),
+          // Wrappers run with the batch creator's context, but only the
+          // services they write reach the entries of `fromEffect` resolvers.
+          effect.updateContext(
+            effect.suspend(() =>
+              newBatch.resolver.runAll(Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>, newBatch.key)
+            ),
+            Context.trackWrites
+          ),
           (exit) => {
             for (const entry of newBatch.entrySet) {
               entry.completeUnsafe(
