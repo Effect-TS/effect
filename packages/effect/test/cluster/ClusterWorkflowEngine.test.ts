@@ -1135,13 +1135,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     "DurableDeferred.raceAll lets an active branch win while the deferred stays pending",
     () =>
       Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
         const fiber = yield* MixedRaceWorkflow.execute({ id: "mixed-race-activity" }).pipe(
           Effect.forkChild({ startImmediately: true })
         )
 
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 2000 && fiber.pollUnsafe() === undefined; i++) {
+          yield* sharding.pollStorage
           yield* TestClock.adjust("1 second")
         }
+        assert(fiber.pollUnsafe() !== undefined, "active race branch must complete while the deferred stays pending")
 
         expect(yield* Fiber.join(fiber)).toEqual("activity")
       }).pipe(Effect.provide(TestWorkflowLayer)),
