@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Queue, Redacted, Schema, Stream } from "effect"
+import { Context, Effect, Exit, Layer, Logger, Queue, Redacted, Schema, Stream } from "effect"
 import * as SchemaBinary from "effect/encoding/SchemaBinary"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -113,6 +113,7 @@ const makeServer = Effect.fnUntraced(function*(compaction: EventLogServerEncrypt
     const snapshot = (stageId: string, segments: ReadonlyArray<ReadonlyArray<EntryIds>>) =>
       Effect.andThen(upload(stageId, segments), commit(stageId, { _tag: "Snapshot", segmentCount: segments.length }))
     return {
+      client,
       hello,
       write,
       commit,
@@ -162,6 +163,72 @@ const withSnapshot = Effect.fnUntraced(function*(compaction: EventLogServerEncry
     yield* compactionStorage.rollback(server.scope.publicKey, storeId, active.activationId)
   })
   return { conn, ids, first, commits, rollback }
+})
+
+it.effect("isolates pending segment pieces and aborts by store on the same connection", () =>
+  Effect.gen(function*() {
+    const server = yield* makeServer({ thresholdFloor: 1 })
+    const conn = yield* server.connect
+    const ids = makeIds(2)
+    yield* conn.write(ids)
+    yield* TestClock.adjust(pastLag)
+    const { stageId } = started(yield* conn.begin)
+    const data = yield* encodeSegment([makeBatch([ids[1]])])
+    const split = Math.floor(data.length / 2)
+    const part = (storeId: EventLogMessage.StoreId, index: number, data: Uint8Array<ArrayBuffer>) =>
+      conn.client["EventLog.CompactionPart"]({
+        ...server.scope,
+        storeId,
+        stageId,
+        chunk: new EventLogMessage.ChunkedMessage({ id: 0, part: [index, 2], data })
+      })
+    const otherStore = EventLogMessage.StoreId.make("store-b")
+
+    yield* part(storeId, 0, data.slice(0, split))
+    // A foreign scope must neither join these junk bytes nor clear A's pending piece.
+    // It may reject the unknown stage immediately or defer that check until assembly.
+    yield* Effect.exit(part(otherStore, 1, new Uint8Array([255])))
+    yield* Effect.exit(conn.client["EventLog.CompactionAbort"]({ ...server.scope, storeId: otherStore, stageId }))
+    yield* part(storeId, 1, data.slice(split))
+
+    assert.strictEqual(yield* conn.commit(stageId, { _tag: "Snapshot", segmentCount: 1 }), "Committed")
+  }))
+
+it.effect("logs snapshot commit counts and the committed and rollback activation ids", () => {
+  const logs: Array<ReturnType<typeof Logger.formatStructured.log>> = []
+  return Effect.gen(function*() {
+    const server = yield* makeServer({ thresholdFloor: 1 })
+    const conn = yield* server.connect
+    const ids = makeIds(3)
+    yield* conn.write(ids)
+    yield* TestClock.adjust(pastLag)
+    const { stageId } = started(yield* conn.begin)
+    assert.strictEqual(yield* conn.snapshot(stageId, [[[ids[1]]]]), "Committed")
+    const compaction = server.storage.compaction!
+    const active = (yield* compaction.history(server.scope.publicKey, storeId)).find((a) => a.active)!
+    const rollbackId = yield* compaction.rollback(server.scope.publicKey, storeId, active.activationId)
+    const commitLog = logs.find((log) => log.annotations.activationId === active.activationId)
+    const rollbackLog = logs.find((log) => log.annotations.activationId === rollbackId)
+
+    assert.isDefined(commitLog)
+    assert.strictEqual(commitLog!.level, "INFO")
+    assert.containsSubset(commitLog!.annotations, {
+      ...server.scope,
+      inputCount: 3,
+      keptCount: 1,
+      through: 2,
+      activationId: active.activationId
+    })
+    assert.isDefined(rollbackLog)
+    assert.strictEqual(rollbackLog!.level, "INFO")
+    assert.containsSubset(rollbackLog!.annotations, {
+      ...server.scope,
+      activationId: rollbackId,
+      withdrawnActivationId: active.activationId
+    })
+  }).pipe(Effect.provide(Logger.layer([Logger.formatStructured.pipe(Logger.map((log) => {
+    logs.push(log)
+  }))])))
 })
 
 it.effect("loses the compare-and-swap after a rollback, answers a retried commit, and frees busy on abort", () =>
@@ -247,14 +314,19 @@ it.effect("rejects a commit that is not a strictly ascending, non-empty subset o
     assert.strictEqual(status.base, undefined)
   }))
 
-it.effect("answers Begin with NotWanted below the threshold and backs off multiplicatively after no-ops", () =>
-  Effect.gen(function*() {
+it.effect("answers Begin with NotWanted below the threshold and logs no-ops while backing off multiplicatively", () => {
+  const logs: Array<ReturnType<typeof Logger.formatStructured.log>> = []
+  return Effect.gen(function*() {
     const server = yield* makeServer({ thresholdFloor: 4 })
     const conn = yield* server.connect
     // Commits NoOp for any stage it opens.
+    const noOps: Array<{ readonly stageId: string; readonly through: number }> = []
     const begin = Effect.gen(function*() {
       const result = yield* conn.begin
-      if (result._tag === "Started") yield* conn.commit(result.stageId, { _tag: "NoOp" })
+      if (result._tag === "Started") {
+        yield* conn.commit(result.stageId, { _tag: "NoOp" })
+        noOps.push({ stageId: result.stageId, through: result.through })
+      }
       return result._tag
     })
     const writePastLag = Effect.gen(function*() {
@@ -270,7 +342,15 @@ it.effect("answers Begin with NotWanted below the threshold and backs off multip
     results.push(yield* begin, yield* begin, yield* writePastLag, yield* writePastLag, yield* writePastLag)
 
     assert.deepStrictEqual(results, ["NotWanted", "Started", "NotWanted", "Started", "NotWanted", "Started"])
-  }))
+    for (const noOp of noOps) {
+      const log = logs.find((log) => log.annotations.stageId === noOp.stageId && log.level === "INFO")
+      assert.isDefined(log, "NoOp commit must emit an audit log")
+      assert.containsSubset(log!.annotations, { ...server.scope, ...noOp })
+    }
+  }).pipe(Effect.provide(Logger.layer([Logger.formatStructured.pipe(Logger.map((log) => {
+    logs.push(log)
+  }))])))
+})
 
 it.effect("keeps activation off live changes and omits acks for re-uploads at or below the base", () =>
   Effect.gen(function*() {
