@@ -5,7 +5,6 @@
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as L from "./layout.ts"
 import * as ProtobufSchema from "./schema.ts"
-import * as Wire from "./wire.ts"
 
 // Messages by the AST body they are compiled from, so that a message used at
 // several positions, or recursively, is compiled once.
@@ -32,8 +31,8 @@ export const compile = (ast: SchemaAST.AST, extensions?: ExtensionsOf): L.Root =
 }
 
 /**
- * Compiles a value in a box of field `number`, which is how extensions are
- * read from and written to unknown fields.
+ * Compiles a value as field `number` of a wrapper message, which is how
+ * extensions are read from and written to unknown fields.
  *
  * @internal
  */
@@ -51,11 +50,11 @@ const compileExtension = (
   annotation: ProtobufSchema.FieldAnnotation,
   where: string
 ): L.MessageType => {
-  const message = L.makeMessage(where, "box")
-  L.addSlot(
-    message,
-    compileBoxSlot(c, ProtobufSchema.resolveEncoded(ast), annotation, where)
-  )
+  if (annotation.required === true) throw L.layoutError(`${where} is an extension, which cannot be required`)
+  const message = L.makeMessage(where, "wrapper")
+  message.order.push(L.WRAPPED)
+  // An extension has explicit presence, like an optional field.
+  L.addSlot(message, compileSlot(c, L.WRAPPED, ProtobufSchema.resolveEncoded(ast), annotation, true, where))
   return L.messageType(L.finishMessage(message))
 }
 
@@ -101,9 +100,7 @@ const compileProperty = (
   where: string
 ): L.Slot | undefined => {
   const annotation = ProtobufSchema.getFieldAnnotation(type)
-  const optional = SchemaAST.isOptional(type)
   const resolved = ProtobufSchema.resolveEncoded(type)
-  const guarded = isGuarded(key)
 
   // The `[Protobuf.unknown]` property of a `Protobuf.Message`.
   if (resolved.annotations[ProtobufSchema.UNKNOWN] === true) {
@@ -127,7 +124,21 @@ const compileProperty = (
   if (annotation === undefined) {
     throw L.layoutError(`${where} has no field number; annotate it with Protobuf.field(n)`)
   }
-  const presence = { key, guarded }
+  return compileSlot(c, key, resolved, annotation, SchemaAST.isOptional(type), where)
+}
+
+// A numbered field: a repeated field, a map, or a singular field, which has
+// explicit presence when it is `optional`.
+const compileSlot = (
+  c: Compiler,
+  key: PropertyKey,
+  resolved: ProtobufSchema.Resolved,
+  annotation: ProtobufSchema.FieldAnnotation,
+  optional: boolean,
+  where: string
+): L.Singular | L.Repeated | L.MapField => {
+  const ast = resolved.ast
+  const presence = { key, guarded: isGuarded(key) }
   const absent: L.Absent | undefined = optional ? "omit" : undefined
   const utf8 = annotation.validateUtf8 ?? true
 
@@ -178,7 +189,6 @@ const compileProperty = (
     number: annotation.number,
     type: value,
     absent: slotAbsent,
-    always: required,
     delimited: annotation.delimited === true
   }, where)
 }
@@ -291,8 +301,8 @@ const compileOneof = (c: Compiler, key: PropertyKey, ast: SchemaAST.Union, where
 const compileValue = (c: Compiler, resolved: ProtobufSchema.Resolved, where: string, utf8: boolean): L.Type => {
   const wellKnown = resolved.annotations[ProtobufSchema.WKT] as ProtobufSchema.WellKnown | undefined
   if (wellKnown !== undefined) return wellKnown
-  const enumAnnotation = resolved.annotations[ProtobufSchema.ENUM] as ProtobufSchema.EnumAnnotation | undefined
-  if (enumAnnotation !== undefined) return mappedEnum(enumAnnotation, where)
+  const enumType = resolved.annotations[ProtobufSchema.ENUM] as L.Enum | undefined
+  if (enumType !== undefined) return enumType
   const node = resolved.ast
   const declared = resolved.annotations[ProtobufSchema.SCALAR] as ProtobufSchema.ScalarName | undefined
   switch (node._tag) {
@@ -333,70 +343,9 @@ const compileValue = (c: Compiler, resolved: ProtobufSchema.Resolved, where: str
   }
 }
 
-// The one field of an extension, read and written like the field of a
-// single-field message.
-const compileBoxSlot = (
-  c: Compiler,
-  resolved: ProtobufSchema.Resolved,
-  annotation: ProtobufSchema.FieldAnnotation,
-  where: string
-): L.Slot => {
-  const ast = resolved.ast
-  if (annotation.required === true) throw L.layoutError(`${where} is in a box, which cannot be required`)
-  const presence = { key: L.BOX_VALUE, guarded: false }
-  const utf8 = annotation.validateUtf8 ?? true
-  if (!isMessageLike(resolved) && ast._tag === "Arrays") {
-    checkOptions(annotation, "repeated", where)
-    const element = compileValue(c, ProtobufSchema.resolveEncoded(arrayElement(ast, where)), `${where} (element)`, utf8)
-    if (annotation.packed === true && !L.isPackable(element)) throw L.layoutError(`${where} cannot be packed`)
-    checkDelimited(annotation, element, where)
-    return checkUtf8(annotation, {
-      _tag: "Repeated",
-      ...presence,
-      number: annotation.number,
-      element,
-      absent: "zero",
-      packed: annotation.packed ?? L.isPackable(element),
-      delimited: annotation.delimited === true
-    }, where)
-  }
-  const value = compileValue(c, resolved, where, utf8)
-  checkOptions(annotation, "singular", where)
-  checkDelimited(annotation, value, where)
-  checkEnumZero(value, where)
-  return checkUtf8(annotation, {
-    _tag: "Singular",
-    ...presence,
-    number: annotation.number,
-    type: value,
-    absent: value._tag === "Scalar" || value._tag === "Enum" ? "zero" : "required",
-    always: false,
-    delimited: annotation.delimited === true
-  }, where)
-}
-
 // -----------------------------------------------------------------------------
-// scalars and enums
+// checks
 // -----------------------------------------------------------------------------
-
-const mappedEnum = (annotation: ProtobufSchema.EnumAnnotation, where: string): L.Enum => {
-  for (const [name, number] of annotation.numbers) {
-    if (!Wire.isInt32(number)) throw L.layoutError(`${where} has no 32-bit enum number for ${name}`)
-  }
-  return makeEnum(annotation.numbers, annotation.open)
-}
-
-// A number shared by several values decodes to the first of them.
-const makeEnum = (numbers: ReadonlyArray<readonly [unknown, number]>, open: boolean): L.Enum => {
-  const toNumber = new Map<unknown, number>()
-  const fromNumber = new Map<number, unknown>()
-  for (const [value, number] of numbers) {
-    toNumber.set(value, number)
-    if (!fromNumber.has(number)) fromNumber.set(number, value)
-  }
-  const zero = fromNumber.has(0) ? fromNumber.get(0) : open || numbers.length === 0 ? 0 : numbers[0][0]
-  return { _tag: "Enum", wireType: Wire.WIRE_VARINT, toNumber, fromNumber, open, zero }
-}
 
 // An implicit-presence enum field skips 0 when writing, so a closed enum needs a
 // value for it.
@@ -405,10 +354,6 @@ const checkEnumZero = (type: L.Type, where: string): void => {
     throw L.layoutError(`${where} is a closed enum without a value for 0, which implicit presence needs`)
   }
 }
-
-// -----------------------------------------------------------------------------
-// checks
-// -----------------------------------------------------------------------------
 
 // Options that do not apply to a field are rejected rather than ignored.
 const checkOptions = (

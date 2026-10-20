@@ -49,6 +49,7 @@ import * as Bytes from "../Bytes.ts"
 import * as Effect from "../Effect.ts"
 import * as Codec from "../internal/protobuf/codec.ts"
 import * as Compile from "../internal/protobuf/compile.ts"
+import * as Layout from "../internal/protobuf/layout.ts"
 import * as ProtobufSchema from "../internal/protobuf/schema.ts"
 import * as Wire from "../internal/protobuf/wire.ts"
 import * as Wkt from "../internal/protobuf/wkt.ts"
@@ -358,8 +359,8 @@ export const Enum = <const Values extends Readonly<Record<string, number>>>(
   name: string,
   values: Values
 ): Schema.Literals<ReadonlyArray<keyof Values & string>> => {
-  const [literals, annotation] = makeEnum("Enum", name, values, false)
-  return literals.annotate({ [ProtobufSchema.ENUM]: annotation })
+  const [literals, layout] = makeEnum("Enum", name, values, false)
+  return literals.annotate({ [ProtobufSchema.ENUM]: layout })
 }
 
 /**
@@ -398,8 +399,8 @@ export const OpenEnum = <
   name: string,
   values: Values
 ): Schema.Union<readonly [Schema.Literals<ReadonlyArray<keyof Values & string>>, Schema.Number]> => {
-  const [literals, annotation] = makeEnum("OpenEnum", name, values, true)
-  return Schema.Union([literals, Int32]).annotate({ [ProtobufSchema.ENUM]: annotation })
+  const [literals, layout] = makeEnum("OpenEnum", name, values, true)
+  return Schema.Union([literals, Int32]).annotate({ [ProtobufSchema.ENUM]: layout })
 }
 
 const makeEnum = (
@@ -407,7 +408,7 @@ const makeEnum = (
   name: string,
   values: Readonly<Record<string, number>>,
   open: boolean
-): readonly [Schema.Literals<ReadonlyArray<string>>, ProtobufSchema.EnumAnnotation] => {
+): readonly [Schema.Literals<ReadonlyArray<string>>, Layout.Enum] => {
   const keys = Object.keys(values)
   if (!Arr.isArrayNonEmpty(keys)) throw new Error(`Protobuf.${constructor} ${name} needs at least one value`)
   const numbers: Array<readonly [string, number]> = []
@@ -418,7 +419,7 @@ const makeEnum = (
     }
     numbers.push([key, number])
   }
-  return [Schema.Literals(keys), { numbers, open, name }]
+  return [Schema.Literals(keys), Layout.makeEnum(numbers, open)]
 }
 
 const Map_ = <K extends Schema.String | Schema.Number, V extends Schema.Constraint>(
@@ -1142,27 +1143,24 @@ export const extension = <E extends Schema.Top, S extends Schema.Codec<any, any>
   options?: FieldOptions
 ): Extension<E, S> => {
   ProtobufSchema.checkFieldNumber(number)
-  const layout = Compile.compile(extendee.ast)
-  const where = `extension ${number} of ${layout.message.name}`
-  if (layout._tag !== "Message" || layout.message.shape !== "struct" || layout.message.unknown === undefined) {
-    throw new Error(`Protobuf layout: the extendee of ${where} has no [Protobuf.unknown] property`)
+  // A `Protobuf.Message` keeps its unknown fields, where extensions live.
+  const extendeeAnnotations = ProtobufSchema.resolveEncoded(extendee.ast).annotations
+  const name = extendeeAnnotations[ProtobufSchema.MESSAGE] as string | undefined
+  if (name === undefined) {
+    throw new Error(`Protobuf layout: the extendee of extension ${number} is not a Protobuf.Message`)
   }
-  if (layout.message.byNumber.has(number)) {
-    throw new Error(`Protobuf layout: ${where} is a field of the extendee`)
-  }
-  const messageSet = ProtobufSchema.resolveEncoded(extendee.ast).annotations[ProtobufSchema.MESSAGE_SET] === true
+  const where = `extension ${number} of ${name}`
+  const messageSet = extendeeAnnotations[ProtobufSchema.MESSAGE_SET] === true
   // The value of a MessageSet item is the bytes of a message; that of any other
   // extension is a field.
   if (messageSet && (ProtobufSchema.resolveEncoded(schema.ast).ast._tag !== "Objects" || options !== undefined)) {
     throw new Error(`Protobuf layout: ${where} extends a MessageSet, whose extensions are messages without options`)
   }
-  const root = messageSet
-    ? Compile.compile(schema.ast)
-    : Compile.compileField(schema.ast, fieldAnnotation(number, options), where)
+  const annotation = fieldAnnotation(number, options)
+  const root = messageSet ? Compile.compile(schema.ast) : Compile.compileField(schema.ast, annotation, where)
   const codec = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
     Schema.decodeTo(schema, makeTransformation(Codec.makeCodec(root), undefined))
   )
-  const annotation = fieldAnnotation(number, options)
   return { extendee, number, schema, codec, messageSet, annotation } as Extension<E, S>
 }
 
@@ -1206,7 +1204,7 @@ export const setExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
   const bytes = unknownFields(message)
   const rest = bytes === undefined ? Wire.EMPTY_BYTES : selectExtension(bytes, extension, false)
   const value_ = Schema.encodeSync(extension.codec)(value)
-  const encoded = extension.messageSet ? messageSetItem(extension.number, value_) : value_
+  const encoded = extension.messageSet ? Wire.messageSetItem(extension.number, value_) : value_
   return withUnknownFields(message, Bytes.concat([rest, encoded]))
 }
 
@@ -1266,8 +1264,8 @@ const selectExtension = (bytes: Uint8Array, extension: Extension<any, any>, keep
     while (r.pos < bytes.length) {
       const start = r.pos
       const tag = r.tag()
-      if (extension.messageSet && tag === MESSAGE_SET_ITEM_START) {
-        const payload = readMessageSetItem(r, extension.number)
+      if (extension.messageSet && tag === Wire.MESSAGE_SET_ITEM_START) {
+        const payload = Wire.readMessageSetItem(r, extension.number)
         if (payload === undefined) {
           if (!keep) chunks.push(bytes.subarray(start, r.pos))
         } else if (keep) {
@@ -1283,43 +1281,6 @@ const selectExtension = (bytes: Uint8Array, extension: Extension<any, any>, keep
     throw e instanceof Wire.WireError ? new Schema.SchemaError(toIssue(e, SchemaAST.defaultParseOptions)) : e
   }
   return Bytes.concat(chunks)
-}
-
-// A MessageSet item: `repeated group Item = 1 { required int32 type_id = 2;
-// required bytes message = 3; }`.
-const MESSAGE_SET_ITEM_START = 1 * 8 + Wire.WIRE_SGROUP
-const MESSAGE_SET_ITEM_END = 1 * 8 + Wire.WIRE_EGROUP
-
-// Reads the rest of an item after its start tag, and returns its message
-// bytes when its type id is `typeId`.
-const readMessageSetItem = (r: Wire.Reader, typeId: number): Uint8Array | undefined => {
-  let id: number | undefined
-  let payload: Uint8Array | undefined
-  while (true) {
-    const tag = r.tag()
-    if (tag === MESSAGE_SET_ITEM_END) break
-    if (tag === 2 * 8 + Wire.WIRE_VARINT) {
-      id = r.uint32()
-    } else if (tag === 3 * 8 + Wire.WIRE_LEN) {
-      const end = r.delimited()
-      payload = r.buf.subarray(r.pos, end)
-      r.pos = end
-    } else {
-      r.skip(tag & 7, tag >>> 3, 1)
-    }
-  }
-  return id === typeId ? payload ?? Wire.EMPTY_BYTES : undefined
-}
-
-const messageSetItem = (typeId: number, payload: Uint8Array): Uint8Array<ArrayBuffer> => {
-  const w = new Wire.Writer()
-  w.uint32(MESSAGE_SET_ITEM_START)
-  w.uint32(2 * 8 + Wire.WIRE_VARINT)
-  w.uint32(typeId)
-  w.uint32(3 * 8 + Wire.WIRE_LEN)
-  w.bytes(payload)
-  w.uint32(MESSAGE_SET_ITEM_END)
-  return w.finish()
 }
 
 // -----------------------------------------------------------------------------
@@ -1463,12 +1424,8 @@ const typeName = (typeUrl: string): string => {
   return typeUrl.slice(typeUrl.lastIndexOf("/") + 1)
 }
 
-// The full name of a message, or of a well-known type, which its layout holds.
 const messageName = (schema: Schema.Top): string | undefined => {
-  const annotations = ProtobufSchema.resolveEncoded(schema.ast).annotations
-  const name = annotations[ProtobufSchema.MESSAGE] as string | undefined
-  if (name !== undefined) return name
-  return (annotations[ProtobufSchema.WKT] as ProtobufSchema.WellKnown | undefined)?.message.name
+  return ProtobufSchema.messageName(ProtobufSchema.resolveEncoded(schema.ast))
 }
 
 // -----------------------------------------------------------------------------

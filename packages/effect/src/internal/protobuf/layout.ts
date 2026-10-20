@@ -93,8 +93,6 @@ export interface Singular extends SlotBase {
   readonly _tag: "Singular"
   readonly number: number
   readonly type: Type
-  // Writes the zero value of an implicit-presence field.
-  readonly always: boolean
   readonly delimited: boolean
 }
 
@@ -155,9 +153,10 @@ export type Field = Singular | Repeated | MapField | Case
 export interface Message {
   readonly name: string
   // - `struct`: an object with a slot per property
-  // - `box`: a wrapper message whose one slot holds the value itself
-  readonly shape: "struct" | "box"
-  // A message the schema does not name, such as a box: its keys are not part
+  // - `wrapper`: a message whose one slot holds the value itself, such as
+  //   `google.protobuf.StringValue`
+  readonly shape: "struct" | "wrapper"
+  // A message the schema does not name, such as a wrapper: its keys are not part
   // of issue paths.
   readonly synthetic: boolean
   readonly slots: Array<Slot>
@@ -166,7 +165,7 @@ export interface Message {
   readonly order: Array<PropertyKey>
   // The optional property that keeps the fields the message does not declare.
   unknown: PropertyKey | undefined
-  // The extensions that decoding checks, each the box of its field. They stay
+  // The extensions that decoding checks, each the wrapper of its field. They stay
   // in the unknown fields.
   readonly extensions: Array<MessageType>
   // In field-number order, the order fields are written in.
@@ -174,9 +173,9 @@ export interface Message {
   readonly byNumber: Map<number, Field>
 }
 
-// The slot key of a box, never part of an issue path.
+// The slot key of a wrapper, never part of an issue path.
 /** @internal */
-export const BOX_VALUE = Symbol("Protobuf/box")
+export const WRAPPED = Symbol("Protobuf/wrapped")
 
 /**
  * What `toCodec` writes: the fields of a message, or of a converted value at
@@ -219,6 +218,23 @@ const scalarWireType = (scalar: ScalarName): number => {
 /** @internal */
 export const isPackable = (type: Type): type is Scalar | Enum => {
   return type._tag === "Enum" || (type._tag === "Scalar" && type.wireType !== Wire.WIRE_LEN)
+}
+
+/**
+ * The enum of `numbers`, by value in declaration order. A number shared by
+ * several values decodes to the first of them.
+ *
+ * @internal
+ */
+export const makeEnum = (numbers: ReadonlyArray<readonly [string, number]>, open: boolean): Enum => {
+  const toNumber = new Map<unknown, number>()
+  const fromNumber = new Map<number, unknown>()
+  for (const [value, number] of numbers) {
+    toNumber.set(value, number)
+    if (!fromNumber.has(number)) fromNumber.set(number, value)
+  }
+  const zero = fromNumber.has(0) ? fromNumber.get(0) : open ? 0 : numbers[0][0]
+  return { _tag: "Enum", wireType: Wire.WIRE_VARINT, toNumber, fromNumber, open, zero }
 }
 
 /** @internal */
@@ -313,7 +329,7 @@ export const makeMessage = (
   return {
     name,
     shape,
-    synthetic: options?.synthetic ?? shape === "box",
+    synthetic: options?.synthetic ?? shape === "wrapper",
     slots: [],
     oneofs: [],
     order: [],
@@ -356,6 +372,6 @@ export const layoutError = (message: string): Error => {
 
 /** @internal */
 export const describeKey = (key: PropertyKey): string => {
-  if (key === BOX_VALUE) return "value"
+  if (key === WRAPPED) return "value"
   return typeof key === "string" ? `"${key}"` : String(key)
 }

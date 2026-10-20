@@ -66,13 +66,13 @@ type FieldWriter = (
   cases: ReadonlyArray<L.Case | undefined>
 ) => void
 
-// Reads one occurrence of a field, and returns the new value of its slot.
-// `previous` is the value before, which a message merges into.
-type FieldReader = (r: Input, previous: unknown, wireType: number, number: number, depth: number) => unknown
+// Reads one occurrence of a value, given the value before, which a message
+// merges into.
+type ValueReader = (r: Input, previous: unknown, wireType: number, number: number, depth: number) => unknown
 
-// Reads one occurrence of a field into the values of a struct, by the index of
-// its slot.
-type FieldReaderInto = (r: Input, values: Array<any>, wireType: number, number: number, depth: number) => void
+// Reads one occurrence of a field into the values of a message, by the index
+// of its slot.
+type FieldReader = (r: Input, values: Array<any>, wireType: number, number: number, depth: number) => void
 
 // Write or read the fields of a message value, without its tag or length.
 type FieldsWriter = (w: Wire.Writer, value: unknown, depth: number) => void
@@ -105,6 +105,7 @@ interface Compiled {
   // the end.
   readonly required: Array<L.Slot>
   readonly requiredKeys: Array<number>
+  readonly missingField: Pending
   readonly optional: Array<number>
   readonly unknownKey: number
   // The readers of the extensions that decoding checks, by field number.
@@ -112,10 +113,7 @@ interface Compiled {
 }
 
 interface FieldReaders {
-  // Reads into the value of a box, which is the value of its slot.
   readonly read: FieldReader
-  // Reads into the values of a struct.
-  readonly readInto: FieldReaderInto
   // The key of the field in issue paths.
   readonly path: PropertyKey | undefined
 }
@@ -135,6 +133,17 @@ const compileMessage = (compiled: Map<L.Message, Compiled>, message: L.Message):
     shapes: new Map(),
     required: [],
     requiredKeys: [],
+    missingField: (target) => {
+      const required = out.required
+      for (let i = 0; i < required.length; i++) {
+        if (target[required[i].key] === undefined) {
+          const e = missing()
+          e.path.push(required[i].key)
+          return e
+        }
+      }
+      return undefined
+    },
     optional: [],
     unknownKey: -1,
     extensions: undefined
@@ -265,7 +274,6 @@ const isNumberZero = (value: unknown) => value === 0
 // -0 is written, as other implementations do.
 const isFloatZero = (value: unknown) => value === 0 && 1 / value > 0
 const isBigIntZero = (value: unknown) => value === Wire.BIGINT_ZERO
-const isInt64Zero = (value: unknown) => value === 0 || value === Wire.BIGINT_ZERO
 
 const int32 = (scalar: ScalarName, value: unknown): number => {
   return typeof value === "number" && Wire.isInt32(value) ? value : expected(scalar, value)
@@ -406,7 +414,7 @@ const NUMBER_SCALARS: { readonly [K in "int64" | "uint64" | "sint64" | "fixed64"
       return toNumber("int64", r, true)
     },
     write: (w, v) => w.int64(int64("int64", "number", v)),
-    isZero: isInt64Zero
+    isZero: isNumberZero
   },
   uint64: {
     read: (r) => {
@@ -414,7 +422,7 @@ const NUMBER_SCALARS: { readonly [K in "int64" | "uint64" | "sint64" | "fixed64"
       return toNumber("uint64", r, false)
     },
     write: (w, v) => w.int64(int64("uint64", "number", v)),
-    isZero: isInt64Zero
+    isZero: isNumberZero
   },
   sint64: {
     read: (r) => {
@@ -423,7 +431,7 @@ const NUMBER_SCALARS: { readonly [K in "int64" | "uint64" | "sint64" | "fixed64"
       return toNumber("sint64", r, true)
     },
     write: (w, v) => w.sint64(int64("sint64", "number", v)),
-    isZero: isInt64Zero
+    isZero: isNumberZero
   },
   fixed64: {
     read: (r) => {
@@ -431,7 +439,7 @@ const NUMBER_SCALARS: { readonly [K in "int64" | "uint64" | "sint64" | "fixed64"
       return toNumber("fixed64", r, false)
     },
     write: (w, v) => w.fixed64(int64("fixed64", "number", v)),
-    isZero: isInt64Zero
+    isZero: isNumberZero
   },
   sfixed64: {
     read: (r) => {
@@ -439,7 +447,7 @@ const NUMBER_SCALARS: { readonly [K in "int64" | "uint64" | "sint64" | "fixed64"
       return toNumber("sfixed64", r, true)
     },
     write: (w, v) => w.fixed64(int64("sfixed64", "number", v)),
-    isZero: isInt64Zero
+    isZero: isNumberZero
   }
 }
 
@@ -482,7 +490,7 @@ const enumNumber = (type: L.Enum, value: unknown): number => {
 // The value of a slot in a message value.
 const getter = (message: L.Message, slot: L.Slot): (container: any) => unknown => {
   const key = slot.key
-  if (message.shape === "box") return (c) => c
+  if (message.shape === "wrapper") return (c) => c
   return slot.guarded ? (c) => Object.hasOwn(c, key) ? c[key] : undefined : (c) => c[key]
 }
 
@@ -573,43 +581,19 @@ const fieldWriter = (compiled: Map<L.Message, Compiled>, message: L.Message, fie
       return singularWriter(compiled, message, field)
     case "Repeated": {
       const writeList = listWriter(compiled, field)
-      const write = (w: Wire.Writer, container: any, v: unknown, depth: number) => {
-        if (v === undefined && message.shape === "struct" && isAbsent(field, container)) return
+      return collectionWriter(message, field, L.EMPTY_LIST, (w, v, depth) => {
         if (!Array.isArray(v)) throw new Wire.WireError("expected an array", v)
         if (v.length > 0) writeList(w, v, depth)
-      }
-      if (message.shape === "box") return (w, value, depth) => write(w, value, value, depth)
-      const key = field.key
-      if (field.guarded) {
-        return (w, container, depth) =>
-          write(w, container, Object.hasOwn(container, key) ? container[key] : undefined, depth)
-      }
-      return (w, container, depth) => {
-        const v = container[key]
-        // Most repeated fields are empty.
-        if (v !== L.EMPTY_LIST) write(w, container, v, depth)
-      }
+      })
     }
     case "Map": {
       const writeEntry = entryWriter(compiled, field)
       const entries = numberKeys(field)
-      const write = (w: Wire.Writer, container: any, v: unknown, depth: number) => {
-        if (v === undefined && message.shape === "struct" && isAbsent(field, container)) return
+      return collectionWriter(message, field, L.EMPTY_RECORD, (w, v, depth) => {
         if (!Predicate.isObject(v) || Array.isArray(v)) throw new Wire.WireError("expected a record", v)
         const record = entries === undefined ? v as Record<string, unknown> : entries(v as Record<string, unknown>)
         for (const k of Object.keys(record)) writeEntry(w, k, record[k], depth)
-      }
-      if (message.shape === "box") return (w, value, depth) => write(w, value, value, depth)
-      const key = field.key
-      if (field.guarded) {
-        return (w, container, depth) =>
-          write(w, container, Object.hasOwn(container, key) ? container[key] : undefined, depth)
-      }
-      return (w, container, depth) => {
-        const v = container[key]
-        // Most maps are empty.
-        if (v !== L.EMPTY_RECORD) write(w, container, v, depth)
-      }
+      })
     }
     case "Case": {
       const oneof = field.oneof
@@ -623,10 +607,32 @@ const fieldWriter = (compiled: Map<L.Message, Compiled>, message: L.Message, fie
   }
 }
 
+// Binds the writer of a repeated or map value to its slot. Most collections are
+// empty, and hold the shared empty value, which is skipped.
+const collectionWriter = (
+  message: L.Message,
+  field: L.Repeated | L.MapField,
+  empty: unknown,
+  write: (w: Wire.Writer, value: unknown, depth: number) => void
+): FieldWriter => {
+  if (message.shape === "wrapper") return (w, value, depth) => write(w, value, depth)
+  const key = field.key
+  if (field.guarded) {
+    return (w, container, depth) => {
+      const v = Object.hasOwn(container, key) ? container[key] : undefined
+      if (v !== undefined || !isAbsent(field, container)) write(w, v, depth)
+    }
+  }
+  return (w, container, depth) => {
+    const v = container[key]
+    if (v !== empty && (v !== undefined || !isAbsent(field, container))) write(w, v, depth)
+  }
+}
+
 const singularWriter = (compiled: Map<L.Message, Compiled>, message: L.Message, field: L.Singular): FieldWriter => {
-  const skipZero = field.absent === "zero" && !field.always
+  const skipZero = field.absent === "zero"
   const write = valueWriter(compiled, field.type, field.number, field.delimited, skipZero)
-  if (message.shape === "box") return write
+  if (message.shape === "wrapper") return write
   const key = field.key
   if (!field.guarded) {
     // The zero value of an implicit-presence scalar is skipped before the
@@ -914,27 +920,25 @@ class Input extends Wire.Reader {
     r.pos = 0
     r.dataView = undefined
     r.unknown = undefined
-    r.invalid = 0
     r.drop = false
     r.extra = undefined
-    r.incomplete = undefined
+    r.pending = undefined
     Input.spare = r
   }
 
   // The unknown fields of structs that occurred several times, joined at the
   // end, which keeps merging linear.
   unknown: Map<object, { readonly key: PropertyKey; readonly chunks: Array<Uint8Array> }> | undefined = undefined
-  // The number of `Invalid` values read.
-  invalid = 0
   // Set by a field that is kept as an unknown field instead, such as a number
   // that a closed enum does not have.
   drop = false
   // Fields that the last field read leaves for the unknown fields, such as the
   // unknown numbers of a packed closed enum.
   extra: Array<Uint8Array> | undefined = undefined
-  // Structs that lack a required field, which a later occurrence can still
-  // merge in, so they only fail the decode if it is still missing at the end.
-  incomplete: Map<object, Compiled> | undefined = undefined
+  // Values that a later occurrence can still merge into or replace, such as a
+  // struct that lacks a required field, or an `Invalid` value, so they only
+  // fail the decode if they are still invalid, and part of it, at the end.
+  pending: Map<object, Pending> | undefined = undefined
 
   settle(value: unknown): void {
     if (this.unknown !== undefined) {
@@ -942,29 +946,23 @@ class Input extends Wire.Reader {
         InternalRecord.assignProperty(target, key, Bytes.concat(chunks))
       }
     }
-    if (this.incomplete !== undefined) {
-      for (const [target, compiled] of this.incomplete) {
-        const slot = missingSlot(compiled, target)
-        if (slot === undefined) continue
-        // A struct that a later occurrence replaced is not part of the value.
+    if (this.pending !== undefined) {
+      for (const [target, check] of this.pending) {
+        const e = check(target)
+        if (e === undefined) continue
         const path = pathTo(value, target)
         if (path === undefined) continue
-        const e = missing()
-        e.path.push(...path, slot.key)
+        e.path.unshift(...path)
         throw e
       }
     }
-    if (this.invalid > 0) rejectInvalid(value)
   }
 }
 
-const missingSlot = (compiled: Compiled, target: any): L.Slot | undefined => {
-  const required = compiled.required
-  for (let i = 0; i < required.length; i++) {
-    if (target[required[i].key] === undefined) return required[i]
-  }
-  return undefined
-}
+// Why a value fails the decode, with the path within it, or `undefined`.
+type Pending = (value: any) => Wire.WireError | undefined
+
+const invalidValue: Pending = (value: Invalid) => new Wire.WireError(value.reason)
 
 // Reads the fields of a message value up to `end`, or up to the end group tag
 // of field `group`.
@@ -975,20 +973,23 @@ const fieldsReader = (compiled: Map<L.Message, Compiled>, type: L.MessageType | 
   }
   const { fromMessage, invalid, toMessage } = type
   return (r, previous, end, group, depth) => {
-    const before = previous === undefined
-      ? undefined
-      : previous instanceof Invalid
-      ? previous.fields
-      : toMessage(previous)
+    let before: unknown = undefined
+    if (previous instanceof Invalid) {
+      before = previous.fields
+      r.pending!.delete(previous)
+    } else if (previous !== undefined) {
+      before = toMessage(previous)
+    }
     const fields = readMessage(r, message, before, end, group, depth)
     const reason = invalid(fields)
     if (reason === undefined) return fromMessage(fields)
-    r.invalid++
-    return new Invalid(reason, fields)
+    const out = new Invalid(reason, fields)
+    ;(r.pending ??= new Map()).set(out, invalidValue)
+    return out
   }
 }
 
-// Reads a message value: a struct, built in place, or the value of a box.
+// Reads a message value: a struct, built in place, or the value of a wrapper.
 const readMessage = (
   r: Input,
   compiled: Compiled,
@@ -1000,18 +1001,19 @@ const readMessage = (
   if (depth > Wire.MAX_DEPTH) throw new Wire.WireError(`nesting deeper than ${Wire.MAX_DEPTH}`)
   const message = compiled.message
   if (message.shape === "struct") return readStruct(r, compiled, previous, end, group, depth)
-  // The value of a box is that of its slot. Being synthetic, it adds no key to
+  // The value of a wrapper is that of its slot. Being synthetic, it adds no key to
   // issue paths, and keeps no unknown fields.
+  const values = [previous === L.EMPTY_LIST || previous === L.EMPTY_RECORD ? undefined : previous]
   const table = compiled.table
-  let value = previous
   for (let tag = nextTag(r, end, group); tag !== 0; tag = nextTag(r, end, group)) {
     const reader = table !== undefined ? table[tag >>> 3] : compiled.readers.get(tag >>> 3)
     if (reader === undefined) r.skip(tag & 7, tag >>> 3, depth)
-    else value = reader.read(r, value, tag & 7, tag >>> 3, depth)
+    else reader.read(r, values, tag & 7, tag >>> 3, depth)
     r.drop = false
     r.extra = undefined
   }
   if (group === undefined && r.pos !== end) throw new Wire.WireError("field overruns its message")
+  const value = values[0]
   if (value !== undefined) return value
   const slot = message.slots[0]
   if (slot.absent === "required") throw missing()
@@ -1056,7 +1058,7 @@ const readStruct = (
       r.unknown!.delete(previous)
       r.unknown!.set(out, merged)
     }
-    r.incomplete?.delete(previous)
+    r.pending?.delete(previous)
   }
   if (before !== undefined) {
     const merged = r.unknown ??= new Map()
@@ -1067,7 +1069,7 @@ const readStruct = (
   const required = compiled.requiredKeys
   for (let i = 0; i < required.length; i++) {
     if (values[required[i]] === undefined) {
-      ;(r.incomplete ??= new Map()).set(out, compiled)
+      ;(r.pending ??= new Map()).set(out, compiled.missingField)
       break
     }
   }
@@ -1087,7 +1089,7 @@ const build = (compiled: Compiled, values: Array<unknown>): object => {
   return out
 }
 
-// Reads the fields of a struct into its values, and returns its unknown fields.
+// Reads the fields of a message into its values, and returns its unknown fields.
 const readInto = (
   r: Input,
   compiled: Compiled,
@@ -1114,7 +1116,7 @@ const readInto = (
         continue
       }
       path = reader.path
-      reader.readInto(r, values, tag & 7, number, depth)
+      reader.read(r, values, tag & 7, number, depth)
       path = undefined
       if (r.drop) {
         r.drop = false
@@ -1134,7 +1136,7 @@ const readInto = (
 
 const readExtension = (r: Input, extension: FieldReaders, tag: number, depth: number): void => {
   try {
-    extension.read(r, undefined, tag & 7, tag >>> 3, depth)
+    extension.read(r, [undefined], tag & 7, tag >>> 3, depth)
   } finally {
     r.drop = false
     r.extra = undefined
@@ -1163,9 +1165,9 @@ const nextTag = (r: Input, end: number, group: number | undefined): number => {
   throw new Wire.WireError(`unexpected end group tag for field ${tag >>> 3}`)
 }
 
-// Each slot has a reader that returns its new value, for boxes, and one that
-// reads into the values of a struct, at `index`. They bind the slot to a plain
-// function, which reads one occurrence given the value before.
+// Each field has a reader into the values of its message, at `index`. It binds
+// the field to a plain function, which reads one occurrence given the value
+// before.
 const fieldReader = (
   compiled: Map<L.Message, Compiled>,
   message: L.Message,
@@ -1177,24 +1179,16 @@ const fieldReader = (
     case "Singular": {
       const type = field.type
       const read = valueReader(compiled, type)
-      if (type._tag === "Enum" && !type.open) {
-        // An unknown number keeps the value before.
-        return { read, readInto: keepingReader(index, read), path }
-      }
-      const readInto = (type._tag === "Scalar" ? scalarReaderInto(type, index) : undefined) ??
-        plainReader(index, read, merges(type))
-      return { read, readInto, path }
+      // An unknown number of a closed enum keeps the value before.
+      if (type._tag === "Enum" && !type.open) return { read: keepingReader(index, read), path }
+      const readScalar = type._tag === "Scalar" ? scalarFieldReader(type, index) : undefined
+      return { read: readScalar ?? plainReader(index, read, merges(type)), path }
     }
     case "Repeated": {
       const read = valueReader(compiled, field.element)
       const readPacked = L.isPackable(field.element) ? packedReader(field.element) : undefined
       return {
-        read: (r, previous, wireType, number, depth) => {
-          const list = (previous === undefined || previous === L.EMPTY_LIST ? [] : previous) as Array<unknown>
-          readElements(r, list, read, readPacked, wireType, number, depth)
-          return list
-        },
-        readInto: (r, values, wireType, number, depth) => {
+        read: (r, values, wireType, number, depth) => {
           readElements(r, values[index] ??= [], read, readPacked, wireType, number, depth)
         },
         path
@@ -1203,12 +1197,7 @@ const fieldReader = (
     case "Map": {
       const readEntry = entryReader(compiled, field)
       return {
-        read: (r, previous, wireType, _, depth) => {
-          const record = previous === undefined || previous === L.EMPTY_RECORD ? {} : previous
-          readEntry(r, record, wireType, depth)
-          return record
-        },
-        readInto: (r, values, wireType, _, depth) => {
+        read: (r, values, wireType, _, depth) => {
           readEntry(r, values[index] ??= {}, wireType, depth)
         },
         path
@@ -1216,13 +1205,13 @@ const fieldReader = (
     }
     case "Case": {
       const info = caseInfo(compiled, field)
-      const value: FieldReader = (r, previous, wireType, _, depth) => readCase(r, previous, info, wireType, depth)
-      return { read: value, readInto: keepingReader(index, value), path }
+      const read: ValueReader = (r, previous, wireType, _, depth) => readCase(r, previous, info, wireType, depth)
+      return { read: keepingReader(index, read), path }
     }
   }
 }
 
-const plainReader = (index: number, read: FieldReader, loads: boolean): FieldReaderInto => {
+const plainReader = (index: number, read: ValueReader, loads: boolean): FieldReader => {
   return loads
     ? (r, values, wireType, number, depth) => {
       values[index] = read(r, values[index], wireType, number, depth)
@@ -1234,7 +1223,7 @@ const plainReader = (index: number, read: FieldReader, loads: boolean): FieldRea
 
 // Reads a field that may be kept as an unknown field instead, which leaves the
 // value as it was.
-const keepingReader = (index: number, read: FieldReader): FieldReaderInto => {
+const keepingReader = (index: number, read: ValueReader): FieldReader => {
   return (r, values, wireType, number, depth) => {
     const value = read(r, values[index], wireType, number, depth)
     if (!r.drop) values[index] = value
@@ -1243,7 +1232,7 @@ const keepingReader = (index: number, read: FieldReader): FieldReaderInto => {
 
 // Reads the common scalars into the value at `index`. Each has its own reader,
 // which skips the indirection of the others.
-const scalarReaderInto = (type: L.Scalar, index: number): FieldReaderInto | undefined => {
+const scalarFieldReader = (type: L.Scalar, index: number): FieldReader | undefined => {
   switch (type.int64As === "bigint" ? type.scalar : undefined) {
     case "string":
       if (!type.validateUtf8) return undefined
@@ -1285,7 +1274,7 @@ const scalarReaderInto = (type: L.Scalar, index: number): FieldReaderInto | unde
 interface CaseInfo {
   readonly field: L.Case
   readonly number: number
-  readonly read: FieldReader
+  readonly read: ValueReader
   // Set when the case merges with an earlier occurrence of itself.
   readonly select: ((value: unknown) => L.Case | undefined) | undefined
   readonly tag: string
@@ -1318,7 +1307,7 @@ const readCase = (r: Input, previous: unknown, info: CaseInfo, wireType: number,
 const readElements = (
   r: Input,
   list: Array<unknown>,
-  read: FieldReader,
+  read: ValueReader,
   readPacked: PackedReader | undefined,
   wireType: number,
   number: number,
@@ -1448,7 +1437,7 @@ const zeroReader = (compiled: Map<L.Message, Compiled>, type: L.Type): (r: Input
 
 // Reads a value of a field, given the value of an earlier occurrence. Messages
 // are read in either encoding, whichever the field declares.
-const valueReader = (compiled: Map<L.Message, Compiled>, type: L.Type): FieldReader => {
+const valueReader = (compiled: Map<L.Message, Compiled>, type: L.Type): ValueReader => {
   switch (type._tag) {
     case "Scalar":
       return scalarReader(type)
@@ -1473,7 +1462,7 @@ const valueReader = (compiled: Map<L.Message, Compiled>, type: L.Type): FieldRea
 
 // The common scalars have their own readers, which skip the indirection of the
 // others.
-const scalarReader = (type: L.Scalar): FieldReader => {
+const scalarReader = (type: L.Scalar): ValueReader => {
   switch (type.int64As === "bigint" ? type.scalar : undefined) {
     case "string":
       if (!type.validateUtf8) break
@@ -1512,28 +1501,4 @@ const pathTo = (value: unknown, target: object): Array<PropertyKey> | undefined 
 const isDecodedCollection = (value: object): boolean => {
   const proto = Object.getPrototypeOf(value)
   return Array.isArray(value) || proto === Object.prototype || proto === null
-}
-
-// Fails for the first `Invalid` value in a decoded value, with its path.
-const rejectInvalid = (value: unknown): void => {
-  const path: Array<PropertyKey> = []
-  const found = findInvalid(value, path)
-  if (found === undefined) return
-  const e = new Wire.WireError(found.reason)
-  e.path.push(...path)
-  throw e
-}
-
-const findInvalid = (value: unknown, path: Array<PropertyKey>): Invalid | undefined => {
-  if (value instanceof Invalid) return value
-  if (typeof value !== "object" || value === null || !isDecodedCollection(value)) return undefined
-  for (const key of Reflect.ownKeys(value)) {
-    if (key === "length" && Array.isArray(value)) continue
-    const found = findInvalid((value as Record<PropertyKey, unknown>)[key], path)
-    if (found !== undefined) {
-      path.unshift(Array.isArray(value) ? Number(key) : key)
-      return found
-    }
-  }
-  return undefined
 }

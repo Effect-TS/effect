@@ -46,14 +46,6 @@ export interface FieldAnnotation extends FieldOptions {
   readonly number: number
 }
 
-/** @internal */
-export interface EnumAnnotation {
-  // Enum numbers by value, in declaration order.
-  readonly numbers: ReadonlyArray<readonly [value: string, number: number]>
-  readonly open: boolean
-  readonly name: string
-}
-
 // The layout of a well-known type, which its schema carries.
 /** @internal */
 export type WellKnown = L.MessageType | L.Converted
@@ -177,6 +169,17 @@ export const getFieldAnnotation = (ast: SchemaAST.AST): FieldAnnotation | undefi
     if (ast.encoding === undefined) return undefined
     ast = ast.encoding[ast.encoding.length - 1].to
   }
+}
+
+/**
+ * The full name of a message, or of a well-known type, whose layout holds it.
+ *
+ * @internal
+ */
+export const messageName = (resolved: Resolved): string | undefined => {
+  const name = resolved.annotations[MESSAGE] as string | undefined
+  if (name !== undefined) return name
+  return (resolved.annotations[WKT] as WellKnown | undefined)?.message.name
 }
 
 /** @internal */

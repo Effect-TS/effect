@@ -4,7 +4,7 @@
 import * as DateTime from "../../DateTime.ts"
 import * as Duration_ from "../../Duration.ts"
 import type { Converted, Message, MessageType, Scalar, Slot } from "./layout.ts"
-import { addSlot, BOX_VALUE, finishMessage, makeMessage, scalar } from "./layout.ts"
+import { addSlot, finishMessage, makeMessage, scalar, WRAPPED } from "./layout.ts"
 import * as Wire from "./wire.ts"
 
 // The layouts are built by calls, without statements or property reads at the
@@ -43,7 +43,6 @@ const timeLayout = (name: string): Message => {
       number: 1,
       type: scalar("int64"),
       absent: "zero",
-      always: false,
       delimited: false
     },
     {
@@ -53,7 +52,6 @@ const timeLayout = (name: string): Message => {
       number: 2,
       type: scalar("int32"),
       absent: "zero",
-      always: false,
       delimited: false
     }
   ])
@@ -146,14 +144,13 @@ export const Duration: Converted = {
 // A wrapper message holds its value in field 1, and decodes to the value
 // itself.
 const wrapper = (name: string, type: Scalar): MessageType => {
-  return messageOf(name, "box", [{
+  return messageOf(name, "wrapper", [{
     _tag: "Singular",
-    key: BOX_VALUE,
+    key: WRAPPED,
     guarded: false,
     number: 1,
     type,
     absent: "zero",
-    always: false,
     delimited: false
   }])
 }
@@ -182,9 +179,9 @@ export const UInt64Value: MessageType = wrapper("google.protobuf.UInt64Value", s
  *
  * @internal
  */
-export const FieldMask: MessageType = messageOf("google.protobuf.FieldMask", "box", [{
+export const FieldMask: MessageType = messageOf("google.protobuf.FieldMask", "wrapper", [{
   _tag: "Repeated",
-  key: BOX_VALUE,
+  key: WRAPPED,
   guarded: false,
   number: 1,
   element: scalar("string"),

@@ -546,7 +546,7 @@ export class Reader {
   }
 
   // Skips the fields of a group of field `number`, and its end group tag.
-  skipGroup(number: number, depth: number): void {
+  private skipGroup(number: number, depth: number): void {
     if (depth > MAX_DEPTH) throw new WireError(`nesting deeper than ${MAX_DEPTH}`)
     while (true) {
       const tag = this.tag()
@@ -557,4 +557,44 @@ export class Reader {
       this.skip(tag & 7, tag >>> 3, depth)
     }
   }
+}
+
+// A MessageSet item: `repeated group Item = 1 { required int32 type_id = 2;
+// required bytes message = 3; }`.
+/** @internal */
+export const MESSAGE_SET_ITEM_START = 1 * 8 + WIRE_SGROUP
+const MESSAGE_SET_ITEM_END = 1 * 8 + WIRE_EGROUP
+
+// Reads the rest of an item after its start tag, and returns its message
+// bytes when its type id is `typeId`.
+/** @internal */
+export const readMessageSetItem = (r: Reader, typeId: number): Uint8Array | undefined => {
+  let id: number | undefined
+  let payload: Uint8Array | undefined
+  while (true) {
+    const tag = r.tag()
+    if (tag === MESSAGE_SET_ITEM_END) break
+    if (tag === 2 * 8 + WIRE_VARINT) {
+      id = r.uint32()
+    } else if (tag === 3 * 8 + WIRE_LEN) {
+      const end = r.delimited()
+      payload = r.buf.subarray(r.pos, end)
+      r.pos = end
+    } else {
+      r.skip(tag & 7, tag >>> 3, 1)
+    }
+  }
+  return id === typeId ? payload ?? EMPTY_BYTES : undefined
+}
+
+/** @internal */
+export const messageSetItem = (typeId: number, payload: Uint8Array): Uint8Array<ArrayBuffer> => {
+  const w = new Writer()
+  w.uint32(MESSAGE_SET_ITEM_START)
+  w.uint32(2 * 8 + WIRE_VARINT)
+  w.uint32(typeId)
+  w.uint32(3 * 8 + WIRE_LEN)
+  w.bytes(payload)
+  w.uint32(MESSAGE_SET_ITEM_END)
+  return w.finish()
 }

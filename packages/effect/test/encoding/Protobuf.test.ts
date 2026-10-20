@@ -690,12 +690,22 @@ describe("Protobuf", () => {
       assert.deepStrictEqual(Protobuf.getExtension(product, tags), Option.some(["a", "b"]))
     })
 
-    it("rejects extendees without unknown fields and declared numbers", () => {
+    it("rejects extendees that are not messages", () => {
       assert.throws(
         () => Protobuf.extension(Protobuf.Duration, 100, Protobuf.Int32),
-        /has no \[Protobuf.unknown\]/
+        /the extendee of extension 100 is not a Protobuf.Message/
       )
-      assert.throws(() => Protobuf.extension(Product, 1, Protobuf.Int32), /is a field of the extendee/)
+    })
+
+    it("writes a value that is zero", () => {
+      const product = Protobuf.setExtension({ name: "lamp" }, priority, 0)
+      assert.strictEqual(Hex.encode(product[Protobuf.unknown]!), "a00600")
+      assert.isTrue(Protobuf.hasExtension(product, priority))
+      assert.deepStrictEqual(Protobuf.getExtension(product, priority), Option.some(0))
+      // A closed enum without 0 has no implicit zero to skip.
+      const level = Protobuf.extension(Product, 102, Protobuf.Enum("test.v2.Level", { LOW: 1 }))
+      const leveled = Protobuf.setExtension({}, level, "LOW")
+      assert.deepStrictEqual(Protobuf.getExtension(leveled, level), Option.some("LOW"))
     })
 
     it("checks the extensions of a registry when decoding", () => {
@@ -981,6 +991,7 @@ describe("Protobuf", () => {
       ["a negative uint32", field(Protobuf.UInt32), { n: -1 }, /expected a protobuf uint32\n  at \["n"\]/],
       ["a large uint64", field(Protobuf.UInt64), { n: 1n << 64n }, /expected a protobuf uint64\n  at \["n"\]/],
       ["a large int64", field(Protobuf.Int64), { n: 1n << 63n }, /expected a protobuf int64\n  at \["n"\]/],
+      ["a bigint zero int64 number", field(Protobuf.Int64Number), { n: 0n }, /expected a protobuf int64\n  at \["n"\]/],
       ["an infinite duration", field(Protobuf.Duration), { n: Duration.infinity }, /expected a finite duration/],
       [
         "a duration beyond 315,576,000,000 seconds",
