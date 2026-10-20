@@ -38,16 +38,15 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
  *
  * **Details**
  *
- * Defaults to `"error"`, which fails with an `HttpClientError` containing an
- * `EncodeError` before consuming the stream or calling fetch. Provide `"buffer"`
- * with `Effect.provideService` to collect the entire stream into a `Uint8Array`
- * before sending it. Runtimes with streaming support always send the stream.
+ * Defaults to `"error"`, which fails with an `EncodeError` without sending the
+ * request. Set to `"buffer"` to collect the entire stream in memory and send it
+ * as a single body instead. Runtimes with streaming support always send the stream.
  *
  * **Gotchas**
  *
  * Buffering keeps the entire upload in memory and can exhaust memory for large
- * or unbounded uploads. Support is detected once when this module is loaded using
- * the global `Request` implementation, even when a custom `Fetch` is provided.
+ * or unbounded uploads. Support is detected once, on the first stream body sent,
+ * using the global `Request` implementation even when a custom `Fetch` is provided.
  *
  * @stability unstable
  * @category services
@@ -81,7 +80,8 @@ export class RequestInit extends Context.Service<RequestInit, globalThis.Request
 ) {}
 
 // https://developer.chrome.com/docs/capabilities/web-apis/fetch-streaming-requests
-const supportsStreamBody = (() => {
+let supportsStreamBody: boolean | undefined
+const detectStreamBodySupport = () => {
   try {
     let duplexAccessed = false
     const request = new Request("https://example.com", {
@@ -96,7 +96,7 @@ const supportsStreamBody = (() => {
   } catch {
     return false
   }
-})()
+}
 
 const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fiber) => {
   const fetch = fiber.getRef(Fetch)
@@ -136,17 +136,11 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
     case "FormData":
       return send(request.body.formData)
     case "Stream":
-      if (!supportsStreamBody) {
-        if (fiber.getRef(StreamBodyFallback) === "buffer") {
-          return Stream.mkUint8Array(request.body.stream).pipe(
-            Effect.mapError((cause) =>
-              new HttpClientError.HttpClientError({
-                reason: new HttpClientError.EncodeError({ request, cause })
-              })
-            ),
-            Effect.flatMap((body) => send(body as Uint8Array<ArrayBuffer>))
-          )
-        }
+      supportsStreamBody ??= detectStreamBodySupport()
+      if (supportsStreamBody) {
+        return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
+      }
+      if (fiber.getRef(StreamBodyFallback) === "error") {
         return Effect.fail(
           new HttpClientError.HttpClientError({
             reason: new HttpClientError.EncodeError({
@@ -156,7 +150,14 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
           })
         )
       }
-      return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
+      return Stream.mkArrayBuffer(request.body.stream).pipe(
+        Effect.mapError((cause) =>
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.EncodeError({ request, cause })
+          })
+        ),
+        Effect.flatMap(send)
+      )
   }
   return send(undefined)
 })
@@ -183,12 +184,11 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * redirects, abort handling, and streaming support can vary by platform. Trace
  * propagation is on by default, and a browser preflight fails unless the
  * target allows `b3` and `traceparent`. Stream request bodies are sent as Web
- * streams with `duplex: "half"` when supported. Otherwise they fail with an
- * `EncodeError` without sending the request, unless `StreamBodyFallback` is set
- * to `"buffer"`. Any `content-length` header is removed before calling `fetch`.
- * Chrome passes the support check but rejects streaming uploads over HTTP/1.1;
- * these failures surface as `TransportError`. Browsers only deliver the response
- * after the entire request body has been sent.
+ * streams with `duplex: "half"` when the runtime supports it; see
+ * `StreamBodyFallback` for the unsupported case. Any `content-length` header is
+ * removed before calling `fetch`. Chrome passes the support check but rejects
+ * streaming uploads over HTTP/1.1, which surfaces as a `TransportError`, and
+ * browsers only deliver the response after the entire request body has been sent.
  *
  * @see {@link Fetch} for supplying the fetch implementation used by this layer
  * @see {@link RequestInit} for default `RequestInit` options applied before request-specific fields
