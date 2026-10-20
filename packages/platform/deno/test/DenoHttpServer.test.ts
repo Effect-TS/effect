@@ -18,6 +18,7 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as HttpPlatform from "effect/http/HttpPlatform"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerRespondable from "effect/http/HttpServerRespondable"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
@@ -292,8 +293,10 @@ describe("DenoHttpServer", () => {
         assert(Exit.isFailure(lateRead))
         assert.strictEqual(lateRead.cause.reasons.length, 1)
         const lateReadReason = lateRead.cause.reasons[0]
-        assert(Cause.isDieReason(lateReadReason))
-        assert.match(String(lateReadReason.defect), /after.*response|response.*finish/i)
+        // A late read retains Deno's native body failure, exposed as a typed parse error.
+        assert(Cause.isFailReason(lateReadReason))
+        assert(lateReadReason.error instanceof HttpServerError.HttpServerError)
+        assert(lateReadReason.error.reason instanceof HttpServerError.RequestParseError)
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
   })
 
