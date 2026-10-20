@@ -22,7 +22,6 @@ import {
   Struct
 } from "effect"
 import {
-  CookieJar,
   Cookies,
   HttpBody,
   HttpClient,
@@ -1382,14 +1381,14 @@ describe("HttpApi", () => {
           const server = yield* HttpServer.HttpServer
           const url = new URL(HttpServer.formatAddress(server.address))
           url.hostname = "127.0.0.1"
-          const ref = yield* Ref.make(CookieJar.setFromResponse(
-            CookieJar.empty,
+          const ref = yield* Ref.make(Cookies.storeFromResponse(
+            [],
             url.origin,
             Cookies.fromSetCookie("token=foo; Path=/"),
             yield* Clock.currentTimeMillis
           ))
           const client = yield* HttpApiClient.makeWith(Api, {
-            httpClient: HttpClient.withCookieJar(yield* HttpClient.HttpClient, ref)
+            httpClient: HttpClient.withCookiesRef(yield* HttpClient.HttpClient, ref)
           })
           const user = yield* client.users.findById({ params: { id: -1 } })
           assert.strictEqual(user.name, "foo")

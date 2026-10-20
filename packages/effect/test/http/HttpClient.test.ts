@@ -1,15 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Cause, Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
-import {
-  CookieJar,
-  Cookies,
-  HttpClient,
-  HttpClientError,
-  HttpClientRequest,
-  HttpClientResponse,
-  UrlParams
-} from "effect/http"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -1961,9 +1953,9 @@ Missing key
 
   it.effect("sends stored response cookies only to the matching host", () =>
     Effect.gen(function*() {
-      const jar = yield* Ref.make(CookieJar.empty)
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
       const seen: Array<string | undefined> = []
-      const client = HttpClient.withCookieJar(
+      const client = HttpClient.withCookiesRef(
         HttpClient.make((request) => {
           seen.push(request.headers.cookie)
           const host = new URL(request.url).hostname
@@ -1988,8 +1980,8 @@ Missing key
 
   it.effect("stores cookies using the final response host and default path", () =>
     Effect.gen(function*() {
-      const jar = yield* Ref.make(CookieJar.empty)
-      const client = HttpClient.withCookieJar(
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const client = HttpClient.withCookiesRef(
         HttpClient.make((request) => {
           const source = new Response(null, { headers: { "set-cookie": "session=final" } })
           Object.defineProperty(source, "url", { value: "https://login.example.com/auth/callback" })
@@ -2002,9 +1994,12 @@ Missing key
 
       const stored = yield* Ref.get(jar)
       const now = yield* Clock.currentTimeMillis
-      assert.strictEqual(CookieJar.toCookieHeader(stored, "https://login.example.com/auth/next", now), "session=final")
-      assert.strictEqual(CookieJar.toCookieHeader(stored, "https://api.example.com/start", now), undefined)
-      assert.strictEqual(CookieJar.toCookieHeader(stored, "https://login.example.com/other", now), undefined)
+      assert.strictEqual(
+        Cookies.toRequestCookieHeader(stored, "https://login.example.com/auth/next", now),
+        "session=final"
+      )
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://api.example.com/start", now), undefined)
+      assert.strictEqual(Cookies.toRequestCookieHeader(stored, "https://login.example.com/other", now), undefined)
     }))
 
   it("reads cookies when Headers has no getSetCookie", () => {
