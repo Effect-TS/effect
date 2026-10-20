@@ -577,25 +577,27 @@ export const makeNodeHttp = Effect.gen(function*() {
         headers: request.headers,
         signal
       })
-    return Effect.gen(function*() {
-      // Response headers must not interrupt the upload: a bidirectional server
-      // answers before it has read the whole body. The upload runs detached and
-      // is stopped once the request or the response closes.
-      const upload = yield* sendBody(nodeRequest, request, request.body).pipe(
-        Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
-        Effect.forkDetach
-      )
-      const stopUpload = () => upload.interruptUnsafe()
-      nodeRequest.once("close", stopUpload)
-      const response = yield* Effect.raceFirst(
-        waitForResponse(nodeRequest, request),
-        Fiber.join(upload).pipe(Effect.andThen(Effect.never))
-      )
-      // A keep-alive request stays open while its upload is unfinished, even
-      // after the response has been fully consumed.
-      response.once("close", stopUpload)
-      return response
-    }).pipe(
+    // Response headers must not interrupt the upload: a bidirectional server
+    // answers before it has read the whole body. The upload runs detached and
+    // is stopped once the request or the response closes.
+    return sendBody(nodeRequest, request, request.body).pipe(
+      Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
+      Effect.forkDetach,
+      Effect.flatMap((upload) => {
+        const stopUpload = () => upload.interruptUnsafe()
+        nodeRequest.once("close", stopUpload)
+        return Effect.raceFirst(
+          waitForResponse(nodeRequest, request),
+          Fiber.join(upload).pipe(Effect.andThen(Effect.never))
+        ).pipe(
+          Effect.map((response) => {
+            // A keep-alive request stays open while its upload is unfinished,
+            // even after the response has been fully consumed.
+            response.once("close", stopUpload)
+            return response
+          })
+        )
+      }),
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
     )
