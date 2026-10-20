@@ -127,6 +127,21 @@ indented: >-
     assert.deepStrictEqual(Yaml.parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
   })
 
+  it.each([
+    ["|", "    first\n    second\n", "first\nsecond\n"],
+    [">-", "\n    first\n    second\n\n", "\nfirst second"],
+    ["|2+", "    # text\n\n", "  # text\n\n"]
+  ])("ends %s scalars before less-indented comments", (indicator, content, expected) => {
+    assert.deepStrictEqual(Yaml.parse(`message: ${indicator}\n${content} # outside\nnext: 1\n`), {
+      message: expected,
+      next: 1
+    })
+  })
+
+  it("rejects less-indented block scalar content", () => {
+    assert.throws(() => Yaml.parse("message: |\n    first\n  second\nnext: 1\n"), SyntaxError)
+  })
+
   it("resolves aliases", () => {
     assert.deepStrictEqual(
       Yaml.parse(`
