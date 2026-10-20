@@ -3013,8 +3013,14 @@ function* concatChannels<A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) 
       yield stream.channel
     } else {
       // Evaluated within `next` so an interrupted pull cannot repeat it, then
-      // `Channel.empty` keeps a yield point between suspended parts
-      stack.push(evaluate() as Stream<A, E, R>)
+      // `Channel.empty` keeps a yield point between suspended parts. A defect
+      // is yielded as a failing part, so pulling again fails the same way
+      try {
+        stack.push(evaluate() as Stream<A, E, R>)
+      } catch (defect) {
+        yield Channel.die(defect)
+        continue
+      }
       yield Channel.empty
     }
   }
