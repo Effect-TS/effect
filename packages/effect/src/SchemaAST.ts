@@ -3501,8 +3501,15 @@ const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
 const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
+/**
+ * Declared fields named after `Object.prototype` members must be own properties.
+ *
+ * @internal
+ */
+export const requiresOwnProperty = (key: PropertyKey): boolean => Object.hasOwn(Object.prototype, key)
+
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
-  key === "__proto__" ? Object.hasOwn(input, key) : key in input
+  requiresOwnProperty(key) ? Object.hasOwn(input, key) : key in input
 
 /** @internal */
 export function getCandidateIndex(types: ReadonlyArray<AST>): CandidateIndex {
