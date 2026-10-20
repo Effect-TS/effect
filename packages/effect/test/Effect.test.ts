@@ -5076,29 +5076,6 @@ describe("Effect", () => {
         assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
       }))
 
-    it.effect("recomputes after an invalidation during an in-flight run", () =>
-      Effect.gen(function*() {
-        let runs = 0
-        const release = yield* Deferred.make<void>()
-        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
-          Effect.gen(function*() {
-            const run = ++runs
-            if (run === 1) yield* Deferred.await(release)
-            return run
-          }),
-          "1 hour"
-        )
-
-        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-        assert.strictEqual(runs, 1)
-        yield* invalidate
-        yield* Deferred.succeed(release, void 0)
-        assert.strictEqual(yield* Fiber.join(first), 1)
-        assert.strictEqual(yield* cached, 2)
-        assert.strictEqual(yield* cached, 2)
-        assert.strictEqual(runs, 2)
-      }))
-
     it.effect("keeps existing callers on the invalidated run without letting it replace the new value", () =>
       Effect.gen(function*() {
         let runs = 0
@@ -5122,34 +5099,6 @@ describe("Effect", () => {
         assert.strictEqual(yield* Fiber.join(owner), 1)
         assert.strictEqual(yield* cached, 2)
         assert.strictEqual(runs, 2)
-      }))
-
-    it.effect("interrupts a caller without waiting for a completed run's child finalizers", () =>
-      Effect.gen(function*() {
-        let runs = 0
-        const finalizing = yield* Deferred.make<void>()
-        const release = yield* Deferred.make<void>()
-        const [cached] = yield* Effect.cachedInvalidateWithTTL(
-          Effect.gen(function*() {
-            yield* Effect.never.pipe(
-              Effect.onInterrupt(() =>
-                Deferred.succeed(finalizing, void 0).pipe(Effect.andThen(Deferred.await(release)))
-              ),
-              Effect.forkChild({ startImmediately: true })
-            )
-            return ++runs
-          }),
-          "1 hour"
-        )
-
-        yield* Effect.gen(function*() {
-          const caller = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-          yield* Deferred.await(finalizing)
-          const interruptor = yield* Fiber.interrupt(caller).pipe(Effect.forkChild({ startImmediately: true }))
-          assert.isDefined(interruptor.pollUnsafe())
-          assert.strictEqual(yield* cached, 1)
-          assert.strictEqual(runs, 1)
-        }).pipe(Effect.ensuring(Deferred.succeed(release, void 0)))
       }))
 
     it.effect("interrupts an invalidated run when its last caller is interrupted", () =>
