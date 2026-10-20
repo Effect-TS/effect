@@ -427,6 +427,7 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
 class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
+  readonly [ServerRequest.RequestTokenKey]: ServerRequest.RequestToken
   readonly source: Request
   public resolve: (response: Response) => void
   readonly url: string
@@ -442,11 +443,13 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     bunServer: BunServer<WebSocketContext>,
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    token?: ServerRequest.RequestToken
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+    this[ServerRequest.RequestTokenKey] = token ?? ServerRequest.makeRequestToken()
     this.source = source
     this.resolve = resolve
     this.url = url
@@ -476,7 +479,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.bunServer,
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      this[ServerRequest.RequestTokenKey]
     )
   }
   get method(): HttpMethod {
@@ -502,6 +506,10 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
+    return ServerRequest.guardBodyStream(this, this.bodyStream)
+  }
+
+  private get bodyStream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
     return this.source.body
       ? BunStream.fromReadableStream({
         evaluate: () => this.source.body ?? emptyReadbleStream,
@@ -528,7 +536,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.runSync(Effect.cached(
+    this.textEffect = ServerRequest.guardBodyRead(
+      this,
+      "text",
       Effect.tryPromise({
         try: () => this.source.text(),
         catch: (cause) =>
@@ -539,7 +549,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           })
       })
-    ))
+    )
     return this.textEffect
   }
 
@@ -586,14 +596,12 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = Effect.runSync(Effect.cached(
-      BunMultipart.persisted(this.source)
-    ))
+    this.multipartEffect = ServerRequest.guardBodyRead(this, "multipart", BunMultipart.persisted(this.source))
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return BunMultipart.stream(this.source)
+    return ServerRequest.guardBodyStream(this, BunMultipart.stream(this.source))
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
@@ -601,7 +609,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = Effect.runSync(Effect.cached(
+    this.arrayBufferEffect = ServerRequest.guardBodyRead(
+      this,
+      "arrayBuffer",
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
         catch: (cause) =>
@@ -612,7 +622,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           })
       })
-    ))
+    )
     this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }

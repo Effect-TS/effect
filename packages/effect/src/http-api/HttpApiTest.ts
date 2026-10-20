@@ -18,7 +18,7 @@ import type { HttpPlatform } from "../http/HttpPlatform.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
-import { CurrentRequestState, RequestState } from "../http/internal/requestState.ts"
+import { CurrentRequestState, fromRequest } from "../http/internal/requestState.ts"
 import * as Layer from "../Layer.ts"
 import type { Path } from "../Path.ts"
 import type { Scope } from "../Scope.ts"
@@ -102,7 +102,7 @@ export const groups = Effect.fnUntraced(function*<
   const handler = yield* HttpRouter.toHttpEffect(layer)
   const httpClient = HttpClient.make(Effect.fnUntraced(function*(request) {
     const serverRequest = HttpServerRequest.fromClientRequest(request)
-    const state = new RequestState()
+    const state = fromRequest(serverRequest)!
     const response = yield* handler.pipe(
       Effect.flatMap((response) => {
         const preResponse = state.preResponseHandler

@@ -325,6 +325,7 @@ export const layerConfig = (
 class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: typeof ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
+  readonly [ServerRequest.RequestTokenKey]: ServerRequest.RequestToken
   readonly source: Request
   readonly remoteAddr: Deno.NetAddr | Deno.UnixAddr
   readonly url: string
@@ -340,11 +341,13 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     url: string,
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    token?: ServerRequest.RequestToken
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+    this[ServerRequest.RequestTokenKey] = token ?? ServerRequest.makeRequestToken()
     this.source = source
     this.remoteAddr = remoteAddr
     this.resolve = resolve
@@ -372,7 +375,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       options.url ?? this.url,
       this.websocketOptions,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      this[ServerRequest.RequestTokenKey]
     )
   }
   get method(): HttpMethod {
@@ -403,6 +407,10 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
+    return ServerRequest.guardBodyStream(this, this.bodyStream)
+  }
+
+  private get bodyStream(): Stream.Stream<Uint8Array, Error.HttpServerError> {
     return this.source.body
       ? Stream.fromReadableStream({
         evaluate: () => this.source.body ?? emptyReadableStream,
@@ -423,7 +431,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    return this.textEffect ??= Effect.runSync(Effect.cached(
+    return this.textEffect ??= ServerRequest.guardBodyRead(
+      this,
+      "text",
       Effect.tryPromise({
         try: () => this.source.text(),
         catch: (cause) =>
@@ -431,7 +441,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             reason: new Error.RequestParseError({ request: this, cause })
           })
       })
-    ))
+    )
   }
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
     return Effect.flatMap(this.text, (_) =>
@@ -462,16 +472,18 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    return this.multipartEffect ??= Effect.runSync(Effect.cached(DenoMultipart.persisted(this.source)))
+    return this.multipartEffect ??= ServerRequest.guardBodyRead(this, "multipart", DenoMultipart.persisted(this.source))
   }
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return DenoMultipart.stream(this.source)
+    return ServerRequest.guardBodyStream(this, DenoMultipart.stream(this.source))
   }
 
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
     if (this.arrayBufferEffect) return this.arrayBufferEffect
-    this.arrayBufferEffect = Effect.runSync(Effect.cached(
+    this.arrayBufferEffect = ServerRequest.guardBodyRead(
+      this,
+      "arrayBuffer",
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
         catch: (cause) =>
@@ -479,7 +491,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             reason: new Error.RequestParseError({ request: this, cause })
           })
       })
-    ))
+    )
     this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }

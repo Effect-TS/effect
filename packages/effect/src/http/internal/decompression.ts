@@ -13,6 +13,7 @@ import { HttpServerError, RequestParseError } from "../HttpServerError.ts"
 import * as HttpServerRequest from "../HttpServerRequest.ts"
 import * as Multipart from "../Multipart.ts"
 import * as UrlParams from "../UrlParams.ts"
+import * as requestState from "./requestState.ts"
 
 /**
  * @internal
@@ -87,6 +88,11 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
 
   get source(): object {
     return this.inner.source
+  }
+
+  // Share the inner request's token, so both see one "consumed" flag.
+  get [requestState.RequestStateKey](): requestState.RequestState | undefined {
+    return requestState.fromRequest(this.inner)
   }
 
   get url(): string {

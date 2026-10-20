@@ -380,6 +380,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   // The adapter tears the body down after the response instead.
   protected override readonly closeOnDone = false
   readonly [Request.TypeId]: typeof Request.TypeId
+  readonly [Request.RequestTokenKey]: Request.RequestToken
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
   private upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError> | undefined
   upgraded = false
@@ -392,7 +393,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
     url?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    token?: Request.RequestToken
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -403,6 +405,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         })
       }), remoteAddressOverride)
     this[Request.TypeId] = Request.TypeId
+    this[Request.RequestTokenKey] = token ?? Request.makeRequestToken()
     this.response = response
     this.upgradeEffect = upgradeEffect
     if (url === undefined) {
@@ -439,23 +442,31 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return Stream.suspend(() => {
-      this.writeContinue()
-      const source = this.source
-      return Stream.mapArray(super.stream, (chunk) => {
-        let bytes = bodyBytesRead.get(source) ?? 0
-        for (const item of chunk) bytes += item.length
-        bodyBytesRead.set(source, bytes)
-        return chunk
+    return Request.guardBodyStream(
+      this,
+      Stream.suspend(() => {
+        this.writeContinue()
+        const source = this.source
+        return Stream.mapArray(super.stream, (chunk) => {
+          let bytes = bodyBytesRead.get(source) ?? 0
+          for (const item of chunk) bytes += item.length
+          bodyBytesRead.set(source, bytes)
+          return chunk
+        })
       })
-    })
+    )
   }
 
+  private guardedArrayBuffer: Effect.Effect<ArrayBuffer, HttpServerError> | undefined
   override get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
-    return Effect.suspend(() => {
-      this.writeContinue()
-      return super.arrayBuffer
-    })
+    return this.guardedArrayBuffer ??= Request.guardBodyRead(
+      this,
+      "arrayBuffer",
+      Effect.suspend(() => {
+        this.writeContinue()
+        return super.arrayBuffer
+      })
+    )
   }
 
   modify(
@@ -471,7 +482,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      this[Request.RequestTokenKey]
     )
   }
 
@@ -510,20 +522,25 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = Effect.runSync(Effect.cached(
+    this.multipartEffect = Request.guardBodyRead(
+      this,
+      "multipart",
       Effect.suspend(() => {
         this.writeContinue()
         return NodeMultipart.persisted(this.source, this.source.headers)
       })
-    ))
+    )
     return this.multipartEffect
   }
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
-    return Stream.suspend(() => {
-      this.writeContinue()
-      return NodeMultipart.stream(this.source, this.source.headers)
-    })
+    return Request.guardBodyStream(
+      this,
+      Stream.suspend(() => {
+        this.writeContinue()
+        return NodeMultipart.stream(this.source, this.source.headers)
+      })
+    )
   }
 
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
