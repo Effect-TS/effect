@@ -105,6 +105,59 @@ describe("OpenApi representation v2 consumer", () => {
     )
   })
 
+  it("projects streaming payload and response elements to shared encoded definitions", () => {
+    const Event = Schema.Struct({ value: Schema.FiniteFromString }).annotate({ identifier: "Event" })
+    const ndjson = {
+      schema: { $ref: "#/components/schemas/Event" },
+      "x-effect-stream": { encoding: "ndjson" as const }
+    }
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamUint8Array()
+        }),
+        HttpApiEndpoint.post("ingest", "/ingest", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Event })
+        }),
+        HttpApiEndpoint.post("ingestMixed", "/ingest/mixed", {
+          payload: [Schema.Array(Event), HttpApiSchema.StreamNdjson({ schema: Event })]
+        }),
+        HttpApiEndpoint.get("export", "/export", {
+          success: HttpApiSchema.StreamNdjson({ schema: Event })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.components.schemas, {
+      Event: {
+        type: "object",
+        properties: { value: { type: "string" } },
+        required: ["value"],
+        additionalProperties: false
+      }
+    })
+    assert.deepStrictEqual(spec.paths["/upload"]?.post?.requestBody?.content, {
+      "application/octet-stream": {
+        schema: { type: "string", format: "binary" },
+        "x-effect-stream": { encoding: "uint8array" }
+      }
+    })
+    assert.deepStrictEqual(spec.paths["/ingest"]?.post?.requestBody?.content, {
+      "application/x-ndjson": ndjson
+    })
+    assert.deepStrictEqual(spec.paths["/ingest/mixed"]?.post?.requestBody?.content, {
+      "application/json": {
+        schema: { type: "array", items: { $ref: "#/components/schemas/Event" } }
+      },
+      "application/x-ndjson": ndjson
+    })
+    assert.deepStrictEqual(spec.paths["/export"]?.get?.responses[200]?.content, {
+      "application/x-ndjson": ndjson
+    })
+  })
+
   it("uses custom JSON Schema compiler annotations", () => {
     const CustomString = Schema.String.check(Schema.makeFilter<string>((value) => value.length >= 2, {
       representation: {
