@@ -28,6 +28,7 @@ describe("Path", () => {
 
       const error = yield* Effect.flip(path.fromFileUrl(new URL("file:///tmp/%")))
       strictEqual(error._tag, "BadArgument")
+      strictEqual(error.module, "Path")
       strictEqual(error.method, "fromFileUrl")
       assertTrue(error.cause instanceof URIError)
     }).pipe(Effect.provide(Path.layer)))
