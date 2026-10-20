@@ -3297,7 +3297,7 @@ export const unionWith: {
   <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A | B, that: A | B) => boolean): Array<A | B>
 } = dual(
   3,
-  <A>(self: Iterable<A>, that: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Array<A> =>
+  <A, B>(self: Iterable<A>, that: Iterable<B>, isEquivalent: (self: A | B, that: A | B) => boolean): Array<A | B> =>
     dedupeWith(appendAll(self, that), isEquivalent)
 )
 
