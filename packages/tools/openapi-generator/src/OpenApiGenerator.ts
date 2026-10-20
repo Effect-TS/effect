@@ -150,9 +150,10 @@ export const make = Effect.gen(function*() {
         return current
       }
 
-      const multipart = makeMultipartSchemas(spec.components?.schemas ?? {}, options.format, resolveRef)
+      const multipart = makeMultipartSchemas(spec, options.format, resolveRef)
 
       const parsed = parseOpenApi(spec, generator, resolveRef, options.format, emitWarning, multipart.transform)
+      multipart.finish(generator.schemas)
 
       // TODO: make a CLI option ?
       const importName = "Schema"
@@ -820,10 +821,11 @@ const mediaTypeToSuffix = (contentType: string): string => {
 }
 
 const makeMultipartSchemas = (
-  definitions: JsonSchema.Definitions,
+  spec: OpenAPISpec,
   format: OpenApiGeneratorFormat,
   resolveRef: (ref: string) => unknown
 ) => {
+  const definitions = spec.components?.schemas ?? {}
   const names = new Set(Object.keys(definitions))
   const allocate = (base: string): string => {
     let candidate = base
@@ -836,40 +838,25 @@ const makeMultipartSchemas = (
     return candidate
   }
   const output = { ...definitions }
-  if (format === "httpapi") {
-    const refs: HttpApiMultipartSchemaRefs = {
+  const refs: MultipartSchemaRefs = format === "httpapi"
+    ? {
       kind: "httpapi",
       singleFile: allocate("__HttpApiMultipartSingleFile"),
       files: allocate("__HttpApiMultipartFiles")
     }
-    const transform = (schema: JsonSchema.JsonSchema) => transformMultipartSchema(schema, refs, resolveRef)
-    Rec.assignProperty(output, refs.singleFile, { type: "string", format: "binary" })
-    for (const [name, schema] of Object.entries(definitions)) {
-      Rec.assignProperty(output, name, transform(schema))
-    }
-    Rec.assignProperty(output, refs.files, { type: "array", items: { $ref: toDefinitionRef(refs.singleFile) } })
-    return { refs, definitions: output, transform }
-  }
-  const refs: MultipartSchemaRefs = { kind: "client", singleFile: allocate("__ClientMultipartFile") }
+    : { kind: "client", singleFile: allocate("__ClientMultipartFile") }
+  const singleFileRef = toDefinitionRef(refs.singleFile)
+  const filesRef = refs.kind === "httpapi" ? toDefinitionRef(refs.files) : undefined
   Rec.assignProperty(output, refs.singleFile, { type: "string", format: "binary" })
-  // The client transform adds `*Multipart` copies to `output` while parsing, so render schemas after parseOpenApi.
-  return {
-    refs,
-    definitions: output,
-    transform: makeClientMultipartTransformer(output, refs.singleFile, allocate, resolveRef)
+  if (refs.kind === "httpapi") {
+    Rec.assignProperty(output, refs.files, { type: "array", items: { $ref: singleFileRef } })
   }
-}
 
-const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
-
-const makeClientMultipartTransformer = (
-  definitions: JsonSchema.Definitions,
-  singleFile: string,
-  allocate: (base: string) => string,
-  resolveRef: (ref: string) => unknown
-) => {
   const binaryComponents = new Map<string, boolean>()
   const copies = new Map<string, string>()
+  const inlining = new Set<string>()
+  // Components reachable from a schema that is not a multipart body, filled in by `finish`.
+  let shared: ReadonlySet<string> = new Set()
 
   const hasBinary = (value: unknown, seen: Set<string>): boolean => {
     if (Array.isArray(value)) return value.some((item) => hasBinary(item, seen))
@@ -897,83 +884,120 @@ const makeClientMultipartTransformer = (
     if (name === undefined) {
       name = allocate(`${JsonPointer.unescapeToken($ref.slice(componentRefPrefix.length))}Multipart`)
       copies.set($ref, name)
-      Rec.assignProperty(definitions, name, visit(resolveRef($ref)))
+      Rec.assignProperty(output, name, visit(resolveRef($ref)))
     }
     return name
+  }
+
+  // The httpapi format inlines components that only multipart bodies use; reference siblings still apply.
+  const inlineComponent = (value: Record<string, unknown>, $ref: string): unknown => {
+    const { $ref: _, ...siblings } = value
+    inlining.add($ref)
+    const inlined = visit(resolveRef($ref))
+    inlining.delete($ref)
+    return Object.keys(siblings).length === 0 ? inlined : { allOf: [inlined, visit(siblings)] }
+  }
+
+  // Follows component aliases so a reference to a binary string maps to the file schema too.
+  const isBinaryFile = (value: unknown, seen: Set<string> = new Set()): boolean => {
+    if (isMultipartBinaryFile(value)) return true
+    if (!Predicate.isObject(value) || !isComponentRef(value.$ref) || seen.has(value.$ref)) return false
+    seen.add(value.$ref)
+    return isBinaryFile(resolveRef(value.$ref), seen)
   }
 
   const visit = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(visit)
     if (!Predicate.isObject(value)) return value
-    if (isMultipartBinaryFile(value)) return { $ref: toDefinitionRef(singleFile) }
+    if (isBinaryFile(value)) return { $ref: singleFileRef }
+    if (
+      filesRef !== undefined && isComponentRef(value.$ref) && !shared.has(value.$ref) && !inlining.has(value.$ref)
+    ) {
+      return inlineComponent(value, value.$ref)
+    }
     const out = Rec.map(value, visit)
     if (isComponentRef(value.$ref) && isBinaryComponent(value.$ref)) {
       out.$ref = toDefinitionRef(copyComponent(value.$ref))
     }
+    if (filesRef !== undefined && isMultipartBinaryFiles(out, singleFileRef)) return { $ref: filesRef }
     return out
   }
 
-  return (schema: JsonSchema.JsonSchema) => visit(schema) as JsonSchema.JsonSchema
+  // Whether a component is shared is only known once every schema is registered, so `transform` hands
+  // out a placeholder that `finish` fills in after parsing.
+  const pending = new Map<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
+  const transform = (schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+    const placeholder: JsonSchema.JsonSchema = {}
+    pending.set(placeholder, schema)
+    return placeholder
+  }
+  const finish = (schemas: Readonly<Record<string, JsonSchema.JsonSchema>>): void => {
+    shared = collectComponentRefs(Object.values(schemas).filter((schema) => !pending.has(schema)), resolveRef)
+    for (const [placeholder, schema] of pending) {
+      Object.assign(placeholder, visit(schema))
+    }
+  }
+
+  return { refs, definitions: output, transform, finish }
 }
+
+const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`
+
+// Collects every component reachable from the schemas, following references through other components.
+// Only JSON Schema keywords that hold subschemas are walked, so a `$ref` inside `default`, `const` or
+// `examples` is treated as data.
+const collectComponentRefs = (
+  schemas: ReadonlyArray<JsonSchema.JsonSchema>,
+  resolveRef: (ref: string) => unknown
+): ReadonlySet<string> => {
+  const seen = new Set<string>()
+  const visit = (schema: unknown): void => {
+    if (Array.isArray(schema)) {
+      for (const item of schema) visit(item)
+      return
+    }
+    if (!Predicate.isObject(schema)) return
+    if (isComponentRef(schema.$ref) && !seen.has(schema.$ref)) {
+      seen.add(schema.$ref)
+      visit(resolveRef(schema.$ref))
+    }
+    for (const key of subschemaKeywords) {
+      visit(schema[key])
+    }
+    for (const key of subschemaMapKeywords) {
+      const map = schema[key]
+      if (Predicate.isObject(map)) visit(Object.values(map))
+    }
+  }
+  for (const schema of schemas) visit(schema)
+  return seen
+}
+
+const subschemaKeywords = [
+  "items",
+  "prefixItems",
+  "additionalItems",
+  "additionalProperties",
+  "unevaluatedItems",
+  "unevaluatedProperties",
+  "contains",
+  "propertyNames",
+  "contentSchema",
+  "allOf",
+  "anyOf",
+  "oneOf",
+  "not",
+  "if",
+  "then",
+  "else"
+] as const
+
+const subschemaMapKeywords = ["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"] as const
 
 const componentRefPrefix = "#/components/schemas/"
 
 const isComponentRef = (value: unknown): value is string =>
   typeof value === "string" && value.startsWith(componentRefPrefix)
-
-const transformMultipartSchema = (
-  schema: JsonSchema.JsonSchema,
-  multipartSchemaRefs: HttpApiMultipartSchemaRefs,
-  resolveRef: (ref: string) => unknown
-): JsonSchema.JsonSchema => {
-  const singleFileRef = toDefinitionRef(multipartSchemaRefs.singleFile)
-  const cache = new Map<string, unknown>()
-  const stack = new Set<string>()
-
-  const visit = (value: unknown): unknown => {
-    if (Array.isArray(value)) {
-      return value.map(visit)
-    }
-    if (!Predicate.isObject(value)) {
-      return value
-    }
-
-    if (isComponentRef(value.$ref)) {
-      const { $ref, ...siblings } = value
-      const withSiblings = (schema: unknown): unknown =>
-        Object.keys(siblings).length === 0 ? schema : { allOf: [schema, visit(siblings)] }
-      const cached = cache.get($ref)
-      if (cached !== undefined) {
-        return withSiblings(cached)
-      }
-      if (stack.has($ref)) {
-        return value
-      }
-      stack.add($ref)
-      const transformed = visit(resolveRef($ref))
-      stack.delete($ref)
-      cache.set($ref, transformed)
-      return withSiblings(transformed)
-    }
-
-    if (isMultipartBinaryFile(value)) {
-      return { $ref: singleFileRef }
-    }
-
-    const out: Record<string, unknown> = {}
-    for (const [key, current] of Object.entries(value)) {
-      Rec.assignProperty(out, key, visit(current))
-    }
-
-    if (isMultipartBinaryFiles(out, singleFileRef)) {
-      return { $ref: toDefinitionRef(multipartSchemaRefs.files) }
-    }
-
-    return out
-  }
-
-  return visit(schema) as JsonSchema.JsonSchema
-}
 
 const isMultipartBinaryFile = (value: unknown): boolean =>
   Predicate.isObject(value) &&
