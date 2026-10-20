@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Clock, Effect, Exit, type Layer, Stream } from "effect"
+import { Clock, Effect, Exit, Layer, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import type * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogMessage from "effect/eventlog/EventLogMessage"
@@ -45,10 +45,13 @@ const header = (sequence: number, entryIds: ReadonlyArray<EventJournal.EntryId>,
 const started = (result: EventLogServerEncrypted.CompactionBeginResult) =>
   result._tag === "Started" ? result : assert.fail(`expected Started, got ${result._tag}`)
 
-// A store holding [e0, e1] at 0, [e2, e3] at 2, [e4] at 4 and [e5] at 5.
+// A store holding [e0, e1] at 0, [e2, e3] at 2, [e4] at 4 and [e5] at 5,
+// counted from the storage's first sequence by `seq`.
 const makeStore = Effect.gen(function*() {
   const storage = yield* EventLogServerEncrypted.Storage
   const compaction = storage.compaction ?? assert.fail("Storage does not provide compaction")
+  const first = storage.firstSequence ?? 0
+  const seq = (offset: number) => first + offset
   const publicKey = crypto.randomUUID()
   const ids = makeIds(6)
   yield* storage.write(publicKey, storeId, [
@@ -58,15 +61,15 @@ const makeStore = Effect.gen(function*() {
     makeBatch(5, ids[5])
   ])
   const changes = (startSequence: number, count: number) =>
-    storage.changes(publicKey, storeId, startSequence).pipe(Stream.take(count), Stream.runCollect)
+    storage.changes(publicKey, storeId, seq(startSequence)).pipe(Stream.take(count), Stream.runCollect)
   // Keeps e1, e3 and e4 of the input through 4, as [e1] ending at its input
   // sequence 1 and [e3, e4] ending at the base.
   const commitSnapshot = Effect.gen(function*() {
-    const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+    const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
     yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1]), makeBatch(13, ids[3], ids[4])])
-    return yield* compaction.commit(publicKey, storeId, stageId, [1, 3])
+    return yield* compaction.commit(publicKey, storeId, stageId, [seq(1), seq(3)])
   })
-  return { compaction, publicKey, ids, changes, commitSnapshot }
+  return { compaction, publicKey, ids, changes, commitSnapshot, seq }
 })
 
 // Reads a stream, reporting the error tag it fails with or how many items it held.
@@ -75,29 +78,42 @@ const outcome = <A, E extends { readonly _tag: string }>(stream: Stream.Stream<A
     Effect.match({ onFailure: (error) => error._tag, onSuccess: (items) => `${items.length} items` })
   )
 
+// A sweep that waits on I/O can finish after `TestClock.adjust` returns, so a
+// read that depends on it retries for a while on the live clock.
+const eventually = Effect.fnUntraced(function*<A, E, R>(read: Effect.Effect<A, E, R>, done: (value: A) => boolean) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const value = yield* read
+    if (done(value)) return value
+    yield* TestClock.withLive(Effect.sleep(10))
+  }
+  return yield* read
+})
+
 // The tests share one TestClock, so they run one at a time. A test that needs
-// its own config or sweep schedule provides a fresh storage from `storage`.
-export const suite = (
+// its own config or sweep schedule provides a fresh storage from `storage`,
+// built on the same `dependencies` as the shared one.
+export const suite = <R>(
   name: string,
   storage: (options: {
     readonly compaction?: EventLogServerEncrypted.CompactionOptions | undefined
-  }) => Layer.Layer<EventLogServerEncrypted.Storage, unknown>
+  }) => Layer.Layer<EventLogServerEncrypted.Storage, unknown, R>,
+  dependencies: Layer.Layer<R, unknown>
 ) =>
-  it.layer(storage({}), { concurrent: false, timeout: "60 seconds" })(
+  it.layer(Layer.provideMerge(storage({}), dependencies), { concurrent: false, timeout: "60 seconds" })(
     `Encrypted compaction storage (${name})`,
     (it) => {
       it.effect("slides a stage's claim on each Part and rejects a stale Part after a steal", () =>
         Effect.gen(function*() {
-          const { compaction, ids, publicKey } = yield* makeStore
+          const { compaction, ids, publicKey, seq } = yield* makeStore
           const begunAt = yield* Clock.currentTimeMillis
-          const first = started(yield* compaction.begin(publicKey, storeId, { through: 1 }))
+          const first = started(yield* compaction.begin(publicKey, storeId, { through: seq(1) }))
 
           yield* TestClock.adjust(5 * minute)
           yield* compaction.stagePart(publicKey, storeId, first.stageId, 0, [makeBatch(11, ids[1])])
           yield* TestClock.adjust(6 * minute)
-          const busy = yield* compaction.begin(publicKey, storeId, { through: 1 })
+          const busy = yield* compaction.begin(publicKey, storeId, { through: seq(1) })
           yield* TestClock.adjust(5 * minute)
-          const second = started(yield* compaction.begin(publicKey, storeId, { through: 1 }))
+          const second = started(yield* compaction.begin(publicKey, storeId, { through: seq(1) }))
           const stale = yield* compaction.stagePart(publicKey, storeId, first.stageId, 1, [makeBatch(10, ids[0])]).pipe(
             Effect.flip
           )
@@ -109,8 +125,8 @@ export const suite = (
 
       it.effect("acknowledges a retried segment without staging it twice", () =>
         Effect.gen(function*() {
-          const { compaction, ids, publicKey } = yield* makeStore
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const { compaction, ids, publicKey, seq } = yield* makeStore
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
           const part = [makeBatch(11, ids[1])] as const
 
           const results = [
@@ -125,27 +141,28 @@ export const suite = (
 
       it.effect("releases the claim on abort and no-op, and answers a retried commit until the sweep removes the stage", () =>
         Effect.gen(function*() {
-          const { compaction, ids, publicKey } = yield* makeStore
-          const aborted = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const { compaction, ids, publicKey, seq } = yield* makeStore
+          const aborted = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
           yield* compaction.abort(publicKey, storeId, aborted.stageId)
-          const noOp = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const noOp = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
           yield* compaction.recordNoOp(publicKey, storeId, noOp.stageId)
           const afterNoOp = (yield* compaction.status(publicKey, storeId)).noOp
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
           yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1])])
+          const commit = compaction.commit(publicKey, storeId, stageId, [seq(1)])
 
-          const results = [
-            yield* compaction.commit(publicKey, storeId, stageId, [1]),
-            yield* compaction.commit(publicKey, storeId, stageId, [1])
-          ]
+          const results = [yield* commit, yield* commit]
           const afterCommit = (yield* compaction.status(publicKey, storeId)).noOp
           yield* TestClock.adjust(2 * hour)
-          const late = yield* compaction.commit(publicKey, storeId, stageId, [1]).pipe(Effect.flip)
+          const late = yield* eventually(
+            Effect.match(commit, { onFailure: (error) => error._tag, onSuccess: (result) => result }),
+            (result) => result === "CompactionNotFound"
+          )
 
-          assert.deepStrictEqual(afterNoOp, { at: 4, count: 1 })
+          assert.deepStrictEqual(afterNoOp, { at: seq(4), count: 1 })
           assert.deepStrictEqual(results, ["Committed", "Committed"])
           assert.strictEqual(afterCommit, undefined)
-          assert.strictEqual(late._tag, "CompactionNotFound")
+          assert.strictEqual(late, "CompactionNotFound")
         }))
 
       it.effect("reports as the lag head the last sequence of each storage hour once it ended a lag ago", () =>
@@ -153,7 +170,7 @@ export const suite = (
           const now = yield* Clock.currentTimeMillis
           // 30 minutes into an hour, so the store's first writes share it.
           yield* TestClock.adjust(hour - (now % hour) + 30 * minute)
-          const { compaction, publicKey } = yield* makeStore
+          const { compaction, publicKey, seq } = yield* makeStore
           const storage = yield* EventLogServerEncrypted.Storage
           yield* TestClock.adjust(hour)
           yield* storage.write(publicKey, storeId, [makeBatch(6, ...makeIds(1))])
@@ -172,20 +189,20 @@ export const suite = (
 
           assert.deepStrictEqual(
             { beforeFirst, afterFirst, beforeSecond, afterSecond },
-            { beforeFirst: -1, afterFirst: 5, beforeSecond: 5, afterSecond: 6 }
+            { beforeFirst: seq(-1), afterFirst: seq(5), beforeSecond: seq(5), afterSecond: seq(6) }
           )
         }))
 
       it.effect("fails reads of an expired stage before the sweep closes it", () =>
         Effect.gen(function*() {
-          const { compaction, publicKey } = yield* makeStore
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const { compaction, publicKey, seq } = yield* makeStore
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
 
           // Past the 10 minute stage TTL, well before the hourly sweep.
           yield* TestClock.adjust(11 * minute)
           const reads = [
             yield* outcome(compaction.inputHeaders(publicKey, storeId, stageId)),
-            yield* outcome(compaction.fetch(publicKey, storeId, stageId, [0])),
+            yield* outcome(compaction.fetch(publicKey, storeId, stageId, [seq(0)])),
             yield* outcome(compaction.stagedHeaders(publicKey, storeId, stageId))
           ]
 
@@ -194,20 +211,23 @@ export const suite = (
 
       it.effect("fails an Input or Fetch read again after its stage's pin was pruned", () =>
         Effect.gen(function*() {
-          const { commitSnapshot, compaction, ids, publicKey } = yield* makeStore
+          const { commitSnapshot, compaction, ids, publicKey, seq } = yield* makeStore
           yield* commitSnapshot
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 5 }))
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(5) }))
           const active = (yield* compaction.history(publicKey, storeId)).find((activation) => activation.active)!
           yield* compaction.rollback(publicKey, storeId, active.activationId)
           const input = compaction.inputHeaders(publicKey, storeId, stageId)
-          const fetch = compaction.fetch(publicKey, storeId, stageId, [1, 3, 5])
+          const fetch = compaction.fetch(publicKey, storeId, stageId, [seq(1), seq(3), seq(5)])
           const beforePrune = [yield* outcome(input), yield* outcome(fetch)]
 
           // A Part keeps the stage alive past the withdrawn snapshot's grace.
           yield* TestClock.adjust(23 * hour)
           yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1])])
           yield* TestClock.adjust(3 * hour)
-          const afterPrune = [yield* outcome(input), yield* outcome(fetch)]
+          const afterPrune = [
+            yield* eventually(outcome(input), (result) => result === "CompactionNotFound"),
+            yield* outcome(fetch)
+          ]
 
           assert.deepStrictEqual(beforePrune, ["3 items", "3 items"])
           assert.deepStrictEqual(afterPrune, ["CompactionNotFound", "CompactionNotFound"])
@@ -215,8 +235,8 @@ export const suite = (
 
       it.effect("withdraws a stage when a Part repeats an id staged earlier, releasing busy", () =>
         Effect.gen(function*() {
-          const { compaction, ids, publicKey } = yield* makeStore
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const { compaction, ids, publicKey, seq } = yield* makeStore
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
 
           yield* compaction.stagePart(publicKey, storeId, stageId, 0, [makeBatch(11, ids[1])])
           const rejected = yield* compaction.stagePart(publicKey, storeId, stageId, 1, [makeBatch(13, ids[1], ids[3])])
@@ -224,7 +244,7 @@ export const suite = (
           const withdrawn = yield* compaction.stagePart(publicKey, storeId, stageId, 2, [makeBatch(14, ids[4])]).pipe(
             Effect.flip
           )
-          const next = yield* compaction.begin(publicKey, storeId, { through: 4 })
+          const next = yield* compaction.begin(publicKey, storeId, { through: seq(4) })
 
           assert.strictEqual(rejected._tag, "CompactionInvalidRequest")
           assert.strictEqual(withdrawn._tag, "CompactionNotFound")
@@ -233,37 +253,37 @@ export const suite = (
 
       it.effect("serves the snapshot at or below the base and the originals above it", () =>
         Effect.gen(function*() {
-          const { changes, commitSnapshot, compaction, ids, publicKey } = yield* makeStore
+          const { changes, commitSnapshot, compaction, ids, publicKey, seq } = yield* makeStore
           assert.strictEqual(yield* commitSnapshot, "Committed")
 
           const fromBelow = yield* changes(0, 3)
           const fromInside = yield* changes(2, 2)
           const fromAbove = yield* changes(5, 1)
           const { batchCount, entryCount, stageId } = started(
-            yield* compaction.begin(publicKey, storeId, { through: 5 })
+            yield* compaction.begin(publicKey, storeId, { through: seq(5) })
           )
           const input = yield* Stream.runCollect(compaction.inputHeaders(publicKey, storeId, stageId))
-          const fetched = yield* Stream.runCollect(compaction.fetch(publicKey, storeId, stageId, [3, 5]))
+          const fetched = yield* Stream.runCollect(compaction.fetch(publicKey, storeId, stageId, [seq(3), seq(5)]))
 
-          const snapshotFirst = header(1, [ids[1]], 11)
-          const snapshotSecond = header(3, [ids[3], ids[4]], 13)
-          const tail = header(5, [ids[5]], 5)
+          const snapshotFirst = header(seq(1), [ids[1]], 11)
+          const snapshotSecond = header(seq(3), [ids[3], ids[4]], 13)
+          const tail = header(seq(5), [ids[5]], 5)
           assert.deepStrictEqual(summarize(fromBelow), [snapshotFirst, snapshotSecond, tail])
           assert.deepStrictEqual(summarize(fromInside), [snapshotSecond, tail])
           assert.deepStrictEqual(summarize(fromAbove), [tail])
           assert.deepStrictEqual({ entryCount, batchCount }, { entryCount: 4, batchCount: 3 })
           assert.deepStrictEqual(summarize(input), [
-            header(1, [ids[1]]),
-            header(3, [ids[3], ids[4]]),
-            header(5, [ids[5]])
+            header(seq(1), [ids[1]]),
+            header(seq(3), [ids[3], ids[4]]),
+            header(seq(5), [ids[5]])
           ])
           assert.deepStrictEqual(summarize(fetched), [snapshotSecond, tail])
         }))
 
       it.effect("fails changes when the active snapshot has no rows", () =>
         Effect.gen(function*() {
-          const { changes, compaction, publicKey } = yield* makeStore
-          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: 4 }))
+          const { changes, compaction, publicKey, seq } = yield* makeStore
+          const { stageId } = started(yield* compaction.begin(publicKey, storeId, { through: seq(4) }))
           yield* compaction.commit(publicKey, storeId, stageId, [])
 
           const exit = yield* Effect.exit(changes(0, 1))
@@ -273,10 +293,10 @@ export const suite = (
 
       it.effect("rolls back to the originals within grace, and the sweep leaves them", () =>
         Effect.gen(function*() {
-          const { changes, commitSnapshot, compaction, ids, publicKey } = yield* makeStore
+          const { changes, commitSnapshot, compaction, ids, publicKey, seq } = yield* makeStore
           yield* commitSnapshot
           yield* TestClock.adjust(29 * day)
-          const pinned = started(yield* compaction.begin(publicKey, storeId, { through: 5 }))
+          const pinned = started(yield* compaction.begin(publicKey, storeId, { through: seq(5) }))
           const active = (yield* compaction.history(publicKey, storeId)).find((activation) => activation.active)!
 
           yield* compaction.rollback(publicKey, storeId, active.activationId)
@@ -287,20 +307,20 @@ export const suite = (
 
           assert.strictEqual(commit, "Superseded")
           assert.deepStrictEqual({ base: status.base, rollbackEpoch: status.rollbackEpoch }, {
-            base: -1,
+            base: seq(-1),
             rollbackEpoch: 1
           })
           assert.deepStrictEqual(summarize(served), [
-            header(0, [ids[0], ids[1]], 0),
-            header(2, [ids[2], ids[3]], 2),
-            header(4, [ids[4]], 4),
-            header(5, [ids[5]], 5)
+            header(seq(0), [ids[0], ids[1]], 0),
+            header(seq(2), [ids[2], ids[3]], 2),
+            header(seq(4), [ids[4]], 4),
+            header(seq(5), [ids[5]], 5)
           ])
         }))
 
       it.effect("prunes the superseded originals after grace and then refuses to roll back to them", () =>
         Effect.gen(function*() {
-          const { changes, commitSnapshot, compaction, publicKey } = yield* makeStore
+          const { changes, commitSnapshot, compaction, publicKey, seq } = yield* makeStore
           const committedAt = yield* Clock.currentTimeMillis
           yield* commitSnapshot
           const { nextSweepAt } = yield* compaction.status(publicKey, storeId)
@@ -309,12 +329,15 @@ export const suite = (
           yield* TestClock.adjust(30 * day - minute)
           const beforeGrace = (yield* compaction.history(publicKey, storeId))[0].restorable
           yield* TestClock.adjust(2 * hour)
-          const afterGrace = (yield* compaction.history(publicKey, storeId))[0].restorable
+          const afterGrace = yield* eventually(
+            Effect.map(compaction.history(publicKey, storeId), (history) => history[0].restorable),
+            (restorable) => !restorable
+          )
           const rollback = yield* compaction.rollback(publicKey, storeId, snapshot.activationId).pipe(Effect.flip)
           const served = yield* changes(0, 3)
 
           assert.strictEqual(nextSweepAt, committedAt + 30 * day)
-          assert.deepStrictEqual({ base: originals.base, active: originals.active }, { base: -1, active: false })
+          assert.deepStrictEqual({ base: originals.base, active: originals.active }, { base: seq(-1), active: false })
           assert.deepStrictEqual({ beforeGrace, afterGrace }, { beforeGrace: true, afterGrace: false })
           assert.deepStrictEqual(rollback.reason, "PruneStarted")
           assert.deepStrictEqual(summarize(served).map((batch) => batch.marker), [11, 13, 5])

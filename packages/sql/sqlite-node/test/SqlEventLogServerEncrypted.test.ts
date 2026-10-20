@@ -1,8 +1,10 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Queue, Redacted, Stream } from "effect"
+import * as CompactionTest from "effect-test/eventlog/EventLogServerEncryptedCompactionTest"
 import * as EncryptedTest from "effect-test/eventlog/EventLogServerEncryptedTest"
 import * as Digest from "effect/crypto/Digest"
+import * as SqlEventLogServerEncryptedStorageTest from "effect-test/eventlog/SqlEventLogServerEncryptedStorageTest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -25,6 +27,14 @@ EncryptedTest.suite(
     Layer.provide(Digest.layerWebCrypto)
   )
 )
+
+CompactionTest.suite(
+  "SQLite",
+  (options) => SqlEventLogServer.layerStorage(options).pipe(Layer.provide(EventLogEncryption.layerSubtle)),
+  SqliteClient.layer({ filename: ":memory:" })
+)
+
+SqlEventLogServerEncryptedStorageTest.compactionSuite("SQLite", SqliteClient.layer({ filename: ":memory:" }))
 
 const storeIdA = "store-a" as StoreId
 const storeIdB = "store-b" as StoreId

@@ -14,7 +14,7 @@ import * as CompactionTest from "./EventLogServerEncryptedCompactionTest.ts"
 import * as EncryptedTest from "./EventLogServerEncryptedTest.ts"
 
 EncryptedTest.suite("memory", EventLogServerEncrypted.layerStorageMemory)
-CompactionTest.suite("memory", EventLogServerEncrypted.layerStorageMemoryWith)
+CompactionTest.suite("memory", EventLogServerEncrypted.layerStorageMemoryWith, Layer.empty)
 
 it.effect("memory storage fails to start unless grace is longer than the lag and the stage TTL", () =>
   Effect.gen(function*() {

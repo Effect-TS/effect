@@ -54,6 +54,7 @@ import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
 export const makeStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
+  readonly compaction?: EventLogServerEncrypted.CompactionOptions | undefined
 }): Effect.Effect<
   EventLogServerEncrypted.Storage["Service"],
   SqlError.SqlError,
@@ -447,6 +448,7 @@ const decodeSessionAuthBindings = (
 export const layerStorage = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
+  readonly compaction?: EventLogServerEncrypted.CompactionOptions | undefined
 }): Layer.Layer<
   EventLogServerEncrypted.Storage,
   SqlError.SqlError,
@@ -464,6 +466,7 @@ export const layerStorage = (options?: {
 export const layerStorageSubtle = (options?: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
+  readonly compaction?: EventLogServerEncrypted.CompactionOptions | undefined
 }): Layer.Layer<EventLogServerEncrypted.Storage, SqlError.SqlError, SqlClient.SqlClient> =>
   layerStorage(options).pipe(
     Layer.provide(Digest.layerWebCrypto)
