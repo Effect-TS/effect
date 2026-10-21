@@ -405,6 +405,100 @@ development:
     })
   })
 
+  // YAML 1.2.2 §§6.8.2, 6.9, 10.3: node properties, tag handles, and core schema tags.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1.
+  describe("tags and anchors", () => {
+    it.each(
+      [
+        ["!!str 123", "123"],
+        ["!!str 0x10", "0x10"],
+        ["!!int \"7\"", 7],
+        ["!!int 0x1F", 31],
+        ["!!float 1.5", 1.5],
+        ["!!bool \"true\"", true],
+        ["!!null \"\"", null],
+        ["!!str", ""],
+        ["!!null", null],
+        ["! 12", "12"],
+        ["!local 12", "12"],
+        ["!<tag:yaml.org,2002:int> \"3\"", 3],
+        ["!<!foo> 1", "1"],
+        ["!!str |\n  12\n", "12\n"]
+      ] as const
+    )("resolves %j", (value, expected) => {
+      assert.deepStrictEqual(Yaml.parse(`a: ${value}\n`), { a: expected })
+    })
+
+    // yaml 2.9.1 also resolves these YAML 1.1 tags, to a Buffer, a Date, and a Set.
+    it("ignores tags outside the core schema", () => {
+      assert.deepStrictEqual(Yaml.parse("a: !!binary aGk=\nb: !!timestamp 2001-12-14\nc: !!set {x}\n"), {
+        a: "aGk=",
+        b: "2001-12-14",
+        c: { x: null }
+      })
+    })
+
+    it.each(
+      [
+        ["core collection tags", "a: !!map {b: 1}\nc: !!seq [1]\n", { a: { b: 1 }, c: [1] }],
+        ["block collection tags", "a: !!map\n  b: 1\nc: !!seq\n- 1\n", { a: { b: 1 }, c: [1] }],
+        ["unknown collection tags", "a: !foo [1]\nb: !bar\n  c: 1\n", { a: [1], b: { c: 1 } }],
+        ["anchor before tag", "a: &x !!int \"1\"\nb: *x\n", { a: 1, b: 1 }],
+        ["tag before anchor", "a: !!int &x \"1\"\nb: *x\n", { a: 1, b: 1 }],
+        ["tagged keys", "!!str 1: a\n", { "1": "a" }],
+        ["anchored keys", "&k a: b\nc: *k\n", { a: "b", c: "a" }],
+        ["alias keys", "&a a: &b b\n*b : *a\n", { a: "b", b: "a" }],
+        ["anchor names with colons", "&a: key: &a value\nfoo: *a:\n", { key: "value", foo: "key" }],
+        ["properties on separate lines", "key: &x\n !!map\n  a: b\nalias: *x\n", {
+          key: { a: "b" },
+          alias: { a: "b" }
+        }],
+        ["properties before an indentless sequence", "seq:\n &x\n- a\nalias: *x\n", { seq: ["a"], alias: ["a"] }],
+        [
+          "properties before a mapping key line",
+          "top:\n  &x\n  &k key: value\nalias: *x\n",
+          { top: { key: "value" }, alias: { key: "value" } }
+        ],
+        [
+          "flow properties",
+          "[&a a: b, !!str 1, {&e e: f}, &g {g: h}, *a, *g]\n",
+          [{ a: "b" }, "1", { e: "f" }, { g: "h" }, "a", { g: "h" }]
+        ],
+        ["empty tagged flow nodes", "{a: !!str , !!str : b}\n", { a: "", "": "b" }],
+        ["named tag handles", "%TAG !e! tag:example.com,2000:\n---\na: !e!foo 1\n", { a: "1" }],
+        ["overridden secondary handle", "%TAG !! tag:example.com:\n---\na: !!int 1\n", { a: "1" }]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["undefined tag handle", "a: !e!x 1\n"],
+      ["empty anchor", "a: & x\n"],
+      ["two anchors", "a: &a &b x\n"],
+      ["two anchors across lines", "a: &a\n  &b x\n"],
+      ["two tags", "a: !a !b x\n"],
+      ["tag followed by a comma", "a: !!str,x\n"],
+      ["anchored alias", "a: &a 1\nb: &b *a\n"],
+      ["anchored alias key", "a: &a 1\n&b *a : 2\n"],
+      ["block sequence after a property", "&anchor - a\n"],
+      ["block sequence after a key", "key: - a\n"]
+    ])("rejects %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    // yaml 2.9.1 warns and keeps the untagged value instead.
+    it.each([
+      ["!!int scalar", "a: !!int abc\n"],
+      ["!!bool scalar", "a: !!bool yes\n"],
+      ["!!map sequence", "a: !!map [1]\n"],
+      ["!!seq mapping", "a: !!seq {b: 1}\n"],
+      ["!!str collection", "a: !!str [1]\n"]
+    ])("rejects a mismatched %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+  })
+
   describe("scalar conformance boundaries", () => {
     it.each([
       ["colon followed by space", "description: Use when: deploy\n"],

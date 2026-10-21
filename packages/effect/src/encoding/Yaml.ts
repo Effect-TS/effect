@@ -3,11 +3,12 @@
  *
  * Supports YAML 1.2 block and flow collections, indentless and compact
  * sequence values, multiline plain and quoted scalars, block scalars, anchors,
- * and aliases.
+ * aliases, and tags. The core schema tags (`!!str`, `!!int`, `!!float`,
+ * `!!bool`, `!!null`, `!!map`, `!!seq`) are resolved, including through
+ * `%TAG` handles; other tags are ignored, so their scalars stay strings.
  *
- * Unsupported: tag/directive processing, recursive aliases, and document
- * streams. Mapping keys are JavaScript strings, so explicit (`?`) keys must be
- * scalars.
+ * Unsupported: recursive aliases and document streams. Mapping keys are
+ * JavaScript strings, so explicit (`?`) keys must be scalars.
  *
  * @stability unstable
  * @since 4.0.0
@@ -40,6 +41,15 @@ type Line = {
   readonly number: number
   readonly tabIndent: boolean
 }
+
+type Properties = {
+  readonly anchor?: string | undefined
+  readonly tag?: string | undefined
+}
+
+const noProperties: Properties = {}
+
+const coreTag = "tag:yaml.org,2002:"
 
 const hasOwn = Object.prototype.hasOwnProperty
 
@@ -74,7 +84,7 @@ const findIndicator = (input: string, indicator: ":" | "#"): number => {
       index = closingQuote(input, character, index + 1)
       if (index === -1) return -1
       tokenStart = false
-    } else if (tokenStart && character === "&") {
+    } else if (tokenStart && (character === "&" || character === "*" || character === "!")) {
       while (index + 1 < input.length && !/[\s,[\]{}]/.test(input[index + 1])) index++
     } else if (character === "#" && (index === 0 || /\s/.test(input[index - 1]))) {
       return indicator === "#" ? index : -1
@@ -199,15 +209,57 @@ const parseDoubleQuoted = (input: string): string => {
   return output
 }
 
-const parseScalar = (input: string): unknown => {
+const parseScalar = (input: string, tag?: string): unknown => {
   const value = input.trim()
-  if (value.length === 0) return null
   if (value.startsWith("\"") && value.endsWith("\"")) {
-    return parseDoubleQuoted(value)
+    return resolveScalar(parseDoubleQuoted(value), tag, false)
   }
   if (value.startsWith("'") && value.endsWith("'")) {
-    return value.slice(1, -1).replace(/''/g, "'")
+    return resolveScalar(value.slice(1, -1).replace(/''/g, "'"), tag, false)
   }
+  return resolveScalar(value, tag, true)
+}
+
+// Resolves scalar content with its tag. Untagged plain scalars use the core
+// schema; tags other than the core ones are ignored and keep the content a string.
+const resolveScalar = (text: string, tag: string | undefined, plain: boolean): unknown => {
+  if (tag === undefined) return plain ? resolvePlain(text) : text
+  const value = resolvePlain(text)
+  switch (tag) {
+    case `${coreTag}str`:
+      return text
+    case `${coreTag}null`:
+      if (value === null) return value
+      break
+    case `${coreTag}bool`:
+      if (typeof value === "boolean") return value
+      break
+    case `${coreTag}int`:
+      if (typeof value === "number" && /^[+-]?(?:0x[\da-f]+|0o[0-7]+|\d+)$/i.test(text.replace(/_/g, ""))) return value
+      break
+    case `${coreTag}float`:
+      if (typeof value === "number") return value
+      break
+    case `${coreTag}map`:
+    case `${coreTag}seq`:
+      break
+    default:
+      return text
+  }
+  throw new SyntaxError(`Cannot resolve '${text}' as YAML tag ${tag}`)
+}
+
+// Core tags on collections must match their kind.
+const checkCollectionTag = (tag: string | undefined, kind: "map" | "seq"): void => {
+  if (
+    tag !== undefined && /^tag:yaml\.org,2002:(?:str|null|bool|int|float|map|seq)$/.test(tag) && tag !== coreTag + kind
+  ) {
+    throw new SyntaxError(`A YAML ${kind === "map" ? "mapping" : "sequence"} cannot have the tag ${tag}`)
+  }
+}
+
+const resolvePlain = (value: string): unknown => {
+  if (value.length === 0) return null
   if (/^(?:null|~)$/i.test(value)) return null
   if (/^true$/i.test(value)) return true
   if (/^false$/i.test(value)) return false
@@ -238,23 +290,58 @@ const scalarKey = (value: unknown): string => {
   return value === null || value === undefined ? "" : String(value)
 }
 
-const parseKey = (input: string): string => scalarKey(parseScalar(input))
+// Reads one anchor or tag property at the start of `input`, returning the
+// combined properties and the property's length.
+const readProperty = (
+  input: string,
+  properties: Properties,
+  handles: ReadonlyMap<string, string>
+): readonly [Properties, number] | undefined => {
+  const anchor = /^&([^\s,[\]{}]*)/.exec(input)
+  if (anchor !== null) {
+    if (anchor[1].length === 0) throw new SyntaxError("YAML anchors cannot be empty")
+    if (properties.anchor !== undefined) throw new SyntaxError("A YAML node can have at most one anchor")
+    return [{ ...properties, anchor: anchor[1] }, anchor[0].length]
+  }
+  const tag = /^!(?:<([^>\s]+)>|([\w-]*!)?([^\s!,[\]{}]*))/.exec(input)
+  if (tag === null) return undefined
+  if (properties.tag !== undefined) throw new SyntaxError("A YAML node can have at most one tag")
+  if (tag[1] !== undefined) return [{ ...properties, tag: tag[1] }, tag[0].length]
+  const handle = `!${tag[2] ?? ""}`
+  // A lone `!` is the non-specific tag, which keeps scalars strings.
+  if (handle === "!" && tag[3].length === 0) return [{ ...properties, tag: "!" }, tag[0].length]
+  const prefix = handles.get(handle)
+  if (prefix === undefined) throw new SyntaxError(`Undefined YAML tag handle '${handle}'`)
+  return [{ ...properties, tag: prefix + tag[3] }, tag[0].length]
+}
+
+const defineAnchor = <A>(anchors: Map<string, unknown>, properties: Properties, value: A): A => {
+  if (properties.anchor !== undefined) anchors.set(properties.anchor, value)
+  return value
+}
 
 class FlowParser {
   private input: string
-  private readonly anchors: ReadonlyMap<string, unknown>
+  private readonly anchors: Map<string, unknown>
+  private readonly handles: ReadonlyMap<string, string>
   private readonly nextLine: () => string | undefined
   private index = 0
   private depth = 0
 
-  constructor(input: string, anchors: ReadonlyMap<string, unknown>, nextLine: () => string | undefined) {
+  constructor(
+    input: string,
+    anchors: Map<string, unknown>,
+    handles: ReadonlyMap<string, string>,
+    nextLine: () => string | undefined
+  ) {
     this.input = input
     this.anchors = anchors
+    this.handles = handles
     this.nextLine = nextLine
   }
 
-  parse(): unknown {
-    const value = this.parseValue()
+  parse(properties: Properties): unknown {
+    const value = this.parseValue(properties)
     this.skipWhitespace()
     if (this.index !== this.input.length) {
       this.fail("Unexpected flow collection content")
@@ -262,28 +349,43 @@ class FlowParser {
     return value
   }
 
-  private parseValue(): unknown {
+  private parseValue(inherited: Properties = noProperties): unknown {
     this.skipWhitespace()
+    const properties = this.readProperties(inherited)
     const character = this.peek()
     if (character === "[" || character === "{") {
       this.depth++
-      const collection = character === "[" ? this.parseSequence() : this.parseMapping()
+      const collection = character === "[" ? this.parseSequence(properties) : this.parseMapping(properties)
       this.depth--
       return collection
     }
-    if (character === "\"" || character === "'") return parseScalar(this.readQuoted(character))
     if (character === "*") {
+      if (properties !== noProperties) this.fail("Aliases cannot have properties")
       this.index++
       const name = this.readUntil(/[,\]}\s]/)
       if (!this.anchors.has(name)) this.fail(`Unknown alias '*${name}'`)
       return this.anchors.get(name)
     }
-    return parseScalar(this.readPlain())
+    const scalar = character === "\"" || character === "'" ? this.readQuoted(character) : this.readPlain()
+    return defineAnchor(this.anchors, properties, parseScalar(scalar, properties.tag))
   }
 
-  private parseSequence(): Array<unknown> {
+  private readProperties(inherited: Properties): Properties {
+    let properties = inherited
+    while (true) {
+      const property = readProperty(this.input.slice(this.index), properties, this.handles)
+      if (property === undefined) return properties
+      this.index += property[1]
+      if (!isSeparated(this.input[this.index])) this.fail("Expected a separator after a node property")
+      properties = property[0]
+      this.skipWhitespace()
+    }
+  }
+
+  private parseSequence(properties: Properties): Array<unknown> {
     this.expect("[")
-    const output: Array<unknown> = []
+    checkCollectionTag(properties.tag, "seq")
+    const output = defineAnchor(this.anchors, properties, [] as Array<unknown>)
     this.skipWhitespace()
     if (this.peek() === "]") {
       this.index++
@@ -305,9 +407,10 @@ class FlowParser {
     }
   }
 
-  private parseMapping(): YamlRecord {
+  private parseMapping(properties: Properties): YamlRecord {
     this.expect("{")
-    const output: YamlRecord = {}
+    checkCollectionTag(properties.tag, "map")
+    const output = defineAnchor(this.anchors, properties, {} as YamlRecord)
     this.skipWhitespace()
     if (this.peek() === "}") {
       this.index++
@@ -442,6 +545,7 @@ class YamlParser {
   private index = 0
   private documentStarted = false
   private readonly anchors = new Map<string, unknown>()
+  private readonly handles = new Map([["!", "!"], ["!!", coreTag]])
 
   constructor(lines: Array<Line>) {
     this.lines = lines
@@ -459,18 +563,27 @@ class YamlParser {
     return value
   }
 
-  private parseNode(indent: number, parentIndent = indent - 1): unknown {
+  private parseNode(
+    indent: number,
+    parentIndent = indent - 1,
+    properties = noProperties,
+    allowIndentless = false
+  ): unknown {
     this.skipIgnored()
     const line = this.lines[this.index]
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
-    if (isSequenceEntry(line.text)) return this.parseSequence(indent)
-    if (startsWithIndicator(line.text, "?") || mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
+    if (isSequenceEntry(line.text)) return this.parseSequence(indent, properties)
+    if (startsWithIndicator(line.text, "?") || mappingSeparator(line.text) !== -1) {
+      return this.parseMapping(indent, properties)
+    }
     this.index++
-    return this.parseNodeValue(line.text, parentIndent)
+    return this.parseNodeValue(line.text, parentIndent, allowIndentless, properties)
   }
 
-  private parseMapping(indent: number, output: YamlRecord = {}): YamlRecord {
+  private parseMapping(indent: number, properties: Properties): YamlRecord {
+    checkCollectionTag(properties.tag, "map")
+    const output = defineAnchor(this.anchors, properties, {} as YamlRecord)
     while (true) {
       this.skipIgnored()
       const line = this.lines[this.index]
@@ -494,7 +607,7 @@ class YamlParser {
     indent: number,
     line: Line
   ): void {
-    const key = parseKey(text.slice(0, separator).trim())
+    const key = this.parseKey(text.slice(0, separator).trim())
     const rawValue = text.slice(separator + 1).trimStart()
     const value = this.parseNodeValue(rawValue, indent, true)
     if (hasOwn.call(output, key)) this.fail(line, `Duplicate key '${key}'`)
@@ -513,8 +626,16 @@ class YamlParser {
     setProperty(output, key, value)
   }
 
-  private parseSequence(indent: number): Array<unknown> {
-    const output: Array<unknown> = []
+  // Properties before an implicit key belong to the key.
+  private parseKey(text: string): string {
+    const [properties, rest] = this.readProperties(text, noProperties)
+    if (rest.startsWith("*")) return scalarKey(this.parseAlias(rest, properties))
+    return scalarKey(defineAnchor(this.anchors, properties, parseScalar(rest, properties.tag)))
+  }
+
+  private parseSequence(indent: number, properties: Properties): Array<unknown> {
+    checkCollectionTag(properties.tag, "seq")
+    const output = defineAnchor(this.anchors, properties, [] as Array<unknown>)
     while (true) {
       this.skipIgnored()
       const line = this.lines[this.index]
@@ -549,40 +670,66 @@ class YamlParser {
     return this.parseNode(column, indent)
   }
 
-  private parseNodeValue(rawValue: string, parentIndent: number, allowIndentless = false): unknown {
-    const anchor = /^&([^\s,[\]{}]+)(?:\s+(.*))?$/.exec(rawValue)
-    if (anchor === null) return this.parseValue(rawValue, parentIndent, allowIndentless)
-    const value = this.parseValue(anchor[2] ?? "", parentIndent, allowIndentless)
-    this.anchors.set(anchor[1], value)
-    return value
+  // Node properties may sit on lines of their own before the node's content.
+  private parseNodeValue(
+    rawValue: string,
+    parentIndent: number,
+    allowIndentless = false,
+    inherited = noProperties
+  ): unknown {
+    const [properties, rest] = this.readProperties(rawValue, inherited)
+    return this.parseValue(rest, parentIndent, allowIndentless, properties)
   }
 
-  private parseValue(value: string, parentIndent: number, allowIndentless: boolean): unknown {
+  private readProperties(text: string, inherited: Properties): readonly [Properties, string] {
+    let properties = inherited
+    let rest = text
+    while (true) {
+      const property = readProperty(rest, properties, this.handles)
+      if (property === undefined) return [properties, rest]
+      if (!/^(?:\s|$)/.test(rest.slice(property[1]))) {
+        throw new SyntaxError("YAML node properties must be followed by whitespace")
+      }
+      properties = property[0]
+      rest = rest.slice(property[1]).trimStart()
+    }
+  }
+
+  private parseValue(value: string, parentIndent: number, allowIndentless: boolean, properties: Properties): unknown {
     const text = value.trimEnd()
     if (text.length === 0) {
       this.skipIgnored()
       const next = this.lines[this.index]
-      if (next === undefined) return null
-      if (next.indent > parentIndent) return this.parseNode(next.indent, parentIndent)
-      if (allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
-        return this.parseSequence(parentIndent)
+      if (next !== undefined && next.indent > parentIndent) {
+        return this.parseNode(next.indent, parentIndent, properties, allowIndentless)
       }
-      return null
+      if (next !== undefined && allowIndentless && next.indent === parentIndent && isSequenceEntry(next.text)) {
+        return this.parseSequence(parentIndent, properties)
+      }
+      return defineAnchor(this.anchors, properties, resolveScalar("", properties.tag, true))
     }
-    if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) return this.parseBlockScalar(text, parentIndent)
+    if (/^[|>](?:[1-9]?[+-]?|[+-]?[1-9]?)$/.test(text)) {
+      const scalar = this.parseBlockScalar(text, parentIndent)
+      return defineAnchor(this.anchors, properties, resolveScalar(scalar, properties.tag, false))
+    }
     // Keep escaped trailing whitespace in quoted values.
-    if (value.startsWith("\"") || value.startsWith("'")) return this.parseQuotedValue(value, parentIndent)
-    if (text.startsWith("*")) {
-      const name = text.slice(1).trim()
-      if (!this.anchors.has(name)) throw new SyntaxError(`Unknown YAML alias '*${name}'`)
-      return this.anchors.get(name)
+    if (value.startsWith("\"") || value.startsWith("'")) {
+      return defineAnchor(this.anchors, properties, this.parseQuotedValue(value, parentIndent, properties.tag))
     }
-    if (text.startsWith("[") || text.startsWith("{")) return this.parseFlowValue(text, parentIndent)
-    return this.parsePlainValue(text, parentIndent)
+    if (text.startsWith("*")) return this.parseAlias(text, properties)
+    if (text.startsWith("[") || text.startsWith("{")) return this.parseFlowValue(text, parentIndent, properties)
+    return defineAnchor(this.anchors, properties, this.parsePlainValue(text, parentIndent, properties.tag))
   }
 
-  private parseFlowValue(text: string, parentIndent: number): unknown {
-    return new FlowParser(text, this.anchors, () => {
+  private parseAlias(text: string, properties: Properties): unknown {
+    if (properties !== noProperties) throw new SyntaxError("YAML aliases cannot have properties")
+    const name = text.slice(1).trim()
+    if (!this.anchors.has(name)) throw new SyntaxError(`Unknown YAML alias '*${name}'`)
+    return this.anchors.get(name)
+  }
+
+  private parseFlowValue(text: string, parentIndent: number, properties: Properties): unknown {
+    return new FlowParser(text, this.anchors, this.handles, () => {
       const next = this.lines[this.index]
       if (next === undefined || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(next.text))) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
@@ -592,12 +739,14 @@ class YamlParser {
       this.index++
       // The flow parser skips comments itself, since quoted scalars may span lines.
       return next.raw.slice(next.indent)
-    }).parse()
+    }).parse(properties)
   }
 
-  private parsePlainValue(value: string, parentIndent: number): unknown {
+  private parsePlainValue(value: string, parentIndent: number, tag: string | undefined): unknown {
     const first = this.lines[this.index - 1]
     if (/:(?:\s|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
+    // A plain scalar cannot start with an indicator, such as a block sequence entry after a key or property.
+    if (/^[-?:](?:\s|$)/.test(value)) this.fail(first, "Invalid indicator at the start of a plain scalar")
     let output = value
     let terminated = findIndicator(first.raw, "#") !== -1
     while (!terminated) {
@@ -616,10 +765,10 @@ class YamlParser {
       this.index++
       terminated = comment !== -1
     }
-    return parseScalar(output)
+    return resolveScalar(output, tag, true)
   }
 
-  private parseQuotedValue(value: string, parentIndent: number): unknown {
+  private parseQuotedValue(value: string, parentIndent: number, tag: string | undefined): unknown {
     const quote = value[0]
     const lines = [value]
     let end = closingQuote(value, quote, 1)
@@ -638,7 +787,7 @@ class YamlParser {
       throw new SyntaxError("Unexpected content after quoted YAML scalar")
     }
     lines[lines.length - 1] = last.slice(0, end + 1)
-    return parseScalar(foldQuotedLines(lines, quote))
+    return parseScalar(foldQuotedLines(lines, quote), tag)
   }
 
   private parseBlockScalar(indicator: string, parentIndent: number): string {
@@ -731,6 +880,8 @@ class YamlParser {
       const line = this.lines[this.index]
       const text = line.text.trimEnd()
       if (text.length === 0 || text.startsWith("%")) {
+        const directive = /^%TAG\s+(\S+)\s+(\S+)$/.exec(text)
+        if (directive !== null) this.handles.set(directive[1], directive[2])
         this.index++
       } else if (line.indent === 0 && text === "---") {
         if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
