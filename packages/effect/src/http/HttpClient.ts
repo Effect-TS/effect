@@ -1665,6 +1665,37 @@ export const withScope = <E, R>(
 /**
  * Enables following HTTP redirects up to a specified number of times.
  *
+ * **Details**
+ *
+ * Follows `3xx` responses that include a `Location` header, up to
+ * `maxRedirects` (default `10`) times. When the limit is reached, the last
+ * redirect response is returned.
+ *
+ * **Gotchas**
+ *
+ * This only sees redirects that the underlying client returns. `fetch`
+ * follows redirects itself by default, so with `FetchHttpClient` provide
+ * `FetchHttpClient.RequestInit` with `{ redirect: "manual" }`. Browsers return
+ * an opaque response without a `Location` header for manual redirects, so
+ * this cannot follow them there.
+ *
+ * **Example** (Following redirects with FetchHttpClient)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { FetchHttpClient, HttpClient } from "effect/http"
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.followRedirects(5)
+ *   )
+ *   return yield* client.get("https://example.com/redirect")
+ * }).pipe(
+ *   Effect.provide(FetchHttpClient.layer),
+ *   Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" })
+ * )
+ * ```
+ *
  * @stability unstable
  * @category redirects
  * @since 4.0.0
