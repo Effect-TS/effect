@@ -100,8 +100,9 @@ describe("beforeAll failure finalizers", { concurrent: false }, () => {
     it("is skipped", () => {})
   })
 
+  // The hook's timeout also bounds the disposal, so it must fit the release.
   describe("hook succeeding after its timeout", () => {
-    beforeAll(() => resource(events, "late").pipe(Effect.andThen(Effect.sleep(150))), 75)
+    beforeAll(() => resource(events, "late").pipe(Effect.andThen(Effect.sleep(500))), 400)
     expectBeforeAllFailure("timed out")
 
     it("is skipped", () => {})
@@ -110,7 +111,7 @@ describe("beforeAll failure finalizers", { concurrent: false }, () => {
   describe("hook succeeding after its timeout, before the cleanups", () => {
     // Delays the cleanups until the setup has succeeded and Vitest has dropped its cleanup.
     afterAll(() => new Promise((resolve) => setTimeout(resolve, 150)))
-    beforeAll(() => resource(events, "dropped").pipe(Effect.andThen(Effect.sleep(100))), 50)
+    beforeAll(() => resource(events, "dropped").pipe(Effect.andThen(Effect.sleep(500))), 400)
     expectBeforeAllFailure("timed out")
 
     it("is skipped", () => {})
@@ -133,42 +134,76 @@ describe("beforeAll failure finalizers", { concurrent: false }, () => {
   })
 })
 
-describe("beforeAll teardown", { concurrent: false }, () => {
-  const events: Array<string> = []
+// Registers hooks while the default hook timeout is shorter than the release.
+const withShortDefaultHookTimeout = (register: () => void) => {
+  vi.setConfig({ hookTimeout: 100 })
+  register()
+  vi.resetConfig()
+}
 
-  describe("hook followed by an earlier afterAll", () => {
-    afterAll(() => {
-      events.push("afterAll")
+for (const hooks of ["stack", "list", "parallel"] as const) {
+  describe(`beforeAll teardown with ${hooks} hooks`, { concurrent: false }, () => {
+    const events: Array<string> = []
+
+    // Vitest reads the hook order when it runs hooks and cleanups.
+    beforeAll(() => vi.setConfig({ sequence: { hooks } }))
+    afterAll(() => vi.resetConfig())
+
+    describe("hook followed by an earlier afterAll", () => {
+      afterAll(() => {
+        events.push("afterAll")
+      })
+      beforeAll(() => resource(events, "ordered").pipe(Effect.as(() => events.push("ordered:cleanup"))))
+
+      it("uses the resource", () => {})
     })
-    beforeAll(() => resource(events, "ordered").pipe(Effect.as(() => events.push("ordered:cleanup"))))
 
-    it("uses the resource", () => {})
+    describe("hook with a timeout longer than the default", () => {
+      withShortDefaultHookTimeout(() => beforeAll(() => resource(events, "explicit"), 1000))
+
+      it("uses the resource", () => {})
+    })
+
+    describe("hook whose nested tests skip at runtime", () => {
+      withShortDefaultHookTimeout(() => beforeAll(() => resource(events, "skipped"), 1000))
+
+      describe("nested", () => {
+        it("skips at runtime", (ctx) => ctx.skip())
+      })
+    })
+
+    describe("hook followed by a failing beforeAll", () => {
+      withShortDefaultHookTimeout(() => beforeAll(() => resource(events, "kept"), 1000))
+      beforeAll(() => {
+        throw new Error("later setup failed")
+      })
+      expectBeforeAllFailure("later setup failed")
+
+      it("is skipped", () => {})
+    })
+
+    it("releases after the suite's afterAll hooks, within the hook's timeout", () => {
+      events.push("next:start")
+      assert.deepStrictEqual(events, [
+        "ordered:acquired",
+        "afterAll",
+        "ordered:cleanup",
+        "ordered:release:start",
+        "ordered:release:end",
+        "explicit:acquired",
+        "explicit:release:start",
+        "explicit:release:end",
+        "skipped:acquired",
+        "skipped:release:start",
+        "skipped:release:end",
+        "kept:acquired",
+        "kept:release:start",
+        "kept:release:end",
+        "next:start"
+      ])
+    })
   })
-
-  describe("hook with a timeout longer than the default", () => {
-    // The release outlasts the default hook timeout but not the hook's own.
-    vi.setConfig({ hookTimeout: 100 })
-    beforeAll(() => resource(events, "explicit"), 1000)
-    vi.resetConfig()
-
-    it("uses the resource", () => {})
-  })
-
-  it("releases after the suite's afterAll hooks, within the hook's timeout", () => {
-    events.push("next:start")
-    assert.deepStrictEqual(events, [
-      "ordered:acquired",
-      "afterAll",
-      "ordered:cleanup",
-      "ordered:release:start",
-      "ordered:release:end",
-      "explicit:acquired",
-      "explicit:release:start",
-      "explicit:release:end",
-      "next:start"
-    ])
-  })
-})
+}
 
 describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
   const events: Array<string> = []
