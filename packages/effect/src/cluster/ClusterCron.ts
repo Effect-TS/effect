@@ -160,7 +160,7 @@ export const make = <E, R>(options: {
         // being retried in front of later runs
         ? Effect.catchCause(
           effect,
-          (cause) => Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.logWarning(cause)
+          (cause) => Cause.hasInterrupts(cause) ? Effect.failCause(cause) : Effect.logWarning(cause)
         )
         : effect
     ))
