@@ -42,15 +42,14 @@ it("should infer decoded parameters and handler context when registering a task"
 it("should supply Workflow context and retain application services when handlers use Activities", () => {
   const registered = McpTasks.toolkit(reports, { owner: options.owner }).pipe(
     Layer.provide(McpTasks.layerWorkflow(reports, {
-      report: () =>
-        Effect.gen(function*() {
-          yield* McpSchema.McpRequestContext
-          return yield* Activity.make({
-            name: "query",
-            success: Schema.String,
-            execute: Database.useSync(() => "report")
-          })
+      report: Effect.fnUntraced(function*() {
+        yield* McpSchema.McpRequestContext
+        return yield* Activity.make({
+          name: "query",
+          success: Schema.String,
+          execute: Database.useSync(() => "report")
         })
+      })
     }, { name: options.name }))
   )
   expect(registered).type.toBe<Layer.Layer<never, Schema.SchemaError, RuntimeServices | Database>>()
