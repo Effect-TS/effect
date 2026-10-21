@@ -92,9 +92,10 @@ const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
   }
   const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
   if (operation.urlParams.length > 0) {
-    const props = operation.urlParams.map(
-      (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-    )
+    const props = operation.urlParams.map((param) => {
+      const value = `${paramsAccessor}["${param}"]`
+      return `"${param}": ${operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value} as any`
+    })
     pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
   }
   if (operation.headers.length > 0) {
@@ -291,6 +292,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (operations.some((operation) => operation.commaUrlParams.length > 0)) {
+      helpers.push(commaUrlParamsSource)
+    }
     if (operations.some((operation) => operation.pathIds.length > 0)) {
       helpers.push(pathRequestSource)
     }
@@ -669,6 +673,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (operations.some((operation) => operation.commaUrlParams.length > 0)) {
+      helpers.push(commaUrlParamsSource)
+    }
     if (operations.some((operation) => operation.pathIds.length > 0)) {
       helpers.push(pathRequestSource)
     }
@@ -924,6 +931,9 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
     }
     return Effect.succeed(method(path))
   })`
+
+const commaUrlParamsSource =
+  `const __joinComma = (value: unknown) => Array.isArray(value) && value.length > 0 ? value.join(",") : value`
 
 const cookieHeaderSource = `const __cookieHeader = (cookies: Record<string, unknown>) => {
     const header = Object.entries(cookies)

@@ -321,6 +321,9 @@ const parseOpenApi = (
           }
           case "query": {
             op.parameters.query.push(parsedParameter)
+            if ((parameter.style ?? "form") === "form" && parameter.explode === false) {
+              op.commaUrlParams.push(parameter.name)
+            }
             break
           }
           case "header": {
@@ -779,6 +782,8 @@ interface OpenApiParameter {
   readonly required: boolean
   readonly schema: {}
   readonly description?: string | undefined
+  readonly style?: string | undefined
+  readonly explode?: boolean | undefined
 }
 
 const isOpenApiParameter = (parameter: unknown): parameter is OpenApiParameter => {
