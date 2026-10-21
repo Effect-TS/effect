@@ -1071,13 +1071,11 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient, options?: {
 
       const requestExit = (
         request: RequestEncoded,
-        exit: Exit.Exit<ReadonlySet<string> | undefined, RpcClientError>
+        pending: ReadonlySet<string> | undefined
       ): Exit.Exit<void, RpcClientError> => {
-        if (Exit.isFailure(exit)) {
-          return Exit.asVoid(exit)
-        } else if (exit.value === undefined) {
+        if (pending === undefined) {
           return Exit.fail(emptyResponseError(request))
-        } else if (exit.value.has(String(request.id))) {
+        } else if (pending.has(String(request.id))) {
           return Exit.fail(incompleteResponseError(request))
         }
         return Exit.void
@@ -1086,16 +1084,14 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient, options?: {
       let send: (clientId: number, request: RequestEncoded) => Effect.Effect<void, RpcClientError> = (
         clientId,
         request
-      ) => Effect.flatMap(Effect.exit(sendRequests(clientId, [request])), (exit) => requestExit(request, exit))
+      ) => Effect.flatMap(sendRequests(clientId, [request]), (pending) => requestExit(request, pending))
 
       if (options?.batch) {
         const { maxSize, window } = options.batch
         interface Batch {
-          readonly entries: Array<{
-            readonly request: RequestEncoded
-            readonly deferred: Deferred.Deferred<void, RpcClientError>
-          }>
+          readonly requests: Array<RequestEncoded>
           readonly full: Latch.Latch
+          readonly done: Deferred.Deferred<ReadonlySet<string> | undefined, RpcClientError>
         }
         const batches = new Map<number, Batch>()
         const closeBatch = (clientId: number, batch: Batch) => {
@@ -1109,22 +1105,17 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient, options?: {
           Effect.raceFirst(Effect.sleep(window), batch.full.await).pipe(
             Effect.andThen(Effect.suspend(() => {
               closeBatch(clientId, batch)
-              return sendRequests(clientId, batch.entries.map((entry) => entry.request))
+              return sendRequests(clientId, batch.requests)
             })),
-            Effect.onExit((exit) =>
-              Effect.sync(() => {
-                closeBatch(clientId, batch)
-                for (const { deferred, request } of batch.entries) {
-                  Deferred.doneUnsafe(deferred, requestExit(request, exit))
-                }
-              })
-            )
+            Effect.onExit((exit) => {
+              closeBatch(clientId, batch)
+              return Deferred.done(batch.done, exit)
+            })
           )
         send = Effect.fnUntraced(function*(clientId, request) {
-          const deferred = Deferred.makeUnsafe<void, RpcClientError>()
           let batch = batches.get(clientId)
           if (batch === undefined) {
-            batch = { entries: [{ request, deferred }], full: Latch.makeUnsafe() }
+            batch = { requests: [request], full: Latch.makeUnsafe(), done: Deferred.makeUnsafe() }
             batches.set(clientId, batch)
             let scope = scopes.get(clientId)
             if (scope === undefined) {
@@ -1133,13 +1124,13 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient, options?: {
             }
             yield* Effect.forkIn(runBatch(clientId, batch), scope, { startImmediately: true })
           } else {
-            batch.entries.push({ request, deferred })
+            batch.requests.push(request)
           }
-          if (batch.entries.length === maxSize) {
+          if (batch.requests.length === maxSize) {
             closeBatch(clientId, batch)
             batch.full.openUnsafe()
           }
-          return yield* Deferred.await(deferred)
+          return yield* requestExit(request, yield* Deferred.await(batch.done))
         })
       }
 
