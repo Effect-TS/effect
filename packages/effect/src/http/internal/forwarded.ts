@@ -4,10 +4,8 @@ import * as Option from "../../Option.ts"
 import type { Predicate } from "../../Predicate.ts"
 import * as Result from "../../Result.ts"
 import * as Headers from "../Headers.ts"
+import type { TrustedProxyOptions } from "../HttpMiddleware.ts"
 import type { HttpServerRequest } from "../HttpServerRequest.ts"
-
-/** @internal */
-export type TrustedProxies = ReadonlyArray<IpNetwork.IpNetwork> | Predicate<NetAddress.IpAddress>
 
 /** @internal */
 export interface Hop {
@@ -17,7 +15,7 @@ export interface Hop {
 }
 
 /** @internal */
-export const makeIsTrusted = (trusted: TrustedProxies): Predicate<NetAddress.IpAddress> =>
+export const makeIsTrusted = (trusted: TrustedProxyOptions["trustedProxies"]): Predicate<NetAddress.IpAddress> =>
   typeof trusted === "function"
     ? trusted
     : (address) => trusted.some((network) => IpNetwork.contains(network, address))
@@ -38,14 +36,7 @@ const hostShape = /^(?:\[[0-9a-f:.]+\]|[a-z0-9._-]+)(?::\d{1,5})?$/i
 
 // The shape check rules out paths, userinfo and lists; the URL parser rejects
 // invalid IP literals and out-of-range ports, matching what `toURL` accepts.
-const isValidHost = (host: string): boolean => {
-  if (!hostShape.test(host)) return false
-  try {
-    return new URL(`http://${host}`).host !== ""
-  } catch {
-    return false
-  }
-}
+const isValidHost = (host: string): boolean => hostShape.test(host) && URL.canParse(`http://${host}`)
 
 /**
  * Applies the hop selected by walking the chain from the right. The original
@@ -63,22 +54,20 @@ export const apply = (
   const peer = parseNode(Option.getOrUndefined(request.peerAddress))
   if (peer === undefined || !isTrusted(peer)) return request
   const hops = getHops(request.headers)
-  let index = hops.length - 1
-  let address: NetAddress.IpAddress | undefined
-  for (; index >= 0; index--) {
-    address = parseNode(hops[index].for)
+  for (let index = hops.length - 1; index >= 0; index--) {
+    const address = parseNode(hops[index].for)
     if (address === undefined) return request
-    if (index === 0 || !isTrusted(address)) break
+    if (index > 0 && isTrusted(address)) continue
+    const { host, proto } = hops[index]
+    const protocol = proto?.toLowerCase()
+    return request.modify({
+      remoteAddress: Option.some(NetAddress.formatIp(address)),
+      peerAddress: request.peerAddress,
+      ...(host !== undefined && isValidHost(host) ? { headers: Headers.set(request.headers, "host", host) } : {}),
+      ...(protocol === "http" || protocol === "https" ? { protocol } : {})
+    })
   }
-  if (address === undefined) return request
-  const { host, proto } = hops[index]
-  const protocol = proto?.toLowerCase()
-  return request.modify({
-    remoteAddress: Option.some(NetAddress.formatIp(address)),
-    peerAddress: request.peerAddress,
-    ...(host !== undefined && isValidHost(host) ? { headers: Headers.set(request.headers, "host", host) } : {}),
-    ...(protocol === "http" || protocol === "https" ? { protocol } : {})
-  })
+  return request
 }
 
 const splitList = (value: string | undefined): Array<string> | undefined => value?.split(",").map((_) => _.trim())

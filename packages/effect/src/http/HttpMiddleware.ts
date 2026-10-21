@@ -342,11 +342,11 @@ export interface TrustedProxyOptions {
  * **Details**
  *
  * Headers are ignored unless the original transport peer
- * (`request.peerAddress`) is trusted.
- * `X-Forwarded-For` is then walked from the right, skipping trusted proxies.
- * The first untrusted address becomes `remoteAddress`. When every address is
- * trusted, the leftmost one is used. An entry that is not an IP address, such
- * as `unknown`, stops the walk and leaves the request unchanged.
+ * (`request.peerAddress`) is trusted. `X-Forwarded-For` is then walked from
+ * the right, skipping trusted proxies. The first untrusted address becomes
+ * `remoteAddress`. When every address is trusted, the leftmost one is used. An
+ * entry that is not an IP address, such as `unknown`, stops the walk and
+ * leaves the request unchanged.
  *
  * `X-Forwarded-Host` and `X-Forwarded-Proto` are only used when they list one
  * value per `X-Forwarded-For` entry; the value at the selected position
@@ -396,14 +396,13 @@ export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware 
  * **Details**
  *
  * Headers are ignored unless the original transport peer
- * (`request.peerAddress`) is trusted.
- * The `for` parameters are then walked from the right, skipping trusted
- * proxies. The first untrusted address becomes `remoteAddress`, and the `host`
- * and `proto` parameters of the same element replace the `host` header and set
- * `protocol`. When every address is trusted, the leftmost element is used. An
- * element that is malformed, lacks `for`, or uses an `unknown` or obfuscated
- * identifier stops the walk and leaves the request unchanged.
- * `X-Forwarded-*` headers are ignored.
+ * (`request.peerAddress`) is trusted. The `for` parameters are then walked
+ * from the right, skipping trusted proxies. The first untrusted address becomes
+ * `remoteAddress`, and the `host` and `proto` parameters of the same element
+ * replace the `host` header and set `protocol`. When every address is trusted,
+ * the leftmost element is used. An element that is malformed, lacks `for`, or
+ * uses an `unknown` or obfuscated identifier stops the walk and leaves the
+ * request unchanged. `X-Forwarded-*` headers are ignored.
  *
  * `request.peerAddress` keeps the transport peer after `remoteAddress` is
  * replaced.
