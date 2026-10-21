@@ -119,7 +119,7 @@ export interface Service {
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
   >(options: Options & GenerateTextOptions<Tools>) => Effect.Effect<
-    GenerateTextResponse<Tools>,
+    GenerateTextResponse<Tools, ExtractEncodedToolParameters<Options>>,
     ExtractError<Options>,
     ExtractContext<Options>
   >
@@ -134,7 +134,7 @@ export interface Service {
     Options extends NoExcessProperties<GenerateObjectOptions<any, A, I, R>, Options>,
     Tools extends Record<string, Tool.Any> = {}
   >(options: Options & GenerateObjectOptions<Tools, A, I, R>) => Effect.Effect<
-    GenerateObjectResponse<Tools, A>,
+    GenerateObjectResponse<Tools, A, ExtractEncodedToolParameters<Options>>,
     ExtractError<Options>,
     R | ExtractContext<Options>
   >
@@ -146,7 +146,7 @@ export interface Service {
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
   >(options: Options & GenerateTextOptions<Tools>) => Stream.Stream<
-    Response.StreamPart<Tools>,
+    Response.StreamPart<Tools, ExtractEncodedToolParameters<Options>>,
     ExtractError<Options>,
     ExtractContext<Options>
   >
@@ -282,10 +282,13 @@ export type ToolChoice<Tools extends string> = "auto" | "none" | "required" | {
  * @since 1.0.0
  * @category Models
  */
-export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
-  readonly content: Array<Response.Part<Tools>>
+export class GenerateTextResponse<
+  Tools extends Record<string, Tool.Any>,
+  EncodedToolParameters extends boolean = false
+> {
+  readonly content: Array<Response.Part<Tools, EncodedToolParameters>>
 
-  constructor(content: Array<Response.Part<Tools>>) {
+  constructor(content: Array<Response.Part<Tools, EncodedToolParameters>>) {
     this.content = content
   }
 
@@ -325,7 +328,7 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
   /**
    * Returns all tool call parts from the response.
    */
-  get toolCalls(): Array<Response.ToolCallParts<Tools>> {
+  get toolCalls(): Array<Response.ToolCallParts<Tools, EncodedToolParameters>> {
     return this.content.filter((part) => part.type === "tool-call")
   }
 
@@ -391,13 +394,17 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
  * @since 1.0.0
  * @category Models
  */
-export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A> extends GenerateTextResponse<Tools> {
+export class GenerateObjectResponse<
+  Tools extends Record<string, Tool.Any>,
+  A,
+  EncodedToolParameters extends boolean = false
+> extends GenerateTextResponse<Tools, EncodedToolParameters> {
   /**
    * The parsed structured object that conforms to the provided schema.
    */
   readonly value: A
 
-  constructor(value: A, content: Array<Response.Part<Tools>>) {
+  constructor(value: A, content: Array<Response.Part<Tools, EncodedToolParameters>>) {
     super(content)
     this.value = value
   }
@@ -431,6 +438,18 @@ export type ExtractError<Options> = Options extends {
     readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
   } ? AiError.AiError | Tool.HandlerError<_Tools[keyof _Tools]> | _E :
   AiError.AiError
+
+/**
+ * Utility type that determines whether tool call parameters in a response are
+ * left encoded, which is the case when tool call resolution is disabled.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type ExtractEncodedToolParameters<Options> = Options extends {
+  readonly disableToolCallResolution: true
+} ? true
+  : false
 
 /**
  * Utility type that extracts the context requirements from LanguageModel options.
@@ -576,7 +595,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
       Tools extends Record<string, Tool.Any> = {}
     >(options: Options & GenerateTextOptions<Tools>): Effect.Effect<
-      GenerateTextResponse<Tools>,
+      GenerateTextResponse<Tools, ExtractEncodedToolParameters<Options>>,
       ExtractError<Options>,
       ExtractContext<Options>
     > =>
@@ -624,7 +643,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       Options extends NoExcessProperties<GenerateObjectOptions<any, A, I, R>, Options>,
       Tools extends Record<string, Tool.Any> = {}
     >(options: Options & GenerateObjectOptions<Tools, A, I, R>): Effect.Effect<
-      GenerateObjectResponse<Tools, A>,
+      GenerateObjectResponse<Tools, A, ExtractEncodedToolParameters<Options>>,
       ExtractError<Options>,
       R | ExtractContext<Options>
     > => {
@@ -676,7 +695,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
       Tools extends Record<string, Tool.Any> = {}
     >(options: Options & GenerateTextOptions<Tools>) => Stream.Stream<
-      Response.StreamPart<Tools>,
+      Response.StreamPart<Tools, ExtractEncodedToolParameters<Options>>,
       ExtractError<Options>,
       ExtractContext<Options>
     > = Effect.fnUntraced(
@@ -771,19 +790,17 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.tools = tools
         providerOptions.toolChoice = toolChoice
 
-        // Construct the response schema with the tools from the toolkit
-        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
+        // Construct the response schema with the tools from the toolkit, keeping
+        // tool call parameters encoded when tool call resolution is disabled
+        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
+          options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
+        )))
 
         // If tool call resolution is disabled, return the response without
-        // resolving the tool calls that were generated.
-        // Use the raw schema (GenericToolCallPart) to avoid decoding tool
-        // call parameters through the tool's parametersSchema, so that
-        // params remain as raw JSON values. This prevents double-decoding
-        // when the user later calls toolkit.handle() which also decodes
-        // via parametersSchema.
+        // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
           const rawContent = yield* params.generateText(providerOptions)
-          const content = yield* Schema.decodeUnknown(RawPartSchema)(rawContent)
+          const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
           return content as Array<Response.Part<Tools>>
         }
 
@@ -842,11 +859,11 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.toolChoice = toolChoice
 
         // If tool call resolution is disabled, return the response without
-        // resolving the tool calls that were generated.
-        // Use the raw schema to avoid decoding tool call parameters, keeping
-        // params as raw JSON for the same reason as in generateContent above.
+        // resolving the tool calls that were generated, keeping tool call
+        // parameters encoded
         if (options.disableToolCallResolution === true) {
-          const decode = Schema.decode(RawStreamPartSchema)
+          const schema = Schema.ChunkFromSelf(Response.StreamPart(makeToolkitWithEncodedParameters(toolkit)))
+          const decode = Schema.decode(schema)
           return params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(decode)
           ) as Stream.Stream<Response.StreamPart<Tools>, AiError.AiError | ParseResult.ParseError, IdGenerator>
@@ -910,7 +927,7 @@ export const generateText: <
   Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
   Tools extends Record<string, Tool.Any> = {}
 >(options: Options & GenerateTextOptions<Tools>) => Effect.Effect<
-  GenerateTextResponse<Tools>,
+  GenerateTextResponse<Tools, ExtractEncodedToolParameters<Options>>,
   ExtractError<Options>,
   LanguageModel | ExtractContext<Options>
 > = Effect.serviceFunctionEffect(LanguageModel, (model) => model.generateText)
@@ -953,7 +970,7 @@ export const generateObject: <
   Options extends NoExcessProperties<GenerateObjectOptions<any, A, I, R>, Options>,
   Tools extends Record<string, Tool.Any> = {}
 >(options: Options & GenerateObjectOptions<Tools, A, I, R>) => Effect.Effect<
-  GenerateObjectResponse<Tools, A>,
+  GenerateObjectResponse<Tools, A, ExtractEncodedToolParameters<Options>>,
   ExtractError<Options>,
   LanguageModel | R | ExtractContext<Options>
 > = Effect.serviceFunctionEffect(LanguageModel, (model) => model.generateObject)
@@ -986,84 +1003,10 @@ export const streamText = <
   Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
   Tools extends Record<string, Tool.Any> = {}
 >(options: Options & GenerateTextOptions<Tools>): Stream.Stream<
-  Response.StreamPart<Tools>,
+  Response.StreamPart<Tools, ExtractEncodedToolParameters<Options>>,
   ExtractError<Options>,
   LanguageModel | ExtractContext<Options>
 > => Stream.unwrap(LanguageModel.pipe(Effect.map((model) => model.streamText(options))))
-
-// =============================================================================
-// Raw Response Schemas (for disableToolCallResolution)
-// =============================================================================
-
-// A generic tool-call schema that passes params through as unknown,
-// avoiding parameter decoding that would cause double-decode when
-// toolkit.handle() is later called manually.
-const GenericToolCallPart = Schema.Struct({
-  type: Schema.Literal("tool-call"),
-  id: Schema.String,
-  name: Schema.String,
-  params: Schema.Unknown,
-  providerName: Schema.optional(Schema.String),
-  providerExecuted: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-  metadata: Schema.optionalWith(Response.ProviderMetadata, { default: () => ({}) })
-}).pipe(
-  Schema.attachPropertySignature(Response.PartTypeId, Response.PartTypeId),
-  Schema.annotations({ identifier: "GenericToolCallPart" })
-)
-
-// A generic tool-result schema that passes result through as unknown.
-// Included for type-completeness (the provider stream type includes
-// ToolResultPartEncoded even though results shouldn't appear when
-// tool call resolution is disabled).
-const GenericToolResultPart = Schema.Struct({
-  type: Schema.Literal("tool-result"),
-  id: Schema.String,
-  name: Schema.String,
-  result: Schema.Unknown,
-  isFailure: Schema.Boolean,
-  providerName: Schema.optional(Schema.String),
-  providerExecuted: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-  metadata: Schema.optionalWith(Response.ProviderMetadata, { default: () => ({}) })
-}).pipe(
-  Schema.attachPropertySignature(Response.PartTypeId, Response.PartTypeId),
-  Schema.annotations({ identifier: "GenericToolResultPart" })
-)
-
-const RawPartSchema = Schema.mutable(Schema.Array(
-  Schema.Union(
-    Response.TextPart,
-    Response.ReasoningPart,
-    Response.FilePart,
-    Response.DocumentSourcePart,
-    Response.UrlSourcePart,
-    Response.ResponseMetadataPart,
-    Response.FinishPart,
-    GenericToolCallPart,
-    GenericToolResultPart
-  )
-))
-
-const RawStreamPartSchema = Schema.ChunkFromSelf(
-  Schema.Union(
-    Response.TextStartPart,
-    Response.TextDeltaPart,
-    Response.TextEndPart,
-    Response.ReasoningStartPart,
-    Response.ReasoningDeltaPart,
-    Response.ReasoningEndPart,
-    Response.ToolParamsStartPart,
-    Response.ToolParamsDeltaPart,
-    Response.ToolParamsEndPart,
-    Response.FilePart,
-    Response.DocumentSourcePart,
-    Response.UrlSourcePart,
-    Response.ResponseMetadataPart,
-    Response.FinishPart,
-    Response.ErrorPart,
-    GenericToolCallPart,
-    GenericToolResultPart
-  )
-)
 
 // =============================================================================
 // Tool Call Resolution
@@ -1119,6 +1062,16 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // =============================================================================
 // Utilities
 // =============================================================================
+
+const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
+  toolkit: Toolkit.WithHandler<Tools>
+): Toolkit.Any =>
+  Toolkit.make(
+    ...Object.values(toolkit.tools).map((tool): Tool.Any => ({
+      ...tool,
+      parametersSchema: Schema.encodedSchema(tool.parametersSchema) as any
+    }))
+  )
 
 const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
   toolkit: Toolkit.WithHandler<Tools> | Effect.Effect<Toolkit.WithHandler<Tools>, E, R>
