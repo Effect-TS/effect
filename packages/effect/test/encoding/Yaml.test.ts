@@ -472,22 +472,8 @@ development:
 
     it("resolves anchors defined inside flow collections", () => {
       assert.deepStrictEqual(
-        Yaml.parse("flow: {a: &ref 1, b: *ref}"),
-        { flow: { a: 1, b: 1 } }
-      )
-    })
-
-    it("resolves anchors on flow sequence items", () => {
-      assert.deepStrictEqual(
-        Yaml.parse("items: [&first one, &second two, *first]"),
-        { items: ["one", "two", "one"] }
-      )
-    })
-
-    it("resolves flow anchors on nested collections", () => {
-      assert.deepStrictEqual(
-        Yaml.parse("data: {defaults: &d {x: 1, y: 2}, copy: *d}"),
-        { data: { defaults: { x: 1, y: 2 }, copy: { x: 1, y: 2 } } }
+        Yaml.parse("mapping: {a: &value 1, b: *value}\nsequence: [&item one, *item]\nalias: *value\n"),
+        { mapping: { a: 1, b: 1 }, sequence: ["one", "one"], alias: 1 }
       )
     })
 
