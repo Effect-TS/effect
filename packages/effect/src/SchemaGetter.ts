@@ -1523,8 +1523,8 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  *
  * **Details**
  *
- * The getter is pure and never fails. The output has no `=` padding unless
- * `padding` is set, as for `Base64Url.encode`.
+ * The getter is pure and never fails. The output is unpadded unless
+ * `padding` is `true`.
  *
  * **Example** (Encoding to Base64Url)
  *
@@ -1548,7 +1548,7 @@ export function encodeBase64Url<E extends Uint8Array | string>(options?: {
   /** Keep the `=` padding. Defaults to `false`. */
   readonly padding?: boolean | undefined
 }): Getter<string, E> {
-  return transform((input) => Base64Url.encode(input, options))
+  return transform(options?.padding === true ? Base64Url.encodePadded : Base64Url.encode)
 }
 
 /**
