@@ -8,7 +8,7 @@ import { CircuitBreaker } from "effect/persistence"
  */
 export type Advance = (duration: Duration.Input) => Effect.Effect<void>
 
-const rejection = Effect.fnUntraced(function*<A, E, R>(
+export const rejection = Effect.fnUntraced(function*<A, E, R>(
   effect: Effect.Effect<A, E | CircuitBreaker.CircuitBreakerError, R>
 ) {
   const error = yield* Effect.flip(effect).pipe(
@@ -23,7 +23,7 @@ const rejection = Effect.fnUntraced(function*<A, E, R>(
  * Starts a call that is admitted and then waits for `gate` before
  * completing with `result`.
  */
-const held = Effect.fnUntraced(function*<E>(
+export const held = Effect.fnUntraced(function*<E>(
   breaker: CircuitBreaker.CircuitBreaker,
   key: string,
   result: Effect.Effect<void, E>,
@@ -44,7 +44,7 @@ const held = Effect.fnUntraced(function*<E>(
   } as const
 })
 
-const fail = (breaker: CircuitBreaker.CircuitBreaker, key: string) =>
+export const fail = (breaker: CircuitBreaker.CircuitBreaker, key: string) =>
   Effect.fail("boom").pipe(breaker.execute({ key }), Effect.ignore)
 
 export const suite = (

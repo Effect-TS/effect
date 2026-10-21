@@ -2,10 +2,12 @@ import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
+import * as CircuitBreakerRedisTest from "effect-test/persistence/CircuitBreakerRedisTest"
+import * as CircuitBreakerTest from "effect-test/persistence/CircuitBreakerTest"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/persistence/RateLimiterTest"
-import { PersistedQueue, Persistence, RateLimiter, Redis } from "effect/persistence"
+import { CircuitBreaker, PersistedQueue, Persistence, RateLimiter, Redis } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import { createServer } from "node:net"
 
@@ -45,6 +47,15 @@ RateLimiterTest.suite(
   "NodeRedis",
   RateLimiter.layerStoreRedis().pipe(Layer.provide(RedisLayer))
 )
+
+CircuitBreakerTest.suite(
+  "NodeRedis",
+  CircuitBreaker.layerStoreRedis().pipe(Layer.provide(RedisLayer)),
+  // the store reads Redis TIME, so time only moves on the wall clock
+  (duration) => TestClock.withLive(Effect.sleep(duration))
+)
+
+CircuitBreakerRedisTest.suite("NodeRedis", RedisLayer)
 
 it.layer(RateLimiter.layerStoreRedis().pipe(Layer.provideMerge(RedisLayer)), {
   timeout: "30 seconds",
