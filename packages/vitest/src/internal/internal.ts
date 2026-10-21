@@ -36,21 +36,23 @@ const runPromise: <E, A>(
   return yield* exit
 }, (effect, _, ctx) => Effect.runPromise(effect, { signal: ctx?.signal }))
 
+const settleOnAbort = <A>(ctx: Vitest.TestContext, promise: Promise<A>) => {
+  // Vitest stops awaiting the promise once the signal aborts (timeout or
+  // cancellation), so only then add a hook that waits for the finalizers.
+  // Registering it unconditionally would change the teardown of every test.
+  const onAbort = () => ctx.onTestFinished(() => promise.then(constVoid, constVoid))
+  ctx.signal.addEventListener("abort", onAbort, { once: true })
+  const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
+  promise.then(cleanup, cleanup)
+  // A retry after a timed-out attempt reuses the aborted signal, so no event fires.
+  if (ctx.signal.aborted) onAbort()
+  return promise
+}
+
 /** @internal */
 const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => {
   const promise = runPromise(effect, ctx)
-  if (ctx) {
-    // Vitest stops awaiting the test promise once the signal aborts (timeout or
-    // cancellation), so only then add a hook that waits for the finalizers.
-    // Registering it unconditionally would change the teardown of every test.
-    const onAbort = () => ctx.onTestFinished(() => promise.then(constVoid, constVoid))
-    ctx.signal.addEventListener("abort", onAbort, { once: true })
-    const cleanup = () => ctx.signal.removeEventListener("abort", onAbort)
-    promise.then(cleanup, cleanup)
-    // A retry after a timed-out attempt reuses the aborted signal, so no event fires.
-    if (ctx.signal.aborted) onAbort()
-  }
-  return promise
+  return ctx ? settleOnAbort(ctx, promise) : promise
 }
 
 /** @internal */
@@ -131,9 +133,9 @@ const runCheck = <A, E>(
 const withFixturesOf = <F extends Function>(source: Function, f: F): F =>
   Object.defineProperty(f, "toString", { value: () => source.toString() })
 
-const runHook = <Args extends Array<any>>(
+const runHook = <Args extends Array<any>, R>(
   fn: (...args: Args) => unknown,
-  ctx?: (...args: Args) => V.TestContext
+  run: (args: Args, effect: Effect.Effect<void, unknown>, scope: Scope.Closeable) => R
 ) =>
   withFixturesOf(fn, (...args: Args) => {
     const result = fn(...args)
@@ -141,29 +143,53 @@ const runHook = <Args extends Array<any>>(
       return result
     }
     const scope = Scope.makeUnsafe()
-    // Closing inside the fiber lets `runTest` await it when the hook times out.
-    const effect = (result as Effect.Effect<unknown, unknown, Scope.Scope>).pipe(
-      Scope.provide(scope),
+    // Everything the hook leaves behind lives in the scope: the resources it
+    // acquired and, ahead of them, a cleanup function it returned. On failure
+    // the scope closes inside the fiber, so interrupting it awaits the release.
+    const effect = Scope.provide(result as Effect.Effect<unknown, unknown, Scope.Scope>, scope).pipe(
+      Effect.flatMap((cleanup) =>
+        typeof cleanup === "function"
+          ? Scope.addFinalizer(scope, Effect.promise(async () => await cleanup()))
+          : Effect.void
+      ),
       Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
     )
-    // The scope stays open until Vitest runs the hook's cleanup, after the
-    // test or suite. A cleanup function returned by the Effect runs first.
-    return runTest(ctx?.(...args))(effect).then((cleanup) => async () => {
-      try {
-        if (typeof cleanup === "function") {
-          await cleanup()
-        }
-      } finally {
-        await runPromise(Scope.close(scope, Exit.void))
-      }
-    })
+    return run(args, effect, scope)
   })
 
-/** @internal */
-export const beforeAll: typeof V.beforeAll = (fn, timeout) => V.beforeAll(runHook(fn), timeout)
+// Closing must outlive an already-aborted signal, so it runs without one.
+const closeHookScope = (scope: Scope.Closeable) => runPromise(Scope.close(scope, Exit.void))
 
 /** @internal */
-export const beforeEach: typeof V.beforeEach = (fn, timeout) => V.beforeEach(runHook(fn, (ctx) => ctx), timeout)
+export const beforeAll: typeof V.beforeAll = (fn, timeout) => {
+  // `beforeAll` has no abort signal, so a paired `afterAll` interrupts a setup
+  // that Vitest stopped waiting for, then closes the scope after the suite. It
+  // uses the default hook timeout: the setup's may already have expired.
+  let dispose = () => Promise.resolve()
+  V.beforeAll(
+    runHook(fn, (_, effect, scope) => {
+      const controller = new AbortController()
+      const promise = runPromise(effect, { signal: controller.signal })
+      dispose = () => {
+        controller.abort()
+        return promise.then(constVoid, constVoid).then(() => closeHookScope(scope))
+      }
+      return promise
+    }),
+    timeout
+  )
+  V.afterAll(() => dispose())
+}
+
+/** @internal */
+export const beforeEach: typeof V.beforeEach = (fn, timeout) =>
+  V.beforeEach(
+    runHook(fn, ([ctx], effect, scope) =>
+      // The scope closes when Vitest runs the hook's cleanup after the test,
+      // and the next test waits for it even if that cleanup times out.
+      runTest(ctx)(effect).then(() => () => settleOnAbort(ctx, closeHookScope(scope)))),
+    timeout
+  )
 
 const makeItProxy = <Methods extends object, ExtraContext>(
   it: V.TestAPI<ExtraContext>,
