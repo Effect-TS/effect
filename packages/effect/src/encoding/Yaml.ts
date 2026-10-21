@@ -68,8 +68,8 @@ const closingQuote = (input: string, quote: string, start: number): number => {
   return -1
 }
 
-const findIndicator = (input: string, indicator: ":" | "#"): number => {
-  let depth = 0
+// `depth` is the number of flow collections already open before `input`.
+const findIndicator = (input: string, indicator: ":" | "#", depth = 0): number => {
   let tokenStart = true
   for (let index = 0; index < input.length; index++) {
     const character = input[index]
@@ -100,8 +100,8 @@ const findIndicator = (input: string, indicator: ":" | "#"): number => {
   return -1
 }
 
-const stripComment = (input: string): string => {
-  const index = findIndicator(input, "#")
+const stripComment = (input: string, depth = 0): string => {
+  const index = findIndicator(input, "#", depth)
   return index === -1 ? input : input.slice(0, index).trimEnd()
 }
 
@@ -219,11 +219,11 @@ const parseKey = (input: string): string => {
 class FlowParser {
   private input: string
   private readonly anchors: ReadonlyMap<string, unknown>
-  private readonly nextLine: () => string | undefined
+  private readonly nextLine: (depth: number) => string | undefined
   private index = 0
   private depth = 0
 
-  constructor(input: string, anchors: ReadonlyMap<string, unknown>, nextLine: () => string | undefined) {
+  constructor(input: string, anchors: ReadonlyMap<string, unknown>, nextLine: (depth: number) => string | undefined) {
     this.input = input
     this.anchors = anchors
     this.nextLine = nextLine
@@ -344,7 +344,7 @@ class FlowParser {
   private peek(): string {
     // Inside a collection, the end of the line continues on the next line.
     if (this.index === this.input.length && this.depth > 0) {
-      const line = this.nextLine()
+      const line = this.nextLine(this.depth)
       if (line !== undefined) this.input += `\n${line}`
     }
     return this.input[this.index] ?? ""
@@ -470,7 +470,7 @@ class YamlParser {
   }
 
   private parseFlowValue(text: string, parentIndent: number): unknown {
-    return new FlowParser(text, this.anchors, () => {
+    return new FlowParser(text, this.anchors, (depth) => {
       const next = this.lines[this.index]
       if (next === undefined || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(next.text))) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
@@ -478,7 +478,8 @@ class YamlParser {
       if (content && next.indent < parentIndent) return undefined
       if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
       this.index++
-      return next.text
+      // Strip comments again knowing the open collections, so quoted `#` after a comma is kept.
+      return stripComment(next.raw.slice(next.indent), depth)
     }).parse()
   }
 
