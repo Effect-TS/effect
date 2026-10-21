@@ -263,11 +263,17 @@ describe("McpClient", () => {
           yield* TestClock.adjust("1 second")
           assert.strictEqual((yield* Fiber.join(call)).reason._tag, "TimeoutError")
 
-          const callId = sent.find(({ message }) => message?.method === "tools/call")?.message?.id
-          const cancellations = sent.filter(({ message }) => message?.method === "notifications/cancelled")
+          const callRequest = sent.find(({ message }) => methodOf(message) === "tools/call")?.message
+          assert(isRequest(callRequest))
+          const cancellations = sent.filter(({ message }) => methodOf(message) === "notifications/cancelled")
           assert.isTrue(closed)
           if (protocol.protocolVersion === "2025-11-25") {
-            assert.deepStrictEqual(cancellations.map(({ message }) => message?.params), [{ requestId: callId }])
+            assert.deepStrictEqual(
+              cancellations.map(({ message }) =>
+                message !== undefined && "params" in message ? message.params : undefined
+              ),
+              [{ requestId: callRequest.id }]
+            )
             assert.strictEqual(cancellations[0].request.headers["mcp-session-id"], "session-1")
           } else {
             assert.deepStrictEqual(cancellations, [])
@@ -310,13 +316,13 @@ describe("McpClient", () => {
         }).pipe(Effect.scoped)
 
         const [initialize, ...rest] = sent
-        assert.strictEqual(initialize.message?.method, "initialize")
+        assert.strictEqual(methodOf(initialize.message), "initialize")
         assert.deepStrictEqual(rest.map(({ request }) => request.headers["mcp-session-id"]), [
           "session-1",
           "session-1",
           "session-1"
         ])
-        assert.deepStrictEqual(rest.map(({ request, message }) => message?.method ?? request.method), [
+        assert.deepStrictEqual(rest.map(({ request, message }) => methodOf(message) ?? request.method), [
           "notifications/initialized",
           "tools/list",
           "DELETE"
@@ -436,6 +442,9 @@ describe("McpClient", () => {
 const serverInfo = { name: "scripted-server", version: "1.0.0" }
 
 const isRequest = Schema.is(McpSchema.JsonRpcRequest)
+
+const methodOf = (message: McpSchema.JsonRpcMessage | undefined) =>
+  message !== undefined && "method" in message ? message.method : undefined
 
 const slowTool = McpSchema.Tool.make({ name: "slow", inputSchema: { type: "object" } })
 
