@@ -2191,25 +2191,30 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
     Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
   )
   const reached = reachableDefinitions(document.schema, document.definitions)
-  return reached.size === 0
+  const definitions = reached === undefined
+    ? document.definitions
+    : Object.fromEntries(Object.entries(document.definitions).filter(([key]) => reached.has(key)))
+  return Object.keys(definitions).length === 0
     ? document.schema
-    : {
-      ...document.schema,
-      $defs: Object.fromEntries(Object.entries(document.definitions).filter(([key]) => reached.has(key)))
-    }
+    : { ...document.schema, $defs: definitions }
 }
 
+// Returns `undefined`, so every definition is kept, when a reference is not a
+// local JSON Pointer (e.g. `#anchor`) and cannot be resolved to a definition.
 const reachableDefinitions = (
   schema: JsonSchema.JsonSchema,
   definitions: JsonSchema.Definitions
-): Set<string> => {
+): Set<string> | undefined => {
   const reached = new Set<string>()
+  let resolvable = true
   const visit = (schema: JsonSchema.JsonSchema): void => {
     JsonSchema.rewriteRefs(schema, ($ref) => {
       // A `$ref` may point inside a definition, e.g. `#/$defs/A/properties/b`.
       const path = $ref.startsWith("#") ? JsonPointer.parseUriFragment($ref) : undefined
       const key = path?.[0] === "$defs" ? path[1] : undefined
-      if (key !== undefined && !reached.has(key) && Object.hasOwn(definitions, key)) {
+      if (path === undefined || (path[0] === "$defs" && key === undefined)) {
+        resolvable = false
+      } else if (key !== undefined && !reached.has(key) && Object.hasOwn(definitions, key)) {
         reached.add(key)
         visit(definitions[key])
       }
@@ -2217,7 +2222,7 @@ const reachableDefinitions = (
     })
   }
   visit(schema)
-  return reached
+  return resolvable ? reached : undefined
 }
 
 /**
