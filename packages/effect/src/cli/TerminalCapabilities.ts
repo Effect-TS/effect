@@ -28,8 +28,8 @@ interface Capabilities {
  *
  * **When to use**
  *
- * Read it when application output should share the built-in help, version,
- * and error output's answer. Provide `layer` to detect through
+ * Use when application output should share the built-in help, version, and
+ * error output's answer. Provide `layer` to detect through
  * `ConfigProvider` and `Stdio`, or provide a value to override detection.
  *
  * **Details**
