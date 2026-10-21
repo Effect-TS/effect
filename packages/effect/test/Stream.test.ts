@@ -1987,6 +1987,15 @@ describe("Stream", () => {
         yield* Fiber.interrupt(fiber)
         assert.deepStrictEqual(finalized, [1, 2, 3])
       }))
+
+    it.effect("ignores finalizer failures of inner streams replaced before they start", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2).pipe(
+          Stream.switchMap((n) => n === 1 ? Stream.never.pipe(Stream.ensuring(Effect.die("boom"))) : Stream.make(n)),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [2])
+      }))
   })
 
   it.effect.prop(
