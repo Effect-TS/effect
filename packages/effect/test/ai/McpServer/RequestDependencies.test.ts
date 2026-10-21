@@ -87,18 +87,13 @@ describe("McpServer request-level dependencies", () => {
     Effect.gen(function*() {
       let calls = 0
       const Count = McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => calls++), effect))
-      const TestServer = Layer.mergeAll(
+      const registrations = Layer.mergeAll(
         McpServer.resource({ uri: "test://counted", name: "counted", content: Effect.succeed("counted") }),
         Count.layerGlobal
-      ).pipe(
-        Layer.provide(Count.layer),
-        Layer.provideMerge(McpServer.McpServer.layer)
-      )
+      ).pipe(Layer.provide(Count.layer))
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
 
-      yield* McpServer.McpServer.use((server) => server.findResource("test://counted")).pipe(
-        Effect.provideService(McpSchema.McpServerClient, client),
-        Effect.provide(TestServer)
-      )
+      yield* client.readResource({ uri: "test://counted" })
 
       assert.strictEqual(calls, 1)
     }))
