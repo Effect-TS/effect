@@ -7,8 +7,8 @@ declare const unknowns: ReadonlyArray<unknown>
 declare const numberOrNull: ReadonlyArray<number | null>
 declare const numberOrUndefined: ReadonlyArray<number | undefined>
 declare const numberOrNullOrUndefined: ReadonlyArray<number | null | undefined>
-declare const tags: ReadonlyArray<{ _tag: "a"; a: string } | { _tag: "b"; b: string }>
-declare const tagsOrNumbers: ReadonlyArray<{ _tag: "a"; a: string } | { _tag: "b"; b: string } | number>
+declare const tagged: ReadonlyArray<{ _tag: "a"; a: string } | { _tag: "b"; b: string } | number>
+declare const wideTags: ReadonlyArray<{ _tag: string; value: number }>
 
 describe("Predicate", () => {
   it("isString", () => {
@@ -58,11 +58,14 @@ describe("Predicate", () => {
   })
 
   it("isTagged", () => {
-    expect(anys.filter(Predicate.isTagged("a"))).type.toBe<Array<any>>()
+    expect(anys.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a" }>>()
     expect(unknowns.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a" }>>()
-    expect(tags.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a"; a: string }>>()
-    expect(tagsOrNumbers.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a"; a: string }>>()
-    expect(numberOrNull.filter(Predicate.isTagged("a"))).type.toBe<Array<never>>()
+    expect(tagged.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a"; a: string }>>()
+    expect(wideTags.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: string; value: number } & { _tag: "a" }>>()
+    const value = tagged[0]
+    if (Predicate.isTagged(value, "a")) {
+      expect(value).type.toBe<{ _tag: "a"; a: string }>()
+    }
   })
 
   it("isNullish", () => {
