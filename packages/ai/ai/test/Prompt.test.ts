@@ -63,6 +63,30 @@ describe("Prompt", () => {
       ])
       assert.deepStrictEqual(prompt, expected)
     })
+
+    it("should preserve provider metadata from streamed parts as part options", () => {
+      const metadata = { google: { thoughtSignature: "signature" } }
+      const parts = [
+        Response.makePart("reasoning-start", { id: "1", metadata }),
+        Response.makePart("reasoning-delta", { id: "1", delta: "Thinking", metadata }),
+        Response.makePart("reasoning-end", { id: "1" }),
+        Response.makePart("text-start", { id: "2" }),
+        Response.makePart("text-delta", { id: "2", delta: "Hello" }),
+        Response.makePart("text-delta", { id: "2", delta: "!", metadata }),
+        Response.makePart("text-end", { id: "2" })
+      ]
+      const prompt = Prompt.fromResponseParts(parts)
+      const expected = Prompt.make([
+        {
+          role: "assistant",
+          content: [
+            { type: "reasoning", text: "Thinking", options: metadata },
+            { type: "text", text: "Hello!", options: metadata }
+          ]
+        }
+      ])
+      assert.deepStrictEqual(prompt, expected)
+    })
   })
 
   describe("merge", () => {
