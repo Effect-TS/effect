@@ -349,7 +349,7 @@ export interface Class<
             readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, NewFields>, true>>]
           >
           | undefined
-      ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, NewFields>, Variants, Default>
+      ): ExtendedClass<Extended, Static, Self & Brand, Struct_.Assign<Fields, NewFields>, Variants, Default>
       <Extension extends Schema.Struct<Schema.Struct.Fields>>(
         schema: Extension,
         annotations?:
@@ -358,37 +358,22 @@ export interface Class<
             readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, Extension["fields"]>, true>>]
           >
           | undefined
-      ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, Extension["fields"]>, Variants, Default>
+      ): ExtendedClass<Extended, Static, Self & Brand, Struct_.Assign<Fields, Extension["fields"]>, Variants, Default>
     })
     & Schema.Class<Self, S, Inherited>["extend"]
 }
 
-/**
- * Type-level helpers for variant schema classes.
- *
- * @stability unstable
- * @since 4.0.0
- */
-export declare namespace Class {
-  /**
-   * Computes the class type returned by `Class.extend`.
-   *
-   * @stability unstable
-   * @category models
-   * @since 4.0.0
-   */
-  export type Extend<
-    Self,
-    Static,
-    Inherited,
-    Fields extends Struct.Fields,
-    Variants extends string,
-    Default extends string
-  > = [Self] extends [never] ? "Missing `Self` generic - use `class Self extends Base.extend<Self>(...)`" :
-    & Class<Self, Fields, Schema.Struct<ExtractFields<Default, Fields, true>>, Variants, Default, Inherited>
-    & { readonly [V in Variants]: Extract<V, Struct<Fields>> }
-    & Pick<Static, Exclude<keyof Static, keyof Class<any, any, any> | Variants>>
-}
+type ExtendedClass<
+  Self,
+  Static,
+  Inherited,
+  Fields extends Struct.Fields,
+  Variants extends string,
+  Default extends string
+> = [Self] extends [never] ? "Missing `Self` generic - use `class Self extends Base.extend<Self>(...)`" :
+  & Class<Self, Fields, Schema.Struct<ExtractFields<Default, Fields, true>>, Variants, Default, Inherited>
+  & { readonly [V in Variants]: Extract<V, Struct<Fields>> }
+  & Pick<Static, Exclude<keyof Static, keyof Class<any, any, any> | Variants>>
 
 type MissingSelfGeneric<Params extends string = ""> =
   `Missing \`Self\` generic - use \`class Self extends Class<Self>()(${Params}{ ... })\``
@@ -539,20 +524,12 @@ export const make = <
         readonly [Schema.Struct<ExtractFields<Default, typeof fields, true>>]
       >
     ) {
-      const SClass = Schema.Class as any
-      return makeClass(identifier, fields, (schemaFields) => SClass(identifier)(schemaFields, annotations))
+      return makeClass(fields, (defaultFields) => (Schema.Class as any)(identifier)(defaultFields, annotations))
     }
   }
-  function makeClass(
-    identifier: string,
-    fields: Struct.Fields,
-    makeSchemaClass: (fields: Schema.Struct.Fields) => any
-  ) {
-    const variantStruct = Struct(fields)
-    const schema = extract(variantStruct, options.defaultVariant, {
-      isDefault: true
-    })
-    const SchemaClass = makeSchemaClass(schema.fields)
+  function makeClass(fields: Struct.Fields, makeSchemaClass: (defaultFields: Schema.Struct.Fields) => any) {
+    const struct = Struct(fields)
+    const SchemaClass = makeSchemaClass(extract(struct, options.defaultVariant, { isDefault: true }).fields)
     class Base extends SchemaClass {
       static [TypeId] = fields
       static extend(identifier: string) {
@@ -560,21 +537,17 @@ export const make = <
         return (
           extension: Struct.Fields | Schema.Struct<Schema.Struct.Fields>,
           annotations?: Schema.Annotations.Declaration<any, readonly [any]>
-        ) => {
-          const isSchemaStruct = Schema.isSchema(extension)
-          return makeClass(
-            identifier,
-            { ...fields, ...(isSchemaStruct ? extension.fields as Struct.Fields : extension) },
-            (schemaFields) => extend(isSchemaStruct ? extension : schemaFields, annotations)
-          )
-        }
+        ) =>
+          Schema.isSchema(extension)
+            ? makeClass({ ...fields, ...extension.fields as Struct.Fields }, () => extend(extension, annotations))
+            : makeClass({ ...fields, ...extension }, (defaultFields) => extend(defaultFields, annotations))
       }
     }
     for (const variant of options.variants) {
       Object.defineProperty(Base, variant, {
-        value: extract(variantStruct, variant).annotate({
-          id: `${identifier}.${variant}`,
-          title: `${identifier}.${variant}`
+        value: extract(struct, variant).annotate({
+          id: `${SchemaClass.identifier}.${variant}`,
+          title: `${SchemaClass.identifier}.${variant}`
         })
       })
     }
