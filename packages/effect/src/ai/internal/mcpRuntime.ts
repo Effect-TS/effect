@@ -248,12 +248,10 @@ export const make = Effect.fnUntraced(function*(
   const registry = yield* McpProtocolRegistry.make(protocols)
   let installedCore: McpCore.McpCore | undefined
 
-  const isMethodAvailable = (protocol: PublicMcpProtocol.AnyProtocolAdapter, method: string) => {
-    return installedCore === undefined ||
-      !Predicate.hasProperty(protocol, "isMethodAvailable") ||
-      !Predicate.isFunction(protocol.isMethodAvailable) ||
-      protocol.isMethodAvailable(installedCore, method) !== false
-  }
+  const isMethodAvailable = (
+    protocol: PublicMcpProtocol.AnyProtocolAdapter & Pick<McpProtocol.ProtocolAdapter, "isMethodAvailable">,
+    method: string
+  ) => installedCore === undefined || (protocol.isMethodAvailable?.(installedCore, method) ?? true)
 
   const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
   const unsupportedProtocolVersion = (requested: string) => ({
@@ -344,7 +342,11 @@ export const make = Effect.fnUntraced(function*(
       }
 
       if (!isMethodAvailable(statelessProtocol, method)) {
-        return { _tag: "Rejected", status: 404, error: { code: -32601, message: `Method not found: ${method}` } }
+        return {
+          _tag: "Rejected",
+          status: 404,
+          error: { code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE, message: `Method not found: ${method}` }
+        }
       }
 
       const nameKey = routingNameKey(method)
@@ -401,7 +403,10 @@ export const make = Effect.fnUntraced(function*(
       }
 
       if (!isMethodAvailable(protocol, request.tag)) {
-        return yield* new McpProtocol.ProtocolError({ code: -32601, message: `Method not found: ${request.tag}` })
+        return yield* new McpProtocol.ProtocolError({
+          code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+          message: `Method not found: ${request.tag}`
+        })
       }
 
       if (protocol.runtime._tag === "Stateful") {
