@@ -2385,6 +2385,22 @@ describe("Command", () => {
           { command: "myapp root", description: "Run root command" }
         ])
       }))
+
+    it.effect("should resolve examples from the command path", () =>
+      Effect.gen(function*() {
+        const deploy = Command.make("deploy").pipe(
+          Command.withExamples((commandPath) => [
+            { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
+          ])
+        )
+
+        assert.deepStrictEqual(toImpl(deploy).buildHelpDoc(["deploy"]).examples, [
+          { command: "deploy --yes", description: "Take every default" }
+        ])
+        assert.deepStrictEqual(toImpl(deploy).buildHelpDoc(["tool", "deploy"]).examples, [
+          { command: "tool deploy --yes", description: "Take every default" }
+        ])
+      }))
   })
 
   describe("help docs", () => {
