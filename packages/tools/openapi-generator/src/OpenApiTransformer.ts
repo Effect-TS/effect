@@ -163,7 +163,7 @@ ${clientErrorSource(name)}`
       successTypes.add("void")
     }
     const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
-    const errors = ["E", "SchemaError"]
+    const errors = ["E", "HttpClientError.HttpClientError", "SchemaError"]
     if (responses.errorSchemas.size > 0) {
       Utils.spreadElementsInto(
         Array.from(responses.errorSchemas.values()).map(
@@ -595,7 +595,7 @@ ${clientErrorSource(name)}`
     }
     const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
 
-    const errors = ["E"]
+    const errors = ["E", "HttpClientError.HttpClientError"]
     if (responses.errorSchemas.size > 0) {
       for (const schema of responses.errorSchemas.values()) {
         errors.push(`${name}Error<"${schema}", ${schema}>`)
@@ -637,7 +637,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Sse"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<${responses.sseSchema}, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<${responses.sseSchema}, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -1001,7 +1001,7 @@ const commonSource = `const unexpectedStatus = (response: HttpClientResponse.Htt
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -1101,8 +1101,8 @@ const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec
       request: HttpClientRequest.HttpClientRequest
     ): Stream.Stream<
       S["Type"],
-      HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
-      S["DecodingServices"]
+      E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
+      R | S["DecodingServices"]
     > =>
       executeStreamRequest(request).pipe(
         Effect.map((response) => response.stream),
@@ -1120,7 +1120,7 @@ const binaryRequestSource =
 
 // Type-only mode helpers (no schema decoding)
 const sseRequestSourceTs =
-  `const sseRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<unknown, HttpClientError.HttpClientError> =>
+  `const sseRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<unknown, E | HttpClientError.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap,
