@@ -87,6 +87,46 @@ describe("ClusterCron", () => {
     }).pipe(Effect.provide(layer))
   })
 
+  it.effect("keeps the initial run's instant while scheduling it is retried across a cron boundary", () => {
+    const attempts: Array<string> = []
+    let recovered = false
+    const ShardingLayer = Sharding.layer.pipe(
+      Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop, Runners.layerNoop]),
+      Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+        ...storage,
+        saveRequest: (message) =>
+          Effect.flatMap(DateTime.now, (now) => {
+            if (recovered || message.envelope.address.entityType !== "ClusterCron/test") {
+              return storage.saveRequest(message)
+            }
+            attempts.push(String(message.envelope.address.entityId))
+            // storage stays down until the first scheduled instant has passed
+            if (now.epochMilliseconds < 1000) {
+              return Effect.fail(new ClusterError.PersistenceError({ cause: new Error("connection reset") }))
+            }
+            recovered = true
+            return storage.saveRequest(message)
+          })
+      })),
+      Layer.provide(MessageStorage.layerMemory),
+      Layer.provide(ShardingConfig.layer({ entityMessagePollInterval: 100, refreshAssignmentsInterval: 0 }))
+    )
+    const layer = ClusterCron.make({
+      name: "test",
+      cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+      execute: Effect.void
+    }).pipe(Layer.provide(ShardingLayer))
+
+    return Effect.gen(function*() {
+      for (let i = 0; i < 25; i++) {
+        yield* TestClock.adjust(100)
+      }
+      assert.isTrue(recovered)
+      assert.isAbove(attempts.length, 1)
+      assert.deepStrictEqual(attempts, attempts.map(() => "1970-01-01T00:00:01.000Z"))
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect("resumes with calculateNextRunFromPrevious after its pending run fails", () =>
     Effect.gen(function*() {
       let runs = 0
