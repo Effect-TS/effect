@@ -99,6 +99,19 @@ describe("Client", () => {
         })
       )
     }))
+  it.scoped("fails with SqlError when a transaction cannot begin", () =>
+    Effect.gen(function*() {
+      const { client, contender } = yield* makeClients
+      const conn = yield* contender.reserve
+      yield* conn.executeRaw("BEGIN IMMEDIATE", [])
+      yield* client`PRAGMA busy_timeout = 1`
+
+      const error = yield* Effect.flip(client.withTransaction(client`SELECT 1`))
+      assert.strictEqual(error._tag, "SqlError")
+      assert(error.cause instanceof Error)
+      assert.match(error.cause.message, /database is locked/i)
+    }))
+
   it.scoped("supports transactions on readonly clients", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

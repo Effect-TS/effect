@@ -9,6 +9,13 @@ const isBun = "bun" in process.versions
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
 
+  it.scoped.skipIf(!isBun)("uses a 5 second busy timeout", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      assert.deepStrictEqual(yield* sql`PRAGMA busy_timeout`, [{ timeout: 5000 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.scoped.skipIf(!isBun)("starts transactions immediately", () =>
     Effect.gen(function*() {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
