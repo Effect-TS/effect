@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
+import { TracerTimingEnabled } from "effect/References"
 import * as Scope from "effect/Scope"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { SpanPropagationEnabled } from "effect/sql/Statement"
@@ -177,7 +178,11 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       if (opened === undefined) return Effect.void
       connects.delete(connection)
       const statement = fiber.cache.span
-      if (!fiber.cache.tracerEnabled || statement?._tag !== "Span" || !fiber.getRef(SpanPropagationEnabled)) {
+      // Without span timing the statement span starts at 0, so there is no wait to measure.
+      if (
+        !fiber.cache.tracerEnabled || statement?._tag !== "Span" || !fiber.getRef(SpanPropagationEnabled) ||
+        !fiber.getRef(TracerTimingEnabled)
+      ) {
         return Effect.void
       }
       const [startTime, endTime] = opened
