@@ -152,6 +152,40 @@ export interface PgClientConfig {
   readonly preparedStatementCacheSize?: number | undefined
   /** Maximum backend message size in bytes. Defaults to 16 MiB. */
   readonly maxMessageSize?: number | undefined
+  /**
+   * Runs after each successful connection checkout, in the fiber that will
+   * use the connection, so it sees that fiber's context and async context.
+   *
+   * It runs once per acquisition, not once per socket: per statement or stream
+   * outside a transaction, and once per outermost `withTransaction`, `reserve`,
+   * `listen`, and `notify`. Statements inside a transaction reuse its
+   * connection without running it again. With `multiplex`, it runs for every
+   * statement sharing a connection.
+   *
+   * Keep it cheap and idempotent per request: statements run it while holding
+   * the connection and, with `multiplex`, a pipelining slot. If it fails or is
+   * interrupted, the connection is released. With `makeClient` and
+   * `acquireForStream`, it runs before the stream opens its own connection.
+   *
+   * @example
+   * ```ts
+   * import { PgClient } from "@effect/sql-pg"
+   * import { Context, Effect } from "effect"
+   *
+   * // Set by each request handler with `Effect.provideService`.
+   * const KeepAlive = Context.Reference<(() => void) | undefined>("app/KeepAlive", {
+   *   defaultValue: () => undefined
+   * })
+   *
+   * const layer = PgClient.layer({
+   *   onAcquire: Effect.gen(function*() {
+   *     const keepAlive = yield* KeepAlive
+   *     keepAlive?.()
+   *   })
+   * })
+   * ```
+   */
+  readonly onAcquire?: Effect.Effect<void> | undefined
 }
 
 /**
@@ -227,6 +261,13 @@ const makeImpl = Effect.fnUntraced(function*(
   }
 ): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
   const config = options.config
+  const onAcquire = config.onAcquire
+  const acquirer = withOnAcquire(options.acquirer, onAcquire)
+  const borrow = options.borrower
+  const borrower: Borrower | undefined = onAcquire === undefined || borrow === undefined ?
+    borrow :
+    (f) => borrow((connection) => Effect.andThen(onAcquire, f(connection)))
+  const listenAcquirer = withOnAcquire(options.listenAcquirer, onAcquire)
   const compiler = makeCompiler(
     config.transformQueryNames,
     config.transformJson
@@ -241,19 +282,19 @@ const makeImpl = Effect.fnUntraced(function*(
   const listen = (
     channel: string
   ): Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope> =>
-    Effect.flatMap(options.listenAcquirer, (connection) => connection.listen(channel))
+    Effect.flatMap(listenAcquirer, (connection) => connection.listen(channel))
 
   return Object.assign(
     yield* Client.make({
       driver: "pg",
-      acquirer: options.acquirer,
-      borrower: options.borrower,
+      acquirer,
+      borrower,
       // Postgres prepares transaction control like anything else, and a client
       // with preparation turned off falls back to the unnamed path anyway.
       prepareTransactionControls: true,
       commit,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-      transactionAcquirer: options.transactionAcquirer,
+      transactionAcquirer: withOnAcquire(options.transactionAcquirer, onAcquire),
       compiler,
       spanAttributes: [
         ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
@@ -274,13 +315,19 @@ const makeImpl = Effect.fnUntraced(function*(
         return channelError !== undefined ?
           Effect.fail(channelError) :
           Effect.asVoid(Effect.scoped(Effect.flatMap(
-            options.acquirer,
+            acquirer,
             (conn) => conn.executeRaw(`SELECT pg_notify($1, $2)`, [channel, payload])
           )))
       }
     }
   )
 })
+
+/** Leaves the acquirer untouched when no hook is configured. */
+const withOnAcquire = <A>(
+  acquirer: Effect.Effect<A, SqlError, Scope.Scope>,
+  onAcquire: Effect.Effect<void> | undefined
+): Effect.Effect<A, SqlError, Scope.Scope> => onAcquire === undefined ? acquirer : Effect.tap(acquirer, () => onAcquire)
 
 class ConnectionImpl implements Connection {
   readonly connection: PgConnection.PgConnection
