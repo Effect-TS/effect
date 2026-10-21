@@ -18,7 +18,8 @@ let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefi
 let execImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
-vi.mock("@clickhouse/client", () => ({
+vi.mock("@clickhouse/client", async (importOriginal) => ({
+  ...await importOriginal<Record<string, unknown>>(),
   createClient: () => ({
     ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
     exec: (options: Record<string, unknown>) => {
@@ -54,6 +55,11 @@ const makeRows = (values: ReadonlyArray<unknown>) =>
 const makeResultSet = (chunks: ReadonlyArray<ReadonlyArray<unknown>>) => ({
   stream: () => Readable.from(chunks.map(makeRows), { objectMode: true })
 })
+
+// A response body ending with the exception block ClickHouse writes when a
+// query fails after the response has started
+const exceptionTrailer = (tag: string, message: string) =>
+  `\r\n__exception__\r\n${tag}\r\n${message}\n${Buffer.byteLength(message) + 1} __exception__\r\n${tag}\r\n`
 
 const killCommand = (queryId: string) => ({
   query: "KILL QUERY WHERE query_id = {queryId:String}",
@@ -325,6 +331,42 @@ describe("ClickhouseClient", { concurrent: false }, () => {
         yield* Fiber.interrupt(fiber)
 
         assert.deepStrictEqual(commandCalls, [killCommand("in-flight-id")])
+      }).pipe(Effect.provide(Reactivity.layer)))
+
+    it.effect("fails raw streams on a tagged exception trailer and passes successful tagged bytes through", () =>
+      Effect.gen(function*() {
+        connectImmediately = true
+        const tag = "exception-tag"
+        const response_headers = { "x-clickhouse-exception-tag": tag }
+        const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+        execImpl = () => Promise.resolve({ stream: Readable.from([Buffer.from("1,2\r\n")]), response_headers })
+        const chunks = yield* Stream.runCollect(client.queryStream(client`SELECT a, b FROM t`, { format: "CSV" }))
+        const body = "1,2\n" + exceptionTrailer(tag, "Code: 159. DB::Exception: Timeout exceeded. (TIMEOUT_EXCEEDED)")
+        execImpl = () =>
+          Promise.resolve({
+            stream: Readable.from([Buffer.from(body.slice(0, 12)), Buffer.from(body.slice(12))]),
+            response_headers
+          })
+        const error = yield* Effect.flip(
+          Stream.runCollect(client.queryStream(client`SELECT a, b FROM t`, { format: "CSV" }))
+        )
+
+        assert.strictEqual(Buffer.concat(chunks).toString(), "1,2\r\n")
+        assert.strictEqual(error.reason._tag, "StatementTimeoutError")
+      }).pipe(Effect.provide(Reactivity.layer)))
+
+    it.effect("kills the query when the request fails in transport", () =>
+      Effect.gen(function*() {
+        connectImmediately = true
+        queryImpl = () => Promise.reject(Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }))
+        const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+        yield* Effect.flip(Stream.runCollect(client.queryStream(client`SELECT a FROM t`))).pipe(
+          client.withQueryId("transport-id")
+        )
+
+        assert.deepStrictEqual(commandCalls, [killCommand("transport-id")])
       }).pipe(Effect.provide(Reactivity.layer)))
   })
 })
