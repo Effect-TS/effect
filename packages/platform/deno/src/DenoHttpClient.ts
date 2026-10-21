@@ -50,8 +50,10 @@ export type Options = Parameters<typeof Deno.createHttpClient>[0]
  *
  * **When to use**
  *
- * Use when you need a native client alongside your own
- * `FetchHttpClient.RequestInit` defaults; otherwise prefer `layerOptions`.
+ * Use when you need the native client itself, for example to call `fetch`
+ * directly with `{ client }` or to share one client between several layers,
+ * with the same scoped cleanup `layerOptions` provides. Otherwise prefer
+ * `layerOptions`.
  *
  * @stability unstable
  * @category constructors
@@ -81,11 +83,11 @@ interface ClientRequestInit extends globalThis.RequestInit {
  *
  * The native client is acquired in the layer's scope and closed when the
  * scope ends. Before each request it is set as the `client` field of the
- * `RequestInit` service found in the request context, or, when the request
- * context has none, the `RequestInit` provided while building this layer. An
- * application-wide `RequestInit` for `credentials`, `cache` or default headers
- * therefore still applies and only `client` is overridden. Request-specific method, headers, body and
- * abort signal are still set per request.
+ * `RequestInit` in effect for that request: the `RequestInit` service in the
+ * request context, or otherwise the one provided while building this layer.
+ * An application-wide `RequestInit` for `credentials`, `cache` or default
+ * headers therefore still applies, and only `client` is overridden. Method,
+ * headers, body and abort signal are set per request.
  *
  * **Example** (Sending requests over a Unix domain socket)
  *

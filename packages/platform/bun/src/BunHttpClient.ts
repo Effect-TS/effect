@@ -31,8 +31,9 @@ export * from "effect/http/FetchHttpClient"
  *
  * Bun-specific fields include `unix` for a Unix domain socket path, `tls` for
  * `ca`, `cert`, `key`, `rejectUnauthorized` and `checkServerIdentity`, `proxy`,
- * `decompress` and `verbose`. Standard `RequestInit` fields such as
- * `credentials` or `redirect` are accepted too.
+ * `session` for a shared connection pool, `protocol`, `decompress`, `verbose`
+ * and `s3`. Standard `RequestInit` fields such as `credentials` or `redirect`
+ * are accepted too.
  *
  * @stability unstable
  * @category models
@@ -52,16 +53,13 @@ export type Options = Omit<BunFetchRequestInit, "method" | "body" | "signal" | "
  *
  * **Details**
  *
- * Before each request the options are merged over the `RequestInit` service
- * found in the request context, or, when the request context has none, the
- * `RequestInit` provided while building this layer. An application-wide
+ * Before each request the options are merged over the `RequestInit` in effect
+ * for that request: the `RequestInit` service in the request context, or
+ * otherwise the one provided while building this layer. An application-wide
  * `RequestInit` for `credentials`, `cache` or default headers therefore still
- * applies, and the native options win per top-level key. Request-specific method, body, abort signal
- * and duplex mode are still set per request, and request headers override the
- * same keys in `headers`.
- *
- * Bun also offers `session` for sharing a connection pool across requests;
- * pass it through these options if your Bun version supports it.
+ * applies, and the native options win per top-level key. Method, body, abort
+ * signal and duplex mode are set per request, and request headers override
+ * the same keys in `headers`.
  *
  * **Example** (Sending requests over a Unix domain socket)
  *
