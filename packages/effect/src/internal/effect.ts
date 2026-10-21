@@ -1277,9 +1277,7 @@ export const fnUntraced: Effect.fn.Untraced = (
   bodyOrOptions: Function | { readonly self: any },
   ...pipeables: Array<any>
 ) => {
-  const body = typeof bodyOrOptions === "function"
-    ? bodyOrOptions
-    : pipeables.shift()!.bind(bodyOrOptions.self)
+  const body = fnBody(bodyOrOptions, pipeables)
   const fn = pipeables.length === 0
     ? function(this: any) {
       return suspend(() => fromIteratorUnsafe(body.apply(this, arguments)))
@@ -1293,6 +1291,9 @@ export const fnUntraced: Effect.fn.Untraced = (
     }
   return defineFunctionLength(body.length, fn)
 }
+
+const fnBody = (bodyOrOptions: Function | { readonly self: any }, pipeables: Array<Function>): Function =>
+  typeof bodyOrOptions === "function" ? bodyOrOptions : pipeables.shift()!.bind(bodyOrOptions.self)
 
 const defineFunctionLength = <F extends Function>(length: number, fn: F): F =>
   Object.defineProperty(fn, "length", {
@@ -1339,9 +1340,7 @@ const makeFn = (
   addSpan: boolean,
   spanOptions: Tracer.SpanOptionsNoTrace | undefined
 ) => {
-  const body = typeof bodyOrOptions === "function"
-    ? bodyOrOptions
-    : (pipeables.shift()!).bind(bodyOrOptions.self)
+  const body = fnBody(bodyOrOptions, pipeables)
   const definitionName = `${name} (definition)`
   const definitionStack = defError ? fnStackCleaner(() => defError.stack) : constUndefined
 
@@ -1386,9 +1385,7 @@ export const fnUntracedEager: Effect.fn.Untraced = (
   bodyOrOptions: Function | { readonly self: any },
   ...pipeables: Array<any>
 ) => {
-  const body = typeof bodyOrOptions === "function"
-    ? bodyOrOptions
-    : pipeables.shift()!.bind(bodyOrOptions.self)
+  const body = fnBody(bodyOrOptions, pipeables)
   return defineFunctionLength(
     body.length,
     pipeables.length === 0
