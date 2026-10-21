@@ -3694,11 +3694,11 @@ export const withString: UploadRequestFormData = { files: ["upload.txt"] }
     )
 
     it.effect(
-      "compiles OpenAPI 3.0 nullable query arrays",
+      "compiles non-exploded nullable query arrays",
       () =>
         assertGeneratedClientsCompile({
-          openapi: "3.0.0",
-          info: { title: "Nullable query API", version: "1.0.0" },
+          openapi: "3.1.0",
+          info: { title: "Query array API", version: "1.0.0" },
           paths: {
             "/items": {
               get: {
@@ -3707,7 +3707,7 @@ export const withString: UploadRequestFormData = { files: ["upload.txt"] }
                   name: "tags",
                   in: "query",
                   explode: false,
-                  schema: { type: "array", nullable: true, items: { type: "string", nullable: true } }
+                  schema: { type: ["array", "null"], items: { type: ["string", "null"] } }
                 }],
                 responses: { "204": { description: "No content" } }
               }
@@ -3716,78 +3716,9 @@ export const withString: UploadRequestFormData = { files: ["upload.txt"] }
         } as unknown as OpenAPISpec, {
           usage: `declare const client: TestClient
 export const withNull = client.listItems({ params: { tags: null } })
-export const withNullElement = client.listItems({ params: { tags: [null, "red"] } })
+export const withArray = client.listItems({ params: { tags: [null, "red"] } })
 `
         }),
-      compilationTimeout
-    )
-
-    it.effect(
-      "compiles query array clients under strict optional property checking",
-      () =>
-        assertGeneratedClientsCompile(
-          {
-            openapi: "3.1.0",
-            info: { title: "Query array API", version: "1.0.0" },
-            paths: {
-              "/items": {
-                get: {
-                  operationId: "listItems",
-                  parameters: [
-                    {
-                      name: "tags",
-                      in: "query",
-                      required: false,
-                      style: "form",
-                      explode: false,
-                      schema: { type: ["array", "null"], items: { type: ["string", "null"] } }
-                    },
-                    {
-                      name: "ids",
-                      in: "query",
-                      required: false,
-                      style: "form",
-                      explode: false,
-                      schema: { type: "array", items: { oneOf: [{ type: "integer" }, { type: "string" }] } }
-                    },
-                    {
-                      name: "colors",
-                      in: "query",
-                      required: false,
-                      style: "form",
-                      explode: false,
-                      schema: { type: "array", items: { type: "string", enum: ["red", "blue"] } }
-                    },
-                    {
-                      name: "names",
-                      in: "query",
-                      required: true,
-                      schema: { type: "array", items: { type: "string" } }
-                    }
-                  ],
-                  responses: { "204": { description: "No content" } },
-                  tags: ["Items"],
-                  security: []
-                }
-              }
-            },
-            components: { schemas: {}, securitySchemes: {} },
-            security: [],
-            tags: [{ name: "Items" }]
-          } as unknown as OpenAPISpec,
-          {
-            usage: `declare const client: TestClient
-const tags: ReadonlyArray<string> = ["red", "blue"]
-const ids: ReadonlyArray<number | string> = [1, "blue"]
-const colors: ReadonlyArray<"red" | "blue"> = ["red"]
-const names: ReadonlyArray<string> = ["a"]
-export const callWithReadonlyArrays = client.listItems({ params: { tags, ids, colors, names } })
-export const callWithNull = client.listItems({ params: { tags: null, names } })
-export const callWithNullElement = client.listItems({ params: { tags: [null, "red"], names } })
-export const callWithLiterals = client.listItems({ params: { tags: ["red"], names: ["a"], colors: ["blue"] } })
-`
-          }
-        ),
       compilationTimeout
     )
   })

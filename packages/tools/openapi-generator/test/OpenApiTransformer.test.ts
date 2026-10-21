@@ -8,6 +8,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { rolldown } from "rolldown"
@@ -21,7 +22,8 @@ const modules = {
   "effect/http/HttpClient": HttpClient,
   "effect/http/HttpClientError": HttpClientError,
   "effect/http/HttpClientRequest": HttpClientRequest,
-  "effect/http/HttpClientResponse": HttpClientResponse
+  "effect/http/HttpClientResponse": HttpClientResponse,
+  "effect/http/UrlParams": UrlParams
 }
 
 type TransformClient = (client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>
@@ -122,6 +124,61 @@ describe("OpenApiTransformer", () => {
         if (!Array.isArray(withResponse)) throw new Error("Expected response tuple")
         assert.strictEqual(withResponse[0], "hello")
         assert.strictEqual((withResponse[1] as HttpClientResponse.HttpClientResponse).status, 200)
+      }
+    }))
+
+  it.effect("joins non-exploded form query arrays and repeats exploded ones", () =>
+    Effect.gen(function*() {
+      const spec = {
+        openapi: "3.1.0",
+        info: { title: "Items", version: "1.0.0" },
+        paths: {
+          "/items": {
+            get: {
+              operationId: "list",
+              parameters: [
+                { name: "tags", in: "query", style: "form", explode: false, schema: { type: "array" } },
+                { name: "ids", in: "query", schema: { type: "array" } }
+              ],
+              responses: {
+                "200": {
+                  description: "Items",
+                  content: { "application/octet-stream": { schema: { type: "string" } } }
+                }
+              }
+            }
+          }
+        }
+      } as unknown as OpenAPISpec
+      for (const format of ["httpclient", "httpclient-type-only"] as const) {
+        const source = yield* Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          return yield* generator.generate(spec, { name: "TestClient", format })
+        }).pipe(Effect.provide(
+          format === "httpclient"
+            ? OpenApiGenerator.layerTransformerSchema
+            : OpenApiGenerator.layerTransformerTs
+        ))
+        type Options = {
+          readonly params: { readonly tags: ReadonlyArray<string>; readonly ids: ReadonlyArray<number> }
+        }
+        const make = yield* Effect.promise(() =>
+          loadClient<{
+            list: (options: Options) => Effect.Effect<unknown, HttpClientError.HttpClientError>
+            listStream: (options: Options) => Stream.Stream<unknown, HttpClientError.HttpClientError>
+          }>(source)
+        )
+        const urls: Array<string> = []
+        const client = make(
+          HttpClient.make((request, url) => {
+            urls.push(url.search)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response("")))
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+        )
+        const options = { params: { tags: ["a,b", "c"], ids: [1, 2] } }
+        yield* client.list(options)
+        yield* Stream.runDrain(client.listStream(options))
+        assert.deepStrictEqual(urls, ["?tags=a%2Cb,c&ids=1&ids=2", "?tags=a%2Cb,c&ids=1&ids=2"])
       }
     }))
 
