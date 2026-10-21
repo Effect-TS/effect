@@ -332,8 +332,6 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   public resolve: (response: Response) => void
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
-  // Buffered body reads, shared by modified requests so the body is read once.
-  private readonly reads: Map<string, Effect.Effect<any, any, any>>
 
   constructor(
     source: Request,
@@ -342,8 +340,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     url: string,
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    reads?: Map<string, Effect.Effect<any, any, any>>
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -355,16 +352,6 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     this.websocketOptions = websocketOptions
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.reads = reads ?? new Map()
-  }
-
-  private cachedRead<A, E, R>(key: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
-    let read = this.reads.get(key)
-    if (read === undefined) {
-      read = Effect.runSync(Effect.cached(effect))
-      this.reads.set(key, read)
-    }
-    return read
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -385,8 +372,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       options.url ?? this.url,
       this.websocketOptions,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.reads
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
   get method(): HttpMethod {
@@ -437,8 +423,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
 
   private textEffect: Effect.Effect<string, Error.HttpServerError> | undefined
   get text(): Effect.Effect<string, Error.HttpServerError> {
-    return this.textEffect ??= this.cachedRead(
-      "text",
+    return this.textEffect ??= Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.text(),
         catch: (cause) =>
@@ -446,7 +431,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             reason: new Error.RequestParseError({ request: this, cause })
           })
       })
-    )
+    ))
   }
   get json(): Effect.Effect<Schema.Json, Error.HttpServerError> {
     return Effect.flatMap(this.text, (_) =>
@@ -477,7 +462,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     Multipart.MultipartError,
     Scope.Scope | FileSystem.FileSystem | Path.Path
   > {
-    return this.multipartEffect ??= this.cachedRead("multipart", DenoMultipart.persisted(this.source))
+    return this.multipartEffect ??= Effect.runSync(Effect.cached(DenoMultipart.persisted(this.source)))
   }
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return DenoMultipart.stream(this.source)
@@ -486,8 +471,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   private arrayBufferEffect: Effect.Effect<ArrayBuffer, Error.HttpServerError> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.HttpServerError> {
     if (this.arrayBufferEffect) return this.arrayBufferEffect
-    this.arrayBufferEffect = this.cachedRead(
-      "arrayBuffer",
+    this.arrayBufferEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
         catch: (cause) =>
@@ -495,7 +479,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             reason: new Error.RequestParseError({ request: this, cause })
           })
       })
-    )
+    ))
     this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }

@@ -434,8 +434,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   private compressionThreshold: number
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
-  // Buffered body reads, shared by modified requests so the body is read once.
-  private readonly reads: Map<string, Effect.Effect<any, any, any>>
 
   constructor(
     source: Request,
@@ -444,8 +442,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     bunServer: BunServer<WebSocketContext>,
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    reads?: Map<string, Effect.Effect<any, any, any>>
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -457,16 +454,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.compressionThreshold = compressionThreshold
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.reads = reads ?? new Map()
-  }
-
-  private cachedRead<A, E, R>(key: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
-    let read = this.reads.get(key)
-    if (read === undefined) {
-      read = Effect.runSync(Effect.cached(effect))
-      this.reads.set(key, read)
-    }
-    return read
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -489,8 +476,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.bunServer,
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.reads
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
   get method(): HttpMethod {
@@ -542,8 +528,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = this.cachedRead(
-      "text",
+    this.textEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.text(),
         catch: (cause) =>
@@ -554,7 +539,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           })
       })
-    )
+    ))
     return this.textEffect
   }
 
@@ -601,7 +586,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = this.cachedRead("multipart", BunMultipart.persisted(this.source))
+    this.multipartEffect = Effect.runSync(Effect.cached(
+      BunMultipart.persisted(this.source)
+    ))
     return this.multipartEffect
   }
 
@@ -614,8 +601,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = this.cachedRead(
-      "arrayBuffer",
+    this.arrayBufferEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
         catch: (cause) =>
@@ -626,7 +612,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           })
       })
-    )
+    ))
     this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
     return this.arrayBufferEffect
   }

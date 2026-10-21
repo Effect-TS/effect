@@ -13,7 +13,7 @@ import { HttpServerError, RequestParseError } from "../HttpServerError.ts"
 import * as HttpServerRequest from "../HttpServerRequest.ts"
 import * as Multipart from "../Multipart.ts"
 import * as UrlParams from "../UrlParams.ts"
-import * as bodyCache from "./bodyCache.ts"
+import * as lazyStream from "./lazyStream.ts"
 
 /**
  * @internal
@@ -53,15 +53,11 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   readonly codings: ReadonlyArray<Coding>
   readonly maxDecompressedSize: ByteSize.ByteSize | undefined
   readonly headers: Headers.Headers
-  // Separate from the inner request's cache: every read here is a stream read
-  // of the inner body.
-  private readonly reads: bodyCache.BodyCache
 
   constructor(
     inner: HttpServerRequest.HttpServerRequest,
     codings: ReadonlyArray<Coding>,
-    maxDecompressedSize: ByteSize.ByteSize | undefined,
-    reads?: bodyCache.BodyCache
+    maxDecompressedSize: ByteSize.ByteSize | undefined
   ) {
     super()
     this[HttpServerRequest.TypeId] = HttpServerRequest.TypeId
@@ -70,7 +66,6 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     this.codings = codings
     this.maxDecompressedSize = maxDecompressedSize
     this.headers = Headers.removeMany(inner.headers, ["content-encoding", "content-length"])
-    this.reads = reads ?? new Map()
   }
 
   toJSON(): unknown {
@@ -88,7 +83,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
       readonly remoteAddress?: Option.Option<string>
     }
   ): HttpServerRequest.HttpServerRequest {
-    return new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize, this.reads)
+    return new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize)
   }
 
   get source(): object {
@@ -127,7 +122,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
     // Read the inner body only once the decompressed body is pulled.
-    return bodyCache.openOnFirstPull(Stream.unwrap(Effect.withFiber((fiber) => {
+    return lazyStream.openOnFirstPull(Stream.unwrap(Effect.withFiber((fiber) => {
       const limit = this.maxDecompressedSize ?? fiber.getRef(HttpIncomingMessage.MaxBodySize) ??
         defaultMaxDecompressedSize
       return Effect.succeed(Stream.fromReadableStream({
@@ -161,7 +156,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
 
   private bytesEffect: Effect.Effect<Uint8Array, HttpServerError> | undefined
   private get bytes(): Effect.Effect<Uint8Array, HttpServerError> {
-    return this.bytesEffect ??= bodyCache.cachedRead(this.reads, "bytes", Stream.mkUint8Array(this.stream))
+    return this.bytesEffect ??= Effect.runSync(Effect.cached(Stream.mkUint8Array(this.stream)))
   }
 
   get text(): Effect.Effect<string, HttpServerError> {
@@ -208,11 +203,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
 
   private multipartEffect: HttpServerRequest.HttpServerRequest["multipart"] | undefined
   get multipart(): HttpServerRequest.HttpServerRequest["multipart"] {
-    return this.multipartEffect ??= bodyCache.cachedRead(
-      this.reads,
-      "multipart",
-      Multipart.toPersisted(this.multipartStream)
-    )
+    return this.multipartEffect ??= Effect.runSync(Effect.cached(Multipart.toPersisted(this.multipartStream)))
   }
 
   private parseError(

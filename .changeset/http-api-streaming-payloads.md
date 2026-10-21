@@ -10,4 +10,4 @@ Add streaming request payloads to `HttpApi`. An endpoint can declare `HttpApiSch
 
 `HttpApiClient` sends a `Stream` payload without buffering it and infers the stream's requirements. `HttpApiTest` passes stream payloads through unbuffered. `OpenApi.fromApi` marks streaming request bodies with `x-effect-stream`, and `openapi-generator` maps them, and NDJSON or JSON Lines bodies with an `itemSchema`, back to `StreamUint8Array` and `StreamNdjson`.
 
-Buffered reads such as `text` are cached and shared with `modify` copies of the request, so the body is read once. The Node server drains up to 256 KiB of a body the handler left unread, then closes the connection, instead of reading the whole upload or leaving the socket stuck.
+The Node server drains up to 256 KiB of a body the handler left unread, then closes the connection, instead of reading the whole upload or leaving the socket stuck.

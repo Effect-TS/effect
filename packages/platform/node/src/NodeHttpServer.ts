@@ -385,8 +385,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
-  // Buffered body reads, shared by modified requests so the body is read once.
-  private readonly reads: Map<string, Effect.Effect<any, any, any>>
 
   constructor(
     source: Http.IncomingMessage,
@@ -394,8 +392,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
     url?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    reads?: Map<string, Effect.Effect<any, any, any>>
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -421,16 +418,6 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     }
     this.url = url
     this.headersOverride = headersOverride
-    this.reads = reads ?? new Map()
-  }
-
-  private cachedRead<A, E, R>(key: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
-    let read = this.reads.get(key)
-    if (read === undefined) {
-      read = Effect.runSync(Effect.cached(effect))
-      this.reads.set(key, read)
-    }
-    return read
   }
 
   private cachedCookies: Record.ReadonlyRecord<string, string> | undefined
@@ -465,13 +452,10 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpServerError> {
-    return this.cachedRead(
-      "arrayBuffer",
-      Effect.suspend(() => {
-        this.writeContinue()
-        return super.arrayBuffer
-      })
-    )
+    return Effect.suspend(() => {
+      this.writeContinue()
+      return super.arrayBuffer
+    })
   }
 
   modify(
@@ -487,8 +471,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.reads
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
 
@@ -527,13 +510,12 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = this.cachedRead(
-      "multipart",
+    this.multipartEffect = Effect.runSync(Effect.cached(
       Effect.suspend(() => {
         this.writeContinue()
         return NodeMultipart.persisted(this.source, this.source.headers)
       })
-    )
+    ))
     return this.multipartEffect
   }
 

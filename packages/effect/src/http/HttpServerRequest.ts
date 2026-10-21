@@ -34,8 +34,8 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
-import * as bodyCache from "./internal/bodyCache.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
+import * as lazyStream from "./internal/lazyStream.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -497,14 +497,12 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   readonly url: string
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
-  private readonly reads: bodyCache.BodyCache
 
   constructor(
     source: Request,
     url: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    reads?: bodyCache.BodyCache
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[TypeId] = TypeId
@@ -513,7 +511,6 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     this.url = url
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.reads = reads ?? new Map()
   }
   toJSON(): unknown {
     return HttpIncomingMessage.inspect(this, {
@@ -533,8 +530,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       this.source,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.reads
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
   get method(): HttpMethod {
@@ -586,9 +582,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = bodyCache.cachedRead(
-      this.reads,
-      "text",
+    this.textEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.text(),
         catch: (cause) =>
@@ -599,7 +593,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
             })
           })
       })
-    )
+    ))
     return this.textEffect
   }
 
@@ -646,7 +640,9 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = bodyCache.cachedRead(this.reads, "multipart", Multipart.toPersisted(this.multipartStream))
+    this.multipartEffect = Effect.runSync(Effect.cached(
+      Multipart.toPersisted(this.multipartStream)
+    ))
     return this.multipartEffect
   }
 
@@ -662,9 +658,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = bodyCache.cachedRead(
-      this.reads,
-      "arrayBuffer",
+    this.arrayBufferEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
         catch: (cause) =>
@@ -675,7 +669,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
             })
           })
       })
-    )
+    ))
     return this.arrayBufferEffect
   }
 
@@ -699,15 +693,13 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
   private urlOverride?: string | undefined
-  private readonly reads: bodyCache.BodyCache
 
   constructor(
     source: HttpClientRequest.HttpClientRequest,
     originalUrl: string,
     urlOverride?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    reads?: bodyCache.BodyCache
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[TypeId] = TypeId
@@ -717,7 +709,6 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     this.urlOverride = urlOverride
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
-    this.reads = reads ?? new Map()
   }
 
   toJSON(): unknown {
@@ -740,8 +731,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       this.originalUrl,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.reads
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
 
@@ -819,7 +809,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
         break
       }
     }
-    this.bytesEffect = bodyCache.cachedRead(this.reads, "bytes", effect)
+    this.bytesEffect = Effect.runSync(Effect.cached(effect))
     return this.bytesEffect
   }
 
@@ -858,7 +848,9 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.multipartEffect) {
       return this.multipartEffect
     }
-    this.multipartEffect = bodyCache.cachedRead(this.reads, "multipart", Multipart.toPersisted(this.multipartStream))
+    this.multipartEffect = Effect.runSync(Effect.cached(
+      Multipart.toPersisted(this.multipartStream)
+    ))
     return this.multipartEffect
   }
 
@@ -1116,7 +1108,7 @@ export const toWebResult = (self: HttpServerRequest, options?: {
     // Opening on the first pull with a zero high-water mark reads the body only
     // when the Web body is read, so converting a request leaves it readable.
     requestInit.body = Stream.toReadableStreamWith(
-      bodyCache.openOnFirstPull(self.stream),
+      lazyStream.openOnFirstPull(self.stream),
       options?.context ?? Context.empty(),
       {
         strategy: { highWaterMark: 0 }
