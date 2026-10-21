@@ -429,20 +429,20 @@ function compileJsonSchema(
       case "Never":
         return { not: {} }
       case "String": {
+        const out: JsonSchema.JsonSchema = { type: "string" }
         const content = representation.content
-        const annotatedMediaType = representation.annotations?.contentMediaType
-        const preserveContentSchema = content !== undefined &&
-          !InternalAST.isJson(representation.annotations?.contentSchema) &&
-          (typeof annotatedMediaType !== "string" || annotatedMediaType === content.mediaType)
-        return {
-          type: "string",
-          ...(content === undefined ? undefined : {
-            contentMediaType: content.mediaType,
-            ...(!preserveContentSchema || content.schema === undefined ? undefined : {
-              contentSchema: recur(content.schema, [...path, "content", "schema"], [])
-            })
-          })
+        if (content !== undefined) {
+          out.contentMediaType = content.mediaType
+          const annotatedMediaType = representation.annotations?.contentMediaType
+          if (
+            content.schema !== undefined &&
+            !InternalAST.isJson(representation.annotations?.contentSchema) &&
+            (typeof annotatedMediaType !== "string" || annotatedMediaType === content.mediaType)
+          ) {
+            out.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
+          }
         }
+        return out
       }
       case "Number":
         return {

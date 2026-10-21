@@ -120,7 +120,7 @@ export function toRepresentations(
           const annotations = last.to.annotations
           const annotatedMediaType = annotations?.contentMediaType
           const preserveSchema = metadata.preserveSchema &&
-            !SchemaAST.isJson(annotations?.contentSchema) &&
+            annotations?.contentSchema === undefined &&
             (typeof annotatedMediaType !== "string" || annotatedMediaType === metadata.mediaType)
           content = {
             mediaType: metadata.mediaType,

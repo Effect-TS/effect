@@ -4416,9 +4416,7 @@ describe("toJsonSchemaDocument", () => {
 
     for (const [name, annotations, expected, preservesGeneratedSchema] of explicitContentCases) {
       it(name, () => {
-        const schema = Schema.flip(
-          Schema.flip(Schema.fromJsonString(GeneratedContent)).annotate(annotations)
-        )
+        const schema = Schema.fromJsonString(GeneratedContent).pipe(Schema.annotateEncoded(annotations))
 
         assertJsonSchemaDocument(schema, {
           schema: { $ref: "#/$defs/GeneratedContentEncoded" },
