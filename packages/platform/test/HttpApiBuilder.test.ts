@@ -338,4 +338,16 @@ describe("HttpApiBuilder", () => {
     strictEqual((await handler(new Request("http://localhost/nested"))).status, 201)
     await dispose()
   })
+
+  it("deunionize shares Union members between endpoints", () => {
+    const NotFound = Schema.Literal("NotFound").annotations(HttpApiSchema.annotations({ status: 404 }))
+    const Errors = Schema.Union(NotFound, Schema.Literal("Conflict")).annotations(
+      HttpApiSchema.annotations({ status: 409 })
+    )
+    const schemas = new Set<Schema.Schema.Any>()
+    HttpApiSchema.deunionize(schemas, HttpApiEndpoint.get("a", "/a").addError(Errors).errorSchema)
+    HttpApiSchema.deunionize(schemas, HttpApiEndpoint.get("b", "/b").addError(NotFound).errorSchema)
+    // HttpApiDecodeError, NotFound and Conflict
+    strictEqual(schemas.size, 3)
+  })
 })
