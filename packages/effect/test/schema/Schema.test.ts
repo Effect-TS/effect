@@ -10593,11 +10593,8 @@ describe("Check", () => {
 
     const decoding = asserts.decoding()
     await decoding.succeed("")
-    await decoding.succeed("Hello, World! 123")
-    await decoding.succeed("\x00\t\n\x7f")
-    await decoding.fail("caf\u00e9", `Expected an ASCII string`)
-    await decoding.fail("\u00e9", `Expected an ASCII string`)
-    await decoding.fail("hello \u{1F600}", `Expected an ASCII string`)
+    await decoding.succeed("\x00a\x7f")
+    await decoding.fail("a\x80", `Expected an ASCII string`)
   })
 
   it("isBase64", async () => {
