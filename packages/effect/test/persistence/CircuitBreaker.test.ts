@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Layer, Logger, Result, Scope, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Logger, Result, Scope, Stream } from "effect"
 import { CircuitBreaker } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as CircuitBreakerTest from "./CircuitBreakerTest.ts"
@@ -156,6 +156,29 @@ describe("CircuitBreaker", () => {
         const state = yield* breaker.state("open")
         assert.strictEqual(state._tag, "Open")
         assert.strictEqual(state._tag === "Open" && state.consecutiveOpenings, 1)
+      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory({ idleTimeToLive: "1 minute" }))))
+
+    it.effect("fences a permit admitted before its key was dropped and recreated", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        const gate = yield* Deferred.make<void>()
+        const admitted = yield* Deferred.make<void>()
+        const stale = yield* Deferred.succeed(admitted, undefined).pipe(
+          Effect.andThen(Deferred.await(gate)),
+          Effect.andThen(Effect.fail("boom")),
+          breaker.execute({ key: "recreated" }),
+          Effect.forkChild
+        )
+        yield* Deferred.await(admitted)
+        yield* TestClock.adjust("2 minutes")
+        yield* Effect.void.pipe(breaker.execute({ key: "recreated" }))
+
+        yield* Deferred.succeed(gate, undefined)
+        yield* Fiber.await(stale)
+        assert.strictEqual((yield* breaker.state("recreated"))._tag, "Closed")
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory({ idleTimeToLive: "1 minute" }))))
   })
 })

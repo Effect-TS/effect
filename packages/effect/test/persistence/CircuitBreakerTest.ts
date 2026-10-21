@@ -11,7 +11,9 @@ export type Advance = (duration: Duration.Input) => Effect.Effect<void>
 const rejection = Effect.fnUntraced(function*<A, E, R>(
   effect: Effect.Effect<A, E | CircuitBreaker.CircuitBreakerError, R>
 ) {
-  const error = yield* Effect.flip(effect)
+  const error = yield* Effect.flip(effect).pipe(
+    Effect.catch(() => Effect.sync(() => assert.fail("Expected a rejection, but the call was admitted")))
+  )
   return error instanceof CircuitBreaker.CircuitBreakerError
     ? error.reason
     : assert.fail("Expected CircuitBreakerError")
@@ -50,7 +52,8 @@ export const suite = (
   layer: Layer.Layer<CircuitBreaker.CircuitBreakerStore, unknown>,
   advance: Advance
 ) => {
-  it.layer(layer, { timeout: "30 seconds" })(`CircuitBreaker (${name})`, (it) => {
+  // Sequential, because the tests share one TestClock under the memory store.
+  it.layer(layer, { timeout: "30 seconds", concurrent: false })(`CircuitBreaker (${name})`, (it) => {
     it.effect("consecutive: only a Success resets the streak and the n-th failure opens", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "consecutive"
@@ -109,6 +112,24 @@ export const suite = (
 
         yield* fail(breaker, key)
         assert.strictEqual((yield* breaker.state(key))._tag, "Open")
+      })))
+
+    it.effect("rate: a Success that reaches the threshold opens for openDuration", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const key = "rate-success"
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.rate({ threshold: 0.5, size: 3, minimumCalls: 3 }),
+          openDuration: "1 minute"
+        })
+        yield* fail(breaker, key)
+        yield* fail(breaker, key)
+        yield* Effect.void.pipe(breaker.execute({ key }))
+
+        const reason = yield* rejection(Effect.void.pipe(breaker.execute({ key })))
+        if (reason._tag !== "CircuitOpen") {
+          return assert.fail("Expected CircuitOpen")
+        }
+        assert.isTrue(Duration.toMillis(reason.retryAfter) > 0)
       })))
 
     it.effect("half-open admits one probe, rejects the rest, and a success closes", () =>
@@ -180,6 +201,26 @@ export const suite = (
         assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
       })))
 
+    it.effect("an exhausted Schedule openDuration repeats its last delay", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const key = "schedule-exhausted"
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: Schedule.concat(Schedule.duration("200 millis"), Schedule.duration("400 millis"))
+        })
+        yield* fail(breaker, key)
+        yield* advance("300 millis")
+        yield* fail(breaker, key)
+        yield* advance("500 millis")
+        yield* fail(breaker, key)
+
+        yield* advance("300 millis")
+        assert.strictEqual((yield* rejection(Effect.void.pipe(breaker.execute({ key }))))._tag, "CircuitOpen")
+        yield* advance("200 millis")
+        yield* Effect.void.pipe(breaker.execute({ key }))
+        assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
+      })))
+
     it.effect("a Retry-After hint extends only the opening it causes, capped at maxOpenDuration", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "hint"
@@ -225,6 +266,20 @@ export const suite = (
           probing: false,
           consecutiveOpenings: 1
         })
+
+        // Interrupting the probe while it classifies also frees the slot.
+        const classifying = yield* Deferred.make<void>()
+        const classifyingProbe = yield* Effect.void.pipe(
+          breaker.execute({
+            key,
+            classify: () => Deferred.succeed(classifying, undefined).pipe(Effect.andThen(Effect.never))
+          }),
+          Effect.forkChild
+        )
+        yield* Deferred.await(classifying)
+        yield* Fiber.interrupt(classifyingProbe)
+        const released = yield* breaker.state(key)
+        assert.strictEqual(released._tag === "HalfOpen" && released.probing, false)
 
         yield* Effect.void.pipe(breaker.execute({ key }))
         assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
