@@ -127,6 +127,40 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
       }).pipe(Effect.provide(layer), TestClock.withLive)
     })
 
+    it.effect("a renewal after an Ignored probe frees the slot does not take the lease back", () =>
+      Effect.gen(function*() {
+        const key = "lease-release"
+        const redis = yield* Redis.Redis
+        const store = yield* storeOn(redis, { probeLease: "600 millis" })
+        const breaker = yield* CircuitBreaker.make(options).pipe(
+          Effect.provideService(CircuitBreaker.CircuitBreakerStore, store)
+        )
+
+        yield* fail(breaker, key)
+        yield* Effect.sleep("300 millis")
+        yield* Effect.scoped(Effect.gen(function*() {
+          const admission = yield* store.admit(key)
+          assert.isTrue(admission.probe)
+          yield* store.record({
+            key,
+            generation: admission.generation,
+            outcome: "Ignored",
+            tripPolicy: options.tripPolicy,
+            openFor: Duration.zero
+          })
+          // The renewal fiber stays alive until the admit scope closes, as it
+          // does while execute is still waiting on record. Its tick after 200
+          // millis lands after the release.
+          yield* Effect.sleep("350 millis")
+          assert.deepStrictEqual(yield* store.state(key), {
+            _tag: "HalfOpen",
+            key,
+            probing: false,
+            consecutiveOpenings: 1
+          })
+        }))
+      }).pipe(TestClock.withLive))
+
     it.effect("an Open key outlives idleTimeToLive until openUntil, so the backoff count survives", () =>
       Effect.gen(function*() {
         const key = "retention-open"
