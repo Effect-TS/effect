@@ -497,17 +497,20 @@ export const make = Effect.gen(function*() {
             // automatic wake skips the reset of a failure suspension, so they
             // wait outside the gate. Operator resume does not use the gate.
             const resumeGate = Semaphore.makeUnsafe(1)
+            const waitForCurrentRunReply = Effect.suspend(() =>
+              currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
+            )
             const resumeCurrentRun = (mode: WakeMode) =>
-              Effect.suspend(() => {
-                const waitForReply = currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
-                return mode === "explicit"
-                  ? Effect.asSome(waitForReply)
-                  : resumeGate.withPermitsIfAvailable(1)(waitForReply)
-              }).pipe(
-                // Release the gate before reset can start another run, so later
-                // completions can wake that replay.
-                Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId, mode) : Effect.void),
-                ensureSuccess
+              ensureSuccess(
+                mode === "explicit"
+                  ? Effect.andThen(waitForCurrentRunReply, resume(workflow, executionId, mode))
+                  : resumeGate.withPermitsIfAvailable(1)(waitForCurrentRunReply).pipe(
+                    // Release the gate before reset can start another run, so later
+                    // completions can wake that replay.
+                    Effect.flatMap((waited) =>
+                      Option.isSome(waited) ? resume(workflow, executionId, mode) : Effect.void
+                    )
+                  )
               )
             return {
               run: (request: Entity.Request<any>) => {
