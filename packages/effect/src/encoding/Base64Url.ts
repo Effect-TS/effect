@@ -9,17 +9,21 @@ import * as Base64 from "./Base64.ts"
 import { EncodingError } from "./EncodingError.ts"
 
 /**
- * Encodes the given value into an unpadded URL-safe Base64 string.
+ * Encodes the given value into a URL-safe Base64 string, without `=` padding
+ * unless `padding` is set.
  *
  * **When to use**
  *
  * Use to encode text or bytes in contexts that require the URL-safe alphabet.
+ * Set `padding` for consumers that expect padded output, such as Go's
+ * `base64.URLEncoding` or Python's `base64.urlsafe_b64decode`.
  *
  * **Details**
  *
  * String inputs are encoded as UTF-8 bytes before Base64Url encoding.
- * `Uint8Array` inputs are encoded directly. The output removes `=` padding
- * and replaces `+` with `-` and `/` with `_`.
+ * `Uint8Array` inputs are encoded directly. The output replaces `+` with `-`
+ * and `/` with `_`, and removes the `=` padding unless `padding` is `true`
+ * (RFC 4648 section 5 allows both forms). {@link decode} accepts both.
  *
  * **Example** (Encoding URL-safe Base64)
  *
@@ -30,6 +34,8 @@ import { EncodingError } from "./EncodingError.ts"
  *
  * const bytes = new Uint8Array([72, 101, 108, 108, 111, 63])
  * Base64Url.encode(bytes) // => "SGVsbG8_"
+ *
+ * Base64Url.encode("hello", { padding: true }) // => "aGVsbG8="
  * ```
  *
  * @see {@link decode} for decoding URL-safe Base64 to bytes
@@ -39,8 +45,16 @@ import { EncodingError } from "./EncodingError.ts"
  * @category encoding
  * @since 4.0.0
  */
-export const encode: (input: Uint8Array | string) => string = (input) =>
-  Base64.encode(input).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
+export const encode = (
+  input: Uint8Array | string,
+  options?: {
+    /** Keep the `=` padding. Defaults to `false`. */
+    readonly padding?: boolean | undefined
+  }
+): string => {
+  const encoded = Base64.encode(input).replace(/\+/g, "-").replace(/\//g, "_")
+  return options?.padding === true ? encoded : encoded.replace(/=/g, "")
+}
 
 /**
  * Decodes a padded or unpadded URL-safe Base64 string into bytes safely.
