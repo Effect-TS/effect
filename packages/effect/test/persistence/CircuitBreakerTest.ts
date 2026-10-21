@@ -27,7 +27,7 @@ const held = Effect.fnUntraced(function*<E>(
   breaker: CircuitBreaker.CircuitBreaker,
   key: string,
   result: Effect.Effect<void, E>,
-  options?: { readonly classify?: CircuitBreaker.ExecuteOptions<void, E>["classify"] }
+  options?: { readonly classify?: (exit: Exit.Exit<void, E>) => CircuitBreaker.Outcome }
 ) {
   const started = yield* Deferred.make<void>()
   const gate = yield* Deferred.make<void>()

@@ -49,7 +49,11 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  * **Details**
  *
  * - `execute` admits the call through the circuit for `key`, runs it,
- *   classifies its exit, and records the outcome.
+ *   classifies its exit, and records the outcome. `classify` sees the full
+ *   exit of the call and returns an `Outcome`, either directly or as an
+ *   effect. Without it, every success is a `Success` and every failure,
+ *   defects included, is a `Failure`. An exit that is only interruption is
+ *   recorded as `Ignored` before `classify` runs.
  * - `state` reads the shared state of a circuit, with relative times only.
  * - `transitions` emits the transitions made by this breaker instance only,
  *   and ends when the breaker's scope closes.
@@ -62,37 +66,22 @@ export interface CircuitBreaker {
   readonly [TypeId]: TypeId
 
   readonly execute: {
-    <A, E, R2 = never>(options: ExecuteOptions<A, E, R2>): <R>(
-      self: Effect.Effect<A, E, R>
-    ) => Effect.Effect<A, E | CircuitBreakerError, R | R2>
+    <A, E, R2 = never>(options: {
+      readonly key: string
+      readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+    }): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | CircuitBreakerError, R | R2>
     <A, E, R, R2 = never>(
       self: Effect.Effect<A, E, R>,
-      options: ExecuteOptions<A, E, R2>
+      options: {
+        readonly key: string
+        readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+      }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2>
   }
 
   readonly state: (key: string) => Effect.Effect<State, CircuitBreakerError>
 
   readonly transitions: Stream.Stream<Transition>
-}
-
-/**
- * Options for a single `CircuitBreaker.execute` call.
- *
- * **Details**
- *
- * `classify` sees the full exit of the call and returns an `Outcome`, either
- * directly or as an effect. Without it, every success is a `Success` and every
- * failure, defects included, is a `Failure`. An exit that is only
- * interruption is recorded as `Ignored` before `classify` runs.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface ExecuteOptions<A, E, R2 = never> {
-  readonly key: string
-  readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
 }
 
 /**
@@ -107,7 +96,7 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
 )
 
 /**
- * Policy used to build a `CircuitBreaker`.
+ * Creates a `CircuitBreaker` from the current `CircuitBreakerStore`.
  *
  * **Details**
  *
@@ -120,30 +109,19 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  *   `"allow"` (the default) runs it unrecorded and logs a warning, `"fail"`
  *   fails it with `CircuitBreakerStoreError`.
  *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface Options {
-  readonly tripPolicy: TripPolicy
-  readonly openDuration: Duration.Input | Schedule.Schedule<unknown, number, never, never>
-  readonly maxOpenDuration?: Duration.Input | undefined
-  readonly onStoreError?: "allow" | "fail" | undefined
-}
-
-/**
- * Creates a `CircuitBreaker` from the current `CircuitBreakerStore`.
- *
- * **Details**
- *
  * The breaker's `transitions` stream ends when the surrounding scope closes.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.6
  */
-export const make: (options: Options) => Effect.Effect<CircuitBreaker, never, CircuitBreakerStore | Scope.Scope> =
-  Effect.fnUntraced(function*(options: Options) {
+export const make: (options: {
+  readonly tripPolicy: TripPolicy
+  readonly openDuration: Duration.Input | Schedule.Schedule<unknown, number, never, never>
+  readonly maxOpenDuration?: Duration.Input | undefined
+  readonly onStoreError?: "allow" | "fail" | undefined
+}) => Effect.Effect<CircuitBreaker, never, CircuitBreakerStore | Scope.Scope> = Effect.fnUntraced(
+  function*(options: Parameters<typeof make>[0]) {
     const store = yield* CircuitBreakerStore
     const scope = yield* Effect.scope
     const pubsub = yield* PubSub.sliding<Take.Take<Transition>>(128)
@@ -169,7 +147,10 @@ export const make: (options: Options) => Effect.Effect<CircuitBreaker, never, Ci
 
     const execute = <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
-      { classify, key }: ExecuteOptions<A, E, R2>
+      { classify, key }: {
+        readonly key: string
+        readonly classify?: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined
+      }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
         Effect.flatMap(Scope.make(), (admitScope) =>
@@ -222,21 +203,30 @@ export const make: (options: Options) => Effect.Effect<CircuitBreaker, never, Ci
       state: store.state,
       transitions: Stream.fromPubSubTake(pubsub)
     })
-  })
+  }
+)
 
 /**
  * Provides `CircuitBreaker` using the current `CircuitBreakerStore`.
+ *
+ * **Details**
+ *
+ * Takes the same options as `make`.
  *
  * @stability experimental
  * @category layers
  * @since 4.0.6
  */
-export const layer = (options: Options): Layer.Layer<CircuitBreaker, never, CircuitBreakerStore> =>
-  Layer.effect(CircuitBreaker, make(options))
+export const layer = (options: {
+  readonly tripPolicy: TripPolicy
+  readonly openDuration: Duration.Input | Schedule.Schedule<unknown, number, never, never>
+  readonly maxOpenDuration?: Duration.Input | undefined
+  readonly onStoreError?: "allow" | "fail" | undefined
+}): Layer.Layer<CircuitBreaker, never, CircuitBreakerStore> => Layer.effect(CircuitBreaker, make(options))
 
 const classifyExit = <A, E, R2>(
   exit: Exit.Exit<A, E>,
-  classify: ExecuteOptions<A, E, R2>["classify"],
+  classify: ((exit: Exit.Exit<A, E>) => Outcome | Effect.Effect<Outcome, never, R2>) | undefined,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<Exit.Exit<Outcome>, never, R2> => {
   if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) {
@@ -252,7 +242,7 @@ const classifyExit = <A, E, R2>(
 }
 
 const makeOpenDuration = (
-  openDuration: Options["openDuration"]
+  openDuration: Duration.Input | Schedule.Schedule<unknown, number, never, never>
 ): (consecutiveOpenings: number) => Effect.Effect<Duration.Duration> => {
   if (!Schedule.isSchedule(openDuration)) {
     const duration = Effect.succeed(Duration.fromInputUnsafe(openDuration))
