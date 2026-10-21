@@ -364,8 +364,10 @@ export const make = <R, ER>(
         Effect.tap(
           Layer.buildWithMemoMap(layer, memoMap, layerScope),
           (context) =>
-            Effect.sync(() => {
-              if (disposed === undefined) self.cachedContext = context
+            Effect.suspend(() => {
+              if (disposed !== undefined) return Effect.die("ManagedRuntime disposed")
+              self.cachedContext = context
+              return Effect.void
             })
         ),
         { ...defaultRunOptions, scheduler: fiber.cache.scheduler }

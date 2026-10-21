@@ -132,17 +132,12 @@ describe("ManagedRuntime", () => {
     strictEqual(released, true)
   })
 
-  test("a layer build that disposes the runtime does not cache its context", async () => {
-    const built = Promise.withResolvers<void>()
+  test("a layer build that disposes the runtime fails its context waiters", async () => {
     const runtime: ManagedRuntime.ManagedRuntime<never, never> = ManagedRuntime.make(Layer.effectDiscard(
-      Effect.suspend(() => runtime.disposeEffect).pipe(
-        Effect.andThen(Effect.yieldNow),
-        Effect.ensuring(Effect.sync(() => built.resolve()))
-      )
+      Effect.suspend(() => runtime.disposeEffect).pipe(Effect.andThen(Effect.yieldNow))
     ))
-    await runtime.runPromiseExit(Effect.void)
-    await built.promise
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    const exit = await Effect.runPromiseExit(runtime.contextEffect)
+    assert.isTrue(Exit.isFailure(exit))
     strictEqual(runtime.cachedContext, undefined)
     assert.isTrue(Exit.isFailure(await runtime.runPromiseExit(Effect.void)))
   })
