@@ -112,7 +112,7 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
 
 /**
  * ClickHouse-specific `SqlClient` extension with access to its configuration,
- * typed parameter fragments, command-mode execution, insert queries, and
+ * the underlying `@clickhouse/client` instance, typed parameter fragments, command-mode execution, insert queries, and
  * per-effect query ID and ClickHouse settings.
  *
  * @stability unstable
@@ -122,6 +122,13 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
 export interface ClickhouseClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: ClickhouseClientConfig
+  /**
+   * The underlying `@clickhouse/client` instance used by this client, for
+   * driver features it does not wrap. It is closed with the client's scope.
+   *
+   * @stability unstable
+   */
+  readonly client: Clickhouse.ClickHouseClient
   readonly param: (dataType: string, value: unknown) => Statement.Fragment
   readonly asCommand: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   readonly insertQuery: <T = unknown>(options: {
@@ -383,6 +390,7 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
+        client,
         param(dataType: string, value: unknown) {
           return Statement.fragment([clickhouseParam(dataType, value)])
         },
