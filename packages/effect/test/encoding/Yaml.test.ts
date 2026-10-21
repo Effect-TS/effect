@@ -634,6 +634,38 @@ development:
       assert.throws(() => Yaml.parse(source), SyntaxError)
     })
 
+    // YAML 1.2.2 §§9.1.3, 9.2: the document's node may start on the `---` line,
+    // unless it is a block collection. Checked with yaml 2.9.1.
+    it.each(
+      [
+        ["plain scalar", "--- text\n", "text"],
+        ["tab after the marker", "---\tscalar\n", "scalar"],
+        ["quoted scalar", "--- \"foo\"\n", "foo"],
+        ["block scalar", "--- |\n  a\n  b\n", "a\nb\n"],
+        ["zero-indented block scalar", "--- >\nline1\n# not a comment\nline2\n", "line1 # not a comment line2\n"],
+        ["properties before a block sequence", "--- &x\n- a\n", ["a"]],
+        ["tag before a block mapping", "--- !!map\na: 1\n", { a: 1 }],
+        ["flow collection", "--- {a: 1}\n", { a: 1 }],
+        ["document end marker", "--- text\n...\n", "text"],
+        ["block scalar before a document end marker", "|-\n ab\n \n...\n", "ab"],
+        ["document-marker-like quoted line", "--- \"a\n...x\nb\"\n", "a ...x b"]
+      ] as const
+    )("parses a %s on the document start line", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["block mapping", "--- a: b\n"],
+      ["anchored block mapping", "--- &x a: b\n"],
+      ["block sequence", "--- - a\n"],
+      ["explicit key", "--- ? a\n"],
+      ["document start marker in a quoted scalar", "---\n\"\n---\n\"\n"],
+      ["document end marker in a quoted scalar", "---\n'\n...\n'\n"],
+      ["second document with content", "a: 1\n--- b\n"]
+    ])("rejects a %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
     it.each(
       [
         ["mapping", "# before\n--- # start\na: 1\n... # end\n# after\n", { a: 1 }],

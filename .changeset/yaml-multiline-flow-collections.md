@@ -11,3 +11,5 @@ Support explicit `? key` entries in block and flow mappings, keys without values
 Resolve tags: the core schema tags (`!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!map`, `!!seq`), the non-specific `!` tag, verbatim tags, and `%TAG` handles. Other tags are ignored, so their scalars stay strings. A core tag that does not fit its node, such as `!!int abc`, fails with a `SyntaxError`. Anchors and tags may appear in either order, on implicit keys, inside flow collections, and on lines of their own before the node, and aliases may be used as keys.
 
 Resolve recursive aliases, which yield cyclic values.
+
+Parse a document whose content starts on the `---` line, such as `--- text`, `--- |` or `--- !!map`, which was read as a plain scalar including the marker. A block scalar ends at a `---` or `...` marker, and a quoted scalar cannot contain one.

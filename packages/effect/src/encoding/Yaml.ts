@@ -121,6 +121,8 @@ const startsWithIndicator = (text: string, indicator: "-" | "?" | ":"): boolean 
 
 const isSequenceEntry = (text: string): boolean => startsWithIndicator(text, "-")
 
+const isDocumentMarker = (line: Line): boolean => line.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(line.raw)
+
 // Whether a flow indicator character is followed by a separator rather than scalar content.
 const isSeparated = (next: string | undefined): boolean => next === undefined || /[\s,[\]{}]/.test(next)
 
@@ -557,12 +559,25 @@ class YamlParser {
     this.skipIgnored()
     if (this.index >= this.lines.length) return null
     this.documentStarted = true
-    const value = this.parseNode(this.lines[this.index].indent)
+    const line = this.lines[this.index]
+    const value = isDocumentMarker(line) && line.text.startsWith("---")
+      ? this.parseDocumentStart(line)
+      : this.parseNode(line.indent)
     this.skipIgnored()
     if (this.index < this.lines.length) {
       this.fail(this.lines[this.index], "Unexpected content")
     }
     return value
+  }
+
+  // Content on the `---` line is the document's node, which cannot be a block collection starting there.
+  private parseDocumentStart(line: Line): unknown {
+    this.index++
+    const [properties, rest] = this.readProperties(line.text.slice(3).trimStart(), noProperties)
+    if (isSequenceEntry(rest) || startsWithIndicator(rest, "?") || mappingSeparator(rest) !== -1) {
+      this.fail(line, "Block collections cannot start on the document start line")
+    }
+    return this.parseValue(rest, -1, false, properties)
   }
 
   private parseNode(
@@ -733,7 +748,7 @@ class YamlParser {
   private parseFlowValue(text: string, parentIndent: number, properties: Properties): unknown {
     return new FlowParser(text, this.anchors, this.handles, () => {
       const next = this.lines[this.index]
-      if (next === undefined || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(next.text))) return undefined
+      if (next === undefined || isDocumentMarker(next)) return undefined
       // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
       const content = next.text.trim().length > 0
       if (content && next.indent < parentIndent) return undefined
@@ -760,7 +775,7 @@ class YamlParser {
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
       const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
-      if (text.length === 0 || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(text))) break
+      if (text.length === 0 || isDocumentMarker(next)) break
       if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
       this.rejectTabIndentedBlankLines(blankLines, parentIndent)
       output += foldLineBreak(blankLines) + text
@@ -777,6 +792,7 @@ class YamlParser {
     while (end === -1) {
       const next = this.lines[this.index++]
       if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
+      if (isDocumentMarker(next)) this.fail(next, "Document markers cannot appear in a quoted scalar")
       const blank = next.raw.trim().length === 0
       if (!blank || next.indent <= parentIndent) this.rejectTabIndent(next)
       if (!blank && next.indent <= parentIndent) this.fail(next, "Invalid quoted scalar indentation")
@@ -803,6 +819,7 @@ class YamlParser {
 
     while (end < this.lines.length) {
       const line = this.lines[end]
+      if (isDocumentMarker(line)) break
       // Only spaces make a line empty; a tab after the indentation is content.
       if (/[^ ]/.test(line.raw)) {
         if (contentIndent === undefined && line.indent > parentIndent) {
@@ -885,9 +902,11 @@ class YamlParser {
         const directive = /^%TAG\s+(\S+)\s+(\S+)$/.exec(text)
         if (directive !== null) this.handles.set(directive[1], directive[2])
         this.index++
-      } else if (line.indent === 0 && text === "---") {
+      } else if (line.indent === 0 && /^---(?:\s|$)/.test(text)) {
         if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
         this.documentStarted = true
+        // The document's content may start on the marker line.
+        if (text !== "---") return
         this.index++
       } else if (line.indent === 0 && text === "...") {
         this.index++
