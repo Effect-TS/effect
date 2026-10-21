@@ -332,9 +332,6 @@ export const makeClient: <
     generateRequestId: () => RpcMessage.RequestId(nextRequestId++)
   }).pipe(Effect.provideService(RpcClient.Protocol, protocol))
 
-  // Registration emits list-changed notifications on a deferred task. Let it
-  // run before the handshake so they reach no client instead of racing it.
-  yield* Effect.yieldNow
   let protocolVersion = selected.protocolVersion
   if (selected.runtime._tag === "Stateful") {
     const result = yield* rpc.initialize({
