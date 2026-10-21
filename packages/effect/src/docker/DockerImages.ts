@@ -1,19 +1,20 @@
 /**
- * Images: list, inspect, pull, push, tag, remove, save, load, import, commit,
- * search and prune, the Registry's view of an image, and image references
- * ({@link ImageReference}).
+ * Images: list, inspect, pull, push, build, tag, remove, save, load, import,
+ * commit, search and prune, the Registry's view of an image, and image
+ * references ({@link ImageReference}).
  *
  * Long operations return the Engine's progress messages as a `Stream`, which
  * fails with `StreamFailed` on the first in-band error; run it to completion
- * to wait for the operation. `push` also comes as an `Effect` of its result,
- * the pushed manifest.
+ * to wait for the operation. `push` and `build` also come as an `Effect` of
+ * their result: the pushed manifest, and the built image's ID.
  *
  * Every operation that talks to a Registry (pull, push, search, distribution) sends
  * the credential the `DockerEngine` resolves for that Registry in
- * `X-Registry-Auth`, anonymous as `{}`; a per-call `auth` replaces it.
+ * `X-Registry-Auth`, anonymous as `{}`; a per-call `auth` replaces it. A build
+ * sends only the credentials it is given, see {@link BuildOptions}.
  *
  * A `platform` takes the shape the Engine reads for each operation: a string
- * (`linux/arm64`) for `pull` and `import`, which default to the
+ * (`linux/arm64`) for `pull`, `import` and `build`, which default to the
  * configured `platform`, and an `OCIPlatform` object for `inspect`,
  * `history`, `push`, `save` and `load`, which have no default.
  *
@@ -38,6 +39,7 @@
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
+import type * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import type * as SchemaAST from "../SchemaAST.ts"
@@ -45,8 +47,8 @@ import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
-import type * as DockerConfig from "./DockerConfig.ts"
-import { apiClient, DockerEngine, registryAuth } from "./DockerEngine.ts"
+import * as DockerConfig from "./DockerConfig.ts"
+import { apiClient, authConfig, DockerEngine, registryAuth } from "./DockerEngine.ts"
 import { DockerError, InvalidReference, InvalidResponse, StreamFailed } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -269,6 +271,87 @@ export type PushResult = typeof PushResult.Type
 const decodePushResult = Schema.decodeUnknownEffect(Schema.toCodecGoJson(PushResult))
 
 // -----------------------------------------------------------------------------
+// builds
+// -----------------------------------------------------------------------------
+
+/**
+ * One element of a build's progress.
+ *
+ * **Details**
+ *
+ * - `Log`: build output, the classic builder's `stream` lines (`Step N/M`
+ *   lines included);
+ * - `Pull`: transfer progress of a base image being pulled.
+ *
+ * BuildKit reports its progress as `moby.buildkit.trace` messages, which
+ * aren't decoded yet: a BuildKit build reports no progress, only its result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type BuildProgress =
+  | { readonly _tag: "Log"; readonly data: string }
+  | {
+    readonly _tag: "Pull"
+    readonly id?: string | undefined
+    readonly status?: string | undefined
+    readonly current?: number | undefined
+    readonly total?: number | undefined
+  }
+
+/**
+ * The options of `build`.
+ *
+ * **Details**
+ *
+ * - `dockerfile`: a path inside the context (default `Dockerfile`).
+ * - `builder`: `"classic"` or `"buildkit"`; omitted, the configured builder,
+ *   else the Engine's default.
+ * - `forceRemove` defaults to `true`, unlike the CLI: the classic builder
+ *   otherwise leaks the container of a failed `RUN`.
+ * - `buildArgs` values can be `Redacted`. The configured proxy is added as
+ *   build args, unless they are set, as `docker build` does. Build args are
+ *   redacted in spans.
+ * - `auth` and `registries` are the credentials sent in `X-Registry-Config`,
+ *   which only the classic builder uses: `auth` as given, `registries`
+ *   resolved by the `DockerEngine`. Nothing else is sent.
+ *
+ * The rest are `POST /build`'s query parameters.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface BuildOptions {
+  readonly dockerfile?: string | undefined
+  readonly tags?: ReadonlyArray<string> | undefined
+  readonly builder?: "classic" | "buildkit" | undefined
+  readonly forceRemove?: boolean | undefined
+  readonly remove?: boolean | undefined
+  readonly target?: string | undefined
+  readonly platform?: string | undefined
+  readonly buildArgs?: Readonly<Record<string, string | Redacted.Redacted<string>>> | undefined
+  readonly labels?: Readonly<Record<string, string>> | undefined
+  readonly cacheFrom?: ReadonlyArray<string> | undefined
+  readonly pull?: boolean | undefined
+  readonly noCache?: boolean | undefined
+  readonly quiet?: boolean | undefined
+  readonly networkMode?: string | undefined
+  readonly extraHosts?: ReadonlyArray<string> | undefined
+  readonly shmSize?: number | undefined
+  readonly memory?: number | undefined
+  readonly memorySwap?: number | undefined
+  readonly cpuShares?: number | undefined
+  readonly cpuSetCpus?: string | undefined
+  readonly cpuPeriod?: number | undefined
+  readonly cpuQuota?: number | undefined
+  readonly squash?: boolean | undefined
+  readonly auth?: Readonly<Record<string, DockerConfig.Credential>> | undefined
+  readonly registries?: ReadonlyArray<string> | undefined
+}
+
+// -----------------------------------------------------------------------------
 // helpers
 // -----------------------------------------------------------------------------
 
@@ -304,6 +387,51 @@ const failOnError = <E>(
     const failure = inBandError(message.errorDetail, error)
     return failure === undefined ? Effect.succeed(message) : Effect.fail(failure)
   })
+
+/** The ID a quiet build writes as its only output: `sha256:<hex>`. */
+const quietId = /^(sha256:[0-9a-f]{64})\s*$/
+
+const auxId = (aux: Schema.Json | undefined): string | undefined => {
+  if (typeof aux !== "object" || aux === null || Array.isArray(aux)) return undefined
+  const id = (aux as { readonly [key: string]: Schema.Json }).ID
+  return typeof id === "string" ? id : undefined
+}
+
+/**
+ * The progress of one build message, recording the image ID in `state`: from
+ * `aux.ID` (classic builder, and BuildKit's `moby.image.id`), or the only
+ * line of a quiet build. An in-band error fails with `StreamFailed`.
+ */
+const buildProgress = (
+  state: { id: string | undefined },
+  { error, ...message }: typeof DockerApi.BuildMessage.Type,
+  quiet: boolean
+): Effect.Effect<ReadonlyArray<BuildProgress>, DockerError> => {
+  const failure = inBandError(message.errorDetail, error)
+  if (failure !== undefined) return Effect.fail(failure)
+  const id = auxId(message.aux)
+  if (id !== undefined) {
+    state.id = id
+    return Effect.succeed([])
+  }
+  if (message.stream !== undefined) {
+    // `q` discards everything but the image ID, `aux` included
+    const quietMatch = quiet ? quietId.exec(message.stream) : null
+    if (quietMatch !== null) state.id = quietMatch[1]
+    return Effect.succeed([{ _tag: "Log", data: message.stream }])
+  }
+  if (message.status !== undefined || message.progressDetail !== undefined) {
+    return Effect.succeed([{
+      _tag: "Pull",
+      ...(message.id !== undefined ? { id: message.id } : {}),
+      ...(message.status !== undefined ? { status: message.status } : {}),
+      ...(message.progressDetail?.current !== undefined ? { current: message.progressDetail.current } : {}),
+      ...(message.progressDetail?.total !== undefined ? { total: message.progressDetail.total } : {})
+    }])
+  }
+  // BuildKit's `moby.buildkit.trace` isn't decoded yet
+  return Effect.succeed([])
+}
 
 // -----------------------------------------------------------------------------
 // service
@@ -622,6 +750,75 @@ export class DockerImages extends Context.Service<DockerImages, {
       readonly platform?: string | undefined
     }
   ) => Stream.Stream<DockerSchema.ProgressMessage, DockerError>
+  /**
+   * Builds an image, and returns its progress.
+   *
+   * **Details**
+   *
+   * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageBuild).
+   * See {@link BuildOptions} and `build`. The stream fails with
+   * `StreamFailed` on the build's first error.
+   */
+  readonly buildStream: (
+    context: Stream.Stream<Uint8Array, DockerError> | string,
+    options?: BuildOptions
+  ) => Stream.Stream<BuildProgress, DockerError>
+  /**
+   * Builds an image from a build context, and returns its ID.
+   *
+   * **Details**
+   *
+   * [Engine API: ImageBuild](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Image/operation/ImageBuild).
+   * The context is a tar, sent byte for byte: plain, or compressed with gzip,
+   * bzip2, xz or zstd (the Engine decompresses it). The client doesn't
+   * assemble it and applies no `.dockerignore`. Put the Dockerfile in it, and
+   * name it with `dockerfile` when it isn't `Dockerfile`; for BuildKit, make
+   * it the first entry, with a short ASCII path (a plain USTAR header), since
+   * without a session BuildKit only recognizes such a context.
+   *
+   * The context can also be a URL the Engine fetches, redacted in spans: a Git
+   * repository (`https://github.com/org/repo.git#ref:dir`, `git@…`), or the
+   * HTTP(S) URL of a tar or of a lone Dockerfile. Nothing is uploaded, and
+   * `dockerfile` is a path inside the fetched context.
+   *
+   * The ID comes from `aux.ID` (classic builder) or `moby.image.id`
+   * (BuildKit); `Successfully built` is never scraped. A `quiet` build's only
+   * output is the ID, which is then read from it.
+   *
+   * Credentials go only where they are asked for, see {@link BuildOptions}.
+   * **BuildKit can't use them**: without a `/session`, which this client
+   * doesn't speak, BuildKit pulls anonymously. To build from a private base
+   * image with `builder: "buildkit"`, pull it first with `pull` and build
+   * without `pull: true`: BuildKit then uses the local image.
+   *
+   * Typical reasons: `StreamFailed` (the build failed), `BadRequest` (on the
+   * classic builder, a Dockerfile parse error), `CredentialsUnavailable`,
+   * `ConnectionFailed`.
+   *
+   * **Example** (Building from a tar made with `effect/encoding/Tar`)
+   *
+   * ```ts import.meta.vitest
+   * import { Effect, Stream } from "effect"
+   * import { DockerImages } from "effect/docker"
+   * import { Tar } from "effect/encoding"
+   *
+   * const program = Effect.gen(function*() {
+   *   const images = yield* DockerImages.DockerImages
+   *   const context = Stream.make(
+   *     Tar.file("Dockerfile", "FROM alpine:3.22\nARG NODE_ENV\nRUN echo $NODE_ENV\n")
+   *   ).pipe(Stream.pipeThroughChannel(Tar.encode()), Stream.orDie)
+   *   const { id } = yield* images.build(context, {
+   *     tags: ["my-app:dev"],
+   *     buildArgs: { NODE_ENV: "production" }
+   *   })
+   *   return id
+   * })
+   * ```
+   */
+  readonly build: (
+    context: Stream.Stream<Uint8Array, DockerError> | string,
+    options?: BuildOptions
+  ) => Effect.Effect<{ readonly id: string }, DockerError>
 }>()("effect/docker/DockerImages") {}
 
 /**
@@ -678,6 +875,53 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
     )
   }
 
+  /** The progress of a build, recording its image ID in `state`. */
+  const buildWith = (
+    context: Stream.Stream<Uint8Array, DockerError> | string,
+    options: BuildOptions | undefined,
+    state: { id: string | undefined }
+  ): Stream.Stream<BuildProgress, DockerError> => {
+    const { auth, buildArgs, registries, ...query } = options ?? {}
+    // the configured proxy, unless the build sets the same args, as `docker build` adds it
+    const proxyArgs = Object.fromEntries(DockerConfig.proxyVariables(config.proxy))
+    const credentials = Effect.map(
+      Effect.forEach(
+        registries ?? [],
+        (registry) => Effect.map(engine.credential(registry), (credential) => [registry, credential] as const)
+      ),
+      (resolved) => {
+        // keyed and addressed as the Engine looks a registry up; a given credential wins
+        const out: Record<string, DockerApi.AuthConfig> = {}
+        for (const [registry, credential] of [...resolved, ...Object.entries(auth ?? {})]) {
+          if (credential === undefined) continue
+          const config = authConfig(registry, credential)
+          out[DockerConfig.normalizeRegistry(registry)] = config
+        }
+        return Object.keys(out).length === 0 ? undefined : out
+      }
+    )
+    return Stream.unwrap(Effect.map(credentials, (registryConfig) => {
+      const request = {
+        query: {
+          ...query,
+          builder: query.builder ?? config.builder,
+          forceRemove: query.forceRemove ?? true,
+          platform: query.platform ?? config.platform,
+          buildArgs: buildArgs === undefined && Object.keys(proxyArgs).length === 0
+            ? undefined
+            : { ...proxyArgs, ...buildArgs }
+        },
+        headers: { "x-registry-config": registryConfig }
+      }
+      return (typeof context === "string"
+        ? api.buildRemote({ ...request, query: { ...request.query, remote: context } })
+        : api.build({ ...request, payload: context })).pipe(
+          Stream.mapEffect((message) => buildProgress(state, message, query.quiet === true)),
+          Stream.flattenIterable
+        )
+    }))
+  }
+
   return DockerImages.of({
     list: (options) => api.list({ query: options ?? {} }),
     inspect: (name, options) => api.inspect({ params: { name }, query: options ?? {} }),
@@ -732,7 +976,25 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
             }))
         )
       ),
-    import: importImage
+    import: importImage,
+    buildStream: (context, options) => Stream.suspend(() => buildWith(context, options, { id: undefined })),
+    build: (context, options) =>
+      Effect.suspend(() => {
+        const state: { id: string | undefined } = { id: undefined }
+        return buildWith(context, options, state).pipe(
+          Stream.runDrain,
+          Effect.flatMap(() =>
+            state.id !== undefined ? Effect.succeed({ id: state.id }) : Effect.fail(
+              new DockerError({
+                reason: new InvalidResponse({
+                  issue: "the build ended without reporting an image ID",
+                  operation: "docker.Images.build"
+                })
+              })
+            )
+          )
+        )
+      })
   })
 })
 

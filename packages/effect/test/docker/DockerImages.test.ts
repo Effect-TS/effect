@@ -1,10 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Equal, Redacted, Result, Schema, Stream } from "effect"
 import { type Docker, DockerContainers, DockerError, DockerImages, DockerSystem } from "effect/docker"
+import { Tar } from "effect/encoding"
 import { inspect } from "node:util"
-import { json, makeStubEngine, ndjson, recordSpans, withPing } from "./utils/stub.ts"
+import { helpers, json, makeStubEngine, ndjson, recordSpans, withPing } from "./utils/stub.ts"
 
 const Images = DockerImages.DockerImages
+
+const context = Stream.make(Tar.file("Dockerfile", "FROM alpine\n")).pipe(
+  Stream.pipeThroughChannel(Tar.encode()),
+  Stream.orDie
+)
 
 /** The JSON of a padded base64url header, checking the alphabet the Engine needs. */
 const decodeHeader = (value: string) => {
@@ -242,6 +248,129 @@ describe("DockerImages", () => {
       assert.strictEqual(stub.requests.length, 1)
     }))
 
+  it.effect("reads a build's progress and image ID, from either builder or a quiet build", () =>
+    Effect.gen(function*() {
+      const build = (messages: ReadonlyArray<unknown>, options?: DockerImages.BuildOptions) => {
+        const stub = makeStubEngine(withPing("1.44", () => ndjson(...messages)))
+        return Effect.all([
+          Stream.runCollect(Stream.unwrap(Images.useSync((images) => images.buildStream(context, options)))),
+          Images.use((images) => images.build(context, options))
+        ]).pipe(stub.provide)
+      }
+      const [classic, { id }] = yield* build([
+        { stream: "Step 1/2 : FROM alpine\n" },
+        { status: "Pulling fs layer", id: "l", progressDetail: {} },
+        { stream: " ---> abc\n" },
+        { aux: { ID: "sha256:built" } },
+        { stream: "Successfully built abc\n" }
+      ])
+      assert.deepStrictEqual(classic.map((progress) => progress._tag), ["Log", "Pull", "Log", "Log"])
+      assert.strictEqual(id, "sha256:built")
+      // BuildKit's trace isn't decoded: only its image ID counts
+      const [buildKit, fromBuildKit] = yield* build([
+        { id: "moby.buildkit.trace", aux: "CgsKBXN0ZXAxEgJpZA==" },
+        { id: "moby.image.id", aux: { ID: "sha256:buildkit" } }
+      ])
+      assert.deepStrictEqual([buildKit, fromBuildKit.id], [[], "sha256:buildkit"])
+      // a quiet build's only output is the image ID
+      const hex = "0123456789abcdef".repeat(4)
+      const [, quiet] = yield* build([{ stream: `sha256:${hex}\n` }], { quiet: true })
+      assert.strictEqual(quiet.id, `sha256:${hex}`)
+      const failed = yield* Effect.flip(build([{ stream: "Step 1/1\n" }, { errorDetail: { message: "boom" } }]))
+      assert(failed.reason._tag === "StreamFailed")
+      assert.strictEqual(failed.reason.message, "boom")
+    }))
+
+  it.effect("sends the build context as given, or its URL, with the options under the Engine's names", () =>
+    Effect.gen(function*() {
+      const stub = makeStubEngine(withPing("1.44", () => ndjson({ aux: { ID: "sha256:built" } })), {
+        config: { proxy: { httpProxy: "http://proxy:3128" }, platform: "linux/arm64", builder: "classic" }
+      })
+      const bytes = new Uint8Array([0x1f, 0x8b, 1, 2, 3])
+      yield* Images.use((images) =>
+        Effect.all([
+          images.build(Stream.make(bytes), {
+            dockerfile: "sub/Dockerfile",
+            tags: ["a:1", "b:2"],
+            labels: { app: "demo" },
+            cacheFrom: ["a:0"],
+            noCache: true
+          }),
+          images.build(context, { buildArgs: { HTTP_PROXY: "mine" }, builder: "buildkit", platform: "linux/amd64" }),
+          images.build("https://github.com/org/repo.git#main:app", { dockerfile: "Dockerfile.dev" })
+        ])
+      ).pipe(stub.provide)
+      const [first, second, remote] = stub.requests.filter((request) => request.url.pathname.endsWith("/build"))
+      assert.deepStrictEqual(first.bytes, bytes)
+      assert.strictEqual(first.headers["content-type"], "application/x-tar")
+      assert.deepStrictEqual(Array.from(first.url.searchParams), [
+        ["dockerfile", "sub/Dockerfile"],
+        ["t", "a:1"],
+        ["t", "b:2"],
+        ["version", "1"],
+        ["forcerm", "true"],
+        ["platform", "linux/arm64"],
+        ["buildargs", JSON.stringify({ HTTP_PROXY: "http://proxy:3128", http_proxy: "http://proxy:3128" })],
+        ["labels", JSON.stringify({ app: "demo" })],
+        ["cachefrom", JSON.stringify(["a:0"])],
+        ["nocache", "true"]
+      ])
+      assert.deepStrictEqual(
+        {
+          version: second.url.searchParams.get("version"),
+          platform: second.url.searchParams.get("platform"),
+          buildargs: JSON.parse(second.url.searchParams.get("buildargs")!)
+        },
+        {
+          version: "2",
+          platform: "linux/amd64",
+          buildargs: { HTTP_PROXY: "mine", http_proxy: "http://proxy:3128" }
+        }
+      )
+      // a URL is fetched by the Engine: nothing is uploaded
+      assert.isUndefined(remote.bytes)
+      assert.deepStrictEqual(
+        { remote: remote.url.searchParams.get("remote"), dockerfile: remote.url.searchParams.get("dockerfile") },
+        { remote: "https://github.com/org/repo.git#main:app", dockerfile: "Dockerfile.dev" }
+      )
+    }))
+
+  it.effect("sends only the credentials a build asks for in X-Registry-Config", () =>
+    Effect.gen(function*() {
+      const spawner = helpers({
+        test: () => ({ stdout: JSON.stringify({ ServerURL: "ghcr.io", Username: "helper", Secret: "s" }) })
+      })
+      const stub = makeStubEngine(withPing("1.44", () => ndjson({ aux: { ID: "sha256:built" } })), {
+        spawner,
+        config: { auths: { "docker.io": { username: "hub", password: Redacted.make("x") } }, credsStore: "test" }
+      })
+      yield* Images.use((images) =>
+        Effect.all([
+          images.build(context),
+          images.build(context, {
+            auth: { "docker.io": { username: "given", password: Redacted.make("g") } },
+            // the same registry spelled another way: the given credential wins
+            registries: ["ghcr.io", "index.docker.io"]
+          })
+        ])
+      ).pipe(stub.provide)
+      const [none, asked] = stub.requests.filter((request) => request.url.pathname.endsWith("/build"))
+      assert.isUndefined(none.headers["x-registry-config"])
+      assert.deepStrictEqual(decodeHeader(asked.headers["x-registry-config"]), {
+        "https://index.docker.io/v1/": {
+          username: "given",
+          password: "g",
+          serveraddress: "https://index.docker.io/v1/"
+        },
+        "ghcr.io": { username: "helper", password: "s", serveraddress: "ghcr.io" }
+      })
+      // only the registries asked for ran their helper
+      assert.deepStrictEqual(spawner.runs, [
+        "docker-credential-test get: ghcr.io",
+        "docker-credential-test get: https://index.docker.io/v1/"
+      ])
+    }))
+
   it.effect("keeps secrets out of spans and errors", () =>
     Effect.gen(function*() {
       const secret = "secret-value"
@@ -257,6 +386,8 @@ describe("DockerImages", () => {
           Stream.runDrain(images.import(`https://example.com/rootfs.tar?X-Amz-Signature=${secret}`))
         ),
         Images.use((images) => images.commit("c", { changes: [`ENV TOKEN=${secret}`] })),
+        Images.use((images) => images.build(context, { buildArgs: { NPM_TOKEN: secret } })),
+        Images.use((images) => images.build(`https://oauth2:${secret}@gitlab.com/org/repo.git`)),
         DockerSystem.DockerSystem.use((system) => system.auth({ username: "u", password: Redacted.make(secret) })),
         DockerContainers.DockerContainers.use((containers) =>
           containers.create({ Image: "alpine", Env: [`TOKEN=${secret}`] })

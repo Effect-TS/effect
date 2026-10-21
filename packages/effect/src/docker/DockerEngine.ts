@@ -573,9 +573,10 @@ const redactedHeaders = ["X-Registry-Auth", "X-Registry-Config"]
 
 /**
  * The query parameters that can carry secrets: Dockerfile instructions such as
- * `ENV TOKEN=…`, and import sources (presigned URLs, or `user:pass@`).
+ * `ENV TOKEN=…`, import sources and remote build contexts (presigned URLs, or
+ * `user:pass@`), and build args.
  */
-const redactedUrlParams = ["changes", "fromSrc"]
+const redactedUrlParams = ["changes", "fromSrc", "remote", "buildargs"]
 
 /** Runs a request with the registry headers and secret query parameters redacted in spans. */
 const withRedactedNames = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>

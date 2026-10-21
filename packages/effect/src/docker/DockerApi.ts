@@ -963,17 +963,15 @@ const base64UrlPadded = SchemaTransformation.makeTransformation({
  * and pulls anonymously, so the alphabet matters.
  */
 const RegistryAuth = Schema.String.pipe(
-  Schema.decodeTo(
-    Schema.fromJsonString(
-      Schema.Struct({
-        username: Schema.optionalKey(Schema.String),
-        password: Schema.optionalKey(Schema.RedactedFromValue(Schema.String)),
-        identityToken: Schema.optionalKey(Schema.RedactedFromValue(Schema.String)),
-        serverAddress: Schema.optionalKey(Schema.String)
-      }).pipe(Schema.encodeKeys({ identityToken: "identitytoken", serverAddress: "serveraddress" }))
-    ),
-    base64UrlPadded
-  )
+  Schema.decodeTo(Schema.fromJsonString(AuthConfig), base64UrlPadded)
+)
+
+/**
+ * `X-Registry-Config` of a build: credentials keyed by registry, each as the
+ * Engine's `AuthConfig` JSON with the registry it is for.
+ */
+const RegistryConfig = Schema.String.pipe(
+  Schema.decodeTo(Schema.fromJsonString(Schema.Record(Schema.String, AuthConfig)), base64UrlPadded)
 )
 
 /**
@@ -996,6 +994,86 @@ const importQuery = {
   changes: Schema.optional(Schema.Array(Schema.String)),
   platform: Schema.optional(Schema.String)
 }
+
+/** `version`: the builder, as the Engine numbers them. */
+const Builder = Schema.Literals(["1", "2"]).pipe(
+  Schema.decodeTo(
+    Schema.Literals(["classic", "buildkit"]),
+    SchemaTransformation.transform({
+      decode: (version) => version === "2" ? "buildkit" as const : "classic" as const,
+      encode: (builder) => builder === "buildkit" ? "2" as const : "1" as const
+    })
+  )
+)
+
+/** The query of `POST /build`, from `DockerImages.BuildOptions`. */
+const buildFields = {
+  dockerfile: Schema.optional(Schema.String),
+  tags: Schema.optional(Schema.Array(Schema.String)),
+  builder: Schema.optional(Builder),
+  forceRemove: Schema.optional(Schema.Boolean),
+  remove: Schema.optional(Schema.Boolean),
+  target: Schema.optional(Schema.String),
+  platform: Schema.optional(Schema.String),
+  buildArgs: Schema.optional(
+    Schema.fromJsonString(
+      Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.RedactedFromValue(Schema.String)]))
+    )
+  ),
+  labels: Schema.optional(Schema.fromJsonString(Schema.Record(Schema.String, Schema.String))),
+  cacheFrom: Schema.optional(Schema.fromJsonString(Schema.Array(Schema.String))),
+  pull: Schema.optional(Schema.Boolean),
+  noCache: Schema.optional(Schema.Boolean),
+  quiet: Schema.optional(Schema.Boolean),
+  networkMode: Schema.optional(Schema.String),
+  extraHosts: Schema.optional(Schema.Array(Schema.String)),
+  shmSize: Schema.optional(Schema.Number),
+  memory: Schema.optional(Schema.Number),
+  memorySwap: Schema.optional(Schema.Number),
+  cpuShares: Schema.optional(Schema.Number),
+  cpuSetCpus: Schema.optional(Schema.String),
+  cpuPeriod: Schema.optional(Schema.Number),
+  cpuQuota: Schema.optional(Schema.Number),
+  squash: Schema.optional(Schema.Boolean)
+}
+
+const buildKeys = {
+  tags: "t",
+  builder: "version",
+  forceRemove: "forcerm",
+  remove: "rm",
+  buildArgs: "buildargs",
+  cacheFrom: "cachefrom",
+  noCache: "nocache",
+  quiet: "q",
+  networkMode: "networkmode",
+  extraHosts: "extrahosts",
+  shmSize: "shmsize",
+  memorySwap: "memswap",
+  cpuShares: "cpushares",
+  cpuSetCpus: "cpusetcpus",
+  cpuPeriod: "cpuperiod",
+  cpuQuota: "cpuquota"
+} as const
+
+const BuildQuery = Schema.Struct(buildFields).pipe(Schema.encodeKeys(buildKeys))
+
+/** {@link BuildQuery} with the URL of a context the Engine fetches. */
+const BuildRemoteQuery = Schema.Struct({ ...buildFields, remote: Schema.String }).pipe(Schema.encodeKeys(buildKeys))
+
+/**
+ * A build's messages: progress messages whose `aux` can be any JSON
+ * (BuildKit's trace is a string).
+ *
+ * @internal
+ */
+export const BuildMessage = Schema.toCodecGoJson(
+  DockerSchema.ProgressMessage.mapFields((fields) => ({
+    ...fields,
+    error: Schema.optionalKey(Schema.String),
+    aux: Schema.optionalKey(Schema.Json)
+  }))
+)
 
 /**
  * The Engine's image endpoints, which `DockerImages` is a client of.
@@ -1104,6 +1182,17 @@ export const Images = HttpApiGroup.make("images").add(
     query: { fromSrc: Schema.Literal("-"), ...importQuery },
     payload: tar,
     success: progress
+  }),
+  HttpApiEndpoint.post("build", "/build", {
+    query: BuildQuery,
+    headers: { "x-registry-config": Schema.optional(RegistryConfig) },
+    payload: tar,
+    success: HttpApiSchema.StreamNdjson({ schema: BuildMessage, contentType: "application/json" })
+  }),
+  HttpApiEndpoint.post("buildRemote", "/build", {
+    query: BuildRemoteQuery,
+    headers: { "x-registry-config": Schema.optional(RegistryConfig) },
+    success: HttpApiSchema.StreamNdjson({ schema: BuildMessage, contentType: "application/json" })
   }),
   HttpApiEndpoint.post("push", "/images/:name/push", {
     params: name,

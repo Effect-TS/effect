@@ -649,9 +649,21 @@ const proxyNames = [
 ] as const
 
 /**
+ * The variables the Docker CLI passes a configured proxy on as, to builds
+ * and new containers: each setting as `HTTP_PROXY` and `http_proxy`, and so
+ * on.
+ *
+ * @internal
+ */
+export const proxyVariables = (proxy: ResolvedConfig["proxy"]): ReadonlyArray<readonly [string, string]> =>
+  proxyNames.flatMap(([key, name]) => {
+    const value = proxy[key]
+    return value === undefined || value === "" ? [] : [[name, value] as const, [name.toLowerCase(), value] as const]
+  })
+
+/**
  * A container's `Env` with the proxy variables it doesn't set itself, as
- * `docker create` adds them: each setting as `HTTP_PROXY` and `http_proxy`,
- * and so on.
+ * `docker create` adds them.
  *
  * @internal
  */
@@ -662,10 +674,7 @@ export const withProxyEnv = (
   const set = new Set(
     (env ?? []).map((entry) => (Redacted.isRedacted(entry) ? Redacted.value(entry) : entry).split("=", 1)[0])
   )
-  const added = proxyNames.flatMap(([key, name]) => {
-    const value = proxy[key]
-    return value === undefined || value === "" ? [] : [`${name}=${value}`, `${name.toLowerCase()}=${value}`]
-  }).filter((entry) => !set.has(entry.split("=", 1)[0]))
+  const added = proxyVariables(proxy).filter(([name]) => !set.has(name)).map(([name, value]) => `${name}=${value}`)
   return added.length === 0 ? env : [...(env ?? []), ...added]
 }
 

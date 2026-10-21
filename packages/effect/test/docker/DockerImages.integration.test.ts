@@ -5,12 +5,20 @@ import { Tar } from "effect/encoding"
 import { ensureImage, image, labels, layer, scopedContainer } from "./utils/live.ts"
 
 const registryImage = "docker.io/library/registry:2"
+// alpine's busybox has no `httpd`
+const busyboxImage = "docker.io/library/busybox:1.37"
 
 // `htpasswd -B` for effect / docker-test (bcrypt, cost 5)
 const htpasswd = "effect:$2b$05$EhQLAN18hMbRRF/zaRttLuHBsoMjIZiBHyygxoWFnwDapVBOocZeW\n"
 const credential = { username: "effect", password: Redacted.make("docker-test") }
 
 const Images = DockerImages.DockerImages
+
+const tarOf = (...entries: ReadonlyArray<Tar.Entry>) =>
+  Stream.fromIterable(entries).pipe(Stream.pipeThroughChannel(Tar.encode()), Stream.orDie)
+
+// no `RUN`: a step that runs a container makes every build several times slower
+const dockerfile = (from: string) => tarOf(Tar.file("Dockerfile", `FROM ${from}\nLABEL built=1\n`))
 
 /** Starts a `registry:2` with htpasswd auth, and returns its `localhost:<port>`. */
 const privateRegistry = Effect.gen(function*() {
@@ -117,6 +125,52 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
       }
     }))
 
+  it.effect("builds with the classic builder and with BuildKit", () =>
+    Effect.gen(function*() {
+      const images = yield* Images
+      yield* ensureImage(image)
+      const classic = yield* images.build(dockerfile(image), { builder: "classic", labels })
+      assert.match(classic.id, /^sha256:/)
+      const logs = yield* Stream.runCollect(
+        images.buildStream(dockerfile(image), { builder: "classic", labels, noCache: true })
+      )
+      assert.isTrue(logs.some((progress) => progress._tag === "Log" && progress.data.includes("LABEL built=1")))
+      const buildKit = yield* images.build(dockerfile(image), { builder: "buildkit", labels, noCache: true })
+      assert.match(buildKit.id, /^sha256:/)
+      for (const builder of ["classic", "buildkit"] as const) {
+        const failed = yield* Effect.flip(
+          images.build(tarOf(Tar.file("Dockerfile", `FROM ${image}\nCOPY missing /\n`)), { builder, labels })
+        )
+        assert(failed.reason._tag === "StreamFailed", failed.message)
+      }
+      const built = yield* images.list({ all: true, filters: { label: "effect-docker-test=1" } })
+      yield* Effect.forEach(built, (summary) => Effect.ignore(images.remove(summary.Id, { force: true })))
+    }), 120_000)
+
+  it.effect("builds from a URL the Engine fetches, with either builder", () =>
+    Effect.gen(function*() {
+      const images = yield* Images
+      const containers = yield* DockerContainers.DockerContainers
+      yield* Effect.all([ensureImage(image), ensureImage(busyboxImage)])
+      const context = Buffer.concat(yield* Stream.runCollect(dockerfile(image)))
+      // served on the default bridge, which the Engine reaches wherever it runs
+      const id = yield* scopedContainer({ Image: busyboxImage, Cmd: ["httpd", "-f", "-p", "8080", "-h", "/www"] })
+      yield* containers.copyTo(id, "/", Stream.make(Tar.directory("www"), Tar.file("www/context.tar", context)))
+      yield* containers.start(id)
+      const address = (yield* containers.inspect(id)).NetworkSettings?.Networks?.bridge?.IPAddress
+      assert.isString(address)
+      for (const builder of ["classic", "buildkit"] as const) {
+        const built = yield* images.build(`http://${address}:8080/context.tar`, { builder, labels, noCache: true })
+          .pipe(
+            // until httpd listens
+            Effect.retry({ schedule: Schedule.spaced("200 millis"), times: 25 })
+          )
+        assert.match(built.id, /^sha256:/)
+      }
+      const built = yield* images.list({ all: true, filters: { label: "effect-docker-test=1" } })
+      yield* Effect.forEach(built, (summary) => Effect.ignore(images.remove(summary.Id, { force: true })))
+    }), 120_000)
+
   it.effect("searches Docker Hub", () =>
     Effect.gen(function*() {
       const results = yield* Images.use((images) => images.search("alpine", { limit: 1 }))
@@ -141,6 +195,18 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("Images (
       const anonymousPull = yield* Effect.flip(Stream.runDrain(images.pull(target)))
       assert.oneOf(anonymousPull.reason._tag, ["StreamFailed", "Unauthorized", "ServerError", "NotFound"])
       yield* Stream.runDrain(images.pull(target, { auth: credential }))
-      yield* Effect.ignore(images.remove(target, { force: true }))
+      // the classic builder pulls a private base image with the build's credentials
+      const classic = yield* images.build(dockerfile(target), {
+        builder: "classic",
+        labels,
+        pull: true,
+        auth: { [registry]: credential }
+      })
+      assert.match(classic.id, /^sha256:/)
+      // BuildKit can't authenticate without a session, but uses the pulled image
+      const prePulled = yield* images.build(dockerfile(target), { builder: "buildkit", labels })
+      assert.match(prePulled.id, /^sha256:/)
+      yield* Effect.forEach([classic.id, prePulled.id, target], (name) =>
+        Effect.ignore(images.remove(name, { force: true })))
     }), 240_000)
 })
