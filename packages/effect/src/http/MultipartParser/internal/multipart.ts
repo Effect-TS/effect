@@ -36,6 +36,25 @@ export function defaultIsFile(info: PartInfo) {
   )
 }
 
+// RFC 8187 ext-value: charset "'" [ language ] "'" value-chars
+const extValueRE = /^(utf-8|iso-8859-1)'[a-z0-9-]*'((?:%[0-9a-f]{2}|[!#$&+.^_`|~\w-])*)$/i
+const pctEncodedRE = /%([0-9a-f]{2})/gi
+
+function decodeExtValue(value: string): string | undefined {
+  const match = extValueRE.exec(value)
+  if (match === null) {
+    return undefined
+  }
+  if (match[1].toLowerCase() === "iso-8859-1") {
+    return match[2].replace(pctEncodedRE, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+  }
+  try {
+    return decodeURIComponent(match[2])
+  } catch {
+    return undefined
+  }
+}
+
 function parseBoundary(headers: Record<string, string>) {
   const contentType = CT.parse(headers["content-type"])
   return contentType.parameters.boundary
@@ -160,36 +179,27 @@ export function make({
         }
 
         const contentType = CT.parse(result.headers["content-type"] as string)
-        const contentDisposition = CT.parse(
-          result.headers["content-disposition"] as string,
-          true
-        )
+        const dispositionHeader = result.headers["content-disposition"]
+        const contentDisposition = CT.parse(dispositionHeader as string, true)
+        const hasExtFilename = "filename*" in contentDisposition.parameters
+        const filename = hasExtFilename
+          ? decodeExtValue(contentDisposition.parameters["filename*"])
+          : contentDisposition.parameters.filename
 
         if (
-          "form-data" === contentDisposition.value &&
-          !("name" in contentDisposition.parameters)
+          (dispositionHeader !== undefined && contentDisposition.value === "") ||
+          ("form-data" === contentDisposition.value && !("name" in contentDisposition.parameters)) ||
+          (hasExtFilename && filename === undefined)
         ) {
           skipBody()
           return onError(errInvalidDisposition)
         }
 
-        let encodedFilename: string | undefined
-        if ("filename*" in contentDisposition.parameters) {
-          const parts = contentDisposition.parameters["filename*"].split("''")
-          if (parts.length === 2) {
-            try {
-              encodedFilename = decodeURIComponent(parts[1])
-            } catch {
-              encodedFilename = parts[1]
-            }
-          }
-        }
-
         state.info = {
           name: contentDisposition.parameters.name ?? "",
-          filename: encodedFilename ?? contentDisposition.parameters.filename,
+          filename,
           contentType: contentType.value === ""
-            ? contentDisposition.parameters.filename !== undefined
+            ? filename !== undefined
               ? "application/octet-stream"
               : "text/plain"
             : contentType.value,
