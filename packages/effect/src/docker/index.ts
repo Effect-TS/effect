@@ -51,6 +51,12 @@ export * as DockerExec from "./DockerExec.ts"
  * @stability unstable
  * @since 4.0.6
  */
+export * as DockerImages from "./DockerImages.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
 export * as DockerNetworks from "./DockerNetworks.ts"
 
 /**

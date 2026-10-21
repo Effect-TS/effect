@@ -454,8 +454,8 @@ export class UnsupportedApiVersion extends Data.TaggedError("UnsupportedApiVersi
 }
 
 /**
- * A request option or body field is newer than the negotiated API version.
- * It was not sent.
+ * A request option or body field, or the operation itself, is newer than
+ * the negotiated API version. The request was not sent.
  *
  * @stability unstable
  * @category errors
@@ -477,6 +477,33 @@ export class OptionNotSupported extends Data.TaggedError("OptionNotSupported")<{
   }
   override get message() {
     return `${this.option} requires API ${this.requiredVersion}, but the negotiated version is ${this.negotiatedVersion}`
+  }
+}
+
+/**
+ * A string given as an image reference isn't one: it doesn't fit Docker's
+ * reference grammar, its repository has upper-case letters, or it is an image
+ * ID. Nothing was sent.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class InvalidReference extends Data.TaggedError("InvalidReference")<{
+  readonly reference: string
+  readonly issue: SchemaIssue.Issue
+}> {
+  /**
+   * Whether retrying may succeed: never for this reason.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+  override get message() {
+    return `Invalid image reference ${JSON.stringify(this.reference)}: ${String(this.issue)}`
   }
 }
 
@@ -529,6 +556,32 @@ export class StdinNotAttached extends Data.TaggedError("StdinNotAttached")<{}> {
 }
 
 /**
+ * Registry credentials couldn't be resolved: a credential helper is missing,
+ * failed, timed out, or answered malformed output. Such failures never turn
+ * into an anonymous request.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class CredentialsUnavailable extends Data.TaggedError("CredentialsUnavailable")<{
+  readonly registry: string
+  readonly helper?: string | undefined
+  readonly message: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Whether retrying may succeed: never for this reason.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+}
+
+/**
  * Every reason a {@link DockerError} can carry.
  *
  * @stability unstable
@@ -551,5 +604,7 @@ export type DockerErrorReason =
   | InvalidResponse
   | UnsupportedApiVersion
   | OptionNotSupported
+  | InvalidReference
   | StreamFailed
   | StdinNotAttached
+  | CredentialsUnavailable

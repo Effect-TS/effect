@@ -34,7 +34,10 @@ import * as Host from "effect/net/Host"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
+import * as NodeChildProcessSpawner from "./NodeChildProcessSpawner.ts"
+import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeHttpClient from "./NodeHttpClient.ts"
+import * as NodePath from "./NodePath.ts"
 import * as NodeServices from "./NodeServices.ts"
 
 // `tls.connect` sends SNI only with a `servername`: a domain name without the
@@ -55,6 +58,11 @@ const tlsOptions = (endpoint: typeof DockerConfig.Endpoint.cases.Tcp.Type, tls: 
   rejectUnauthorized: tls.verify
 })
 
+// runs registry credential helpers
+const spawnerLayer = NodeChildProcessSpawner.layer.pipe(
+  Layer.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
+)
+
 /**
  * Builds a `DockerEngine` on Node.js from the `DockerConfig` in the context,
  * over a `node:http` `HttpClient` whose agents reach the Endpoint: its unix
@@ -65,7 +73,7 @@ const tlsOptions = (endpoint: typeof DockerConfig.Endpoint.cases.Tcp.Type, tls: 
  * The client sets no timeouts (the Engine sends no headers until a `stop`
  * with a long timeout is done), and hands over the connection of exec and
  * attach upgrades. The agents are destroyed with the scope. Nothing contacts
- * the Engine.
+ * the Engine. Registry credential helpers run as Node.js child processes.
  *
  * @stability unstable
  * @category constructors
@@ -87,7 +95,7 @@ export const make: Effect.Effect<
   const httpClient = yield* NodeHttpClient.makeNodeHttp.pipe(
     Effect.provideService(NodeHttpClient.HttpAgent, agent)
   )
-  return yield* DockerEngine.make(httpClient)
+  return yield* DockerEngine.make(httpClient).pipe(Effect.provide(spawnerLayer))
 })
 
 /**

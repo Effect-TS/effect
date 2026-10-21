@@ -5,8 +5,7 @@
  */
 import { NodeDocker } from "@effect/platform-node"
 import { Effect, type Layer, Stream } from "effect"
-import { type Docker, type DockerConfig, DockerContainers, DockerEngine } from "effect/docker"
-import { HttpClientRequest } from "effect/http"
+import { type Docker, type DockerConfig, DockerContainers, type DockerEngine, DockerImages } from "effect/docker"
 
 /** The `DockerEngine` and `Docker` layer. */
 export const layer: Layer.Layer<DockerEngine.DockerEngine | Docker.Docker, DockerConfig.DockerConfigError> = NodeDocker
@@ -19,18 +18,13 @@ export const labels = { "effect-docker-test": "1" }
 export const image = "docker.io/library/alpine:3.22"
 
 /** Pulls an image unless it is present. */
-export const ensureImage = Effect.fnUntraced(function*(reference: string) {
-  const engine = yield* DockerEngine.DockerEngine
-  const present = yield* engine.client.get(`/images/${encodeURIComponent(reference)}/json`).pipe(
-    Effect.as(true),
-    Effect.catchReason("DockerError", "NotFound", () => Effect.succeed(false))
+export const ensureImage = (reference: string) =>
+  DockerImages.DockerImages.use((images) =>
+    images.inspect(reference).pipe(
+      Effect.asVoid,
+      Effect.catchReason("DockerError", "NotFound", () => Stream.runDrain(images.pull(reference)))
+    )
   )
-  if (present) return
-  const response = yield* engine.client.execute(
-    HttpClientRequest.post("/images/create").pipe(HttpClientRequest.setUrlParam("fromImage", reference))
-  )
-  yield* Stream.runDrain(response.stream)
-})
 
 /** Creates a labelled container that is force-removed with the scope. */
 export const scopedContainer = (config: Parameters<DockerContainers.DockerContainers["Service"]["create"]>[0]) =>

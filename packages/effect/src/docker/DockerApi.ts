@@ -32,6 +32,7 @@ import * as HttpApiMiddleware from "../http-api/HttpApiMiddleware.ts"
 import * as HttpApiSchema from "../http-api/HttpApiSchema.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
+import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as DockerSchema from "./DockerSchema.ts"
 
@@ -41,7 +42,7 @@ import * as DockerSchema from "./DockerSchema.ts"
 
 /**
  * An endpoint annotation: the request fields newer than API 1.44, each with
- * the version it arrived in.
+ * the version it arrived in, and the endpoint's own version when it is newer.
  * A key names a field of the request's `query` or `payload` as the caller
  * passes it, a dotted key (`HostConfig.Init`) a nested one, and a `*` key any
  * element of an array or entry of a map
@@ -52,6 +53,8 @@ import * as DockerSchema from "./DockerSchema.ts"
  * @internal
  */
 export class ApiVersions extends Context.Service<ApiVersions, {
+  /** The version the endpoint itself arrived in. */
+  readonly endpoint?: string | undefined
   readonly query?: Readonly<Record<string, string>> | undefined
   readonly payload?: Readonly<Record<string, string>> | undefined
 }>()("effect/docker/DockerApi/ApiVersions") {}
@@ -939,6 +942,178 @@ export const Volumes = HttpApiGroup.make("volumes").add(
 ).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// images
+// -----------------------------------------------------------------------------
+
+/** An OCI platform as the JSON the Engine reads from `platform`. */
+const Platform = Schema.fromJsonString(DockerSchema.OCIPlatform)
+
+/** One platform, or several as a repeated `platform`. */
+const Platforms = Schema.Union([Platform, Schema.Array(Platform)])
+
+/** Go's padded `base64.URLEncoding`, which the Engine decodes registry headers with. */
+const base64UrlPadded = SchemaTransformation.makeTransformation({
+  decode: SchemaGetter.decodeBase64UrlString<string>(),
+  encode: SchemaGetter.encodeBase64Url<string>({ padding: true })
+})
+
+/**
+ * `X-Registry-Auth`: a credential as the Engine's `AuthConfig` JSON, with the
+ * registry it is for; anonymous as `{}`. The Engine ignores standard base64
+ * and pulls anonymously, so the alphabet matters.
+ */
+const RegistryAuth = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.fromJsonString(
+      Schema.Struct({
+        username: Schema.optionalKey(Schema.String),
+        password: Schema.optionalKey(Schema.RedactedFromValue(Schema.String)),
+        identityToken: Schema.optionalKey(Schema.RedactedFromValue(Schema.String)),
+        serverAddress: Schema.optionalKey(Schema.String)
+      }).pipe(Schema.encodeKeys({ identityToken: "identitytoken", serverAddress: "serveraddress" }))
+    ),
+    base64UrlPadded
+  )
+)
+
+/**
+ * A progress message; the Engine still sends the deprecated `error` beside
+ * `errorDetail`.
+ *
+ * @internal
+ */
+export const Progress = Schema.toCodecGoJson(
+  DockerSchema.ProgressMessage.mapFields((fields) => ({ ...fields, error: Schema.optionalKey(Schema.String) }))
+)
+
+/** The Engine's progress stream: one JSON message per line, as `application/json`. */
+const progress = HttpApiSchema.StreamNdjson({ schema: Progress, contentType: "application/json" })
+
+const importQuery = {
+  repo: Schema.optional(Schema.String),
+  tag: Schema.optional(Schema.String),
+  message: Schema.optional(Schema.String),
+  changes: Schema.optional(Schema.Array(Schema.String)),
+  platform: Schema.optional(Schema.String)
+}
+
+/**
+ * The Engine's image endpoints, which `DockerImages` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Images = HttpApiGroup.make("images").add(
+  HttpApiEndpoint.get("list", "/images/json", {
+    query: Schema.Struct({
+      all: Schema.optional(Schema.Boolean),
+      filters,
+      sharedSize: Schema.optional(Schema.Boolean),
+      digests: Schema.optional(Schema.Boolean),
+      manifests: Schema.optional(Schema.Boolean),
+      identity: Schema.optional(Schema.Boolean)
+    }).pipe(Schema.encodeKeys({ sharedSize: "shared-size" })),
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageSummary))
+  }).annotate(ApiVersions, { query: { manifests: "1.47", identity: "1.54" } }),
+  HttpApiEndpoint.get("inspect", "/images/:name/json", {
+    params: name,
+    query: { manifests: Schema.optional(Schema.Boolean), platform: Schema.optional(Platform) },
+    success: Schema.toCodecGoJson(DockerSchema.ImageInspect)
+  }).annotate(ApiVersions, { query: { manifests: "1.48", platform: "1.49" } }),
+  HttpApiEndpoint.get("history", "/images/:name/history", {
+    params: name,
+    query: { platform: Schema.optional(Platform) },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageHistoryResponseItem))
+  }).annotate(ApiVersions, { query: { platform: "1.48" } }),
+  HttpApiEndpoint.get("attestations", "/images/:name/attestations", {
+    params: name,
+    query: {
+      platform: Schema.optional(Platform),
+      type: Schema.optional(Schema.Array(Schema.String)),
+      statement: Schema.optional(Schema.Boolean)
+    },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.AttestationStatement))
+  }).annotate(ApiVersions, { endpoint: "1.55" }),
+  HttpApiEndpoint.post("tag", "/images/:name/tag", {
+    params: name,
+    query: { repo: Schema.String, tag: Schema.optional(Schema.String) },
+    success: HttpApiSchema.Empty(201)
+  }),
+  HttpApiEndpoint.delete("remove", "/images/:name", {
+    params: name,
+    query: Schema.Struct({
+      force: Schema.optional(Schema.Boolean),
+      noPrune: Schema.optional(Schema.Boolean),
+      platforms: Schema.optional(Schema.Array(Platform))
+    }).pipe(Schema.encodeKeys({ noPrune: "noprune" })),
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageDeleteResponseItem))
+  }).annotate(ApiVersions, { query: { platforms: "1.50" } }),
+  HttpApiEndpoint.post("prune", "/images/prune", {
+    query: { filters },
+    success: Schema.toCodecGoJson(DockerSchema.ImagePruneResponse)
+  }),
+  HttpApiEndpoint.get("search", "/images/search", {
+    query: { term: Schema.String, limit: Schema.optional(Schema.Number), filters },
+    headers: { "x-registry-auth": RegistryAuth },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ImageSearchResponseItem))
+  }),
+  HttpApiEndpoint.post("commit", "/commit", {
+    query: {
+      container: Schema.String,
+      repo: Schema.optional(Schema.String),
+      tag: Schema.optional(Schema.String),
+      comment: Schema.optional(Schema.String),
+      author: Schema.optional(Schema.String),
+      pause: Schema.optional(Schema.Boolean),
+      changes: Schema.optional(Schema.Array(Schema.String))
+    },
+    payload: DockerSchema.ContainerConfig,
+    success: Schema.toCodecGoJson(DockerSchema.IDResponse).pipe(HttpApiSchema.status(201))
+  }),
+  HttpApiEndpoint.get("distribution", "/distribution/:name/json", {
+    params: name,
+    headers: { "x-registry-auth": RegistryAuth },
+    success: Schema.toCodecGoJson(DockerSchema.DistributionInspect)
+  }),
+  HttpApiEndpoint.get("save", "/images/:name/get", {
+    params: name,
+    query: { platform: Schema.optional(Platforms) },
+    success: tar
+  }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
+  HttpApiEndpoint.get("saveAll", "/images/get", {
+    query: { names: Schema.Array(Schema.String), platform: Schema.optional(Platforms) },
+    success: tar
+  }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
+  HttpApiEndpoint.post("load", "/images/load", {
+    query: { quiet: Schema.optional(Schema.Boolean), platform: Schema.optional(Platforms) },
+    payload: tar,
+    success: progress
+  }).annotate(ApiVersions, { query: { platform: "1.48", "platform.1": "1.52" } }),
+  HttpApiEndpoint.post("pull", "/images/create", {
+    // `tag` is a tag or a digest; without one, the Engine pulls every tag
+    query: { fromImage: Schema.String, tag: Schema.optional(Schema.String), platform: Schema.optional(Schema.String) },
+    headers: { "x-registry-auth": RegistryAuth },
+    success: progress
+  }),
+  HttpApiEndpoint.post("importUrl", "/images/create", {
+    query: { fromSrc: Schema.String, ...importQuery },
+    success: progress
+  }),
+  HttpApiEndpoint.post("importArchive", "/images/create", {
+    query: { fromSrc: Schema.Literal("-"), ...importQuery },
+    payload: tar,
+    success: progress
+  }),
+  HttpApiEndpoint.post("push", "/images/:name/push", {
+    params: name,
+    query: { tag: Schema.optional(Schema.String), platform: Schema.optional(Platform) },
+    headers: { "x-registry-auth": RegistryAuth },
+    success: progress
+  }).annotate(ApiVersions, { query: { platform: "1.46" } })
+).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -954,5 +1129,6 @@ export const DockerApi = HttpApi.make("docker").add(
   Containers,
   Exec,
   Networks,
-  Volumes
+  Volumes,
+  Images
 )
