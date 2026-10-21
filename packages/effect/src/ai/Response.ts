@@ -172,25 +172,17 @@ const toolPartSchemas = (tool: Tool.Any) => {
 
 type AnyToolParts = ToolCallPart<string, Schema.Json> | ToolResultPart<string, Schema.Json, Schema.Json>
 
-let anyToolPartSchemas: ReadonlyArray<Schema.Top> | undefined
-
 const toolPartSchemasFor = (
   toolkit: Toolkit.Any | Toolkit.WithHandler<any> | undefined
 ): ReadonlyArray<Schema.Top> => {
   if (toolkit === undefined) {
-    return anyToolPartSchemas ??= [
+    return [
       makeToolCallPart(Schema.String, Schema.Json),
       makeToolResultPart(Schema.String, Schema.Json, Schema.Json)
     ]
   }
-  const toolCalls: Array<Schema.Top> = []
-  const toolResults: Array<Schema.Top> = []
-  for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const parts = toolPartSchemas(tool)
-    toolCalls.push(parts.toolCall)
-    toolResults.push(parts.toolResult)
-  }
-  return [...toolCalls, ...toolResults]
+  const parts = Object.values(toolkit.tools as Record<string, Tool.Any>).map(toolPartSchemas)
+  return [...parts.map((part) => part.toolCall), ...parts.map((part) => part.toolResult)]
 }
 
 /**
