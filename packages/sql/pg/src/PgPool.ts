@@ -10,7 +10,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Pool from "effect/Pool"
 import type * as Scope from "effect/Scope"
-import type { SqlError } from "effect/sql/SqlError"
+import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
@@ -42,6 +42,8 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  * The defaults are 0 to 10 connections and a 60-second idle timeout.
  * `connectionTTL` replaces connections that exceed the configured lifetime.
  * Every connection is used at least once, so a TTL of zero disables reuse.
+ * `acquireTimeout` bounds how long a checkout waits for a free connection;
+ * by default it waits indefinitely.
  *
  * With `multiplex` enabled, fibers may share pooled connections for pipelined
  * queries. Reserved connections remain exclusive. Without multiplexing, every
@@ -56,6 +58,12 @@ export interface Config extends PgConnection.Config {
   readonly maxConnections?: number | undefined
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
+  /**
+   * How long a checkout waits for a free connection before failing with a
+   * `ConnectionError`. Only the wait is bounded, not the work done with the
+   * connection. Unbounded by default.
+   */
+  readonly acquireTimeout?: Duration.Input | undefined
   /**
    * How many statements may share one connection when `multiplex` is on.
    * Defaults to `32`. Statements are pipelined into one write, so a higher
@@ -136,6 +144,9 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const connectionTTL = options.connectionTTL !== undefined
     ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
     : undefined
+  const acquireTimeout = options.acquireTimeout !== undefined
+    ? Duration.fromInputUnsafe(options.acquireTimeout)
+    : undefined
   const deadConnections = new Set<PgConnection.PgConnection>()
   const createdAt = new WeakMap<PgConnection.PgConnection, number>()
   const checkedOut = new WeakSet<PgConnection.PgConnection>()
@@ -201,24 +212,39 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     }
   })
 
-  const get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
+  const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
     deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
       expired(connection)
         ? Effect.andThen(Pool.invalidate(pool, connection), retry)
         : Effect.succeed(connection))
   )
 
+  const get = acquireTimeout === undefined ? checkout : Effect.timeoutOrElse(checkout, {
+    duration: acquireTimeout,
+    orElse: () =>
+      Effect.fail(
+        new SqlError({
+          reason: new ConnectionError({
+            cause: new Error("Timed out waiting for a pooled connection"),
+            message: "PgPool: Timed out waiting for a pooled connection",
+            operation: "acquireConnection"
+          })
+        })
+      )
+  })
+
   // `pin` reserves the pool item itself, so this needs no help.
   const reserve = Effect.flatMap(get, (connection) => connection.pin)
 
-  // `Pool.use` cannot pre-check a session. Use it only when no TTL applies and
-  // no connection awaits retirement. Checking inside its callback can deadlock
-  // a size-one pool while acquiring a replacement.
+  // `Pool.use` cannot pre-check a session or bound its wait. Use it only when
+  // no TTL or acquire timeout applies and no connection awaits retirement.
+  // Checking inside its callback can deadlock a size-one pool while acquiring
+  // a replacement.
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>
     Effect.suspend(() =>
-      connectionTTL === undefined && deadConnections.size === 0
+      connectionTTL === undefined && acquireTimeout === undefined && deadConnections.size === 0
         ? Pool.use(pool, f)
         : Effect.scoped(Effect.flatMap(get, f))
     )
