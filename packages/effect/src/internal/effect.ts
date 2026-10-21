@@ -493,6 +493,31 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
+// Cloudflare Workers ties an AsyncResource to the request that created it, and
+// throws before running the callback when a later request enters it. Resume the
+// fiber in the current context instead. Errors raised after entry propagate, so
+// a fiber that has started running is never evaluated twice.
+const evaluateInAsyncContext = (fiber: FiberImpl, asyncContext: AsyncContext, effect: Primitive): void => {
+  let entered = false
+  try {
+    return asyncContext.runInAsyncScope(
+      (effect) => {
+        entered = true
+        fiber.evaluate(effect)
+      },
+      undefined,
+      effect
+    )
+  } catch (error) {
+    if (entered) throw error
+  } finally {
+    // Each captured context is resumed once, so release it for async_hooks
+    // consumers like vitest's detectAsyncLeaks.
+    asyncContext.emitDestroy()
+  }
+  return fiber.evaluate(effect)
+}
+
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -599,13 +624,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
-      try {
-        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
-      } finally {
-        // Each captured context is resumed once, so release it for async_hooks
-        // consumers like vitest's detectAsyncLeaks.
-        asyncContext.emitDestroy()
-      }
+      return evaluateInAsyncContext(this, asyncContext, effect)
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
