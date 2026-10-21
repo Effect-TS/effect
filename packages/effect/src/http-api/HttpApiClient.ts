@@ -845,13 +845,9 @@ const compilePath = (path: string, schema: Schema.Top | undefined) => {
   return (params: Record<string, string | undefined>) =>
     HttpApiPath.replaceParams(path, paramNames, (key, optional) => {
       const value = params[key]
-      if (value === undefined) {
-        if (optional) {
-          return undefined
-        }
-        throw new Error(`Missing path parameter: ${key}`)
-      }
-      return encodeURIComponent(value)
+      if (value !== undefined) return encodeURIComponent(value)
+      if (optional) return undefined
+      throw new Error(`Missing path parameter: ${key}`)
     })
 }
 

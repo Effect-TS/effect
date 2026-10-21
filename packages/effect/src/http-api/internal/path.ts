@@ -1,3 +1,4 @@
+import { getClosingParenthensePosition } from "../../http/FindMyWay/internal/router.ts"
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 
@@ -42,9 +43,9 @@ export function toRouterPath(path: string, schema: Schema.Constraint | undefined
       i += param[0].length - 1
       const next = path[i + 1]
       if (next === "(") {
-        const end = regexEnd(path, i + 1)
-        out += path.slice(i + 1, end)
-        i = end - 1
+        const end = getClosingParenthensePosition(path, i + 1)
+        out += path.slice(i + 1, end + 1)
+        i = end
       } else if (next !== undefined && !"/.-?".includes(next)) {
         // FindMyWay needs a regex to end the parameter name here.
         out += "(.*?)"
@@ -73,26 +74,17 @@ export function replaceParams(
   let last = 0
   for (let param = params.exec(path); param !== null; param = params.exec(path)) {
     const name = param[1]
-    if (name === undefined || paramNames?.has(name) === false) continue
+    if (name === undefined || (paramNames !== undefined && !paramNames.has(name))) continue
     let end = params.lastIndex
-    if (path[end] === "(") end = regexEnd(path, end)
+    if (path[end] === "(") end = getClosingParenthensePosition(path, end) + 1
     const optional = path[end] === "?"
     if (optional) end++
     const value = replace(name, optional)
-    const start = value === undefined && path[param.index - 1] === "/" ? param.index - 1 : param.index
+    let start = param.index
+    if (value === undefined && path[start - 1] === "/") start--
     out += path.slice(last, start) + (value ?? "")
-    last = params.lastIndex = end
+    params.lastIndex = end
+    last = end
   }
   return out + path.slice(last)
-}
-
-function regexEnd(path: string, start: number): number {
-  let depth = 0
-  for (let i = start; i < path.length; i++) {
-    const char = path[i]
-    if (char === "\\") i++
-    else if (char === "(") depth++
-    else if (char === ")" && --depth === 0) return i + 1
-  }
-  return path.length
 }
