@@ -317,8 +317,10 @@ describe("BunHttpServer", () => {
           Stream.fromEffect(Effect.as(Effect.sleep("15 seconds"), new TextEncoder().encode("b")))
         ))))
         return yield* Effect.exit(fetchText(NetAddress.formatUrlUnsafe(server.address)))
-      }, Effect.scoped)
-      const [omitted, explicit] = yield* Effect.all([quietStream(), quietStream(1)], { concurrency: "unbounded" })
+      })
+      const [omitted, explicit] = yield* Effect.all([Effect.scoped(quietStream()), Effect.scoped(quietStream(1))], {
+        concurrency: "unbounded"
+      })
       assert.deepStrictEqual(omitted, Exit.succeed("ab"))
       assert.isTrue(Exit.hasDies(explicit))
     }).pipe(Effect.timeout("25 seconds")), 30000)
