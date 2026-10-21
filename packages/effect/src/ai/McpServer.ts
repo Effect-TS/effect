@@ -704,10 +704,16 @@ export declare namespace visibility {
 type AnyVisibilityCheck = visibility.Check<any, any>
 
 // Raised by a visibility gate. It is left out of the types because `makeInvoke`
-// replaces it with the not-found error of the request.
-class Hidden extends Data.TaggedError("effect/ai/McpServer/Hidden") {}
+// replaces it with the not-found error of the request. It still has the shape
+// of an MCP error, since middleware outside the gate sees it as one.
+class Hidden extends Data.TaggedError("effect/ai/McpServer/Hidden")<{
+  readonly code: number
+  readonly message: string
+}> {}
 
-const failHidden = Effect.fail(new Hidden()) as Effect.Effect<never>
+const failHidden = Effect.fail(
+  new Hidden({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Not found" })
+) as Effect.Effect<never>
 
 // Lets list requests run a gate's check directly.
 const visibilityChecks = new WeakMap<AnyMiddlewareFn, AnyVisibilityCheck>()
@@ -862,7 +868,8 @@ const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod
   }
 }
 
-// The innermost middleware comes first. Middleware provided both locally and globally runs once.
+// The innermost middleware comes first. Middleware provided both locally and
+// globally runs once, at its outermost position.
 const middlewareStack = (
   localMiddleware: ReadonlyArray<AnyMiddlewareFn>,
   globalMiddleware: ReadonlyArray<AnyMiddlewareFn>
@@ -871,7 +878,7 @@ const middlewareStack = (
     ? localMiddleware
     : localMiddleware.length === 0
     ? globalMiddleware
-    : Arr.fromIterable(new Set([...localMiddleware, ...globalMiddleware]))
+    : Arr.fromIterable(new Set([...localMiddleware, ...globalMiddleware].reverse())).reverse()
 
 const requestOptions = (context: Context.Context<never>, invocation: McpCore.McpInvocation) => {
   const headers = Context.getOrUndefined(context, HttpServerRequest.HttpServerRequest)?.headers ?? Headers.empty
