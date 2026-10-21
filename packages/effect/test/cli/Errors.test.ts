@@ -363,6 +363,20 @@ describe("Command errors", () => {
     })
   })
 
+  describe("ValidationError", () => {
+    it("renders its message like other parse errors and can be carried by ShowHelp", () => {
+      const formatter = CliOutput.defaultFormatter({ colors: false })
+      const error = new CliError.ValidationError({ message: "--use-api and --use-docker are mutually exclusive" })
+      const help = new CliError.ShowHelp({ commandPath: ["download"], errors: [error] })
+
+      assert.strictEqual(error.message, "--use-api and --use-docker are mutually exclusive")
+      assert.strictEqual(
+        formatter.formatErrors(help.errors),
+        "\nERROR\n  --use-api and --use-docker are mutually exclusive"
+      )
+    })
+  })
+
   describe("InvalidValue", () => {
     it("labels a bare expected description", () => {
       const error = new CliError.InvalidValue({
