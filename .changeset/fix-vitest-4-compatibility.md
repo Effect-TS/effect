@@ -2,4 +2,4 @@
 "@effect/vitest": patch
 ---
 
-Fix compatibility with Vitest 4.0 by switching to the top-level onTestFinished export.
+Allow Vitest 4 in the `vitest` peer dependency range.

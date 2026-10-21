@@ -29,7 +29,7 @@ const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A,
   Effect.gen(function*() {
     const exitFiber = yield* Effect.fork(Effect.exit(effect))
 
-    V.onTestFinished(() =>
+    ctx?.onTestFinished(() =>
       Fiber.interrupt(exitFiber).pipe(
         Effect.asVoid,
         Effect.runPromise
