@@ -244,12 +244,20 @@ const resolveScalar = (text: string, tag: string | undefined, plain: boolean): u
     case `${coreTag}bool`:
       if (typeof value === "boolean") return value
       break
-    case `${coreTag}int`:
-      if (typeof value === "number" && /^[+-]?(?:0x[\da-f]+|0o[0-7]+|\d+)$/i.test(text.replace(/_/g, ""))) return value
+    // Numeric tags follow the core schema grammar, which also allows spellings
+    // that untagged scalars keep as strings, such as `012` and `1.`.
+    case `${coreTag}int`: {
+      const normalized = text.replace(/_/g, "")
+      if (/^[+-]?\d+$/.test(normalized)) return Number(normalized)
+      if (/^[+-]?0(?:x[\da-f]+|o[0-7]+)$/i.test(normalized)) return value
       break
-    case `${coreTag}float`:
-      if (typeof value === "number") return value
+    }
+    case `${coreTag}float`: {
+      const normalized = text.replace(/_/g, "")
+      if (/^[+-]?(?:\.\d+|\d+(?:\.\d*)?)(?:e[+-]?\d+)?$/i.test(normalized)) return Number(normalized)
+      if (/^(?:[+-]?\.inf|\.nan)$/i.test(normalized)) return value
       break
+    }
     case `${coreTag}map`:
     case `${coreTag}seq`:
       break
@@ -341,6 +349,14 @@ class Anchors {
     return value
   }
 
+  // Defines a reserved collection's anchor, unless one of its entries redefined it.
+  complete<A>(properties: Properties, value: A): A {
+    if (properties.anchor !== undefined && this.nodes.get(properties.anchor) === pending) {
+      this.nodes.set(properties.anchor, value)
+    }
+    return value
+  }
+
   alias(name: string, properties: Properties): unknown {
     if (properties.anchor !== undefined || properties.tag !== undefined) {
       throw new SyntaxError("YAML aliases cannot have properties")
@@ -417,7 +433,7 @@ class FlowParser {
     this.anchors.reserve(properties)
     const output: Array<unknown> = []
     this.parseEntries("]", () => output.push(this.parseSequenceEntry()))
-    return this.anchors.define(properties, output)
+    return this.anchors.complete(properties, output)
   }
 
   private parseMapping(properties: Properties): YamlRecord {
@@ -430,7 +446,7 @@ class FlowParser {
       if (hasOwn.call(output, key)) this.fail(`Duplicate key '${key}'`)
       setProperty(output, key, this.parsePairValue())
     })
-    return this.anchors.define(properties, output)
+    return this.anchors.complete(properties, output)
   }
 
   // Parses comma-separated entries through the closing bracket, which may follow a trailing comma.
@@ -561,6 +577,7 @@ class YamlParser {
   private readonly handles = new Map([["!", "!"], ["!!", coreTag]])
   private hasDirectives = false
   private hasYamlDirective = false
+  private readonly declaredHandles = new Set<string>()
 
   constructor(lines: Array<Line>) {
     this.lines = lines
@@ -633,7 +650,7 @@ class YamlParser {
       this.index++
       this.parseMappingEntry(output, line.text, separator, indent, line)
     }
-    return this.anchors.define(properties, output)
+    return this.anchors.complete(properties, output)
   }
 
   private parseMappingEntry(
@@ -682,7 +699,7 @@ class YamlParser {
       if (!isSequenceEntry(line.text)) break
       output.push(this.parseCompactNode(line, indent))
     }
-    return this.anchors.define(properties, output)
+    return this.anchors.complete(properties, output)
   }
 
   // Parses the node after a `-`, `?` or `:` indicator, which may start on the indicator's line.
@@ -952,6 +969,8 @@ class YamlParser {
     } else if (/^%TAG(?:\s|$)/.test(text)) {
       const directive = /^%TAG\s+(!(?:[\w-]*!)?)\s+(\S+)$/.exec(text)
       if (directive === null) this.fail(line, "Invalid %TAG directive")
+      if (this.declaredHandles.has(directive[1])) this.fail(line, `Duplicate %TAG directive for '${directive[1]}'`)
+      this.declaredHandles.add(directive[1])
       this.handles.set(directive[1], directive[2])
     }
   }

@@ -20,6 +20,6 @@ Some input that was previously accepted now fails with a `SyntaxError` or parses
 - a core tag that does not fit its node, such as `!!int abc`
 - collection keys, such as `? [a]`
 - `key: - a`, malformed block scalar headers such as `|0` or `> text`, and plain scalars starting with an indicator such as `@`
-- directives without a following `---`, malformed `%YAML` and `%TAG` directives, and `%` lines inside a document
+- directives without a following `---`, malformed or repeated `%YAML` and `%TAG` directives, and `%` lines inside a document
 
 Recursive aliases still fail, now with an error that says so.
