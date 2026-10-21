@@ -117,7 +117,7 @@ const stripComment = (input: string): string => {
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
 
 const startsWithIndicator = (text: string, indicator: "-" | "?" | ":"): boolean =>
-  text === indicator || text.startsWith(`${indicator} `)
+  text === indicator || (text[0] === indicator && (text[1] === " " || text[1] === "\t"))
 
 const isSequenceEntry = (text: string): boolean => startsWithIndicator(text, "-")
 
@@ -186,6 +186,7 @@ const parseDoubleQuoted = (input: string): string => {
       r: "\r",
       e: "\x1b",
       " ": " ",
+      "\t": "\t",
       "\"": "\"",
       "/": "/",
       "\\": "\\",
@@ -590,12 +591,14 @@ class YamlParser {
     const line = this.lines[this.index]
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
-    if (isSequenceEntry(line.text)) return this.parseSequence(indent, properties)
-    if (startsWithIndicator(line.text, "?") || mappingSeparator(line.text) !== -1) {
-      return this.parseMapping(indent, properties)
-    }
+    // A tab after the indentation may separate a scalar or flow node, but cannot indent a block collection.
+    const text = line.text.trimStart()
+    const mapping = startsWithIndicator(text, "?") || mappingSeparator(text) !== -1
+    if (isSequenceEntry(text) || mapping) this.rejectTabIndent(line)
+    if (isSequenceEntry(text)) return this.parseSequence(indent, properties)
+    if (mapping) return this.parseMapping(indent, properties)
     this.index++
-    return this.parseNodeValue(line.text, parentIndent, allowIndentless, properties)
+    return this.parseNodeValue(text, parentIndent, allowIndentless, properties)
   }
 
   private parseMapping(indent: number, properties: Properties): YamlRecord {
@@ -606,6 +609,7 @@ class YamlParser {
       const line = this.lines[this.index]
       if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
+      this.rejectTabIndent(line)
       if (startsWithIndicator(line.text, "?")) {
         this.parseExplicitEntry(output, line, indent)
         continue
@@ -658,6 +662,7 @@ class YamlParser {
       const line = this.lines[this.index]
       if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
+      this.rejectTabIndent(line)
       if (!isSequenceEntry(line.text)) return output
       output.push(this.parseCompactNode(line, indent))
     }
@@ -770,11 +775,10 @@ class YamlParser {
       const blankLines = this.skipBlankLines()
       const next = this.lines[this.index]
       if (next === undefined || next.indent <= parentIndent) break
-      this.rejectTabIndent(next)
       // Quotes in plain continuations are literal.
       const content = next.raw.slice(next.indent)
       const comment = content.search(/(?:^|[ \t])#/)
-      const text = (comment === -1 ? content : content.slice(0, comment)).trimEnd()
+      const text = (comment === -1 ? content : content.slice(0, comment)).trim()
       if (text.length === 0 || isDocumentMarker(next)) break
       if (/:(?:\s|$)/.test(text)) this.fail(next, "Invalid colon in plain scalar")
       this.rejectTabIndentedBlankLines(blankLines, parentIndent)
@@ -794,7 +798,7 @@ class YamlParser {
       if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
       if (isDocumentMarker(next)) this.fail(next, "Document markers cannot appear in a quoted scalar")
       const blank = next.raw.trim().length === 0
-      if (!blank || next.indent <= parentIndent) this.rejectTabIndent(next)
+      if (next.indent <= parentIndent) this.rejectTabIndent(next)
       if (!blank && next.indent <= parentIndent) this.fail(next, "Invalid quoted scalar indentation")
       lines.push(next.raw)
       end = closingQuote(next.raw, quote, 0)
@@ -915,7 +919,6 @@ class YamlParser {
           this.fail(this.lines[this.index], "Multiple YAML documents are not supported")
         }
       } else {
-        this.rejectTabIndent(line)
         return
       }
     }

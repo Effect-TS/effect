@@ -180,6 +180,35 @@ development:
     assert.throws(() => Yaml.parse(source), /Tabs cannot be used for YAML indentation/)
   })
 
+  // YAML 1.2.2 §6.1, §6.2: tabs may separate tokens after the indentation, but never indent a block collection.
+  // Checked with yaml 2.9.1.
+  it.each(
+    [
+      ["escaped tab", "a: \"x\\\ty\"\n", { a: "x\ty" }],
+      ["escaped tab before a folded line break", "a: \"x\\\t\n  y\"\n", { a: "x\t y" }],
+      ["tab-led quoted continuation", "a: \"b\n  \tc\"\n", { a: "b c" }],
+      ["tab-led plain continuation", "x:\n - x\n  \tx\n", { x: ["x x"] }],
+      ["tab-led top-level continuation", "1st\n\t2nd\n", "1st 2nd"],
+      ["tab before a scalar value line", "foo:\n \tbar\n", { foo: "bar" }],
+      ["tab before a top-level flow mapping", "\t{}\n", {}],
+      ["tab-led top-level flow sequence", "\t[\n\t]\n", []],
+      ["tab after a sequence indicator", "-\tfoo\n-\t-1\n", ["foo", -1]],
+      ["tab after a value indicator", "- foo:\t bar\n", [{ foo: "bar" }]],
+      ["tab after an explicit value indicator", "? a\n:\tb\n", { a: "b" }]
+    ] as const
+  )("allows a %s", (_, source, expected) => {
+    assert.deepStrictEqual(Yaml.parse(source), expected)
+  })
+
+  it.each([
+    ["before a compact mapping", "?\tkey:\n"],
+    ["before a block mapping", "foo:\n \tbar: 1\n"],
+    ["indenting a mapping entry", "a: 1\n\tb: 2\n"],
+    ["indenting a sequence entry", "- a\n\t- b\n"]
+  ])("rejects a tab %s", (_, source) => {
+    assert.throws(() => Yaml.parse(source), /Tabs cannot be used for YAML indentation/)
+  })
+
   it("rejects leading empty lines more indented than the first block content line", () => {
     assert.throws(() => Yaml.parse("text: |\n    \n  \tx\n"), SyntaxError)
   })

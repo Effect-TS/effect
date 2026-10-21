@@ -13,3 +13,5 @@ Resolve tags: the core schema tags (`!!str`, `!!int`, `!!float`, `!!bool`, `!!nu
 Resolve recursive aliases, which yield cyclic values.
 
 Parse a document whose content starts on the `---` line, such as `--- text`, `--- |` or `--- !!map`, which was read as a plain scalar including the marker. A block scalar ends at a `---` or `...` marker, and a quoted scalar cannot contain one.
+
+Allow tabs as separation after the indentation, after the `-`, `?` and `:` indicators, and as a `\`-escaped character in double-quoted scalars. Tabs still cannot indent a block collection.
