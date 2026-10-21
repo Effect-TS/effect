@@ -1490,14 +1490,24 @@ export const makeStoreSql: (
         INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
         VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `,
+    // The existence check seeks only the offered key and the insert only locks
+    // its own new keys, so concurrent offers never wait on each other's key
+    // ranges the way a serializable MERGE does. The unique (id, queue_name)
+    // index rejects an offer that races a duplicate past the check, which is
+    // ignored unless it doomed the transaction.
     mssql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
-        MERGE ${tableNameSql} WITH (HOLDLOCK) AS target
-        USING (SELECT ${id} AS id, ${name} AS queue_name) AS source
-        ON target.id = source.id AND target.queue_name = source.queue_name
-        WHEN NOT MATCHED THEN
-          INSERT (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-          VALUES (source.id, source.queue_name, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow});
+        BEGIN TRY
+          IF NOT EXISTS (
+            SELECT 1 FROM ${tableNameSql} WITH (FORCESEEK, INDEX(${sql(`idx_${tableName}_id`)}))
+            WHERE id = ${id} AND queue_name = ${name}
+          )
+            INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+            VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
+        END TRY
+        BEGIN CATCH
+          IF ERROR_NUMBER() NOT IN (2601, 2627) OR XACT_STATE() = -1 THROW;
+        END CATCH
       `,
     // sqlite
     orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
@@ -1694,10 +1704,14 @@ export const makeStoreSql: (
             }),
             sql.withTransaction
           ),
+        // UPDLOCK holds the candidate rows until the update claims them, and
+        // READPAST skips rows another claim or a settlement has locked instead
+        // of waiting on them, so a claim never waits in a lock cycle
         mssql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
-              SELECT TOP ${sql.literal(size.toString())} sequence FROM ${tableNameSql}
+              SELECT TOP ${sql.literal(size.toString())} sequence
+              FROM ${tableNameSql} WITH (UPDLOCK, READPAST, ROWLOCK)
               WHERE queue_name = ${name}
               AND state = 'pending'
               AND attempts < ${maxAttempts}
