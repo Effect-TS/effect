@@ -1590,11 +1590,18 @@ describe("McpServer", () => {
     it.effect("publishes the definitions an inlined tool schema still references", () =>
       Effect.gen(function*() {
         const Tag = Schema.Struct({ label: Schema.String }).annotate({ identifier: "Tag" })
+        const Target = Schema.String.check(
+          Schema.makeFilter(() => true, { toJsonSchema: () => ({ $anchor: "target" }) })
+        ).annotate({ identifier: "Target" })
         const Note = Schema.Struct({
           title: Schema.String,
           subtitle: Schema.String.check(
             Schema.makeFilter(() => true, { toJsonSchema: () => ({ $ref: "#/$defs/Note/properties/title" }) })
           ),
+          alias: Schema.String.check(Schema.makeFilter(() => true, {
+            representation: { id: "test/anchor", payload: null, schemas: [Target.ast] },
+            toJsonSchema: () => ({ $ref: "#target" })
+          })),
           tags: Schema.Array(Tag)
         }).annotate({ identifier: "Note" })
         const NoteTool = Tool.make("NoteTool", { success: Note })
@@ -1603,12 +1610,12 @@ describe("McpServer", () => {
         yield* McpServer.registerToolkit(toolkit).pipe(
           Effect.provideService(McpServer.McpServer, server),
           Effect.provide(toolkit.toLayer({
-            NoteTool: () => Effect.succeed({ title: "a", subtitle: "b", tags: [] })
+            NoteTool: () => Effect.succeed({ title: "a", subtitle: "b", alias: "c", tags: [] })
           }))
         )
 
         const validate = new Ajv2020.default({ strict: false }).compile(server.tools[0].tool.outputSchema)
-        assertTrue(validate({ title: "a", subtitle: "b", tags: [{ label: "c" }] }))
+        assertTrue(validate({ title: "a", subtitle: "b", alias: "c", tags: [{ label: "d" }] }))
       }))
 
     it.effect("advertises closed strict input schemas with escaped identifiers", () =>
