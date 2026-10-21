@@ -1218,7 +1218,7 @@ export const isTagged: {
 )
 
 type TagOverlap<T, K extends string> = T extends { readonly _tag: K } ? T
-  : T extends { readonly _tag: infer U } ? K extends U ? T & { _tag: K } : never
+  : T extends { readonly _tag: infer U } ? [U & K] extends [never] ? never : T & { _tag: K }
   : never
 
 /**
