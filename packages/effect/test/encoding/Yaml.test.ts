@@ -318,6 +318,7 @@ development:
         ["nested collections", "a: {\n  b: [\n    1\n  ],\n  c: {d: 2}\n  }\n", { a: { b: [1], c: { d: 2 } } }],
         ["sibling key after the collection", "a: [\n  1\n  ]\nb: 2\n", { a: [1], b: 2 }],
         ["comment and blank lines", "a: [1, # one\n# between\n\n  2]\n", { a: [1, 2] }],
+        ["quoted hash after a comma on a continuation line", "a: [\n  1, \"a # b\"\n  ]\n", { a: [1, "a # b"] }],
         ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }]
       ] as const
     )("parses %s", (_, source, expected) => {
