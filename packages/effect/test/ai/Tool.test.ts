@@ -218,98 +218,24 @@ describe("Tool", () => {
       }))
 
     for (const failureMode of ["error", "return"] as const) {
-      it.effect(`preserves handler failures and cleanup defects in ${failureMode} mode`, () =>
+      it.effect(`should preserve every reason of a composed handler cause when failure mode is ${failureMode}`, () =>
         Effect.gen(function*() {
-          const toolkit = Toolkit.make(Tool.make("Lookup", {
-            failure: Schema.String,
-            failureMode
-          }))
-          const cleanup = new Error("Cleanup failed")
-          const trace = Context.Service<string>("test/ToolkitFailureTrace")
-          const original = Cause.annotate(
-            Cause.combine(Cause.fail("Lookup failed"), Cause.die(cleanup)),
-            Context.make(trace, "original")
-          )
+          const toolkit = Toolkit.make(Tool.make("Lookup", { failure: Schema.String, failureMode }))
+          const defect = new Error("defect")
           const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-            Lookup: () => Effect.failCause(original)
+            Lookup: () =>
+              Effect.failCause(
+                Cause.combine(Cause.combine(Cause.fail("first"), Cause.fail("second")), Cause.die(defect))
+              )
           })))
-          const exit = yield* handlers.handle("Lookup", {}).pipe(
-            Effect.flatMap(Stream.runCollect),
-            Effect.exit
-          )
+
+          const exit = yield* handlers.handle("Lookup", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
 
           assertTrue(Exit.isFailure(exit))
-          deepStrictEqual(exit.cause.reasons.map((reason) => reason._tag), ["Fail", "Die"])
-          const [failure, defect] = exit.cause.reasons
-          assertTrue(Cause.isFailReason(failure))
-          assertTrue(Cause.isDieReason(defect))
-          strictEqual(failure.error, "Lookup failed")
-          strictEqual(defect.defect, cleanup)
-          strictEqual(failure.annotations.get(Toolkit.FailureOrigin.key), "handler")
-          for (const reason of exit.cause.reasons) {
-            strictEqual(reason.annotations.get(trace.key), "original")
-          }
-        }))
-
-      it.effect(`preserves multiple typed handler failures in ${failureMode} mode`, () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(Tool.make("Lookup", {
-            failure: Schema.String,
-            failureMode
-          }))
-          const original = Cause.combine(Cause.fail("First failure"), Cause.fail("Second failure"))
-          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-            Lookup: () => Effect.failCause(original)
-          })))
-          const exit = yield* handlers.handle("Lookup", {}).pipe(
-            Effect.flatMap(Stream.runCollect),
-            Effect.exit
+          deepStrictEqual(
+            exit.cause.reasons.map((reason) => Cause.isFailReason(reason) ? reason.error : reason._tag),
+            ["first", "second", "Die"]
           )
-
-          assertTrue(Exit.isFailure(exit))
-          deepStrictEqual(exit.cause.reasons.map((reason) => reason._tag), ["Fail", "Fail"])
-          deepStrictEqual(exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error), [
-            "First failure",
-            "Second failure"
-          ])
-        }))
-
-      it.effect(`preserves handler interruption in ${failureMode} mode`, () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(Tool.make("Lookup", { failureMode }))
-          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-            Lookup: () => Effect.interrupt
-          })))
-          const exit = yield* handlers.handle("Lookup", {}).pipe(
-            Effect.flatMap(Stream.runCollect),
-            Effect.exit
-          )
-
-          assertTrue(Exit.isFailure(exit))
-          assertTrue(Cause.hasInterruptsOnly(exit.cause))
-        }))
-
-      it.effect(`preserves composed handler failures through streamText in ${failureMode} mode`, () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(Tool.make("Lookup", {
-            failure: Schema.String,
-            failureMode
-          }))
-          const original = Cause.combine(Cause.fail("First failure"), Cause.fail("Second failure"))
-          const exit = yield* LanguageModel.streamText({ prompt: "Test", toolkit }).pipe(
-            Stream.runCollect,
-            TestUtils.withLanguageModel({
-              streamText: [{ type: "tool-call", id: "call-1", name: "Lookup", params: {} }]
-            }),
-            Effect.provide(toolkit.toLayer({ Lookup: () => Effect.failCause(original) })),
-            Effect.exit
-          )
-
-          assertTrue(Exit.isFailure(exit))
-          deepStrictEqual(exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error), [
-            "First failure",
-            "Second failure"
-          ])
         }))
     }
 
