@@ -62,17 +62,11 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
     runPromise(Effect.scoped(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
       const directory = yield* fs.makeTempDirectoryScoped()
-      const target = `${directory}/target.txt`
-      const link = `${directory}/link.txt`
-
-      yield* fs.writeFileString(target, "target")
-      yield* fs.symlink(target, link)
-
-      const followed = yield* fs.stat(link)
-      const notFollowed = yield* fs.lstat(link)
-
-      assert.strictEqual(followed.type, "File")
-      assert.strictEqual(notFollowed.type, "SymbolicLink")
+      const link = `${directory}/link`
+      yield* fs.writeFileString(`${directory}/target`, "")
+      yield* fs.symlink(`${directory}/target`, link)
+      expect((yield* fs.stat(link)).type).toEqual("File")
+      expect((yield* fs.lstat(link)).type).toEqual("SymbolicLink")
     }))))
 
   it.skipIf(options.accessOnDirectory === false)(
