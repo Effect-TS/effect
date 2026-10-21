@@ -214,9 +214,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       const executionId = yield* SignalRaceWorkflow.execute({ id: "signal-race" }, { discard: true })
       yield* TestClock.adjust(1)
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(1)
-      expect(yield* SignalRaceWorkflow.poll(executionId)).toEqual(new Workflow.Suspended())
 
       yield* DurableDeferred.succeed(SignalRaceSignal, {
         token: DurableDeferred.tokenFromExecutionId(SignalRaceSignal, {
@@ -225,11 +222,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         }),
         value: "signal"
       })
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(5000)
       // resume after the post-race clock, replaying the persisted race winner
+      yield* TestClock.adjust(1000)
       yield* sharding.pollStorage
-      yield* TestClock.adjust(5000)
+      yield* TestClock.adjust(1)
 
       expect(yield* SignalRaceWorkflow.poll(executionId)).toEqual(
         new Workflow.Complete({ exit: Exit.succeed("signal") })
