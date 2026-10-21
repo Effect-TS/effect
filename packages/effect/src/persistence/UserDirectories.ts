@@ -180,9 +180,8 @@ const resolve = (platform: string, kind: Kind, appName: string, env: Environment
 
 /**
  * Creates a resolver that reads the environment from the current
- * `ConfigProvider` on every call.
- *
- * `platform` defaults to the host platform.
+ * `ConfigProvider` on every call, using the conventions of `platform`, which
+ * defaults to the host platform.
  *
  * **Example** (Resolving for another platform)
  *
