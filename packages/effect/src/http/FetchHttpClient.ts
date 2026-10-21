@@ -102,7 +102,8 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
         if (!uploadController) return original
         if (response.body === null) uploadController.abort()
         // Finishing or releasing either response reader ends the upload, not
-        // merely receiving headers. Keep the original response and its caches.
+        // merely receiving headers. Keep the original response and its caches,
+        // and inherit its Web source so `toWeb` hands over the original body.
         return Object.create(original, {
           ...Object.fromEntries(
             (["arrayBuffer", "text", "json", "formData", "urlParamsBody"] as const).map((key) => [key, {

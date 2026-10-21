@@ -25,6 +25,7 @@ import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
+import { getWebSource, WebSourceTypeId } from "./internal/webResponse.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -112,6 +113,49 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
  */
 export const fromWeb = (request: HttpClientRequest.HttpClientRequest, source: Response): HttpClientResponse =>
   new WebHttpClientResponse(request, source)
+
+/**
+ * Converts an `HttpClientResponse` into a Web `Response`.
+ *
+ * **When to use**
+ *
+ * Use to pass a response body to a Web API without copying it, such as
+ * writing a fetched file to Cloudflare R2.
+ *
+ * **Details**
+ *
+ * A response from `fetch` is returned as the original Web `Response`, so its
+ * body keeps runtime capabilities such as workerd's known length. Other
+ * responses are rebuilt from the status, headers, cookies, and `stream`.
+ *
+ * **Gotchas**
+ *
+ * The Web body can only be read once. After converting, read the body from
+ * the returned `Response` instead of from the `HttpClientResponse`.
+ *
+ * @stability unstable
+ * @category converting
+ * @since 4.0.0
+ */
+export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Response> =>
+  Effect.suspend(() => {
+    const source = getWebSource(self)
+    if (source !== undefined) {
+      return Effect.succeed(source)
+    }
+    const headers = new globalThis.Headers(self.headers)
+    headers.delete("set-cookie")
+    for (const header of Cookies.toSetCookieHeaders(self.cookies)) {
+      headers.append("set-cookie", header)
+    }
+    const init: ResponseInit = { status: self.status, headers }
+    if (self.request.method === "HEAD" || nullBodyStatuses.has(self.status)) {
+      return Effect.succeed(new Response(null, init))
+    }
+    return Effect.map(Stream.toReadableStreamEffect(self.stream), (body) => new Response(body, init))
+  })
+
+const nullBodyStatuses = new Set([101, 204, 205, 304])
 
 /**
  * Creates a decoder for a response's status, headers, and JSON body using the supplied schema.
@@ -340,6 +384,10 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
 
   get remoteAddress(): Option.Option<string> {
     return Option.none()
+  }
+
+  [WebSourceTypeId](): globalThis.Response {
+    return this.source
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpClientError> {
