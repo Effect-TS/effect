@@ -99,7 +99,7 @@ export const xForwardedHops = (headers: Headers.Headers): ReadonlyArray<Hop> => 
 }
 
 const token = /^[!#$%&'*+.^_`|~0-9a-z-]+$/i
-const quotedString = /^"(?:[^"\\]|\\.)*"$/
+const quotedString = /^"(?:[\t \x21\x23-\x5b\x5d-\x7e\x80-\xff]|\\[\t \x21-\x7e\x80-\xff])*"$/
 
 const addPair = (params: Map<string, string> | undefined, text: string): Map<string, string> | undefined => {
   text = text.trim()
