@@ -84,10 +84,23 @@ const classifyError = (
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
 }
 
-const rawFormats = new Set<string>(Clickhouse.SupportedRawFormats)
+// Kept in sync with the client's `SupportedRawFormats` by the type check
+const rawFormats = {
+  CSV: true,
+  CSVWithNames: true,
+  CSVWithNamesAndTypes: true,
+  TabSeparated: true,
+  TabSeparatedRaw: true,
+  TabSeparatedWithNames: true,
+  TabSeparatedWithNamesAndTypes: true,
+  CustomSeparated: true,
+  CustomSeparatedWithNames: true,
+  CustomSeparatedWithNamesAndTypes: true,
+  Parquet: true
+} satisfies Record<Clickhouse.RawDataFormat, true>
 
 const isRawFormat = (format: Clickhouse.StreamableDataFormat): format is Clickhouse.RawDataFormat =>
-  rawFormats.has(format)
+  format in rawFormats
 
 // The compiler renders placeholders as `{p1: Type}`, `{p2: Type}`, ...
 const toQueryParams = (params: ReadonlyArray<unknown>) => {
