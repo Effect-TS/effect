@@ -1,21 +1,21 @@
 import { ClusterCron, Entity, MessageStorage, Runners, Sharding, ShardingConfig } from "@effect/cluster"
 import { Rpc } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
-import { Cron, Effect, Layer, TestClock } from "effect"
+import { Clock, Cron, Effect, Layer, TestClock } from "effect"
 import * as RunnerHealth from "../src/RunnerHealth.js"
 import * as RunnerStorage from "../src/RunnerStorage.js"
 
 describe("ClusterCron", () => {
-  it.effect("resumes after a deploy without the cron (calculateNextRunFromPrevious: true)", () =>
+  it.effect("runs each tick once across restarts (calculateNextRunFromPrevious: true)", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
-      let runs = 0
+      const runs: Array<number> = []
       const cron = ClusterCron.make({
         name: "report",
         cron: Cron.unsafeParse("* * * * * *", "UTC"),
         calculateNextRunFromPrevious: true,
-        execute: Effect.sync(() => {
-          runs++
+        execute: Effect.andThen(Clock.currentTimeMillis, (now) => {
+          runs.push(now)
         })
       })
 
@@ -34,15 +34,12 @@ describe("ClusterCron", () => {
         ))
 
       yield* deploy(Layer.merge(cron, OtherLayer))
-      const beforeRemoval = runs
-      assert.isAbove(beforeRemoval, 0)
-
+      // the pending run survives the restart
+      yield* deploy(Layer.merge(cron, OtherLayer))
       // the pending run fails once the cron entity misses its registration timeout
       yield* deploy(OtherLayer)
-      assert.strictEqual(runs, beforeRemoval)
-
       yield* deploy(Layer.merge(cron, OtherLayer))
-      assert.isAbove(runs, beforeRemoval)
+      assert.deepStrictEqual(runs, [1000, 2000, 3000, 4000, 5000, 6000, 7000, 11000, 12000, 13000, 14000])
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.Default), Effect.provide(TestShardingConfig)))
 })
 
