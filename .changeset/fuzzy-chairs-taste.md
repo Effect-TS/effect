@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-Allow `HttpClient.followRedirects` to take effect on `FetchHttpClient` by exposing `redirect` through the requestInit FiberRef and documenting the interaction.
+Document that `HttpClient.followRedirects` requires `redirect: "manual"` in `FetchHttpClient.RequestInit` when used with `FetchHttpClient`.
