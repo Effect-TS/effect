@@ -85,6 +85,29 @@ describe("BunHttpClient", () => {
       })
     }))
 
+  it.effect("layerOptions keeps RequestInit defaults provided to the layer", () =>
+    Effect.gen(function*() {
+      const unix = yield* echoServer("server")
+      const responses = yield* HttpClient.HttpClient.use((client) =>
+        Effect.all([
+          send(client),
+          send(client).pipe(
+            Effect.provideService(BunHttpClient.RequestInit, { headers: { "x-default": "ambient" } })
+          )
+        ])
+      ).pipe(
+        Effect.provide(
+          BunHttpClient.layerOptions({ unix }).pipe(
+            Layer.provide(Layer.succeed(BunHttpClient.RequestInit, { headers: { "x-default": "build" } }))
+          )
+        )
+      )
+      assert.deepStrictEqual(responses, [
+        { name: "server", method: "GET", body: "", headers: { default: "build", request: null } },
+        { name: "server", method: "GET", body: "", headers: { default: "ambient", request: null } }
+      ])
+    }))
+
   it.effect("layerOptions layers built together keep their own options", () =>
     Effect.gen(function*() {
       const a = yield* echoServer("a")

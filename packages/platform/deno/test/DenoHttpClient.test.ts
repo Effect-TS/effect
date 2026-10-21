@@ -68,6 +68,29 @@ describe("DenoHttpClient", () => {
       })
     }))
 
+  it.effect("layerOptions keeps RequestInit defaults provided to the layer", () =>
+    Effect.gen(function*() {
+      const path = yield* echoServer
+      const responses = yield* HttpClient.HttpClient.use((client) =>
+        Effect.all([
+          post(client),
+          post(client).pipe(
+            Effect.provideService(DenoHttpClient.RequestInit, { headers: { "x-default": "ambient" } })
+          )
+        ])
+      ).pipe(
+        Effect.provide(
+          DenoHttpClient.layerOptions({ proxy: { transport: "unix", path } }).pipe(
+            Layer.provide(Layer.succeed(DenoHttpClient.RequestInit, { headers: { "x-default": "build" } }))
+          )
+        )
+      )
+      assert.deepStrictEqual(responses, [
+        { method: "POST", body: "hello", headers: { default: "build", request: "request" } },
+        { method: "POST", body: "hello", headers: { default: "ambient", request: "request" } }
+      ])
+    }))
+
   it.effect("layerOptions closes the native client when the layer scope closes", () =>
     Effect.gen(function*() {
       const path = yield* echoServer
