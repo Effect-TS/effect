@@ -2248,11 +2248,6 @@ export const takeWhile: {
  * const chunk1 = Chunk.make(1, 2, 3)
  * const chunk2 = Chunk.make(3, 4, 5)
  * Chunk.toArray(Chunk.union(chunk1, chunk2)) // => [1, 2, 3, 4, 5]
- *
- * // Deduplicate each input before computing the union
- * const withDupes1 = Chunk.make(1, 1, 2)
- * const withDupes2 = Chunk.make(2, 3, 3)
- * Chunk.toArray(Chunk.union(Chunk.dedupe(withDupes1), Chunk.dedupe(withDupes2))) // => [1, 2, 3]
  * ```
  *
  * @stability stable
