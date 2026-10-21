@@ -440,6 +440,20 @@ development:
       )
     })
 
+    it("resolves anchors defined inside flow collections", () => {
+      assert.deepStrictEqual(
+        Yaml.parse(
+          "flow: {a: &ref 1, b: *ref}\nitems: [&first one, &second two, *first]\nnested: {d: &d {x: 1}, copy: *d}\nlater: *second\n"
+        ),
+        {
+          flow: { a: 1, b: 1 },
+          items: ["one", "two", "one"],
+          nested: { d: { x: 1 }, copy: { x: 1 } },
+          later: "two"
+        }
+      )
+    })
+
     it("preserves hashes in JSON-style flow strings without colon spacing", () => {
       assert.deepStrictEqual(Yaml.parse("{\"description\":\"Deploy # now\"} # end\n"), { description: "Deploy # now" })
     })
