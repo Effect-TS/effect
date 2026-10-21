@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import {
   Cause,
   Clock,
+  Context,
   Deferred,
   Duration,
   Effect,
@@ -105,8 +106,28 @@ const makeProtocolLayer = (
   body: string
 ) => makeProtocolLayerWithClient(serializationLayer, makeHttpClient(body))
 
+// Runs while the client encodes an Echo payload, so a test can suspend it.
+const EchoEncodeGate = Context.Reference<Effect.Effect<void>>("RpcClientTest/EchoEncodeGate", {
+  defaultValue: () => Effect.void
+})
+
 const EchoGroup = RpcGroup.make(
-  Rpc.make("Echo", { payload: Schema.Struct({ value: Schema.String }), success: Schema.String })
+  Rpc.make("Echo", {
+    payload: Schema.Struct({
+      value: Schema.String.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformEffect({
+          decode: Effect.succeed,
+          encode: (value) =>
+            Effect.gen(function*() {
+              yield* yield* EchoEncodeGate
+              return value
+            })
+        })
+      ))
+    }),
+    success: Schema.String
+  })
 )
 
 // Connects a batching HTTP client to a real RPC server, counting the HTTP
@@ -691,6 +712,8 @@ describe("RpcClient", () => {
     it.effect("interrupts batches started while the client is shutting down", () =>
       Effect.gen(function*() {
         const release = yield* Deferred.make<void>()
+        const cleanupStarted = yield* Deferred.make<void>()
+        const encodeRelease = yield* Deferred.make<void>()
         const interrupted: Array<number> = []
         let started = 0
         // The first HTTP request holds shutdown open while it is interrupted.
@@ -698,7 +721,9 @@ describe("RpcClient", () => {
           const request = ++started
           return Effect.onInterrupt(Effect.never, () =>
             Effect.andThen(
-              request === 1 ? Deferred.await(release) : Effect.void,
+              request === 1
+                ? Deferred.succeed(cleanupStarted, void 0).pipe(Effect.andThen(Deferred.await(release)))
+                : Effect.void,
               Effect.sync(() => interrupted.push(request))
             ))
         })
@@ -710,10 +735,16 @@ describe("RpcClient", () => {
         ).pipe(Scope.provide(scope))
 
         yield* client.Echo({ value: "first" }).pipe(Effect.forkChild)
+        // admitted before shutdown, but still encoding its payload
+        yield* client.Echo({ value: "encoding" }).pipe(
+          Effect.provideService(EchoEncodeGate, Deferred.await(encodeRelease)),
+          Effect.forkChild
+        )
         yield* TestClock.adjust("5 millis")
         const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
-        yield* TestClock.adjust(0)
+        yield* Deferred.await(cleanupStarted)
         yield* client.Echo({ value: "second" }).pipe(Effect.forkChild)
+        yield* Deferred.succeed(encodeRelease, void 0)
         yield* TestClock.adjust("5 millis")
         yield* Deferred.succeed(release, void 0)
         yield* Fiber.join(closing)
