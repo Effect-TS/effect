@@ -14655,11 +14655,11 @@ export declare namespace fn {
  * boundary and does not create tracing spans. Use {@link fn} when you need
  * those stack frames or spans. Additional arguments after the generator body
  * act like `pipe` transforms: each transform receives the previous result and
- * the original function arguments. Annotate the generator return type with
+ * the original function arguments. Generator bodies may declare a `this`
+ * parameter; pass `{ self }` before the body to bind `this` when the function
+ * is created. Annotate the generator return type with
  * `Effect.fn.Return<A, E, R>` when the produced `Effect` type needs to be
  * stated explicitly.
- * Pass `{ self }` before the generator body to bind its `this` value, including
- * when the returned function is called separately from its object.
  *
  * **Example** (Defining untraced effect functions)
  *
@@ -16769,6 +16769,8 @@ export const catchEager: {
  *
  * Executes generator functions eagerly when all yielded effects are synchronous,
  * stopping at the first async effect and deferring to normal execution.
+ * Additional arguments after the generator body act like `pipe` transforms, and
+ * `{ self }` before the body binds `this`, as with {@link fnUntraced}.
  *
  * **Example** (Defining eager untraced effect functions)
  *

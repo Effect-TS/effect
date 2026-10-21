@@ -1272,6 +1272,10 @@ export const gen = <
   return suspend(() => fromIteratorUnsafe(body.call(options.self) as any))
 }
 
+// With `{ self }` the body is `pipeables[0]`; remove it so only transforms remain.
+const fnBody = (bodyOrOptions: Function | { readonly self: any }, pipeables: Array<Function>): Function =>
+  typeof bodyOrOptions === "function" ? bodyOrOptions : pipeables.shift()!.bind(bodyOrOptions.self)
+
 /** @internal */
 export const fnUntraced: Effect.fn.Untraced = (
   bodyOrOptions: Function | { readonly self: any },
@@ -1291,9 +1295,6 @@ export const fnUntraced: Effect.fn.Untraced = (
     }
   return defineFunctionLength(body.length, fn)
 }
-
-const fnBody = (bodyOrOptions: Function | { readonly self: any }, pipeables: Array<Function>): Function =>
-  typeof bodyOrOptions === "function" ? bodyOrOptions : pipeables.shift()!.bind(bodyOrOptions.self)
 
 const defineFunctionLength = <F extends Function>(length: number, fn: F): F =>
   Object.defineProperty(fn, "length", {
