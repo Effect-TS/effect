@@ -1020,7 +1020,7 @@ describe("Chunk", () => {
 
   it("headUnsafe", () => {
     strictEqual(Chunk.headUnsafe(Chunk.make(1, 2)), 1)
-    throws(() => Chunk.headUnsafe(Chunk.empty()))
+    throws(() => Chunk.headUnsafe(Chunk.empty()), new Error("Index out of bounds: 0"))
   })
 
   it("headNonEmpty / lastNonEmpty / tailNonEmpty", () => {
