@@ -37,6 +37,7 @@ import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as Http from "node:http"
+import * as Http2 from "node:http2"
 import {
   describeHttpServerProtocol,
   http2Get,
