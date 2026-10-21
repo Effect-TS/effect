@@ -1885,6 +1885,51 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
+  it.effect("interrupts a replay that is still persisting its Suspended reply", () =>
+    Effect.gen(function*() {
+      const First = DurableDeferred.make("SavingSuspendedFirst")
+      const Second = DurableDeferred.make("SavingSuspendedSecond")
+      const workflow = Workflow.make("SavingSuspendedInterrupt", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const savingReply = yield* Latch.make()
+      const releaseReply = yield* Latch.make()
+      let suspendedReplies = 0
+      const storage = yield* makeSharedStorage
+      // Hold the replay's Suspended reply, after the first run's reply is saved.
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        saveReply: (reply) =>
+          reply.rpc._tag === "run" && reply.reply._tag === "WithExit" && reply.reply.exit._tag === "Success" &&
+            Schema.is(Workflow.Suspended)(reply.reply.exit.value) && ++suspendedReplies === 2
+            ? savingReply.open.pipe(
+              Effect.andThen(releaseReply.await),
+              Effect.andThen(storage.saveReply(reply))
+            )
+            : storage.saveReply(reply)
+      })
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* DurableDeferred.succeed(First, {
+          token: DurableDeferred.tokenFromExecutionId(First, { workflow, executionId }),
+          value: undefined
+        })
+        yield* advanceUntil(() => savingReply.isOpen(), "the replay must suspend on the second deferred")
+        yield* workflow.interrupt(executionId)
+        // Let the interrupt signal be handled before the Suspended reply is saved.
+        for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
+        yield* releaseReply.open
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit), "the interrupt must not be lost")
+      }).pipe(Effect.provide(
+        workflow.toLayer(() => DurableDeferred.await(First).pipe(Effect.andThen(DurableDeferred.await(Second)))).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+        )
+      ))
+    }))
+
   it.effect("interrupts a workflow parked inside an activity", () =>
     Effect.gen(function*() {
       const Gate = DurableDeferred.make("ActivityParkedGate")
