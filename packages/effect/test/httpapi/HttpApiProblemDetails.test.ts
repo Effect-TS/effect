@@ -28,10 +28,9 @@ const fetchWith = async (
     | FileSystem.FileSystem
     | HttpPlatform.HttpPlatform
     | Path.Path
-    | ErrorReporter.ErrorReporter
   >,
   path: string,
-  reporter: Layer.Layer<ErrorReporter.ErrorReporter> = ErrorReporter.layer([])
+  reporter: Layer.Layer<never> = Layer.empty
 ): Promise<Response> => {
   const { dispose, handler } = HttpRouter.toWebHandler(app.pipe(Layer.provide(TestServices), Layer.provide(reporter)), {
     disableLogger: true
@@ -109,11 +108,19 @@ describe("HttpApiMiddleware.ProblemDetails", () => {
   )
   const PlainApi = HttpApi.make("Api").add(Group)
   const ProblemApi = HttpApi.make("Api").add(Group).middleware(HttpApiMiddleware.ProblemDetails)
-  const handlers = (api: typeof PlainApi | typeof ProblemApi) =>
-    HttpApiBuilder.group(api, "test", (handlers) => handlers.handle("list", () => Effect.succeed("ok")))
+  const PlainGroup = HttpApiBuilder.group(
+    PlainApi,
+    "test",
+    (handlers) => handlers.handle("list", () => Effect.succeed("ok"))
+  )
+  const ProblemGroup = HttpApiBuilder.group(
+    ProblemApi,
+    "test",
+    (handlers) => handlers.handle("list", () => Effect.succeed("ok"))
+  )
 
   it("keeps the empty 400 without the middleware", async () => {
-    const response = await fetchWith(HttpApiBuilder.layer(PlainApi).pipe(Layer.provide(handlers(PlainApi))), "/list")
+    const response = await fetchWith(HttpApiBuilder.layer(PlainApi).pipe(Layer.provide(PlainGroup)), "/list")
     assert.strictEqual(response.status, 400)
     assert.strictEqual(await response.text(), "")
   })
@@ -121,7 +128,7 @@ describe("HttpApiMiddleware.ProblemDetails", () => {
   it("renders a generic problem+json 400 without details", async () => {
     const response = await fetchWith(
       HttpApiBuilder.layer(ProblemApi).pipe(
-        Layer.provide(handlers(ProblemApi)),
+        Layer.provide(ProblemGroup),
         Layer.provide(HttpApiMiddleware.layerProblemDetails())
       ),
       "/list"
@@ -139,7 +146,7 @@ describe("HttpApiMiddleware.ProblemDetails", () => {
   it("adds errors prefixed with the slot name when includeDetails is enabled", async () => {
     const response = await fetchWith(
       HttpApiBuilder.layer(ProblemApi).pipe(
-        Layer.provide(handlers(ProblemApi)),
+        Layer.provide(ProblemGroup),
         Layer.provide(HttpApiMiddleware.layerProblemDetails({ includeDetails: true }))
       ),
       "/list"

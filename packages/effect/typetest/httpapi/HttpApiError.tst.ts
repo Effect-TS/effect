@@ -37,10 +37,11 @@ describe("HttpApiError", () => {
 
     it("rejects extension fields that collide with the fixed members", () => {
       const declaration = { type: "https://example.com/probs/x", status: 403, title: "x" } as const
-      expect(HttpApiError.Problem<{}>()("X", declaration, { type: Schema.String })).type.toRaiseError()
-      expect(HttpApiError.Problem<{}>()("X", declaration, { status: Schema.Number })).type.toRaiseError()
-      expect(HttpApiError.Problem<{}>()("X", declaration, { title: Schema.String })).type.toRaiseError()
-      expect(HttpApiError.Problem<{}>()("X", declaration, { detail: Schema.String })).type.not.toRaiseError()
+      const Problem = HttpApiError.Problem<{}>()
+      expect(Problem).type.not.toBeCallableWith("X", declaration, { type: Schema.String })
+      expect(Problem).type.not.toBeCallableWith("X", declaration, { status: Schema.Number })
+      expect(Problem).type.not.toBeCallableWith("X", declaration, { title: Schema.String })
+      expect(Problem).type.toBeCallableWith("X", declaration, { detail: Schema.String })
     })
   })
 })
