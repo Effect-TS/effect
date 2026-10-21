@@ -53,9 +53,10 @@ export type Options = Omit<BunFetchRequestInit, "method" | "body" | "signal" | "
  * **Details**
  *
  * Before each request the options are merged over the `RequestInit` service
- * found in the request context, so an application-wide `RequestInit` for
- * `credentials`, `cache` or default headers still applies, and the native
- * options win per top-level key. Request-specific method, body, abort signal
+ * found in the request context, or, when the request context has none, the
+ * `RequestInit` provided while building this layer. An application-wide
+ * `RequestInit` for `credentials`, `cache` or default headers therefore still
+ * applies, and the native options win per top-level key. Request-specific method, body, abort signal
  * and duplex mode are still set per request, and request headers override the
  * same keys in `headers`.
  *
@@ -92,11 +93,12 @@ export const layerOptions = (options: Options): Layer.Layer<HttpClient.HttpClien
   Layer.effect(HttpClient.HttpClient)(
     Effect.gen(function*() {
       const client = yield* HttpClient.HttpClient
+      const defaults = Context.getOrUndefined(yield* Effect.context<never>(), FetchHttpClient.RequestInit)
       return HttpClient.transformResponse(
         client,
         Effect.updateContext((context: Context.Context<never>) =>
           Context.add(context, FetchHttpClient.RequestInit, {
-            ...Context.getOrUndefined(context, FetchHttpClient.RequestInit),
+            ...(Context.getOrUndefined(context, FetchHttpClient.RequestInit) ?? defaults),
             ...options
           })
         )

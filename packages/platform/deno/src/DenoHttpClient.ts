@@ -81,9 +81,10 @@ interface ClientRequestInit extends globalThis.RequestInit {
  *
  * The native client is acquired in the layer's scope and closed when the
  * scope ends. Before each request it is set as the `client` field of the
- * `RequestInit` service found in the request context, so an application-wide
- * `RequestInit` for `credentials`, `cache` or default headers still applies
- * and only `client` is overridden. Request-specific method, headers, body and
+ * `RequestInit` service found in the request context, or, when the request
+ * context has none, the `RequestInit` provided while building this layer. An
+ * application-wide `RequestInit` for `credentials`, `cache` or default headers
+ * therefore still applies and only `client` is overridden. Request-specific method, headers, body and
  * abort signal are still set per request.
  *
  * **Example** (Sending requests over a Unix domain socket)
@@ -120,10 +121,14 @@ export const layerOptions = (options?: Options): Layer.Layer<HttpClient.HttpClie
     Effect.gen(function*() {
       const client = yield* makeClient(options)
       const httpClient = yield* HttpClient.HttpClient
+      const defaults = Context.getOrUndefined(yield* Effect.context<never>(), FetchHttpClient.RequestInit)
       return HttpClient.transformResponse(
         httpClient,
         Effect.updateContext((context: Context.Context<never>) => {
-          const init: ClientRequestInit = { ...Context.getOrUndefined(context, FetchHttpClient.RequestInit), client }
+          const init: ClientRequestInit = {
+            ...(Context.getOrUndefined(context, FetchHttpClient.RequestInit) ?? defaults),
+            client
+          }
           return Context.add(context, FetchHttpClient.RequestInit, init)
         })
       )
