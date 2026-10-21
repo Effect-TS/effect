@@ -504,23 +504,25 @@ const Proto = {
         }
 
         return Stream.fromQueue(queue).pipe(
-          Stream.catchCause((cause) => {
-            const [reason] = cause.reasons
-            if (tool.failureMode === "return" && cause.reasons.length === 1 && Cause.isFailReason(reason)) {
-              return Stream.succeed({
-                result: normalizeError(reason.error),
+          tool.failureMode === "error"
+            ? Stream.catchCause((cause) =>
+              Stream.failCause(Cause.map(
+                Cause.fromReasons(cause.reasons.map((reason) =>
+                  Cause.isFailReason(reason)
+                    ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
+                    : reason
+                )),
+                normalizeError
+              ))
+            )
+            : Stream.catch((error) =>
+              Stream.succeed({
+                result: normalizeError(error),
                 isFailure: true,
-                failureOrigin: failureOrigin(reason.error),
+                failureOrigin: failureOrigin(error),
                 preliminary: false
               })
-            }
-            const annotated = Cause.fromReasons(cause.reasons.map((reason) =>
-              Cause.isFailReason(reason)
-                ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
-                : reason
-            ))
-            return Stream.failCause(Cause.map(annotated, normalizeError))
-          }),
+            ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
             return { ...output, encodedResult }
