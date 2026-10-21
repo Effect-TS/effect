@@ -564,17 +564,20 @@ const utcMillis = (
   second: number
 ): number | undefined => {
   const month = monthIndexes[monthName.toLowerCase()]
-  if (month === undefined || hour > 23 || minute > 59 || second > 59) {
+  // the grammar allows 23:59:60 for a leap second
+  if (month === undefined || hour > 23 || minute > 59 || second > 60) {
     return undefined
   }
   // setUTCFullYear keeps years below 100 as-is, unlike Date.UTC
   const date = new Date(0)
   date.setUTCFullYear(year, month, day)
-  date.setUTCHours(hour, minute, second, 0)
   // an impossible day such as 31 Feb rolls over into the next month
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day
-    ? date.getTime()
-    : undefined
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+    return undefined
+  }
+  // a leap second cannot be represented in epoch time and reads as the
+  // following second
+  return date.getTime() + ((hour * 60 + minute) * 60 + second) * 1000
 }
 
 const httpDateToMillis = (input: string): number | undefined => {
@@ -591,9 +594,9 @@ const httpDateToMillis = (input: string): number | undefined => {
   }
   match = rfc850Date.exec(input)
   if (match !== null) {
-    // RFC 9110 reads a two-digit year as the most recent matching year that
-    // is not more than 50 years ahead; the POSIX pivot approximates that
-    // without needing the current time.
+    // Deviation from RFC 9110 §5.6.7, which wants a two-digit year read
+    // relative to the current time: a fixed pivot keeps parsing pure and
+    // matches what other HTTP implementations do. See parseHttpDate.
     const shortYear = Number(match[3])
     return utcMillis(
       shortYear < 70 ? 2000 + shortYear : 1900 + shortYear,
@@ -628,7 +631,15 @@ const httpDateToMillis = (input: string): number | undefined => {
  * (`Sunday, 06-Nov-94 08:49:37 GMT`) and the asctime format
  * (`Sun Nov  6 08:49:37 1994`). All three are read as UTC regardless of the
  * process time zone. Day and month names are case-insensitive, and the day
- * name is not checked against the date.
+ * name is not checked against the date. A leap second (`23:59:60`) is read
+ * as the following second, since epoch time cannot represent it.
+ *
+ * The two-digit year of the RFC 850 format is read with a fixed pivot:
+ * `70`-`99` as 1970-1999 and `00`-`69` as 2000-2069. This deviates from
+ * RFC 9110, which asks for the year to be chosen relative to the current
+ * time so that it is never more than 50 years in the future. The fixed pivot
+ * keeps parsing independent of the clock and matches most other HTTP
+ * implementations.
  *
  * @stability unstable
  * @category header values
@@ -719,9 +730,10 @@ const wholeSeconds = /^\d+$/
  *
  * **Details**
  *
- * Accepts whole non-negative seconds (`120`) or an HTTP date in any of the
- * formats {@link parseHttpDate} accepts. Fractional, negative, exponent and
- * non-finite numbers are rejected, as are dates in other formats.
+ * Accepts whole non-negative seconds (`120`) up to `Number.MAX_SAFE_INTEGER`,
+ * or an HTTP date in any of the formats {@link parseHttpDate} accepts.
+ * Fractional, negative, exponent and non-finite numbers and numbers beyond
+ * the safe integer range are rejected, as are dates in other formats.
  *
  * @stability unstable
  * @category header values
@@ -731,7 +743,7 @@ export const parseRetryAfter = (input: string): Result.Result<RetryAfter, Header
   const trimmed = input.trim()
   if (wholeSeconds.test(trimmed)) {
     const seconds = Number(trimmed)
-    return Number.isFinite(seconds)
+    return Number.isSafeInteger(seconds)
       ? Result.succeed(retryAfterSeconds(seconds))
       : Result.fail(HeaderValueError.fromReason("InvalidRetryAfter", input))
   }
