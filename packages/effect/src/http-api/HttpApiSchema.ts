@@ -263,7 +263,7 @@ export function asNoContent<S extends Schema.Constraint>(options: {
  */
 export interface ProblemBody extends
   Schema.Struct<{
-    readonly type: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
+    readonly type: Schema.tag<string>
     readonly status: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<number>>, never>
     readonly title: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
   }>
@@ -287,7 +287,8 @@ export interface asProblem<S extends Schema.Constraint> extends Schema.decodeTo<
  * The server encodes the error as an `application/problem+json` body carrying
  * `type`, `title` and the status of the class. Generated clients decode a body
  * with the same `type` back into an instance by calling `decode`, which
- * defaults to constructing the class without arguments.
+ * defaults to constructing the class without arguments; a body with a
+ * different `type` is rejected.
  *
  * **Example** (A built-in error as a problem)
  *
@@ -321,7 +322,7 @@ export function asProblem<S extends Schema.Constraint & (new() => S["Type"])>(op
     const body = { type, status, title: options.title }
     const decode = options.decode ?? (() => new self())
     const problem: ProblemBody = Schema.Struct({
-      type: ProblemDetails.fixedMember(type),
+      type: Schema.tag(type),
       status: ProblemDetails.fixedMember(status),
       title: ProblemDetails.fixedMember(options.title)
     })

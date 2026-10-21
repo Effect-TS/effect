@@ -480,17 +480,19 @@ export interface ProblemDeclaration<Type extends string, Status extends number> 
  *
  * **Details**
  *
- * `type`, `status` and `title` are fixed by the declaration: they are
- * constructor defaults, are always encoded, and decode to the declared value
- * whatever the body carries. `detail` and `instance` are optional per-instance
- * members. Declared fields with the same name replace these members.
+ * `type`, `status` and `title` are fixed by the declaration and are constructor
+ * defaults that are always encoded. `type` is the discriminator: a body with a
+ * different `type` is rejected. `status` and `title` decode to the declared
+ * value whatever the body carries, so the HTTP status stays authoritative.
+ * `detail` and `instance` are optional per-instance members that declared
+ * fields may replace.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
 export interface ProblemMembers<Type extends string, Status extends number> {
-  readonly type: FixedMember<Type>
+  readonly type: Schema.tag<Type>
   readonly status: FixedMember<Status>
   readonly title: FixedMember<string>
   readonly detail: OptionalMember<Schema.String>
@@ -516,6 +518,20 @@ export type ProblemFields<Type extends string, Status extends number, Fields ext
   Omit<ProblemMembers<Type, Status>, keyof Fields> & Fields
 >
 
+/**
+ * The extension fields a typed problem may declare. The fixed members `type`,
+ * `status` and `title` are reserved.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ProblemExtensionFields = Schema.Struct.Fields & {
+  readonly type?: never
+  readonly status?: never
+  readonly title?: never
+}
+
 const problemEncoding: HttpApiSchema.ResponseEncoding = { _tag: "Json", contentType: ProblemDetails.contentType }
 
 /**
@@ -527,6 +543,7 @@ const problemEncoding: HttpApiSchema.ResponseEncoding = { _tag: "Json", contentT
  */
 export interface ProblemClass<
   Self,
+  Tag extends string,
   Type extends string,
   Status extends number,
   Fields extends Schema.Struct.Fields,
@@ -535,23 +552,25 @@ export interface ProblemClass<
   Schema.Class<
     Self,
     Schema.Struct<ProblemFields<Type, Status, Fields>>,
-    Cause.YieldableError & HttpServerRespondable.Respondable & Brand & { readonly _tag: string }
+    Cause.YieldableError & HttpServerRespondable.Respondable & Brand & { readonly _tag: Tag }
   >
 {}
 
-type MissingSelfGeneric = "Missing `Self` generic - use `class Self extends HttpApiError.Problem<Self>(...)`"
+type MissingSelfGeneric = "Missing `Self` generic - use `class Self extends HttpApiError.Problem<Self>()(...)`"
 
 /**
  * Declares a typed RFC 9457 problem as a yieldable error class.
  *
  * **Details**
  *
- * The class is a `Schema.Error` whose `_tag` is the identifier, so `Effect.catchTag`
+ * The class is a `Schema.Error` whose `_tag` is the given tag, so `Effect.catchTag`
  * works without `_tag` on the wire. It carries the `httpApiStatus` and
  * `application/problem+json` annotations, so endpoints that declare it as an
- * error render, document and decode it as a problem. The extension fields are
- * validated on both sides; unknown extensions are not kept. An undeclared
- * instance still renders as a problem through `HttpServerRespondable`.
+ * error render, document and decode it as a problem. Problem classes that
+ * share a status are told apart by `type`. The extension fields are validated
+ * on both sides and cannot replace `type`, `status` or `title`; unknown
+ * extensions are not kept. An undeclared instance still renders as a problem
+ * through `HttpServerRespondable`.
  *
  * **Example** (Declaring and using a typed problem)
  *
@@ -559,7 +578,7 @@ type MissingSelfGeneric = "Missing `Self` generic - use `class Self extends Http
  * import { Effect, Schema } from "effect"
  * import { HttpApiEndpoint, HttpApiError } from "effect/http-api"
  *
- * class OutOfCredit extends HttpApiError.Problem<OutOfCredit>("OutOfCredit")({
+ * class OutOfCredit extends HttpApiError.Problem<OutOfCredit>()("OutOfCredit", {
  *   type: "https://example.com/probs/out-of-credit",
  *   status: 403,
  *   title: "You do not have enough credit."
@@ -578,49 +597,54 @@ type MissingSelfGeneric = "Missing `Self` generic - use `class Self extends Http
  * @category constructors
  * @since 4.0.6
  */
-export const Problem =
-  <Self = never, Brand = {}>(tag: string) =>
-  <const Type extends string, const Status extends number, const Fields extends Schema.Struct.Fields = {}>(
-    declaration: ProblemDeclaration<Type, Status>,
-    fields?: Fields,
-    annotations?: Schema.Annotations.Declaration<Self, readonly [Schema.Struct<ProblemFields<Type, Status, Fields>>]>
-  ): [Self] extends [never] ? MissingSelfGeneric
-    : ProblemClass<Self, Type, Status, Fields, Brand> =>
-  {
-    const struct = Schema.Struct({
-      type: ProblemDetails.fixedMember(declaration.type),
-      status: ProblemDetails.fixedMember(declaration.status),
-      title: ProblemDetails.fixedMember(declaration.title),
-      detail: ProblemDetails.optionalMember(Schema.String),
-      instance: ProblemDetails.optionalMember(Schema.String),
-      ...fields
-    })
-    const encode = Schema.encodeUnknownEffect(struct)
-    const Base = Schema.Error<any, {}>(tag)(struct, {
-      description: declaration.title,
-      httpApiStatus: declaration.status,
-      "~httpApiEncoding": problemEncoding,
-      ...annotations as {}
-    })
-    Object.assign(Base.prototype, {
-      _tag: tag,
-      [ErrorReporter.ignore]: declaration.status < 500,
-      [HttpServerRespondable.symbol](this: object) {
-        return Effect.map(
-          encode(this),
-          (body) =>
-            HttpServerResponse.jsonUnsafe(body, { status: declaration.status, contentType: ProblemDetails.contentType })
-        )
-      }
-    })
-    Object.defineProperty(Base.prototype, "message", {
-      get(this: { readonly detail?: string }) {
-        return this.detail ?? declaration.title
-      },
-      configurable: true
-    })
-    return Base as any
-  }
+export const Problem = <Self = never, Brand = {}>() =>
+<
+  const Tag extends string,
+  const Type extends string,
+  const Status extends number,
+  const Fields extends ProblemExtensionFields = {}
+>(
+  tag: Tag,
+  declaration: ProblemDeclaration<Type, Status>,
+  fields?: Fields,
+  annotations?: Schema.Annotations.Declaration<Self, readonly [Schema.Struct<ProblemFields<Type, Status, Fields>>]>
+): [Self] extends [never] ? MissingSelfGeneric
+  : ProblemClass<Self, Tag, Type, Status, Fields, Brand> =>
+{
+  const struct = Schema.Struct({
+    detail: ProblemDetails.optionalMember(Schema.String),
+    instance: ProblemDetails.optionalMember(Schema.String),
+    ...fields,
+    type: Schema.tag(declaration.type),
+    status: ProblemDetails.fixedMember(declaration.status),
+    title: ProblemDetails.fixedMember(declaration.title)
+  })
+  const encode = Schema.encodeUnknownEffect(struct)
+  const Base = Schema.Error<any, {}>(tag)(struct, {
+    description: declaration.title,
+    httpApiStatus: declaration.status,
+    "~httpApiEncoding": problemEncoding,
+    ...annotations as {}
+  })
+  Object.assign(Base.prototype, {
+    _tag: tag,
+    [ErrorReporter.ignore]: declaration.status < 500,
+    [HttpServerRespondable.symbol](this: object) {
+      return Effect.map(
+        encode(this),
+        (body) =>
+          HttpServerResponse.jsonUnsafe(body, { status: declaration.status, contentType: ProblemDetails.contentType })
+      )
+    }
+  })
+  Object.defineProperty(Base.prototype, "message", {
+    get(this: { readonly detail?: string }) {
+      return this.detail ?? declaration.title
+    },
+    configurable: true
+  })
+  return Base as any
+}
 
 /**
  * One entry of `BadRequestProblem.errors`: the location of a request value
@@ -653,7 +677,7 @@ export const ProblemIssue = Schema.Struct({
  * @category errors
  * @since 4.0.6
  */
-export class BadRequestProblem extends Problem<BadRequestProblem>("BadRequestProblem")({
+export class BadRequestProblem extends Problem<BadRequestProblem>()("BadRequestProblem", {
   type: ProblemDetails.blankType,
   status: 400,
   title: "Bad Request"
@@ -669,7 +693,7 @@ export class BadRequestProblem extends Problem<BadRequestProblem>("BadRequestPro
  * @category errors
  * @since 4.0.6
  */
-export class InternalServerErrorProblem extends Problem<InternalServerErrorProblem>("InternalServerErrorProblem")({
+export class InternalServerErrorProblem extends Problem<InternalServerErrorProblem>()("InternalServerErrorProblem", {
   type: ProblemDetails.blankType,
   status: 500,
   title: "Internal Server Error"

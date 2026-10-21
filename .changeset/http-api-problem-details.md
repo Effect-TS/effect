@@ -5,7 +5,7 @@
 Add opt-in RFC 9457 Problem Details support to `HttpApi`.
 
 - `ProblemDetails` in `effect/http` provides the `application/problem+json` media type, a lenient codec for problem details objects, and a response constructor.
-- `HttpApiError.Problem` declares a typed problem as a yieldable error class that endpoints render, document and decode as `application/problem+json`.
+- `HttpApiError.Problem<Self>()(tag, { type, status, title }, fields?)` declares a typed problem as a yieldable error class that endpoints render, document and decode as `application/problem+json`, discriminated by `type`.
 - `HttpApiSchema.asProblem` renders a built-in error such as `HttpApiError.NotFound` as a problem.
 - `HttpApiMiddleware.ProblemDetails` with `HttpApiMiddleware.layerProblemDetails` renders request decoding failures as a generic `400` problem (with per-field `errors` when `includeDetails` is enabled) and response encoding failures as a `500` problem.
 
