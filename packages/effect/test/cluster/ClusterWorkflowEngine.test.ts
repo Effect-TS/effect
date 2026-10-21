@@ -1930,6 +1930,60 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       ))
     }))
 
+  it.effect("interrupts a failure-suspending run while an activity wake waits for its reply", () =>
+    Effect.gen(function*() {
+      const Wake = DurableDeferred.make("FailureSavingWake")
+      const workflow = Workflow.make("FailureSavingInterrupt", {
+        payload: {},
+        idempotencyKey: () => "one"
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const savingReply = yield* Latch.make()
+      const releaseReply = yield* Latch.make()
+      const awaitingReply = yield* Latch.make()
+      const storage = yield* makeSharedStorage
+      // Hold the failed Suspended reply, and observe a wake waiting for it.
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        saveReply: (reply) =>
+          reply.rpc._tag === "run" && reply.reply._tag === "WithExit" && reply.reply.exit._tag === "Success" &&
+            Schema.is(Workflow.Suspended)(reply.reply.exit.value) && reply.reply.exit.value.failed === true
+            ? savingReply.open.pipe(
+              Effect.andThen(releaseReply.await),
+              Effect.andThen(storage.saveReply(reply))
+            )
+            : storage.saveReply(reply),
+        registerReplyHandler: (message) =>
+          Effect.suspend(() =>
+            savingReply.isOpen() && message.envelope.tag === "run"
+              ? awaitingReply.open.pipe(Effect.andThen(storage.registerReplyHandler(message)))
+              : storage.registerReplyHandler(message)
+          )
+      })
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollStorageUntil(() => savingReply.isOpen(), "the run must suspend on its failure")
+        // The parked activity's wake holds the resume gate while it waits for the reply.
+        yield* DurableDeferred.succeed(Wake, {
+          token: DurableDeferred.tokenFromExecutionId(Wake, { workflow, executionId }),
+          value: undefined
+        })
+        yield* advanceUntil(() => awaitingReply.isOpen(), "the activity wake must wait for the run reply")
+        yield* workflow.interrupt(executionId)
+        // Let the interrupt signal be handled before the Suspended reply is saved.
+        for (let i = 0; i < 10; i++) yield* TestClock.adjust(1)
+        yield* releaseReply.open
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit), "the interrupt must not be lost")
+      }).pipe(Effect.provide(
+        workflow.toLayer(() =>
+          Effect.all([
+            Activity.make({ name: "await-wake", execute: DurableDeferred.await(Wake) }),
+            Activity.make({ name: "fail", execute: Effect.die("boom") })
+          ], { concurrency: "unbounded", discard: true })
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+      ))
+    }))
+
   it.effect("interrupts a workflow parked inside an activity", () =>
     Effect.gen(function*() {
       const Gate = DurableDeferred.make("ActivityParkedGate")
