@@ -52,6 +52,20 @@ describe("McpClient", () => {
     >()
   })
 
+  it("should take the client identity as flat options", () => {
+    expect<{ name: string; version: string }>().type.toBeAssignableTo<McpClient.Options>()
+    expect<{
+      name: string
+      version: string
+      title: string
+      description: string
+      websiteUrl: string
+      icons: ReadonlyArray<McpSchema.Icon>
+      timeout: "1 second"
+    }>().type.toBeAssignableTo<McpClient.Options>()
+    expect<{ clientInfo: McpSchema.Implementation }>().type.not.toBeAssignableTo<McpClient.Options>()
+  })
+
   it("should accept only client-supported protocol adapters", () => {
     type Protocol = Parameters<typeof McpClient.http>[0]["protocol"]
     expect<typeof McpProtocol.v2025_11_25>().type.toBeAssignableTo<Protocol>()

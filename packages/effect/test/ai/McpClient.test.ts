@@ -63,7 +63,7 @@ const connect = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolAdapte
     { preconnect() {} }
   )
   const context = yield* Layer.build(
-    McpClient.layerHttp({ clientInfo, url: MCP_ENDPOINT, protocol }).pipe(
+    McpClient.layerHttp({ ...clientInfo, url: MCP_ENDPOINT, protocol }).pipe(
       Layer.provide(FetchHttpClient.layer),
       Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch))
     )
@@ -178,6 +178,13 @@ describe("McpClient", () => {
       })
       assert.deepStrictEqual(client.serverInfo, serverInfo)
       assert.deepStrictEqual(requests.map((request) => request.method), ["server/discover", "server/discover"])
+      assert.deepStrictEqual(requests[1].params, {
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+          "io.modelcontextprotocol/clientInfo": clientInfo,
+          "io.modelcontextprotocol/clientCapabilities": {}
+        }
+      })
       assert.notStrictEqual(requests[0].id, requests[1].id)
     }))
 
@@ -316,7 +323,8 @@ describe("McpClient", () => {
         }).pipe(Effect.scoped)
 
         const [initialize, ...rest] = sent
-        assert.strictEqual(methodOf(initialize.message), "initialize")
+        assert(isRequest(initialize.message) && initialize.message.method === "initialize")
+        assert.deepStrictEqual(initialize.message.params?.clientInfo, clientInfo)
         assert.deepStrictEqual(rest.map(({ request }) => request.headers["mcp-session-id"]), [
           "session-1",
           "session-1",
@@ -417,6 +425,31 @@ describe("McpClient", () => {
         assert.isTrue(yield* Deferred.isDone(exit))
       }))
 
+    // Handshake and discovery are bounded by default; server work is bounded only on request.
+    it.effect("should apply the default deadline to discovery", () =>
+      Effect.gen(function*() {
+        const server = yield* connectStdio(McpProtocol.v2025_11_25)
+        const listing = yield* server.client.listTools().pipe(Effect.flip, Effect.forkChild)
+        yield* server.receive
+        yield* TestClock.adjust("60 seconds")
+        assert.strictEqual((yield* Fiber.join(listing)).reason._tag, "TimeoutError")
+      }))
+
+    it.effect("should not apply a default deadline to tool calls, prompts or resource reads", () =>
+      Effect.gen(function*() {
+        const server = yield* connectStdio(McpProtocol.v2025_11_25)
+        const prompt = McpSchema.Prompt.make({ name: "slow" })
+        const fibers = [
+          yield* server.client.callTool({ tool: slowTool }).pipe(Effect.forkChild),
+          yield* server.client.getPrompt({ prompt }).pipe(Effect.forkChild),
+          yield* server.client.readResource({ uri: "demo://slow" }).pipe(Effect.forkChild)
+        ]
+        for (let i = 0; i < fibers.length; i++) yield* server.receive
+        yield* TestClock.adjust("10 minutes")
+        for (const fiber of fibers) assert.isUndefined(fiber.pollUnsafe())
+        yield* Fiber.interruptAll(fibers)
+      }))
+
     // An uncorrelated error cannot be matched to a request, so pending calls fail instead of waiting.
     it.effect("should fail pending calls when the server sends an error without an ID", () =>
       Effect.gen(function*() {
@@ -448,7 +481,11 @@ const methodOf = (message: McpSchema.JsonRpcMessage | undefined) =>
 
 const slowTool = McpSchema.Tool.make({ name: "slow", inputSchema: { type: "object" } })
 
-const initializeResult = { protocolVersion: "2025-11-25", serverInfo, capabilities: { tools: {} } }
+const initializeResult = {
+  protocolVersion: "2025-11-25",
+  serverInfo,
+  capabilities: { tools: {}, prompts: {}, resources: {} }
+}
 
 const discoverResult = {
   resultType: "complete",
@@ -512,7 +549,7 @@ const scriptedHttp = Effect.fnUntraced(function*(
   )
   const transport = yield* McpClient.http({ url: MCP_ENDPOINT, protocol: options.protocol ?? McpProtocol.v2026_07_28 })
     .pipe(Effect.provideService(HttpClient.HttpClient, options.filterStatusOk ? HttpClient.filterStatusOk(http) : http))
-  const client = yield* McpClient.make({ clientInfo }).pipe(Effect.provideService(McpClient.Transport, transport))
+  const client = yield* McpClient.make(clientInfo).pipe(Effect.provideService(McpClient.Transport, transport))
   return { client, sent }
 })
 
@@ -544,7 +581,7 @@ const connectStdio = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolA
   const send = (message: unknown) => Queue.offer(output, new TextEncoder().encode(JSON.stringify(message) + "\n"))
 
   const building = yield* Layer.build(
-    McpClient.layerStdio({ clientInfo, command: ChildProcess.make("test-mcp-server"), protocol }).pipe(
+    McpClient.layerStdio({ ...clientInfo, command: ChildProcess.make("test-mcp-server"), protocol }).pipe(
       Layer.provide(Layer.succeed(Spawner.ChildProcessSpawner, spawner))
     )
   ).pipe(Effect.forkChild)
