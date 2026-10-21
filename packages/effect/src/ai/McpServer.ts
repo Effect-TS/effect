@@ -26,6 +26,7 @@ import { appendPreResponseHandlerUnsafe } from "../http/HttpEffect.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
+import * as JsonPointer from "../JsonPointer.ts"
 import * as JsonSchema from "../JsonSchema.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -2205,7 +2206,9 @@ const reachableDefinitions = (
   const reached = new Set<string>()
   const visit = (schema: JsonSchema.JsonSchema): void => {
     JsonSchema.rewriteRefs(schema, ($ref) => {
-      const key = JsonSchema.getReferenceKey($ref)
+      // A `$ref` may point inside a definition, e.g. `#/$defs/A/properties/b`.
+      const path = $ref.startsWith("#") ? JsonPointer.parseUriFragment($ref) : undefined
+      const key = path?.[0] === "$defs" ? path[1] : undefined
       if (key !== undefined && !reached.has(key) && Object.hasOwn(definitions, key)) {
         reached.add(key)
         visit(definitions[key])
