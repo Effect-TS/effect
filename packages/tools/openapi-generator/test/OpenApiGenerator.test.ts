@@ -865,13 +865,6 @@ export const make = (
     <Schema extends Schema.Constraint>(schema: Schema) =>
     (response: HttpClientResponse.HttpClientResponse) =>
       HttpClientResponse.schemaBodyJson(schema)(response)
-  const decodeError =
-    <const Tag extends string, Schema extends Schema.Constraint>(tag: Tag, schema: Schema) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      Effect.flatMap(
-        HttpClientResponse.schemaBodyJson(schema)(response),
-        (cause) => Effect.fail(TestClientError(tag, cause, response)),
-      )
   return {
     httpClient,
     "getUser": (id, options: Parameters<TestClient["getUser"]>[1]) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam(id) + "").pipe(

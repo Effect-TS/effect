@@ -283,6 +283,10 @@ ${clientErrorSource(name)}`
     if (operations.some((operation) => operation.httpClientResponses.voidErrorStatuses.size > 0)) {
       helpers.push(decodeVoidErrorSource(name))
     }
+    helpers.push(decodeSuccessSource(importName))
+    if (operations.some((operation) => operation.httpClientResponses.errorSchemas.size > 0)) {
+      helpers.push(decodeErrorSource(importName, name))
+    }
     return `export interface OperationConfig {
   /**
    * Whether or not the response should be included in the value returned from
@@ -314,17 +318,6 @@ export const make = (
   } = {}
 ): ${name} => {
   ${helpers.join("\n  ")}
-  const decodeSuccess =
-    <Schema extends ${importName}.Constraint>(schema: Schema) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      HttpClientResponse.schemaBodyJson(schema)(response)
-  const decodeError =
-    <const Tag extends string, Schema extends ${importName}.Constraint>(tag: Tag, schema: Schema) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      Effect.flatMap(
-        HttpClientResponse.schemaBodyJson(schema)(response),
-        (cause) => Effect.fail(${name}Error(tag, cause, response)),
-      )
   return {
     httpClient,
     ${implMethods.join(",\n    ")}
@@ -1018,6 +1011,21 @@ const commonSource = `const unexpectedStatus = (response: HttpClientResponse.Htt
 
 const decodeBinarySource = `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`
+
+const decodeSuccessSource = (importName: string) =>
+  `const decodeSuccess =
+    <Schema extends ${importName}.Constraint>(schema: Schema) =>
+    (response: HttpClientResponse.HttpClientResponse) =>
+      HttpClientResponse.schemaBodyJson(schema)(response)`
+
+const decodeErrorSource = (importName: string, name: string) =>
+  `const decodeError =
+    <const Tag extends string, Schema extends ${importName}.Constraint>(tag: Tag, schema: Schema) =>
+    (response: HttpClientResponse.HttpClientResponse) =>
+      Effect.flatMap(
+        HttpClientResponse.schemaBodyJson(schema)(response),
+        (cause) => Effect.fail(${name}Error(tag, cause, response)),
+      )`
 
 const decodeVoidErrorSource = (name: string) =>
   `const decodeVoidError = <const Tag extends string>(tag: Tag) =>
