@@ -76,9 +76,10 @@
  *   cannot reach Redis, the lease lapses and another caller can start a second
  *   probe.
  * - An uncapped exponential `openDuration` keeps growing for a dependency that
- *   flaps as well as for one that is down. Cap it with `Schedule.upTo` or
- *   `Schedule.either` with `Schedule.spaced`. The cap also bounds how long the
- *   circuit must stay closed before the backoff resets.
+ *   flaps as well as for one that is down. Cap it with `Schedule.upTo`, or
+ *   with `Schedule.min` and a `Schedule.spaced` that sets the longest delay.
+ *   The cap also bounds how long the circuit must stay closed before the
+ *   backoff resets.
  *
  * **Example** (Rejecting calls once a circuit opens)
  *
@@ -494,10 +495,11 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  *   the next opening one step along the schedule, not to the hint's length.
  *   Idle expiry is separate: a key dropped by the store starts again at 0.
  * - An uncapped exponential schedule keeps growing for a dependency that
- *   flaps as well as for one that is down. Cap it with `Schedule.upTo` or
- *   `Schedule.either` with `Schedule.spaced`. The cap bounds both the open
- *   window and the reset window, since the reset window is the last open
- *   window. With a fixed duration, the count never changes the delay.
+ *   flaps as well as for one that is down. Cap it with `Schedule.upTo`, or
+ *   with `Schedule.min` and a `Schedule.spaced` that sets the longest delay.
+ *   The cap bounds both the open window and the reset window, since the reset
+ *   window is the last open window. With a fixed duration, the count never
+ *   changes the delay.
  * - `maxOpenDuration` caps a `Retry-After` hint from `failure`, and defaults
  *   to one hour. It never caps `openDuration`.
  * - `onStoreError` decides what a call does when the store cannot admit it:
@@ -556,17 +558,21 @@ export const make: (options: {
     const publish = (transition: Transition | undefined) =>
       transition === undefined ? Effect.void : PubSub.publish(pubsub, [transition])
 
-    // A rate policy can trip on a Success, so every recorded outcome needs the
-    // base open duration. Only a Failure carries a hint, and an Ignored
-    // outcome never opens the circuit.
-    const openFor = (outcome: Outcome, consecutiveOpenings: number): Effect.Effect<Duration.Duration> =>
-      outcome._tag === "Ignored" ? Effect.succeed(Duration.zero) : Effect.map(
-        openDurationFor(consecutiveOpenings),
-        (delay) =>
-          outcome._tag === "Failure" && outcome.retryAfter !== undefined
-            ? Duration.max(delay, Duration.min(outcome.retryAfter, maxOpenDuration))
-            : delay
-      )
+    // Only an outcome that can open the circuit needs the schedule replayed.
+    // An Ignored outcome never opens it, and neither does a Success unless it
+    // can trip a rate policy: a probe's Success closes the circuit. Only a
+    // Failure carries a hint.
+    const openFor = (outcome: Outcome, admission: Admission): Effect.Effect<Duration.Duration> =>
+      outcome._tag === "Ignored" ||
+        (outcome._tag === "Success" && (admission.probe || options.tripPolicy._tag === "Consecutive"))
+        ? Effect.succeed(Duration.zero)
+        : Effect.map(
+          openDurationFor(admission.consecutiveOpenings + 1),
+          (delay) =>
+            outcome._tag === "Failure" && outcome.retryAfter !== undefined
+              ? Duration.max(delay, Duration.min(outcome.retryAfter, maxOpenDuration))
+              : delay
+        )
 
     const execute = <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
@@ -576,46 +582,39 @@ export const make: (options: {
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
-        Effect.scopedWith((admitScope) =>
-          store.admit(key).pipe(
-            Scope.provide(admitScope),
-            Effect.matchCauseEffect({
-              onFailure: (cause): Effect.Effect<A, E | CircuitBreakerError, R> => {
-                const error = Cause.findErrorOption(cause)
-                if (
-                  onStoreError === "fail" || error._tag === "None" ||
-                  error.value.reason._tag !== "CircuitBreakerStoreError"
-                ) {
-                  return Effect.failCause(cause)
-                }
-                return Effect.andThen(
-                  Effect.logWarning("CircuitBreaker store unavailable, running the call unrecorded", error.value),
-                  restore(self)
-                )
-              },
-              onSuccess: Effect.fnUntraced(function*(admission) {
-                yield* publish(admission.transition)
-                const exit = yield* Effect.exit(restore(self))
-                const classified = yield* classifyExit(exit, classify, restore)
-                const outcome = Exit.isSuccess(classified) ? classified.value : ignored
-                yield* store.record({
-                  key,
-                  generation: admission.generation,
-                  outcome: outcome._tag,
-                  tripPolicy: options.tripPolicy,
-                  openFor: yield* openFor(outcome, admission.consecutiveOpenings + 1)
-                }).pipe(
-                  Effect.flatMap(publish),
-                  Effect.catch((error) => Effect.logWarning("CircuitBreaker failed to record an outcome", error))
-                )
-                if (Exit.isSuccess(classified)) return yield* exit
-                return yield* Effect.failCause(
-                  Exit.isFailure(exit) ? Cause.combine(exit.cause, classified.cause) : classified.cause
-                )
-              })
-            })
+        Effect.scopedWith(Effect.fnUntraced(function*(admitScope) {
+          const admitted = yield* Effect.exit(Scope.provide(store.admit(key), admitScope))
+          if (Exit.isFailure(admitted)) {
+            const error = Cause.findErrorOption(admitted.cause)
+            if (
+              onStoreError === "fail" || error._tag === "None" ||
+              error.value.reason._tag !== "CircuitBreakerStoreError"
+            ) {
+              return yield* Effect.failCause(admitted.cause)
+            }
+            yield* Effect.logWarning("CircuitBreaker store unavailable, running the call unrecorded", error.value)
+            return yield* restore(self)
+          }
+          const admission = admitted.value
+          yield* publish(admission.transition)
+          const exit = yield* Effect.exit(restore(self))
+          const classified = yield* classifyExit(exit, classify, restore)
+          const outcome = Exit.isSuccess(classified) ? classified.value : ignored
+          yield* store.record({
+            key,
+            generation: admission.generation,
+            outcome: outcome._tag,
+            tripPolicy: options.tripPolicy,
+            openFor: yield* openFor(outcome, admission)
+          }).pipe(
+            Effect.flatMap(publish),
+            Effect.catch((error) => Effect.logWarning("CircuitBreaker failed to record an outcome", error))
           )
-        )
+          if (Exit.isSuccess(classified)) return yield* exit
+          return yield* Effect.failCause(
+            Exit.isFailure(exit) ? Cause.combine(exit.cause, classified.cause) : classified.cause
+          )
+        }))
       )
 
     return CircuitBreaker.of({
