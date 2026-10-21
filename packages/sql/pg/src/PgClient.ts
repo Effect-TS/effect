@@ -153,19 +153,18 @@ export interface PgClientConfig {
   /** Maximum backend message size in bytes. Defaults to 16 MiB. */
   readonly maxMessageSize?: number | undefined
   /**
-   * Runs after each successful connection checkout, in the fiber that will
-   * use the connection, so it sees that fiber's context and async context.
+   * Runs after each connection checkout, in the fiber that uses the
+   * connection, so it sees that fiber's context and async context.
    *
-   * It runs once per acquisition, not once per socket: per statement or stream
-   * outside a transaction, and once per outermost `withTransaction`, `reserve`,
-   * `listen`, and `notify`. Statements inside a transaction reuse its
-   * connection without running it again. With `multiplex`, it runs for every
-   * statement sharing a connection.
+   * It runs once per acquisition, not once per socket: for every statement or
+   * stream outside a transaction, even when `multiplex` shares one connection
+   * between them, and once per outermost `withTransaction`, `reserve`, `listen`
+   * and `notify`.
    *
-   * Keep it cheap and idempotent per request: statements run it while holding
-   * the connection and, with `multiplex`, a pipelining slot. If it fails or is
+   * Keep it cheap. It holds the connection and, with `multiplex`, a pipelining
+   * slot while it runs, and a request may run it many times. If it fails or is
    * interrupted, the connection is released. With `makeClient` and
-   * `acquireForStream`, it runs before the stream opens its own connection.
+   * `acquireForStream`, it runs before a stream opens its own connection.
    *
    * @example
    * ```ts
@@ -261,13 +260,17 @@ const makeImpl = Effect.fnUntraced(function*(
   }
 ): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
   const config = options.config
+  let { acquirer, borrower, listenAcquirer, transactionAcquirer } = options
   const onAcquire = config.onAcquire
-  const acquirer = withOnAcquire(options.acquirer, onAcquire)
-  const borrow = options.borrower
-  const borrower: Borrower | undefined = onAcquire === undefined || borrow === undefined ?
-    borrow :
-    (f) => borrow((connection) => Effect.andThen(onAcquire, f(connection)))
-  const listenAcquirer = withOnAcquire(options.listenAcquirer, onAcquire)
+  if (onAcquire !== undefined) {
+    acquirer = Effect.tap(acquirer, onAcquire)
+    transactionAcquirer = Effect.tap(transactionAcquirer, onAcquire)
+    listenAcquirer = Effect.tap(listenAcquirer, onAcquire)
+    if (borrower !== undefined) {
+      const borrow = borrower
+      borrower = (f) => borrow((connection) => Effect.andThen(onAcquire, f(connection)))
+    }
+  }
   const compiler = makeCompiler(
     config.transformQueryNames,
     config.transformJson
@@ -294,7 +297,7 @@ const makeImpl = Effect.fnUntraced(function*(
       prepareTransactionControls: true,
       commit,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-      transactionAcquirer: withOnAcquire(options.transactionAcquirer, onAcquire),
+      transactionAcquirer,
       compiler,
       spanAttributes: [
         ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
@@ -322,12 +325,6 @@ const makeImpl = Effect.fnUntraced(function*(
     }
   )
 })
-
-/** Leaves the acquirer untouched when no hook is configured. */
-const withOnAcquire = <A>(
-  acquirer: Effect.Effect<A, SqlError, Scope.Scope>,
-  onAcquire: Effect.Effect<void> | undefined
-): Effect.Effect<A, SqlError, Scope.Scope> => onAcquire === undefined ? acquirer : Effect.tap(acquirer, () => onAcquire)
 
 class ConnectionImpl implements Connection {
   readonly connection: PgConnection.PgConnection
