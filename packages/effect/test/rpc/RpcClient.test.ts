@@ -687,6 +687,40 @@ describe("RpcClient", () => {
         assert.strictEqual(yield* Fiber.join(kept), "kept")
         assert.strictEqual(httpRequests(), 1)
       }))
+
+    it.effect("interrupts batches started while the client is shutting down", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const interrupted: Array<number> = []
+        let started = 0
+        // The first HTTP request holds shutdown open while it is interrupted.
+        const beforeRequest = Effect.suspend(() => {
+          const request = ++started
+          return Effect.onInterrupt(Effect.never, () =>
+            Effect.andThen(
+              request === 1 ? Deferred.await(release) : Effect.void,
+              Effect.sync(() => interrupted.push(request))
+            ))
+        })
+        const scope = yield* Scope.make()
+        const { client, httpRequests } = yield* makeBatchingClient(
+          RpcSerialization.layerJson,
+          { window: "5 millis" },
+          beforeRequest
+        ).pipe(Scope.provide(scope))
+
+        yield* client.Echo({ value: "first" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust("5 millis")
+        const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+        yield* TestClock.adjust(0)
+        yield* client.Echo({ value: "second" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust("5 millis")
+        yield* Deferred.succeed(release, void 0)
+        yield* Fiber.join(closing)
+
+        // every HTTP request that started was interrupted by the shutdown
+        assert.strictEqual(interrupted.length, httpRequests())
+      }))
   })
 
   it.effect("reports transient socket open errors without failing in-flight streams", () =>
