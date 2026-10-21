@@ -924,7 +924,12 @@ export const layerStoreMemory = (options?: {
  *   logged and retried on the next tick, and never fails the call. If the
  *   lease lapses, another caller takes over as the probe and the old probe's
  *   outcome is discarded.
- * - `idleTimeToLive` (default one hour) expires idle keys. An Open key
+ * - `idleTimeToLive` (default one hour) expires idle keys. Closed keys, and
+ *   HalfOpen keys whose probe slot is free, expire after `idleTimeToLive`.
+ *   While a probe holds the lease, the key expires `idleTimeToLive` after the
+ *   lease would lapse, and each renewal moves both together, so a probe whose
+ *   renewals succeed never loses its key. Freeing the slot (an Ignored or
+ *   interrupted probe) returns the key to `idleTimeToLive`. An Open key
  *   expires that long after its open time ends, so expiry never resets the
  *   backoff count early. An expired key starts again as Closed.
  *
