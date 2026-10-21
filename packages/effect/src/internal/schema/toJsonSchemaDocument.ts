@@ -450,23 +450,16 @@ function compileJsonSchema(
           : { type: typeof literal, enum: [literal] }
       }
       case "Enum": {
-        const types = representation.enums.map(([title, literal], index) => {
-          if (typeof literal === "number" && !globalThis.Number.isFinite(literal)) {
-            throw errorWithPath(
-              `Invalid numeric enum value ${globalThis.String(literal)}`,
-              [...path, "enums", index, 1]
-            )
-          }
-          return { type: typeof literal, enum: [literal], title }
-        })
+        const types = representation.enums.map(([title, literal]) => ({
+          type: typeof literal,
+          enum: [literal],
+          title
+        }))
         return types.length === 0 ? { not: {} } : { anyOf: types }
       }
       case "TemplateLiteral":
         return { type: "string", pattern: `^${representation.parts.map(getPartPattern).join("")}$` }
       case "Arrays": {
-        if (representation.rest.length > 1) {
-          throw errorWithPath("Invalid schema representation document", [...path, "rest"])
-        }
         const out: JsonSchema.JsonSchema = { type: "array" }
         let minItems = representation.elements.length
         const prefixItems = representation.elements.map((element, index) => {
@@ -489,6 +482,11 @@ function compileJsonSchema(
           const rest = recur(representation.rest[0], [...path, "rest", 0], dependencies)
           if (Object.keys(rest).length > 0) out.items = rest
           else delete out.items
+        } else if (representation.rest.length > 1) {
+          delete out.maxItems
+          delete out.items
+          out.minItems = minItems + representation.rest.length - 1
+          dependencies.push(false)
         }
         return out
       }
@@ -502,7 +500,7 @@ function compileJsonSchema(
         for (let index = 0; index < representation.propertySignatures.length; index++) {
           const property = representation.propertySignatures[index]
           if (typeof property.name !== "string") {
-            throw errorWithPath("Invalid schema representation document", [
+            throw errorWithPath("Objects property names must be strings", [
               ...path,
               "propertySignatures",
               index,
@@ -574,10 +572,11 @@ function compileJsonSchema(
           }
           for (let index = 0; index < representation.indexSignatures.length; index++) {
             propertyNames.push(
-              recur(
+              getPropertyNameSchema(
                 representation.indexSignatures[index].parameter,
                 [...path, "indexSignatures", index, "parameter"],
-                dependencies
+                dependencies,
+                new Set()
               )
             )
           }
@@ -631,6 +630,31 @@ function compileJsonSchema(
     }
   }
 
+  function getPropertyNameSchema(
+    parameter: SchemaRepresentation.Representation,
+    path: Path,
+    dependencies: Array<Exactness>,
+    seenReferences: ReadonlySet<string>
+  ): JsonSchema.JsonSchema {
+    switch (parameter._tag) {
+      case "Number":
+        return { type: "string", pattern: `^(?:${InternalAST.FINITE_PATTERN}|Infinity|-Infinity|NaN)$` }
+      case "Reference": {
+        if (seenReferences.has(parameter.$ref)) return { type: "string" }
+        return getPropertyNameSchema(
+          references[parameter.$ref],
+          ["references", parameter.$ref],
+          dependencies,
+          new Set(seenReferences).add(parameter.$ref)
+        )
+      }
+      case "Union":
+        return { anyOf: parameter.types.map((type) => getPropertyNameSchema(type, path, dependencies, seenReferences)) }
+      default:
+        return recur(parameter, path, dependencies)
+    }
+  }
+
   function getParameterPatterns(
     parameter: SchemaRepresentation.Representation,
     path: Path,
@@ -678,8 +702,12 @@ function compileJsonSchema(
         }
         return patterns
       }
+      case "Number":
+        return parameter.checks.length === 0
+          ? [`^(?:${InternalAST.FINITE_PATTERN}|Infinity|-Infinity|NaN)$`]
+          : undefined
       default:
-        throw errorWithPath("Invalid schema representation document", path)
+        throw errorWithPath(`Invalid index signature parameter ${parameter._tag}`, path)
     }
   }
 }
@@ -717,12 +745,14 @@ function getPartPattern(part: SchemaRepresentation.Representation): string {
       return InternalAST.STRING_PATTERN
     case "Number":
       return InternalAST.FINITE_PATTERN
+    case "BigInt":
+      return "-?\\d+"
     case "TemplateLiteral":
       return part.parts.map(getPartPattern).join("")
     case "Union":
       return `(?:${part.types.map(getPartPattern).join("|")})`
     default:
-      throw errorWithPath("Invalid schema representation document", [])
+      throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])
   }
 }
 
