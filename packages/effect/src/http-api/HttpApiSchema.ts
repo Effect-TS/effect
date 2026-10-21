@@ -123,9 +123,9 @@ export type StatusLiteral = HttpStatus.Literal
  * **Details**
  *
  * This is equivalent to calling `.annotateKey({ httpApiStatus: code })` on the
- * schema, so a named schema keeps its identity across statuses. You can pass
- * either a numeric status code (for example, `201`) or a common literal name
- * (for example, `"Created"`).
+ * schema, so a named schema reused with different statuses still emits a
+ * single OpenAPI component. You can pass either a numeric status code (for
+ * example, `201`) or a common literal name (for example, `"Created"`).
  *
  * @stability unstable
  * @category schemas
@@ -1270,8 +1270,7 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
 const resolveHttpApiStatusAnnotation = SchemaAST.resolveAt<number>("httpApiStatus")
 
 function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
-  const status = ast.context?.annotations?.httpApiStatus
-  return Predicate.isNumber(status) ? status : resolveHttpApiStatusAnnotation(ast)
+  return ast.context?.annotations?.httpApiStatus ?? resolveHttpApiStatusAnnotation(ast)
 }
 
 const defaultJsonEncoding: Encoding = {
