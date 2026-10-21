@@ -1157,19 +1157,19 @@ export const migrations = (options?: {
             ALTER TABLE ${repliesTableSql} DROP CONSTRAINT IF EXISTS ${sql(oneExitIndex)};
             ALTER TABLE ${repliesTableSql} DROP CONSTRAINT IF EXISTS ${sql(sequenceIndex)};
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdIndex} AND object_id = OBJECT_ID(N'${messagesTableSql}'))
             CREATE UNIQUE INDEX ${sql(messageIdIndex)}
             ON ${messagesTableSql} (message_id) WHERE message_id IS NOT NULL;
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdLookupIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdLookupIndex} AND object_id = OBJECT_ID(N'${messagesTableSql}'))
             CREATE INDEX ${sql(messageIdLookupIndex)}
             ON ${messagesTableSql} (message_id);
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${oneExitIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${oneExitIndex} AND object_id = OBJECT_ID(N'${repliesTableSql}'))
             CREATE UNIQUE INDEX ${sql(oneExitIndex)}
             ON ${repliesTableSql} (request_id, kind) WHERE kind IS NOT NULL;
 
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${sequenceIndex})
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${sequenceIndex} AND object_id = OBJECT_ID(N'${repliesTableSql}'))
             CREATE UNIQUE INDEX ${sql(sequenceIndex)}
             ON ${repliesTableSql} (request_id, sequence) WHERE sequence IS NOT NULL;
 
