@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Equivalence.combineAll` consuming one-shot iterables after the first comparison.
+Fix `Equivalence.combineAll` losing its criteria after the first comparison when given a one-shot iterable.
