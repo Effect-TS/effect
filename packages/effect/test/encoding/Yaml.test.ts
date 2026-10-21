@@ -352,6 +352,59 @@ development:
     })
   })
 
+  // YAML 1.2.2 §§7.4, 8.2.2: explicit `?` keys, flow keys without values, and flow sequence pairs.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1.
+  describe("explicit keys and flow pairs", () => {
+    it.each(
+      [
+        ["explicit key and value", "? a\n: b\n", { a: "b" }],
+        ["explicit keys without values", "? a\n? b\nc:\n", { a: null, b: null, c: null }],
+        ["block scalar key", "? |\n  block\n: v\n", { "block\n": "v" }],
+        ["multiline key and value", "? a\n  b\n: c\n  d\n", { "a b": "c d" }],
+        ["comment between key and value", "? a\n# comment\n: b\n", { a: "b" }],
+        ["implicit and explicit entries", "a: 1\n? b\n: 2\nc: 3\n", { a: 1, b: 2, c: 3 }],
+        ["compact sequence value", "? a\n: - b\n  - c\n", { a: ["b", "c"] }],
+        ["indentless sequence value", "? a\n:\n- b\n", { a: ["b"] }],
+        ["nested mapping", "m:\n  ? a\n  : b\n", { m: { a: "b" } }],
+        ["sequence entry", "- ? a\n  : b\n", [{ a: "b" }]],
+        ["empty key", "?\n: v\n", { "": "v" }],
+        ["flow keys without values", "{a, b: 1}\n", { a: null, b: 1 }],
+        ["explicit flow keys", "{? a, ? b: 1}\n", { a: null, b: 1 }],
+        ["flow sequence pairs", "[a: 1, b]\n", [{ a: 1 }, "b"]],
+        ["explicit flow sequence pairs", "[? a: 1, ? b]\n", [{ a: 1 }, { b: null }]],
+        ["adjacent value after a quoted key", "[\"a\":1]\n", [{ a: 1 }]],
+        ["empty flow key", "{: a}\n", { "": "a" }],
+        ["colon inside plain flow scalars", "{http://x: [http://y]}\n", { "http://x": ["http://y"] }],
+        ["colon without a following space", "{a:1}\n", { "a:1": null }],
+        ["empty flow value", "{a: }\n", { a: null }]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["multiline implicit flow sequence pair key", "a: [b\n  : c]\n"],
+      ["empty flow sequence entry", "[a, , b]\n"],
+      ["leading comma in a flow sequence", "[, a]\n"],
+      ["leading comma in a flow mapping", "{, a: 1}\n"],
+      ["block sequence entry in a flow sequence", "[-]\n"],
+      ["nested implicit flow mapping value", "{a: b: c}\n"],
+      ["duplicate explicit key", "? a\n: 1\na: 2\n"]
+    ])("rejects %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    // Valid YAML, rejected because mapping keys are JavaScript strings.
+    it.each([
+      ["sequence key", "? [a]\n: v\n"],
+      ["mapping key", "? a: 1\n: v\n"],
+      ["flow collection key", "{[a]: v}\n"],
+      ["flow sequence pair collection key", "[[a]: v]\n"]
+    ])("rejects a %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), /YAML collection keys are not supported/)
+    })
+  })
+
   describe("scalar conformance boundaries", () => {
     it.each([
       ["colon followed by space", "description: Use when: deploy\n"],

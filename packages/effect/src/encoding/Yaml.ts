@@ -5,8 +5,9 @@
  * sequence values, multiline plain and quoted scalars, block scalars, anchors,
  * and aliases.
  *
- * Unsupported: explicit complex keys, tag/directive processing, recursive
- * aliases, and document streams. Mapping keys are JavaScript strings.
+ * Unsupported: tag/directive processing, recursive aliases, and document
+ * streams. Mapping keys are JavaScript strings, so explicit (`?`) keys must be
+ * scalars.
  *
  * @stability unstable
  * @since 4.0.0
@@ -103,7 +104,13 @@ const stripComment = (input: string): string => {
 
 const mappingSeparator = (input: string): number => findIndicator(input, ":")
 
-const isSequenceEntry = (text: string): boolean => text === "-" || text.startsWith("- ")
+const startsWithIndicator = (text: string, indicator: "-" | "?" | ":"): boolean =>
+  text === indicator || text.startsWith(`${indicator} `)
+
+const isSequenceEntry = (text: string): boolean => startsWithIndicator(text, "-")
+
+// Whether a flow indicator character is followed by a separator rather than scalar content.
+const isSeparated = (next: string | undefined): boolean => next === undefined || /[\s,[\]{}]/.test(next)
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
@@ -225,10 +232,13 @@ const parseScalar = (input: string): unknown => {
   return value
 }
 
-const parseKey = (input: string): string => {
-  const value = parseScalar(input)
+// Mapping keys are JavaScript strings, so collection keys are rejected.
+const scalarKey = (value: unknown): string => {
+  if (typeof value === "object" && value !== null) throw new SyntaxError("YAML collection keys are not supported")
   return value === null || value === undefined ? "" : String(value)
 }
+
+const parseKey = (input: string): string => scalarKey(parseScalar(input))
 
 class FlowParser {
   private input: string
@@ -268,7 +278,7 @@ class FlowParser {
       if (!this.anchors.has(name)) this.fail(`Unknown alias '*${name}'`)
       return this.anchors.get(name)
     }
-    return parseScalar(foldFlowLines(this.readUntil(/[,\]}]/)).trim())
+    return parseScalar(this.readPlain())
   }
 
   private parseSequence(): Array<unknown> {
@@ -280,7 +290,7 @@ class FlowParser {
       return output
     }
     while (true) {
-      output.push(this.parseValue())
+      output.push(this.parseSequenceEntry())
       this.skipWhitespace()
       if (this.peek() === "]") {
         this.index++
@@ -305,10 +315,8 @@ class FlowParser {
     }
     while (true) {
       const key = this.parseKey()
-      this.skipWhitespace()
-      this.expect(":")
       if (hasOwn.call(output, key)) this.fail(`Duplicate key '${key}'`)
-      setProperty(output, key, this.parseValue())
+      setProperty(output, key, this.parsePairValue())
       this.skipWhitespace()
       if (this.peek() === "}") {
         this.index++
@@ -323,13 +331,56 @@ class FlowParser {
     }
   }
 
+  // A `key: value` entry is a single-pair mapping.
+  private parseSequenceEntry(): unknown {
+    this.skipWhitespace()
+    if (this.peek() === ",") this.fail("Unexpected ','")
+    const explicit = this.readExplicitKeyIndicator()
+    const start = this.index
+    const value = this.parseValue()
+    this.skipWhitespace()
+    if (!explicit && this.peek() !== ":") return value
+    if (!explicit && this.input.slice(start, this.index).includes("\n")) {
+      this.fail("Implicit keys of flow sequence pairs must be on a single line")
+    }
+    const pair: YamlRecord = {}
+    setProperty(pair, scalarKey(value), this.parsePairValue())
+    return pair
+  }
+
   private parseKey(): string {
     this.skipWhitespace()
-    const character = this.peek()
-    if (character === "\"" || character === "'") {
-      return parseKey(this.readQuoted(character))
+    if (this.peek() === ",") this.fail("Unexpected ','")
+    this.readExplicitKeyIndicator()
+    return scalarKey(this.parseValue())
+  }
+
+  // A key without a `:` indicator has a null value.
+  private parsePairValue(): unknown {
+    this.skipWhitespace()
+    if (this.peek() !== ":") return null
+    this.index++
+    return this.parseValue()
+  }
+
+  private readExplicitKeyIndicator(): boolean {
+    if (this.peek() !== "?" || !isSeparated(this.input[this.index + 1])) return false
+    this.index++
+    return true
+  }
+
+  // A plain scalar ends at a flow indicator, a `:` followed by a separator, or a comment.
+  private readPlain(): string {
+    const start = this.index
+    while (true) {
+      const character = this.peek()
+      if (character === "" || /[,[\]{}]/.test(character) || this.atComment()) break
+      if (character === ":" && isSeparated(this.input[this.index + 1])) break
+      this.index++
     }
-    return foldFlowLines(this.readUntil(/:/)).trim()
+    const text = foldFlowLines(this.input.slice(start, this.index)).trim()
+    if (isSequenceEntry(text)) this.fail("Block sequences are not allowed in flow collections")
+    return text
   }
 
   private readQuoted(quote: string): string {
@@ -414,7 +465,7 @@ class YamlParser {
     if (line === undefined) return null
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
     if (isSequenceEntry(line.text)) return this.parseSequence(indent)
-    if (mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
+    if (startsWithIndicator(line.text, "?") || mappingSeparator(line.text) !== -1) return this.parseMapping(indent)
     this.index++
     return this.parseNodeValue(line.text, parentIndent)
   }
@@ -425,6 +476,10 @@ class YamlParser {
       const line = this.lines[this.index]
       if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
+      if (startsWithIndicator(line.text, "?")) {
+        this.parseExplicitEntry(output, line, indent)
+        continue
+      }
       const separator = mappingSeparator(line.text)
       if (separator === -1) return output
       this.index++
@@ -446,6 +501,18 @@ class YamlParser {
     setProperty(output, key, value)
   }
 
+  // A `? key` entry, optionally followed by a `: value` line at the same indentation.
+  private parseExplicitEntry(output: YamlRecord, line: Line, indent: number): void {
+    const key = scalarKey(this.parseCompactNode(line, indent))
+    this.skipIgnored()
+    const next = this.lines[this.index]
+    const value = next !== undefined && next.indent === indent && startsWithIndicator(next.text, ":")
+      ? this.parseCompactNode(next, indent, true)
+      : null
+    if (hasOwn.call(output, key)) this.fail(line, `Duplicate key '${key}'`)
+    setProperty(output, key, value)
+  }
+
   private parseSequence(indent: number): Array<unknown> {
     const output: Array<unknown> = []
     while (true) {
@@ -458,12 +525,12 @@ class YamlParser {
     }
   }
 
-  // Parses the node after a `-` indicator, which may start on the indicator's line.
-  private parseCompactNode(line: Line, indent: number): unknown {
+  // Parses the node after a `-`, `?` or `:` indicator, which may start on the indicator's line.
+  private parseCompactNode(line: Line, indent: number, allowIndentless = false): unknown {
     const content = line.text.slice(1).trimStart()
     if (content.length === 0) {
       this.index++
-      return this.parseNodeValue("", indent)
+      return this.parseNodeValue("", indent, allowIndentless)
     }
     // Re-read the content as a line of its own, indented to its column.
     const column = indent + line.text.length - content.length
