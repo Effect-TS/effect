@@ -326,6 +326,11 @@ development:
         ["tab separation after the indentation", "a: [1,\n  \t2]\n", { a: [1, 2] }],
         ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }],
         ["multiline plain keys", "a: {b\n  c: 1}\n", { a: { "b c": 1 } }],
+        ["multiline double-quoted values", "a: [\"b\n  c\", \"d\\\n  e\"]\n", { a: ["b c", "de"] }],
+        ["multiline single-quoted values", "a: ['b\n\n  c', 'd''\n  e']\n", { a: ["b\nc", "d' e"] }],
+        ["multiline quoted keys", "a: {\"b\n  c\": 1}\n", { a: { "b c": 1 } }],
+        ["hashes in multiline quoted scalars", "a: [\"b # c\n  # d\" # e\n  ]\n", { a: ["b # c # d"] }],
+        ["comments after continuation entries", "a: [\n  b, # c\n  d # e\n  ]\n", { a: ["b", "d"] }],
         ["anchored collection", "a: &x [\n  1\n  ]\nb: *x\n", { a: [1], b: [1] }]
       ] as const
     )("parses %s", (_, source, expected) => {
@@ -339,17 +344,11 @@ development:
       ["unterminated collection before a sibling key", "a: [1,\n  2\nb: 3\n"],
       ["content after the closing bracket", "a: [1,\n  2] extra\n"],
       ["content after a closing bracket at the parent indentation", "a: [\n  1\n], b: 2\n"],
-      ["document marker inside a root collection", "[\n1,\n---\n]\n"]
+      ["document marker inside a root collection", "[\n1,\n---\n]\n"],
+      ["unterminated multiline quoted scalar", "a: [\"b\n  c]\n"],
+      ["quoted continuation at the parent indentation", "a: [\"b\nc\"]\n"]
     ])("rejects %s", (_, source) => {
       assert.throws(() => Yaml.parse(source), SyntaxError)
-    })
-
-    // Valid YAML, deliberately rejected as unsupported.
-    it.each([
-      ["double-quoted", "a: [\"b\n  c\"]\n"],
-      ["single-quoted", "a: ['b\n  c']\n"]
-    ])("rejects multiline %s scalars", (_, source) => {
-      assert.throws(() => Yaml.parse(source), /multiline quoted scalars in flow collections are not supported/)
     })
   })
 

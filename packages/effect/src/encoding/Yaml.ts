@@ -5,9 +5,8 @@
  * multiline plain and quoted scalars, block scalars, anchors, and aliases.
  *
  * Unsupported: compact nested block sequences (`- - value` on one line),
- * multiline quoted scalars in flow collections, explicit complex keys,
- * tag/directive processing, recursive aliases, and document streams. Mapping
- * keys are JavaScript strings.
+ * explicit complex keys, tag/directive processing, recursive aliases, and
+ * document streams. Mapping keys are JavaScript strings.
  *
  * @stability unstable
  * @since 4.0.0
@@ -123,6 +122,24 @@ const trimFoldedEnd = (line: string, quote: string): string => {
   if (trailing === null) return line
   const escaped = quote === "\"" && endsWithEscape(line.slice(0, trailing.index))
   return line.slice(0, trailing.index + (escaped ? 1 : 0))
+}
+
+// Folds the lines of a multiline quoted scalar, given with its quotes.
+const foldQuotedLines = (lines: ReadonlyArray<string>, quote: string): string => {
+  let output = ""
+  let index = 0
+  while (index < lines.length - 1) {
+    const line = index === 0 ? lines[0] : lines[index].trimStart()
+    index++
+    if (quote === "\"" && endsWithEscape(line)) {
+      output += line.slice(0, -1)
+    } else {
+      const start = index
+      while (index < lines.length - 1 && lines[index].trim().length === 0) index++
+      output += trimFoldedEnd(line, quote) + foldLineBreak(index - start)
+    }
+  }
+  return output + (index === 0 ? lines[0] : lines[index].trimStart())
 }
 
 const parseDoubleQuoted = (input: string): string => {
@@ -317,22 +334,33 @@ class FlowParser {
 
   private readQuoted(quote: string): string {
     const start = this.index
-    const end = closingQuote(this.input, quote, start + 1)
-    if (end === -1) {
-      this.fail("Unterminated quoted scalar (multiline quoted scalars in flow collections are not supported)")
-    }
+    let end = closingQuote(this.input, quote, start + 1)
+    while (end === -1 && this.readLine()) end = closingQuote(this.input, quote, start + 1)
+    if (end === -1) this.fail("Unterminated quoted scalar")
     this.index = end + 1
-    return this.input.slice(start, this.index)
+    return foldQuotedLines(this.input.slice(start, this.index).split("\n"), quote)
   }
 
   private readUntil(stop: RegExp): string {
     const start = this.index
-    while (!stop.test(this.peek()) && this.index < this.input.length) this.index++
+    while (!stop.test(this.peek()) && this.index < this.input.length && !this.atComment()) this.index++
     return this.input.slice(start, this.index)
   }
 
   private skipWhitespace(): void {
-    while (/\s/.test(this.peek())) this.index++
+    while (true) {
+      if (/\s/.test(this.peek())) {
+        this.index++
+      } else if (this.atComment()) {
+        while (this.index < this.input.length && this.input[this.index] !== "\n") this.index++
+      } else {
+        return
+      }
+    }
+  }
+
+  private atComment(): boolean {
+    return this.peek() === "#" && /\s/.test(this.input[this.index - 1])
   }
 
   private expect(character: string): void {
@@ -341,12 +369,16 @@ class FlowParser {
   }
 
   private peek(): string {
-    // Inside a collection, the end of the line continues on the next line.
-    if (this.index === this.input.length && this.depth > 0) {
-      const line = this.nextLine()
-      if (line !== undefined) this.input += `\n${line}`
-    }
+    if (this.index === this.input.length) this.readLine()
     return this.input[this.index] ?? ""
+  }
+
+  // Inside a collection, the end of the line continues on the next line.
+  private readLine(): boolean {
+    if (this.depth === 0) return false
+    const line = this.nextLine()
+    if (line !== undefined) this.input += `\n${line}`
+    return line !== undefined
   }
 
   private fail(message: string): never {
@@ -477,7 +509,8 @@ class YamlParser {
       if (content && next.indent < parentIndent) return undefined
       if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
       this.index++
-      return next.text
+      // The flow parser skips comments itself, since quoted scalars may span lines.
+      return next.raw.slice(next.indent)
     }).parse()
   }
 
@@ -507,32 +540,24 @@ class YamlParser {
 
   private parseQuotedValue(value: string, parentIndent: number): unknown {
     const quote = value[0]
-    let output = quote
-    let line = value.slice(1)
-    while (true) {
-      const end = closingQuote(line, quote, 0)
-      if (end !== -1) {
-        const rest = line.slice(end + 1)
-        if (rest.trim().length > 0 && !/^[ \t]+#/.test(rest)) {
-          throw new SyntaxError("Unexpected content after quoted YAML scalar")
-        }
-        return parseScalar(output + line.slice(0, end + 1))
-      }
-      if (quote === "\"" && endsWithEscape(line)) {
-        output += line.slice(0, -1)
-      } else {
-        const blankLines = this.skipBlankLines()
-        this.rejectTabIndentedBlankLines(blankLines, parentIndent)
-        output += trimFoldedEnd(line, quote) + foldLineBreak(blankLines)
-      }
+    const lines = [value]
+    let end = closingQuote(value, quote, 1)
+    while (end === -1) {
       const next = this.lines[this.index++]
       if (next === undefined) throw new SyntaxError("Unterminated quoted YAML scalar")
-      this.rejectTabIndent(next)
-      if (next.raw.trim().length > 0 && next.indent <= parentIndent) {
-        this.fail(next, "Invalid quoted scalar indentation")
-      }
-      line = next.raw.trimStart()
+      const blank = next.raw.trim().length === 0
+      if (!blank || next.indent <= parentIndent) this.rejectTabIndent(next)
+      if (!blank && next.indent <= parentIndent) this.fail(next, "Invalid quoted scalar indentation")
+      lines.push(next.raw)
+      end = closingQuote(next.raw, quote, 0)
     }
+    const last = lines[lines.length - 1]
+    const rest = last.slice(end + 1)
+    if (rest.trim().length > 0 && !/^[ \t]+#/.test(rest)) {
+      throw new SyntaxError("Unexpected content after quoted YAML scalar")
+    }
+    lines[lines.length - 1] = last.slice(0, end + 1)
+    return parseScalar(foldQuotedLines(lines, quote))
   }
 
   private parseBlockScalar(indicator: string, parentIndent: number): string {
