@@ -41,17 +41,21 @@ const hasOwn = Object.prototype.hasOwnProperty
 const makeTable = (): Table => Object.create(null)
 const isTable = (value: unknown): value is Table =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date)
-const isValidDateTime = (token: string): boolean => {
-  const date = /^(\d{4})-(\d{2})-(\d{2})/.exec(token)
-  if (date !== null) {
-    const year = Number(date[1])
-    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
-    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][Number(date[2]) - 1]
-    if (days === undefined || Number(date[3]) < 1 || Number(date[3]) > days) return false
-  }
-  const time = /(\d{2}):(\d{2}):(\d{2})/.exec(token)
-  return time === null || (Number(time[1]) <= 23 && Number(time[2]) <= 59 && Number(time[3]) <= 59)
+const localDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
+const localTimePattern = /^(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/
+const dateTimePattern = /^(\d{4}-\d{2}-\d{2})[Tt](\d{2}:\d{2}:\d{2}(?:\.\d+)?)([Zz]|[+-]\d{2}:\d{2})?$/
+const isValidDate = (date: string): boolean => {
+  const [, year, month, day] = localDatePattern.exec(date)!.map(Number)
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const days = month === 2 ? (leap ? 29 : 28) : month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31
+  return month >= 1 && month <= 12 && day >= 1 && day <= days
 }
+const isValidTime = (time: string): boolean => {
+  const [, hour, minute, second] = localTimePattern.exec(time)!.map(Number)
+  return hour <= 23 && minute <= 59 && second <= 59
+}
+const isValidOffset = (offset: string): boolean =>
+  offset.length === 1 || (Number(offset.slice(1, 3)) <= 23 && Number(offset.slice(4)) <= 59)
 
 class TomlParser {
   readonly root = makeTable()
@@ -253,24 +257,19 @@ class TomlParser {
   }
 
   private parseDate(token: string): Date | string | undefined {
-    if (!isValidDateTime(token)) {
-      this.fail(`Invalid date-time '${token}'`)
-    }
-    const date = "\\d{4}-\\d{2}-\\d{2}"
-    const time = "\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?"
-    if (new RegExp(`^${date}[Tt]${time}(?:[Zz]|[+-]\\d{2}:\\d{2})$`).test(token)) {
-      const value = new Date(token.replace("t", "T").replace("z", "Z"))
-      if (Number.isNaN(value.getTime())) {
+    const dateTime = dateTimePattern.exec(token)
+    if (dateTime !== null) {
+      const [, date, time, offset] = dateTime
+      if (!isValidDate(date) || !isValidTime(time) || (offset !== undefined && !isValidOffset(offset))) {
         this.fail(`Invalid date-time '${token}'`)
       }
-      return value
+      return offset === undefined ? `${date}T${time}` : new Date(`${date}T${time}${offset.toUpperCase()}`)
     }
-    if (
-      new RegExp(`^${date}[Tt]${time}$`).test(token) ||
-      new RegExp(`^${date}$`).test(token) ||
-      new RegExp(`^${time}$`).test(token)
-    ) {
-      return token.replace("t", "T")
+    if (localDatePattern.test(token)) {
+      return isValidDate(token) ? token : this.fail(`Invalid date-time '${token}'`)
+    }
+    if (localTimePattern.test(token)) {
+      return isValidTime(token) ? token : this.fail(`Invalid date-time '${token}'`)
     }
     return undefined
   }
