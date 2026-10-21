@@ -29,6 +29,40 @@ describe("Prompt", () => {
       ])
       assert.deepStrictEqual(prompt, expected)
     })
+
+    it("should preserve provider metadata as part options", () => {
+      const metadata = { google: { thoughtSignature: "signature" } }
+      const parts = [
+        Response.makePart("text", { text: "Hello", metadata }),
+        Response.makePart("reasoning", { text: "Thinking", metadata }),
+        Response.makePart("tool-call", {
+          id: "call_1",
+          name: "get_time",
+          params: {},
+          providerExecuted: false,
+          metadata
+        })
+      ]
+      const prompt = Prompt.fromResponseParts(parts)
+      const expected = Prompt.make([
+        {
+          role: "assistant",
+          content: [
+            { type: "text", text: "Hello", options: metadata },
+            { type: "reasoning", text: "Thinking", options: metadata },
+            {
+              type: "tool-call",
+              id: "call_1",
+              name: "get_time",
+              params: {},
+              providerExecuted: false,
+              options: metadata
+            }
+          ]
+        }
+      ])
+      assert.deepStrictEqual(prompt, expected)
+    })
   })
 
   describe("merge", () => {
