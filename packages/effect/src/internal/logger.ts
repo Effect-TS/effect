@@ -272,31 +272,14 @@ export const structuredMessage = (u: unknown): unknown => {
   }
 }
 
+const errorToJSON = (u: unknown): unknown => isError(u) ? { ...u, name: u.name, message: u.message } : u
+
 /** @internal */
-export const jsonLogger = map(
-  structuredLogger,
-  (logObj) => {
-    let message: unknown
-    const serializeIfError = (obj: unknown): unknown =>
-      isError(obj) ?
-        ({
-          name: obj.name,
-          message: obj.message
-        }) :
-        obj
-
-    if (Array.isArray(logObj.message)) {
-      message = logObj.message.map(serializeIfError)
-    } else {
-      message = serializeIfError(logObj.message)
-    }
-
-    return Inspectable.stringifyCircular({
-      ...logObj,
-      message
-    })
-  }
-)
+export const jsonLogger = map(structuredLogger, (log) =>
+  Inspectable.stringifyCircular({
+    ...log,
+    message: Array.isArray(log.message) ? log.message.map(errorToJSON) : errorToJSON(log.message)
+  }))
 
 /** @internal */
 export const isLogger = (u: unknown): u is Logger.Logger<unknown, unknown> => {
