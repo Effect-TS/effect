@@ -32,12 +32,14 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import type * as RpcMessage from "effect/rpc/RpcMessage"
 import { RequestId } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
+import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import { collectGarbage } from "../../utils/gc.ts"
+import { makeHeldServerScheduler } from "./TestUtils/McpHeldScheduler.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
@@ -846,6 +848,101 @@ describe("McpServer", () => {
       assert.deepInclude(yield* Effect.promise(() => unrelated.json()), { id: 2, result: { content: [] } })
       yield* server.notifications["notifications/tools/list_changed"]({})
       assert.strictEqual((yield* subscription.take()).method, "notifications/tools/list_changed")
+    }))
+
+  it.effect("should deliver list changes to every initialized HTTP session", () =>
+    Effect.gen(function*() {
+      const holding = yield* Queue.unbounded<void>()
+      const release = yield* Deferred.make<void>()
+      const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
+      const protocol = McpProtocol.v2025_11_25
+      const harness = yield* makeHttpHarness(
+        Layer.effectDiscard(Effect.gen(function*() {
+          const server = yield* McpServer.McpServer
+          yield* server.addTool({
+            tool: new McpSchema.Tool({ name: "Hold", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              Queue.offer(holding, undefined).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.as(new McpSchema.CallToolResult({ content: [] }))
+              )
+          })
+          yield* Deferred.succeed(ready, server)
+        })).pipe(Layer.provideMerge(makeServerLayer({ name: "HttpListChanges", protocols: [protocol] })))
+      )
+      const server = yield* Deferred.await(ready)
+      const calls = yield* Effect.forEach(["first", "second"], (id) =>
+        initializeHttpSession(harness, protocol).pipe(
+          Effect.flatMap((headers) =>
+            harness.post({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "Hold" } }, headers)
+          ),
+          Effect.forkChild
+        ))
+      yield* Queue.take(holding)
+      yield* Queue.take(holding)
+
+      yield* server.notifications["notifications/tools/list_changed"]({})
+      const streams = yield* Effect.forEach(calls, (call) =>
+        Fiber.join(call).pipe(
+          Effect.map(makeMcpSseReader),
+          Effect.tap((stream) => Effect.addFinalizer(() => stream.cancel))
+        ))
+      for (const stream of streams) {
+        assert.strictEqual((yield* stream.take()).method, "notifications/tools/list_changed")
+      }
+      yield* Deferred.succeed(release, undefined)
+      assert.deepStrictEqual(
+        yield* Effect.forEach(streams, (stream) => Effect.map(stream.drain(), (messages) => messages.map((m) => m.id))),
+        [["first"], ["second"]]
+      )
+    }))
+
+  it.effect("should not deliver list changes from before an HTTP session initialized", () =>
+    Effect.gen(function*() {
+      const { release, scheduler } = yield* makeHeldServerScheduler
+      const holding = yield* Deferred.make<void>()
+      const resume = yield* Deferred.make<void>()
+      const protocol = McpProtocol.v2025_11_25
+      const harness = yield* makeHttpHarness(
+        Layer.effectDiscard(McpServer.McpServer.use((server) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name: "Hold", inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              Deferred.succeed(holding, undefined).pipe(
+                Effect.andThen(Deferred.await(resume)),
+                Effect.andThen(server.notifications["notifications/tools/list_changed"]({})),
+                Effect.as(new McpSchema.CallToolResult({ content: [] }))
+              )
+          })
+        )).pipe(
+          Layer.provideMerge(makeServerLayer({ name: "HttpStaleListChange", protocols: [protocol] })),
+          // The web handler builds the server in its own runtime, so the
+          // scheduler must reach it through the layer.
+          Layer.provide(Layer.succeed(Scheduler.Scheduler, scheduler))
+        )
+      )
+      const headers = yield* initializeHttpSession(harness, protocol)
+      const call = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "hold",
+        method: "tools/call",
+        params: { name: "Hold" }
+      }, headers).pipe(Effect.forkChild)
+      yield* Deferred.await(holding)
+
+      // Queue the registration's list change while the session's request is in
+      // flight, then emit a newer one that must follow it on the stream.
+      yield* release
+      yield* Deferred.succeed(resume, undefined)
+      const stream = makeMcpSseReader(yield* Fiber.join(call))
+      yield* Effect.addFinalizer(() => stream.cancel)
+      const messages = yield* stream.drain()
+      assert.deepStrictEqual(messages.map((message) => message.method ?? message.id), [
+        "notifications/tools/list_changed",
+        "hold"
+      ])
     }))
 
   it.effect("should deliver notifications and results to other clients when one client stops reading", () =>
