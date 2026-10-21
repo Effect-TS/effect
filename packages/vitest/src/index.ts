@@ -220,8 +220,15 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
 /**
  * Registers a callback to run once before all tests in the current suite. If
  * the callback returns an `Effect`, it is run and awaited with a `Scope` that
- * closes after all tests in the suite finish. The `Effect` must not require any
- * other services.
+ * closes when Vitest runs the hook's cleanup after the suite, within the hook's
+ * timeout. The `Effect` must not require any other services.
+ *
+ * **Details**
+ *
+ * If Vitest stops waiting for the setup, the `Effect` is interrupted and the
+ * `Scope` closed by a cleanup that runs after the hook's own, within the
+ * default hook timeout. As with any `beforeAll` cleanup, Vitest reports one
+ * that exceeds the hook's timeout and does not wait for it.
  *
  * @stability unstable
  * @category hooks

@@ -7,6 +7,7 @@ import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import { constVoid, flow, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
@@ -162,23 +163,28 @@ const closeHookScope = (scope: Scope.Closeable) => runPromise(Scope.close(scope,
 
 /** @internal */
 export const beforeAll: typeof V.beforeAll = (fn, timeout) => {
-  // `beforeAll` has no abort signal, so a paired `afterAll` interrupts a setup
-  // that Vitest stopped waiting for, then closes the scope after the suite. It
-  // uses the default hook timeout: the setup's may already have expired.
-  let dispose = () => Promise.resolve()
+  let dispose: (() => Promise<void>) | undefined
+  // Vitest drops the cleanup of a setup that outlives its timeout, so a hook
+  // registered just before this one disposes the scope too. Its cleanup runs
+  // right after the hook's own under the default `sequence.hooks: "stack"`
+  // and shares the same disposal, bounded by the default hook timeout. A
+  // successful setup keeps Vitest's native cleanup order and timeout.
+  V.beforeAll(() => {
+    dispose = undefined
+    return () => dispose?.()
+  })
   V.beforeAll(
     runHook(fn, (_, effect, scope) => {
-      const controller = new AbortController()
-      const promise = runPromise(effect, { signal: controller.signal })
-      dispose = () => {
-        controller.abort()
-        return promise.then(constVoid, constVoid).then(() => closeHookScope(scope))
-      }
-      return promise
+      const fiber = Effect.runFork(effect)
+      let disposal: Promise<void> | undefined
+      // Interrupting a setup that Vitest stopped waiting for awaits its release.
+      const disposeOnce = () =>
+        disposal ??= runPromise(Effect.andThen(Fiber.interrupt(fiber), Scope.close(scope, Exit.void)))
+      dispose = disposeOnce
+      return runPromise(Fiber.join(fiber)).then(() => disposeOnce)
     }),
     timeout
   )
-  V.afterAll(() => dispose())
 }
 
 /** @internal */
