@@ -5,7 +5,7 @@
  * Every failure is one `CryptoError` whose `module` and `method` name the
  * operation, such as `"Aead"` and `"decrypt"`, and whose `reason` says what
  * went wrong: `InvalidArgument`, `InvalidKey`, `DecryptionFailed`,
- * `Unsupported`, or `NotExtractable`.
+ * `Unsupported`, `NotExtractable`, or `Busy`.
  *
  * **Gotchas**
  *
@@ -150,13 +150,38 @@ export class NotExtractable extends Data.TaggedError("NotExtractable")<{
 }
 
 /**
+ * Reason for a cryptographic operation rejected by bounded resource admission.
+ *
+ * **Details**
+ *
+ * No derivation has started when this reason is returned. The caller may retry
+ * according to its own request deadline and rate-limit policy.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class Busy extends Data.TaggedError("Busy")<{}> {
+  /**
+   * Marks this value as a `CryptoError` reason for runtime guards.
+   *
+   * @since 4.1.0
+   */
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "Cryptographic operation capacity is exhausted"
+  }
+}
+
+/**
  * Union of the reasons carried by `CryptoError`.
  *
  * @stability unstable
  * @category errors
  * @since 4.0.0
  */
-export type CryptoErrorReason = InvalidArgument | InvalidKey | DecryptionFailed | Unsupported | NotExtractable
+export type CryptoErrorReason = InvalidArgument | InvalidKey | DecryptionFailed | Unsupported | NotExtractable | Busy
 
 /**
  * Error returned by the `effect/crypto` modules.

@@ -30,6 +30,10 @@
     "packages/platform/node/",
     "packages/platform/node-shared/",
     "packages/tools/",
-    "packages/sql"
+    "packages/sql",
+    "packages/auth-electron/",
+    "packages/auth-react-native/",
+    "packages/auth-persistence-drizzle/",
+    "packages/auth/src/WorkerdServices.ts"
   ]
 }

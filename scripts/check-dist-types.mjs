@@ -38,10 +38,12 @@ try {
       skipLibCheck: false,
       types: ["node"],
       typeRoots: [Path.join(root, "node_modules", "@types")],
-      paths: {
-        [pkg.name]: [Path.join(dist, "index.d.ts")],
-        [`${pkg.name}/*`]: [Path.join(dist, "*")]
-      }
+      // Preserve exact export targets, including asset declarations and subpaths
+      // such as `schema` that would otherwise resolve to `Schema.d.ts` on macOS.
+      paths: Object.fromEntries(Object.entries(pkg.publishConfig.exports).flatMap(([key, target]) => {
+        const declaration = typeof target === "string" ? target.replace(/\.js$/, ".d.ts") : target?.types
+        return declaration === undefined ? [] : [[Path.posix.join(pkg.name, key), [Path.resolve(pkgDir, declaration)]]]
+      }))
     },
     files: ["index.ts"]
   }

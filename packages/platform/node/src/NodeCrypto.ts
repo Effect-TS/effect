@@ -1,7 +1,7 @@
 /**
  * Node.js layers for the `effect/crypto` modules.
  *
- * `layerDigest` and `layerMac` run on `node:crypto`, `layerKdf` adds Argon2id,
+ * `layerDigest` and `layerMac` run on `node:crypto`, `layerKdf` adds Argon2id and scrypt,
  * `layerAead` runs ChaCha20-Poly1305 on `node:crypto`, and the other layers
  * run the core WebCrypto layers, so that every crypto layer for a Node.js
  * program comes from `NodeCrypto`. Each layer supplies its own `SecureRandom`.

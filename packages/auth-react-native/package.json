@@ -1,0 +1,78 @@
+{
+  "name": "@effect/auth-react-native",
+  "version": "4.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "iOS passkey and browser login adapters for Effect Auth and React Native.",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/auth-react-native"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./BrowserLogin": "./src/BrowserLogin.ts",
+    "./SessionActivity": "./src/SessionActivity.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./BrowserLogin": "./dist/BrowserLogin.js",
+      "./SessionActivity": "./dist/SessionActivity.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/auth": "workspace:^"
+  },
+  "devDependencies": {
+    "effect": "workspace:^",
+    "expo": "54.0.37",
+    "expo-secure-store": "15.0.8",
+    "expo-web-browser": "15.0.11",
+    "react-native": "0.81.4",
+    "react-native-passkey": "3.6.2"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^",
+    "expo-secure-store": "~15.0.8 || ~57.0.4",
+    "expo-web-browser": "~15.0.11 || ~57.0.3",
+    "react-native": ">=0.81 <1",
+    "react-native-passkey": "~3.6.2"
+  },
+  "peerDependenciesMeta": {
+    "expo-secure-store": {
+      "optional": true
+    },
+    "expo-web-browser": {
+      "optional": true
+    },
+    "react-native-passkey": {
+      "optional": true
+    }
+  }
+}

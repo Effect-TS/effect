@@ -12,12 +12,15 @@
     "./packages/**/test/**/*.ts",
     "./packages/**/test/**/*.json",
     "./packages/**/typetest/**/*.ts",
-    "./packages/**/benchmark/**/*.ts"
+    "./packages/**/benchmark/**/*.ts",
+    "./packages/*/codegen/**/*.ts"
   ],
   "exclude": [
     "**/node_modules/**",
     "**/dist/**",
     "./packages/platform/deno/**",
+    // React Native declares host globals that conflict with the web and Node test programs.
+    "./packages/auth-react-native/test/**",
     // Declares `Reactivity.Keys`, which would make reactivity keys strict for every test in this program.
     // TSTyche still checks it in its own program.
     "./packages/effect/typetest/reactivity/ReactivityKeys.tst.ts"
@@ -54,6 +57,23 @@
       "@effect/atom-vue/*": ["./packages/atom/vue/src/*.ts"],
       "@effect/atom-solid": ["./packages/atom/solid/src/index.ts"],
       "@effect/atom-solid/*": ["./packages/atom/solid/src/*.ts"],
+      "@effect/auth": ["./packages/auth/src/index.ts"],
+      "@effect/auth/jose": ["./packages/auth/src/jose/index.ts"],
+      "@effect/auth/oauth": ["./packages/auth/src/oauth/index.ts"],
+      "@effect/auth/oauth/providers": ["./packages/auth/src/oauth/providers/index.ts"],
+      "@effect/auth/contracts": ["./packages/auth/src/Contracts.ts"],
+      "@effect/auth/strategies": ["./packages/auth/src/Strategies.ts"],
+      "@effect/auth/adapters/Twilio": ["./packages/auth/src/Twilio.ts"],
+      "@effect/auth/*": ["./packages/auth/src/*.ts"],
+      "@effect/auth-persistence": ["./packages/auth-persistence/src/index.ts"],
+      "@effect/auth-persistence/*": ["./packages/auth-persistence/src/*.ts"],
+      "@effect/auth-persistence-drizzle": ["./packages/auth-persistence-drizzle/src/index.ts"],
+      "@effect/auth-persistence-drizzle/*": ["./packages/auth-persistence-drizzle/src/*.ts"],
+      "@effect/auth-react-native": ["./packages/auth-react-native/src/index.ts"],
+      "@effect/auth-react-native/*": ["./packages/auth-react-native/src/*.ts"],
+      "@effect/auth-electron": ["./packages/auth-electron/src/index.ts"],
+      "@effect/auth-electron/*": ["./packages/auth-electron/src/*.ts"],
+      "@effect/auth-simplewebauthn/*": ["./packages/auth-simplewebauthn/src/*.ts"],
       "@effect/opentelemetry": ["./packages/opentelemetry/src/index.ts"],
       "@effect/opentelemetry/*": ["./packages/opentelemetry/src/*.ts"],
       "@effect/platform-browser": ["./packages/platform/browser/src/index.ts"],

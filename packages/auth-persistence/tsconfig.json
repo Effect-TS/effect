@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../auth"
+    },
+    {
+      "path": "../platform/node"
+    },
+    {
+      "path": "../sql/libsql"
+    },
+    {
+      "path": "../sql/sqlite-node"
+    },
+    {
+      "path": "../effect"
+    }
+  ]
+}

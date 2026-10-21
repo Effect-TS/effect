@@ -841,6 +841,67 @@ export { _try as try }`
     assert.strictEqual(signatureByName.get("Sample"), null)
   })
 
+  it("renders a re-exported generic signature in its declaration scope", () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-reexport-signature-"))
+    try {
+      fs.mkdirSync(path.join(cwd, "src/internal"), { recursive: true })
+      fs.writeFileSync(
+        path.join(cwd, "tsconfig.json"),
+        JSON.stringify({
+          compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022" },
+          include: ["src/**/*.ts"]
+        })
+      )
+      fs.writeFileSync(
+        path.join(cwd, "package.json"),
+        JSON.stringify({
+          name: "@effect/sample",
+          type: "module",
+          exports: { ".": "./src/index.ts" }
+        })
+      )
+      fs.writeFileSync(
+        path.join(cwd, "src/internal/Factory.ts"),
+        `const makeValue = <A>(value: A) => ({ value, read: () => value })
+
+export function factory<A>(value: A): ReturnType<typeof makeValue<A>> {
+  return makeValue(value)
+}
+`
+      )
+      fs.writeFileSync(
+        path.join(cwd, "src/index.ts"),
+        `export {
+  /**
+   * Creates a value with a reader.
+   *
+   * @stability stable
+   * @category constructors
+   * @since 1.0.0
+   */
+  factory as make
+} from "./internal/Factory.ts"
+`
+      )
+      const model = extractJSDocsSync({
+        cwd,
+        tsconfig: "tsconfig.json",
+        include: ["src/index.ts"],
+        output: ".data/jsdocs.json"
+      })
+      assert.deepStrictEqual(model.files.flatMap((file) => file.diagnostics), [])
+      assert.strictEqual(model.apis.length, 1)
+      assert.strictEqual(model.apis[0].apiName, "make")
+      assert.strictEqual(
+        model.apis[0].signature,
+        "declare function make<A>(value: A): ReturnType<typeof makeValue<A>>"
+      )
+      assert.deepStrictEqual(signatureParseDiagnostics(model.apis[0].signature!), [])
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true })
+    }
+  })
+
   it("stores valid top-of-file module JSDoc", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
     fs.mkdirSync(path.join(cwd, "src"), { recursive: true })

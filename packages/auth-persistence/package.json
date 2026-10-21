@@ -1,0 +1,63 @@
+{
+  "name": "@effect/auth-persistence",
+  "version": "4.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "Direct Effect SQL persistence and shared storage contracts for Effect Auth.",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/auth-persistence"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./Adapter": "./src/Adapter.ts",
+    "./OAuthPersistence": "./src/OAuthPersistence.ts",
+    "./Testing": "./src/Testing.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./Adapter": "./dist/Adapter.js",
+      "./OAuthPersistence": "./dist/OAuthPersistence.js",
+      "./Testing": "./dist/Testing.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/auth": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "workspace:^",
+    "@effect/sql-libsql": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
+    "effect": "workspace:^"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../auth"
+    },
+    {
+      "path": "../auth-persistence"
+    },
+    {
+      "path": "../platform/bun"
+    },
+    {
+      "path": "../platform/node"
+    },
+    {
+      "path": "../sql/d1"
+    },
+    {
+      "path": "../sql/libsql"
+    },
+    {
+      "path": "../sql/mysql2"
+    },
+    {
+      "path": "../sql/pg"
+    },
+    {
+      "path": "../sql/pglite"
+    },
+    {
+      "path": "../sql/sqlite-bun"
+    },
+    {
+      "path": "../sql/sqlite-do"
+    },
+    {
+      "path": "../sql/sqlite-node"
+    },
+    {
+      "path": "../sql/sqlite-wasm"
+    },
+    {
+      "path": "../effect"
+    }
+  ]
+}

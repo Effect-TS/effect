@@ -3,7 +3,7 @@
  *
  * This module re-exports `NodeCrypto` from the shared Node.js package, so Bun
  * programs take every crypto layer from one place: `layerDigest` and
- * `layerMac` run on `node:crypto`, `layerKdf` adds Argon2id, and
+ * `layerMac` run on `node:crypto`, `layerKdf` adds Argon2id and scrypt, and
  * `layerSecureRandom`, `layerCipher`, `layerSignature`, `layerKeyAgreement`,
  * and `layerKeyWrap` run the core WebCrypto layers. Each layer supplies its own
  * `SecureRandom`, and `layer` provides every family at once.

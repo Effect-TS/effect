@@ -18,6 +18,7 @@ enableGlobalVirtualStore: false
 fetchTimeout: 180000
 
 allowBuilds:
+  electron: false
   core-js: false
   cpu-features: false
   dprint: false
@@ -42,3 +43,6 @@ overrides:
   # binary (Uint8Array) keys throw DataError during comparison in EventJournal.makeIndexedDb.
   # Remove after a later fake-indexeddb release passes the EventJournal IndexedDB suite.
   fake-indexeddb: 6.2.5
+
+minimumReleaseAgeExclude:
+  - drizzle-orm@1.0.0-rc.5

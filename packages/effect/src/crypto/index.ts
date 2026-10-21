@@ -37,6 +37,12 @@ export * as Kdf from "./Kdf.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.0
+ */
+export * as KdfAdmission from "./KdfAdmission.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as KeyAgreement from "./KeyAgreement.ts"
