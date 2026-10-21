@@ -36,6 +36,7 @@
  * @stability experimental
  * @since 4.0.0
  */
+import * as Bytes from "effect/Bytes"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -143,18 +144,8 @@ const uint32 = (value: number) => {
   return bytes
 }
 
-const concat = (...parts: ReadonlyArray<Uint8Array>) => {
-  const out = new Uint8Array(parts.reduce((total, part) => total + part.length, 0))
-  let offset = 0
-  for (const part of parts) {
-    out.set(part, offset)
-    offset += part.length
-  }
-  return out
-}
-
 /** Frames a message with its length, the framing of both the multiplexing protocol and proxy mode. */
-const frame = (body: Uint8Array) => concat(uint32(body.length), body)
+const frame = (body: Uint8Array) => Bytes.concat([uint32(body.length), body])
 
 /**
  * Reads length-prefixed frames, failing with `Cause.Done` when the master
@@ -179,7 +170,7 @@ const makeFrameReader = (pull: Effect.Effect<ReadonlyArray<Uint8Array>, Socket.S
           : connectionError("could not read from the OpenSSH control socket", cause)
       ),
       Effect.flatMap((chunks) => {
-        buffer = concat(buffer, ...chunks)
+        buffer = Bytes.concat([buffer, ...chunks])
         return next
       })
     )
@@ -228,8 +219,8 @@ const openProxy = Effect.fnUntraced(function*(
   if (hello.type !== MUX_MSG_HELLO || hello.field(4) !== MUX_VERSION) {
     return yield* Effect.fail(protocolError(`unsupported OpenSSH multiplexing protocol version ${hello.field(4)}`))
   }
-  yield* write(concat(uint32(MUX_MSG_HELLO), uint32(MUX_VERSION)))
-  yield* write(concat(uint32(MUX_C_PROXY), uint32(0)))
+  yield* write(Bytes.concat([uint32(MUX_MSG_HELLO), uint32(MUX_VERSION)]))
+  yield* write(Bytes.concat([uint32(MUX_C_PROXY), uint32(0)]))
   const reply = yield* readMux
   if (reply.type !== MUX_S_PROXY) {
     return yield* Effect.fail(connectionError("the OpenSSH master refused proxy mode"))
@@ -238,7 +229,7 @@ const openProxy = Effect.fnUntraced(function*(
   // Proxy frames are unpadded SSH packets: a zero padding length, then the
   // message.
   return {
-    send: (message: Uint8Array) => write(concat(Uint8Array.of(0), message)),
+    send: (message: Uint8Array) => write(Bytes.concat([Uint8Array.of(0), message])),
     messages: Stream.fromEffectRepeat(Effect.flatMap(read, (body) =>
       body.length < 2 || body[0] !== 0
         ? Effect.fail(protocolError("the OpenSSH master sent a malformed proxy frame"))

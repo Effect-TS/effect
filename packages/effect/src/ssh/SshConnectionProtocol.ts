@@ -38,6 +38,7 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as Bytes from "../Bytes.ts"
 import * as Cause from "../Cause.ts"
 import * as Channel from "../Channel.ts"
 import * as Deferred from "../Deferred.ts"
@@ -170,13 +171,11 @@ const decoder = new TextDecoder()
  */
 export class MessageWriter {
   private parts: Array<Uint8Array> = []
-  private length = 0
   constructor(type?: number) {
     if (type !== undefined) this.byte(type)
   }
   private push(part: Uint8Array) {
     this.parts.push(part)
-    this.length += part.length
     return this
   }
   byte(value: number): this {
@@ -198,13 +197,7 @@ export class MessageWriter {
     return this.push(bytes)
   }
   finish(): Uint8Array {
-    const out = new Uint8Array(this.length)
-    let offset = 0
-    for (const part of this.parts) {
-      out.set(part, offset)
-      offset += part.length
-    }
-    return out
+    return Bytes.concat(this.parts)
   }
 }
 
