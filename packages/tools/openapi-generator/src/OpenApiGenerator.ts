@@ -42,6 +42,20 @@ export class OpenApiGenerator extends Context.Service<
 /**
  * Output targets supported by the OpenAPI generator.
  *
+ * **Details**
+ *
+ * The `httpclient` and `httpclient-type-only` formats support non-security
+ * cookie parameters with primitive schemas, which generated clients send in
+ * the request `Cookie` header. Cookie parameters with structured schemas, such
+ * as objects or arrays, are dropped with a `cookie-parameter-dropped` warning.
+ * The `httpapi` format drops all non-security cookie parameters.
+ *
+ * The `Cookie` header is set before the request reaches the supplied
+ * `HttpClient`, so it is subject to that client's request transformations.
+ * Browsers manage the `Cookie` header themselves and ignore explicit values,
+ * and `HttpClient.withCookiesRef` replaces the header whenever its cookie jar
+ * is non-empty.
+ *
  * @category models
  * @since 4.0.0
  */
@@ -291,6 +305,7 @@ const parseOpenApi = (
         Array.isArray(operation.parameters) ? operation.parameters : undefined,
         resolveRef
       )
+      const droppedCookies = new Set<OpenApiParameter>()
       for (const parameter of parameters) {
         const parsedParameter: ParsedOperation.ParsedOperationParameter = {
           name: parameter.name,
@@ -314,11 +329,18 @@ const parseOpenApi = (
           }
           case "cookie": {
             op.parameters.cookie.push(parsedParameter)
-            warnForOperation(emitWarning, op, {
-              code: "cookie-parameter-dropped",
-              message:
-                `Cookie parameter "${parameter.name}" was dropped because non-security cookie parameters are not supported.`
-            })
+            const dropReason = isHttpApi
+              ? "non-security cookie parameters are not supported"
+              : isPrimitiveSchema(parameter.schema, resolveRef)
+              ? undefined
+              : "only primitive cookie parameter schemas are supported"
+            if (dropReason !== undefined) {
+              droppedCookies.add(parameter)
+              warnForOperation(emitWarning, op, {
+                code: "cookie-parameter-dropped",
+                message: `Cookie parameter "${parameter.name}" was dropped because ${dropReason}.`
+              })
+            }
             break
           }
         }
@@ -352,7 +374,9 @@ const parseOpenApi = (
         continue
       }
 
-      const validParameters = parameters.filter((parameter) => parameter.in !== "path" && parameter.in !== "cookie")
+      const validParameters = parameters.filter((parameter) =>
+        parameter.in !== "path" && !droppedCookies.has(parameter)
+      )
 
       const combinedParameterSchema = buildParameterSchema(validParameters, (parameter, added) => {
         if (parameter.in === "query") {
@@ -1244,6 +1268,42 @@ const normalizeSseEventSchema = (input: JsonSchema.JsonSchema): JsonSchema.JsonS
     schema.required = schema.required.filter((name: unknown) => name !== "id")
   }
   return schema as JsonSchema.JsonSchema
+}
+
+const primitiveSchemaTypes = new Set(["string", "number", "integer", "boolean", "null"])
+
+const isPrimitiveValue = (value: unknown): boolean =>
+  value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+
+// Cookie values are serialized with `String(value)`, so only schemas whose
+// values are always primitives can be represented.
+const isPrimitiveSchema = (
+  input: unknown,
+  resolveRef: (ref: string) => unknown,
+  ancestors: Set<unknown> = new Set()
+): boolean => {
+  const schema = resolveReference(input, resolveRef)
+  if (!Predicate.isObject(schema) || ancestors.has(schema)) {
+    return false
+  }
+  ancestors.add(schema)
+  const members = [schema.anyOf, schema.oneOf, schema.allOf].filter(Array.isArray).flat()
+  const membersArePrimitive = members.every((member) => isPrimitiveSchema(member, resolveRef, ancestors))
+  ancestors.delete(schema)
+  if (!membersArePrimitive) {
+    return false
+  }
+  if (schema.type !== undefined) {
+    const types: ReadonlyArray<unknown> = Array.isArray(schema.type) ? schema.type : [schema.type]
+    return types.every((type) => primitiveSchemaTypes.has(type as string))
+  }
+  if (Array.isArray(schema.enum)) {
+    return schema.enum.every(isPrimitiveValue)
+  }
+  if ("const" in schema) {
+    return isPrimitiveValue(schema.const)
+  }
+  return members.length > 0
 }
 
 const resolveReference = (input: unknown, resolveRef: (ref: string) => unknown): any => {
