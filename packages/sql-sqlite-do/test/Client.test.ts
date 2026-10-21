@@ -1,8 +1,9 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import * as Reactivity from "@effect/experimental/Reactivity"
 import { SqliteClient } from "@effect/sql-sqlite-do"
+import { SqlError } from "@effect/sql/SqlError"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber } from "effect"
+import { Deferred, Effect, Exit, Fiber } from "effect"
 
 // Mirrors workerd: transaction statements are rejected by `SqlStorage.exec`
 const transactionSql = /^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)\b/i
@@ -58,6 +59,8 @@ class FakeDurableObjectStorage {
   readonly sql = new FakeSqlStorage()
   transactionCalls = 0
   rollbackCalls = 0
+  // Runs after a successful body, so tests can hold or fail the commit
+  commit: (() => Promise<void>) | undefined
 
   transaction<T>(body: (txn: { rollback: () => void }) => Promise<T>): Promise<T> {
     this.transactionCalls++
@@ -69,18 +72,17 @@ class FakeDurableObjectStorage {
         rolledBack = true
       }
     }
-    return Promise.resolve().then(() => body(txn)).then(
-      (value) => {
-        if (rolledBack) {
-          this.sql.tables = snapshot
-        }
-        return value
-      },
-      (error) => {
+    return Promise.resolve().then(() => body(txn)).then(async (value) => {
+      if (rolledBack) {
         this.sql.tables = snapshot
-        throw error
+      } else {
+        await this.commit?.()
       }
-    )
+      return value
+    }).catch((error) => {
+      this.sql.tables = snapshot
+      throw error
+    })
   }
 }
 
@@ -193,6 +195,47 @@ describe("Client", () => {
       ])
       assert.strictEqual(storage.transactionCalls, 2)
       assert.strictEqual(storage.rollbackCalls, 1)
+      assert.isFalse(hasTransactionSql(storage))
+    }))
+
+  it.scoped("holds the transaction until storage completes and fails with SqlError on commit failure", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient(storage)
+      const commitStarted = yield* Deferred.make<void>()
+      let rejectCommit!: (error: unknown) => void
+      storage.commit = () => {
+        storage.commit = undefined
+        Deferred.unsafeDone(commitStarted, Exit.void)
+        return new Promise((_, reject) => {
+          rejectCommit = reject
+        })
+      }
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      const first = yield* sql`INSERT INTO test (name) VALUES ('first')`.pipe(
+        sql.withTransaction,
+        Effect.fork
+      )
+      // Surface an early transaction failure instead of waiting forever
+      yield* Effect.raceFirst(Deferred.await(commitStarted), Fiber.join(first))
+
+      const second = yield* sql`INSERT INTO test (name) VALUES ('second')`.pipe(
+        sql.withTransaction,
+        Effect.fork
+      )
+      yield* Effect.yieldNow()
+      assert.strictEqual(storage.transactionCalls, 1)
+
+      const cause = new Error("commit failed")
+      rejectCommit(cause)
+      const error = yield* Effect.flip(Fiber.join(first))
+      assert.instanceOf(error, SqlError)
+      assert.strictEqual(error.cause, cause)
+
+      yield* Fiber.join(second)
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1, name: "second" }])
+      assert.strictEqual(storage.transactionCalls, 2)
       assert.isFalse(hasTransactionSql(storage))
     }))
 })
