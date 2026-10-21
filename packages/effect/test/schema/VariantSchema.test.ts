@@ -94,6 +94,42 @@ describe("Model", () => {
     assert.isTrue(person instanceof Person)
   })
 
+  it("Class.extend preserves inherited members and variants", () => {
+    class Person extends Model.Class<Person>("Person")({
+      id: Model.GeneratedByDb(Schema.Number),
+      name: Schema.String
+    }) {
+      get upperName() {
+        return this.name.toUpperCase()
+      }
+    }
+    const base: Schema.Class<
+      Person,
+      Schema.Struct<{ readonly id: Schema.Number; readonly name: Schema.String }>,
+      {}
+    > = Person
+    assert.isTrue(Schema.isSchema(base))
+    Model.extract(Person, "json")
+    class PersonWithPosts extends Person.extend<PersonWithPosts>("PersonWithPosts")({
+      posts: Model.FieldOnly(["select", "json"])(Schema.Array(Schema.String))
+    }) {}
+
+    const person = Schema.decodeSync(PersonWithPosts)({ id: 1, name: "Alex", posts: ["Hello"] })
+
+    assert.isTrue(person instanceof PersonWithPosts)
+    assert.isTrue(person instanceof Person)
+    assert.strictEqual(person.upperName, "ALEX")
+    assert.deepStrictEqual(person.posts, ["Hello"])
+    assert.deepStrictEqual(Object.keys(PersonWithPosts.select.fields), ["id", "name", "posts"])
+    assert.deepStrictEqual(Object.keys(PersonWithPosts.insert.fields), ["name"])
+    assert.deepStrictEqual(Object.keys(Model.extract(PersonWithPosts, "json").fields), ["id", "name", "posts"])
+    assert.deepStrictEqual(Schema.decodeSync(PersonWithPosts.json)({ id: 1, name: "Alex", posts: [] }), {
+      id: 1,
+      name: "Alex",
+      posts: []
+    })
+  })
+
   it("FieldOption preserves omitted variants", () => {
     const field = Model.FieldOption(Model.Field({ select: Schema.String, json: undefined }))
     assert.strictEqual(field.schemas.json, undefined)

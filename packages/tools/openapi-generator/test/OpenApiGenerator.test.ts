@@ -3,6 +3,9 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
 import { spawnSync } from "node:child_process"
@@ -700,6 +703,25 @@ function attachmentSpec(paths: Record<string, OpenAPISpecPathItem>): OpenAPISpec
   }
 }
 
+const cookieParameterSpec: OpenAPISpec = {
+  openapi: "3.1.0",
+  info: { title: "Cookie parameter API", version: "1.0.0" },
+  paths: {
+    "/greeting": {
+      get: {
+        operationId: "getGreeting",
+        parameters: [{ name: "locale", in: "cookie", required: true, schema: { type: "string" } }],
+        responses: { "204": { description: "No content" } },
+        tags: ["Greeting"],
+        security: []
+      }
+    }
+  },
+  components: { schemas: {}, securitySchemes: {} },
+  security: [],
+  tags: [{ name: "Greeting" }]
+}
+
 // spawnSync blocks this worker, so compilation must not consume another test's deadline.
 describe("OpenApiGenerator", { concurrent: false }, () => {
   describe("schema", () => {
@@ -865,13 +887,6 @@ export const make = (
     <Schema extends Schema.Constraint>(schema: Schema) =>
     (response: HttpClientResponse.HttpClientResponse) =>
       HttpClientResponse.schemaBodyJson(schema)(response)
-  const decodeError =
-    <const Tag extends string, Schema extends Schema.Constraint>(tag: Tag, schema: Schema) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      Effect.flatMap(
-        HttpClientResponse.schemaBodyJson(schema)(response),
-        (cause) => Effect.fail(TestClientError(tag, cause, response)),
-      )
   return {
     httpClient,
     "getUser": (id, options: Parameters<TestClient["getUser"]>[1]) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam(id) + "").pipe(
@@ -3418,6 +3433,97 @@ export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalCo
       ])
     })
 
+    it.effect(
+      "types required cookie parameters as operation params",
+      () =>
+        assertGeneratedClientsCompile(cookieParameterSpec, {
+          usage: `declare const client: TestClient
+export const withLocale = client.getGreeting({ params: { locale: "en-US" } })
+// @ts-expect-error the locale cookie is required
+export const withoutLocale = client.getGreeting({ params: {} })
+`
+        }),
+      compilationTimeout
+    )
+
+    it.effect("sends cookie parameters with the request", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const source = yield* generator.generate(cookieParameterSpec, { name: "TestClient", format: "httpclient" })
+        const directory = yield* Effect.acquireRelease(
+          Effect.sync(() => mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))),
+          (directory) => Effect.sync(() => rmSync(directory, { recursive: true, force: true }))
+        )
+        const path = join(directory, "Client.ts")
+        writeFileSync(path, source)
+        const { make }: {
+          make: (client: HttpClient.HttpClient) => {
+            getGreeting: (options: { params: { locale: string } }) => Effect.Effect<unknown, unknown>
+          }
+        } = yield* Effect.promise(() => import(path))
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        const client = make(
+          HttpClient.make((request) => {
+            requests.push(request)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 204 })))
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("http://api.test")))
+        )
+
+        yield* client.getGreeting({ params: { locale: "en-US" } })
+
+        assert.strictEqual(requests.length, 1)
+        assert.strictEqual(requests[0].headers["cookie"], "locale=en-US")
+      }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
+    it.effect("drops structured cookie parameters with a warning", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+        const result = yield* generator.generate({
+          ...cookieParameterSpec,
+          paths: {
+            "/greeting": {
+              get: {
+                ...cookieParameterSpec.paths["/greeting"].get!,
+                parameters: [
+                  {
+                    name: "inlinePrefs",
+                    in: "cookie",
+                    required: true,
+                    schema: { type: "object", properties: { locale: { type: "string" } }, required: ["locale"] }
+                  },
+                  {
+                    name: "refPrefs",
+                    in: "cookie",
+                    required: true,
+                    schema: { $ref: "#/components/schemas/Preferences" }
+                  }
+                ]
+              }
+            }
+          },
+          components: {
+            schemas: {
+              Preferences: { type: "object", properties: { locale: { type: "string" } }, required: ["locale"] }
+            },
+            securitySchemes: {}
+          }
+        }, {
+          name: "TestClient",
+          format: "httpclient",
+          onWarning: (warning) => {
+            warnings.push(warning)
+          }
+        })
+
+        assert.deepStrictEqual(
+          warnings.map((warning) => [warning.code, warning.operationId]),
+          [["cookie-parameter-dropped", "getGreeting"], ["cookie-parameter-dropped", "getGreeting"]]
+        )
+        assert.notInclude(result, "inlinePrefs")
+        assert.notInclude(result, "refPrefs")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
     it.effect("emits compilable clients when schema examples are invalid", () =>
       assertGeneratedClientsCompile({
         openapi: "3.0.3",
@@ -3493,12 +3599,6 @@ export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalCo
     it.effect("runtime output remains stable when using onWarning", () =>
       assertRuntimeStableWithWarnings(regressionSpec, [
         {
-          code: "cookie-parameter-dropped",
-          path: "/users/{id}",
-          method: "get",
-          operationId: "getUser"
-        },
-        {
           code: "default-response-remapped",
           path: "/users/{id}",
           method: "get",
@@ -3508,12 +3608,6 @@ export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalCo
 
     it.effect("type-only output remains stable when using onWarning", () =>
       assertTypeOnlyStableWithWarnings(regressionSpec, [
-        {
-          code: "cookie-parameter-dropped",
-          path: "/users/{id}",
-          method: "get",
-          operationId: "getUser"
-        },
         {
           code: "default-response-remapped",
           path: "/users/{id}",

@@ -84,6 +84,14 @@ const classifyError = (
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
 }
 
+const killQuery = (client: Clickhouse.ClickHouseClient, queryId: string) =>
+  Effect.promise(() =>
+    client.command({
+      query: "KILL QUERY WHERE query_id = {queryId:String}",
+      query_params: { queryId }
+    })
+  )
+
 /**
  * Unique runtime identifier used to tag `ClickhouseClient` values.
  *
@@ -267,12 +275,7 @@ export const make = (
             }
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() =>
-                this.conn.command({
-                  query: "KILL QUERY WHERE query_id = {queryId:String}",
-                  query_params: { queryId }
-                })
-              )
+              return killQuery(this.conn, queryId)
             })
           })
         })
@@ -319,16 +322,30 @@ export const make = (
         params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
-        return this.runRaw(sql, params, "JSONEachRow").pipe(
-          Effect.map((result) => {
-            if (!("stream" in result)) {
-              return Stream.empty
-            }
-            return NodeStream.fromReadable<ReadonlyArray<Clickhouse.Row<any, "JSONEachRow">>, SqlError>({
-              evaluate: () => result.stream() as any,
-              onError: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
+        const conn = this.conn
+        return Effect.withFiber((fiber) => {
+          const queryId = fiber.getRef(QueryId) ?? Crypto.randomUUID()
+          return this.runRaw(sql, params, "JSONEachRow").pipe(
+            Effect.provideService(QueryId, queryId),
+            Effect.map((result) => {
+              if (!("stream" in result)) {
+                return Stream.empty
+              }
+              // Closing the socket does not stop a query the server is still
+              // computing, so kill it unless the response was read to the end.
+              let done = false
+              return NodeStream.fromReadable<ReadonlyArray<Clickhouse.Row<any, "JSONEachRow">>, SqlError>({
+                evaluate: () => result.stream() as any,
+                onError: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
+              }).pipe(
+                Stream.onEnd(Effect.sync(() => {
+                  done = true
+                })),
+                Stream.ensuring(Effect.suspend(() => done ? Effect.void : Effect.ignoreCause(killQuery(conn, queryId))))
+              )
             })
-          }),
+          )
+        }).pipe(
           Stream.unwrap,
           Stream.chunks,
           Stream.mapEffect((chunk) => {
@@ -396,12 +413,7 @@ export const make = (
             )
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() =>
-                client.command({
-                  query: "KILL QUERY WHERE query_id = {queryId:String}",
-                  query_params: { queryId }
-                })
-              )
+              return killQuery(client, queryId)
             })
           })
         },

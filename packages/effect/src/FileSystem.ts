@@ -153,6 +153,13 @@ export interface FileSystem {
     toPath: string
   ) => Effect.Effect<void, PlatformError>
   /**
+   * Get information about a file at `path` without following symbolic links.
+   * See `File.Info` for metadata limits.
+   */
+  readonly lstat: (
+    path: string
+  ) => Effect.Effect<File.Info, PlatformError>
+  /**
    * Create a directory at `path`. You can optionally specify the mode and
    * whether to recursively create nested directories.
    */
@@ -670,6 +677,9 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
     },
     link(path) {
       return Effect.fail(notFound("link", path))
+    },
+    lstat(path) {
+      return Effect.fail(notFound("lstat", path))
     },
     makeDirectory() {
       return Effect.die("not implemented")

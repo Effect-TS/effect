@@ -58,6 +58,17 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       assert(error.reason._tag === "NotFound")
     })))
 
+  it("lstat does not follow symbolic links", () =>
+    runPromise(Effect.scoped(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const link = `${directory}/link`
+      yield* fs.writeFileString(`${directory}/target`, "")
+      yield* fs.symlink(`${directory}/target`, link)
+      expect((yield* fs.stat(link)).type).toEqual("File")
+      expect((yield* fs.lstat(link)).type).toEqual("SymbolicLink")
+    }))))
+
   it.skipIf(options.accessOnDirectory === false)(
     "access on a writable directory",
     () =>

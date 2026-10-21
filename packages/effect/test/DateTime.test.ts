@@ -534,6 +534,13 @@ describe("DateTime", () => {
       strictEqual(DateTime.toDate(zoned).toISOString(), "2024-07-01T13:00:00.000Z")
       strictEqual(DateTime.toDateUtc(zoned).toISOString(), "2024-07-01T12:00:00.000Z")
     })
+
+    it("preserves year zero and BCE years in a named zone", () => {
+      for (const iso of ["0000-01-01T12:34:56.789Z", "-000001-01-01T12:34:56.789Z"]) {
+        const zoned = DateTime.makeZonedUnsafe(iso, { timeZone: "UTC" })
+        strictEqual(DateTime.toDate(zoned).toISOString(), iso)
+      }
+    })
   })
 
   describe("nowAsDate", () => {

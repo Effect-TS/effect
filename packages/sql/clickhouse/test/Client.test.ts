@@ -1,10 +1,11 @@
 import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber } from "effect"
+import { Effect, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
+import { Readable } from "node:stream"
 import { vi } from "vitest"
 
 let closeCalls = 0
@@ -167,6 +168,39 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.deepStrictEqual(applied, [[1, "init"]])
       assert.match(queries[0] ?? "", /ENGINE = MergeTree/)
       assert.notMatch(queries.join("\n"), /PRIMARY KEY NOT NULL|BEGIN/)
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        queryImpl = undefined
+      })),
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("kills a streamed query only when the stream is not read to the end", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      commandCalls.length = 0
+      // A minimal stand-in for the row batches emitted by `ResultSet.stream()`
+      queryImpl = () =>
+        Promise.resolve({
+          stream: () =>
+            Readable.from(
+              [[{ a: 1 }], [{ a: 2 }]].map((rows) => rows.map((row) => ({ json: () => Promise.resolve(row) }))),
+              { objectMode: true }
+            )
+        })
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+      const all = yield* Stream.runCollect(client`SELECT a FROM t`.stream).pipe(client.withQueryId("full-id"))
+      const first = yield* Stream.runCollect(client`SELECT a FROM t`.stream.pipe(Stream.take(1))).pipe(
+        client.withQueryId("take-id")
+      )
+
+      assert.deepStrictEqual(all, [{ a: 1 }, { a: 2 }])
+      assert.deepStrictEqual(first, [{ a: 1 }])
+      assert.deepStrictEqual(commandCalls, [{
+        query: "KILL QUERY WHERE query_id = {queryId:String}",
+        query_params: { queryId: "take-id" }
+      }])
     }).pipe(
       Effect.ensuring(Effect.sync(() => {
         queryImpl = undefined

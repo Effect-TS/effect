@@ -304,6 +304,36 @@ development:
     })
   })
 
+  // YAML 1.2.2 §§7.4–7.5: flow collections may span lines indented past the parent node.
+  // Unlike the spec, the closing bracket may also sit at the parent's indentation.
+  describe("multiline flow collections", () => {
+    it.each(
+      [
+        [
+          "JSON-style mapping below its key",
+          "example:\n  {\n    \"active_anon\": 1572864,\n    \"active_file\": 5115904\n  }\n",
+          { example: { active_anon: 1572864, active_file: 5115904 } }
+        ],
+        ["closing bracket at the parent indentation", "a: [\n  1,\n  2\n]\n", { a: [1, 2] }],
+        ["nested collections", "a: {\n  b: [\n    1\n  ],\n  c: {d: 2}\n  }\n", { a: { b: [1], c: { d: 2 } } }],
+        ["sibling key after the collection", "a: [\n  1\n  ]\nb: 2\n", { a: [1], b: 2 }],
+        ["comment and blank lines", "a: [1, # one\n# between\n\n  2]\n", { a: [1, 2] }],
+        ["quoted hash after a comma on a continuation line", "a: [\n  1, \"a # b\"\n  ]\n", { a: [1, "a # b"] }],
+        ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["continuation at the parent indentation", "a: {\nb: 1 }\n"],
+      ["unterminated collection before a sibling key", "a: [1,\n  2\nb: 3\n"],
+      ["content after the closing bracket", "a: [1,\n  2] extra\n"]
+    ])("rejects %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+  })
+
   describe("scalar conformance boundaries", () => {
     it.each([
       ["colon followed by space", "description: Use when: deploy\n"],

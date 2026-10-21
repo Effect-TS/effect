@@ -24,13 +24,13 @@ import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
 import * as RpcSerialization from "effect/rpc/RpcSerialization"
 import type * as SocketServer from "effect/socket/SocketServer"
 import type { SqlClient } from "effect/sql/SqlClient"
 import * as BunCrypto from "./BunCrypto.ts"
 import * as BunFileSystem from "./BunFileSystem.ts"
+import * as BunHttpClient from "./BunHttpClient.ts"
 
 export {
   /**
@@ -149,16 +149,10 @@ export const layerK8sHttpClient: Layer.Layer<K8sHttpClient.K8sHttpClient> = K8sH
       Effect.option
     )
     if (caCertOption._tag === "None") {
-      return FetchHttpClient.layer
+      return BunHttpClient.layer
     }
 
-    return Layer.fresh(FetchHttpClient.layer).pipe(
-      Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, {
-        tls: {
-          ca: caCertOption.value
-        }
-      } as any))
-    )
+    return BunHttpClient.layerOptions({ tls: { ca: caCertOption.value } })
   }))),
   Layer.provide(BunFileSystem.layer)
 )
