@@ -263,13 +263,12 @@ export const cachedInvalidateWithTTL: {
 const computeCachedValue = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeToLive: Duration.DurationInput,
-  start: number,
-  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
+  start: number
 ): Effect.Effect<Option.Option<[number, Deferred.Deferred<A, E>]>, never, R> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
     core.deferredMake<A, E>(),
-    core.tap((deferred) => core.intoDeferred(restore(self), deferred)),
+    core.tap((deferred) => core.intoDeferred(self, deferred)),
     core.map((deferred) => Option.some([start + timeToLiveMillis, deferred]))
   )
 }
@@ -280,31 +279,29 @@ const getCachedValue = <A, E, R>(
   timeToLive: Duration.DurationInput,
   cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<A, E>]>>
 ): Effect.Effect<A, E, R> =>
-  core.uninterruptibleMask((restore) =>
-    pipe(
-      effect.clockWith((clock) => clock.currentTimeMillis),
-      core.flatMap((time) =>
-        updateSomeAndGetEffectSynchronized(cache, (option) => {
-          switch (option._tag) {
-            case "None": {
-              return Option.some(computeCachedValue(self, timeToLive, time, restore))
-            }
-            case "Some": {
-              const [end] = option.value
-              return end - time <= 0
-                ? Option.some(computeCachedValue(self, timeToLive, time, restore))
-                : Option.none()
-            }
+  pipe(
+    effect.clockWith((clock) => clock.currentTimeMillis),
+    core.flatMap((time) =>
+      updateSomeAndGetEffectSynchronized(cache, (option) => {
+        switch (option._tag) {
+          case "None": {
+            return Option.some(computeCachedValue(self, timeToLive, time))
           }
-        })
-      ),
-      core.flatMap((option) =>
-        Option.isNone(option) ?
-          core.dieMessage(
-            "BUG: Effect.cachedInvalidate - please report an issue at https://github.com/Effect-TS/effect/issues"
-          ) :
-          restore(core.deferredAwait(option.value[1]))
-      )
+          case "Some": {
+            const [end] = option.value
+            return end - time <= 0
+              ? Option.some(computeCachedValue(self, timeToLive, time))
+              : Option.none()
+          }
+        }
+      })
+    ),
+    core.flatMap((option) =>
+      Option.isNone(option) ?
+        core.dieMessage(
+          "BUG: Effect.cachedInvalidate - please report an issue at https://github.com/Effect-TS/effect/issues"
+        ) :
+        core.deferredAwait(option.value[1])
     )
   )
 
