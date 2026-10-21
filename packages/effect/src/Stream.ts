@@ -1571,7 +1571,7 @@ export const execute: <X, E, R>(effect: Effect.Effect<X, E, R>) => Stream<never,
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Uh oh!' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'Uh oh!' }
  * // }
  * ```
  *
