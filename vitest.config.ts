@@ -51,6 +51,8 @@ export const exclude = [
   "**/test/utils/**",
   "**/test/cluster-integration/**",
   ...(!integrationTestsEnabled ? ["**/*.integration.test.{ts,tsx}"] : []),
+  // effect/docker supports Node only
+  ...(!isNode ? ["**/test/docker/**"] : []),
   "**/*.d.ts",
   "**/*.config.*",
   "**/vitest.*"
