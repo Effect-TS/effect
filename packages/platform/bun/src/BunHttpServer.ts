@@ -213,6 +213,8 @@ export const make = Effect.fnUntraced(
             )
             const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
             request.signal.addEventListener("abort", () => {
+              // Bun aborts the signal when an upgraded WebSocket closes, which is not a client abort.
+              if (upgradedSources.has(request)) return
               fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
             }, { once: true })
           })
