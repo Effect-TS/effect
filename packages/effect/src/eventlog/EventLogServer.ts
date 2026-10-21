@@ -78,6 +78,8 @@ export const layerAuthMiddleware: Layer.Layer<
  *
  * Use the connection's `ConnectionWrites.track` in `onWrite` and
  * `ConnectionWrites.filter` in `changes` to suppress its own write echoes.
+ * `compaction` sets `HelloResponse.compaction`, advertising that the server
+ * also serves `EventLogCompactionRpcs`.
  *
  * @stability unstable
  * @category layers
@@ -86,6 +88,7 @@ export const layerAuthMiddleware: Layer.Layer<
 export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
   readonly firstSequence?: number | undefined
+  readonly compaction?: boolean | undefined
   readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
@@ -111,7 +114,7 @@ export const layerRpcHandlers = (options: {
       capacity: Number.MAX_SAFE_INTEGER,
       timeToLive: EventLogSessionAuth.SessionAuthChallengeTimeToLiveMillis
     })
-    let chunkedIdCounter = 0
+    const toFrames = makeFramer()
 
     const persistedSigningPublicKeys = yield* Cache.makeWith(
       (key: SessionAuthCacheKey) =>
@@ -139,7 +142,8 @@ export const layerRpcHandlers = (options: {
         return new HelloResponse({
           remoteId: options.remoteId,
           challenge,
-          firstSequence: options.firstSequence
+          firstSequence: options.firstSequence,
+          compaction: options.compaction === true ? true : undefined
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {
@@ -229,12 +233,7 @@ export const layerRpcHandlers = (options: {
           startSequence: request.startSequence,
           writes: getConnectionWrites(client)
         }).pipe(
-          Stream.mapArray(Arr.flatMap((data): NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
-            if (data.byteLength <= ChunkedMessage.chunkSize) {
-              return [new SingleMessage({ data })]
-            }
-            return ChunkedMessage.split(chunkedIdCounter++, data)
-          })),
+          Stream.mapArray(Arr.flatMap(toFrames)),
           Stream.catchCause((_) =>
             Stream.fail(
               new EventLogProtocolError({
@@ -422,6 +421,22 @@ class SessionAuthCacheKey extends Data.Class<{
   [Hash.symbol]() {
     return Hash.string(this.publicKey)
   }
+}
+
+/**
+ * Frames one encoded message for a response stream: a `SingleMessage` when it
+ * fits, or the pieces of a `ChunkedMessage` with the next id otherwise.
+ *
+ * @internal
+ */
+export const makeFramer = (): (
+  data: Uint8Array<ArrayBuffer>
+) => NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
+  let chunkedIdCounter = 0
+  return (data) =>
+    data.byteLength <= ChunkedMessage.chunkSize
+      ? [new SingleMessage({ data })]
+      : ChunkedMessage.split(chunkedIdCounter++, data)
 }
 
 const constEmptyPrivateKey = Redacted.make(new Uint8Array(32))
