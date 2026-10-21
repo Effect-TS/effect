@@ -90,6 +90,7 @@ export const make = <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extr
                 new ServerRequestImpl(request, resolve, removeHost(request.url), server)
               ))
               request.signal.addEventListener("abort", () => {
+                if (upgradedRequests.has(request)) return
                 runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
               }, { once: true })
             })
@@ -203,6 +204,10 @@ export const layerConfig = <R extends { [K in keyof R]: Bun.RouterTypes.RouteVal
     Layer.scoped(Server.HttpServer, Effect.flatMap(Config.unwrap(options), make)),
     layerContext
   )
+
+// Bun aborts the request signal when an upgraded websocket closes, which
+// should not interrupt the handler as a client abort.
+const upgradedRequests = new WeakSet<Request>()
 
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
@@ -409,6 +414,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
             ))
             return
           }
+          upgradedRequests.add(this.source)
           resume(Effect.map(Deferred.await(deferred), (ws) => {
             const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
               Effect.sync(() => {
