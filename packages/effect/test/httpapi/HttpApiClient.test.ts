@@ -374,6 +374,41 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("regex path constraints", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("files").add(
+        HttpApiEndpoint.get("get", "/files/:id(\\d+)/:name(^(\\w|-)+).png", {
+          params: { id: Schema.String, name: Schema.String }
+        })
+      )
+    )
+    const expectedUrl = "https://api.example.com/files/12/my-file.png"
+
+    it("urlBuilder omits the constraints", () => {
+      const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
+
+      strictEqual(urls.files.get({ params: { id: "12", name: "my-file" } }), expectedUrl)
+    })
+
+    it.effect("make sends the request without the constraints", () =>
+      Effect.gen(function*() {
+        let requestUrl: string | undefined
+        const httpClient = HttpClient.make((request, url) =>
+          Effect.sync(() => {
+            requestUrl = url.toString()
+            return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+          })
+        )
+        const client = yield* HttpApiClient.make(Api, { baseUrl: "https://api.example.com" }).pipe(
+          Effect.provideService(HttpClient.HttpClient, httpClient)
+        )
+
+        yield* client.files.get({ params: { id: "12", name: "my-file" } })
+
+        strictEqual(requestUrl, expectedUrl)
+      }))
+  })
+
   describe("streaming responses", () => {
     it.effect("decodes StreamSse events incrementally", () =>
       Effect.gen(function*() {

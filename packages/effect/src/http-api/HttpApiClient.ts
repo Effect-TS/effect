@@ -844,8 +844,9 @@ const compilePath = (path: string, schema: Schema.Top | undefined) => {
     return (_: any) => path
   }
   const paramNames = HttpApiPath.getParamNames(schema)
+  const template = HttpApiPath.stripParamRegexes(path, paramNames)
   return (params: Record<string, string | undefined>) => {
-    return path.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
+    return template.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
       if (paramNames !== undefined && !paramNames.has(key)) {
         return match
       }

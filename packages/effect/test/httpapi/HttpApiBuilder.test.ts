@@ -344,6 +344,24 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
       assert.strictEqual(yield* client.operations.wait({ params: { id: "op_1" } }), "op_1")
     }))
 
+  it.effect("round trips a path parameter with a regex constraint", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          HttpApiEndpoint.get("get", "/users/:id(\\d+)", {
+            params: { id: Schema.NumberFromString },
+            success: Schema.Number
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "users", (handlers) =>
+        handlers.handle("get", ({ params }) =>
+          Effect.succeed(params.id)))
+      const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLayer))
+
+      assert.strictEqual(yield* client.users.get({ params: { id: 12 } }), 12)
+    }))
+
   it.effect("does not bind a non-word schema key in a literal client path", () =>
     Effect.gen(function*() {
       const Params = Schema.Struct({ "a$b": Schema.optional(Schema.String) })

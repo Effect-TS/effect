@@ -435,7 +435,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       }
 
       const paramNames = HttpApiPath.getParamNames(endpoint.params)
-      const path = endpoint.path.replace(
+      const path = HttpApiPath.stripParamRegexes(endpoint.path, paramNames).replace(
         /:(\w+)\??/g,
         (match, key: string) => paramNames === undefined || paramNames.has(key) ? `{${key}}` : match
       )
