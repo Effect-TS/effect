@@ -221,6 +221,34 @@ export const suite = (
         assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
       })))
 
+    it.effect("an elapsed-time Schedule openDuration replays from the recording time, ignoring idle time", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const key = "schedule-elapsed"
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: Schedule.exponential("100 millis").pipe(Schedule.upTo({ duration: "250 millis" }))
+        })
+        const openings = yield* breaker.transitions.pipe(
+          Stream.filter((transition) => transition.to === "Open"),
+          Stream.take(4),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* fail(breaker, key)
+        // Each gap exceeds the 250 millis cap, so a replay that saw wall time
+        // would end the schedule at step 2 and repeat 100 millis.
+        for (let i = 0; i < 3; i++) {
+          yield* advance("400 millis")
+          yield* fail(breaker, key)
+        }
+
+        const collected = yield* Fiber.join(openings)
+        assert.deepStrictEqual(
+          collected.map((transition) => transition.to === "Open" && Duration.toMillis(transition.retryAfter)),
+          [100, 200, 200, 200]
+        )
+      })))
+
     it.effect("a Retry-After hint extends only the opening it causes, capped at maxOpenDuration", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "hint"
