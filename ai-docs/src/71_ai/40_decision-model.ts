@@ -1,9 +1,9 @@
 /**
- * @title Making typed decisions with DecisionModel
+ * @title Use AI to make typed decisions with DecisionModel
  *
  * Define classification, rating, and probability decisions over a `Schema`
  * input with `Decision.make`, then answer them in one provider call with
- * `DecisionModel.decide` or `DecisionModel.decideSettled`.
+ * `DecisionModel.decide`.
  */
 import { CloudflareClient, CloudflareDecisionModel } from "@effect/ai-cloudflare"
 import { Context, Effect, Layer, Result, Schema } from "effect"
@@ -101,14 +101,13 @@ const refundThreshold = 0.6
 const churnThreshold = 0.5
 
 export class TicketTriager extends Context.Service<TicketTriager, {
-  // Route a ticket, falling back to safe defaults for any decision the model
-  // could not answer.
+  // Route a new ticket to a queue and priority.
   route(ticket: SupportTicket, screenshots?: ReadonlyArray<Screenshot>): Effect.Effect<
     TicketRouting,
     TicketTriageError
   >
-  // A yes/no check where only a real answer is useful.
-  isOutage(ticket: SupportTicket): Effect.Effect<boolean, TicketTriageError>
+  // Re-sort a ticket in the backlog, where a partial answer beats none.
+  backlogPriority(ticket: SupportTicket): Effect.Effect<Priority, TicketTriageError>
 }>()("acme/TicketTriager") {
   static readonly layer = Layer.effect(
     TicketTriager,
@@ -124,13 +123,20 @@ export class TicketTriager extends Context.Service<TicketTriager, {
       // this Layer's requirements.
       const clef = yield* CloudflareDecisionModel.model("clef").captureRequirements
 
+      const priorityOf = (ticket: SupportTicket, severity: { label: string; rating: number }): Priority =>
+        severity.label === "blocking"
+          ? ticket.plan === "enterprise" ? "page-on-call" : "high"
+          : severity.rating >= 0.5
+          ? "normal"
+          : "low"
+
       const route = Effect.fn("TicketTriager.route")(
         function*(ticket: SupportTicket, screenshots: ReadonlyArray<Screenshot> = []) {
-          // `decideSettled` returns one `Result` per decision instead of
-          // failing the whole call when one answer is missing, refused, or
-          // invalid. Use it when a partial answer is still useful. Network and
-          // provider errors still fail the effect.
-          const { outcomes, usage } = yield* DecisionModel.decideSettled(TicketTriage, {
+          // `decide` answers every decision in the definition in one call.
+          // It requires all of them to be answered: a refusal fails with
+          // `AiError` reason `ContentPolicyError`, and a missing or invalid
+          // answer fails with `InvalidOutputError`.
+          const { answers, usage } = yield* DecisionModel.decide(TicketTriage, {
             input: ticket,
             // Images are sent alongside the encoded input. Clef accepts bytes,
             // base64 strings, or `data:` URLs; remote URLs fail with
@@ -141,69 +147,43 @@ export class TicketTriager extends Context.Service<TicketTriager, {
 
           // `label` is the provider's pick, but `probabilities` holds the whole
           // distribution. Only auto-route when the chosen department is
-          // clearly ahead; send everything else, including an unanswered
-          // decision, to a person.
-          let queue: Queue = "manual-review"
-          if (Result.isSuccess(outcomes.department)) {
-            const { label, probabilities } = outcomes.department.success
-            if (probabilities[label] >= departmentThreshold) queue = label
-          }
+          // clearly ahead, and send everything else to a person.
+          const { label, probabilities } = answers.department
+          const queue: Queue = probabilities[label] >= departmentThreshold ? label : "manual-review"
 
           // For ratings, `label` is the most likely level and `rating` is a
           // number in `[0, levels - 1]` that can fall between levels, which is
-          // handy for sorting. If severity is unanswered, assume the ticket
-          // matters rather than silently deprioritising it.
-          let priority: Priority = "high"
-          if (Result.isSuccess(outcomes.severity)) {
-            const { label, rating } = outcomes.severity.success
-            priority = label === "blocking"
-              ? ticket.plan === "enterprise" ? "page-on-call" : "high"
-              : rating >= 0.5
-              ? "normal"
-              : "low"
-          }
+          // handy for sorting.
+          const priority = priorityOf(ticket, answers.severity)
 
-          // Unanswered probabilities fall back to `false`: these flags only
-          // add work for an agent, so missing one is the cheaper mistake.
-          const probabilityOf = (outcome: typeof outcomes.wantsRefund) =>
-            Result.isSuccess(outcome) ? outcome.success.probability : 0
-
+          // `probability` answers are a number in `[0, 1]`.
           return new TicketRouting({
             ticketId: ticket.id,
             queue,
             priority,
-            offerRefund: probabilityOf(outcomes.wantsRefund) >= refundThreshold,
-            flagChurnRisk: probabilityOf(outcomes.churnRisk) >= churnThreshold
+            offerRefund: answers.wantsRefund.probability >= refundThreshold,
+            flagChurnRisk: answers.churnRisk.probability >= churnThreshold
           })
         },
         Effect.provide(clef),
         Effect.mapError(TicketTriageError.fromAiError)
       )
 
-      // A definition can be as small as one decision. Defining it once at
-      // service construction keeps it out of the hot path.
-      const OutageCheck = Decision.make({
-        input: SupportTicket,
-        decisions: {
-          outage: Decision.probability({
-            instructions: "The ticket reports a service-wide outage rather than a problem for one customer"
-          })
-        }
-      })
-
-      const isOutage = Effect.fn("TicketTriager.isOutage")(
+      const backlogPriority = Effect.fn("TicketTriager.backlogPriority")(
         function*(ticket: SupportTicket) {
-          // `decide` requires every decision to be answered. A refusal fails
-          // with `AiError` reason `ContentPolicyError`, and a missing or
-          // invalid answer fails with `InvalidOutputError`.
-          const { answers } = yield* DecisionModel.decide(OutageCheck, { input: ticket })
-          return answers.outage.probability >= 0.8
+          // `decideSettled` makes the same call but returns one `Result` per
+          // decision instead of failing when one answer is missing, refused,
+          // or invalid. Network and provider errors still fail the effect.
+          const { outcomes } = yield* DecisionModel.decideSettled(TicketTriage, { input: ticket })
+          // If severity is unanswered, assume the ticket matters rather than
+          // silently deprioritising it.
+          return Result.isSuccess(outcomes.severity) ? priorityOf(ticket, outcomes.severity.success) : "high"
         },
         Effect.provide(clef),
         Effect.mapError(TicketTriageError.fromAiError)
       )
 
-      return TicketTriager.of({ route, isOutage })
+      return TicketTriager.of({ route, backlogPriority })
     })
   ).pipe(
     // `CloudflareClient.layerConfig` reads `CLOUDFLARE_ACCOUNT_ID`,

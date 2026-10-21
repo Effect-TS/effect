@@ -426,10 +426,10 @@ questions with probabilities.
 - **[Stateful chat sessions](./ai-docs/src/71_ai/30_chat.ts)**:
   The AI `Chat` module maintains conversation history automatically. Build
   AI agents or chat assistants.
-- **[Making typed decisions with DecisionModel](./ai-docs/src/71_ai/40_decision-model.ts)**:
+- **[Use AI to make typed decisions with DecisionModel](./ai-docs/src/71_ai/40_decision-model.ts)**:
   Define classification, rating, and probability decisions over a `Schema`
   input with `Decision.make`, then answer them in one provider call with
-  `DecisionModel.decide` or `DecisionModel.decideSettled`.
+  `DecisionModel.decide`.
 
 ## Building distributed applications with cluster
 
