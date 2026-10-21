@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
+import { Context, Effect, Exit, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
 import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag, Prompt } from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
@@ -1798,6 +1798,46 @@ describe("Command", () => {
 
         const stderr = yield* TestConsole.errorLines
         assert.isTrue(stderr.join("\n").includes("Unrecognized flag: --no-validate"))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should reject boolean flags that share a negation name", () =>
+      Effect.gen(function*() {
+        const run = (flags: Record<string, Flag.Flag<boolean>>) =>
+          Effect.exit(Effect.suspend(() => Command.runWith(Command.make("tool", flags), { version: "1.0.0" })([])))
+
+        const sharedCustom = yield* run({
+          validate: Flag.Boolean("validate").pipe(Flag.withNegation("skip")),
+          verify: Flag.Boolean("verify").pipe(Flag.withNegation("skip"))
+        })
+        const customMatchesDefault = yield* run({
+          bar: Flag.Boolean("bar"),
+          foo: Flag.Boolean("foo").pipe(Flag.withNegation("no-bar"))
+        })
+
+        assert.isTrue(Exit.hasDies(sharedCustom))
+        assert.isTrue(Exit.hasDies(customMatchesDefault))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should resolve a disabled negation name to a conflicting alias", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [boolean, boolean]> = []
+
+        const cmd = Command.make("tool", {
+          prompt: Flag.Boolean("prompt").pipe(
+            Flag.withDefault(true),
+            Flag.withoutNegation
+          ),
+          force: Flag.Boolean("force").pipe(
+            Flag.withAlias("no-prompt"),
+            Flag.withDefault(false)
+          )
+        }, (config) => Effect.sync(() => captured.push([config.prompt, config.force] as const)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd(["--no-prompt"])
+
+        assert.deepStrictEqual(captured, [[true, true]])
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should prefer canonical negation over conflicting aliases", () =>

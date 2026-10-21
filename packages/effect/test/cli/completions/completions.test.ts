@@ -6,6 +6,10 @@ import { fromCommand } from "effect/cli/internal/completions/descriptor"
 import * as Fish from "effect/cli/internal/completions/fish"
 import * as PowerShell from "effect/cli/internal/completions/powershell"
 import * as Zsh from "effect/cli/internal/completions/zsh"
+import { execFileSync, spawnSync } from "node:child_process"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
 
 // ---------------------------------------------------------------------------
@@ -1050,6 +1054,29 @@ describe("Flags with an optional value", () => {
   })
 })
 
+const hasPwsh = spawnSync("pwsh", ["-NoProfile", "-NonInteractive", "-Command", "exit 0"]).status === 0
+
+/** Complete `line` with the generated PowerShell script and return the completion texts. */
+const replayPowerShell = (descriptor: Completions.CommandDescriptor, line: string): Array<string> => {
+  const directory = mkdtempSync(join(tmpdir(), "effect-cli-pwsh-"))
+  try {
+    const file = join(directory, "replay.ps1")
+    writeFileSync(
+      file,
+      [
+        PowerShell.generate("app", descriptor),
+        `$line = '${line.replace(/'/g, "''")}'`,
+        `(TabExpansion2 -inputScript $line -cursorColumn $line.Length).CompletionMatches | ForEach-Object { $_.CompletionText }`
+      ].join("\n")
+    )
+    return execFileSync("pwsh", ["-NoProfile", "-NonInteractive", "-File", file], { cwd: directory, encoding: "utf8" })
+      .split(/\r?\n/)
+      .filter((text) => text !== "")
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+
 describe("Boolean flags with a custom or disabled negation", () => {
   it("advertise the configured negation name and never the default --no-<flag> form", () => {
     const descriptor = fromCommand(Command.make("app", {
@@ -1071,4 +1098,17 @@ describe("Boolean flags with a custom or disabled negation", () => {
       assert.notInclude(script, "no-validate", shell)
     }
   })
+
+  it.skipIf(!hasPwsh)("PowerShell replay resolves a custom negation before a conflicting alias", () => {
+    const descriptor = fromCommand(Command.make("app", {
+      validate: Flag.Boolean("validate").pipe(Flag.withNegation("skip")),
+      force: Flag.String("force").pipe(Flag.withAlias("skip"))
+    }))
+
+    // The parser reads --skip as validate=false, so validate is used and
+    // --skip does not wait for a value for force.
+    const completions = replayPowerShell(descriptor, "app --skip ")
+    assert.include(completions, "--force")
+    assert.notInclude(completions, "--validate")
+  }, 20_000)
 })
