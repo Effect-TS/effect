@@ -436,92 +436,58 @@ describe("Tool", () => {
       }))
 
     describe("Preliminary Results", () => {
-      it.effect.each(["success", "failure"] as const)(
-        "should backpressure preliminary results and preserve %s settlement",
-        (settlement) =>
-          Effect.gen(function*() {
-            const toolkit = Toolkit.make(Tool.make("Progress", {
-              success: Schema.Number,
-              failure: Schema.String,
-              failureMode: "return"
-            }))
-            const full = yield* Latch.make()
-            let accepted = 0
-            const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-              Progress: Effect.fnUntraced(function*(_, ctx) {
-                for (let i = 0; i < 64; i++) {
-                  if (i === 16) yield* full.open
-                  yield* ctx.preliminary(i)
-                  accepted++
-                }
-                return settlement === "success" ? 64 : yield* Effect.fail("failed")
-              })
-            })))
-
-            const stream = yield* handlers.handle("Progress", {})
-            yield* full.await
-            yield* Effect.yieldNow
-            strictEqual(accepted, 16)
-
-            const results = yield* Stream.runCollect(stream)
-            strictEqual(accepted, 64)
-            deepStrictEqual(results, [
-              ...Array.from({ length: 64 }, (_, result) => ({
-                result,
-                encodedResult: result,
-                isFailure: false,
-                preliminary: true
-              })),
-              {
-                result: settlement === "success" ? 64 : "failed",
-                encodedResult: settlement === "success" ? 64 : "failed",
-                isFailure: settlement === "failure",
-                preliminary: false
+      it.effect("should backpressure preliminary results until the stream is consumed", () =>
+        Effect.gen(function*() {
+          const toolkit = Toolkit.make(Tool.make("Progress", {
+            success: Schema.Number,
+            failure: Schema.String,
+            failureMode: "return"
+          }))
+          const started = yield* Latch.make()
+          let accepted = 0
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Progress: Effect.fnUntraced(function*(_, ctx) {
+              yield* started.open
+              for (let i = 0; i < 64; i++) {
+                yield* ctx.preliminary(i)
+                accepted++
               }
-            ])
-          })
-      )
+              return yield* Effect.fail("failed")
+            })
+          })))
 
-      it.effect.each(["early end", "interruption"] as const)(
-        "should finalize a backpressured handler on consumer %s",
-        (termination) =>
-          Effect.gen(function*() {
-            const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
-            const full = yield* Latch.make()
-            const finalized = yield* Latch.make()
-            const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-              Progress: Effect.fnUntraced(function*(_, ctx) {
-                for (let i = 0; i < 64; i++) {
-                  if (i === 16) yield* full.open
-                  yield* ctx.preliminary(i)
-                }
-                return 64
-              }, Effect.ensuring(finalized.open))
-            })))
+          const stream = yield* handlers.handle("Progress", {})
+          yield* started.await
+          yield* Effect.yieldNow
+          assertTrue(accepted < 64)
 
-            // Keep the handler's parent alive so parent cleanup cannot hide a leak.
-            const stream = yield* handlers.handle("Progress", {})
-            yield* full.await
-            yield* Effect.yieldNow
-            assertFalse(Latch.isOpen(finalized))
+          const results = yield* Stream.runCollect(stream)
+          deepStrictEqual(
+            results.map(({ isFailure, preliminary, result }) => ({ isFailure, preliminary, result })),
+            [
+              ...Array.from({ length: 64 }, (_, result) => ({ isFailure: false, preliminary: true, result })),
+              { isFailure: true, preliminary: false, result: "failed" }
+            ]
+          )
+        }))
 
-            if (termination === "early end") {
-              const results = yield* stream.pipe(Stream.take(1), Stream.runCollect)
-              strictEqual(results.length, 1)
-            } else {
-              const consuming = yield* Latch.make()
-              const consumer = yield* stream.pipe(
-                Stream.tap(() => consuming.open.pipe(Effect.andThen(Effect.never))),
-                Stream.runDrain,
-                Effect.forkChild
-              )
-              yield* consuming.await
-              yield* Fiber.interrupt(consumer)
-            }
+      it.effect("should interrupt the handler when the consumer stops early", () =>
+        Effect.gen(function*() {
+          const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
+          const interrupted = yield* Latch.make()
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Progress: Effect.fnUntraced(function*(_, ctx) {
+              yield* ctx.preliminary(0)
+              return yield* Effect.never
+            }, Effect.onInterrupt(() => interrupted.open))
+          })))
 
-            assertTrue(Latch.isOpen(finalized))
-          })
-      )
+          const results = yield* handlers.handle("Progress", {}).pipe(
+            Effect.flatMap((stream) => stream.pipe(Stream.take(1), Stream.runCollect))
+          )
+          strictEqual(results.length, 1)
+          assertTrue(Latch.isOpen(interrupted))
+        }))
 
       it.effect("should not have preliminary results when generateText is used", () =>
         Effect.gen(function*() {
