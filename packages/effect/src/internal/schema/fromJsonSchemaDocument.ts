@@ -431,7 +431,9 @@ function translateJsonSchemaMultiDocument(
     }
     const tokens = pointer.slice(1)
     let node: unknown = document.definitions
+    let crossesResource = false
     for (const token of tokens) {
+      crossesResource ||= isObject(node) && typeof node.$id === "string"
       node = typeof node === "object" && node !== null && Object.hasOwn(node, token)
         ? (node as Record<string, unknown>)[token]
         : undefined
@@ -449,10 +451,13 @@ function translateJsonSchemaMultiDocument(
       )
     }
     pointersInProgress.add($ref)
+    const wasInNestedResource = inNestedResource
+    inNestedResource ||= crossesResource
     try {
       return translateSchema(node, ["definitions", ...tokens])
     } finally {
       pointersInProgress.delete($ref)
+      inNestedResource = wasInNestedResource
     }
   }
 
