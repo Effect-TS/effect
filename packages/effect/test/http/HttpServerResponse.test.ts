@@ -237,6 +237,26 @@ describe("HttpServerResponse", () => {
         assert.strictEqual(yield* HttpServerResponse.toClientResponse(response).text, "hello")
         assert.strictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).text()), "hello")
       }))
+
+    it.effect("rebuilds a Web Response with HttpClientResponse.toWeb", () =>
+      Effect.gen(function*() {
+        const web = yield* HttpClientResponse.toWeb(HttpServerResponse.toClientResponse(
+          HttpServerResponse.text("hello", { status: 201 }).pipe(
+            HttpServerResponse.setHeader("x-test", "ok"),
+            HttpServerResponse.setCookieUnsafe("session", "123")
+          )
+        ))
+        assert.strictEqual(web.status, 201)
+        assert.strictEqual(web.headers.get("x-test"), "ok")
+        assert.strictEqual(web.headers.get("set-cookie"), "session=123")
+        assert.strictEqual(yield* Effect.promise(() => web.text()), "hello")
+
+        const empty = yield* HttpClientResponse.toWeb(
+          HttpServerResponse.toClientResponse(HttpServerResponse.empty({ status: 204 }))
+        )
+        assert.strictEqual(empty.status, 204)
+        assert.strictEqual(empty.body, null)
+      }))
   })
 
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>
