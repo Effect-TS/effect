@@ -1928,9 +1928,10 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
   }
 
   [WebSourceSymbol]() {
-    // The Web body outlives this wrapper, so collecting it must not abort the request.
-    responseRegistry.unregister(this.original)
-    return getWebSource(this.original)
+    const source = getWebSource(this.original)
+    // A handed-over Web body outlives this wrapper, so collecting it must not abort the request.
+    if (source !== undefined) responseRegistry.unregister(this.original)
+    return source
   }
 
   get stream() {
