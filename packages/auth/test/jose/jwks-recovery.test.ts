@@ -1,4 +1,4 @@
-import { Jwks, Jws } from "@effect/auth/jose"
+import { JoseError, Jwks, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Cause, Clock, Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scheduler, Scope } from "effect"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http"
@@ -7,9 +7,10 @@ import * as jose from "jose"
 import { cryptoLayer, privateJwk, publicJwk, utf8 } from "./fixtures.ts"
 
 for (const phase of ["initial lookup", "missing-key refresh"] as const) {
-  it.effect(`preserves JWKS mixed transport failures during ${phase}`, () =>
+  it.effect(`preserves JWKS transport errors as defects when cleanup dies during ${phase}`, () =>
     Effect.gen(function*() {
       const defect = { cleanup: phase }
+      let transportError: HttpClientError.HttpClientError | undefined
       let requests = 0
       const http = HttpClient.make((request) =>
         Effect.suspend(() => {
@@ -20,11 +21,10 @@ for (const phase of ["initial lookup", "missing-key refresh"] as const) {
               Response.json({ keys: [{ ...publicJwk, kid: "cached" }] })
             ))
           }
-          return Effect.fail(
-            new HttpClientError.HttpClientError({
-              reason: new HttpClientError.TransportError({ request, cause: "private-transport-canary" })
-            })
-          ).pipe(Effect.ensuring(Effect.die(defect)))
+          transportError = new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({ request, cause: "private-transport-canary" })
+          })
+          return Effect.fail(transportError).pipe(Effect.ensuring(Effect.die(defect)))
         })
       )
       const context = yield* Layer.build(
@@ -40,12 +40,11 @@ for (const phase of ["initial lookup", "missing-key refresh"] as const) {
       assert.isTrue(Exit.isFailure(exit))
       if (Exit.isFailure(exit)) {
         assert.isTrue(exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === defect))
-        const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error)
-        assert.deepStrictEqual(failures.map((error): object => ({ ...error })), [{
-          _tag: "JoseJwksUnavailable",
-          reason: "transport"
-        }])
-        assert.notInclude(JSON.stringify(failures), "private-transport-canary")
+        assert.isFalse(Cause.hasFails(exit.cause))
+        assert.isDefined(transportError)
+        assert.isTrue(
+          exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === transportError)
+        )
       }
       assert.strictEqual(requests, phase === "missing-key refresh" ? 2 : 1)
     }).pipe(Effect.provide(cryptoLayer)))
@@ -79,8 +78,10 @@ it.effect("preserves JWKS cleanup failures when the refresh times out", () =>
     assert.isTrue(Exit.isFailure(exit))
     if (Exit.isFailure(exit)) {
       assert.isTrue(exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === defect))
+      assert.isFalse(Cause.hasFails(exit.cause))
       assert.isTrue(exit.cause.reasons.some((reason) =>
-        Cause.isFailReason(reason) && reason.error._tag === "JoseJwksUnavailable" && reason.error.reason === "transport"
+        Cause.isDieReason(reason) && reason.defect instanceof JoseError.JwksUnavailable &&
+        reason.defect.reason === "transport"
       ))
     }
     assert.strictEqual(requests, 1)

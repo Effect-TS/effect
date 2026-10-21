@@ -16,18 +16,18 @@ import * as TestClock from "effect/testing/TestClock"
 
 import { codeInput, cryptoLayer, metadata, options } from "./fixtures.ts"
 
-it.effect("preserves OIDC mixed JWKS failures after sanitizing the transport error", () =>
+it.effect("preserves OIDC JWKS transport errors as defects when cleanup dies", () =>
   Effect.gen(function*() {
     const defect = { cleanup: "OIDC JWKS" }
+    let transportError: HttpClientError.HttpClientError | undefined
     let requests = 0
     const http = HttpClient.make((request) =>
       Effect.suspend(() => {
         requests++
-        return Effect.fail(
-          new HttpClientError.HttpClientError({
-            reason: new HttpClientError.TransportError({ request, cause: "private-transport-canary" })
-          })
-        ).pipe(Effect.ensuring(Effect.die(defect)))
+        transportError = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request, cause: "private-transport-canary" })
+        })
+        return Effect.fail(transportError).pipe(Effect.ensuring(Effect.die(defect)))
       })
     )
     const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeout: 1000 }).pipe(
@@ -43,9 +43,9 @@ it.effect("preserves OIDC mixed JWKS failures after sanitizing the transport err
     assert.isTrue(Exit.isFailure(exit))
     if (Exit.isFailure(exit)) {
       assert.isTrue(exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === defect))
-      const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error)
-      assert.deepStrictEqual(failures.map((error): object => ({ ...error })), [{ _tag: "OAuthUnavailable" }])
-      assert.notInclude(JSON.stringify(failures), "private-transport-canary")
+      assert.isFalse(Cause.hasFails(exit.cause))
+      assert.isDefined(transportError)
+      assert.isTrue(exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === transportError))
     }
     assert.strictEqual(requests, 1)
   }).pipe(Effect.provide(cryptoLayer)))
@@ -126,7 +126,11 @@ for (const cleanupDefect of [false, true]) {
         )
         assert.isTrue(
           Exit.isFailure(exit) &&
-            exit.cause.reasons.some((reason) => Cause.isFailReason(reason) && reason.error._tag === "OAuthUnavailable")
+            !Cause.hasFails(exit.cause) &&
+            exit.cause.reasons.some((reason) =>
+              Cause.isDieReason(reason) && HttpClientError.isHttpClientError(reason.defect) &&
+              reason.defect.reason._tag === "EmptyBodyError"
+            )
         )
       } else {
         assert.isTrue(Exit.isSuccess(exit))

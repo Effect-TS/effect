@@ -116,13 +116,12 @@ export const make = Effect.fnUntraced(function*(
       profile: Profile,
       subject: (profile) => Effect.succeed(profile.id),
 
-      loadProfile: (oauth, tokens) =>
-        Effect.gen(function*() {
-          const response = yield* Validation.decode(Response, yield* oauth.fetchProfile(tokens.accessToken)).pipe(
-            Effect.catchCause((cause) => Effect.failCause(Cause.map(cause, () => Rejected.make({ reason: "claims" }))))
-          )
-          return response.data
-        })
+      loadProfile: Effect.fnUntraced(function*(oauth, tokens) {
+        const response = yield* Validation.decode(Response, yield* oauth.fetchProfile(tokens.accessToken)).pipe(
+          Effect.catchCause((cause) => Effect.failCause(Cause.map(cause, () => Rejected.make({ reason: "claims" }))))
+        )
+        return response.data
+      })
     })
   )
 })
