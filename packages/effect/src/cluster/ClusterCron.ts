@@ -15,6 +15,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Cron from "../Cron.ts"
 import * as DateTime from "../DateTime.ts"
@@ -85,7 +86,8 @@ export const make = <E, R>(options: {
    * current time.
    *
    * When enabled, all runs are processed one at a time by a single entity, so
-   * missed runs are caught up in order without overlapping.
+   * missed runs are caught up in order without overlapping. A run that fails
+   * is logged and not retried, so it cannot block later runs.
    */
   readonly calculateNextRunFromPrevious?: boolean | undefined
 
@@ -151,7 +153,17 @@ export const make = <E, R>(options: {
       return
     }
     return yield* Effect.provideService(options.execute, CurrentScheduledTime, dateTime)
-  }, Effect.orDie)
+  }, (effect) =>
+    Effect.orDie(
+      options.calculateNextRunFromPrevious
+        // runs share the executor, so a failed run is dropped instead of
+        // being retried in front of later runs
+        ? Effect.catchCause(
+          effect,
+          (cause) => Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.logWarning(cause)
+        )
+        : effect
+    ))
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const address = yield* Entity.CurrentAddress
