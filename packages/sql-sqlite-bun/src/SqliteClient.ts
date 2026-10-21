@@ -72,6 +72,10 @@ interface SqliteConnection extends Connection {
 }
 
 /**
+ * Explicit transactions use `BEGIN IMMEDIATE`, so they hold the write lock for
+ * their duration (even when they only read) instead of failing when upgrading a
+ * read snapshot under concurrent writers.
+ *
  * @category constructor
  * @since 1.0.0
  */
@@ -182,6 +186,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        beginTransaction: "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
