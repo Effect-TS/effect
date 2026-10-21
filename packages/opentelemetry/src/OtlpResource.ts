@@ -90,6 +90,8 @@ export const fromConfig: (
     (yield* Config.string("OTEL_SERVICE_NAME"))
   const serviceVersion = options?.serviceVersion ?? attributes[ATTR_SERVICE_VERSION] as string ??
     (yield* Config.string("OTEL_SERVICE_VERSION").pipe(Config.withDefault(undefined)))
+  delete attributes[ATTR_SERVICE_NAME]
+  delete attributes[ATTR_SERVICE_VERSION]
   return make({
     serviceName,
     serviceVersion,
