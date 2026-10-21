@@ -1,0 +1,105 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Effect, Redacted, Stream } from "effect"
+import { DockerError, DockerExec } from "effect/docker"
+import { concat, type Connection, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
+
+const bytes = (text: string) => new TextEncoder().encode(text)
+
+/** An Engine with one exec `e` that has exited with `exitCode`, starting over `upgrade`. */
+const execEngine = (upgrade: Connection, exitCode = 0) =>
+  makeStubEngine(
+    withPing("1.44", (request) =>
+      request.url.pathname.endsWith("/exec")
+        ? json({ Id: "e" }, 201)
+        : request.url.pathname.endsWith("/start")
+        ? { headers: { "content-type": "application/vnd.docker.multiplexed-stream" }, upgrade }
+        : json({ ID: "e", Running: false, ExitCode: exitCode, OpenStdin: true, ProcessConfig: { tty: false } })),
+    { config: { detachKeys: "ctrl-x,x" } }
+  )
+
+describe("DockerExec", () => {
+  it.effect("runs a command and returns its output and exit code", () =>
+    Effect.gen(function*() {
+      // frames split across reads, one byte at a time
+      const wire = concat(frame(1, "out\n"), frame(2, "err\n"))
+      const upgraded = connection(Array.from(wire, (byte) => new Uint8Array([byte])))
+      const stub = execEngine(upgraded, 3)
+      const result = yield* DockerExec.DockerExec.use((exec) =>
+        exec.run("c", ["cat"], { stdin: "in", env: [Redacted.make("TOKEN=t")] })
+      ).pipe(
+        stub.provide
+      )
+      assert.deepStrictEqual(result, { exitCode: 3, stdout: bytes("out\n"), stderr: bytes("err\n") })
+      assert.deepStrictEqual(upgraded.written, [bytes("in")])
+      assert.isTrue(upgraded.halfClosed)
+      const [create, , start] = stub.requests.slice(1)
+      assert.deepStrictEqual(JSON.parse(create.body!), {
+        Cmd: ["cat"],
+        Env: ["TOKEN=t"],
+        AttachStdin: true,
+        AttachStdout: true,
+        AttachStderr: true,
+        DetachKeys: "ctrl-x,x"
+      })
+      assert.strictEqual(start.url.pathname, "/v1.44/exec/e/start")
+      assert.strictEqual(start.headers.upgrade, "tcp")
+      assert.deepStrictEqual(JSON.parse(start.body!), { Detach: false, Tty: false })
+    }))
+
+  it.effect("returns once the output ends, dropping stdin input that is still pending", () =>
+    Effect.gen(function*() {
+      const result = yield* DockerExec.DockerExec.use((exec) =>
+        exec.run("c", ["echo", "done"], { stdin: Stream.never })
+      ).pipe(execEngine(connection([frame(1, "done\n")])).provide)
+      assert.deepStrictEqual(result.stdout, bytes("done\n"))
+    }))
+
+  it.effect("fails run with the stdin input's error", () =>
+    Effect.gen(function*() {
+      const broken = new DockerError.DockerError({ reason: new DockerError.StreamFailed({ message: "input broke" }) })
+      const input = Stream.concat(Stream.make(bytes("part")), Stream.fail(broken))
+      const error = yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["cat"], { stdin: input })).pipe(
+        execEngine(connection([], "hold")).provide,
+        Effect.flip
+      )
+      assert.strictEqual(error, broken)
+    }))
+
+  it.effect("fails with ConnectionFailed when the connection breaks, instead of waiting", () =>
+    Effect.gen(function*() {
+      const error = yield* DockerExec.DockerExec.use((exec) => exec.run("c", ["true"])).pipe(
+        execEngine(connection([frame(1, "x")], "error")).provide,
+        Effect.flip
+      )
+      assert.strictEqual(error.reason._tag, "ConnectionFailed")
+    }))
+
+  it.effect("fails start with the Engine's error response", () =>
+    Effect.gen(function*() {
+      const stub = makeStubEngine(withPing("1.44", (request) =>
+        request.url.pathname.endsWith("/start")
+          ? json({ message: "container c is not running" }, 409)
+          : json({ ID: "e", Running: false, ExitCode: 0, OpenStdin: false, ProcessConfig: { tty: false } })))
+      const error = yield* Effect.scoped(DockerExec.DockerExec.use((exec) => exec.start("e"))).pipe(
+        stub.provide,
+        Effect.flip
+      )
+      assert.deepStrictEqual(
+        error.reason,
+        new DockerError.Conflict({ status: 409, message: "container c is not running", operation: "docker.Exec.start" })
+      )
+    }))
+
+  it.effect("fails writes to stdin that wasn't attached", () =>
+    Effect.gen(function*() {
+      const stub = makeStubEngine(withPing("1.44", (request) =>
+        request.url.pathname.endsWith("/start")
+          ? { upgrade: connection([]) }
+          : json({ ID: "e", Running: false, ExitCode: 0, OpenStdin: false, ProcessConfig: { tty: true } })))
+      const error = yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* DockerExec.DockerExec.use((exec) => exec.start("e"))
+        return yield* Stream.make(bytes("x")).pipe(Stream.run(handle.stdin), Effect.flip)
+      })).pipe(stub.provide)
+      assert.strictEqual(error.reason._tag, "StdinNotAttached")
+    }))
+})

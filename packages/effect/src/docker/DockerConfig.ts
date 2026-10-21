@@ -640,6 +640,35 @@ export const ResolvedConfig = Schema.Struct({
  */
 export type ResolvedConfig = typeof ResolvedConfig.Type
 
+const proxyNames = [
+  ["httpProxy", "HTTP_PROXY"],
+  ["httpsProxy", "HTTPS_PROXY"],
+  ["noProxy", "NO_PROXY"],
+  ["ftpProxy", "FTP_PROXY"],
+  ["allProxy", "ALL_PROXY"]
+] as const
+
+/**
+ * A container's `Env` with the proxy variables it doesn't set itself, as
+ * `docker create` adds them: each setting as `HTTP_PROXY` and `http_proxy`,
+ * and so on.
+ *
+ * @internal
+ */
+export const withProxyEnv = (
+  env: ReadonlyArray<string | Redacted.Redacted<string>> | undefined,
+  proxy: ResolvedConfig["proxy"]
+): ReadonlyArray<string | Redacted.Redacted<string>> | undefined => {
+  const set = new Set(
+    (env ?? []).map((entry) => (Redacted.isRedacted(entry) ? Redacted.value(entry) : entry).split("=", 1)[0])
+  )
+  const added = proxyNames.flatMap(([key, name]) => {
+    const value = proxy[key]
+    return value === undefined || value === "" ? [] : [`${name}=${value}`, `${name.toLowerCase()}=${value}`]
+  }).filter((entry) => !set.has(entry.split("=", 1)[0]))
+  return added.length === 0 ? env : [...(env ?? []), ...added]
+}
+
 /**
  * Loads the {@link ResolvedConfig} a `DockerEngine` is built from. Every
  * service of `effect/docker` then reads it from the engine.

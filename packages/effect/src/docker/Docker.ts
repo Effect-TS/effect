@@ -23,8 +23,12 @@
  * @since 4.0.6
  */
 import * as Layer from "../Layer.ts"
+import * as DockerContainers from "./DockerContainers.ts"
 import type { DockerEngine } from "./DockerEngine.ts"
+import * as DockerExec from "./DockerExec.ts"
+import * as DockerNetworks from "./DockerNetworks.ts"
 import * as DockerSystem from "./DockerSystem.ts"
+import * as DockerVolumes from "./DockerVolumes.ts"
 
 /**
  * Every service {@link layer} provides.
@@ -33,7 +37,12 @@ import * as DockerSystem from "./DockerSystem.ts"
  * @category models
  * @since 4.0.6
  */
-export type Docker = DockerSystem.DockerSystem
+export type Docker =
+  | DockerContainers.DockerContainers
+  | DockerExec.DockerExec
+  | DockerNetworks.DockerNetworks
+  | DockerSystem.DockerSystem
+  | DockerVolumes.DockerVolumes
 
 /**
  * Provides every service over the `DockerEngine` in context, each built with
@@ -43,4 +52,10 @@ export type Docker = DockerSystem.DockerSystem
  * @category layers
  * @since 4.0.6
  */
-export const layer: Layer.Layer<Docker, never, DockerEngine> = Layer.mergeAll(DockerSystem.layer)
+export const layer: Layer.Layer<Docker, never, DockerEngine> = Layer.mergeAll(
+  DockerContainers.layer,
+  DockerExec.layer,
+  DockerNetworks.layer,
+  DockerSystem.layer,
+  DockerVolumes.layer
+)

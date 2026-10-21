@@ -27,6 +27,12 @@ export * as DockerConfig from "./DockerConfig.ts"
  * @stability unstable
  * @since 4.0.6
  */
+export * as DockerContainers from "./DockerContainers.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
 export * as DockerEngine from "./DockerEngine.ts"
 
 /**
@@ -39,6 +45,18 @@ export * as DockerError from "./DockerError.ts"
  * @stability unstable
  * @since 4.0.6
  */
+export * as DockerExec from "./DockerExec.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as DockerNetworks from "./DockerNetworks.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
 export * as DockerSchema from "./DockerSchema.ts"
 
 /**
@@ -46,3 +64,9 @@ export * as DockerSchema from "./DockerSchema.ts"
  * @since 4.0.6
  */
 export * as DockerSystem from "./DockerSystem.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as DockerVolumes from "./DockerVolumes.ts"

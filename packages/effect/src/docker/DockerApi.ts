@@ -16,12 +16,15 @@
  *   `0`, which the Docker CLI sends.
  * - Fields that carry secrets are `Redacted`; requests send them
  *   unwrapped.
+ * - Starting an exec isn't declared: it upgrades a request with a body,
+ *   which `HttpApi` can't declare. `DockerExec` sends it itself.
  *
  * @stability unstable
  * @since 4.0.6
  */
 import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
+import * as Duration from "../Duration.ts"
 import * as HttpApi from "../http-api/HttpApi.ts"
 import * as HttpApiEndpoint from "../http-api/HttpApiEndpoint.ts"
 import * as HttpApiGroup from "../http-api/HttpApiGroup.ts"
@@ -40,10 +43,11 @@ import * as DockerSchema from "./DockerSchema.ts"
  * An endpoint annotation: the request fields newer than API 1.44, each with
  * the version it arrived in.
  * A key names a field of the request's `query` or `payload` as the caller
- * passes it, and a dotted key (`HostConfig.Init`) a nested one. The
- * `DockerEngine`'s client fails a request that sets one with
- * `OptionNotSupported` when the negotiated version is older, before anything
- * is sent.
+ * passes it, a dotted key (`HostConfig.Init`) a nested one, and a `*` key any
+ * element of an array or entry of a map
+ * (`HostConfig.Mounts.*.VolumeOptions.Subpath`). The `DockerEngine`'s client
+ * fails a request that sets one with `OptionNotSupported` when the negotiated
+ * version is older, before anything is sent.
  *
  * @internal
  */
@@ -252,6 +256,12 @@ export class EngineErrors extends HttpApiMiddleware.Service<EngineErrors>()("eff
 // parameters
 // -----------------------------------------------------------------------------
 
+const id = { id: Schema.String }
+const name = { name: Schema.String }
+
+/** The headers of a logs response: its `Content-Type` says whether it is raw or multiplexed. */
+const logsHeaders = { "content-type": Schema.optional(Schema.String) }
+
 /**
  * Filters of a list or prune: values by key, one value as a string, as the Engine's JSON `map[string][]string` query parameter.
  *
@@ -295,6 +305,31 @@ const UnixSeconds = Schema.String.pipe(
     })
   )
 )
+
+/**
+ * A duration as whole seconds, rounded up, for `t` and `timeout`: any
+ * `Duration.Input`. An infinite duration is `-1`, the Engine's "wait forever".
+ */
+const DurationSeconds = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.declare((u): u is Duration.Input => Option.isSome(Duration.fromInput(u as Duration.Input))),
+    SchemaTransformation.transform<Duration.Input, string>({
+      decode: (seconds) => Number(seconds) < 0 ? Duration.infinity : Duration.seconds(Number(seconds)),
+      encode: (input) => {
+        const duration = Duration.fromInputUnsafe(input)
+        return String(Duration.isFinite(duration) ? Math.ceil(Duration.toMillis(duration) / 1000) : -1)
+      }
+    })
+  )
+)
+
+/**
+ * `KEY=value` entries (a container's `Env`, a plugin's settings): each a
+ * string, or a `Redacted` one that is sent unwrapped.
+ */
+const Env = Schema.Array(Schema.Union([Schema.String, Schema.RedactedFromValue(Schema.String)]))
+
+const tar = HttpApiSchema.StreamUint8Array({ contentType: "application/x-tar" })
 
 // -----------------------------------------------------------------------------
 // system
@@ -492,6 +527,418 @@ export const System = HttpApiGroup.make("system").add(
 ).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// containers
+// -----------------------------------------------------------------------------
+
+/**
+ * The stat of a path in a container, from the `X-Docker-Container-Path-Stat`
+ * header.
+ *
+ * **Details**
+ *
+ * `mode` is a Go `os.FileMode`, not a POSIX mode: directories have bit 31
+ * set and symlinks bit 27. `linkTarget` is the target of a symlink, and empty
+ * otherwise.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const PathStat = Schema.Struct({
+  name: Schema.String,
+  size: Schema.Number,
+  mode: Schema.Number,
+  mtime: Schema.String,
+  linkTarget: Schema.String
+})
+
+/**
+ * The stat of a path in a container.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type PathStat = typeof PathStat.Type
+
+const signal = Schema.optional(Schema.String)
+
+/**
+ * A container's configuration, as the Engine's `ContainerCreateRequest`, whose `Env` entries can be `Redacted`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ContainerCreateRequest = DockerSchema.ContainerCreateRequest.mapFields((fields) => ({
+  ...fields,
+  Env: Schema.optionalKey(Env)
+}))
+
+/**
+ * A container's configuration, see {@link ContainerCreateRequest}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ContainerCreateRequest = typeof ContainerCreateRequest.Type
+
+/** `stop` and `restart`: a signal, and the grace period as the Engine's `t`. */
+const StopQuery = Schema.Struct({ signal, timeout: Schema.optional(DurationSeconds) }).pipe(
+  Schema.encodeKeys({ timeout: "t" })
+)
+
+/**
+ * The size of a TTY, in character cells, as the Engine's `h` and `w` query parameters.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const TtySize = Schema.Struct({ rows: Schema.Number, columns: Schema.Number }).pipe(
+  Schema.encodeKeys({ rows: "h", columns: "w" })
+)
+
+/**
+ * The size of a TTY, in character cells.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type TtySize = typeof TtySize.Type
+
+/** 304 for a container already started, or already stopped. */
+const NotModified = HttpApiSchema.Empty(304)
+
+/** The `X-Docker-Container-Path-Stat` header: base64 JSON. */
+const PathStatHeader = Schema.StringFromBase64.pipe(
+  Schema.decodeTo(Schema.fromJsonString(Schema.toCodecGoJson(PathStat)))
+)
+
+const pathStatHeader = "x-docker-container-path-stat"
+
+/**
+ * The Engine's container endpoints, which `DockerContainers` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Containers = HttpApiGroup.make("containers").add(
+  HttpApiEndpoint.get("list", "/containers/json", {
+    query: {
+      all: Schema.optional(Schema.Boolean),
+      limit: Schema.optional(Schema.Number),
+      size: Schema.optional(Schema.Boolean),
+      filters
+    },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.ContainerSummary))
+  }).annotate(ApiVersions, { query: { "filters.annotation": "1.56" } }),
+  HttpApiEndpoint.post("create", "/containers/create", {
+    query: { name: Schema.optional(Schema.String), platform: Schema.optional(Schema.String) },
+    payload: ContainerCreateRequest,
+    success: Schema.toCodecGoJson(DockerSchema.ContainerCreateResponse).pipe(HttpApiSchema.status(201))
+  }).annotate(ApiVersions, {
+    payload: {
+      "HostConfig.Umask": "1.56",
+      "HostConfig.Mounts.*.VolumeOptions.Subpath": "1.45",
+      "HostConfig.Mounts.*.TmpfsOptions.Options": "1.46",
+      "HostConfig.Mounts.*.ImageOptions": "1.48",
+      "NetworkingConfig.EndpointsConfig.*.GwPriority": "1.48"
+    }
+  }),
+  HttpApiEndpoint.get("inspect", "/containers/:id/json", {
+    params: id,
+    query: { size: Schema.optional(Schema.Boolean) },
+    success: Schema.toCodecGoJson(DockerSchema.ContainerInspectResponse)
+  }),
+  HttpApiEndpoint.get("top", "/containers/:id/top", {
+    params: id,
+    query: Schema.Struct({ psArgs: Schema.optional(Schema.String) }).pipe(Schema.encodeKeys({ psArgs: "ps_args" })),
+    success: Schema.toCodecGoJson(DockerSchema.ContainerTopResponse)
+  }),
+  HttpApiEndpoint.get("changes", "/containers/:id/changes", {
+    params: id,
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.FilesystemChange))
+  }),
+  HttpApiEndpoint.post("start", "/containers/:id/start", {
+    params: id,
+    query: { detachKeys: Schema.optional(Schema.String) },
+    success: [HttpApiSchema.NoContent, NotModified]
+  }),
+  HttpApiEndpoint.post("stop", "/containers/:id/stop", {
+    params: id,
+    query: StopQuery,
+    success: [HttpApiSchema.NoContent, NotModified]
+  }),
+  HttpApiEndpoint.post("restart", "/containers/:id/restart", {
+    params: id,
+    query: StopQuery,
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("kill", "/containers/:id/kill", {
+    params: id,
+    query: { signal },
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("pause", "/containers/:id/pause", { params: id, success: HttpApiSchema.NoContent }),
+  HttpApiEndpoint.post("unpause", "/containers/:id/unpause", { params: id, success: HttpApiSchema.NoContent }),
+  HttpApiEndpoint.post("rename", "/containers/:id/rename", {
+    params: id,
+    query: { name: Schema.String },
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("resize", "/containers/:id/resize", {
+    params: id,
+    query: TtySize,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("update", "/containers/:id/update", {
+    params: id,
+    payload: DockerSchema.ContainerUpdateRequest,
+    success: Schema.toCodecGoJson(DockerSchema.ContainerUpdateResponse)
+  }).annotate(ApiVersions, {
+    // older Engines accepted and ignored them
+    payload: {
+      BlkioWeightDevice: "1.55",
+      BlkioDeviceReadBps: "1.55",
+      BlkioDeviceWriteBps: "1.55",
+      BlkioDeviceReadIOps: "1.55",
+      BlkioDeviceWriteIOps: "1.55"
+    }
+  }),
+  HttpApiEndpoint.post("wait", "/containers/:id/wait", {
+    params: id,
+    query: { condition: Schema.optional(Schema.Literals(["not-running", "next-exit", "removed"])) },
+    success: Schema.toCodecGoJson(DockerSchema.ContainerWaitResponse)
+  }),
+  HttpApiEndpoint.delete("remove", "/containers/:id", {
+    params: id,
+    query: Schema.Struct({
+      force: Schema.optional(Schema.Boolean),
+      volumes: Schema.optional(Schema.Boolean),
+      link: Schema.optional(Schema.Boolean)
+    }).pipe(Schema.encodeKeys({ volumes: "v" })),
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("prune", "/containers/prune", {
+    query: { filters },
+    success: Schema.toCodecGoJson(DockerSchema.ContainerPruneResponse)
+  }),
+  HttpApiEndpoint.get("logs", "/containers/:id/logs", {
+    params: id,
+    query: {
+      follow: Schema.optional(Schema.Boolean),
+      stdout: Schema.optional(Schema.Boolean),
+      stderr: Schema.optional(Schema.Boolean),
+      since: Schema.optional(UnixSeconds),
+      until: Schema.optional(UnixSeconds),
+      timestamps: Schema.optional(Schema.Boolean),
+      tail: Schema.optional(Schema.Union([Schema.Number, Schema.Literal("all")]))
+    },
+    // raw or multiplexed, as the `Content-Type` says
+    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
+  }),
+  HttpApiEndpoint.get("stats", "/containers/:id/stats", {
+    params: id,
+    query: Schema.Struct({ stream: Schema.Literal(false), oneShot: Schema.optional(Schema.Boolean) }).pipe(
+      Schema.encodeKeys({ oneShot: "one-shot" })
+    ),
+    success: Schema.toCodecGoJson(DockerSchema.ContainerStatsResponse)
+  }),
+  HttpApiEndpoint.get("statsStream", "/containers/:id/stats", {
+    params: id,
+    query: { stream: Schema.Literal(true) },
+    // the Engine answers `application/json`, one sample per line
+    success: HttpApiSchema.StreamNdjson({
+      schema: Schema.toCodecGoJson(DockerSchema.ContainerStatsResponse),
+      contentType: "application/json"
+    })
+  }),
+  HttpApiEndpoint.get("export", "/containers/:id/export", {
+    params: id,
+    success: HttpApiSchema.StreamUint8Array({ contentType: "application/octet-stream" })
+  }),
+  HttpApiEndpoint.post("attach", "/containers/:id/attach", {
+    params: id,
+    query: {
+      stream: Schema.Literal(true),
+      stdin: Schema.Boolean,
+      stdout: Schema.Boolean,
+      stderr: Schema.Boolean,
+      logs: Schema.optional(Schema.Boolean),
+      detachKeys: Schema.optional(Schema.String)
+    },
+    success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+  }),
+  HttpApiEndpoint.head("statPath", "/containers/:id/archive", {
+    params: id,
+    query: { path: Schema.String },
+    success: PathStat.pipe(HttpApiSchema.encodeToWithHeaders({
+      body: HttpApiSchema.Empty(200),
+      headers: { [pathStatHeader]: PathStatHeader }
+    }, {
+      decode: ({ headers }) => headers[pathStatHeader],
+      encode: (stat) => ({ body: undefined, headers: { [pathStatHeader]: stat } })
+    }))
+  }),
+  HttpApiEndpoint.get("getArchive", "/containers/:id/archive", {
+    params: id,
+    query: { path: Schema.String },
+    success: HttpApiSchema.WithHeaders(tar, { [pathStatHeader]: PathStatHeader })
+  }),
+  HttpApiEndpoint.put("putArchive", "/containers/:id/archive", {
+    params: id,
+    query: {
+      path: Schema.String,
+      noOverwriteDirNonDir: Schema.optional(Schema.Boolean),
+      copyUIDGID: Schema.optional(Schema.Boolean)
+    },
+    payload: tar,
+    success: HttpApiSchema.Empty(200)
+  })
+).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
+// exec
+// -----------------------------------------------------------------------------
+
+/**
+ * An exec's configuration, as the Engine's `ExecConfig`, whose `Env` entries can be `Redacted`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ExecConfig = DockerSchema.ExecConfig.mapFields((fields) => ({ ...fields, Env: Schema.optionalKey(Env) }))
+
+/**
+ * An exec's configuration, see {@link ExecConfig}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ExecConfig = typeof ExecConfig.Type
+
+/**
+ * The Engine's exec endpoints, which `DockerExec` is a client of. Starting
+ * an exec isn't one: it upgrades a request with a body, which `HttpApi`
+ * can't declare.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Exec = HttpApiGroup.make("exec").add(
+  HttpApiEndpoint.post("create", "/containers/:id/exec", {
+    params: id,
+    payload: ExecConfig,
+    success: Schema.toCodecGoJson(DockerSchema.IDResponse).pipe(HttpApiSchema.status(201))
+  }),
+  HttpApiEndpoint.get("inspect", "/exec/:id/json", {
+    params: id,
+    success: Schema.toCodecGoJson(DockerSchema.ExecInspectResponse)
+  }),
+  HttpApiEndpoint.post("resize", "/exec/:id/resize", {
+    params: id,
+    query: TtySize,
+    success: HttpApiSchema.Empty(200)
+  })
+).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
+// networks
+// -----------------------------------------------------------------------------
+
+/**
+ * The Engine's network endpoints, which `DockerNetworks` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Networks = HttpApiGroup.make("networks").add(
+  HttpApiEndpoint.get("list", "/networks", {
+    query: { filters },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.NetworkSummary))
+  }),
+  HttpApiEndpoint.get("inspect", "/networks/:id", {
+    params: id,
+    query: { verbose: Schema.optional(Schema.Boolean), scope: Schema.optional(Schema.String) },
+    success: Schema.toCodecGoJson(DockerSchema.NetworkInspect)
+  }),
+  HttpApiEndpoint.post("create", "/networks/create", {
+    payload: DockerSchema.NetworkCreateRequest,
+    success: Schema.toCodecGoJson(DockerSchema.NetworkCreateResponse).pipe(HttpApiSchema.status(201))
+  }).annotate(ApiVersions, { payload: { EnableIPv4: "1.48" } }),
+  HttpApiEndpoint.delete("remove", "/networks/:id", {
+    params: id,
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("connect", "/networks/:id/connect", {
+    params: id,
+    payload: DockerSchema.NetworkConnectRequest,
+    success: HttpApiSchema.Empty(200)
+  }).annotate(ApiVersions, {
+    // older Engines ignored a MAC address here
+    payload: { "EndpointConfig.GwPriority": "1.48", "EndpointConfig.MacAddress": "1.54" }
+  }),
+  HttpApiEndpoint.post("disconnect", "/networks/:id/disconnect", {
+    params: id,
+    payload: DockerSchema.NetworkDisconnectRequest,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("prune", "/networks/prune", {
+    query: { filters },
+    success: Schema.toCodecGoJson(DockerSchema.NetworkPruneResponse)
+  })
+).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
+// volumes
+// -----------------------------------------------------------------------------
+
+/**
+ * The Engine's volume endpoints, which `DockerVolumes` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Volumes = HttpApiGroup.make("volumes").add(
+  HttpApiEndpoint.get("list", "/volumes", {
+    query: { filters },
+    success: Schema.toCodecGoJson(DockerSchema.VolumeListResponse)
+  }),
+  HttpApiEndpoint.post("create", "/volumes/create", {
+    payload: DockerSchema.VolumeCreateRequest,
+    success: Schema.toCodecGoJson(DockerSchema.Volume).pipe(HttpApiSchema.status(201))
+  }),
+  HttpApiEndpoint.get("inspect", "/volumes/:name", {
+    params: name,
+    success: Schema.toCodecGoJson(DockerSchema.Volume)
+  }),
+  HttpApiEndpoint.put("update", "/volumes/:name", {
+    params: name,
+    query: { version: Schema.Number },
+    payload: DockerSchema.VolumeUpdateRequest,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.delete("remove", "/volumes/:name", {
+    params: name,
+    query: { force: Schema.optional(Schema.Boolean) },
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("prune", "/volumes/prune", {
+    query: { filters },
+    success: Schema.toCodecGoJson(DockerSchema.VolumePruneResponse)
+  })
+).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -503,5 +950,9 @@ export const System = HttpApiGroup.make("system").add(
  * @since 4.0.6
  */
 export const DockerApi = HttpApi.make("docker").add(
-  System
+  System,
+  Containers,
+  Exec,
+  Networks,
+  Volumes
 )

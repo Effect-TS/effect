@@ -456,15 +456,23 @@ const makeClient = (
         ])
       )
     ),
-    HttpClient.catchTag("HttpClientError", (cause) => Effect.fail(connectionFailed(endpoint, cause)))
+    // a request body stream that fails with a `DockerError` (the caller's input) keeps it
+    HttpClient.catchTag("HttpClientError", (cause) =>
+      Effect.fail(
+        cause.reason._tag === "EncodeError" && isDockerError(cause.reason.cause)
+          ? cause.reason.cause
+          : connectionFailed(endpoint, cause)
+      ))
   )
 }
 
 /**
  * The failures of an `HttpApiClient` method: the Engine's client already
  * fails with `DockerError`, and a declared error response is decoded.
+ *
+ * @internal
  */
-type MethodError =
+export type MethodError =
   | DockerError
   | HttpClientError.HttpClientError
   | Schema.SchemaError
@@ -483,29 +491,47 @@ const isUnexpectedStatus = (error: MethodError): error is UnexpectedStatusError 
  * Maps a method's failures to `DockerError`: an error response as its
  * reason, a body that fails to read as `ConnectionFailed`, and one that fails
  * to decode as `InvalidResponse`, naming the operation.
+ *
+ * @internal
  */
-const toDockerError = (engine: DockerEngine["Service"], operation: string) => (error: MethodError): DockerError =>
-  isDockerError(error)
-    ? error
-    : isErrorResponse(error)
-    ? fromErrorResponse(error, operation)
-    : isUnexpectedStatus(error)
-    ? new DockerError({
-      reason: new InvalidResponse({
-        issue: `unexpected status ${error.reason.response.status}`,
-        operation,
-        cause: error
+export const toDockerError =
+  (engine: DockerEngine["Service"], operation: string) => (error: MethodError): DockerError =>
+    isDockerError(error)
+      ? error
+      : isErrorResponse(error)
+      ? fromErrorResponse(error, operation)
+      : isUnexpectedStatus(error)
+      ? new DockerError({
+        reason: new InvalidResponse({
+          issue: `unexpected status ${error.reason.response.status}`,
+          operation,
+          cause: error
+        })
       })
-    })
-    : HttpClientError.isHttpClientError(error) && error.reason._tag !== "DecodeError"
-    ? connectionFailed(engine.config.endpoint, error)
-    : new DockerError({
-      reason: new InvalidResponse({
-        issue: Schema.isSchemaError(error) ? error.issue : error.message,
-        operation,
-        cause: error
+      : HttpClientError.isHttpClientError(error) && error.reason._tag !== "DecodeError"
+      ? connectionFailed(engine.config.endpoint, error)
+      : new DockerError({
+        reason: new InvalidResponse({
+          issue: Schema.isSchemaError(error) ? error.issue : error.message,
+          operation,
+          cause: error
+        })
       })
-    })
+
+/**
+ * Runs an effect as the operation `name`: in a span of that name, and its
+ * failures as `DockerError` naming the operation. For methods that aren't one
+ * HttpApi request.
+ *
+ * @internal
+ */
+export const withOperation =
+  (engine: DockerEngine["Service"], name: string) =>
+  <A, R>(self: Effect.Effect<A, MethodError, R>): Effect.Effect<A, DockerError, R> =>
+    self.pipe(
+      Effect.mapError(toDockerError(engine, name)),
+      Effect.withSpan(name)
+    )
 
 // -----------------------------------------------------------------------------
 // API version gates
@@ -517,12 +543,14 @@ interface Gate {
   readonly since: string
 }
 
-const valueAt = (value: unknown, path: ReadonlyArray<string>): unknown => {
-  for (const key of path) {
-    if (typeof value !== "object" || value === null) return undefined
-    value = (value as Record<string, unknown>)[key]
-  }
-  return value
+/** Whether `value` has a value at `path`; a `*` key matches any element or entry. */
+const isSetAt = (value: unknown, path: ReadonlyArray<string>): boolean => {
+  if (path.length === 0) return value !== undefined
+  if (typeof value !== "object" || value === null) return false
+  const [key, ...rest] = path
+  return key === "*"
+    ? Object.values(value).some((child) => isSetAt(child, rest))
+    : isSetAt((value as Record<string, unknown>)[key], rest)
 }
 
 /** The fields of {@link ApiVersions} that `request` sets. */
@@ -531,7 +559,7 @@ const gatesOf = (versions: ApiVersions["Service"] | undefined, request: unknown)
   const gates: Array<Gate> = []
   for (const part of ["query", "payload"] as const) {
     for (const [option, since] of Object.entries(versions[part] ?? {})) {
-      if (valueAt(request, [part, ...option.split(".")]) !== undefined) gates.push({ option, since })
+      if (isSetAt(request, [part, ...option.split(".")])) gates.push({ option, since })
     }
   }
   return gates
@@ -561,7 +589,10 @@ const checkGates = (negotiated: string, gates: ReadonlyArray<Gate>): Effect.Effe
 
 type Success<Endpoint extends HttpApiEndpoint.ConstraintRequest> = HttpApiClient.SuccessType<Endpoint["~Success"]>
 
-type DockerValue<A> = A extends Stream.Stream<infer X, infer _E, infer R> ? Stream.Stream<X, DockerError, R> : A
+type DockerValue<A> = A extends Stream.Stream<infer X, infer _E, infer R> ? Stream.Stream<X, DockerError, R>
+  : A extends HttpApiSchema.withHeaders<Stream.Stream<infer X, infer _E, infer R>, infer H>
+    ? HttpApiSchema.withHeaders<Stream.Stream<X, DockerError, R>, H>
+  : A
 
 /**
  * The client method of an endpoint, as {@link apiClient} makes it: failing
@@ -598,7 +629,7 @@ export type ApiClient<Group extends HttpApiGroup.Constraint> = Group["endpoints"
  * checks the endpoint's {@link ApiVersions}, runs in a span named
  * `<operations>.<endpoint>` (e.g. `docker.System.info`), and fails only with
  * `DockerError`, naming that operation. A streamed success is returned as the
- * `Stream`, its failures mapped too.
+ * `Stream`, and its failures are mapped too, also for a stream with headers.
  *
  * @internal
  */
@@ -638,13 +669,19 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
               send(request)
             )).pipe(
               Effect.map((value) =>
-                Stream.isStream(value) ? Stream.mapError(value as Stream.Stream<unknown, MethodError>, mapError) : value
+                Stream.isStream(value)
+                  ? Stream.mapError(value as Stream.Stream<unknown, MethodError>, mapError)
+                  : HttpApiSchema.isWithHeadersValue(value) && Stream.isStream(value.body)
+                  ? { ...value, body: Stream.mapError(value.body as Stream.Stream<unknown, MethodError>, mapError) }
+                  : value
               ),
               Effect.mapError(mapError),
               Effect.withSpan(name)
             )
-            const mode = valueAt(request, ["responseMode"]) ?? "decoded-only"
-            return streamed && mode === "decoded-only"
+            const mode = typeof request === "object" && request !== null && "responseMode" in request
+              ? request.responseMode
+              : undefined
+            return streamed && (mode === undefined || mode === "decoded-only")
               ? Stream.unwrap(response as Effect.Effect<Stream.Stream<unknown, DockerError>, DockerError>)
               : response
           }]

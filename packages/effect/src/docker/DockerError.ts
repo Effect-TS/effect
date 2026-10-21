@@ -481,6 +481,54 @@ export class OptionNotSupported extends Data.TaggedError("OptionNotSupported")<{
 }
 
 /**
+ * A stream reported an error in-band: a systemerr frame in logs, exec or
+ * attach output, or a multiplexed stream that ends inside a frame. It is also
+ * the reason when the entries given to `copyTo` (`DockerContainers`) fail to
+ * encode as a tar archive, with the `TarError` as the `cause`.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class StreamFailed extends Data.TaggedError("StreamFailed")<{
+  readonly message: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Whether retrying may succeed: never for this reason.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+}
+
+/**
+ * Something was written to the `stdin` of an exec or attach handle that was
+ * created without stdin.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class StdinNotAttached extends Data.TaggedError("StdinNotAttached")<{}> {
+  /**
+   * Whether retrying may succeed: never for this reason.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+  override get message() {
+    return "stdin was not attached: create the exec with AttachStdin, or attach with stdin"
+  }
+}
+
+/**
  * Every reason a {@link DockerError} can carry.
  *
  * @stability unstable
@@ -503,3 +551,5 @@ export type DockerErrorReason =
   | InvalidResponse
   | UnsupportedApiVersion
   | OptionNotSupported
+  | StreamFailed
+  | StdinNotAttached
