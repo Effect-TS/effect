@@ -386,12 +386,12 @@ const prepareMessages: (
           const parts: Array<typeof Generated.Part.Encoded> = []
 
           for (const part of message.content) {
-            const response = Predicate.isRecord(part.result) ? part.result : { result: part.result }
             parts.push({
               functionResponse: {
                 id: part.id,
                 name: part.name,
-                response: response as any
+                // Gemini requires `response` to be a JSON object
+                response: Predicate.isRecord(part.result) ? part.result : { result: part.result }
               }
             })
           }
