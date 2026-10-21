@@ -480,23 +480,6 @@ export class McpServer extends Context.Service<McpServer, {
         return tools
       },
       addTool,
-      callTool: (request) =>
-        Effect.gen(function*() {
-          const client = yield* McpServerClient
-          const result = yield* internalCore.tools.call(
-            request,
-            McpProtocolInternal.invocationFromClient(client)
-          ).pipe(
-            Effect.mapError((error) =>
-              new InvalidParams({
-                message: error._tag === "ToolNotFound"
-                  ? `Tool '${error.name}' not found`
-                  : error.message
-              })
-            )
-        })
-        yield* notifications.client["notifications/tools/list_changed"]({})
-      }),
       callTool: Effect.fnUntraced(function*(request) {
         const client = yield* McpServerClient
         const result = yield* internalCore.tools.call(
