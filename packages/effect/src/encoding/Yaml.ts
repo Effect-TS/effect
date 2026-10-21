@@ -245,7 +245,9 @@ const resolveScalar = (text: string, tag: string | undefined, plain: boolean): u
       if (typeof value === "boolean") return value
       break
     // Numeric tags follow the core schema grammar, which also allows spellings
-    // that untagged scalars keep as strings, such as `012` and `1.`.
+    // that untagged scalars keep as strings, such as `012` and `1.`. Underscore
+    // digit separators are not core schema syntax; they are accepted for
+    // compatibility with untagged scalars.
     case `${coreTag}int`: {
       const normalized = text.replace(/_/g, "")
       if (/^[+-]?\d+$/.test(normalized)) return Number(normalized)
@@ -255,7 +257,7 @@ const resolveScalar = (text: string, tag: string | undefined, plain: boolean): u
     case `${coreTag}float`: {
       const normalized = text.replace(/_/g, "")
       if (/^[+-]?(?:\.\d+|\d+(?:\.\d*)?)(?:e[+-]?\d+)?$/i.test(normalized)) return Number(normalized)
-      if (/^(?:[+-]?\.inf|\.nan)$/i.test(normalized)) return value
+      if (/^(?:[+-]?\.inf|\.nan)$/i.test(text)) return value
       break
     }
     case `${coreTag}map`:
