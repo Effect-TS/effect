@@ -368,6 +368,7 @@ const formatOptions: Intl.DateTimeFormatOptions = {
   day: "numeric",
   month: "numeric",
   year: "numeric",
+  era: "short",
   hour: "numeric",
   minute: "numeric",
   second: "numeric",
@@ -568,19 +569,23 @@ export const toDate = (self: DateTime.DateTime): Date => {
   } else if (self.adjustedEpochMilliseconds !== undefined) {
     return new Date(self.adjustedEpochMilliseconds)
   }
-  const parts = self.zone.format.formatToParts(self.epochMilliseconds).filter((_) => _.type !== "literal")
+  const parts: Partial<Record<Intl.DateTimeFormatPartTypes, string>> = {}
+  for (const part of self.zone.format.formatToParts(self.epochMilliseconds)) {
+    parts[part.type] = part.value
+  }
+  const year = Number(parts.year)
   const date = new Date(0)
   date.setUTCFullYear(
-    Number(parts[2].value),
-    Number(parts[0].value) - 1,
-    Number(parts[1].value)
+    parts.era === "BC" ? 1 - year : year,
+    Number(parts.month) - 1,
+    Number(parts.day)
   )
   date.setUTCHours(
-    Number(parts[3].value),
-    Number(parts[4].value),
-    Number(parts[5].value),
-    parts[6]?.type === "fractionalSecond"
-      ? Number(parts[6].value)
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+    parts.fractionalSecond !== undefined
+      ? Number(parts.fractionalSecond)
       : ((self.epochMilliseconds % 1000) + 1000) % 1000
   )
   self.adjustedEpochMilliseconds = date.getTime()
