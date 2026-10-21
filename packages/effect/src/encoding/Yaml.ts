@@ -218,12 +218,12 @@ const parseKey = (input: string): string => {
 
 class FlowParser {
   private input: string
-  private readonly anchors: ReadonlyMap<string, unknown>
+  private readonly anchors: Map<string, unknown>
   private readonly nextLine: (depth: number) => string | undefined
   private index = 0
   private depth = 0
 
-  constructor(input: string, anchors: ReadonlyMap<string, unknown>, nextLine: (depth: number) => string | undefined) {
+  constructor(input: string, anchors: Map<string, unknown>, nextLine: (depth: number) => string | undefined) {
     this.input = input
     this.anchors = anchors
     this.nextLine = nextLine
@@ -253,6 +253,14 @@ class FlowParser {
       const name = this.readUntil(/[,\]}\s]/)
       if (!this.anchors.has(name)) this.fail(`Unknown alias '*${name}'`)
       return this.anchors.get(name)
+    }
+    if (character === "&") {
+      this.index++
+      const name = this.readUntil(/[\s,\]{}[\]]/)
+      this.skipWhitespace()
+      const value = this.parseValue()
+      this.anchors.set(name, value)
+      return value
     }
     return parseScalar(foldFlowLines(this.readUntil(/[,\]}]/)).trim())
   }
