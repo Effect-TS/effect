@@ -514,13 +514,12 @@ const Proto = {
                 preliminary: false
               })
             }
-            return Stream.failCause(Cause.fromReasons(cause.reasons.map((reason) =>
+            const annotated = Cause.fromReasons(cause.reasons.map((reason) =>
               Cause.isFailReason(reason)
-                ? Cause.makeFailReason(normalizeError(reason.error)).annotate(
-                  Context.add(Cause.reasonAnnotations(reason), FailureOrigin, failureOrigin(reason.error))
-                )
+                ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
                 : reason
-            )))
+            ))
+            return Stream.failCause(Cause.map(annotated, normalizeError))
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
