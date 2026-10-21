@@ -128,7 +128,8 @@ export interface Options extends Net.ListenOptions {
  * **Details**
  *
  * The server's own Node timeouts still apply and are configured where the
- * server is created, for example `createServer({ requestTimeout: 0 })`:
+ * server is created, for example
+ * `createServer({ requestTimeout: 0, headersTimeout: 60_000 })`:
  *
  * - `requestTimeout` (300 seconds by default) limits the time to receive the
  *   whole request, headers and body. When it expires Node answers `408`, or
@@ -136,8 +137,9 @@ export interface Options extends Net.ListenOptions {
  *   every `connectionsCheckingInterval` (30 seconds by default), so it can fire
  *   late. `0` disables it.
  * - `headersTimeout` (60 seconds by default) limits the time to receive the
- *   headers and may not exceed `requestTimeout`. Setting only a smaller
- *   `requestTimeout` lowers it to match.
+ *   headers. When it is not set, Node lowers it to `requestTimeout` if that is
+ *   smaller, so `requestTimeout: 0` alone disables both. When both are
+ *   nonzero, `headersTimeout` may not exceed `requestTimeout`.
  * - `keepAliveTimeout` (5 seconds by default) closes keep-alive connections
  *   that stay idle between requests.
  * - `server.timeout`, the socket inactivity timeout, is disabled by default,

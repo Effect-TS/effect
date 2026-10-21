@@ -1592,7 +1592,8 @@ When a timeout interrupts a handler before it has read the whole body, the unrea
 
 The runtimes also have their own server-wide timers:
 
-- Node's `requestTimeout` (300 seconds by default) limits the time to receive the whole request, including a streaming upload. When it expires, Node answers `408`, or closes the connection if the response has already started. It also applies to a request body the handler never reads, so it can cut a streaming response that ignores a large upload. Change it on the server you pass to `NodeHttpServer.layer`, for example `createServer({ requestTimeout: 0 })` to disable it. `headersTimeout` (60 seconds by default) may not exceed it, and setting only a smaller `requestTimeout` lowers `headersTimeout` to match.
+- Node's `requestTimeout` (300 seconds by default) limits the time to receive the whole request, including a streaming upload. When it expires, Node answers `408`, or closes the connection if the response has already started. It also applies to a request body the handler never reads, so it can cut a streaming response that ignores a large upload. Change it on the server you pass to `NodeHttpServer.layer`. `0` disables it.
+- Node's `headersTimeout` (60 seconds by default) limits the time to receive the headers. When it is not set, Node lowers it to `requestTimeout` if that is smaller, so `createServer({ requestTimeout: 0 })` disables the header deadline too. Use `createServer({ requestTimeout: 0, headersTimeout: 60_000 })` to keep it. When both are nonzero, `headersTimeout` may not exceed `requestTimeout`.
 - `BunHttpServer` disables Bun's idle timeout by default, so a slow upload is limited only by your own timeouts. Pass `idleTimeout` (in seconds, at most 255) to restore a cut for connections that stay silent that long.
 
 ### Mixing Buffered and Streaming Payloads
