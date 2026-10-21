@@ -53,25 +53,6 @@ const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>
   return promise
 }
 
-const runHook = <Args extends Array<any>>(
-  fn: (...args: Args) => unknown,
-  ctx?: (...args: Args) => Pick<V.TestContext, "signal">
-) => {
-  const hook = (...args: Args) => {
-    const result = fn(...args)
-    return Effect.isEffect(result) ? runPromise(result as Effect.Effect<unknown, unknown>, ctx?.(...args)) : result
-  }
-  // Vitest reads the fixtures a hook uses from its source.
-  hook.toString = () => fn.toString()
-  return hook
-}
-
-/** @internal */
-export const beforeAll: typeof V.beforeAll = (fn, timeout) => V.beforeAll(runHook(fn), timeout)
-
-/** @internal */
-export const beforeEach: typeof V.beforeEach = (fn, timeout) => V.beforeEach(runHook(fn, (ctx) => ctx), timeout)
-
 /** @internal */
 export type TestContext = TestConsole.TestConsole | TestClock.TestClock
 
@@ -149,6 +130,21 @@ const runCheck = <A, E>(
 // for a wrapper, so wrappers expose the source of the function they call.
 const withFixturesOf = <F extends Function>(source: Function, f: F): F =>
   Object.defineProperty(f, "toString", { value: () => source.toString() })
+
+const runHook = <Args extends Array<any>>(
+  fn: (...args: Args) => unknown,
+  ctx?: (...args: Args) => V.TestContext
+) =>
+  withFixturesOf(fn, (...args: Args) => {
+    const result = fn(...args)
+    return Effect.isEffect(result) ? runTest(ctx?.(...args))(result as Effect.Effect<unknown, unknown>) : result
+  })
+
+/** @internal */
+export const beforeAll: typeof V.beforeAll = (fn, timeout) => V.beforeAll(runHook(fn), timeout)
+
+/** @internal */
+export const beforeEach: typeof V.beforeEach = (fn, timeout) => V.beforeEach(runHook(fn, (ctx) => ctx), timeout)
 
 const makeItProxy = <Methods extends object, ExtraContext>(
   it: V.TestAPI<ExtraContext>,

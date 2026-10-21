@@ -219,7 +219,8 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
 
 /**
  * Registers a callback to run once before all tests in the current suite. If
- * the callback returns an `Effect`, it is run and awaited.
+ * the callback returns an `Effect`, it is run and awaited. The `Effect` must
+ * not require any services.
  *
  * @stability unstable
  * @category hooks
@@ -229,7 +230,8 @@ export const beforeAll: typeof V.beforeAll = internal.beforeAll
 
 /**
  * Registers a callback to run before each test in the current suite. If the
- * callback returns an `Effect`, it is run and awaited.
+ * callback returns an `Effect`, it is run and awaited, and interrupted if the
+ * hook times out. The `Effect` must not require any services.
  *
  * @stability unstable
  * @category hooks
