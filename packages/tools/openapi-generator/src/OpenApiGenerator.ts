@@ -314,11 +314,13 @@ const parseOpenApi = (
           }
           case "cookie": {
             op.parameters.cookie.push(parsedParameter)
-            warnForOperation(emitWarning, op, {
-              code: "cookie-parameter-dropped",
-              message:
-                `Cookie parameter "${parameter.name}" was dropped because non-security cookie parameters are not supported.`
-            })
+            if (isHttpApi) {
+              warnForOperation(emitWarning, op, {
+                code: "cookie-parameter-dropped",
+                message:
+                  `Cookie parameter "${parameter.name}" was dropped because non-security cookie parameters are not supported.`
+              })
+            }
             break
           }
         }
@@ -352,7 +354,9 @@ const parseOpenApi = (
         continue
       }
 
-      const validParameters = parameters.filter((parameter) => parameter.in !== "path" && parameter.in !== "cookie")
+      const validParameters = parameters.filter((parameter) =>
+        parameter.in !== "path" && (!isHttpApi || parameter.in !== "cookie")
+      )
 
       const combinedParameterSchema = buildParameterSchema(validParameters, (parameter, added) => {
         if (parameter.in === "query") {
