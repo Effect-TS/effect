@@ -569,21 +569,27 @@ export const toDate = (self: DateTime.DateTime): Date => {
   } else if (self.adjustedEpochMilliseconds !== undefined) {
     return new Date(self.adjustedEpochMilliseconds)
   }
-  const parts = self.zone.format.formatToParts(self.epochMilliseconds).filter((_) => _.type !== "literal")
-  const i = parts[3].type === "era" ? 1 : 0
+  let bc = false
+  const parts = self.zone.format.formatToParts(self.epochMilliseconds).filter((_) => {
+    if (_.type === "era") {
+      bc = _.value === "BC"
+      return false
+    }
+    return _.type !== "literal"
+  })
   const year = Number(parts[2].value)
   const date = new Date(0)
   date.setUTCFullYear(
-    parts[3].value === "BC" ? 1 - year : year,
+    bc ? 1 - year : year,
     Number(parts[0].value) - 1,
     Number(parts[1].value)
   )
   date.setUTCHours(
-    Number(parts[3 + i].value),
-    Number(parts[4 + i].value),
-    Number(parts[5 + i].value),
-    parts[6 + i]?.type === "fractionalSecond"
-      ? Number(parts[6 + i].value)
+    Number(parts[3].value),
+    Number(parts[4].value),
+    Number(parts[5].value),
+    parts[6]?.type === "fractionalSecond"
+      ? Number(parts[6].value)
       : ((self.epochMilliseconds % 1000) + 1000) % 1000
   )
   self.adjustedEpochMilliseconds = date.getTime()
