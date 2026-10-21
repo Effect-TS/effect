@@ -55,6 +55,19 @@ describe("SqliteDrizzle", () => {
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
     }).pipe(Effect.provide(ORM.Client)))
 
+  it.effect("orm findFirst", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* ORM
+      yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
+      assert.strictEqual(yield* db.query.users.findFirst(), undefined)
+      yield* db.insert(users).values({ name: "Alice", snakeCase: "snake" })
+      const expected = { id: 1, name: "Alice", snakeCase: "snake" }
+      assert.deepStrictEqual(yield* db.query.users.findFirst(), expected)
+      const [result] = yield* Effect.promise(() => db.batch([db.query.users.findFirst()]))
+      assert.deepStrictEqual(result, expected)
+    }).pipe(Effect.provide(ORM.Client)))
+
   it.effect("remote callback", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
@@ -62,6 +75,20 @@ describe("SqliteDrizzle", () => {
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
       yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))
       const results = yield* Effect.promise(() => db.select().from(users))
+      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
+    }).pipe(Effect.provide(SqliteDrizzleLive)))
+
+  it.effect("batch", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* SqliteDrizzle.SqliteDrizzle
+      yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
+      const [, results] = yield* Effect.promise(() =>
+        db.batch([
+          db.insert(users).values({ name: "Alice", snakeCase: "snake" }),
+          db.select().from(users)
+        ])
+      )
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
     }).pipe(Effect.provide(SqliteDrizzleLive)))
 })
