@@ -5,8 +5,9 @@
  * multiline plain and quoted scalars, block scalars, anchors, and aliases.
  *
  * Unsupported: compact nested block sequences (`- - value` on one line),
- * multiline flow collections, explicit complex keys, tag/directive processing,
- * recursive aliases, and document streams. Mapping keys are JavaScript strings.
+ * multiline quoted scalars in flow collections, explicit complex keys,
+ * tag/directive processing, recursive aliases, and document streams. Mapping
+ * keys are JavaScript strings.
  *
  * @stability unstable
  * @since 4.0.0
@@ -107,6 +108,13 @@ const isSequenceEntry = (text: string): boolean => text === "-" || text.startsWi
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
 
+// Folds the line breaks of a multiline plain flow scalar.
+const foldFlowLines = (input: string): string =>
+  input.replace(
+    /[ \t]*\n((?:[ \t]*\n)*)[ \t]*/g,
+    (_, blankLines: string) => foldLineBreak(blankLines.split("\n").length - 1)
+  )
+
 const endsWithEscape = (text: string): boolean => /\\*$/.exec(text)![0].length % 2 === 1
 
 // Escaped trailing spaces are content, not folding whitespace.
@@ -206,13 +214,16 @@ const parseKey = (input: string): string => {
 }
 
 class FlowParser {
-  private readonly input: string
+  private input: string
   private readonly anchors: ReadonlyMap<string, unknown>
+  private readonly nextLine: () => string | undefined
   private index = 0
+  private depth = 0
 
-  constructor(input: string, anchors: ReadonlyMap<string, unknown>) {
+  constructor(input: string, anchors: ReadonlyMap<string, unknown>, nextLine: () => string | undefined) {
     this.input = input
     this.anchors = anchors
+    this.nextLine = nextLine
   }
 
   parse(): unknown {
@@ -227,8 +238,12 @@ class FlowParser {
   private parseValue(): unknown {
     this.skipWhitespace()
     const character = this.peek()
-    if (character === "[") return this.parseSequence()
-    if (character === "{") return this.parseMapping()
+    if (character === "[" || character === "{") {
+      this.depth++
+      const collection = character === "[" ? this.parseSequence() : this.parseMapping()
+      this.depth--
+      return collection
+    }
     if (character === "\"" || character === "'") return parseScalar(this.readQuoted(character))
     if (character === "*") {
       this.index++
@@ -236,7 +251,7 @@ class FlowParser {
       if (!this.anchors.has(name)) this.fail(`Unknown alias '*${name}'`)
       return this.anchors.get(name)
     }
-    return parseScalar(this.readUntil(/[,\]}]/).trim())
+    return parseScalar(foldFlowLines(this.readUntil(/[,\]}]/)).trim())
   }
 
   private parseSequence(): Array<unknown> {
@@ -297,20 +312,22 @@ class FlowParser {
     if (character === "\"" || character === "'") {
       return parseKey(this.readQuoted(character))
     }
-    return this.readUntil(/:/).trim()
+    return foldFlowLines(this.readUntil(/:/)).trim()
   }
 
   private readQuoted(quote: string): string {
     const start = this.index
     const end = closingQuote(this.input, quote, start + 1)
-    if (end === -1) this.fail("Unterminated quoted scalar")
+    if (end === -1) {
+      this.fail("Unterminated quoted scalar (multiline quoted scalars in flow collections are not supported)")
+    }
     this.index = end + 1
     return this.input.slice(start, this.index)
   }
 
   private readUntil(stop: RegExp): string {
     const start = this.index
-    while (this.index < this.input.length && !stop.test(this.peek())) this.index++
+    while (!stop.test(this.peek()) && this.index < this.input.length) this.index++
     return this.input.slice(start, this.index)
   }
 
@@ -324,6 +341,11 @@ class FlowParser {
   }
 
   private peek(): string {
+    // Inside a collection, the end of the line continues on the next line.
+    if (this.index === this.input.length && this.depth > 0) {
+      const line = this.nextLine()
+      if (line !== undefined) this.input += `\n${line}`
+    }
     return this.input[this.index] ?? ""
   }
 
@@ -442,8 +464,21 @@ class YamlParser {
       if (!this.anchors.has(name)) throw new SyntaxError(`Unknown YAML alias '*${name}'`)
       return this.anchors.get(name)
     }
-    if (text.startsWith("[") || text.startsWith("{")) return new FlowParser(text, this.anchors).parse()
+    if (text.startsWith("[") || text.startsWith("{")) return this.parseFlowValue(text, parentIndent)
     return this.parsePlainValue(text, parentIndent)
+  }
+
+  private parseFlowValue(text: string, parentIndent: number): unknown {
+    return new FlowParser(text, this.anchors, () => {
+      const next = this.lines[this.index]
+      if (next === undefined || (next.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(next.text))) return undefined
+      // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
+      const content = next.text.trim().length > 0
+      if (content && next.indent < parentIndent) return undefined
+      if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
+      this.index++
+      return next.text
+    }).parse()
   }
 
   private parsePlainValue(value: string, parentIndent: number): unknown {

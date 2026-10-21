@@ -304,6 +304,55 @@ development:
     })
   })
 
+  // YAML 1.2.2 §§7.4–7.5: flow collections may span lines indented past the parent node.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1, which also
+  // accepts a closing bracket at the parent indentation.
+  describe("multiline flow collections", () => {
+    it.each(
+      [
+        [
+          "JSON-style mapping below its key",
+          "example:\n  {\n    \"active_anon\": 1572864,\n    \"active_file\": 5115904\n  }\n",
+          { example: { active_anon: 1572864, active_file: 5115904 } }
+        ],
+        ["mapping starting on its key line", "a: {\n  b: 1,\n  c: 2\n  }\n", { a: { b: 1, c: 2 } }],
+        ["closing bracket at the parent indentation", "a: {\n  b: 1\n}\n", { a: { b: 1 } }],
+        ["closing bracket below the value indentation", "a:\n  {\n    b: 1\n}\n", { a: { b: 1 } }],
+        ["sequence item", "- [\n  1,\n  2\n]\n", [[1, 2]]],
+        ["root collection", "{\n\"a\": [\n1\n]\n}\n", { a: [1] }],
+        ["nested collections", "a: {\n  b: [\n    1\n  ],\n  c: {d: 2}\n  }\n", { a: { b: [1], c: { d: 2 } } }],
+        ["sibling key after the collection", "a: [\n  1\n  ]\nb: 2\n", { a: [1], b: 2 }],
+        ["comment and blank lines", "a: [1, # one\n# between\n\n  2]\n", { a: [1, 2] }],
+        ["tab separation after the indentation", "a: [1,\n  \t2]\n", { a: [1, 2] }],
+        ["multiline plain values", "a: [b\n  c, d\n\n  e]\n", { a: ["b c", "d\ne"] }],
+        ["multiline plain keys", "a: {b\n  c: 1}\n", { a: { "b c": 1 } }],
+        ["anchored collection", "a: &x [\n  1\n  ]\nb: *x\n", { a: [1], b: [1] }]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["continuation at the parent indentation", "a: {\nb: 1 }\n"],
+      ["closing bracket below the parent indentation", "x:\n  a: {\n    b: 1\n }\n"],
+      ["tab indentation", "a: [1,\n\t2]\n"],
+      ["unterminated collection before a sibling key", "a: [1,\n  2\nb: 3\n"],
+      ["content after the closing bracket", "a: [1,\n  2] extra\n"],
+      ["content after a closing bracket at the parent indentation", "a: [\n  1\n], b: 2\n"],
+      ["document marker inside a root collection", "[\n1,\n---\n]\n"]
+    ])("rejects %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    // Valid YAML, deliberately rejected as unsupported.
+    it.each([
+      ["double-quoted", "a: [\"b\n  c\"]\n"],
+      ["single-quoted", "a: ['b\n  c']\n"]
+    ])("rejects multiline %s scalars", (_, source) => {
+      assert.throws(() => Yaml.parse(source), /multiline quoted scalars in flow collections are not supported/)
+    })
+  })
+
   describe("scalar conformance boundaries", () => {
     it.each([
       ["colon followed by space", "description: Use when: deploy\n"],
