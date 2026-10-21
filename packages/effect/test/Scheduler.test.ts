@@ -139,4 +139,20 @@ describe("Scheduler", () => {
       setImmediate.mockRestore()
     }
   })
+
+  it("a throwing observer does not strand other fibers on the same scheduler", () => {
+    const scheduler = new Scheduler.MixedScheduler("sync")
+    const first = Effect.runFork(Effect.yieldNow, { scheduler })
+    const second = Effect.runFork(Effect.yieldNow, { scheduler })
+    first.addObserver(() => {
+      throw new Error("boom")
+    })
+
+    const dispatcher = scheduler.makeDispatcher()
+    assert.throws(() => dispatcher.flush(), "boom")
+    dispatcher.flush()
+
+    assert.deepStrictEqual(first.pollUnsafe(), Exit.void)
+    assert.deepStrictEqual(second.pollUnsafe(), Exit.void)
+  })
 })
