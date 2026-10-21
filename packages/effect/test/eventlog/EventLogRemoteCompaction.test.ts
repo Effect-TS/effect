@@ -46,7 +46,6 @@ const run = (
     })
   }).pipe(Effect.provide(layer.pipe(Layer.provideMerge(EventLog.layerRegistry))))
 
-// Keeps the newest decoded entry of each primary key.
 const keepLatest = <Events extends Event.Any>(group: EventGroup.EventGroup<Events>, options = { remote: true }) =>
   EventLog.groupBatchCompaction(group, ({ entries, forward }) => {
     const latest = new Map<string, EventJournal.Entry>()

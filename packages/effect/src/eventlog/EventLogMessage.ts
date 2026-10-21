@@ -608,11 +608,11 @@ export class CompactionFetchRpc extends Rpc.make("EventLog.CompactionFetch", {
  *
  * **Details**
  *
- * A segment is an encoded non-empty array of encrypted batches, and
- * `chunk.id` is its index. A segment larger than `ChunkedMessage.chunkSize` is
- * split into pieces. A segment that is already stored is acknowledged without
- * storing it again. A segment that fails validation aborts the stage with an
- * `InvalidRequest` error.
+ * A segment is an encoded non-empty array of encrypted batches, indexed by
+ * `chunk.id`, and is split into pieces when larger than
+ * `ChunkedMessage.chunkSize`. Re-uploading a stored segment is acknowledged
+ * without storing it again. A segment that fails validation aborts the stage
+ * with an `InvalidRequest` error.
  *
  * @stability unstable
  * @category protocols
@@ -673,12 +673,11 @@ export type CompactionResult = typeof CompactionResult.Type
  *
  * **Details**
  *
- * Answers `Superseded` when the generation the stage was pinned to is no longer
- * active. A snapshot whose kept ids aren't a non-empty subset of the pinned
- * input without repeats, in the order the input holds them, or whose segments
- * are incomplete, fails with an `InvalidRequest` error and aborts the stage. A
- * stage that expired, was aborted or committed, or is unknown fails with
- * `NotFound`, so a retried commit does too.
+ * Answers `Superseded` when the stage's pinned generation is no longer active.
+ * Fails with `InvalidRequest`, aborting the stage, when the segments are
+ * incomplete or the kept ids are not a non-empty, repeat-free subsequence of
+ * the pinned input. Fails with `NotFound` when the stage expired, was aborted
+ * or committed, or is unknown, so a retried commit fails too.
  *
  * @stability unstable
  * @category protocols
@@ -698,8 +697,8 @@ export class CompactionCommitRpc extends Rpc.make("EventLog.CompactionCommit", {
  *
  * **Details**
  *
- * Only the encrypted server serves it, alongside `EventLogRemoteRpcs`, when
- * `HelloResponse.compaction` is set.
+ * Served by the encrypted server alongside `EventLogRemoteRpcs`. Clients call
+ * it only when `HelloResponse.compaction` is set.
  *
  * @stability unstable
  * @category protocols

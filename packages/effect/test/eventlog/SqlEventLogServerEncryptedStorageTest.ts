@@ -554,8 +554,8 @@ export const compactionSuite = (name: string, layer: Layer.Layer<SqlClient.SqlCl
         const { options, publicKey, table } = yield* makeNamespace({ grace: "2 hours", lag: "1 hour" })
         const snapshotTable = `${table}_snapshot`
         const reached = yield* Deferred.make<void>()
-        // Register cleanup before construction so failures also stop the sweeper
-        // and release any transaction held at the injected interruption.
+        // Registered first, so a failing test still stops the sweeper and
+        // releases the transaction its hung DELETE holds.
         const scopeA = yield* Effect.acquireRelease(Scope.make(), (scope) =>
           Scope.close(scope, Exit.void))
         const storageA = yield* SqlEventLogServerEncrypted.makeStorage(options).pipe(

@@ -12,16 +12,15 @@ export class IdempotenceError extends Data.TaggedError("IdempotenceError")<{
 type Compactor = Registry["Service"]["compactors"] extends ReadonlyMap<string, infer A> ? A : never
 
 /**
- * Folds the opted-in compactors over `entries`, given in input-sequence order
- * without repeated ids. Returns the kept input entries in input order.
+ * Folds the opted-in compactors over `entries`, which arrive in input order
+ * without repeated ids, and returns the kept entries in input order.
  *
- * Each step folds a chunk into the entries kept so far. The chunk starts at
- * `chunkSize` entries and grows to the size of the kept set, so a run is
- * linear in its input when little is dropped, and memory stays at about twice
- * the kept set. A compactor that composes keeps the same entries whatever
- * the chunking.
+ * Each step folds a chunk into the kept set. The chunk starts at `chunkSize`
+ * and grows to the size of the kept set, so a run stays linear when little is
+ * dropped and memory stays at about twice the kept set. A compactor that
+ * composes keeps the same entries at any chunking.
  *
- * Fails with `IdempotenceError` when another pass over the kept set drops
+ * Fails with `IdempotenceError` when a second pass over the kept set drops
  * more. A compactor defect fails the run.
  */
 export const run = <E, R>(options: {

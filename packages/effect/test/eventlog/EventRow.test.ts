@@ -158,7 +158,7 @@ const toEntries = (drafts: ReadonlyArray<typeof Draft.Type>) =>
         }, { disableChecks: true })
     ))
 
-// Returns a function giving the ids `EventRow.compaction` keeps from a batch.
+// Gives the ids `EventRow.compaction` keeps from a batch.
 const makeDrop = Effect.fnUntraced(function*() {
   const registry = yield* EventLog.Registry
   yield* Layer.build(

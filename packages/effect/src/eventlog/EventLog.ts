@@ -9,43 +9,40 @@
  *
  * **Remote compaction**
  *
- * An encrypted remote whose server sets `HelloResponse.compaction` can hold a
+ * An encrypted remote whose server sets `HelloResponse.compaction` can store a
  * compacted snapshot of its history, so a new device replays the snapshot and
- * a recent tail instead of every write. Clients build the snapshots, because
+ * a recent tail instead of every write. Clients build the snapshots because
  * only they can decrypt the entries.
  *
- * A client that can compact, because it has a compactor registered with
- * `remote: true` and its remote wasn't built with `compaction: false`, polls
- * the compaction status when it connects and about once an hour. Other
- * clients never call the compaction RPCs. A client compacts when the server
- * says compaction is wanted and the journal has caught up with the remote.
- * The run starts in the background after a random delay of a few minutes. It
- * reads the input from the server, takes entries the journal already holds
- * from the journal and fetches the rest, runs the opted-in compactors over it,
- * and uploads the entries they keep. The server lets one run per store hold a
- * stage at a time and answers the others `Busy`, so tabs or devices that start
- * together download the input once. `EventLog.compact` runs one now, for
- * example from a worker holding the identity.
+ * Only a client with a `remote: true` compactor, on a remote not built with
+ * `compaction: false`, calls the compaction RPCs. It polls the status on
+ * connect and about hourly. When the server wants compaction and the journal
+ * has caught up, it starts a background run after a random delay of a few
+ * minutes. The run reads the input, taking entries from the journal where it
+ * can and fetching the rest, runs the opted-in compactors and uploads the
+ * entries they keep. The server lets one run per store hold a stage and
+ * answers the others `Busy`, so devices that start together download the
+ * input once. `EventLog.compact` starts a run immediately, for example from
+ * a worker holding the identity.
  *
- * An operator can roll a bad snapshot back on the server. The server then
- * appends the input the snapshot was built from at the head of the remote, so
- * every client, including ones from before remote compaction, receives the
- * entries the snapshot dropped through its ordinary stream, and skips the ones
- * it already holds.
+ * An operator can roll back a bad snapshot on the server. The server then
+ * re-appends the snapshot's input at the head, so every client, including
+ * ones from before remote compaction, receives the dropped entries through
+ * `changes` and skips the ones it already holds.
  *
  * Known limitations:
  *
- * - A run holds every entry it keeps in memory, so a device with a large
- *   store may not be able to compact. Opt it out with `compaction: false` and
- *   compact from a device or worker with more memory.
- * - The library can't check that a compactor keeps the remote compaction
- *   contract (see the `remote` option of `groupCompaction`). The drop-only and
- *   idempotence checks catch common mistakes. A compactor that drops too much
- *   can only be undone by a rollback before the server prunes the history.
- * - Changes to what a field means between schema versions aren't detected.
- *   Strict decoding only catches fields the schema doesn't know.
- * - A new device still replays the newest day or so of writes in full, since
- *   the server only compacts data older than its lag.
+ * - A run holds every kept entry in memory. A device with a large store can
+ *   opt out with `compaction: false` and leave compaction to a device or
+ *   worker with more memory.
+ * - The library can't check that a compactor keeps the `remote` contract (see
+ *   `groupCompaction`). The drop-only and idempotence checks catch common
+ *   mistakes. A snapshot that drops too much can only be undone by a rollback
+ *   before the server prunes the history.
+ * - Changes to a field's meaning between schema versions aren't detected.
+ *   Strict decoding only catches unknown fields.
+ * - A new device still replays the newest day or so of writes, because the
+ *   server only compacts data older than its lag.
  * - A client that stops partway through a run holds the server's busy claim
  *   until its stage expires.
  *
@@ -143,19 +140,19 @@ export class EventLog extends Context.Service<EventLog, {
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
   /**
-   * Run one remote compaction now, for every registered remote that offers
-   * compaction or for the remote with `remoteId`.
+   * Runs one remote compaction now, on every registered remote that offers
+   * compaction or only on `remoteId`.
    *
-   * Unlike the background trigger, it doesn't wait until the journal has
-   * caught up with the remote, and it works from an empty journal. Remotes
-   * built with `compaction: false` are skipped, and so is every remote when no
-   * compactor was registered with `remote: true`.
+   * Unlike the background trigger, it doesn't wait for the journal to catch
+   * up, and it works from an empty journal. Remotes built with
+   * `compaction: false` are skipped, and nothing runs when no compactor is
+   * registered with `remote: true`.
    *
-   * Each result is the outcome of the run: `Committed` or `Superseded` once a
-   * snapshot is uploaded, `NoOp` when nothing was dropped, or `NotWanted` or
-   * `Busy` from the server. `Aborted` means the run uploaded nothing and released its stage,
-   * because a compactor died, the idempotence check failed, every entry was
-   * dropped, or the input was pruned during the run.
+   * `Committed` and `Superseded` mean a snapshot was uploaded, `NoOp` that
+   * nothing was dropped, and `NotWanted` and `Busy` come from the server.
+   * `Aborted` means nothing was uploaded and the stage was released, because
+   * a compactor died, the idempotence check failed, every entry was dropped
+   * or the input was pruned during the run.
    */
   readonly compact: (options?: {
     readonly remoteId?: RemoteId | undefined
@@ -187,17 +184,16 @@ export class Registry extends Context.Service<Registry, {
   readonly registerCompaction: (options: {
     readonly events: ReadonlyArray<string>
     /**
-     * Also run this compactor over a remote's whole history to build
-     * snapshots. The entries it keeps must depend only on the set of input
-     * entries and compose: `drop(drop(a) ++ b)` keeps the same entries as
-     * `drop(a ++ b)`, also when `b` holds entries older than `a`. Remote
-     * compaction keeps a call's whole input when it writes an entry that is
-     * not one of its inputs.
+     * Also run this compactor over a remote's history to build snapshots. The
+     * kept entries must depend only on the set of input entries and compose:
+     * `drop(drop(a) ++ b)` keeps the same entries as `drop(a ++ b)`, even when
+     * `b` holds entries older than `a`. A call that writes an entry it wasn't
+     * given keeps its whole input.
      */
     readonly remote?: boolean | undefined
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
-      /** Set when the call is part of a remote compaction, which is drop-only. */
+      /** True during a remote compaction, which only drops entries. */
       readonly remote?: boolean | undefined
       // Pass an input entry as source to anchor replacements during remote replay.
       // Without it, matching IDs retain their position; new IDs use the group start.
@@ -793,8 +789,8 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
         events: Object.keys(group.events),
         remote: options?.remote,
         effect: Effect.fnUntraced(function*({ entries, remote = false, write }): Effect.fn.Return<void> {
-          // A remote compaction treats unknown fields as undecodable and keeps
-          // undecodable entries whatever the effect outputs.
+          // In a remote compaction, unknown fields make an entry undecodable,
+          // and undecodable entries are always kept.
           const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
             Schema.decodeUnknownEffect(
@@ -901,24 +897,23 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
   }) => Effect.Effect<void, never, R>,
   options?: {
     /**
-     * Also run this compactor over a remote's whole history to build
-     * snapshots.
+     * Also run this compactor over a remote's history to build snapshots.
      *
-     * Opting in commits the compactor to a contract the library cannot check:
-     * the entries it keeps depend only on the set of input entries, never on
-     * services, the clock or input order, and compaction composes, so
-     * `drop(drop(a) ++ b)` keeps the same entries as `drop(a ++ b)`, also
-     * when `b` holds entries older than `a`.
+     * Opting in promises a contract the library can't check. The kept entries
+     * depend only on the set of input entries, never on services, the clock
+     * or input order, and compaction composes: `drop(drop(a) ++ b)` keeps the
+     * same entries as `drop(a ++ b)`, even when `b` holds entries older than
+     * `a`.
      *
-     * Remote compaction only drops entries. A call that uses `write` keeps
-     * its whole input, and entries that fail to decode, including entries
-     * with fields the schema does not know, are always kept. Before uploading,
-     * a run passes the kept entries through the compactors again, and uploads
-     * nothing if that drops more. A compactor that dies also stops the run.
+     * Remote compaction only drops entries. A call that uses `write` keeps its
+     * whole input, and entries that fail to decode, including ones with fields
+     * the schema doesn't know, are always kept. Before uploading, a run passes
+     * the kept entries through the compactors again and uploads nothing if
+     * that drops more or a compactor dies.
      *
      * A snapshot that drops too much can be rolled back on the server until
-     * the history it replaced is pruned. See the module docs for when runs
-     * start and the other limitations.
+     * the history it replaced is pruned. The module docs cover when runs start
+     * and other limitations.
      */
     readonly remote?: boolean | undefined
   }
@@ -978,24 +973,23 @@ export const groupCompaction = <Events extends Event.Any, R>(
   }) => Effect.Effect<void, never, R>,
   options?: {
     /**
-     * Also run this compactor over a remote's whole history to build
-     * snapshots.
+     * Also run this compactor over a remote's history to build snapshots.
      *
-     * Opting in commits the compactor to a contract the library cannot check:
-     * the entries it keeps depend only on the set of input entries, never on
-     * services, the clock or input order, and compaction composes, so
-     * `drop(drop(a) ++ b)` keeps the same entries as `drop(a ++ b)`, also
-     * when `b` holds entries older than `a`.
+     * Opting in promises a contract the library can't check. The kept entries
+     * depend only on the set of input entries, never on services, the clock
+     * or input order, and compaction composes: `drop(drop(a) ++ b)` keeps the
+     * same entries as `drop(a ++ b)`, even when `b` holds entries older than
+     * `a`.
      *
-     * Remote compaction only drops entries. A call that uses `write` keeps
-     * its whole input, and entries that fail to decode, including entries
-     * with fields the schema does not know, are always kept. Before uploading,
-     * a run passes the kept entries through the compactors again, and uploads
-     * nothing if that drops more. A compactor that dies also stops the run.
+     * Remote compaction only drops entries. A call that uses `write` keeps its
+     * whole input, and entries that fail to decode, including ones with fields
+     * the schema doesn't know, are always kept. Before uploading, a run passes
+     * the kept entries through the compactors again and uploads nothing if
+     * that drops more or a compactor dies.
      *
      * A snapshot that drops too much can be rolled back on the server until
-     * the history it replaced is pruned. See the module docs for when runs
-     * start and the other limitations.
+     * the history it replaced is pruned. The module docs cover when runs start
+     * and other limitations.
      */
     readonly remote?: boolean | undefined
   }
@@ -1227,11 +1221,10 @@ const remoteRetrySchedule = Schedule.min([
 
 type CompactionResult = Effect.Success<ReturnType<EventLog["Service"]["compact"]>>[number]["result"]
 
-// Status is polled on each (re)connect and then about hourly, jittered.
+// Status is polled on each connect and then hourly, jittered.
 const compactionPollMillis = 60 * 60 * 1000
 
-// A background run starts after a random delay, so devices that see `wanted`
-// at the same time don't all begin at once.
+// Spreads out devices that see `wanted` at the same time.
 const compactionDelayMillis = { min: 60 * 1000, max: 5 * 60 * 1000 }
 
 // How many input batch headers share one journal lookup and one fetch.
@@ -1270,9 +1263,9 @@ const make = Effect.gen(function*() {
     return false
   }
 
-  // Resolves a group of input headers to entries in input order, skipping ids
-  // already seen at a lower input sequence. The journal serves the entries it
-  // holds, and only batches with an id it lacks are fetched.
+  // Resolves input headers to entries in input order, skipping ids seen at a
+  // lower input sequence. Only batches with an id the journal lacks are
+  // fetched.
   const resolveInput = Effect.fnUntraced(function*(
     compaction: EventLogRemoteCompaction,
     stage: CompactionStage,
@@ -1317,8 +1310,6 @@ const make = Effect.gen(function*() {
     return entries
   })
 
-  // Folds the compactors over the stage's input, then reports a no-op or
-  // uploads and commits the kept entries.
   const runStage = Effect.fnUntraced(function*(compaction: EventLogRemoteCompaction, stage: CompactionStage) {
     const seen = new Set<string>()
     const kept = yield* RemoteCompaction.run({
@@ -1345,9 +1336,9 @@ const make = Effect.gen(function*() {
     return result
   })
 
-  // One compaction run, shared by the background trigger and `compact`. The
-  // server's busy claim keeps two runs on a store apart, and the journal lock
-  // is taken only to look up ids.
+  // Shared by the background trigger and `compact`. The server's busy claim
+  // keeps runs on a store apart, so the journal lock is held only for id
+  // lookups.
   const runCompaction = (
     remote: EventLogRemote["Service"],
     compaction: EventLogRemoteCompaction
@@ -1390,9 +1381,7 @@ const make = Effect.gen(function*() {
       const compaction = remote.compaction
       const trigger = yield* FiberHandle.make()
 
-      // Starts a background run when this client has a remote compactor, the
-      // store wants compaction and the journal has caught up with the status's
-      // head.
+      // Caught up means the journal holds the remote up to the status head.
       const pollStatus = Effect.fnUntraced(
         function*(compaction: EventLogRemoteCompaction) {
           if (!hasRemoteCompactor()) return

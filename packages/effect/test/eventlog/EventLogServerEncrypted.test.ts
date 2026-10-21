@@ -97,7 +97,6 @@ const makeServer = Effect.fnUntraced(function*(compaction: EventLogServerEncrypt
         readonly _tag: "NoOp"
       }
     ) => client["EventLog.CompactionCommit"]({ ...scope, stageId, result })
-    // Uploads each segment's batches of kept ids.
     const upload = Effect.fnUntraced(function*(stageId: string, segments: ReadonlyArray<ReadonlyArray<EntryIds>>) {
       for (let segment = 0; segment < segments.length; segment++) {
         const batches = segments[segment].map(makeBatch) as [
@@ -182,8 +181,8 @@ it.effect("isolates pending segment pieces and aborts by store on the same conne
     const otherStore = EventLogMessage.StoreId.make("store-b")
 
     yield* part(storeId, 0, data.slice(0, split))
-    // A foreign scope must neither join these junk bytes nor clear A's pending piece.
-    // It may reject the unknown stage immediately or defer that check until assembly.
+    // A foreign scope must not join these junk bytes or clear A's pending piece.
+    // The server may reject the unknown stage now or when it assembles the segment.
     yield* Effect.exit(part(otherStore, 1, new Uint8Array([255])))
     yield* Effect.exit(conn.client["EventLog.CompactionAbort"]({ ...server.scope, storeId: otherStore, stageId }))
     yield* part(storeId, 1, data.slice(split))

@@ -108,8 +108,8 @@ export class EventLogRemote extends Context.Service<EventLogRemote, {
 }>()("effect/eventlog/EventLogRemote") {}
 
 /**
- * A compaction stage opened by `EventLogRemoteCompaction.begin`, together with
- * the identity and store it was opened for.
+ * A stage opened by `EventLogRemoteCompaction.begin`, with the identity and
+ * store it belongs to.
  *
  * @stability unstable
  * @category models
@@ -127,9 +127,9 @@ export interface CompactionStage {
  * **Details**
  *
  * A run opens a stage with `begin`, reads its input headers with `input`,
- * fetches and decrypts the input batches it needs with `fetch`, uploads the
- * kept entries with `upload`, and then calls `commit`. `abort` releases a
- * stage that won't be committed.
+ * fetches the batches it needs with `fetch`, uploads the kept entries with
+ * `upload` and calls `commit`. `abort` releases a stage that won't be
+ * committed.
  *
  * @stability unstable
  * @category models
@@ -156,10 +156,10 @@ export interface EventLogRemoteCompaction {
     sequences: ReadonlyArray<number>
   ) => Stream.Stream<RemoteEntry, EventLogRemoteError>
   /**
-   * Encrypts the kept entries, given in input-sequence order, into batches,
-   * groups the batches into segments of about `ChunkedMessage.chunkSize` and
-   * uploads them. A segment that is larger on its own is split into pieces,
-   * and a segment is sent again in full after a dropped connection.
+   * Encrypts the kept entries, in input-sequence order, and uploads them in
+   * segments of about `ChunkedMessage.chunkSize`. An oversized segment is
+   * split into pieces, and a segment is resent in full after a dropped
+   * connection.
    */
   readonly upload: (
     stage: CompactionStage,
@@ -390,7 +390,8 @@ const makeRemote = Effect.fnUntraced(function*({ encodeWrite, decodeChanges, mak
       Effect.mapError(toRemoteError(method))
     )
 
-  // A refused identity authenticates again on the next request.
+  // Not retried like `request`; a refused identity authenticates again on the
+  // next request.
   const framed = <A, E, E2>(
     method: string,
     identity: Identity["Service"],
@@ -515,9 +516,8 @@ class IdentityService extends Context.Service<Identity, Identity["Service"]>()(
  * **Details**
  *
  * The remote has a `compaction` member when the server advertises compaction
- * and the RPC client includes `EventLogCompactionRpcs`, unless it was built
- * with `compaction: false`. A client without the member never calls the
- * compaction RPCs.
+ * and the RPC client includes `EventLogCompactionRpcs`, unless built with
+ * `compaction: false`. Without it the client never calls the compaction RPCs.
  *
  * @stability unstable
  * @category constructors
@@ -599,8 +599,8 @@ export const makeEncrypted: Effect.Effect<
   Scope.Scope | EventLogRemoteClient | EventLogEncryption | Registry
 > = makeEncryptedWith({})
 
-// How many times a segment is sent before a dropped connection, which fails a
-// piece with an `RpcClientError`, fails the upload.
+// How many times a segment is sent before a dropped connection, an
+// `RpcClientError`, fails the upload.
 const segmentAttempts = 3
 
 const makeEncryptedCompaction = ({ client, encryption, session: { framed, request } }: {
@@ -651,9 +651,8 @@ const makeEncryptedCompaction = ({ client, encryption, session: { framed, reques
         let segmentBytes = 0
         let segmentCount = 0
 
-        // Sends the open segment, split into pieces when it is oversized. The
-        // server forgets the pieces of a segment on a dropped connection, so
-        // every piece is sent again.
+        // The server forgets a segment's pieces when the connection drops, so a
+        // retry resends all of them.
         const sendSegment = Effect.suspend(() => {
           if (!Arr.isArrayNonEmpty(segment)) return Effect.void
           const batches = segment
@@ -717,7 +716,7 @@ const makeEncryptedCompaction = ({ client, encryption, session: { framed, reques
   }
 }
 
-// The encoded size of a batch in a segment, ignoring the framing.
+// Ignores the segment framing.
 const encodedBatchSize = (batch: EncryptedBatch): number =>
   batch.encryptedBatch.byteLength + batch.iv.byteLength + batch.entryIds.length * 16
 

@@ -524,8 +524,8 @@ export const handler = <
  * patches would apply to a different row, or to none. Entries that fail to
  * decode are kept.
  *
- * The compactor is opted into remote compaction (see the `remote` option of
- * `EventLog.groupCompaction`), which also keeps entries with fields the row
+ * The compactor opts into remote compaction (see the `remote` option of
+ * `EventLog.groupCompaction`). There it also keeps entries with fields the row
  * schema does not know.
  *
  * Leaves other events' compactors unchanged. Register one compactor per row

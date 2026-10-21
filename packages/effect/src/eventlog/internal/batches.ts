@@ -8,9 +8,8 @@ export const maxBatchEntries = 100
 export const maxBatchPayloadBytes = 256 * 1024
 
 /**
- * Packs entries into remote batches. A batch holds at most `maxBatchEntries`
- * entries or `maxBatchPayloadBytes` of payload, whichever comes first. A
- * single larger entry is a batch on its own.
+ * Packs entries into batches of at most `maxBatchEntries` entries and
+ * `maxBatchPayloadBytes` of payload. A larger entry is a batch on its own.
  */
 export const toBatches = (entries: ReadonlyArray<Entry>): Array<NonEmptyArray<Entry>> => {
   const batches: Array<NonEmptyArray<Entry>> = []

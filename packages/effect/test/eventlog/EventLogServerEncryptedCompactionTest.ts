@@ -102,7 +102,7 @@ export const suite = <R>(
   it.layer(
     Layer.provideMerge(
       storage({}),
-      // Keep client connection deadlines on real time, but storage and sweeps on TestClock.
+      // Client connection deadlines use real time; storage and sweeps use TestClock.
       Layer.provide(dependencies, Layer.succeed(Clock.Clock)(Clock.Clock.defaultValue()))
     ),
     { concurrent: false, timeout: "60 seconds" }
@@ -175,8 +175,8 @@ export const suite = <R>(
           yield* storage.write(publicKey, storeId, [makeBatch(6, ...makeIds(1))])
           const lagHead = Effect.map(compaction.status(publicKey, storeId), (status) => status.lagHead)
 
-          // It's now 30 minutes into the second hour, so the first one ended 30
-          // minutes ago and passes the lag in 23 hours and 30 minutes.
+          // 30 minutes into the second hour: the first hour passes the lag in
+          // 23 hours and 30 minutes.
           yield* TestClock.adjust(23 * hour + 29 * minute)
           const beforeFirst = yield* lagHead
           yield* TestClock.adjust(2 * minute)

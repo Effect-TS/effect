@@ -1410,7 +1410,6 @@ const ValueGroup = EventGroup.empty.add({
 })
 const valueSchema = EventLog.schema(ValueGroup)
 
-// Keeps the newest entry for each primary key.
 const keepLatest = EventLog.groupBatchCompaction(ValueGroup, ({ entries, forward }) => {
   const newest = new Map<string, EventJournal.Entry>()
   for (const { entry } of entries) {
@@ -1497,8 +1496,8 @@ const makeDevice = Effect.fnUntraced(function*(
   }
 })
 
-// Moves the TestClock on in 15 minute steps, giving fibers that wait on Web
-// Crypto some real time after each one.
+// Advances the TestClock 15 minutes, then gives fibers waiting on Web Crypto
+// some real time.
 const step = TestClock.adjust("15 minutes").pipe(Effect.andThen(TestClock.withLive(Effect.sleep(5))))
 
 // Steps until `done` holds, for at most 50 hours.

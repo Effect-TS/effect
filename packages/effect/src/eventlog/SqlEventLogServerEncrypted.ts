@@ -55,10 +55,9 @@ import {
  * id tables as needed.
  *
  * The storage always provides `compaction`. Its tables are created on startup
- * and when a store is first opened, and the sweep that prunes superseded
- * generations runs in the surrounding scope every `sweepInterval`. Startup
- * dies when the compaction options are invalid (see
- * `EventLogServerEncrypted.makeCompactionConfig`).
+ * and when a store is first opened. A sweep in the surrounding scope prunes
+ * superseded generations every `sweepInterval`. Startup dies on invalid
+ * compaction options (see `EventLogServerEncrypted.makeCompactionConfig`).
  *
  * **Gotchas**
  *
@@ -69,13 +68,12 @@ import {
  * to read those writes.
  *
  * Inside a caller's transaction, `write` and `compaction.rollback` publish to
- * live readers only after the outermost commit, and publish nothing when it
- * rolls back. Live readers of concurrent caller transactions may receive their
- * batches out of sequence order; `changes` always reads committed order.
+ * live readers after the outermost commit, and not at all if it rolls back.
+ * Concurrent caller transactions may reach live readers out of sequence order.
+ * `changes` always reads in committed order.
  *
- * Instances that share a database should share compaction options. A
- * generation's prune time and a stage's expiry are fixed by the instance that
- * wrote them.
+ * Instances sharing a database should share compaction options. The instance
+ * that writes a generation or stage fixes its prune time or expiry.
  *
  * @stability unstable
  * @category constructors
@@ -158,7 +156,6 @@ export const makeStorage = (options?: {
           )`
     })
 
-    // Column types for the compaction tables.
     const types = sql.onDialectOrElse({
       pg: () => ({ id: "TEXT", int: "INTEGER", bigint: "BIGINT", bytes: "BYTEA", entryId: "BYTEA", iv: "BYTEA" }),
       mysql: () => ({
@@ -260,7 +257,7 @@ export const makeStorage = (options?: {
       ["scope, ordinal"]
     )
     // A stage's pending batch set is its own id. A committed stage's row is
-    // deleted with the commit. Other stages leave `open` as `closed`, and the
+    // deleted at commit. Other stages go from `open` to `closed`, and the
     // sweep deletes what they staged, then the row.
     yield* createTable(
       stagesTable,
@@ -296,7 +293,6 @@ export const makeStorage = (options?: {
     }
     type ScopeTables = ReturnType<typeof scopeTables>
 
-    // Creates a store's tables and row.
     const ensureTables = Effect.fnUntraced(function*(scope: string, tables: ScopeTables) {
       const table = `${tablePrefix}_${scope}`
       const { idsTableSql, tableSql } = tables
@@ -403,7 +399,6 @@ export const makeStorage = (options?: {
         PubSub.unbounded<EventLogEncryption.EncryptedRemoteBatch>(),
         PubSub.shutdown
       )
-      // Serializes writes within this storage instance.
       const semaphore = yield* Semaphore.make(1)
       return { pubsub, semaphore, scope, ...tables } as const
     }, withTracerDisabled)
@@ -593,7 +588,6 @@ export const makeStorage = (options?: {
         Effect.andThen(releaseClaim(scope, stageId))
       )
 
-    // Pulls `next_sweep_at` earlier to `at`.
     const scheduleSweep = (scope: string, at: number) =>
       sql`
         UPDATE ${storesSql}
@@ -661,7 +655,7 @@ export const makeStorage = (options?: {
 
     const notFound = (stageId: string) => Effect.fail(new EventLogServerEncrypted.CompactionNotFound({ stageId }))
 
-    // An open stage whose pin has not started to be pruned, for Input and Fetch.
+    // An open stage whose pin isn't being pruned yet, for Input and Fetch.
     const findInputStage = Effect.fnUntraced(function*(scope: string, stageId: string, now: number) {
       const stage = yield* selectStage(scope, stageId, false)
       if (stage === undefined || stage.state !== "open" || stage.expiresAt <= now) return undefined
@@ -1015,8 +1009,8 @@ export const makeStorage = (options?: {
     }, sql.withTransaction)
 
     // The re-appended batches are published after the outermost commit. When
-    // the storage owns the transaction that is before the write semaphore is
-    // released, so they reach live readers in sequence order.
+    // the storage owns the transaction, that happens before the semaphore is
+    // released, so live readers get them in sequence order.
     const rollback = (store: StoreResources, now: number, expectedActivationId: string) =>
       store.semaphore.withPermits(1)(rollbackTransaction(store, now, expectedActivationId))
 
@@ -1094,16 +1088,15 @@ export const makeStorage = (options?: {
         })
       }`
     })
-    // Supersedes or withdraws an activation. It becomes prunable `grace` later.
+    // Supersedes or withdraws an activation, prunable `grace` later.
     const supersede = (activationId: string, now: number) =>
       sql`
         UPDATE ${activationsSql} SET superseded_at = ${now}, prunable_at = ${now + graceMillis}
         WHERE id = ${activationId}`
 
-    // Deletes the first `pruneChunkRows` rows matching `where` in key order,
-    // and returns whether there were any. Nothing inserts rows matching
-    // `where` any more, so a later call picks up where an interrupted one
-    // stopped.
+    // Deletes up to `pruneChunkRows` rows matching `where` in key order and
+    // returns whether it found any. No new rows match `where`, so a later call
+    // resumes an interrupted one.
     const deleteChunk = Effect.fnUntraced(function*(
       tableSql: Statement.Identifier,
       key: string,
@@ -1222,7 +1215,7 @@ export const makeStorage = (options?: {
       where: Statement.Fragment
     ) {
       while (yield* sql.withTransaction(Effect.andThen(lockStore(scope), deleteChunk(tableSql, key, where)))) {
-        // Repeat until no rows match.
+        // Each chunk commits on its own.
       }
     })
 
@@ -1278,8 +1271,8 @@ export const makeStorage = (options?: {
       }
       yield* Effect.catchCause(sweepBuckets(now), logSweepFailure)
     }).pipe(Effect.catchCause(logSweepFailure), withTracerDisabled)
-    // A fixed schedule runs a sweep that is due straight away when the last one
-    // took longer than the interval, so slow queries don't push sweeps back.
+    // A fixed schedule starts an overdue sweep straight away, so slow queries
+    // don't push sweeps back.
     yield* Effect.forkScoped(
       Effect.delay(Effect.repeat(sweep, Schedule.fixed(config.sweepInterval)), config.sweepInterval)
     )
@@ -1314,8 +1307,8 @@ export const makeStorage = (options?: {
 
           const writeBatches = Effect.gen(function*() {
             const stored: Array<EventLogEncryption.EncryptedRemoteBatch> = []
-            // Under the store row lock, so sequence order is commit order. The
-            // row covers a batch table emptied by pruning, and the table covers
+            // The store row lock makes sequence order commit order. The row's
+            // `next_sequence` survives pruning, and `MAX(last_sequence)` covers
             // instances that predate the row.
             const store = yield* lockStore(scope)
             // Read before inserting ids, which record the sequence they are stored at.

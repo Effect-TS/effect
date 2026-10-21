@@ -68,10 +68,9 @@ import {
  * sequences. Change streams encode stored batches, excluding this connection's
  * writes.
  *
- * It also provides the `EventLogCompactionRpcs` handlers. When `Storage`
- * provides `compaction`, `HelloResponse.compaction` is set and the handlers
- * apply the compaction policy on top of the storage primitives. Otherwise they
- * fail with a `NotFound` error.
+ * It also serves `EventLogCompactionRpcs`. If `Storage` provides `compaction`,
+ * it sets `HelloResponse.compaction` and applies the compaction policy;
+ * otherwise those handlers fail with `NotFound`.
  *
  * @stability unstable
  * @category layers
@@ -204,7 +203,6 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
           ? protocolError(requestTag, request, "NotFound", "Compaction stage not found")
           : protocolError(requestTag, request, "InvalidRequest", error.message)
 
-    // Checks the identity, then runs the request against the storage primitives.
     const withCompaction = <A>(
       requestTag: string,
       request: Request,
@@ -317,9 +315,9 @@ const layerCompactionRpcHandlers = (storage: Storage["Service"]) =>
     })
   }))
 
-// Whether a store wants compacting: the input past the lag must reach the
-// threshold, and after `k` consecutive no-ops the lag head must have moved the
-// threshold times `2^(k-1)` past the latest one.
+// The input past the lag must reach the threshold. After `k` consecutive
+// no-ops, the lag head must also have moved `threshold * 2^(k-1)` past the
+// latest one.
 const isCompactionWanted = (status: CompactionStoreStatus, thresholdFloor: number): boolean => {
   const threshold = Math.max(status.activeKeptCount, thresholdFloor)
   const pending = status.lagHead - status.base
@@ -328,10 +326,10 @@ const isCompactionWanted = (status: CompactionStoreStatus, thresholdFloor: numbe
   return status.lagHead - status.noOp.at >= threshold * 2 ** (status.noOp.count - 1)
 }
 
-// Checks a snapshot's staged batches against the stage's input in one pass
-// over both, and returns each batch's virtual start sequence. Kept ids must
-// be a non-empty subset of the input without repeats that, in order, is a
-// subsequence of the input's ids, in segments 0 to segmentCount - 1.
+// Checks the staged batches against the stage's input in one pass over both
+// and returns each batch's virtual start sequence. The kept ids, read in
+// segments 0 to segmentCount - 1, must be a non-empty, repeat-free
+// subsequence of the input's ids.
 const checkSnapshot = Effect.fnUntraced(function*(
   compaction: StorageCompaction,
   publicKey: string,
@@ -394,7 +392,7 @@ const checkSnapshot = Effect.fnUntraced(function*(
   if (ends.length === 0) return yield* invalid("Snapshot is empty")
   if (segment !== segmentCount - 1) return yield* invalid("Missing segment")
   while ((yield* nextInput) !== undefined) {
-    // Find where the input ends.
+    // Drain the input to learn its last sequence.
   }
 
   // Each batch ends at its last kept entry's input sequence, and the final one
@@ -402,8 +400,8 @@ const checkSnapshot = Effect.fnUntraced(function*(
   return ends.map((end, i) => (i === ends.length - 1 ? lastInputSequence : end) - sizes[i] + 1)
 }, Effect.scoped)
 
-// Pieces of compaction segments not yet joined, by identity, store and stage,
-// for one connection. Tuple encoding keeps the scope components unambiguous.
+// One connection's unjoined segment pieces, keyed by identity, store and
+// stage. The JSON tuple key keeps the components unambiguous.
 class PendingSegments extends Context.Service<
   PendingSegments,
   Map<string, ReturnType<typeof ChunkedMessage.initialJoinState>>
@@ -532,33 +530,30 @@ export class Storage extends Context.Service<Storage, {
  *
  * **Details**
  *
- * The server owns policy and checks: the trigger threshold, lag, no-op
- * backoff, commit checks and virtual sequence assignment. Each primitive here
- * is atomic per store.
+ * The server owns the policy: trigger threshold, lag, no-op backoff, commit
+ * checks and virtual sequences. Each primitive is atomic per store.
  *
  * A store always has one active activation. Before the first commit it is the
  * originals, with base `firstSequence - 1`. `begin` opens a stage pinned to the
  * active activation and to `through`. The stage claim expires `stageTtl` after
  * begin or the latest stored Part, and `begin` takes over an expired claim.
  * Stage-scoped primitives fail with `CompactionNotFound` once the stage has
- * expired, been aborted, committed or belongs to another store. A stage that
- * leaves `open` is gone, so a commit is answered once.
+ * expired, been aborted or committed, or when it belongs to another store, so
+ * a commit is answered only once.
  *
- * `stagePart` stores one segment of encrypted snapshot batches. A segment that
- * is already stored answers `AlreadyStored` and stores nothing. It doesn't
- * check entry ids: the server's commit checks reject a kept id repeated beyond
- * the input, and readers dedupe by id.
- * `commit` takes the virtual start sequence of every staged batch in position
- * order, and activates the staged set only if the pinned activation is still
- * active.
+ * `stagePart` stores one segment of encrypted snapshot batches, or answers
+ * `AlreadyStored` for a segment it already has. It doesn't check entry ids:
+ * the server's commit checks reject repeats, and readers dedupe by id.
+ * `commit` takes every staged batch's virtual
+ * start sequence in position order, and activates the staged set only if the
+ * pinned activation is still active.
  *
- * `rollback` reactivates the previous generation under a new activation id,
- * and re-appends the input of the stage that built the withdrawn generation
- * (the previous generation's batch set, then the originals between the two
- * bases) at the head, at sequences allocated as writes allocate them. Clients
- * that read the withdrawn snapshot receive what it dropped through `changes`.
- * A sweep on `Clock` prunes a generation, with the originals it replaced,
- * `grace` after it was superseded or withdrawn.
+ * `rollback` reactivates the previous generation under a new activation id
+ * and re-appends, at the head, the input of the stage that built the withdrawn
+ * one: the previous batch set, then the originals between the two bases.
+ * Clients that read the withdrawn snapshot get what it dropped through
+ * `changes`. A sweep on `Clock` prunes a generation, and the originals it
+ * replaced, `grace` after it was superseded or withdrawn.
  *
  * @stability unstable
  * @category models
@@ -607,8 +602,8 @@ export interface StorageCompaction {
     stageId: string
   ) => Stream.Stream<{ readonly position: number; readonly entryIds: ReadonlyArray<EntryId> }, CompactionNotFound>
   /**
-   * Logs the outcome with the kept count, through sequence and activation id,
-   * without reading the active generation after committing.
+   * Logs the outcome with this commit's own activation id, not the one active
+   * when the log runs.
    */
   readonly commit: (
     publicKey: string,
@@ -617,8 +612,7 @@ export interface StorageCompaction {
     virtualSequences: ReadonlyArray<number>
   ) => Effect.Effect<"Committed" | "Superseded", CompactionNotFound>
   /**
-   * Records and logs a no-op with its identity, store, stage and through
-   * sequence.
+   * Records a no-op for the stage and logs it.
    */
   readonly recordNoOp: (publicKey: string, storeId: StoreId, stageId: string) => Effect.Effect<void, CompactionNotFound>
   /**
@@ -852,8 +846,8 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
  *
  * Data, session authentication bindings, and streams are process-local and are
  * released with the surrounding scope. The storage always provides
- * `compaction`, and its sweep runs on `Clock` in the surrounding scope while
- * any store has something left to prune or a stage left to clean up.
+ * `compaction`. Its sweep runs on `Clock` only while some store has a
+ * generation to prune or a stage to expire.
  *
  * Dies when the compaction options are invalid (see {@link makeCompactionConfig}).
  *
@@ -1158,8 +1152,8 @@ export const makeStorageMemoryWith = Effect.fnUntraced(function*(options: {
         journal.noOp = undefined
         schedulePrune(journal, now + graceMillis)
         closeStage(journal, stage)
-        // Capture this operation's activation before yielding to the logger. A
-        // concurrent rollback must not relabel the commit with its activation.
+        // Log this commit's activation id. A concurrent rollback could change
+        // the active one before the logger runs.
         return Effect.as(
           logCommit({
             publicKey,
