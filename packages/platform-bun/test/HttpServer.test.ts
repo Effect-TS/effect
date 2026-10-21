@@ -1,11 +1,16 @@
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpRouter from "@effect/platform/HttpRouter"
 import type * as HttpServer from "@effect/platform/HttpServer"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { assert, describe, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import type * as Exit from "effect/Exit"
+import * as Exit from "effect/Exit"
+import * as HashMap from "effect/HashMap"
+import * as Logger from "effect/Logger"
+import * as Option from "effect/Option"
 import * as Net from "node:net"
 
 const connect = (port: number) =>
@@ -87,5 +92,33 @@ describe.skipIf(typeof Bun === "undefined")("HttpServer", () => {
 
       const exit = yield* Deferred.await(result)
       assert.strictEqual(exit._tag, "Success")
+    }))
+
+  it.scoped("logs status 101 for a routed WebSocket closed by the client", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make(({ annotations }) =>
+        Option.map(
+          HashMap.get(annotations, "http.status"),
+          (status) => Deferred.unsafeDone(logged, Exit.succeed(status))
+        )
+      )
+      yield* server.serve(
+        HttpRouter.empty.pipe(HttpRouter.get(
+          "/ws",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            yield* socket.runRaw(() => {})
+            return HttpServerResponse.empty()
+          })
+        )),
+        HttpMiddleware.logger
+      ).pipe(Effect.provide(Logger.replace(Logger.defaultLogger, logger)))
+      const ws = new WebSocket(`ws://127.0.0.1:${(server.address as HttpServer.TcpAddress).port}/ws`)
+      ws.onopen = () => ws.close(1000)
+
+      assert.strictEqual(yield* Deferred.await(logged).pipe(Effect.timeout("5 seconds")), 101)
     }))
 })
