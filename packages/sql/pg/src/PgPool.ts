@@ -159,18 +159,10 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const createdAt = new WeakMap<PgConnection.PgConnection, number>()
   const checkedOut = new WeakSet<PgConnection.PgConnection>()
 
-  // The pool opens sessions on its own fiber, so a span made there would have no
-  // statement parent. Record each connect instead, and report it on the session's
-  // first checkout under the statement span, covering only the part the statement
-  // waited for.
+  // The pool opens sessions on its own fiber, where a span would have no
+  // statement parent. Each connect is recorded here instead and reported on the
+  // session's first checkout, under the statement that waited for it.
   const connects = new WeakMap<PgConnection.PgConnection, readonly [startTime: bigint, endTime: bigint]>()
-  const connect = Effect.suspend(() => {
-    const startTime = clock.currentTimeNanosUnsafe()
-    return Effect.tap(
-      PgConnection.make(options),
-      (connection) => Effect.sync(() => connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()]))
-    )
-  })
 
   const reportConnect = (connection: PgConnection.PgConnection): Effect.Effect<void> =>
     Effect.withFiber((fiber) => {
@@ -178,7 +170,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       if (opened === undefined) return Effect.void
       connects.delete(connection)
       const statement = fiber.cache.span
-      // Without span timing the statement span starts at 0, so there is no wait to measure.
+      // Without span timing the statement span has no start time to measure from.
       if (
         !fiber.cache.tracerEnabled || statement?._tag !== "Span" || !fiber.getRef(SpanPropagationEnabled) ||
         !fiber.getRef(TracerTimingEnabled)
@@ -210,21 +202,25 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // Assigned below, once the pool exists. `acquire` only runs when the pool
   // opens a connection, which is always after that.
   let pool: Pool.Pool<PgConnection.PgConnection, SqlError>
-  const acquire = Effect.tap(connect, (connection) =>
-    Effect.sync(() => {
-      createdAt.set(connection, clock.currentTimeMillisUnsafe())
-      const internals = connectionInternals(connection)
-      internals.retireHooks.add(() => {
-        deadConnections.add(connection)
-        // `deadConnections` is only read by the next checkout, and a checkout
-        // already waiting for this connection would never get that far. Tell
-        // the pool now so it can replace the connection and admit them.
-        runFork(Pool.invalidate(pool, connection))
-      })
-      // Pinning a shared session has to take it out of circulation, or a
-      // second checkout lands on the connection its own stream is holding.
-      if (multiplex) internals.reserve = Pool.reserve(pool, connection)
-    }))
+  const acquire = Effect.suspend(() => {
+    const startTime = clock.currentTimeNanosUnsafe()
+    return Effect.tap(PgConnection.make(options), (connection) =>
+      Effect.sync(() => {
+        connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
+        createdAt.set(connection, clock.currentTimeMillisUnsafe())
+        const internals = connectionInternals(connection)
+        internals.retireHooks.add(() => {
+          deadConnections.add(connection)
+          // `deadConnections` is only read by the next checkout, and a checkout
+          // already waiting for this connection would never get that far. Tell
+          // the pool now so it can replace the connection and admit them.
+          runFork(Pool.invalidate(pool, connection))
+        })
+        // Pinning a shared session has to take it out of circulation, or a
+        // second checkout lands on the connection its own stream is holding.
+        if (multiplex) internals.reserve = Pool.reserve(pool, connection)
+      }))
+  })
 
   const maxConnections = options.maxConnections ?? 10
   pool = yield* Pool.makeWithTTL({

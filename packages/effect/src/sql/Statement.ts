@@ -1543,8 +1543,8 @@ const StatementProto: Omit<
 const waitClock = (fiber: Fiber.Fiber<unknown, unknown>): Clock | undefined =>
   fiber.getRef(TracerTimingEnabled) ? fiber.getRef(Clock) : undefined
 
-// The statement's span starts just before it asks for a connection, so the time
-// from that start to the hand-off is how long it waited for one.
+// Measured from the statement span's start to the connection hand-off, so it
+// also covers compiling the statement and any `CurrentTransformer` run first.
 const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
   span.attribute(
     ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
