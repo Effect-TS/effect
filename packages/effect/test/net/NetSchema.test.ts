@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Config, ConfigProvider, Effect, Schema } from "effect"
+import { Arbitrary, Config, ConfigProvider, Effect, Schema } from "effect"
 
 describe("effect/net schemas", () => {
   it("encode canonical strings", () => {
@@ -42,6 +42,40 @@ describe("effect/net schemas", () => {
       const socket = yield* Config.schema(Schema.SocketAddress, "socket").parse(provider)
       assert.strictEqual(String(endpoint), "db.internal:5432")
       assert.strictEqual(String(socket), "/var/run/docker.sock")
+    }))
+
+  it.effect("generate refined addresses without discards", () =>
+    Effect.gen(function*() {
+      const schemas: ReadonlyArray<Schema.Codec<unknown>> = [
+        Schema.IpMulticastAddress,
+        Schema.IpMulticastAddressFromString,
+        Schema.MacMulticastAddress,
+        Schema.MacMulticastAddressFromString,
+        Schema.MacUnicastAddress,
+        Schema.MacUnicastAddressFromString,
+        Schema.Ipv4BroadcastAddress,
+        Schema.Ipv4BroadcastAddressFromString,
+        Schema.MacBroadcastAddress,
+        Schema.MacBroadcastAddressFromString,
+        Schema.IpLoopbackAddress,
+        Schema.IpLoopbackAddressFromString,
+        Schema.IpLinkLocalAddress,
+        Schema.IpLinkLocalAddressFromString,
+        Schema.IpUnspecifiedAddress,
+        Schema.IpUnspecifiedAddressFromString,
+        Schema.Ipv4PrivateAddress,
+        Schema.Ipv4PrivateAddressFromString,
+        Schema.Ipv6UniqueLocalAddress,
+        Schema.Ipv6UniqueLocalAddressFromString,
+        Schema.MacLocallyAdministeredAddress,
+        Schema.MacLocallyAdministeredAddressFromString,
+        Schema.MacUniversallyAdministeredAddress,
+        Schema.MacUniversallyAdministeredAddressFromString
+      ]
+      for (const schema of schemas) {
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), { count: 100, maxDiscards: 0, seed: 42 })
+        assert.isTrue(values.every(Schema.is(schema)))
+      }
     }))
 
   const schemas: Record<string, Schema.Codec<unknown>> = {

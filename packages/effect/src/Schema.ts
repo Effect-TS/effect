@@ -12038,15 +12038,53 @@ const netAddressFromString = <S extends Constraint>(
   identifier: string
 ) => String.pipe(decodeTo(declaration, transformation)).annotate({ identifier })
 
-const netToCode = (name: string, module: string) => () => ({
+// Some net schemas share their name with their module (e.g. `IpInterface`),
+// so a namespace import would collide with the generated declaration.
+const netToCode = (name: string) => () => ({
   runtime: `Schema.${name}`,
-  Type: `${module}.${name}`,
-  importDeclarations: [`import * as ${module} from "effect/net/${module}"`]
+  Type: `Schema.${name}["Type"]`
 })
 
-const NetOctetArbitrary = Int.check(isBetween({ minimum: 0, maximum: 255 }))
-const NetSegmentArbitrary = Int.check(isBetween({ minimum: 0, maximum: 0xffff }))
-const netPrefixLengthArbitrary = (maximum: number) => Int.check(isBetween({ minimum: 0, maximum }))
+const netIntArbitrary = (minimum: number, maximum: number) => Int.check(isBetween({ minimum, maximum }))
+const NetOctetArbitrary = netIntArbitrary(0, 255)
+const NetSegmentArbitrary = netIntArbitrary(0, 0xffff)
+const netPrefixLengthArbitrary = (maximum: number) => netIntArbitrary(0, maximum)
+
+const netIpv4Octets = (first: Int = NetOctetArbitrary, second: Int = NetOctetArbitrary) =>
+  Tuple([first, second, NetOctetArbitrary, NetOctetArbitrary])
+
+const netIpv6Segments = (first: Int = NetSegmentArbitrary) =>
+  Tuple([
+    first,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary,
+    NetSegmentArbitrary
+  ])
+
+const netIpArbitrary = <S extends Constraint & { readonly Type: NetAddress_.IpAddressInput }>(input: S) => () =>
+  linkDecoding<NetAddress_.IpAddress>()(
+    input,
+    SchemaGetter.transform((input: NetAddress_.IpAddressInput) => Result_.getOrThrow(NetAddress_.ipFromInput(input)))
+  )
+
+const netMacArbitrary = (firstOctet: (octet: number) => number) => () =>
+  linkDecoding<NetAddress_.MacAddress>()(
+    Tuple([
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary,
+      NetOctetArbitrary
+    ]),
+    SchemaGetter.transform(([first, ...rest]) =>
+      Result_.getOrThrow(NetAddress_.macAddressFromOctets([firstOctet(first), ...rest]))
+    )
+  )
 
 const macAddressFromString = netStringTransformation(NetAddress_.macAddressFromString, NetAddress_.formatMacAddress)
 const ipv4AddressFromString = netStringTransformation(NetAddress_.ipv4FromString, NetAddress_.formatIp)
@@ -12083,19 +12121,8 @@ export const MacAddress: MacAddress = declare(NetAddress_.isMacAddress, {
     id: "effect/schema/MacAddress",
     payload: null
   },
-  toCode: netToCode("MacAddress", "NetAddress"),
-  toCodecArbitrary: () =>
-    linkDecoding<NetAddress_.MacAddress>()(
-      Tuple([
-        NetOctetArbitrary,
-        NetOctetArbitrary,
-        NetOctetArbitrary,
-        NetOctetArbitrary,
-        NetOctetArbitrary,
-        NetOctetArbitrary
-      ]),
-      SchemaGetter.transform((octets) => Result_.getOrThrow(NetAddress_.macAddressFromOctets(octets)))
-    ),
+  toCode: netToCode("MacAddress"),
+  toCodecArbitrary: netMacArbitrary((octet) => octet),
   toCodecJson: () =>
     link<NetAddress_.MacAddress>()(
       String,
@@ -12157,12 +12184,8 @@ export const Ipv4Address: Ipv4Address = declare(NetAddress_.isIpv4Address, {
     id: "effect/schema/Ipv4Address",
     payload: null
   },
-  toCode: netToCode("Ipv4Address", "NetAddress"),
-  toCodecArbitrary: () =>
-    linkDecoding<NetAddress_.Ipv4Address>()(
-      Tuple([NetOctetArbitrary, NetOctetArbitrary, NetOctetArbitrary, NetOctetArbitrary]),
-      SchemaGetter.transform((octets) => Result_.getOrThrow(NetAddress_.ipv4FromOctets(octets)))
-    ),
+  toCode: netToCode("Ipv4Address"),
+  toCodecArbitrary: netIpArbitrary(netIpv4Octets()),
   toCodecJson: () =>
     link<NetAddress_.Ipv4Address>()(
       String,
@@ -12224,21 +12247,8 @@ export const Ipv6Address: Ipv6Address = declare(NetAddress_.isIpv6Address, {
     id: "effect/schema/Ipv6Address",
     payload: null
   },
-  toCode: netToCode("Ipv6Address", "NetAddress"),
-  toCodecArbitrary: () =>
-    linkDecoding<NetAddress_.Ipv6Address>()(
-      Tuple([
-        NetSegmentArbitrary,
-        NetSegmentArbitrary,
-        NetSegmentArbitrary,
-        NetSegmentArbitrary,
-        NetSegmentArbitrary,
-        NetSegmentArbitrary,
-        NetSegmentArbitrary,
-        NetSegmentArbitrary
-      ]),
-      SchemaGetter.transform((segments) => Result_.getOrThrow(NetAddress_.ipv6FromSegments(segments)))
-    ),
+  toCode: netToCode("Ipv6Address"),
+  toCodecArbitrary: netIpArbitrary(netIpv6Segments()),
   toCodecJson: () =>
     link<NetAddress_.Ipv6Address>()(
       String,
@@ -12300,7 +12310,7 @@ export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
     id: "effect/schema/IpAddress",
     payload: null
   },
-  toCode: netToCode("IpAddress", "NetAddress"),
+  toCode: netToCode("IpAddress"),
   toCodecArbitrary: () =>
     linkDecoding<NetAddress_.IpAddress>()(
       Union([Ipv4Address, Ipv6Address]),
@@ -12338,12 +12348,48 @@ export const IpAddressFromString: IpAddressFromString = netAddressFromString(
   "IpAddressFromString"
 )
 
-const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
+// `toCodecArbitrary` replaces the base declaration's generator so that values
+// are generated inside the refined set instead of being filtered out of it.
+const netAddressRefinement = <S extends Top & { readonly "Rebuild": S }, T extends S["Type"]>(
   schema: S,
   guard: (value: S["Type"]) => value is T,
   expected: string,
-  identifier: string
-): refine<T, S> => refine(guard, { expected })(schema).annotate({ identifier })
+  identifier: string,
+  toCodecArbitrary?: () => SchemaAST.Link
+): refine<T, S> =>
+  refine(guard, { expected })(
+    toCodecArbitrary === undefined ? schema : schema.rebuild(SchemaAST.annotate(schema.ast, { toCodecArbitrary }))
+  ).annotate({ identifier })
+
+const ipMulticastArbitrary = netIpArbitrary(
+  Union([netIpv4Octets(netIntArbitrary(224, 239)), netIpv6Segments(netIntArbitrary(0xff00, 0xffff))])
+)
+const macMulticastArbitrary = netMacArbitrary((octet) => octet | 0x01)
+const macUnicastArbitrary = netMacArbitrary((octet) => octet & 0xfe)
+const ipv4BroadcastArbitrary = netIpArbitrary(Literal("255.255.255.255"))
+const macBroadcastArbitrary = () =>
+  linkDecoding<NetAddress_.MacAddress>()(
+    Literal("ff:ff:ff:ff:ff:ff"),
+    SchemaGetter.transform(NetAddress_.macAddressFromStringUnsafe)
+  )
+const ipLoopbackArbitrary = netIpArbitrary(Union([netIpv4Octets(netIntArbitrary(127, 127)), Literal("::1")]))
+const ipLinkLocalArbitrary = netIpArbitrary(
+  Union([
+    netIpv4Octets(netIntArbitrary(169, 169), netIntArbitrary(254, 254)),
+    netIpv6Segments(netIntArbitrary(0xfe80, 0xfebf))
+  ])
+)
+const ipUnspecifiedArbitrary = netIpArbitrary(Literals(["0.0.0.0", "::"]))
+const ipv4PrivateArbitrary = netIpArbitrary(
+  Union([
+    netIpv4Octets(netIntArbitrary(10, 10)),
+    netIpv4Octets(netIntArbitrary(172, 172), netIntArbitrary(16, 31)),
+    netIpv4Octets(netIntArbitrary(192, 192), netIntArbitrary(168, 168))
+  ])
+)
+const ipv6UniqueLocalArbitrary = netIpArbitrary(netIpv6Segments(netIntArbitrary(0xfc00, 0xfdff)))
+const macLocallyAdministeredArbitrary = netMacArbitrary((octet) => octet | 0x02)
+const macUniversallyAdministeredArbitrary = netMacArbitrary((octet) => octet & 0xfd)
 
 /**
  * Type-level representation of {@link IpMulticastAddress}.
@@ -12367,7 +12413,8 @@ export const IpMulticastAddress: IpMulticastAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isMulticast,
   "a multicast address",
-  "IpMulticastAddress"
+  "IpMulticastAddress",
+  ipMulticastArbitrary
 )
 
 /**
@@ -12405,7 +12452,8 @@ export const IpMulticastAddressFromString: IpMulticastAddressFromString = netAdd
   IpAddressFromString,
   NetAddress_.isMulticast,
   "a multicast address",
-  "IpMulticastAddressFromString"
+  "IpMulticastAddressFromString",
+  ipMulticastArbitrary
 )
 
 /**
@@ -12430,7 +12478,8 @@ export const MacMulticastAddress: MacMulticastAddress = netAddressRefinement(
   MacAddress,
   NetAddress_.isMulticast,
   "a multicast address",
-  "MacMulticastAddress"
+  "MacMulticastAddress",
+  macMulticastArbitrary
 )
 
 /**
@@ -12457,7 +12506,8 @@ export const MacMulticastAddressFromString: MacMulticastAddressFromString = netA
   MacAddressFromString,
   NetAddress_.isMulticast,
   "a multicast address",
-  "MacMulticastAddressFromString"
+  "MacMulticastAddressFromString",
+  macMulticastArbitrary
 )
 
 /**
@@ -12534,7 +12584,8 @@ export const MacUnicastAddress: MacUnicastAddress = netAddressRefinement(
   MacAddress,
   NetAddress_.isMacUnicast,
   "a unicast address",
-  "MacUnicastAddress"
+  "MacUnicastAddress",
+  macUnicastArbitrary
 )
 
 /**
@@ -12561,7 +12612,8 @@ export const MacUnicastAddressFromString: MacUnicastAddressFromString = netAddre
   MacAddressFromString,
   NetAddress_.isMacUnicast,
   "a unicast address",
-  "MacUnicastAddressFromString"
+  "MacUnicastAddressFromString",
+  macUnicastArbitrary
 )
 
 /**
@@ -12588,7 +12640,8 @@ export const Ipv4BroadcastAddress: Ipv4BroadcastAddress = netAddressRefinement(
   Ipv4Address,
   NetAddress_.isBroadcast,
   "a broadcast address",
-  "Ipv4BroadcastAddress"
+  "Ipv4BroadcastAddress",
+  ipv4BroadcastArbitrary
 )
 
 /**
@@ -12615,7 +12668,8 @@ export const Ipv4BroadcastAddressFromString: Ipv4BroadcastAddressFromString = ne
   Ipv4AddressFromString,
   NetAddress_.isBroadcast,
   "a broadcast address",
-  "Ipv4BroadcastAddressFromString"
+  "Ipv4BroadcastAddressFromString",
+  ipv4BroadcastArbitrary
 )
 
 /**
@@ -12640,7 +12694,8 @@ export const MacBroadcastAddress: MacBroadcastAddress = netAddressRefinement(
   MacAddress,
   NetAddress_.isMacBroadcast,
   "a broadcast address",
-  "MacBroadcastAddress"
+  "MacBroadcastAddress",
+  macBroadcastArbitrary
 )
 
 /**
@@ -12667,7 +12722,8 @@ export const MacBroadcastAddressFromString: MacBroadcastAddressFromString = netA
   MacAddressFromString,
   NetAddress_.isMacBroadcast,
   "a broadcast address",
-  "MacBroadcastAddressFromString"
+  "MacBroadcastAddressFromString",
+  macBroadcastArbitrary
 )
 
 /**
@@ -12692,7 +12748,8 @@ export const IpLoopbackAddress: IpLoopbackAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isLoopback,
   "a loopback address",
-  "IpLoopbackAddress"
+  "IpLoopbackAddress",
+  ipLoopbackArbitrary
 )
 
 /**
@@ -12719,7 +12776,8 @@ export const IpLoopbackAddressFromString: IpLoopbackAddressFromString = netAddre
   IpAddressFromString,
   NetAddress_.isLoopback,
   "a loopback address",
-  "IpLoopbackAddressFromString"
+  "IpLoopbackAddressFromString",
+  ipLoopbackArbitrary
 )
 
 /**
@@ -12744,7 +12802,8 @@ export const IpLinkLocalAddress: IpLinkLocalAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isLinkLocal,
   "a link-local address",
-  "IpLinkLocalAddress"
+  "IpLinkLocalAddress",
+  ipLinkLocalArbitrary
 )
 
 /**
@@ -12771,7 +12830,8 @@ export const IpLinkLocalAddressFromString: IpLinkLocalAddressFromString = netAdd
   IpAddressFromString,
   NetAddress_.isLinkLocal,
   "a link-local address",
-  "IpLinkLocalAddressFromString"
+  "IpLinkLocalAddressFromString",
+  ipLinkLocalArbitrary
 )
 
 /**
@@ -12796,7 +12856,8 @@ export const IpUnspecifiedAddress: IpUnspecifiedAddress = netAddressRefinement(
   IpAddress,
   NetAddress_.isUnspecified,
   "an unspecified address",
-  "IpUnspecifiedAddress"
+  "IpUnspecifiedAddress",
+  ipUnspecifiedArbitrary
 )
 
 /**
@@ -12823,7 +12884,8 @@ export const IpUnspecifiedAddressFromString: IpUnspecifiedAddressFromString = ne
   IpAddressFromString,
   NetAddress_.isUnspecified,
   "an unspecified address",
-  "IpUnspecifiedAddressFromString"
+  "IpUnspecifiedAddressFromString",
+  ipUnspecifiedArbitrary
 )
 
 /**
@@ -12848,7 +12910,8 @@ export const Ipv4PrivateAddress: Ipv4PrivateAddress = netAddressRefinement(
   Ipv4Address,
   NetAddress_.isPrivate,
   "a private address",
-  "Ipv4PrivateAddress"
+  "Ipv4PrivateAddress",
+  ipv4PrivateArbitrary
 )
 
 /**
@@ -12875,7 +12938,8 @@ export const Ipv4PrivateAddressFromString: Ipv4PrivateAddressFromString = netAdd
   Ipv4AddressFromString,
   NetAddress_.isPrivate,
   "a private address",
-  "Ipv4PrivateAddressFromString"
+  "Ipv4PrivateAddressFromString",
+  ipv4PrivateArbitrary
 )
 
 /**
@@ -12902,7 +12966,8 @@ export const Ipv6UniqueLocalAddress: Ipv6UniqueLocalAddress = netAddressRefineme
   Ipv6Address,
   NetAddress_.isUniqueLocal,
   "a unique-local address",
-  "Ipv6UniqueLocalAddress"
+  "Ipv6UniqueLocalAddress",
+  ipv6UniqueLocalArbitrary
 )
 
 /**
@@ -12929,7 +12994,8 @@ export const Ipv6UniqueLocalAddressFromString: Ipv6UniqueLocalAddressFromString 
   Ipv6AddressFromString,
   NetAddress_.isUniqueLocal,
   "a unique-local address",
-  "Ipv6UniqueLocalAddressFromString"
+  "Ipv6UniqueLocalAddressFromString",
+  ipv6UniqueLocalArbitrary
 )
 
 /**
@@ -12956,7 +13022,8 @@ export const MacLocallyAdministeredAddress: MacLocallyAdministeredAddress = netA
   MacAddress,
   NetAddress_.isMacLocallyAdministered,
   "a locally administered address",
-  "MacLocallyAdministeredAddress"
+  "MacLocallyAdministeredAddress",
+  macLocallyAdministeredArbitrary
 )
 
 /**
@@ -12983,7 +13050,8 @@ export const MacLocallyAdministeredAddressFromString: MacLocallyAdministeredAddr
   MacAddressFromString,
   NetAddress_.isMacLocallyAdministered,
   "a locally administered address",
-  "MacLocallyAdministeredAddressFromString"
+  "MacLocallyAdministeredAddressFromString",
+  macLocallyAdministeredArbitrary
 )
 
 /**
@@ -13010,7 +13078,8 @@ export const MacUniversallyAdministeredAddress: MacUniversallyAdministeredAddres
   MacAddress,
   NetAddress_.isMacUniversallyAdministered,
   "a universally administered address",
-  "MacUniversallyAdministeredAddress"
+  "MacUniversallyAdministeredAddress",
+  macUniversallyAdministeredArbitrary
 )
 
 /**
@@ -13038,7 +13107,8 @@ export const MacUniversallyAdministeredAddressFromString: MacUniversallyAdminist
     MacAddressFromString,
     NetAddress_.isMacUniversallyAdministered,
     "a universally administered address",
-    "MacUniversallyAdministeredAddressFromString"
+    "MacUniversallyAdministeredAddressFromString",
+    macUniversallyAdministeredArbitrary
   )
 
 /**
@@ -13074,7 +13144,7 @@ export const Ipv4Interface: Ipv4Interface = declare(IpInterface_.isIpv4Interface
     id: "effect/schema/Ipv4Interface",
     payload: null
   },
-  toCode: netToCode("Ipv4Interface", "IpInterface"),
+  toCode: netToCode("Ipv4Interface"),
   toCodecArbitrary: () =>
     linkDecoding<IpInterface_.Ipv4Interface>()(
       Tuple([Ipv4Address, netPrefixLengthArbitrary(32)]),
@@ -13141,7 +13211,7 @@ export const Ipv6Interface: Ipv6Interface = declare(IpInterface_.isIpv6Interface
     id: "effect/schema/Ipv6Interface",
     payload: null
   },
-  toCode: netToCode("Ipv6Interface", "IpInterface"),
+  toCode: netToCode("Ipv6Interface"),
   toCodecArbitrary: () =>
     linkDecoding<IpInterface_.Ipv6Interface>()(
       Tuple([Ipv6Address, netPrefixLengthArbitrary(128)]),
@@ -13208,7 +13278,7 @@ export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
     id: "effect/schema/IpInterface",
     payload: null
   },
-  toCode: netToCode("IpInterface", "IpInterface"),
+  toCode: netToCode("IpInterface"),
   toCodecArbitrary: () =>
     linkDecoding<IpInterface_.IpInterface>()(
       Union([Ipv4Interface, Ipv6Interface]),
@@ -13279,7 +13349,7 @@ export const Ipv4Network: Ipv4Network = declare(IpNetwork_.isIpv4Network, {
     id: "effect/schema/Ipv4Network",
     payload: null
   },
-  toCode: netToCode("Ipv4Network", "IpNetwork"),
+  toCode: netToCode("Ipv4Network"),
   toCodecArbitrary: () =>
     linkDecoding<IpNetwork_.Ipv4Network>()(
       Tuple([Ipv4Address, netPrefixLengthArbitrary(32)]),
@@ -13346,7 +13416,7 @@ export const Ipv6Network: Ipv6Network = declare(IpNetwork_.isIpv6Network, {
     id: "effect/schema/Ipv6Network",
     payload: null
   },
-  toCode: netToCode("Ipv6Network", "IpNetwork"),
+  toCode: netToCode("Ipv6Network"),
   toCodecArbitrary: () =>
     linkDecoding<IpNetwork_.Ipv6Network>()(
       Tuple([Ipv6Address, netPrefixLengthArbitrary(128)]),
@@ -13413,7 +13483,7 @@ export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
     id: "effect/schema/IpNetwork",
     payload: null
   },
-  toCode: netToCode("IpNetwork", "IpNetwork"),
+  toCode: netToCode("IpNetwork"),
   toCodecArbitrary: () =>
     linkDecoding<IpNetwork_.IpNetwork>()(
       Union([Ipv4Network, Ipv6Network]),
@@ -13500,7 +13570,7 @@ export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4,
     id: "effect/schema/InetAddressV4",
     payload: null
   },
-  toCode: netToCode("InetAddressV4", "NetAddress"),
+  toCode: netToCode("InetAddressV4"),
   toCodecArbitrary: () =>
     linkDecoding<NetAddress_.InetAddressV4>()(
       Tuple([Ipv4Address, Port]),
@@ -13543,7 +13613,7 @@ export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6,
     id: "effect/schema/InetAddressV6",
     payload: null
   },
-  toCode: netToCode("InetAddressV6", "NetAddress"),
+  toCode: netToCode("InetAddressV6"),
   toCodecArbitrary: () =>
     linkDecoding<NetAddress_.InetAddressV6>()(
       Tuple([Ipv6Address, Port, Int.check(isBetween({ minimum: 0, maximum: 0xffffffff }))]),
@@ -13589,7 +13659,7 @@ export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
     id: "effect/schema/InetAddress",
     payload: null
   },
-  toCode: netToCode("InetAddress", "NetAddress"),
+  toCode: netToCode("InetAddress"),
   toCodecArbitrary: () =>
     linkDecoding<NetAddress_.InetAddress>()(
       Union([InetAddressV4, InetAddressV6]),
@@ -13661,7 +13731,7 @@ export const UnixPathAddress: UnixPathAddress = declare(NetAddress_.isUnixPathAd
     id: "effect/schema/UnixPathAddress",
     payload: null
   },
-  toCode: netToCode("UnixPathAddress", "NetAddress"),
+  toCode: netToCode("UnixPathAddress"),
   toCodecArbitrary: () =>
     linkDecoding<NetAddress_.UnixPathAddress>()(
       String,
@@ -13748,7 +13818,7 @@ export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress,
     id: "effect/schema/SocketAddress",
     payload: null
   },
-  toCode: netToCode("SocketAddress", "NetAddress"),
+  toCode: netToCode("SocketAddress"),
   toCodecArbitrary: () =>
     linkDecoding<NetAddress_.SocketAddress>()(
       Union([InetAddress, UnixPathAddress]),
@@ -13961,7 +14031,7 @@ export const HostPort: HostPort = declare(Host_.isHostPort, {
     id: "effect/schema/HostPort",
     payload: null
   },
-  toCode: netToCode("HostPort", "Host"),
+  toCode: netToCode("HostPort"),
   toCodecArbitrary: () =>
     linkDecoding<Host_.HostPort>()(
       Tuple([Host, Port]),
