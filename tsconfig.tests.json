@@ -97,6 +97,7 @@
       "@effect/bundle/*": ["./packages/tools/bundle/src/*.ts"],
       "@effect/docgen": ["./packages/tools/docgen/src/index.ts"],
       "@effect/docgen/*": ["./packages/tools/docgen/src/*.ts"],
+      "@effect/docker-codegen/*": ["./packages/tools/docker-codegen/src/*.ts"],
       "@effect/npm-promote": ["./packages/tools/npm-promote/src/NpmPromote.ts"],
       "@effect/npm-promote/*": ["./packages/tools/npm-promote/src/*.ts"],
       "@effect/openapi-generator": ["./packages/tools/openapi-generator/src/index.ts"],
