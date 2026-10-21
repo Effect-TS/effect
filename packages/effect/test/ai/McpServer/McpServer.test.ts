@@ -2860,7 +2860,7 @@ describe("McpServer", () => {
     for (const blockedWrite of ["acknowledgment", "cancellation"] as const) {
       it.effect(`should release the overflowing listener when its ${blockedWrite} write remains blocked`, () =>
         Effect.gen(function*() {
-          const core = yield* McpCore.make
+          const core = yield* McpCore.make()
           const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
           const acknowledgmentStarted = yield* Deferred.make<void>()
           const releaseWrite = yield* Deferred.make<void>()
@@ -2920,7 +2920,7 @@ describe("McpServer", () => {
     it.effect("should terminate only the slow subscription when its pending backlog overflows", () =>
       Effect.gen(function*() {
         const pendingNotificationLimit = 64
-        const core = yield* McpCore.make
+        const core = yield* McpCore.make()
         const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
         const slowAcknowledged = yield* Deferred.make<void>()
         const fastAcknowledged = yield* Deferred.make<void>()

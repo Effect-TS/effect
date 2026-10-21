@@ -302,6 +302,53 @@ const Notes = Layer.unwrap(Effect.gen(function*() {
   and provide each request-level dependency with a test middleware, then call `callTool`,
   `findResource`, `getPromptResult` or `completion` on the service.
 
+### Per-request visibility
+
+`McpServer.visibility` hides registrations per request, for example tools only admins may see. It
+is middleware whose check returns a boolean. A hidden registration is left out of list results, and
+calling, reading, getting or completing it fails as if it was not registered. The check reads
+request-level services from middleware combined outside it:
+
+```typescript
+import { Context, Effect, Layer, Schema } from "effect"
+import { McpServer, Tool, Toolkit } from "effect/ai"
+
+class CurrentUser extends Context.Service<CurrentUser, { readonly isAdmin: boolean }>()("CurrentUser") {}
+
+const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, { headers }) =>
+  Effect.provideService(effect, CurrentUser, { isAdmin: headers["x-role"] === "admin" })
+)
+const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => user.isAdmin))
+
+const PublicTools = Toolkit.make(Tool.make("Search", { success: Schema.String }))
+const AdminTools = Toolkit.make(Tool.make("DeleteUser", { success: Schema.String }))
+
+const Registrations = Layer.mergeAll(
+  McpServer.toolkit(PublicTools).pipe(
+    Layer.provide(PublicTools.toLayer({ Search: () => Effect.succeed("found") }))
+  ),
+  McpServer.toolkit(AdminTools).pipe(
+    Layer.provide(AdminOnly.combine(Auth).layer),
+    Layer.provide(AdminTools.toLayer({ DeleteUser: () => Effect.succeed("deleted") }))
+  )
+)
+```
+
+- Scope a visibility by providing its layer to some registrations only, as above, or branch on the
+  `target` it receives. `McpServer.visibility(check, { global: true })` applies it to every
+  registration.
+- On list requests only the middleware outside the innermost visibility runs, once per request for
+  every registration it wraps, with `targets` instead of `target`. `audit.combine(adminOnly)` keeps
+  `audit` off list requests and `adminOnly.combine(audit)` runs it there. Middleware wrapping no
+  visibility never runs on list requests.
+- A failure of that middleware or of a check fails the whole list request rather than hiding
+  anything. A global visibility makes global middleware such as authentication run on every list
+  request, so make it succeed for anonymous clients if they should still see public registrations.
+- Middleware sees requests for hidden registrations. `EnabledWhen` remains the way to hide
+  registrations by client capabilities without running middleware.
+- `list_changed` notifications are not sent when visibility changes; clients see the change on
+  their next list request.
+
 ## Elicitation requests
 
 Elicitation requests are used to request additional input directly from the user. An elicitation

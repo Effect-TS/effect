@@ -307,7 +307,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
       it.effect("should buffer matching events while the subscription acknowledgment is blocked", () =>
         Effect.gen(function*() {
-          const core = yield* McpCore.make
+          const core = yield* McpCore.make()
           const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
           const released = yield* Deferred.make<void>()
           const acknowledgmentStarted = yield* Deferred.make<void>()
@@ -351,7 +351,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
       it.effect("should release the scoped subscription when a blocked listener is interrupted", () =>
         Effect.gen(function*() {
-          const core = yield* McpCore.make
+          const core = yield* McpCore.make()
           const events = yield* PubSub.unbounded<McpProtocolInternal.CanonicalServerNotification>()
           const released = yield* Deferred.make<void>()
           const waitingForEvent = yield* Deferred.make<void>()

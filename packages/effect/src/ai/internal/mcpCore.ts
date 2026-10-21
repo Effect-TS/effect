@@ -181,12 +181,13 @@ export interface ToolRegistration {
   // `tool.title ?? tool.annotations?.title` at the public boundary.
   readonly descriptor: McpSchema.Tool
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visibility?: unknown
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
+    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
 }
@@ -199,8 +200,13 @@ export interface Tools {
     registration: ToolRegistration
   ) => Effect.Effect<void>
   readonly list: (
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
+  // Skips request-level visibility checks.
+  readonly find: (
+    name: string,
     profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>>
+  ) => McpSchema.Tool | undefined
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
@@ -213,9 +219,10 @@ export interface Tools {
 export interface ResourceRegistration {
   readonly descriptor: McpSchema.Resource
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visibility?: unknown
   readonly read: (
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InternalError | RequestRejected>
+  ) => Effect.Effect<McpSchema.ReadResourceResult, ResourceNotFound | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -224,6 +231,7 @@ export interface ResourceRegistration {
 export interface ResourceTemplateRegistration {
   readonly descriptor: McpSchema.ResourceTemplate
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visibility?: unknown
   readonly match: (uri: string) => ReadonlyArray<string> | undefined
   readonly read: (
     uri: string,
@@ -231,7 +239,7 @@ export interface ResourceTemplateRegistration {
     invocation: McpInvocation
   ) => Effect.Effect<
     McpSchema.ReadResourceResult,
-    McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -242,11 +250,11 @@ export interface Resources {
   readonly register: (registration: ResourceRegistration) => Effect.Effect<void>
   readonly registerTemplate: (registration: ResourceTemplateRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, RequestRejected>
   readonly listTemplates: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.ResourceTemplate>, RequestRejected>
   readonly read: (
     uri: string,
     invocation: McpInvocation
@@ -269,12 +277,13 @@ export class PromptNotFound extends Data.TaggedError("PromptNotFound")<{
 export interface PromptRegistration {
   readonly descriptor: McpSchema.Prompt
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visibility?: unknown
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.GetPromptResult>,
-    McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -284,8 +293,8 @@ export interface PromptRegistration {
 export interface Prompts {
   readonly register: (registration: PromptRegistration) => Effect.Effect<void>
   readonly list: (
-    profile: NegotiatedProtocolProfile<string>
-  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>>
+    invocation: McpInvocation
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, RequestRejected>
   readonly get: (
     name: string,
     args: Readonly<Record<string, string>>,
@@ -424,143 +433,185 @@ export interface McpCore {
 /**
  * @internal
  */
-export const make: Effect.Effect<McpCore> = Effect.sync(() => {
-  const registrations = new Map<string, ToolRegistration>()
-  const resourceRegistrations: Array<ResourceRegistration> = []
-  const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
-  const promptRegistrations = new Map<string, PromptRegistration>()
-  const completionRegistrations = new Map<
-    string,
-    (
-      request: CompletionRequest,
-      invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
-  >()
+export type ListMethod = "tools/list" | "resources/list" | "resources/templates/list" | "prompts/list"
 
-  const tools: Tools = {
-    register: (registration) =>
-      Effect.sync(() => {
-        registrations.set(registration.descriptor.name, registration)
-      }),
-    list: (profile) =>
-      Effect.sync(() => {
-        const descriptors: Array<McpSchema.Tool> = []
-        for (const registration of registrations.values()) {
-          if (registration.isVisible(profile)) {
-            descriptors.push(registration.descriptor)
+/**
+ * @internal
+ */
+export interface ListEntry {
+  readonly target: string
+  readonly visibility: unknown
+}
+
+/**
+ * Runs the request-level visibility checks for the entries of a list request
+ * that passed `isVisible`. The result is aligned with `entries`.
+ *
+ * @internal
+ */
+export type FilterVisible = (
+  method: ListMethod,
+  entries: ReadonlyArray<ListEntry>,
+  invocation: McpInvocation
+) => Effect.Effect<ReadonlyArray<boolean>, RequestRejected>
+
+/**
+ * @internal
+ */
+export const make = (filterVisible?: FilterVisible | undefined): Effect.Effect<McpCore> =>
+  Effect.sync(() => {
+    const registrations = new Map<string, ToolRegistration>()
+    const resourceRegistrations: Array<ResourceRegistration> = []
+    const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
+    const promptRegistrations = new Map<string, PromptRegistration>()
+    const completionRegistrations = new Map<
+      string,
+      (
+        request: CompletionRequest,
+        invocation: McpInvocation
+      ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
+    >()
+
+    const filterList = <
+      D,
+      R extends {
+        readonly descriptor: D
+        readonly isVisible: ToolRegistration["isVisible"]
+        readonly visibility?: unknown
+      }
+    >(
+      method: ListMethod,
+      registrations: Iterable<R>,
+      target: (registration: R) => string,
+      invocation: McpInvocation
+    ): Effect.Effect<ReadonlyArray<D>, RequestRejected> => {
+      const candidates = Arr.filter(registrations, (entry) => entry.isVisible(invocation.protocol))
+      if (filterVisible === undefined || candidates.length === 0) {
+        return Effect.succeed(candidates.map((entry) => entry.descriptor))
+      }
+      return Effect.map(
+        filterVisible(
+          method,
+          candidates.map((entry) => ({ target: target(entry), visibility: entry.visibility })),
+          invocation
+        ),
+        (visible) => candidates.flatMap((entry, index) => visible[index] ? [entry.descriptor] : [])
+      )
+    }
+
+    const tools: Tools = {
+      register: (registration) =>
+        Effect.sync(() => {
+          registrations.set(registration.descriptor.name, registration)
+        }),
+      list: (invocation) =>
+        filterList("tools/list", registrations.values(), (entry) => entry.descriptor.name, invocation),
+      find: (name, profile) => {
+        const registration = registrations.get(name)
+        return registration !== undefined && registration.isVisible(profile) ? registration.descriptor : undefined
+      },
+      call: (call, invocation) =>
+        Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
+          const registration = registrations.get(call.name)
+          if (registration === undefined) {
+            return new ToolNotFound({ name: call.name })
+          }
+          if (!registration.isVisible(invocation.protocol)) {
+            return new ToolNotFound({ name: call.name })
+          }
+          return registration.handle(call, invocation)
+        })
+    }
+
+    const resources: Resources = {
+      register: (registration) =>
+        Effect.sync(() => {
+          const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
+          if (index === -1) {
+            resourceRegistrations.push(registration)
+          } else {
+            resourceRegistrations[index] = registration
+          }
+        }),
+      registerTemplate: (registration) =>
+        Effect.sync(() => {
+          const index = resourceTemplateRegistrations.findIndex(
+            (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
+          )
+          if (index === -1) {
+            resourceTemplateRegistrations.push(registration)
+          } else {
+            resourceTemplateRegistrations[index] = registration
+          }
+        }),
+      list: (invocation) =>
+        filterList("resources/list", resourceRegistrations, (entry) => entry.descriptor.uri, invocation),
+      listTemplates: (invocation) =>
+        filterList(
+          "resources/templates/list",
+          resourceTemplateRegistrations,
+          (entry) => entry.descriptor.uriTemplate,
+          invocation
+        ),
+      read: Effect.fnUntraced(function*(uri, invocation) {
+        const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
+        if (resource !== undefined && resource.isVisible(invocation.protocol)) {
+          return yield* resource.read(invocation)
+        }
+        for (const template of resourceTemplateRegistrations) {
+          const params = template.match(uri)
+          if (params !== undefined && template.isVisible(invocation.protocol)) {
+            return yield* template.read(uri, params, invocation)
           }
         }
-        return descriptors
-      }),
-    call: (call, invocation) =>
-      Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
-        const registration = registrations.get(call.name)
-        if (registration === undefined) {
-          return new ToolNotFound({ name: call.name })
-        }
-        if (!registration.isVisible(invocation.protocol)) {
-          return new ToolNotFound({ name: call.name })
-        }
-        return registration.handle(call, invocation)
+        return yield* new ResourceNotFound({ uri })
       })
-  }
+    }
 
-  const resources: Resources = {
-    register: (registration) =>
-      Effect.sync(() => {
-        const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
-        if (index === -1) {
-          resourceRegistrations.push(registration)
-        } else {
-          resourceRegistrations[index] = registration
+    const prompts: Prompts = {
+      register: (registration) =>
+        Effect.sync(() => {
+          promptRegistrations.set(registration.descriptor.name, registration)
+        }),
+      list: (invocation) =>
+        filterList("prompts/list", promptRegistrations.values(), (entry) => entry.descriptor.name, invocation),
+      get: Effect.fnUntraced(function*(name, args, invocation) {
+        const registration = promptRegistrations.get(name)
+        if (registration === undefined || !registration.isVisible(invocation.protocol)) {
+          return yield* new PromptNotFound({ name })
         }
-      }),
-    registerTemplate: (registration) =>
-      Effect.sync(() => {
-        const index = resourceTemplateRegistrations.findIndex(
-          (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
-        )
-        if (index === -1) {
-          resourceTemplateRegistrations.push(registration)
-        } else {
-          resourceTemplateRegistrations[index] = registration
+        return yield* registration.get(args, invocation)
+      })
+    }
+
+    const completions: Completions = {
+      register: (key, complete) =>
+        Effect.sync(() => {
+          completionRegistrations.set(key, complete)
+        }),
+      complete: Effect.fnUntraced(function*(request, invocation) {
+        const key = request.reference.type === "prompt"
+          ? `prompt/${request.reference.name}/${request.argument.name}`
+          : `resource/${request.reference.uriTemplate}/${request.argument.name}`
+        const complete = completionRegistrations.get(key)
+        if (complete === undefined) {
+          return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
         }
-      }),
-    list: (profile) =>
-      Effect.sync(() =>
-        resourceRegistrations
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
-    listTemplates: (profile) =>
-      Effect.sync(() =>
-        resourceTemplateRegistrations
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
-    read: Effect.fnUntraced(function*(uri, invocation) {
-      const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
-      if (resource !== undefined && resource.isVisible(invocation.protocol)) {
-        return yield* resource.read(invocation)
-      }
-      for (const template of resourceTemplateRegistrations) {
-        const params = template.match(uri)
-        if (params !== undefined && template.isVisible(invocation.protocol)) {
-          return yield* template.read(uri, params, invocation)
+        const result = yield* complete(request, invocation)
+        const values = Arr.take(result.values, 100)
+        return {
+          ...result,
+          values,
+          hasMore: result.hasMore === true || values.length < result.values.length
         }
-      }
-      return yield* new ResourceNotFound({ uri })
-    })
-  }
+      })
+    }
 
-  const prompts: Prompts = {
-    register: (registration) =>
-      Effect.sync(() => {
-        promptRegistrations.set(registration.descriptor.name, registration)
-      }),
-    list: (profile) =>
-      Effect.sync(() =>
-        Array.from(promptRegistrations.values())
-          .filter((entry) => entry.isVisible(profile))
-          .map((entry) => entry.descriptor)
-      ),
-    get: Effect.fnUntraced(function*(name, args, invocation) {
-      const registration = promptRegistrations.get(name)
-      if (registration === undefined || !registration.isVisible(invocation.protocol)) {
-        return yield* new PromptNotFound({ name })
-      }
-      return yield* registration.get(args, invocation)
-    })
-  }
+    const registrationPresence = Effect.sync(() => ({
+      tools: registrations.size > 0,
+      resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
+      prompts: promptRegistrations.size > 0
+    }))
 
-  const completions: Completions = {
-    register: (key, complete) =>
-      Effect.sync(() => {
-        completionRegistrations.set(key, complete)
-      }),
-    complete: Effect.fnUntraced(function*(request, invocation) {
-      const key = request.reference.type === "prompt"
-        ? `prompt/${request.reference.name}/${request.argument.name}`
-        : `resource/${request.reference.uriTemplate}/${request.argument.name}`
-      const complete = completionRegistrations.get(key)
-      if (complete === undefined) {
-        return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
-      }
-      const result = yield* complete(request, invocation)
-      const values = Arr.take(result.values, 100)
-      return {
-        ...result,
-        values,
-        hasMore: result.hasMore === true || values.length < result.values.length
-      }
-    })
-  }
-
-  const registrationPresence = Effect.sync(() => ({
-    tools: registrations.size > 0,
-    resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
-    prompts: promptRegistrations.size > 0
-  }))
-
-  return { tools, resources, prompts, completions, registrationPresence }
-})
+    return { tools, resources, prompts, completions, registrationPresence }
+  })
