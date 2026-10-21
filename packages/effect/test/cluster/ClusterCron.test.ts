@@ -1,8 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Cron, Effect, Layer } from "effect"
+import { Cron, DateTime, Effect, Layer, PrimaryKey, Schema } from "effect"
 import {
   ClusterCron,
   ClusterError,
+  ClusterSchema,
+  DeliverAt,
   Entity,
   MessageStorage,
   RunnerHealth,
@@ -15,24 +17,38 @@ import { Rpc } from "effect/rpc"
 import { TestClock } from "effect/testing"
 
 // Each deploy is a fresh Sharding instance over the same message storage
-const deploy = (entities: Layer.Layer<never, never, Sharding.Sharding>, millis: number) =>
-  Effect.gen(function*() {
-    const driver = yield* MessageStorage.MemoryDriver
-    yield* Layer.build(entities.pipe(
-      Layer.provideMerge(Sharding.layer),
-      Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop, Runners.layerNoop]),
-      Layer.provide(Layer.succeed(MessageStorage.MessageStorage, driver.storage)),
-      Layer.provide(ShardingConfig.layer({
-        entityRegistrationTimeout: 1000,
-        entityTerminationTimeout: 0,
-        entityMessagePollInterval: 100,
-        refreshAssignmentsInterval: 0
-      }))
-    ))
-    for (let i = 0; i < millis / 100; i++) {
-      yield* TestClock.adjust(100)
-    }
-  }).pipe(Effect.scoped)
+const deploy = Effect.fnUntraced(function*(entities: Layer.Layer<never, never, Sharding.Sharding>, millis: number) {
+  const driver = yield* MessageStorage.MemoryDriver
+  yield* Layer.build(entities.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop, Runners.layerNoop]),
+    Layer.provide(Layer.succeed(MessageStorage.MessageStorage, driver.storage)),
+    Layer.provide(ShardingConfig.layer({
+      entityRegistrationTimeout: 1000,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 100,
+      refreshAssignmentsInterval: 0
+    }))
+  ))
+  for (let i = 0; i < millis / 100; i++) {
+    yield* TestClock.adjust(100)
+  }
+}, Effect.scoped)
+
+class LegacyCronPayload extends Schema.Class<LegacyCronPayload>("LegacyCronPayload")({
+  dateTime: Schema.DateTimeUtc
+}) {
+  [PrimaryKey.symbol]() {
+    return ""
+  }
+  [DeliverAt.symbol]() {
+    return this.dateTime
+  }
+}
+
+const LegacyCronEntity = Entity.make("ClusterCron/test", [
+  Rpc.make("run", { payload: LegacyCronPayload }).annotate(ClusterSchema.Persisted, true)
+])
 
 describe("ClusterCron", () => {
   it.effect("recovers from a transient failure to schedule the initial run", () => {
@@ -107,14 +123,12 @@ describe("ClusterCron", () => {
         name: "test",
         cron: Cron.parseUnsafe("* * * * * *", "UTC"),
         calculateNextRunFromPrevious: true,
-        execute: Effect.contextWith((context: Context.Context<never>) =>
-          Effect.gen(function*() {
-            scheduled.push(Context.getUnsafe(context, Entity.CurrentAddress).entityId)
-            if (++running > 1) overlapped = true
-            if (slow) yield* Effect.sleep(2000)
-            running--
-          })
-        )
+        execute: Effect.gen(function*() {
+          scheduled.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+          if (++running > 1) overlapped = true
+          if (slow) yield* Effect.sleep(2000)
+          running--
+        })
       })
 
       yield* deploy(cron, 1500)
@@ -124,7 +138,49 @@ describe("ClusterCron", () => {
       scheduled.length = 0
       yield* deploy(cron, 6000)
 
+      assert.isAbove(scheduled.length, 1)
       assert.isFalse(overlapped)
-      assert.deepStrictEqual(scheduled, scheduled.toSorted())
+      assert.deepStrictEqual(scheduled, [...scheduled].sort())
+    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+
+  it.effect("runs each instant once across a legacy pending run and a redeploy", () =>
+    Effect.gen(function*() {
+      const everySecond = Cron.parseUnsafe("* * * * * *", "UTC")
+      const scheduled: Array<string> = []
+      const cron = ClusterCron.make({
+        name: "test",
+        cron: everySecond,
+        calculateNextRunFromPrevious: true,
+        execute: Effect.gen(function*() {
+          scheduled.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+        })
+      })
+      const assertEachInstantOnce = (first: string) => {
+        assert.isAbove(scheduled.length, 1)
+        assert.strictEqual(scheduled[0], first)
+        for (let i = 1; i < scheduled.length; i++) {
+          assert.strictEqual(
+            scheduled[i],
+            DateTime.formatIso(DateTime.fromDateUnsafe(Cron.next(everySecond, scheduled[i - 1])))
+          )
+        }
+      }
+
+      // a pending run written by an earlier release, at a per-instant address with an empty primary key
+      const legacy = DateTime.fromDateUnsafe(Cron.next(everySecond, yield* DateTime.now))
+      yield* deploy(
+        Layer.effectDiscard(Effect.gen(function*() {
+          const client = yield* LegacyCronEntity.client
+          yield* client(DateTime.formatIso(legacy)).run({ dateTime: legacy }, { discard: true }).pipe(Effect.orDie)
+        })),
+        0
+      )
+
+      yield* deploy(cron, 2500)
+      assertEachInstantOnce(DateTime.formatIso(legacy))
+
+      // redeploy while the chain has a healthy pending run
+      yield* deploy(cron, 2500)
+      assertEachInstantOnce(DateTime.formatIso(legacy))
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 })

@@ -17,13 +17,12 @@ const addressString = (address: { readonly host: string; readonly port: number }
 const recordTick = (ticks: Array<Tick>) =>
   Effect.contextWith((context: Context.Context<never>) =>
     Effect.gen(function*() {
-      const address = Context.getUnsafe(context, Entity.CurrentAddress)
       const runner = Context.getUnsafe(context, Entity.CurrentRunnerAddress)
       const at = yield* Clock.currentTimeMillis
       const tick = {
         at,
         runner: addressString(runner),
-        scheduled: String(address.entityId)
+        scheduled: DateTime.formatIso(Context.getUnsafe(context, ClusterCron.CurrentScheduledTime))
       }
       const isFirst = ticks.length === 0
       ticks.push(tick)
