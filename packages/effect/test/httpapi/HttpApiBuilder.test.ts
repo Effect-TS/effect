@@ -344,7 +344,7 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
       assert.strictEqual(yield* client.operations.wait({ params: { id: "op_1" } }), "op_1")
     }))
 
-  it.effect("round trips a path parameter with a regex constraint", () =>
+  it.effect("round trips path parameters with regex constraints", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("users").add(
@@ -352,7 +352,7 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
             params: { id: Schema.NumberFromString },
             success: Schema.Number
           }),
-          HttpApiEndpoint.get("preview", "/users/:id(\\d+)preview", {
+          HttpApiEndpoint.get("preview", "/previews/:id(^(?:\\d)+)preview", {
             params: { id: Schema.NumberFromString },
             success: Schema.Number
           })
