@@ -16,6 +16,7 @@
 import * as Arr from "./Array.ts"
 import * as BigDecimal_ from "./BigDecimal.ts"
 import type * as Brand from "./Brand.ts"
+import * as BytePath_ from "./BytePath.ts"
 import * as ByteSize_ from "./ByteSize.ts"
 import * as Cause_ from "./Cause.ts"
 import * as Chunk_ from "./Chunk.ts"
@@ -10632,6 +10633,78 @@ export const Uint8Array: Uint8Array = instanceOf(globalThis.Uint8Array<ArrayBuff
       SchemaTransformation.uint8ArrayFromBase64String
     )
 })
+const bytePathFromBytes = SchemaTransformation.transformEffect({
+  decode: (input: globalThis.Uint8Array, options) => {
+    const result = BytePath_.fromBytes(input)
+    return Result_.isSuccess(result)
+      ? Effect.succeed(result.success)
+      : Effect.fail(
+        new SchemaIssue.InvalidValue({ message: result.failure.message, cause: result.failure }, input, options)
+      )
+  },
+  encode: (value: BytePath_.BytePath) => Effect.succeed(BytePath_.toBytes(value))
+})
+
+/**
+ * Type-level representation of {@link BytePath}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface BytePath extends declare<BytePath_.BytePath> {
+  readonly "Rebuild": BytePath
+}
+
+/**
+ * Schema for genuine immutable POSIX byte-path values. Its derived JSON codec
+ * uses Base64 and preserves arbitrary bytes, including invalid UTF-8.
+ *
+ * @see {@link BytePathFromBytes} for constructing paths from byte arrays
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const BytePath: BytePath = declare(BytePath_.isBytePath, {
+  identifier: "BytePath",
+  representation: {
+    id: "effect/schema/BytePath",
+    payload: null
+  },
+  toCode: () => ({
+    runtime: `Schema.BytePath`,
+    Type: `BytePath.BytePath`,
+    importDeclarations: [`import * as BytePath from "effect/BytePath"`]
+  }),
+  toCodecJson: () => link<BytePath_.BytePath>()(Uint8Array, bytePathFromBytes),
+  toEquivalence: () => Equal.equals
+})
+
+/**
+ * Type-level representation of {@link BytePathFromBytes}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface BytePathFromBytes extends decodeTo<BytePath, Uint8Array> {
+  readonly "Rebuild": BytePathFromBytes
+}
+
+/**
+ * Schema for byte paths encoded as Uint8Arrays, with copying on decode and
+ * encode. Accepts same-realm arrays and rejects NUL, shared buffers, detached
+ * buffers and out-of-bounds views. Its derived JSON codec uses Base64.
+ *
+ * @see {@link BytePath} for validating already-constructed values
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const BytePathFromBytes: BytePathFromBytes = Uint8Array.pipe(
+  decodeTo(BytePath, bytePathFromBytes)
+).annotate({ identifier: "BytePathFromBytes" })
+
 /**
  * Type-level representation of {@link Uint8ArrayFromBase64}.
  *

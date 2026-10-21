@@ -82,6 +82,12 @@ export * as Brand from "./Brand.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.0
+ */
+export * as BytePath from "./BytePath.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.6
  */
 export * as Bytes from "./Bytes.ts"
