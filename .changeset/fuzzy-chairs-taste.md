@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-Document that `HttpClient.followRedirects` requires `redirect: "manual"` in `FetchHttpClient.RequestInit` when used with `FetchHttpClient`.
+Document that `HttpClient.followRedirects` only sees redirects from `FetchHttpClient` when `FetchHttpClient.RequestInit` sets `redirect: "manual"`.

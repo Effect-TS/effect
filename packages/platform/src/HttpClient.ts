@@ -621,10 +621,10 @@ export const withCookiesRef: {
 /**
  * Follows HTTP redirects up to `maxRedirects` times (default `10`).
  *
- * `FetchHttpClient` lets `fetch` follow redirects by default, so they never
- * reach this decorator. Provide `FetchHttpClient.RequestInit` with
- * `{ redirect: "manual" }` to handle them here. In browsers, manual redirects
- * are opaque responses and cannot be followed.
+ * `FetchHttpClient` lets `fetch` follow redirects itself, so none reach this
+ * client. To handle them here, provide `FetchHttpClient.RequestInit` with
+ * `{ redirect: "manual" }`. Browsers return opaque responses for manual
+ * redirects, so they cannot be followed there.
  *
  * @since 1.0.0
  * @category redirects
