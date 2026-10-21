@@ -494,6 +494,7 @@ const fiberIdStore = { id: 0 }
 
 interface AsyncContext {
   runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
+  emitDestroy(): void
 }
 
 const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
@@ -613,7 +614,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
-      return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      try {
+        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      } finally {
+        // Each captured context is resumed once, so release it for async_hooks
+        // consumers like vitest's detectAsyncLeaks.
+        asyncContext.emitDestroy()
+      }
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
@@ -4488,6 +4495,7 @@ const infiniteTTL = constant(Infinity)
 interface CachedRun<A, E> {
   readonly fiber: FiberImpl<A, E>
   awaiters: number
+  done: boolean
 }
 
 const makeCachedUnsafe = <A, E, R>(
@@ -4501,10 +4509,10 @@ const makeCachedUnsafe = <A, E, R>(
   const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
     run.awaiters++
     onExitUnsafe(fiber, () => {
-      // Abandon the run once every caller has left, unless it already finished.
-      if (--run.awaiters > 0 || current !== run) return
+      // Abandon the run once every caller has left, unless its source already finished.
+      if (--run.awaiters > 0 || run.done) return
       // Detach before interruption so new callers start a fresh run.
-      current = undefined
+      if (current === run) current = undefined
       return fiberInterrupt(run.fiber)
     })
     return fiberJoin(run.fiber)
@@ -4524,13 +4532,14 @@ const makeCachedUnsafe = <A, E, R>(
       }
       exit = undefined
       const clock = fiber.getRef(ClockRef)
-      const run: CachedRun<A, E> = { fiber: new FiberImpl(fiber.context), awaiters: 0 }
+      const run: CachedRun<A, E> = { fiber: new FiberImpl(fiber.context), awaiters: 0, done: false }
       current = run
       // Join before evaluating, which may synchronously re-enter and interrupt other awaiters.
       const joined = join(fiber, run)
       run.fiber.evaluate(
         onExitPrimitive(self, (exit_) => {
-          // An abandoned run must not overwrite or clear a replacement run.
+          run.done = true
+          // A detached run must not publish its result or clear a replacement run.
           if (current !== run) return
           current = undefined
           // Interruption is abandonment, so it is never cached.
@@ -4543,6 +4552,8 @@ const makeCachedUnsafe = <A, E, R>(
       return run.fiber._exit ?? joined
     }),
     sync(() => {
+      // Existing callers keep the in-flight run; new callers start a fresh one.
+      current = undefined
       exit = undefined
     })
   ]

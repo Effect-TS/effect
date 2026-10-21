@@ -30,7 +30,7 @@ import {
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
-import { AsyncLocalStorage } from "node:async_hooks"
+import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
@@ -1568,6 +1568,24 @@ describe("Effect", () => {
       }))
   }
 
+  describe("schedule", () => {
+    it.effect("schedule and scheduleFrom preserve source Done failures", () =>
+      Effect.gen(function*() {
+        const source = Cause.done(42)
+        const policy = Schedule.recurs(3)
+        assert.deepStrictEqual(yield* Effect.exit(Effect.schedule(source, policy)), Exit.fail(Cause.Done(42)))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.scheduleFrom(source, 0, policy)), Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("returns the schedule output without running the source after completion", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const result = yield* Effect.scheduleFrom(Effect.sync(() => ++n), 0, Schedule.recurs(3))
+        assert.strictEqual(result, 3)
+        assert.strictEqual(n, 3)
+      }))
+  })
+
   describe("repeat", () => {
     it.effect("preserves finalizer defects accompanying schedule completion", () =>
       Effect.gen(function*() {
@@ -1576,6 +1594,25 @@ describe("Effect", () => {
         )
         const exit = yield* Effect.exit(Effect.repeat(Effect.void, policy))
         assert.deepStrictEqual(exit, Exit.die("cleanup failed"))
+      }))
+
+    it.effect("fails with a Done raised by the repeated effect", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(Effect.repeat(Cause.done(42), Schedule.recurs(3)))
+        assert.deepStrictEqual(exit, Exit.fail(Cause.Done(42)))
+      }))
+
+    it.effect("repeatOrElse passes source Done failures and iteration metadata to orElse", () =>
+      Effect.gen(function*() {
+        let n = 0
+        const effect = Effect.suspend(() => ++n < 3 ? Effect.succeed(n) : Cause.done(42))
+        const result = yield* Effect.repeatOrElse(effect, Schedule.recurs(10), (error, meta) => {
+          assert.deepStrictEqual(error, Cause.Done(42))
+          assert.deepStrictEqual(Option.map(meta, (meta) => meta.attempt), Option.some(2))
+          return Effect.succeed(-1)
+        })
+        assert.strictEqual(result, -1)
+        assert.strictEqual(n, 3)
       }))
 
     it.effect("is interruptible", () =>
@@ -5075,6 +5112,57 @@ describe("Effect", () => {
         assert.strictEqual(yield* cached, 3)
         assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
       }))
+
+    it.effect("keeps existing callers on the invalidated run without letting it replace the new value", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const release = yield* Deferred.make<void>()
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.gen(function*() {
+            const run = ++runs
+            if (run === 1) yield* Deferred.await(release)
+            return run
+          }),
+          "1 hour"
+        )
+
+        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 1)
+        yield* invalidate
+        const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 2)
+        assert.strictEqual(yield* Fiber.join(fresh), 2)
+        yield* Deferred.succeed(release, void 0)
+        assert.strictEqual(yield* Fiber.join(owner), 1)
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(runs, 2)
+      }))
+
+    it.effect("interrupts an invalidated run when its last caller is interrupted", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const interrupted: Array<number> = []
+        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+          Effect.suspend(() => {
+            const run = ++runs
+            return Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupted.push(run))))
+          }),
+          "1 hour"
+        )
+
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* invalidate
+        const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        assert.deepStrictEqual(interrupted, [1])
+
+        const third = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(runs, 2)
+        yield* Fiber.interrupt(second)
+        assert.deepStrictEqual(interrupted, [1])
+        yield* Fiber.interrupt(third)
+        assert.deepStrictEqual(interrupted, [1, 2])
+      }))
   })
 
   describe("updateServiceScoped", () => {
@@ -5249,5 +5337,46 @@ describe("Effect", () => {
         })
       })
     }
+
+    it("does not leave async resources open after the effect completes", async () => {
+      // Mirrors vitest's detectAsyncLeaks: track every resource descended from a root scope
+      // and report the ones that are still pending once the effect has completed.
+      const root = new AsyncResource("test-root")
+      const tracked = new Set([root.asyncId()])
+      const pending = new Map<number, { type: string; resource: any }>()
+      let tracking = true
+      const hook = createHook({
+        init(asyncId, type, triggerAsyncId, resource) {
+          if (!tracking || !tracked.has(triggerAsyncId)) return
+          tracked.add(asyncId)
+          pending.set(asyncId, { type, resource })
+        },
+        destroy(asyncId) {
+          if (pending.get(asyncId)?.type !== "PROMISE") pending.delete(asyncId)
+        },
+        promiseResolve(asyncId) {
+          pending.delete(asyncId)
+        }
+      })
+      hook.enable()
+      try {
+        await root.runInAsyncScope(() =>
+          Effect.runPromise(Effect.gen(function*() {
+            yield* Effect.yieldNow
+            const fiber = yield* Effect.forkChild(Effect.yieldNow)
+            yield* Fiber.join(fiber)
+          }))
+        )
+        tracking = false
+        await new Promise((resolve) => setImmediate(resolve))
+      } finally {
+        hook.disable()
+        root.emitDestroy()
+      }
+      const leaks = Array.from(pending.values())
+        .filter(({ resource }) => !("hasRef" in resource) || resource.hasRef())
+        .map(({ type }) => type)
+      assert.deepStrictEqual(leaks, [])
+    })
   })
 })

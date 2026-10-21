@@ -152,6 +152,12 @@ export type ParsedOperationMediaTypeSchema =
     readonly schema?: undefined
     readonly effectStream: "uint8array"
   }
+  | {
+    readonly contentType: string
+    readonly encoding: "json"
+    readonly schema: string
+    readonly effectStream: "ndjson"
+  }
 
 /**
  * Parsed response metadata together with generated schema references.

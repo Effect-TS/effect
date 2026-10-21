@@ -7133,16 +7133,21 @@ export function isULID(annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isBase64(annotations?: Annotations.Filter) {
-  const regExp = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/
-  return isPattern(
-    regExp,
+  const pattern = "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$"
+  // `pattern` overflows the V8 stack on large inputs
+  const regExp = /^[0-9a-zA-Z+/]*={0,2}$/
+  return makeFilter(
+    (s: string) => s.length % 4 === 0 && regExp.test(s),
     {
       expected: "a base64 encoded string",
       representation: {
         id: "effect/schema/isBase64",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => ({ pattern }),
+      arbitraryConstraint: {
+        patterns: [{ source: pattern, flags: "" }]
+      },
       toCode: () => ({ runtime: "Schema.isBase64()" }),
       ...annotations
     }
@@ -7169,16 +7174,21 @@ export function isBase64(annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isBase64Url(annotations?: Annotations.Filter) {
-  const regExp = /^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$/
-  return isPattern(
-    regExp,
+  const pattern = "^([0-9a-zA-Z-_]{4})*(([0-9a-zA-Z-_]{2}(==)?)|([0-9a-zA-Z-_]{3}(=)?))?$"
+  // `pattern` overflows the V8 stack on large inputs
+  const regExp = /^[0-9a-zA-Z-_]*={0,2}$/
+  return makeFilter(
+    (s: string) => regExp.test(s) && (s.endsWith("=") ? s.length % 4 === 0 : s.length % 4 !== 1),
     {
       expected: "a base64url encoded string",
       representation: {
         id: "effect/schema/isBase64Url",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => ({ pattern }),
+      arbitraryConstraint: {
+        patterns: [{ source: pattern, flags: "" }]
+      },
       toCode: () => ({ runtime: "Schema.isBase64Url()" }),
       ...annotations
     }

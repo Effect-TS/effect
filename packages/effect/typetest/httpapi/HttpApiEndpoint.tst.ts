@@ -231,6 +231,18 @@ describe("HttpApiEndpoint", () => {
         })
       })
     })
+
+    describe("streaming", () => {
+      it("rejects stream payloads on no-body methods", () => {
+        const payload = HttpApiSchema.StreamUint8Array()
+        expect(HttpApiEndpoint.get).type.not.toBeCallableWith("a", "/a", { payload })
+      })
+
+      it("rejects StreamSse as a payload", () => {
+        const payload = HttpApiSchema.StreamSse({ data: Schema.String })
+        expect(HttpApiEndpoint.post).type.not.toBeCallableWith("a", "/a", { payload })
+      })
+    })
   })
 
   describe("disableCodecs", () => {

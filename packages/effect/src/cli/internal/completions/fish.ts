@@ -7,7 +7,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
-import { takesSeparateValue } from "./descriptor.ts"
+import { negatedName, takesSeparateValue } from "./descriptor.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,8 +62,9 @@ const flagContainsOptCondition = (flag: Completions.FlagDescriptor): string => {
       optArgs.push(alias)
     }
   }
-  if (flag.type._tag === "Boolean") {
-    optArgs.push(`no-${flag.name}`)
+  const negation = negatedName(flag)
+  if (negation !== undefined) {
+    optArgs.push(negation)
   }
   return `not __fish_contains_opt ${optArgs.join(" ")}`
 }
@@ -170,10 +171,11 @@ const generateCompletions = (
     lines.push(parts.join(" "))
 
     // Boolean negation
-    if (flag.type._tag === "Boolean") {
+    const negation = negatedName(flag)
+    if (negation !== undefined) {
       const negParts = [`complete -c ${executableName}`]
       if (flagCondArg) negParts.push(flagCondArg)
-      negParts.push(`-l no-${flag.name}`)
+      negParts.push(`-l ${negation}`)
       if (flag.description) {
         negParts.push(`-d '${escapeFishString(`Disable ${flag.name}`)}'`)
       }
@@ -192,7 +194,7 @@ const generateCompletions = (
 
     for (const flag of descriptor.flags) {
       const bareCondition = `${bareBase}; and ${flagContainsOptCondition(flag)}`
-      const isBoolean = flag.type._tag === "Boolean"
+      const negation = negatedName(flag)
 
       const parts = [`complete -c ${executableName}`]
       parts.push(`-n '${bareCondition}'`)
@@ -202,10 +204,10 @@ const generateCompletions = (
       }
       lines.push(parts.join(" "))
 
-      if (isBoolean) {
+      if (negation !== undefined) {
         const negParts = [`complete -c ${executableName}`]
         negParts.push(`-n '${bareCondition}'`)
-        negParts.push(`-f -a '--no-${flag.name}'`)
+        negParts.push(`-f -a '--${negation}'`)
         if (flag.description) {
           negParts.push(`-d '${escapeFishString(`Disable ${flag.name}`)}'`)
         }

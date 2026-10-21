@@ -18,7 +18,7 @@ import {
   Logger,
   type LogLevel,
   Option,
-  type Pull,
+  Pull,
   Queue,
   Ref,
   References,
@@ -1592,10 +1592,16 @@ describe("Stream", () => {
 
     it.effect("work per part does not grow with the length of a chain", () =>
       Effect.gen(function*() {
-        const countOps = (n: number, nest: "left" | "right") => {
+        const countdown = (n: number): Stream.Stream<number> =>
+          n === 0 ? Stream.empty : Stream.concat(Stream.make(n), Stream.suspend(() => countdown(n - 1)))
+        const countOps = (n: number, nest: "left" | "right" | "suspend") => {
           let stream: Stream.Stream<number> = Stream.make(0)
-          for (let i = 1; i < n; i++) {
-            stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+          if (nest === "suspend") {
+            stream = countdown(n)
+          } else {
+            for (let i = 1; i < n; i++) {
+              stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+            }
           }
           const scheduler = new CountingScheduler("sync")
           return Stream.runDrain(stream).pipe(
@@ -1603,12 +1609,76 @@ describe("Stream", () => {
             Effect.map(() => scheduler.ops)
           )
         }
-        for (const nest of ["left", "right"] as const) {
+        for (const nest of ["left", "right", "suspend"] as const) {
           const small = yield* countOps(1_000, nest)
           const large = yield* countOps(2_000, nest)
           assertTrue(small > 1_000, `${nest}: operations were counted`)
           assertTrue(large / small < 2.5, `${nest}: doubling the chain multiplied the work by ${large / small}`)
         }
+      }))
+
+    it.effect("does not duplicate a suspended part after interrupting and retrying a pull", () =>
+      Effect.gen(function*() {
+        const evaluated = yield* Latch.make()
+        let evaluations = 0
+        // Yield after the thunk returns, before the child pull completes.
+        class SuspendScheduler extends Scheduler.MixedScheduler {
+          yielded = false
+          override shouldYield() {
+            if (evaluations === 0 || this.yielded) return false
+            this.yielded = true
+            return true
+          }
+        }
+        const pull = yield* Stream.toPull(Stream.concat(
+          Stream.empty,
+          Stream.suspend(() => {
+            evaluations++
+            evaluated.openUnsafe()
+            return Stream.make(evaluations)
+          })
+        ))
+        const fiber = yield* pull.pipe(
+          Effect.provideService(Scheduler.Scheduler, new SuspendScheduler("sync")),
+          Effect.forkChild
+        )
+        yield* evaluated.await
+        yield* Fiber.interrupt(fiber)
+        assertTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+        const values = yield* Stream.fromPull(Effect.succeed(pull)).pipe(Stream.runCollect)
+        strictEqual(evaluations, 1)
+        // Interruption may consume the chunk, but retrying must not duplicate it.
+        assertTrue(values.length <= 1)
+      }))
+
+    it.effect("preserves concat/suspend defects when retrying the same pull", () =>
+      Effect.gen(function*() {
+        let evaluations = 0
+        const pull = yield* Stream.toPull(Stream.concat(
+          Stream.concat(
+            Stream.empty,
+            Stream.suspend((): Stream.Stream<never> => {
+              evaluations++
+              throw "boom"
+            })
+          ),
+          Stream.make(99)
+        ))
+        const first = yield* Effect.exit(pull)
+        const second = yield* Effect.exit(pull)
+        strictEqual(evaluations, 1)
+        deepStrictEqual(first, Exit.die("boom"))
+        deepStrictEqual(second, Exit.die("boom"))
+      }))
+
+    it.effect("checks for yielding between suspended parts", () =>
+      Effect.gen(function*() {
+        const nested = (n: number): Stream.Stream<never> => n === 0 ? Stream.empty : Stream.suspend(() => nested(n - 1))
+        const scheduler = new CountingScheduler("sync")
+        yield* Stream.runDrain(Stream.concat(Stream.empty, nested(1_000))).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        assertTrue(scheduler.ops >= 1_000, `only ${scheduler.ops} yield checks for 1000 suspended parts`)
       }))
 
     it.effect("runs nested chains in order, closing each part before the next starts", () =>
@@ -1620,10 +1690,18 @@ describe("Stream", () => {
             return name
           })).pipe(Stream.ensuring(Effect.sync(() => log.push(`end ${name}`))))
         const stream = Stream.concat(
-          Stream.concat(part("a"), Stream.concat(part("b"), part("c"))),
+          Stream.concat(
+            part("a"),
+            Stream.suspend(() => {
+              log.push("evaluate b")
+              return Stream.concat(part("b"), part("c"))
+            })
+          ),
           Stream.concat(part("d"), part("e"))
         )
         const expectedLog = ["a", "b", "c", "d", "e"].flatMap((name) => [`start ${name}`, `end ${name}`])
+        expectedLog.splice(2, 0, "evaluate b")
+        deepStrictEqual(log, [])
         for (const run of ["first run", "second run"]) {
           log.length = 0
           deepStrictEqual(yield* Stream.runCollect(stream), ["a", "b", "c", "d", "e"], run)
@@ -2417,7 +2495,8 @@ describe("Stream", () => {
               yield* pipe(
                 pull,
                 Effect.flatMap((chunk) => Ref.update(ref, Array.appendAll(chunk))),
-                Effect.repeat({ times: 7 })
+                Effect.forever,
+                Pull.catchDone(() => Effect.void)
               )
               const result3 = yield* (Ref.get(ref))
               return { result1, result2, result3 }
@@ -3506,6 +3585,28 @@ describe("Stream", () => {
       })
     )
 
+    it.effect("zipWith - does not copy the unconsumed part of a chunk on every pull", () =>
+      Effect.gen(function*() {
+        let copied = 0
+        class SliceCountingArray<A> extends globalThis.Array<A> {
+          override slice(start?: number, end?: number) {
+            const result = super.slice(start, end)
+            copied += result.length
+            return result
+          }
+        }
+        const size = 1_000
+        const large = Stream.fromArray(SliceCountingArray.from(Array.range(1, size)))
+        const singles = Stream.fromIterable(Array.range(1, size), { chunkSize: 1 })
+
+        const leftLarge = yield* Stream.zipWith(large, singles, (a, b) => a + b).pipe(Stream.runCount)
+        const rightLarge = yield* Stream.zipWith(singles, large, (a, b) => a + b).pipe(Stream.runCount)
+
+        assert.strictEqual(leftLarge, size)
+        assert.strictEqual(rightLarge, size)
+        assert.isAtMost(copied, 2 * size)
+      }))
+
     describe("zipWithArray", () => {
       it.effect("basic zipping with equal length streams", () =>
         Effect.gen(function*() {
@@ -3809,6 +3910,21 @@ describe("Stream", () => {
           const result = yield* stream1.pipe(Stream.zip(stream2), Stream.runCollect)
 
           assert.deepStrictEqual(result, [[1, "a"], [2, "b"], [3, "c"]])
+        }))
+
+      it.effect("carries leftovers across uneven chunks on both sides", () =>
+        Effect.gen(function*() {
+          const numbers = Stream.fromArrays([1, 2, 3], [4], [5, 6, 7])
+          const letters = Stream.fromArrays(["a"], ["b", "c", "d", "e"], ["f", "g", "h"])
+          const result = yield* Stream.zip(numbers, letters).pipe(Stream.chunks, Stream.runCollect)
+
+          assert.deepStrictEqual(result, [
+            [[1, "a"]],
+            [[2, "b"], [3, "c"]],
+            [[4, "d"]],
+            [[5, "e"]],
+            [[6, "f"], [7, "g"]]
+          ])
         }))
     })
 

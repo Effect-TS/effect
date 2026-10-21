@@ -35,6 +35,7 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
+import * as lazyStream from "./internal/lazyStream.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -1104,7 +1105,15 @@ export const toWebResult = (self: HttpServerRequest, options?: {
     requestInit.signal = options.signal
   }
   if (hasBody(self.method)) {
-    requestInit.body = Stream.toReadableStreamWith(self.stream, options?.context ?? Context.empty())
+    // Opening on the first pull with a zero high-water mark reads the body only
+    // when the Web body is read, so converting a request leaves it readable.
+    requestInit.body = Stream.toReadableStreamWith(
+      lazyStream.openOnFirstPull(self.stream),
+      options?.context ?? Context.empty(),
+      {
+        strategy: { highWaterMark: 0 }
+      }
+    )
     ;(requestInit as any).duplex = "half"
   }
   return Result.succeed(new Request(url.value, requestInit))

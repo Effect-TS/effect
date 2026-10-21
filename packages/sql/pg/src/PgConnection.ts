@@ -753,17 +753,21 @@ class PgConnectionImpl implements PgConnection {
     return reserve === undefined ? this.pinExclusive : Effect.andThen(reserve, this.pinExclusive)
   })
 
+  // Only the waits are interruptible, so a caller can bound how long it waits
+  // for the connection without leaking the `owner` permit.
   private readonly pinExclusive: Effect.Effect<PinnedPgConnection, never, Scope.Scope> = Effect.acquireRelease(
-    Effect.flatMap(this.owner.take(1), () =>
-      // Holding `owner` stops new submissions; a pipeline already on the wire
-      // still has to drain before this fiber owns the connection.
-      Effect.map(
-        Effect.onInterrupt(this.waitPipelineIdle, () => this.owner.release(1)),
-        () => {
-          this.pinned = true
-          return new PinnedPgConnection(this)
-        }
-      )),
+    Effect.uninterruptibleMask((restore) =>
+      Effect.flatMap(restore(this.owner.take(1)), () =>
+        // Holding `owner` stops new submissions; a pipeline already on the wire
+        // still has to drain before this fiber owns the connection.
+        Effect.map(
+          Effect.onInterrupt(restore(this.waitPipelineIdle), () => this.owner.release(1)),
+          () => {
+            this.pinned = true
+            return new PinnedPgConnection(this)
+          }
+        ))
+    ),
     (view) =>
       Effect.flatMap(
         Effect.suspend(() => {
@@ -781,7 +785,8 @@ class PgConnectionImpl implements PgConnection {
           }
           return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
         }
-      )
+      ),
+    { interruptible: true }
   )
 
   private readonly run = (

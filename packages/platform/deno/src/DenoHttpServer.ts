@@ -5,6 +5,11 @@
  * upgrades fail. Serve them with `NodeHttpServer` from
  * `@effect/platform-node`, which runs on Deno's `node:http`.
  *
+ * Over HTTP/1.1, `Deno.serve` can stop delivering the request body once the
+ * handler has returned a streamed response, so a handler that streams its
+ * response while still reading the request payload can stall
+ * (denoland/deno#36966).
+ *
  * @stability unstable
  * @since 4.0.0
  */

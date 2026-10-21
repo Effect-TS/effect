@@ -67,10 +67,16 @@ function assertJsonSchemaAcceptsEffectValues<T, E, RD>(
 
 describe("toJsonSchemaDocument", () => {
   describe("unsupported schemas", () => {
-    it("rejects tuple post-rest elements", () => {
-      assertUnsupportedSchema(
-        Schema.TupleWithRest(Schema.Tuple([]), [Schema.Finite, Schema.String]),
-        `Invalid schema representation document\n  at ["representation"]["rest"]`
+    it("approximates tuple post-rest elements", () => {
+      assertJsonSchemaDocument(
+        Schema.TupleWithRest(Schema.Tuple([Schema.Finite]), [Schema.String, Schema.Boolean]),
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "number" }],
+            minItems: 2
+          }
+        }
       )
     })
 
@@ -91,6 +97,49 @@ describe("toJsonSchemaDocument", () => {
           "^Symbol\\(([\\s\\S]*)\\)$": { type: "number" }
         },
         additionalProperties: false
+      }
+    })
+  })
+
+  it("Record(Number, String)", () => {
+    assertJsonSchemaDocument(Schema.Record(Schema.Number, Schema.String), {
+      schema: {
+        type: "object",
+        patternProperties: {
+          "^(?:[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?|Infinity|-Infinity|NaN)$": {
+            type: "string"
+          }
+        },
+        additionalProperties: false
+      }
+    })
+  })
+
+  it("approximates checked number record keys when excess properties are ignored", () => {
+    assertJsonSchemaDocument(Schema.Record(Schema.Int, Schema.String), {
+      schema: {
+        type: "object",
+        additionalProperties: true
+      }
+    }, { onExcessProperty: "ignore" })
+  })
+
+  it("approximates checked number record keys when excess properties are rejected", () => {
+    assertJsonSchemaDocument(Schema.Record(Schema.Int.annotate({ identifier: "IntKey" }), Schema.String), {
+      schema: {
+        type: "object",
+        propertyNames: {
+          type: "string",
+          pattern: "^(?:[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[Ee][+-]?\\d+)?|Infinity|-Infinity|NaN)$"
+        },
+        additionalProperties: { type: "string" }
+      },
+      definitions: {
+        IntKey: {
+          type: "integer",
+          minimum: -9007199254740991,
+          maximum: 9007199254740991
+        }
       }
     })
   })
@@ -2480,6 +2529,15 @@ describe("toJsonSchemaDocument", () => {
         "type": "string",
         "pattern": "^a[\\s\\S]*?$",
         "description": "a"
+      }
+    })
+  })
+
+  it("TemplateLiteral with BigInt", () => {
+    assertJsonSchemaDocument(Schema.TemplateLiteral([Schema.BigInt]), {
+      schema: {
+        type: "string",
+        pattern: "^-?\\d+$"
       }
     })
   })
