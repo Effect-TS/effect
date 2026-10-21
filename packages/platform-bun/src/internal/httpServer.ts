@@ -9,7 +9,7 @@ import type { HttpMethod } from "@effect/platform/HttpMethod"
 import * as Server from "@effect/platform/HttpServer"
 import * as Error from "@effect/platform/HttpServerError"
 import * as ServerRequest from "@effect/platform/HttpServerRequest"
-import type * as ServerResponse from "@effect/platform/HttpServerResponse"
+import * as ServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
@@ -79,7 +79,9 @@ export const make = <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extr
           const runtime = yield* Effect.runtime<never>()
           const app = App.toHandled(httpApp, (request, response) =>
             Effect.sync(() => {
-              ;(request as ServerRequestImpl).resolve(makeResponse(request, response, runtime))
+              const bunRequest = request as ServerRequestImpl
+              bunRequest.resolve(makeResponse(request, response, runtime))
+              if (upgradedRequests.has(bunRequest.source)) return upgradedResponse
             }), middleware)
 
           function handler(request: Request, server: BunServer) {
@@ -208,6 +210,9 @@ export const layerConfig = <R extends { [K in keyof R]: Bun.RouterTypes.RouteVal
 // Bun aborts the request signal when an upgraded websocket closes, which
 // should not interrupt the handler as a client abort.
 const upgradedRequests = new WeakSet<Request>()
+
+// Reported to middleware in place of the handler's discarded response.
+const upgradedResponse = ServerResponse.empty({ status: 101 })
 
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
