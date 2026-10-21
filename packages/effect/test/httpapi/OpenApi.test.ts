@@ -91,12 +91,15 @@ describe("OpenApi", () => {
       HttpApiGroup.make("files").add(
         HttpApiEndpoint.get("get", "/files/:id(\\d+)/:name(^(\\w|-)+).png", {
           params: { id: Schema.String, name: Schema.String }
+        }),
+        HttpApiEndpoint.get("preview", "/files/:id(\\d+)preview", {
+          params: { id: Schema.String }
         })
       )
     )
     const spec = OpenApi.fromApi(Api)
 
-    assert.deepStrictEqual(Object.keys(spec.paths), ["/files/{id}/{name}.png"])
+    assert.deepStrictEqual(Object.keys(spec.paths), ["/files/{id}/{name}.png", "/files/{id}preview"])
   })
 
   it("keeps action paths literal when no parameter schema is declared", () => {

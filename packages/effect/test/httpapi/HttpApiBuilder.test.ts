@@ -351,15 +351,21 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
           HttpApiEndpoint.get("get", "/users/:id(\\d+)", {
             params: { id: Schema.NumberFromString },
             success: Schema.Number
+          }),
+          HttpApiEndpoint.get("preview", "/users/:id(\\d+)preview", {
+            params: { id: Schema.NumberFromString },
+            success: Schema.Number
           })
         )
       )
       const GroupLayer = HttpApiBuilder.group(Api, "users", (handlers) =>
-        handlers.handle("get", ({ params }) =>
-          Effect.succeed(params.id)))
+        handlers
+          .handle("get", ({ params }) => Effect.succeed(params.id))
+          .handle("preview", ({ params }) => Effect.succeed(params.id)))
       const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(Effect.provide(GroupLayer))
 
       assert.strictEqual(yield* client.users.get({ params: { id: 12 } }), 12)
+      assert.strictEqual(yield* client.users.preview({ params: { id: 12 } }), 12)
     }))
 
   it.effect("does not bind a non-word schema key in a literal client path", () =>

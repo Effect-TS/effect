@@ -57,17 +57,31 @@ export function toRouterPath(path: string, schema: Schema.Constraint | undefined
 }
 
 /**
+ * Replaces each declared `:name` parameter together with a regex constraint or
+ * `?` marker that follows it. Returning `undefined` omits the parameter and a
+ * `/` directly before it.
+ *
  * @internal
  */
-export function stripParamRegexes(path: string, paramNames: ReadonlySet<string> | undefined): string {
+export function replaceParams(
+  path: string,
+  paramNames: ReadonlySet<string> | undefined,
+  replace: (name: string, optional: boolean) => string | undefined
+): string {
   const params = /::|:(\w+)/g
   let out = ""
   let last = 0
   for (let param = params.exec(path); param !== null; param = params.exec(path)) {
     const name = param[1]
-    if (name === undefined || paramNames?.has(name) === false || path[params.lastIndex] !== "(") continue
-    out += path.slice(last, params.lastIndex)
-    last = params.lastIndex = regexEnd(path, params.lastIndex)
+    if (name === undefined || paramNames?.has(name) === false) continue
+    let end = params.lastIndex
+    if (path[end] === "(") end = regexEnd(path, end)
+    const optional = path[end] === "?"
+    if (optional) end++
+    const value = replace(name, optional)
+    const start = value === undefined && path[param.index - 1] === "/" ? param.index - 1 : param.index
+    out += path.slice(last, start) + (value ?? "")
+    last = params.lastIndex = end
   }
   return out + path.slice(last)
 }

@@ -379,6 +379,9 @@ describe("HttpApiClient", () => {
       HttpApiGroup.make("files").add(
         HttpApiEndpoint.get("get", "/files/:id(\\d+)/:name(^(\\w|-)+).png", {
           params: { id: Schema.String, name: Schema.String }
+        }),
+        HttpApiEndpoint.get("preview", "/files/:id(\\d+)preview", {
+          params: { id: Schema.String }
         })
       )
     )
@@ -388,6 +391,7 @@ describe("HttpApiClient", () => {
       const urls = HttpApiClient.urlBuilder(Api, { baseUrl: "https://api.example.com" })
 
       strictEqual(urls.files.get({ params: { id: "12", name: "my-file" } }), expectedUrl)
+      strictEqual(urls.files.preview({ params: { id: "12" } }), "https://api.example.com/files/12preview")
     })
 
     it.effect("make sends the request without the constraints", () =>
