@@ -1,6 +1,6 @@
 import { Context, Effect, Schema, SchemaGetter } from "effect"
 import * as McpClient from "effect/ai/McpClient"
-import type { McpClientError } from "effect/ai/McpClient"
+import type { McpClientError } from "effect/ai/McpClientError"
 import type * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import { describe, expect, it } from "tstyche"
@@ -53,7 +53,8 @@ describe("McpClient", () => {
   })
 
   it("should take the client identity as flat options", () => {
-    expect<{ name: string; version: string }>().type.toBeAssignableTo<McpClient.Options>()
+    type Options = Parameters<typeof McpClient.make>[0]
+    expect<{ name: string; version: string }>().type.toBeAssignableTo<Options>()
     expect<{
       name: string
       version: string
@@ -62,8 +63,8 @@ describe("McpClient", () => {
       websiteUrl: string
       icons: ReadonlyArray<McpSchema.Icon>
       timeout: "1 second"
-    }>().type.toBeAssignableTo<McpClient.Options>()
-    expect<{ clientInfo: McpSchema.Implementation }>().type.not.toBeAssignableTo<McpClient.Options>()
+    }>().type.toBeAssignableTo<Options>()
+    expect<{ clientInfo: McpSchema.Implementation }>().type.not.toBeAssignableTo<Options>()
   })
 
   it("should accept only client-supported protocol adapters", () => {
