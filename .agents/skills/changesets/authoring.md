@@ -27,8 +27,9 @@ belong in the PR description. Cut any sentence a consumer would not act on.
   them."
 
 Add detail only for a break or required migration: what existing code must
-change and how. Use compact bullets, one outcome per bullet, only when a PR has
-several independent consumer-visible changes that one sentence cannot cover.
+change and how. Use compact bullets, one break per bullet, when several breaks
+need migration steps. Several non-breaking fixes or additions still share one
+sentence.
 
 List every directly affected published package. Do not list packages merely
 because they share the fixed release group in `.changeset/config.json`.
