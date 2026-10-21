@@ -443,13 +443,17 @@ export type ExtractError<Options> = Options extends {
  * Utility type that determines whether tool call parameters in a response are
  * left encoded, which is the case when tool call resolution is disabled.
  *
+ * Resolves to `boolean` when the option may be either enabled or disabled.
+ *
  * @since 1.0.0
  * @category Utility Types
  */
 export type ExtractEncodedToolParameters<Options> = Options extends {
   readonly disableToolCallResolution: true
 } ? true
-  : false
+  // `object &` stops the all-optional target from being treated as a weak type
+  : Options extends object & { readonly disableToolCallResolution?: false | undefined } ? false
+  : boolean
 
 /**
  * Utility type that extracts the context requirements from LanguageModel options.
