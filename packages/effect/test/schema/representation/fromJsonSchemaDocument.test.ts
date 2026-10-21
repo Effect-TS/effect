@@ -1271,53 +1271,24 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("resolves a reference below a definition to the pointed subschema", () => {
-      const schema = toSchemaFromJsonSchemaDocument(
-        JsonSchema.fromSchemaDraft07({
-          definitions: {
-            inner: { type: "number" },
-            outer: {
-              type: "object",
-              properties: {
-                inner: { type: "string" }
-              }
-            }
-          },
-          type: "object",
-          properties: {
-            copy: { $ref: "#/definitions/outer/properties/inner" }
-          }
-        })
-      )
-      const is = Schema.is(schema)
-      assert.isTrue(is({ copy: "a" }))
-      assert.isFalse(is({ copy: 1 }))
-    })
-
-    it("resolves a reference through an array index below a definition", () => {
+    it("resolves references below a definition to the pointed subschema", () => {
       const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-        $ref: "#/$defs/either/anyOf/1",
+        type: "object",
+        properties: {
+          copy: { $ref: "#/$defs/outer/properties/inner", minLength: 2 },
+          item: { $ref: "#/$defs/either/anyOf/1" }
+        },
         $defs: {
+          inner: { type: "number" },
+          outer: { type: "object", properties: { inner: { type: "string" } } },
           either: { anyOf: [{ type: "string" }, { type: "number" }] }
         }
       }))
       const is = Schema.is(schema)
-      assert.isTrue(is(1))
-      assert.isFalse(is("a"))
-    })
-
-    it("resolves a reference below a definition next to other keywords", () => {
-      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-        $ref: "#/$defs/outer/properties/name",
-        minLength: 2,
-        $defs: {
-          outer: { type: "object", properties: { name: { type: "string" } } }
-        }
-      }))
-      const is = Schema.is(schema)
-      assert.isTrue(is("ab"))
-      assert.isFalse(is("a"))
-      assert.isFalse(is(1))
+      assert.isTrue(is({ copy: "ab", item: 1 }))
+      assert.isFalse(is({ copy: 1 }))
+      assert.isFalse(is({ copy: "a" }))
+      assert.isFalse(is({ item: "a" }))
     })
 
     it("reports a reference below a definition that leads nowhere", () => {
