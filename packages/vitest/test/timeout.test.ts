@@ -1,4 +1,4 @@
-import { afterAll, assert, beforeAll, beforeEach, describe, it } from "@effect/vitest"
+import { afterAll, assert, beforeAll, beforeEach, describe, it, vi } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 
 const pendingReleases: Array<Promise<void>> = []
@@ -116,6 +116,43 @@ describe("beforeAll failure finalizers", { concurrent: false }, () => {
       "late:acquired",
       "late:release:start",
       "late:release:end",
+      "next:start"
+    ])
+  })
+})
+
+describe("beforeAll teardown", { concurrent: false }, () => {
+  const events: Array<string> = []
+
+  describe("hook followed by an earlier afterAll", () => {
+    afterAll(() => {
+      events.push("afterAll")
+    })
+    beforeAll(() => resource(events, "ordered").pipe(Effect.as(() => events.push("ordered:cleanup"))))
+
+    it("uses the resource", () => {})
+  })
+
+  describe("hook with a timeout longer than the default", () => {
+    // The release outlasts the default hook timeout but not the hook's own.
+    vi.setConfig({ hookTimeout: 100 })
+    beforeAll(() => resource(events, "explicit"), 1000)
+    vi.resetConfig()
+
+    it("uses the resource", () => {})
+  })
+
+  it("releases after the suite's afterAll hooks, within the hook's timeout", () => {
+    events.push("next:start")
+    assert.deepStrictEqual(events, [
+      "ordered:acquired",
+      "afterAll",
+      "ordered:cleanup",
+      "ordered:release:start",
+      "ordered:release:end",
+      "explicit:acquired",
+      "explicit:release:start",
+      "explicit:release:end",
       "next:start"
     ])
   })
