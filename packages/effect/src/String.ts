@@ -1134,6 +1134,7 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  *
  * @see {@link stripMargin} for stripping a margin from an existing string
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1153,7 +1154,7 @@ export const stripMarginRaw: {
   parts[0] = parts[0].replace(/^(?:[ \t]*\n)+/, "")
   parts[last] = parts[last].replace(last === 0 ? /^[ \t]*$|(?:\n[ \t]*)+$/ : /(?:\n[ \t]*)+$/, "")
   // Only lines that start inside the template can have a margin.
-  return globalThis.String.raw(
+  return String.raw(
     { raw: parts.map((part, i) => part.replace(i === 0 ? /(^|\n)[ \t]*\| ?/g : /(\n)[ \t]*\| ?/g, "$1")) },
     ...substitutions
   )
