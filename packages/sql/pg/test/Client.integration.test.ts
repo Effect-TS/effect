@@ -743,6 +743,8 @@ it.layer(PgContainer.layerClientForListen, { timeout: "30 seconds", concurrent: 
 
 const RequestId = Context.Reference<string>("test/RequestId", { defaultValue: () => "none" })
 
+class Prefix extends Context.Service<Prefix, string>()("test/Prefix") {}
+
 class ClientUser extends Context.Service<ClientUser, { readonly sql: PgClient.PgClient }>()("test/ClientUser") {}
 
 const onAcquireClients = [
@@ -781,6 +783,26 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
         assert.deepStrictEqual(calls, ["statement", "transaction", "reserve", "stream", "notify", "listen"])
       }).pipe(Effect.scoped))
   }
+
+  it.effect("provides the hook's requirements from construction while running in the consuming fiber", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      const calls: Array<string> = []
+      const context = yield* Layer.build(
+        PgClient.layer({
+          url: Redacted.make(container.getConnectionUri()),
+          onAcquire: Effect.gen(function*() {
+            calls.push(`${yield* Prefix}:${yield* RequestId}`)
+          })
+        }).pipe(Layer.provide(Layer.succeed(Prefix, "pool")))
+      )
+      const sql = Context.get(context, PgClient.PgClient)
+
+      yield* sql`SELECT 1`.pipe(Effect.provideService(RequestId, "statement"))
+      yield* sql.withTransaction(sql`SELECT 1`).pipe(Effect.provideService(RequestId, "transaction"))
+
+      assert.deepStrictEqual(calls, ["pool:statement", "pool:transaction"])
+    }).pipe(Effect.scoped))
 
   it.effect("releases the connection when the hook defects", () =>
     Effect.gen(function*() {
