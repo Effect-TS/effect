@@ -156,17 +156,21 @@ export interface PgClientConfig {
    * Runs after each connection checkout, in the fiber that uses the
    * connection, so it sees that fiber's context and async context.
    *
+   * **Details**
+   *
    * It runs once per acquisition, not once per socket: for every statement or
    * stream outside a transaction, even when `multiplex` shares one connection
    * between them, and once per outermost `withTransaction`, `reserve`, `listen`
-   * and `notify`.
+   * and `notify`. If it fails or is interrupted, the connection is released.
+   *
+   * **Gotchas**
    *
    * Keep it cheap. It holds the connection and, with `multiplex`, a pipelining
-   * slot while it runs, and a request may run it many times. If it fails or is
-   * interrupted, the connection is released. With `makeClient` and
-   * `acquireForStream`, it runs before a stream opens its own connection.
+   * slot while it runs, and a request may run it many times. With `makeClient`
+   * and `acquireForStream`, it runs before a stream opens its own connection.
    *
-   * @example
+   * **Example** (Reading request context on each checkout)
+   *
    * ```ts
    * import { PgClient } from "@effect/sql-pg"
    * import { Context, Effect } from "effect"
