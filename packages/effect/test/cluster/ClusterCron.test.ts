@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cron, Effect, Layer } from "effect"
+import { Context, Cron, Effect, Layer } from "effect"
 import {
   ClusterCron,
   ClusterError,
@@ -13,6 +13,26 @@ import {
 } from "effect/cluster"
 import { Rpc } from "effect/rpc"
 import { TestClock } from "effect/testing"
+
+// Each deploy is a fresh Sharding instance over the same message storage
+const deploy = (entities: Layer.Layer<never, never, Sharding.Sharding>, millis: number) =>
+  Effect.gen(function*() {
+    const driver = yield* MessageStorage.MemoryDriver
+    yield* Layer.build(entities.pipe(
+      Layer.provideMerge(Sharding.layer),
+      Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop, Runners.layerNoop]),
+      Layer.provide(Layer.succeed(MessageStorage.MessageStorage, driver.storage)),
+      Layer.provide(ShardingConfig.layer({
+        entityRegistrationTimeout: 1000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 100,
+        refreshAssignmentsInterval: 0
+      }))
+    ))
+    for (let i = 0; i < millis / 100; i++) {
+      yield* TestClock.adjust(100)
+    }
+  }).pipe(Effect.scoped)
 
 describe("ClusterCron", () => {
   it.effect("recovers from a transient failure to schedule the initial run", () => {
@@ -65,26 +85,6 @@ describe("ClusterCron", () => {
       const Other = Entity.make("Other", [Rpc.make("Ping")])
       const OtherLayer = Other.toLayer({ Ping: () => Effect.void })
 
-      // Each deploy is a fresh Sharding instance over the same message storage
-      const driver = yield* MessageStorage.MemoryDriver
-      const deploy = (entities: Layer.Layer<never, never, Sharding.Sharding>, millis: number) =>
-        Effect.gen(function*() {
-          yield* Layer.build(entities.pipe(
-            Layer.provideMerge(Sharding.layer),
-            Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop, Runners.layerNoop]),
-            Layer.provide(Layer.succeed(MessageStorage.MessageStorage, driver.storage)),
-            Layer.provide(ShardingConfig.layer({
-              entityRegistrationTimeout: 1000,
-              entityTerminationTimeout: 0,
-              entityMessagePollInterval: 100,
-              refreshAssignmentsInterval: 0
-            }))
-          ))
-          for (let i = 0; i < millis / 100; i++) {
-            yield* TestClock.adjust(100)
-          }
-        }).pipe(Effect.scoped)
-
       yield* deploy(Layer.merge(cron, OtherLayer), 3500)
       const beforeRemoval = runs
       assert.isAbove(beforeRemoval, 0)
@@ -95,5 +95,36 @@ describe("ClusterCron", () => {
 
       yield* deploy(Layer.merge(cron, OtherLayer), 3500)
       assert.isAbove(runs, beforeRemoval)
+    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+
+  it.effect("catches up in order with calculateNextRunFromPrevious after a restart", () =>
+    Effect.gen(function*() {
+      const scheduled: Array<string> = []
+      let running = 0
+      let overlapped = false
+      let slow = false
+      const cron = ClusterCron.make({
+        name: "test",
+        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+        calculateNextRunFromPrevious: true,
+        execute: Effect.contextWith((context: Context.Context<never>) =>
+          Effect.gen(function*() {
+            scheduled.push(Context.getUnsafe(context, Entity.CurrentAddress).entityId)
+            if (++running > 1) overlapped = true
+            if (slow) yield* Effect.sleep(2000)
+            running--
+          })
+        )
+      })
+
+      yield* deploy(cron, 1500)
+      // the pending run falls behind while no runner is up
+      yield* TestClock.adjust(3000)
+      slow = true
+      scheduled.length = 0
+      yield* deploy(cron, 6000)
+
+      assert.isFalse(overlapped)
+      assert.deepStrictEqual(scheduled, scheduled.toSorted())
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 })
