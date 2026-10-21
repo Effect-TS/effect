@@ -8,7 +8,7 @@
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
-import * as S from "../Schema.ts"
+import * as Schema from "../Schema.ts"
 import * as SocketProtocols from "../socket/SocketProtocols.ts"
 import * as HttpServerRequest from "./HttpServerRequest.ts"
 
@@ -22,7 +22,7 @@ import * as HttpServerRequest from "./HttpServerRequest.ts"
  *
  * **Details**
  *
- * Resolves to `undefined` when the request has no `Sec-WebSocket-Protocol`
+ * The value is `undefined` when the request has no `Sec-WebSocket-Protocol`
  * header. Provide it with {@link layer}.
  *
  * @stability unstable
@@ -33,11 +33,11 @@ export class HttpSocketProtocols extends Context.Service<HttpSocketProtocols, Re
   "effect/http/HttpSocketProtocols"
 ) {}
 
-const decode = S.decodeSync(SocketProtocols.Schema)
+const decode = Schema.decodeSync(SocketProtocols.Schema)
 
 /**
- * Layer that reads the `HttpSocketProtocols` service from the current
- * `HttpServerRequest`.
+ * Builds `HttpSocketProtocols` from the `Sec-WebSocket-Protocol` header of
+ * the current `HttpServerRequest`.
  *
  * @stability unstable
  * @category layers
