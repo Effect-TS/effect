@@ -170,15 +170,15 @@ const toolPartSchemas = (tool: Tool.Any) => {
   return parts
 }
 
-type AnyToolParts = ToolCallPart<string, Schema.Json> | ToolResultPart<string, Schema.Json, Schema.Json>
+type AnyToolParts = ToolCallPart<string, unknown> | ToolResultPart<string, unknown, unknown>
 
 const toolPartSchemasFor = (
   toolkit: Toolkit.Any | Toolkit.WithHandler<any> | undefined
 ): ReadonlyArray<Schema.Top> => {
   if (toolkit === undefined) {
     return [
-      makeToolCallPart(Schema.String, Schema.Json),
-      makeToolResultPart(Schema.String, Schema.Json, Schema.Json)
+      makeToolCallPart(Schema.String, Schema.Unknown),
+      makeToolResultPart(Schema.String, Schema.Unknown, Schema.Unknown)
     ]
   }
   const parts = Object.values(toolkit.tools as Record<string, Tool.Any>).map(toolPartSchemas)
@@ -194,7 +194,7 @@ const toolPartSchemasFor = (
  * and tool result parts dynamically created based on the provided toolkit.
  *
  * When no toolkit is provided, tool call and tool result parts accept any tool
- * name, with parameters and results decoded as JSON.
+ * name, with parameters and results decoded as `unknown`.
  *
  * **Example** (Building a response parts schema)
  *
@@ -305,7 +305,7 @@ export type PartEncoded =
  * **Details**
  *
  * When no toolkit is provided, tool call and tool result parts accept any tool
- * name, with parameters and results decoded as JSON.
+ * name, with parameters and results decoded as `unknown`.
  *
  * @stability unstable
  * @category schemas
@@ -399,7 +399,7 @@ export type StreamPartEncoded =
  * **Details**
  *
  * When no toolkit is provided, tool call and tool result parts accept any tool
- * name, with parameters and results decoded as JSON.
+ * name, with parameters and results decoded as `unknown`.
  *
  * @stability unstable
  * @category schemas
