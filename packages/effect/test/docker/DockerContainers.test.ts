@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted, Stream } from "effect"
 import { DockerContainers, DockerError, type DockerSchema } from "effect/docker"
 import { Tar } from "effect/encoding"
-import { concat, connection, frame, json, makeStubEngine, withPing } from "./utils/stub.ts"
+import { concat, connection, frame, json, makeStubEngine, recordSpans, withPing } from "./utils/stub.ts"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 const decode = (data: Uint8Array) => new TextDecoder().decode(data)
@@ -131,6 +131,34 @@ describe("DockerContainers", () => {
       assert.strictEqual(error.reason.message, "boom")
       const truncated = yield* Effect.flip(logs(frame(1, "cut short").subarray(0, 12)))
       assert.strictEqual(truncated.reason._tag, "StreamFailed")
+    }))
+
+  it.effect("traces each operation with its resource, and a stream until it ends", () =>
+    Effect.gen(function*() {
+      const { attributes, isOpen, tracer } = recordSpans()
+      const stub = makeStubEngine(withPing("1.44", (request) =>
+        request.url.pathname.endsWith("/json")
+          ? json({ Id: "c" })
+          : request.url.pathname.endsWith("/stats")
+          ? { headers: { "content-type": "application/json" }, body: `{"id":"c"}\n{"id":"c"}\n` }
+          : { headers: { "content-type": "application/vnd.docker.multiplexed-stream" }, body: frame(1, "out") }))
+      const openWhileRead = yield* use((containers) =>
+        Effect.gen(function*() {
+          yield* containers.inspect("c")
+          return yield* Effect.all([
+            containers.logs("c").pipe(Stream.mapEffect(() => Effect.sync(() => isOpen("docker.Containers.logs")))),
+            containers.statsStream("c").pipe(
+              Stream.mapEffect(() => Effect.sync(() => isOpen("docker.Containers.statsStream")))
+            )
+          ].map(Stream.runCollect))
+        })
+      ).pipe(stub.provide, Effect.withTracer(tracer))
+      assert.deepStrictEqual(openWhileRead, [[true], [true, true]])
+      assert.isFalse(isOpen("docker.Containers.logs") || isOpen("docker.Containers.statsStream"))
+      const recorded = attributes()
+      for (const operation of ["inspect", "logs", "statsStream"]) {
+        assert.include(recorded, `docker.Containers.${operation} docker.resource_id=c`)
+      }
     }))
 
   it.effect("reads logs without a stream content type by the container's TTY", () =>

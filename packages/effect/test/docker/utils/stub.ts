@@ -183,7 +183,9 @@ export const recordSpans = () => {
   })
   const attributes = () =>
     spans.flatMap((span) => Array.from(span.attributes, ([key, value]) => `${span.name} ${key}=${String(value)}`))
-  return { tracer, attributes }
+  /** Whether the span `name` has started and not yet ended. */
+  const isOpen = (name: string) => spans.some((span) => span.name === name && span.status._tag === "Started")
+  return { tracer, attributes, isOpen }
 }
 
 export const json = (value: unknown, status = 200): Reply => ({

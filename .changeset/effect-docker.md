@@ -12,4 +12,5 @@ Add `effect/docker`, an Effect-native client for the Docker Engine API, and `Nod
 - `DockerSystem` covers ping, version, info, events, disk usage, registry login and build-cache pruning.
 - `DockerContainers` covers the container lifecycle, logs, stats, attach and archives; `DockerExec` runs commands in running containers; `DockerNetworks` and `DockerVolumes` manage networks and volumes.
 - `DockerImages` pulls, pushes, builds, tags, saves, loads, imports and commits images, with registry credentials resolved as the Docker CLI does (`DOCKER_AUTH_CONFIG`, credential helpers, `auths`).
+- Every operation runs in a span named `docker.<Service>.<operation>`, with the resource it acts on as `docker.resource_id` and the negotiated API version; a streaming operation's span lasts until its stream ends. Registry credentials and secret query parameters are redacted.
 - `NodeDocker.layer` and `NodeDocker.layerFromEnv` provide them on Node.js, over a unix socket or TCP with TLS.

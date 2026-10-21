@@ -331,7 +331,7 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
         })
       }))
     },
-    withOperation(engine, "docker.Exec.start")
+    (effect, id) => withOperation(engine, "docker.Exec.start", id)(effect)
   )
 
   return DockerExec.of({
@@ -402,7 +402,7 @@ export const make: Effect.Effect<DockerExec["Service"], never, DockerEngine> = E
         return yield* Effect.failCause(failed.cause)
       },
       Effect.scoped,
-      withOperation(engine, "docker.Exec.run")
+      (effect, container) => withOperation(engine, "docker.Exec.run", container)(effect)
     )
   })
 })
