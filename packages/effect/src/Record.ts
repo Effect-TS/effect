@@ -1199,7 +1199,11 @@ export const isSubrecord: {
  * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
- * Record.reduce({ a: 1, b: 2, c: 3 }, "", (acc, value, key) => acc + key + value) // => "a1b2c3"
+ * Record.reduce(
+ *   { a: 1, b: 2, c: 3 },
+ *   "",
+ *   (acc, value, key) => (acc === "" ? `${key}${value}` : `${acc}-${key}${value}`)
+ * ) // => "a1-b2-c3"
  * ```
  *
  * @stability stable
