@@ -35,6 +35,7 @@ import * as Queue from "../Queue.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import * as Scope from "../Scope.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
@@ -655,6 +656,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
     readonly flatten?: Flatten | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
 ) => Effect.Effect<
   Flatten extends true ? RpcClient.Flat<Rpcs, RpcClientError> : RpcClient<Rpcs, RpcClientError>,
@@ -668,11 +670,12 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
     readonly flatten?: Flatten | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
 ) {
   const clientId = clientIdCounter++
   const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
-  const rpcSchemas = makeRpcSchemas(codecFor)
+  const rpcSchemas = makeRpcSchemas(codecFor, options?.parseOptions)
   const decodeDefect = Schema.decodeSync(codecFor(Schema.Defect()))
 
   type ClientEntry = {
@@ -816,7 +819,7 @@ interface RpcSchemas {
 }
 // Codecs are compiled per client, because two protocols can fill the message
 // holes with different codecs.
-const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
+const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor, parseOptions: SchemaAST.ParseOptions | undefined) => {
   const cache = new WeakMap<Rpc.AnyWithProps, RpcSchemas>()
   return (rpc: Rpc.AnyWithProps): RpcSchemas => {
     let entry = cache.get(rpc)
@@ -827,10 +830,11 @@ const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
     entry = {
       decodeChunk: Option.map(
         streamSchemas,
-        (streamSchemas) => Schema.decodeUnknownEffect(codecFor(Schema.NonEmptyArray(streamSchemas.success)))
+        (streamSchemas) =>
+          Schema.decodeUnknownEffect(codecFor(Schema.NonEmptyArray(streamSchemas.success)), parseOptions)
       ),
-      encodePayload: Schema.encodeEffect(codecFor(rpc.payloadSchema)),
-      decodeExit: Schema.decodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)))
+      encodePayload: Schema.encodeEffect(codecFor(rpc.payloadSchema), parseOptions),
+      decodeExit: Schema.decodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)), parseOptions)
     }
     cache.set(rpc, entry)
     return entry

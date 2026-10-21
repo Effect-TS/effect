@@ -33,6 +33,7 @@ import * as Pull from "../Pull.ts"
 import * as Queue from "../Queue.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
+import type * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
@@ -509,19 +510,25 @@ interface RpcCodecs {
 
 const sharedRpcCodecs = new WeakMap<Rpc.AnyWithProps, RpcCodecs>()
 
-const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps): RpcCodecs => {
-  const shared = isSharedCodecFor(codecFor)
+const rpcCodecs = (
+  codecFor: RpcSerialization.CodecFor,
+  rpc: Rpc.AnyWithProps,
+  parseOptions: SchemaAST.ParseOptions | undefined
+): RpcCodecs => {
+  // Codecs compiled with parse options are specific to one server.
+  const shared = parseOptions === undefined && isSharedCodecFor(codecFor)
   let codecs = shared ? sharedRpcCodecs.get(rpc) : undefined
   if (codecs === undefined) {
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
     codecs = {
-      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
+      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema), parseOptions) as any,
       encodeChunk: Schema.encodeUnknownEffect(
         codecFor(
           Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
-        )
+        ),
+        parseOptions
       ) as any,
-      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
+      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)), parseOptions) as any
     }
     if (shared) sharedRpcCodecs.set(rpc, codecs)
   }
@@ -609,6 +616,7 @@ export const make: <Rpcs extends Rpc.Any>(
       readonly spanAttributes?: Record<string, unknown> | undefined
       readonly concurrency?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
+      readonly parseOptions?: SchemaAST.ParseOptions | undefined
     }
     | undefined
 ) => Effect.Effect<
@@ -626,6 +634,7 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   }
 ) {
   const {
@@ -716,7 +725,7 @@ export const make: <Rpcs extends Rpc.Any>(
       const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       schemas = {
         tag: rpc._tag,
-        ...rpcCodecs(codecFor, rpc),
+        ...rpcCodecs(codecFor, rpc, options?.parseOptions),
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -922,6 +931,7 @@ export const layer = <Rpcs extends Rpc.Any>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   }
 ): Layer.Layer<
   never,
@@ -953,6 +963,7 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly concurrency?: number | "unbounded" | undefined
   readonly disableFatalDefects?: boolean | undefined
+  readonly parseOptions?: SchemaAST.ParseOptions | undefined
   readonly streamBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<
   never,
@@ -1356,6 +1367,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
     readonly streamBufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Effect.Effect<
@@ -1373,6 +1385,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
     readonly streamBufferSize?: number | "unbounded" | undefined
   }
 ) {
@@ -1400,6 +1413,7 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
 ) => Effect.Effect<
   Effect.Effect<HttpServerResponse.HttpServerResponse, never, Scope.Scope | HttpServerRequest.HttpServerRequest>,
@@ -1416,6 +1430,7 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   }
 ) {
   const { httpEffect, protocol } = yield* makeProtocolWithHttpEffectWebsocket
