@@ -43,19 +43,23 @@ const isTable = (value: unknown): value is Table =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date)
 const localDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
 const localTimePattern = /^(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/
+const numericOffsetPattern = /^[+-](\d{2}):(\d{2})$/
 const dateTimePattern = /^(\d{4}-\d{2}-\d{2})[Tt](\d{2}:\d{2}:\d{2}(?:\.\d+)?)([Zz]|[+-]\d{2}:\d{2})?$/
+const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 const isValidDate = (date: string): boolean => {
   const [, year, month, day] = localDatePattern.exec(date)!.map(Number)
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
-  const days = month === 2 ? (leap ? 29 : 28) : month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31
+  const days = month === 2 && leap ? 29 : daysInMonth[month - 1]
   return month >= 1 && month <= 12 && day >= 1 && day <= days
 }
 const isValidTime = (time: string): boolean => {
   const [, hour, minute, second] = localTimePattern.exec(time)!.map(Number)
   return hour <= 23 && minute <= 59 && second <= 59
 }
-const isValidOffset = (offset: string): boolean =>
-  offset.length === 1 || (Number(offset.slice(1, 3)) <= 23 && Number(offset.slice(4)) <= 59)
+const isValidOffset = (offset: string): boolean => {
+  const numeric = numericOffsetPattern.exec(offset)
+  return numeric === null || (Number(numeric[1]) <= 23 && Number(numeric[2]) <= 59)
+}
 
 class TomlParser {
   readonly root = makeTable()
