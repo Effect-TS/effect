@@ -804,6 +804,25 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
       assert.deepStrictEqual(calls, ["pool:statement", "pool:transaction"])
     }).pipe(Effect.scoped))
 
+  it.effect("closes the hook's scope after each plain statement", () =>
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      let finalized = 0
+      const sql = yield* PgClient.make({
+        url: Redacted.make(container.getConnectionUri()),
+        onAcquire: Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            finalized++
+          })
+        )
+      })
+
+      yield* sql`SELECT 1`
+      yield* sql`SELECT 1`
+
+      assert.strictEqual(finalized, 2)
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
+
   it.effect("releases the connection when the hook defects", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer
