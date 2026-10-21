@@ -217,7 +217,9 @@ export const getStatusError = <A extends Schema.Schema.All>(self: A): number => 
  * types appear.
  *
  * An annotated union is kept intact, so its annotations are not lost, unless
- * one of its members needs its own response status or encoding.
+ * one of its members needs its own response status or encoding. In that case
+ * the union's response annotations are applied to members that do not
+ * override them.
  *
  * @internal
  */
@@ -226,7 +228,20 @@ export const extractUnionTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => {
     return [ast]
   }
   const types = ast.types.flatMap(extractUnionTypes)
-  return Reflect.ownKeys(ast.annotations).length > 0 && !types.some(hasResponseAnnotations) ? [ast] : types
+  if (!types.some(hasResponseAnnotations)) {
+    return Reflect.ownKeys(ast.annotations).length > 0 ? [ast] : types
+  }
+  const annotations = extractAnnotations(ast.annotations)
+  if (Reflect.ownKeys(annotations).length === 0) {
+    return types
+  }
+  return types.map((type) =>
+    AST.annotations(type, {
+      ...annotations,
+      ...extractAnnotations(mergedAnnotations(type)),
+      ...type.annotations
+    })
+  )
 }
 
 const hasResponseAnnotations = (ast: AST.AST): boolean =>
