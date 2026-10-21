@@ -8,7 +8,6 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import * as UrlParams from "effect/http/UrlParams"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { rolldown } from "rolldown"
@@ -22,8 +21,7 @@ const modules = {
   "effect/http/HttpClient": HttpClient,
   "effect/http/HttpClientError": HttpClientError,
   "effect/http/HttpClientRequest": HttpClientRequest,
-  "effect/http/HttpClientResponse": HttpClientResponse,
-  "effect/http/UrlParams": UrlParams
+  "effect/http/HttpClientResponse": HttpClientResponse
 }
 
 type TransformClient = (client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>

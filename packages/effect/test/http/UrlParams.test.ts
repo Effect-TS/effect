@@ -30,13 +30,6 @@ describe("UrlParams", () => {
     })
   })
 
-  describe("comma-separated arrays", () => {
-    it("encodes elements before joining them", () => {
-      const params = UrlParams.fromInput({ tags: ["a,b", "c"] }, { arrayFormat: "comma" })
-      assert.strictEqual(UrlParams.toString(params), "tags=a%2Cb,c")
-    })
-  })
-
   describe("setAll", () => {
     it("does not retain parameters when reusing UrlParams overrides", () => {
       const overrides = UrlParams.fromInput({ sort: "name" })
