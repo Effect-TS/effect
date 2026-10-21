@@ -432,9 +432,12 @@ development:
       assert.throws(() => Yaml.parse("%TAG !e! tag:a:\n%TAG !e! tag:a:\n---\na: !e!x 1\n"), SyntaxError)
     })
 
-    it.each(["!!int abc", "!!float 0x10"])("rejects a core tag that does not match its scalar: %s", (value) => {
-      assert.throws(() => Yaml.parse(`a: ${value}\n`), SyntaxError)
-    })
+    it.each(["!!int abc", "!!float 0x10", "!!float .i_nf"])(
+      "rejects a core tag that does not match its scalar: %s",
+      (value) => {
+        assert.throws(() => Yaml.parse(`a: ${value}\n`), SyntaxError)
+      }
+    )
   })
 
   // YAML 1.2.2 §8.2.1: a block sequence entry may start with a compact nested node.
