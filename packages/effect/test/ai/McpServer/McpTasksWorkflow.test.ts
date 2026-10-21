@@ -14,8 +14,10 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -219,3 +221,50 @@ it.effect("should retain the engine outcome when an acknowledged cancellation is
     const second = yield* open(db.second, handler)
     assert.deepStrictEqual(yield* second.get(created.taskId), terminal)
   }))
+
+it.effect("should keep an accepted submission pending until its identity is readable", () =>
+  Effect.gen(function*() {
+    const engine = yield* WorkflowEngine.WorkflowEngine
+    const readingIdentity = yield* Deferred.make<void>()
+    const ran = yield* Deferred.make<void>()
+    let visible = false
+    let runs = 0
+    const delayedEngine = WorkflowEngine.WorkflowEngine.of({
+      ...engine,
+      deferredResult: (deferred) =>
+        Effect.suspend(() =>
+          deferred.name === "mcp/task/identity" && !visible
+            ? Deferred.succeed(readingIdentity, undefined).pipe(Effect.as(Option.none()))
+            : engine.deferredResult(deferred)
+        )
+    })
+    const executionContext = yield* Layer.build(
+      McpTasks.layerWorkflow(tools, {
+        report: Effect.fnUntraced(function*() {
+          runs++
+          yield* Deferred.succeed(ran, undefined)
+          return "finished"
+        })
+      }, { name: "delayed-identity" }).pipe(
+        Layer.provide(Layer.succeed(WorkflowEngine.WorkflowEngine, delayedEngine))
+      )
+    )
+    const execution = Context.get(executionContext, McpTasks.Execution)
+    const submission = yield* Effect.forkChild(execution.create({
+      toolName: "report",
+      arguments: {},
+      ownerId: "owner",
+      requestContext: { clientId: 1, protocolVersion: "2026-07-28", clientCapabilities: {} }
+    }))
+    yield* Deferred.await(readingIdentity)
+    yield* Deferred.await(ran)
+    yield* TestClock.adjust("1 second")
+    assert.isUndefined(submission.pollUnsafe())
+    visible = true
+    yield* TestClock.adjust("10 millis")
+    const task = yield* Fiber.join(submission)
+    const read = yield* execution.get({ taskId: task.taskId, ownerId: "owner" })
+    assert.strictEqual(read.status, "completed")
+    assert.deepStrictEqual(read.createdAt, task.createdAt)
+    assert.strictEqual(runs, 1)
+  }).pipe(Effect.provide(WorkflowEngine.layerMemory)))
