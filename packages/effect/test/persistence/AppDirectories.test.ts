@@ -1,15 +1,17 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ConfigProvider, Effect } from "effect"
-import { PlatformDirectories } from "effect/cli"
+import * as AppDirectories from "effect/persistence/AppDirectories"
+
+const withEnv = (env: Record<string, string>) =>
+  Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env }))
 
 const resolve = (platform: string, env: Record<string, string>) =>
-  PlatformDirectories.PlatformDirectories.pipe(
-    Effect.map((dirs) => dirs.config),
-    Effect.provide(PlatformDirectories.layer({ appName: "myapp", platform })),
-    Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env }))
+  AppDirectories.config("myapp").pipe(
+    Effect.provideService(AppDirectories.AppDirectories, AppDirectories.make({ platform })),
+    withEnv(env)
   )
 
-describe("PlatformDirectories", () => {
+describe("AppDirectories", () => {
   it.effect("uses an absolute XDG_CONFIG_HOME on every platform", () =>
     Effect.gen(function*() {
       assert.strictEqual(
@@ -50,9 +52,26 @@ describe("PlatformDirectories", () => {
       )
     }))
 
-  it.effect("fails with MissingHome when no home directory is available", () =>
+  it.effect("fails with HomeNotFound when no home directory is available", () =>
     Effect.gen(function*() {
       const error = yield* Effect.flip(resolve("linux", {}))
-      assert.instanceOf(error, PlatformDirectories.MissingHome)
+      assert.instanceOf(error, AppDirectories.HomeNotFound)
+    }))
+
+  it.effect("reads the environment on each call", () =>
+    Effect.gen(function*() {
+      const dirs = AppDirectories.make({ platform: "linux" })
+      assert.strictEqual(yield* dirs.config("myapp").pipe(withEnv({ HOME: "/home/ada" })), "/home/ada/.config/myapp")
+      assert.strictEqual(yield* dirs.config("myapp").pipe(withEnv({ HOME: "/home/bob" })), "/home/bob/.config/myapp")
+    }))
+
+  it.effect("can be overridden with a fixed directory", () =>
+    Effect.gen(function*() {
+      const config = yield* AppDirectories.config("myapp").pipe(
+        Effect.provideService(AppDirectories.AppDirectories, {
+          config: (appName) => Effect.succeed(`/tmp/${appName}`)
+        })
+      )
+      assert.strictEqual(config, "/tmp/myapp")
     }))
 })
