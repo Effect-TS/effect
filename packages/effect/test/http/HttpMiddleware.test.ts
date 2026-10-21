@@ -595,6 +595,18 @@ describe("HttpMiddleware", () => {
         expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
       },
       {
+        name: "keeps the transport host when X-Forwarded-Host has an out-of-range port",
+        peer: "10.0.0.1",
+        headers: { "x-forwarded-for": "198.51.100.7", "x-forwarded-host": "app.test:99999" },
+        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "keeps the transport host when X-Forwarded-Host is an invalid IPv6 literal",
+        peer: "10.0.0.1",
+        headers: { "x-forwarded-for": "198.51.100.7", "x-forwarded-host": "[:::]" },
+        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
+      },
+      {
         name: "stops at an invalid entry instead of skipping to attacker-controlled entries",
         peer: "10.0.0.1",
         headers: { "x-forwarded-for": "6.6.6.6, unknown, 10.0.0.2", "x-forwarded-host": "a.test, b.test, c.test" },
@@ -605,6 +617,16 @@ describe("HttpMiddleware", () => {
         assert.deepStrictEqual(
           yield* observe(HttpMiddleware.xForwardedHeaders({ trustedProxies }), peer, headers),
           expected
+        )
+      }))
+
+    it.effect("forwardedHeader stops at an element with a malformed parameter name", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* observe(HttpMiddleware.forwardedHeader({ trustedProxies }), "10.0.0.1", {
+            forwarded: "for=6.6.6.6, for=10.0.0.2;bad name=x"
+          }),
+          { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
         )
       }))
 

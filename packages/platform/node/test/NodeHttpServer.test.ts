@@ -29,6 +29,7 @@ import * as HttpApiError from "effect/http-api/HttpApiError"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"
+import * as IpNetwork from "effect/net/IpNetwork"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Schema from "effect/Schema"
 import { Socket } from "effect/socket"
@@ -1879,6 +1880,31 @@ describe("HttpServer", () => {
         assert.strictEqual(
           yield* rawRequest(port, `GET /x?y=1 HTTP/1.1\r\nHost: 127.0.0.1:${port}`, { tls: true }),
           `127.0.0.1:${port} /x?y=1 https://127.0.0.1:${port}/x?y=1`
+        )
+      }))
+
+    it.effect("xForwardedHeaders trusts an IPv4-mapped peer and keeps provenance after modify", () =>
+      Effect.gen(function*() {
+        const server = Http.createServer()
+        yield* HttpServer.serve(
+          HttpServerRequest.HttpServerRequest.use((request) => {
+            const moved = request.modify({ url: "/moved" })
+            return Effect.succeed(HttpServerResponse.text(
+              `${Option.getOrUndefined(moved.remoteAddress)} ${Option.getOrUndefined(moved.peerAddress)} ${
+                Option.getOrThrow(HttpServerRequest.toURL(moved)).href
+              }`
+            ))
+          }).pipe(HttpMiddleware.xForwardedHeaders({ trustedProxies: [IpNetwork.fromStringUnsafe("127.0.0.0/8")] }))
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0, host: "::" })),
+          Layer.build
+        )
+        assert.strictEqual(
+          yield* rawRequest(
+            tcpPort(server),
+            "GET /x HTTP/1.1\r\nHost: app.test\r\nX-Forwarded-For: 198.51.100.7\r\nX-Forwarded-Proto: https"
+          ),
+          "198.51.100.7 ::ffff:127.0.0.1 https://app.test/moved"
         )
       }))
 
