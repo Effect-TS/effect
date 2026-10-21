@@ -55,10 +55,10 @@ export class MissingHome extends Data.TaggedError("PlatformDirectoriesMissingHom
 const isAbsolute = (path: string, platform: string): boolean =>
   platform === "win32" ? /^([a-zA-Z]:)?[\\/]/.test(path) : path.startsWith("/")
 
-const join = (platform: string, base: string, ...segments: ReadonlyArray<string>): string => {
-  const sep = platform === "win32" ? "\\" : "/"
-  return [base.replace(/[\\/]+$/, ""), ...segments].join(sep)
-}
+const join = (platform: string, base: string, ...segments: ReadonlyArray<string>): string =>
+  platform === "win32"
+    ? [base.replace(/[\\/]+$/, ""), ...segments].join("\\")
+    : [base.replace(/\/+$/, ""), ...segments].join("/")
 
 const optionalString = (name: string) => Config.String(name).pipe(Config.withDefault(undefined))
 
