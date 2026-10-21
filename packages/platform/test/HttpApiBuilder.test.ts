@@ -1,4 +1,4 @@
-import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpServer } from "@effect/platform"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, HttpServer } from "@effect/platform"
 import { describe, it, vi } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, identity, Layer, Schema } from "effect"
@@ -296,23 +296,33 @@ describe("HttpApiBuilder", () => {
     }
   })
 
-  it("does not share Union success status between endpoints", async () => {
+  it("Union status", async () => {
     const Union = Schema.Literal("A", "B")
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("group")
         .add(HttpApiEndpoint.get("created", "/created").addSuccess(Union, { status: 201 }))
         .add(HttpApiEndpoint.get("ok", "/ok").addSuccess(Union))
+        .add(
+          HttpApiEndpoint.get("error", "/error").addError(
+            Schema.Union(
+              Schema.Literal("NotFound").annotations(HttpApiSchema.annotations({ status: 404 })),
+              Schema.Literal("Conflict").annotations(HttpApiSchema.annotations({ status: 409 }))
+            ).annotations({ title: "Errors" })
+          )
+        )
     )
     const GroupLive = HttpApiBuilder.group(Api, "group", (handlers) =>
       handlers
         .handle("created", () => Effect.succeed("A" as const))
-        .handle("ok", () => Effect.succeed("A" as const)))
+        .handle("ok", () => Effect.succeed("A" as const))
+        .handle("error", () => Effect.fail("NotFound" as const)))
     const { dispose, handler } = HttpApiBuilder.toWebHandler(
       HttpApiBuilder.api(Api).pipe(Layer.provide(GroupLive), Layer.merge(HttpServer.layerContext))
     )
 
     strictEqual((await handler(new Request("http://localhost/created"))).status, 201)
     strictEqual((await handler(new Request("http://localhost/ok"))).status, 200)
+    strictEqual((await handler(new Request("http://localhost/error"))).status, 404)
     await dispose()
   })
 })
