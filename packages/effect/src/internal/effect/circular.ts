@@ -279,31 +279,29 @@ const getCachedValue = <A, E, R>(
   timeToLive: Duration.DurationInput,
   cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<A, E>]>>
 ): Effect.Effect<A, E, R> =>
-  core.uninterruptibleMask((restore) =>
-    pipe(
-      effect.clockWith((clock) => clock.currentTimeMillis),
-      core.flatMap((time) =>
-        updateSomeAndGetEffectSynchronized(cache, (option) => {
-          switch (option._tag) {
-            case "None": {
-              return Option.some(computeCachedValue(self, timeToLive, time))
-            }
-            case "Some": {
-              const [end] = option.value
-              return end - time <= 0
-                ? Option.some(computeCachedValue(self, timeToLive, time))
-                : Option.none()
-            }
+  pipe(
+    effect.clockWith((clock) => clock.currentTimeMillis),
+    core.flatMap((time) =>
+      updateSomeAndGetEffectSynchronized(cache, (option) => {
+        switch (option._tag) {
+          case "None": {
+            return Option.some(computeCachedValue(self, timeToLive, time))
           }
-        })
-      ),
-      core.flatMap((option) =>
-        Option.isNone(option) ?
-          core.dieMessage(
-            "BUG: Effect.cachedInvalidate - please report an issue at https://github.com/Effect-TS/effect/issues"
-          ) :
-          restore(core.deferredAwait(option.value[1]))
-      )
+          case "Some": {
+            const [end] = option.value
+            return end - time <= 0
+              ? Option.some(computeCachedValue(self, timeToLive, time))
+              : Option.none()
+          }
+        }
+      })
+    ),
+    core.flatMap((option) =>
+      Option.isNone(option) ?
+        core.dieMessage(
+          "BUG: Effect.cachedInvalidate - please report an issue at https://github.com/Effect-TS/effect/issues"
+        ) :
+        core.deferredAwait(option.value[1])
     )
   )
 

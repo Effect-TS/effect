@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as TestClock from "effect/TestClock"
@@ -61,5 +62,18 @@ describe("Effect", () => {
       assertTrue(b !== c)
       strictEqual(c, d)
       assertTrue(d !== e)
+    }))
+  it.effect("cachedWithTTL - interrupting the caller interrupts the cached effect without caching", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
+      const cached = yield* pipe(
+        Ref.updateAndGet(ref, (n) => n + 1),
+        Effect.tap((n) => n === 1 ? Effect.never : Effect.void),
+        Effect.cachedWithTTL(Duration.minutes(60))
+      )
+      const fiber = yield* Effect.fork(cached)
+      yield* Effect.yieldNow()
+      yield* Fiber.interrupt(fiber)
+      strictEqual(yield* cached, 2)
     }))
 })
