@@ -752,7 +752,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Task2: Oh no!' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'Task2: Oh no!' }
  * // }
  * ```
  *
@@ -807,7 +807,7 @@ export const once: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<void, E, R>
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Fail',
- * //     failure: [
+ * //     error: [
  * //       { _id: 'Option', _tag: 'None' },
  * //       { _id: 'Option', _tag: 'Some', value: 'Task2: Oh no!' },
  * //       { _id: 'Option', _tag: 'None' }
@@ -2240,7 +2240,7 @@ export const replicateEffect: {
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Fail',
- * //     failure: [ '4 is not less that 4', '5 is not less that 4' ]
+ * //     error: [ '4 is not less that 4', '5 is not less that 4' ]
  * //   }
  * // }
  * ```
@@ -4173,7 +4173,7 @@ export const ignoreLogged: <A, E, R>(self: Effect<A, E, R>) => Effect<void, neve
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: [ 'Oh uh!', 'Oh no!' ] }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: [ 'Oh uh!', 'Oh no!' ] }
  * // }
  * ```
  *
@@ -4387,7 +4387,7 @@ export declare namespace Retry {
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Error 3' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'Error 3' }
  * // }
  * ```
  *
@@ -4818,7 +4818,7 @@ export const checkInterruptible: <A, E, R>(f: (isInterruptible: boolean) => Effe
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Fail',
- * //     failure: { _tag: 'TimeoutException' }
+ * //     error: { _tag: 'TimeoutException' }
  * //   }
  * // }
  * // Heavy processing done.
@@ -5630,7 +5630,7 @@ export const acquireUseRelease: {
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Uh oh!' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'Uh oh!' }
  * // }
  * ```
  *
@@ -7011,7 +7011,7 @@ export const timedWith: {
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Fail',
- * //     failure: { _tag: 'TimeoutException' }
+ * //     error: { _tag: 'TimeoutException' }
  * //   }
  * // }
  * ```
@@ -7142,7 +7142,7 @@ export const timeoutOption: {
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Fail',
- * //     failure: MyTimeoutError { _tag: 'MyTimeoutError' }
+ * //     error: MyTimeoutError { _tag: 'MyTimeoutError' }
  * //   }
  * // }
  * ```
@@ -9056,8 +9056,8 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Parallel',
- * //     left: { _id: 'Cause', _tag: 'Fail', failure: 'task1' },
- * //     right: { _id: 'Cause', _tag: 'Fail', failure: 'task2' }
+ * //     left: { _id: 'Cause', _tag: 'Fail', error: 'task1' },
+ * //     right: { _id: 'Cause', _tag: 'Fail', error: 'task2' }
  * //   }
  * // }
  * ```
@@ -9208,7 +9208,7 @@ export const race: {
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'task2' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'task2' }
  * // }
  * ```
  *
@@ -9316,7 +9316,7 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'task1' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'task1' }
  * // }
  * ```
  *
@@ -11396,7 +11396,7 @@ export const orElse: {
  * // {
  * //   _id: 'Exit',
  * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'invalid age' }
+ * //   cause: { _id: 'Cause', _tag: 'Fail', error: 'invalid age' }
  * // }
  * ```
  *
@@ -12191,7 +12191,7 @@ export const runPromise: <A, E>(
  * //   cause: {
  * //     _id: "Cause",
  * //     _tag: "Fail",
- * //     failure: "my error"
+ * //     error: "my error"
  * //   }
  * // }
  * ```
@@ -12329,7 +12329,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = runtime_.unsafeRunSync
  * //   cause: {
  * //     _id: "Cause",
  * //     _tag: "Fail",
- * //     failure: "my error"
+ * //     error: "my error"
  * //   }
  * // }
  * ```
@@ -12402,8 +12402,8 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = runt
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Sequential',
- * //     left: { _id: 'Cause', _tag: 'Fail', failure: 'Oh uh!' },
- * //     right: { _id: 'Cause', _tag: 'Fail', failure: 'Oh no!' }
+ * //     left: { _id: 'Cause', _tag: 'Fail', error: 'Oh uh!' },
+ * //     right: { _id: 'Cause', _tag: 'Fail', error: 'Oh no!' }
  * //   }
  * // }
  * ```
@@ -13242,7 +13242,7 @@ export const withParentSpan: {
  * //   cause: {
  * //     _id: 'Cause',
  * //     _tag: 'Fail',
- * //     failure: { _tag: 'NoSuchElementException' }
+ * //     error: { _tag: 'NoSuchElementException' }
  * //   }
  * // }
  * ```
