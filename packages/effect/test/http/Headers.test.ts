@@ -146,6 +146,13 @@ describe("HttpDate", () => {
     }
   })
 
+  it("fails with a HeaderParseError", () => {
+    const result = Headers.parseHttpDate("tomorrow")
+    assertTrue(Result.isFailure(result))
+    strictEqual(result.failure._tag, "HeaderParseError")
+    assertTrue(Headers.isHeaderParseError(result.failure))
+  })
+
   it("reads RFC 850 two-digit years with the RFC 6265 pivot: 70-99 as 19xx, 00-69 as 20xx", () => {
     const year = (input: string) => DateTime.toDateUtc(Result.getOrThrow(Headers.parseHttpDate(input))).getUTCFullYear()
     strictEqual(year("Thursday, 01-Jan-70 00:00:00 GMT"), 1970)
