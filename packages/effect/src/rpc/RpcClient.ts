@@ -35,7 +35,6 @@ import * as Queue from "../Queue.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
-import type * as SchemaAST from "../SchemaAST.ts"
 import * as Scope from "../Scope.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
@@ -656,7 +655,6 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
     readonly flatten?: Flatten | undefined
-    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
 ) => Effect.Effect<
   Flatten extends true ? RpcClient.Flat<Rpcs, RpcClientError> : RpcClient<Rpcs, RpcClientError>,
@@ -670,12 +668,11 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly generateRequestId?: (() => RequestId) | undefined
     readonly disableTracing?: boolean | undefined
     readonly flatten?: Flatten | undefined
-    readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
 ) {
   const clientId = clientIdCounter++
   const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
-  const rpcSchemas = makeRpcSchemas(codecFor, options?.parseOptions)
+  const rpcSchemas = makeRpcSchemas(codecFor)
   const decodeDefect = Schema.decodeSync(codecFor(Schema.Defect()))
 
   type ClientEntry = {
@@ -819,7 +816,7 @@ interface RpcSchemas {
 }
 // Codecs are compiled per client, because two protocols can fill the message
 // holes with different codecs.
-const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor, parseOptions: SchemaAST.ParseOptions | undefined) => {
+const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
   const cache = new WeakMap<Rpc.AnyWithProps, RpcSchemas>()
   return (rpc: Rpc.AnyWithProps): RpcSchemas => {
     let entry = cache.get(rpc)
@@ -827,6 +824,7 @@ const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor, parseOptions: Schem
       return entry
     }
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    const parseOptions = Context.get(rpc.annotations, Rpc.ParseOptions)
     entry = {
       decodeChunk: Option.map(
         streamSchemas,

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add a `parseOptions` option to `RpcClient.make` and the `RpcServer` constructors, so RPC payloads and responses can be decoded and encoded with options such as `concurrency`.
+Add the `Rpc.ParseOptions` annotation, so RPC payloads and responses can be decoded and encoded with schema parse options such as `concurrency`.
