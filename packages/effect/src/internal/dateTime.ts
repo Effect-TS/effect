@@ -1274,10 +1274,10 @@ export const formatIntl: {
 export const formatIso = (self: DateTime.DateTime): string => toDateUtc(self).toISOString()
 
 /** @internal */
-export const formatIsoDate = (self: DateTime.DateTime): string => toDate(self).toISOString().slice(0, 10)
+export const formatIsoDate = (self: DateTime.DateTime): string => toDate(self).toISOString().split("T")[0]
 
 /** @internal */
-export const formatIsoDateUtc = (self: DateTime.DateTime): string => toDateUtc(self).toISOString().slice(0, 10)
+export const formatIsoDateUtc = (self: DateTime.DateTime): string => toDateUtc(self).toISOString().split("T")[0]
 
 /** @internal */
 export const formatIsoOffset = (self: DateTime.DateTime): string => {

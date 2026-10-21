@@ -404,6 +404,16 @@ describe("DateTime", () => {
     })
   })
 
+  describe("formatIsoDate", () => {
+    it("keeps the day for extended years", () => {
+      strictEqual(DateTime.formatIsoDateUtc(DateTime.makeUnsafe("-000001-12-31T00:00:00.000Z")), "-000001-12-31")
+      const zoned = DateTime.makeZonedUnsafe("9999-12-31T23:30:00.000Z", {
+        timeZone: DateTime.zoneMakeOffset(60 * 60 * 1000)
+      })
+      strictEqual(DateTime.formatIsoDate(zoned), "+010000-01-01")
+    })
+  })
+
   describe("formatIsoOffset", () => {
     it.effect("correctly adds offset", () =>
       Effect.gen(function*() {
