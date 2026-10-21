@@ -2391,16 +2391,21 @@ describe("Command", () => {
         const deploy = Command.make("deploy").pipe(
           Command.withExamples((commandPath) => [
             { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
-          ])
+          ]),
+          Command.withSubcommands([Command.make("status")]),
+          Command.withSharedFlags({ verbose: Flag.Boolean("verbose") })
         )
+        const tool = Command.make("tool").pipe(Command.withSubcommands([deploy]))
 
-        assert.deepStrictEqual(toImpl(deploy).buildHelpDoc(["deploy"]).examples, [
-          { command: "deploy --yes", description: "Take every default" }
-        ])
-        assert.deepStrictEqual(toImpl(deploy).buildHelpDoc(["tool", "deploy"]).examples, [
-          { command: "tool deploy --yes", description: "Take every default" }
-        ])
-      }))
+        yield* Command.runWith(deploy, { version: "1.0.0" })(["--help"])
+        const standalone = (yield* TestConsole.logLines).join("\n").split("\n").map((line) => line.trim())
+        assert.include(standalone, "deploy --yes")
+        assert.notInclude(standalone, "tool deploy --yes")
+
+        yield* Command.runWith(tool, { version: "1.0.0" })(["deploy", "--help"])
+        const mounted = (yield* TestConsole.logLines).join("\n").split("\n").map((line) => line.trim())
+        assert.include(mounted, "tool deploy --yes")
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("help docs", () => {
