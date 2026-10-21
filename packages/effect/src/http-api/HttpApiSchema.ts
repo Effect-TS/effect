@@ -122,10 +122,12 @@ export type StatusLiteral = HttpStatus.Literal
  *
  * **Details**
  *
- * This is equivalent to calling `.annotateKey({ httpApiStatus: code })` on the
- * schema, so a named schema reused with different statuses still emits a
- * single OpenAPI component. You can pass either a numeric status code (for
- * example, `201`) or a common literal name (for example, `"Created"`).
+ * The status is stored with `.annotateKey({ httpApiStatus: code })`, so a named
+ * schema reused with different statuses still emits a single OpenAPI component.
+ * If the schema already has an `httpApiStatus` annotation, that annotation is
+ * updated instead. A later `.annotate({ httpApiStatus })` takes precedence. You
+ * can pass either a numeric status code (for example, `201`) or a common
+ * literal name (for example, `"Created"`).
  *
  * @stability unstable
  * @category schemas
@@ -145,7 +147,10 @@ export function status(code: StatusLiteral): {
  */
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? HttpStatus.fromLiteral(code) : code
-  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotateKey({ httpApiStatus: statusCode })
+  return <S extends Schema.Top>(self: S): S["Rebuild"] =>
+    hasStatusAnnotation(self.ast)
+      ? self.annotate({ httpApiStatus: statusCode })
+      : self.annotateKey({ httpApiStatus: statusCode })
 }
 
 /**
@@ -1045,7 +1050,7 @@ export function encodeToWithHeaders<
       } as WithHeadersAnnotation,
       httpApiStatus: status,
       "~httpApiEncoding": encoding
-    }).annotateKey({ httpApiStatus: status })
+    })
   }
 }
 
@@ -1269,8 +1274,14 @@ export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotatio
 
 const resolveHttpApiStatusAnnotation = SchemaAST.resolveAt<number>("httpApiStatus")
 
+function hasStatusAnnotation(ast: SchemaAST.AST): boolean {
+  const annotations = SchemaAST.resolve(ast)
+  return annotations !== undefined && "httpApiStatus" in annotations
+}
+
+// An `httpApiStatus` annotation, even `undefined`, overrides the key context set by `status`
 function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
-  return ast.context?.annotations?.httpApiStatus ?? resolveHttpApiStatusAnnotation(ast)
+  return hasStatusAnnotation(ast) ? resolveHttpApiStatusAnnotation(ast) : ast.context?.annotations?.httpApiStatus
 }
 
 const defaultJsonEncoding: Encoding = {
