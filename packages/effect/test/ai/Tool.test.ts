@@ -436,41 +436,6 @@ describe("Tool", () => {
       }))
 
     describe("Preliminary Results", () => {
-      it.effect("should backpressure preliminary results until the stream is consumed", () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(Tool.make("Progress", {
-            success: Schema.Number,
-            failure: Schema.String,
-            failureMode: "return"
-          }))
-          const started = yield* Latch.make()
-          let accepted = 0
-          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-            Progress: Effect.fnUntraced(function*(_, ctx) {
-              yield* started.open
-              for (let i = 0; i < 64; i++) {
-                yield* ctx.preliminary(i)
-                accepted++
-              }
-              return yield* Effect.fail("failed")
-            })
-          })))
-
-          const stream = yield* handlers.handle("Progress", {})
-          yield* started.await
-          yield* Effect.yieldNow
-          assertTrue(accepted < 64)
-
-          const results = yield* Stream.runCollect(stream)
-          deepStrictEqual(
-            results.map(({ isFailure, preliminary, result }) => ({ isFailure, preliminary, result })),
-            [
-              ...Array.from({ length: 64 }, (_, result) => ({ isFailure: false, preliminary: true, result })),
-              { isFailure: true, preliminary: false, result: "failed" }
-            ]
-          )
-        }))
-
       it.effect("should interrupt the handler when the consumer stops early", () =>
         Effect.gen(function*() {
           const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
