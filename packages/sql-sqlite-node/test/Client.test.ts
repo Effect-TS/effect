@@ -99,4 +99,20 @@ describe("Client", () => {
         })
       )
     }))
+  it.scoped("supports transactions on readonly clients", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename })
+          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+        })
+      )
+
+      const sql = yield* SqliteClient.make({ filename, readonly: true })
+      assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT * FROM test`), [])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 })
