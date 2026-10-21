@@ -221,7 +221,11 @@ describe("PgPool connection spans", () => {
   // connect after 40 ms, then runs a second statement on the same session.
   const firstCheckout = (
     checkout: (pool: PgPool.PgPool) => Effect.Effect<unknown, SqlError, Scope.Scope>,
-    options: { readonly acquireTimeout?: Duration.Input; readonly propagate?: boolean; readonly timing?: boolean } = {}
+    options: {
+      readonly acquireTimeout?: Duration.Input | undefined
+      readonly propagate?: boolean
+      readonly timing?: boolean
+    } = {}
   ) => {
     const { named, tracer } = recording()
     return Effect.scoped(Effect.gen(function*() {

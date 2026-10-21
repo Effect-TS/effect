@@ -135,17 +135,16 @@ describe("Statement", () => {
       })
       const acquired = yield* makeClient(Effect.void, false, Effect.sleep("30 millis"))
       const borrowed = yield* makeClient(Effect.void, true, Effect.sleep("30 millis"))
-      const run = (statement: Effect.Effect<unknown, unknown>, propagate: boolean) =>
-        Effect.gen(function*() {
-          const fiber = yield* Effect.forkChild(
-            statement.pipe(
-              Effect.withTracer(tracer),
-              Effect.provideService(Statement.SpanPropagationEnabled, propagate)
-            )
+      const run = Effect.fnUntraced(function*(statement: Effect.Effect<unknown, unknown>, propagate: boolean) {
+        const fiber = yield* Effect.forkChild(
+          statement.pipe(
+            Effect.withTracer(tracer),
+            Effect.provideService(Statement.SpanPropagationEnabled, propagate)
           )
-          yield* TestClock.adjust("30 millis")
-          yield* Fiber.join(fiber)
-        })
+        )
+        yield* TestClock.adjust("30 millis")
+        yield* Fiber.join(fiber)
+      })
 
       for (const propagate of [true, false]) {
         yield* run(acquired`select 1`, propagate)
