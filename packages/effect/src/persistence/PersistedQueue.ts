@@ -33,7 +33,7 @@ import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
-import type { SqlError } from "../sql/SqlError.ts"
+import { DeadlockError, LockTimeoutError, SqlError } from "../sql/SqlError.ts"
 import type { Fragment } from "../sql/Statement.ts"
 import * as Redis from "./Redis.ts"
 
@@ -1490,25 +1490,71 @@ export const makeStoreSql: (
         INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
         VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `,
-    // The existence check seeks only the offered key and the insert only locks
-    // its own new keys, so concurrent offers never wait on each other's key
-    // ranges the way a serializable MERGE does. The unique (id, queue_name)
-    // index rejects an offer that races a duplicate past the check, which is
-    // ignored unless it doomed the transaction.
-    mssql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
-      sql`
-        BEGIN TRY
-          IF NOT EXISTS (
-            SELECT 1 FROM ${tableNameSql} WITH (FORCESEEK, INDEX(${sql(`idx_${tableName}_id`)}))
-            WHERE id = ${id} AND queue_name = ${name}
-          )
-            INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-            VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
-        END TRY
-        BEGIN CATCH
-          IF ERROR_NUMBER() NOT IN (2601, 2627) OR XACT_STATE() = -1 THROW;
-        END CATCH
-      `,
+    // A duplicate must be skipped without raising the unique index error,
+    // which a session with XACT_ABORT ON turns into a doomed transaction. The
+    // first check waits for an uncommitted duplicate while holding no offer
+    // lock. Offers then insert under a per-table app lock, where a dirty read
+    // sees a duplicate another offer has not committed without waiting on it,
+    // so the lock holder never waits on an offer that takes the lock. The lock
+    // is per table because ids compare under the column collation, which an
+    // app lock name cannot follow. It is transaction owned: without a caller
+    // transaction the batch opens one with XACT_ABORT ON, so a cancelled batch
+    // rolls it back and releases the lock.
+    mssql: () => {
+      const tableObject = `[${tableName.replace(/\]/g, "]]").replace(/\./g, "].[")}]`
+      const idIndex = sql(`idx_${tableName}_id`)
+      return (id: string, name: string, element: string, visibleAt: Fragment) =>
+        sql`
+          DECLARE @owned BIT = IIF(@@TRANCOUNT = 0, 1, 0);
+          DECLARE @resource NVARCHAR(255) = CONCAT(N'effect/PersistedQueue/offer/', OBJECT_ID(${tableObject}));
+          DECLARE @locked INT;
+          DECLARE @done BIT = 0;
+          IF @owned = 1
+          BEGIN
+            SET XACT_ABORT ON;
+            BEGIN TRANSACTION;
+          END
+          BEGIN TRY
+            WHILE @done = 0
+            BEGIN
+              IF EXISTS (
+                SELECT 1 FROM ${tableNameSql} WITH (READCOMMITTEDLOCK, FORCESEEK, INDEX(${idIndex}))
+                WHERE id = ${id} AND queue_name = ${name}
+              )
+                SET @done = 1;
+              ELSE
+              BEGIN
+                EXEC @locked = sp_getapplock @Resource = @resource, @LockMode = 'Exclusive', @LockOwner = 'Transaction';
+                IF @locked = -3 THROW 51205, N'PersistedQueue offer lock request was chosen as a deadlock victim', 1;
+                IF @locked = -1 THROW 51222, N'PersistedQueue offer lock request timed out', 1;
+                IF @locked < 0 THROW 50000, N'PersistedQueue offer lock request failed', 1;
+                IF NOT EXISTS (
+                  SELECT 1 FROM ${tableNameSql} WITH (READUNCOMMITTED, FORCESEEK, INDEX(${idIndex}))
+                  WHERE id = ${id} AND queue_name = ${name}
+                )
+                BEGIN
+                  INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+                  VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow});
+                  SET @done = 1;
+                END
+                -- after the dirty read finds an uncommitted duplicate, the next
+                -- pass waits for it to commit or roll back
+                EXEC sp_releaseapplock @Resource = @resource, @LockOwner = 'Transaction';
+              END
+            END
+            IF @owned = 1 COMMIT TRANSACTION;
+          END TRY
+          BEGIN CATCH
+            IF @owned = 1 AND @@TRANCOUNT > 0
+              ROLLBACK TRANSACTION;
+            ELSE IF XACT_STATE() = 1 AND APPLOCK_MODE(N'public', @resource, N'Transaction') <> N'NoLock'
+              EXEC sp_releaseapplock @Resource = @resource, @LockOwner = 'Transaction';
+            -- a writer that does not take the lock, such as an older release
+            -- of this store, can still race a duplicate in
+            IF ERROR_NUMBER() NOT IN (2601, 2627) OR XACT_STATE() = -1 THROW;
+          END CATCH
+        `.pipe(Effect.mapError(mssqlOfferLockError))
+    },
     // sqlite
     orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
@@ -1705,8 +1751,9 @@ export const makeStoreSql: (
             sql.withTransaction
           ),
         // UPDLOCK holds the candidate rows until the update claims them, and
-        // READPAST skips rows another claim or a settlement has locked instead
-        // of waiting on them, so a claim never waits in a lock cycle
+        // READPAST skips candidate rows another claim or a settlement has
+        // locked instead of waiting on them. The update itself can still wait
+        // on page locks or on secondary index maintenance.
         mssql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
@@ -2174,6 +2221,19 @@ const sqlMigrations = (tableName: string) =>
       })
     })
   })
+
+// sp_getapplock reports a deadlock or a lock timeout through its return code,
+// so the SQL Server offer raises 51205 or 51222 in their place
+const mssqlOfferLockError = (error: SqlError): SqlError => {
+  const cause = error.reason.cause
+  const number = Predicate.hasProperty(cause, "number") ? cause.number : undefined
+  const props = { cause, message: error.reason.message, operation: error.reason.operation }
+  return number === 51205
+    ? new SqlError({ reason: new DeadlockError(props) })
+    : number === 51222
+    ? new SqlError({ reason: new LockTimeoutError(props) })
+    : error
+}
 
 /**
  * Provides a SQL-backed `PersistedQueueStore` using `makeStoreSql`.
