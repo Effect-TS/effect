@@ -2,18 +2,24 @@
 "effect": patch
 ---
 
-Support multiline flow collections in `Yaml.parse`, such as a JSON-style mapping whose entries and closing bracket are on separate lines. Continuation lines, including the closing bracket, must be indented more than the parent node, as YAML 1.2 specifies. Plain and quoted scalars inside flow collections may span lines and are folded, and comments may follow any entry.
+Support multiline flow collections in `Yaml.parse`. Continuation lines must be indented past the parent node, and the closing bracket may sit at the parent's indentation. Plain and quoted scalars inside flow collections may span lines, and comments may follow any entry.
 
-Support compact nested block sequences such as `- - value`, and parse a compact mapping in a sequence entry at the column where its first key starts.
+`Yaml.parse` also supports:
 
-Support explicit `? key` entries in block and flow mappings, keys without values in flow mappings, and single-pair `key: value` entries in flow sequences. Keys must be scalars; a collection key fails with a `SyntaxError`. A plain scalar in a flow collection now ends only at a `:` followed by a space or flow indicator, so `{http://x: 1}` has the key `http://x`, and `{a:1}` is the key `a:1` with a null value, as YAML 1.2 specifies.
+- compact nested block sequences such as `- - value`
+- explicit `? key` entries, flow mapping keys without values (`{a, b: 1}`) and flow sequence pairs (`[a: 1]`)
+- the core schema tags (`!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!map`, `!!seq`), verbatim tags and `%TAG` handles
+- anchors and tags in either order, and aliases as keys
+- document content on the `---` line, such as `--- text` or `--- |`
+- tabs as separation after indentation and indicators
 
-Resolve tags: the core schema tags (`!!str`, `!!int`, `!!float`, `!!bool`, `!!null`, `!!map`, `!!seq`), the non-specific `!` tag, verbatim tags, and `%TAG` handles. Other tags are ignored, so their scalars stay strings. A core tag that does not fit its node, such as `!!int abc`, fails with a `SyntaxError`. Anchors and tags may appear in either order, on implicit keys, inside flow collections, and on lines of their own before the node, and aliases may be used as keys.
+Some input that was previously accepted now fails with a `SyntaxError` or parses differently:
 
-Resolve recursive aliases, which yield cyclic values.
+- `{a:1}` is the key `a:1` with a null value, as YAML 1.2 specifies
+- tags are no longer kept in the scalar text, and tags other than the core ones are ignored, so `!Ref 123` is `"123"` rather than `"!Ref 123"`
+- a core tag that does not fit its node, such as `!!int abc`
+- collection keys, such as `? [a]`
+- `key: - a`, malformed block scalar headers such as `|0` or `> text`, and plain scalars starting with an indicator such as `@`
+- directives without a following `---`, malformed `%YAML` and `%TAG` directives, and `%` lines inside a document
 
-Parse a document whose content starts on the `---` line, such as `--- text`, `--- |` or `--- !!map`, which was read as a plain scalar including the marker. A block scalar ends at a `---` or `...` marker, and a quoted scalar cannot contain one.
-
-Allow tabs as separation after the indentation, after the `-`, `?` and `:` indicators, and as a `\`-escaped character in double-quoted scalars. Tabs still cannot indent a block collection.
-
-Validate directives: they must precede a `---` marker, `%YAML` takes one version and may appear once, and `%TAG` takes a handle and a prefix. Other directives are ignored, and a `%` line inside a document is no longer skipped. A plain scalar cannot start with an indicator such as `|`, `>`, `@` or a backtick, so malformed block scalar headers like `|0` or `> text` fail with a `SyntaxError` instead of becoming strings.
+Recursive aliases still fail, now with an error that says so.
