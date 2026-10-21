@@ -637,6 +637,26 @@ describe("HttpMiddleware", () => {
         expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
       },
       {
+        name: "stops at an element with an unescaped control character inside a quoted value",
+        forwarded: "for=6.6.6.6, for=10.0.0.2;ext=\"a\u0001b\"",
+        expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "stops at an element with an unescaped DEL inside a quoted value",
+        forwarded: "for=6.6.6.6, for=10.0.0.2;ext=\"a\u007fb\"",
+        expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "stops at an element with an escaped control character inside a quoted value",
+        forwarded: "for=6.6.6.6, for=10.0.0.2;ext=\"a\\\u0001b\"",
+        expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "stops at an element with an escaped DEL inside a quoted value",
+        forwarded: "for=6.6.6.6, for=10.0.0.2;ext=\"a\\\u007fb\"",
+        expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
+      },
+      {
         name: "accepts escaped quotes inside a quoted value",
         forwarded: "for=198.51.100.7;ext=\"say \\\"hi\\\" now\";proto=https, for=10.0.0.2",
         expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "https://app.test/a" }
