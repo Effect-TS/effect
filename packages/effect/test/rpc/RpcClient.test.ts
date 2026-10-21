@@ -10,6 +10,8 @@ import {
   identity,
   Layer,
   Queue,
+  Request,
+  RequestResolver,
   Schedule,
   Schema,
   SchemaTransformation,
@@ -27,6 +29,8 @@ import * as Worker from "effect/workers/Worker"
 import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import { vi } from "vitest"
 import type * as RpcClientErrorModule from "../../src/rpc/RpcClientError.ts"
+
+class GetUser extends Request.Class<{ id: number }, string> {}
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -282,6 +286,45 @@ describe("RpcClient", () => {
         yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: "late" } })
         assert.strictEqual(decodedReplies, 0, `${terminal._tag} must release the response decoder`)
       }
+    }))
+
+  it.effect("decodes responses with the configured parse options", () =>
+    Effect.gen(function*() {
+      const batches: Array<ReadonlyArray<number>> = []
+      const resolver = RequestResolver.make<GetUser>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.map((entry) => entry.request.id))
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed(`user-${entry.request.id}`))
+        })
+      )
+      const User = Schema.Number.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformEffect({
+          decode: (id) => Effect.request(new GetUser({ id }), resolver),
+          encode: (name) => Effect.succeed(Number(name.slice("user-".length)))
+        })
+      ))
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      const client = yield* RpcClient.make(RpcGroup.make(Rpc.make("GetUsers", { success: Schema.Array(User) })), {
+        parseOptions: { concurrency: "unbounded" }
+      }).pipe(Effect.provideService(
+        RpcClient.Protocol,
+        RpcClient.Protocol.of({
+          codecFor: RpcSerialization.json.codecFor,
+          supportsAck: false,
+          supportsTransferables: false,
+          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+          send: (_clientId, message) => Effect.asVoid(Queue.offer(sent, message))
+        })
+      ))
+      const handle = yield* Deferred.await(received)
+      const fiber = yield* client.GetUsers().pipe(Effect.forkChild)
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: [1, 2, 3] } })
+
+      assert.deepStrictEqual(yield* Fiber.join(fiber), ["user-1", "user-2", "user-3"])
+      assert.deepStrictEqual(batches, [[1, 2, 3]])
     }))
 
   it.effect("releases socket routing after an encoding defect", () =>

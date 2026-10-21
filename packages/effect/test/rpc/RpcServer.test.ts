@@ -10,7 +10,9 @@ import {
   Layer,
   Queue,
   Ref,
+  RequestResolver,
   Schema,
+  SchemaTransformation,
   Scope,
   Sink,
   Stdio,
@@ -19,9 +21,12 @@ import {
 } from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
+import * as EffectRequest from "effect/Request"
 import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
+
+class GetUser extends EffectRequest.Class<{ id: number }, string> {}
 
 const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
   streamBufferSize?: number | "unbounded"
@@ -165,6 +170,48 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(reports, [message])
     }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
+
+  it.effect("decodes payloads with the configured parse options", () =>
+    Effect.gen(function*() {
+      const batches: Array<ReadonlyArray<number>> = []
+      const resolver = RequestResolver.make<GetUser>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.map((entry) => entry.request.id))
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed(`user-${entry.request.id}`))
+        })
+      )
+      const User = Schema.Number.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformEffect({
+          decode: (id) => Effect.request(new GetUser({ id }), resolver),
+          encode: (name) => Effect.succeed(Number(name.slice("user-".length)))
+        })
+      ))
+      const group = RpcGroup.make(Rpc.make("getUsers", {
+        payload: { users: Schema.Array(User) },
+        success: Schema.Array(Schema.String)
+      }))
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group, { parseOptions: { concurrency: "unbounded" } }).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ getUsers: ({ users }) => Effect.succeed(users) }),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      const body = yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUsers","payload":{"users":[1,2,3]},"headers":[]}\n`
+          })
+        ).then((response) => response.text())
+      )
+
+      const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
+      assert.deepStrictEqual(response.exit, { _tag: "Success", value: ["user-1", "user-2", "user-3"] })
+      assert.deepStrictEqual(batches, [[1, 2, 3]])
+    }))
 
   it.effect("records effect and stream encode defects on server spans, even when middleware swallows them", () =>
     Effect.gen(function*() {
