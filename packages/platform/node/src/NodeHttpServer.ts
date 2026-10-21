@@ -539,14 +539,14 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
 
   get originalUrl(): string {
     const url = this.source.url!
-    const headers = this.source.headers
+    const headers = this.source.headers as Http2.IncomingHttpHeaders
     const http2 = isHttp2(this.source)
-    const host = (http2 ? headers[":authority"] as string | undefined : undefined) ?? headers.host
+    const host = (http2 ? headers[":authority"] : undefined) ?? headers.host
     if (url[0] !== "/" || host === undefined) {
       return url
     }
     // `:scheme` is the target URI scheme, which also covers h2c behind a TLS terminator
-    const scheme = http2 ? headers[":scheme"] as string | undefined : undefined
+    const scheme = http2 ? headers[":scheme"] : undefined
     const encrypted = (this.source.socket as Tls.TLSSocket | undefined)?.encrypted
     return `${scheme ?? (encrypted ? "https" : "http")}://${host}${url}`
   }
@@ -1054,15 +1054,7 @@ const handleCause = (
         response = internalServerError
       }
       try {
-        if (isHttp2(nodeResponse.req)) {
-          nodeResponse.writeHead(response.status)
-        } else {
-          nodeResponse.writeHead(
-            response.status,
-            response.statusText,
-            closesConnection(nodeResponse.req, false) ? { connection: "close" } : undefined
-          )
-        }
+        writeHead(nodeResponse, response, {})
       } catch {
         // HTTP/2 keeps the headers of a rejected `writeHead`, so the fallback can throw too
         abort = true
