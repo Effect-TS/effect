@@ -13,8 +13,13 @@ type Compactor = Registry["Service"]["compactors"] extends ReadonlyMap<string, i
 
 /**
  * Folds the opted-in compactors over `entries`, given in input-sequence order
- * without repeated ids, `chunkSize` entries at a time. Returns the kept input
- * entries in input order.
+ * without repeated ids. Returns the kept input entries in input order.
+ *
+ * Each step folds a chunk into the entries kept so far. The chunk starts at
+ * `chunkSize` entries and grows to the size of the kept set, so a run is
+ * linear in its input when little is dropped, and memory stays at about twice
+ * the kept set. A compactor that composes keeps the same entries whatever
+ * the chunking.
  *
  * Fails with `IdempotenceError` when another pass over the kept set drops
  * more. A compactor defect fails the run.
@@ -63,13 +68,21 @@ export const run = <E, R>(options: {
   })
 
   return Effect.gen(function*() {
-    const kept = yield* options.entries.pipe(
+    let kept: ReadonlyArray<Entry> = []
+    let pending: Array<Entry> = []
+    yield* options.entries.pipe(
       Stream.grouped(options.chunkSize),
-      Stream.runFoldEffect(
-        (): ReadonlyArray<Entry> => [],
-        (kept, chunk) => drop([...kept, ...chunk])
-      )
+      Stream.runForEach((group) => {
+        for (const entry of group) pending.push(entry)
+        if (pending.length < Math.max(options.chunkSize, kept.length)) return Effect.void
+        const input = kept.concat(pending)
+        pending = []
+        return Effect.map(drop(input), (next) => {
+          kept = next
+        })
+      })
     )
+    if (pending.length > 0) kept = yield* drop(kept.concat(pending))
     const again = yield* drop(kept)
     if (again.length !== kept.length) {
       const survivors = new Set(again)

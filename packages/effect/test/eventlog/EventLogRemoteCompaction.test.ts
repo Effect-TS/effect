@@ -156,7 +156,7 @@ describe("RemoteCompaction", () => {
       }
     }))
 
-  it.effect("folds chunks into the entries kept so far", () =>
+  it.effect("folds chunks that grow with the kept set into the entries kept so far", () =>
     Effect.gen(function*() {
       const item = (msecs: number, id: string) =>
         makeEntry(msecs, "ItemSet", Items.events.ItemSet.payloadSchemaBinary, { id, value: msecs })
@@ -173,12 +173,31 @@ describe("RemoteCompaction", () => {
         yield* item(500, "b"),
         yield* item(2000, "a")
       ]
+      // How many items each call to the opted-in compactor received.
+      const calls: Array<number> = []
       const kept = yield* run(
-        Layer.mergeAll(keepLatest(Items), keepLatest(Notes, { remote: false })),
+        Layer.mergeAll(
+          EventLog.groupBatchCompaction(Items, ({ entries, forward }) => {
+            calls.push(entries.length)
+            const latest = new Map<string, EventJournal.Entry>()
+            for (const { entry } of entries) {
+              const current = latest.get(entry.primaryKey)
+              if (current === undefined || EventJournal.Entry.Order(current, entry) < 0) {
+                latest.set(entry.primaryKey, entry)
+              }
+            }
+            return Effect.forEach(latest.values(), forward, { discard: true })
+          }, { remote: true }),
+          keepLatest(Notes, { remote: false })
+        ),
         entries,
         2
       )
       assert.deepStrictEqual(kept, [entries[0], entries[1], entries[3], entries[4], entries[5]])
+      // The chunk is at least 2 entries and at least the kept set: the first
+      // two chunks hold 2 entries, the third waits for 3, and the last call is
+      // the pass over the kept set.
+      assert.deepStrictEqual(calls, [1, 2, 3, 2])
     }))
 
   it.effect("fails the run when the kept set does not survive another pass", () =>
