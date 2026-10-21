@@ -4,31 +4,16 @@ import * as Schema from "effect/Schema"
 import * as SocketProtocols from "effect/socket/SocketProtocols"
 
 describe("SocketProtocols", () => {
-  describe("Schema", () => {
-    it.effect("decodes a comma-separated header into trimmed protocols", () =>
-      Effect.gen(function*() {
-        const result = yield* Schema.decodeEffect(SocketProtocols.Schema)("graphql-ws, json ,binary")
-        assert.deepStrictEqual(result, ["graphql-ws", "json", "binary"])
-      }))
+  it.effect("decodes a header into trimmed protocols, dropping empty tokens", () =>
+    Effect.gen(function*() {
+      const decode = Schema.decodeEffect(SocketProtocols.Schema)
+      assert.deepStrictEqual(yield* decode("graphql-ws, json ,,  , binary,"), ["graphql-ws", "json", "binary"])
+      assert.deepStrictEqual(yield* decode(""), [])
+    }))
 
-    it.effect("drops empty tokens", () =>
-      Effect.gen(function*() {
-        const decode = Schema.decodeEffect(SocketProtocols.Schema)
-        assert.deepStrictEqual(yield* decode("a,,b"), ["a", "b"])
-        assert.deepStrictEqual(yield* decode("a, ,b"), ["a", "b"])
-        assert.deepStrictEqual(yield* decode("a,,b, ,c,"), ["a", "b", "c"])
-      }))
-
-    it.effect("decodes an empty header into an empty array", () =>
-      Effect.gen(function*() {
-        const result = yield* Schema.decodeEffect(SocketProtocols.Schema)("")
-        assert.deepStrictEqual(result, [])
-      }))
-
-    it.effect("encodes protocols back into a header value", () =>
-      Effect.gen(function*() {
-        const result = yield* Schema.encodeEffect(SocketProtocols.Schema)(["graphql-ws", "json"])
-        assert.strictEqual(result, "graphql-ws,json")
-      }))
-  })
+  it.effect("encodes protocols into a header value", () =>
+    Effect.gen(function*() {
+      const result = yield* Schema.encodeEffect(SocketProtocols.Schema)(["graphql-ws", "json"])
+      assert.strictEqual(result, "graphql-ws,json")
+    }))
 })
