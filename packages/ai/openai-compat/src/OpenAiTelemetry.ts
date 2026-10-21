@@ -4,6 +4,7 @@
  * telemetry attributes and adds service tier and system fingerprint under
  * `openai.*`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Telemetry from "effect/ai/Telemetry"
@@ -22,6 +23,7 @@ import type { Simplify } from "effect/Types"
  * conventions:
  * https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -34,6 +36,7 @@ export type OpenAiTelemetryAttributes = Simplify<
 /**
  * OpenAI request metadata, written under `openai.request.*`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -48,6 +51,7 @@ export interface RequestAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `openai.response`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -72,6 +76,7 @@ export interface ResponseAttributes {
  * If one of them applies, then the respective value **MUST** be used;
  * otherwise, a custom value **MAY** be used.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -81,6 +86,7 @@ export type WellKnownServiceTier = "auto" | "default"
  * Options accepted by `addGenAIAnnotations`, combining standard GenAI telemetry
  * attributes with optional OpenAI-compatible request and response attributes.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -116,6 +122,7 @@ const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("openai.response
  *
  * Mutates the supplied `Span` in place.
  *
+ * @stability unstable
  * @category tracing
  * @since 4.0.0
  */

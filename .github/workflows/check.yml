@@ -25,6 +25,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Lint
         run: pnpm lint
+      - name: Check JSDoc
+        run: pnpm jsdocs --check
       - name: Check circular dependencies
         run: pnpm circular
       - name: Generate AI documentation
@@ -48,13 +50,15 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.9.4
+          deno-version: v2.9.6
       - run: pnpm check
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
           GOMEMLIMIT: 4GiB
       - run: deno check .
       - run: pnpm test-types --target '>=5.9'
+        env:
+          TSTYCHE_FETCH_TIMEOUT: "120"
 
   build:
     name: Build
@@ -128,7 +132,7 @@ jobs:
             bun: ""
             command: pnpm test --max-concurrency=10
           - runtime: Deno
-            deno: v2.9.4
+            deno: v2.9.6
             bun: ""
             command: deno task test --max-concurrency=10
           - runtime: Bun
@@ -141,11 +145,12 @@ jobs:
       - name: Pre-pull test container images
         run: |
           docker pull ghcr.io/tursodatabase/libsql-server:main &
-          docker pull postgres:alpine &
+          docker pull postgres:14-alpine &
           docker pull mysql:lts &
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
+          docker pull coredns/coredns:1.14.7 &
           wait
 
       - name: Install dependencies
@@ -154,7 +159,39 @@ jobs:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
+        if: matrix.runtime != 'Deno'
         run: ${{ matrix.command }}
+      - name: Test with PostgreSQL lifecycle capture
+        if: matrix.runtime == 'Deno'
+        shell: bash
+        env:
+          PG_LIFECYCLE_DIAGNOSTICS: "1"
+          PG_LIFECYCLE_LOG: ${{ runner.temp }}/pg-lifecycle/lifecycle.log
+        run: |
+          capture_dir="${{ runner.temp }}/pg-lifecycle"
+          mkdir -p "$capture_dir"
+          started_at=$(date --iso-8601=seconds)
+          docker events --since "$started_at" --format '{{json .}}' > "$capture_dir/docker-events.jsonl" 2> "$capture_dir/docker-events.stderr" &
+          events_pid=$!
+          cleanup() {
+            # Reap only the capture process started here; preserve the test exit code.
+            kill "$events_pid" 2>/dev/null || true
+            wait "$events_pid" 2>/dev/null || true
+            # The runner owns the output file; only journal access needs sudo.
+            # shellcheck disable=SC2024
+            sudo -n journalctl -u docker.service --since "$started_at" --no-pager -o short-iso-precise > "$capture_dir/docker-journal.log" 2>&1 || true
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          ${{ matrix.command }} 2>&1 | tee "$capture_dir/tests.log"
+      - name: Upload PostgreSQL lifecycle diagnostics
+        if: always() && matrix.runtime == 'Deno' && (failure() || cancelled())
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: deno-pg-lifecycle-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pg-lifecycle
+          if-no-files-found: warn
 
   doctest:
     name: Test (Documentation)

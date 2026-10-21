@@ -68,11 +68,12 @@ const parseAnnotation = (line: string): string | undefined => {
 
 interface ModuleMetadata {
   readonly since: string
-  readonly stability: "unstable" | "experimental" | undefined
+  readonly stability: "stable" | "unstable" | "experimental" | undefined
 }
 
 const extractModuleMetadata = (file: string, content: string): Effect.Effect<ModuleMetadata, BarrelCodegenError> => {
-  const block = content.match(/^\s*(\/\*\*[\s\S]*?\*\/)/)?.[1]
+  // allow triple-slash directives before the module JSDoc
+  const block = content.match(/^(?:\s*\/\/\/[^\n]*\n)*\s*(\/\*\*[\s\S]*?\*\/)/)?.[1]
   if (block === undefined) {
     return Effect.fail(
       new BarrelCodegenError({
@@ -105,7 +106,8 @@ const extractModuleMetadata = (file: string, content: string): Effect.Effect<Mod
     since,
     stability: isInternalModule(file, block) ?
       undefined :
-      /^\s*\*\s*@stability\s+(unstable|experimental)\s*$/m.exec(block)?.[1] as
+      /^\s*\*\s*@stability\s+(stable|unstable|experimental)\s*$/m.exec(block)?.[1] as
+        | "stable"
         | "unstable"
         | "experimental"
         | undefined

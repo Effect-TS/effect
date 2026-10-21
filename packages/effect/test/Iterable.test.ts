@@ -408,6 +408,13 @@ describe("Iterable", () => {
     deepStrictEqual(toArray(Iter.flatten(input)), [1])
   })
 
+  it("dedupeAdjacent is stack safe across long runs of duplicates", () => {
+    const input = Array.from({ length: 20_000 }, () => 1)
+    input.push(2)
+
+    deepStrictEqual(toArray(Iter.dedupeAdjacent(input)), [1, 2])
+  })
+
   it("cartesianWith", () => {
     const right = (function*() {
       yield* [1, 2, 3]

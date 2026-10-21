@@ -12,6 +12,7 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as Bytes from "../Bytes.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
@@ -81,6 +82,12 @@ export interface RpcServer<A extends Rpc.Any> {
  * Creates an RPC server for an already-decoded message channel, running
  * handlers for a group and sending decoded server responses through
  * `onFromServer`.
+ *
+ * **Details**
+ *
+ * If writing a stream `Chunk` fails with anything other than an interruption,
+ * the request fails with that cause. `onFromServer` is assumed to have already
+ * answered the client and reported it, so nothing else is sent or reported.
  *
  * @stability unstable
  * @category constructors
@@ -188,7 +195,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           clients.set(clientId, client)
         } else if (
           client.ended &&
-          (message._tag !== "Interrupt" || !client.fibers.has(message.requestId))
+          ((message._tag !== "Interrupt" && message._tag !== "Ack") || !client.fibers.has(message.requestId))
         ) {
           return Effect.interrupt
         }
@@ -199,7 +206,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           }
           case "Ack": {
             const latch = client.latches?.get(message.requestId)
-            return latch ? latch.open : Effect.void
+            return latch ? Effect.asVoid(latch.open) : Effect.void
           }
           case "Interrupt": {
             const fiber = client.fibers.get(message.requestId)
@@ -279,13 +286,23 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     const isUninterruptible = isWrapper && result.uninterruptible
     // unwrap the fork data type
     const streamOrEffect = isWrapper ? result.value : result
+    // set when a chunk could not be written; the writer has already responded
+    let writeFailure: Cause.Cause<never> | undefined
     const handler = isStream
-      ? (streamEffect(client, request, streamOrEffect) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
+      ? (streamEffect(client, request, streamOrEffect, (cause) => {
+        writeFailure = cause
+      }) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
       : (streamOrEffect as Effect.Effect<{} | Deferred.Deferred<any, any>>)
 
-    const withMiddleware = rpc.middlewares.size > 0
-      ? applyMiddleware(services, handler, metadata)
-      : handler
+    const withMiddleware = rpc.middlewares.size === 0
+      ? handler
+      : isStream
+      // middleware may rewrite or swallow a chunk write failure, so restore it
+      ? Effect.flatMap(
+        Effect.exit(applyMiddleware(services, handler, metadata)),
+        (exit) => writeFailure ? Effect.failCause(writeFailure) : exit
+      )
+      : applyMiddleware(services, handler, metadata)
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
@@ -304,6 +321,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             exit: exit as any
           })
         }
+      } else if (writeFailure) {
+        // onFromServer has already answered the client and reported the failure
+        return Scope.closeUnsafe(scope, exit) ?? Effect.void
       } else if (
         !disableFatalDefects &&
         Cause.hasDies(exit.cause) &&
@@ -409,8 +429,17 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     request: Request<Rpcs>,
     stream:
       | Stream.Stream<any, any>
-      | Effect.Effect<Queue.Dequeue<any, any>, any, Scope.Scope>
+      | Effect.Effect<Queue.Dequeue<any, any>, any, Scope.Scope>,
+    onWriteFailure: (cause: Cause.Cause<never>) => void
   ) => {
+    const writeChunk = (values: NonEmptyReadonlyArray<any>) =>
+      Effect.onError(
+        options.onFromServer({ _tag: "Chunk", clientId: client.id, requestId: request.id, values }),
+        (cause) => {
+          if (!Cause.hasInterruptsOnly(cause)) onWriteFailure(cause)
+          return Effect.void
+        }
+      )
     let latch: Latch.Latch | undefined
     if (supportsAck) {
       client.latches ??= new Map()
@@ -427,12 +456,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             while: constTrue,
             body: constant(
               Effect.flatMap(Queue.takeAll(queue), (values) => {
-                const write = options.onFromServer({
-                  _tag: "Chunk",
-                  clientId: client.id,
-                  requestId: request.id,
-                  values
-                })
+                const write = writeChunk(values)
                 if (!latch) return write
                 latch.closeUnsafe()
                 return Effect.flatMap(write, () => latch.await)
@@ -446,12 +470,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       )
     }
     return Stream.runForEachArray(stream, (values) => {
-      const write = options.onFromServer({
-        _tag: "Chunk",
-        clientId: client.id,
-        requestId: request.id,
-        values
-      })
+      const write = writeChunk(values)
       if (!latch) return write
       latch.closeUnsafe()
       return Effect.andThen(write, latch.await)
@@ -475,6 +494,57 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     disconnect
   })
 })
+
+// Built-in JSON codecs depend only on the RPC schemas and can be shared.
+// Other factories may capture state at construction, so keep them per server.
+const isSharedCodecFor = (codecFor: RpcSerialization.CodecFor) => codecFor === RpcSerialization.json.codecFor
+
+interface RpcCodecs {
+  readonly decode: (u: unknown) => Effect.Effect<any, Schema.SchemaError>
+  readonly encodeChunk: (
+    u: NonEmptyReadonlyArray<unknown>
+  ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
+  readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+}
+
+const sharedRpcCodecs = new WeakMap<Rpc.AnyWithProps, RpcCodecs>()
+
+const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps): RpcCodecs => {
+  const shared = isSharedCodecFor(codecFor)
+  let codecs = shared ? sharedRpcCodecs.get(rpc) : undefined
+  if (codecs === undefined) {
+    const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    codecs = {
+      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
+      encodeChunk: Schema.encodeUnknownEffect(
+        codecFor(
+          Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
+        )
+      ) as any,
+      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
+    }
+    if (shared) sharedRpcCodecs.set(rpc, codecs)
+  }
+  return codecs
+}
+
+interface DefectCodecs {
+  readonly encodeDefectUnsafe: (defect: unknown) => unknown
+  readonly encodeUnknownRequestExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+}
+
+let sharedDefectCodecs: DefectCodecs | undefined
+
+const makeDefectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs => ({
+  encodeDefectUnsafe: Schema.encodeSync(codecFor(Schema.Defect())),
+  // Unknown tags have no RPC schema, so use a defect-only exit schema.
+  encodeUnknownRequestExit: Schema.encodeUnknownEffect(
+    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
+  ) as any
+})
+
+const defectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs =>
+  isSharedCodecFor(codecFor) ? (sharedDefectCodecs ??= makeDefectCodecs(codecFor)) : makeDefectCodecs(codecFor)
 
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)
@@ -568,11 +638,7 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsSpanPropagation,
     supportsTransferables
   } = yield* Protocol
-  const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
-  // Unknown tags have no RPC schema, so use a defect-only exit schema.
-  const encodeUnknownRequestExit: Schemas["encodeExit"] = Schema.encodeUnknownEffect(
-    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
-  ) as any
+  const { encodeDefectUnsafe, encodeUnknownRequestExit } = defectCodecs(codecFor)
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
@@ -633,6 +699,7 @@ export const make: <Rpcs extends Rpc.Any>(
   )
 
   type Schemas = {
+    readonly tag: string
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, Schema.SchemaError>
     readonly encodeChunk: (
       u: NonEmptyReadonlyArray<unknown>
@@ -647,15 +714,9 @@ export const make: <Rpcs extends Rpc.Any>(
     let schemas = schemasCache.get(rpc)
     if (!schemas) {
       const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
-      const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
       schemas = {
-        decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
-        encodeChunk: Schema.encodeUnknownEffect(
-          codecFor(
-            Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
-          )
-        ) as any,
-        encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any,
+        tag: rpc._tag,
+        ...rpcCodecs(codecFor, rpc),
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -686,23 +747,38 @@ export const make: <Rpcs extends Rpc.Any>(
     tag: "Chunk" | "Exit"
   ) => {
     const collector = schemas.collector
+    let encodeFailed = false
     // The schema encoders evaluate eagerly, so an encode that needs no
     // services is already a resolved success and can skip the effect wrappers.
     const write = Exit.isExit(effect) && Exit.isSuccess(effect)
       ? send(client.id, responseEnvelope(requestId, tag, effect.value), collector && collector.clearUnsafe())
       : Effect.flatMap(
-        Effect.provideContext(
-          collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
-          schemas.context
+        Effect.catch(
+          Effect.provideContext(
+            collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
+            schemas.context
+          ),
+          (error) =>
+            Effect.withFiber((fiber) => {
+              const defect = Cause.die(
+                `Failed to encode response for RPC "${schemas.tag}": ${SchemaIssue.defaultFormatter(error.issue)}`
+              )
+              reportCauseUnsafe(fiber, defect)
+              encodeFailed = true
+              return Effect.failCause(defect)
+            })
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
       )
     return Effect.catchCause(write, (cause) => {
       client.schemas.delete(requestId)
-      const defect = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
+      // An encode failure ends the request with the defect, so the request
+      // span records it. Other failures stop the request as a cancellation.
       return Effect.andThen(
-        sendRequestDefect(client, requestId, schemas.encodeExit, defect),
-        server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
+        sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause)),
+        encodeFailed
+          ? Effect.failCause(cause)
+          : server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
       )
     })
   }
@@ -1074,7 +1150,7 @@ export const makeProtocolWithHttpEffect: (
   RpcSerialization.RpcSerialization
 > = Effect.fnUntraced(function*(options = {}) {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
   const includesFraming = serialization.includesFraming
   const isBinary = !serialization.contentType.includes("json")
 
@@ -1171,8 +1247,9 @@ export const makeProtocolWithHttpEffect: (
 
     yield* writeRequest(id, constEof)
 
+    // Allow request aborts during response waits without unmasking response construction.
     if (!includesFraming) {
-      const responses = yield* Queue.collect(queue)
+      const responses = yield* Effect.interruptible(Queue.collect(queue))
       // Notification-only batches encode without a response body.
       const encoded = parser.encode(responses)
       return HttpServerResponse.text(encoded === undefined ? "" : encoded as string, {
@@ -1180,12 +1257,12 @@ export const makeProtocolWithHttpEffect: (
       })
     }
 
-    const initialChunk = yield* Pull.catchDone(
+    const initialChunk = yield* Effect.interruptible(Pull.catchDone(
       Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),
       () => Effect.succeed([])
-    )
+    ))
     if (queue.state._tag === "Done") {
-      return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk), {
+      return HttpServerResponse.uint8Array(initialChunk.length === 1 ? initialChunk[0] : Bytes.concat(initialChunk), {
         contentType: serialization.contentType
       })
     }
@@ -1226,19 +1303,6 @@ export const makeProtocolWithHttpEffect: (
 
   return { protocol, httpEffect } as const
 })
-
-const mergeUint8Arrays = (arrays: ReadonlyArray<Uint8Array>) => {
-  if (arrays.length === 0) return new Uint8Array(0)
-  if (arrays.length === 1) return arrays[0]
-  const length = arrays.reduce((acc, arr) => acc + arr.length, 0)
-  const result = new Uint8Array(length)
-  let offset = 0
-  for (const arr of arrays) {
-    result.set(arr, offset)
-    offset += arr.length
-  }
-  return result
-}
 
 /**
  * Creates an HTTP server `Protocol` and registers its request handler as a POST
@@ -1534,7 +1598,7 @@ const makeSocketProtocol: Effect.Effect<
   RpcSerialization.RpcSerialization
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
   const disconnects = yield* Queue.make<number>()
 
   let clientId = 0

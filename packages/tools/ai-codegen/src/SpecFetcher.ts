@@ -75,7 +75,7 @@ export const layer: Layer.Layer<
   FileSystem.FileSystem | HttpClient.HttpClient
 > = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
-  const httpClient = yield* HttpClient.HttpClient
+  const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
 
   const fetchFromFile = Effect.fn("fetchFromFile")(function*(
     path: string,

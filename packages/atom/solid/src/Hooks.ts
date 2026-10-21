@@ -4,6 +4,7 @@
  * for cleanup, subscribe callbacks, seed initial values, expose `AsyncResult`
  * atoms as Solid resources, and read values from `AtomRef` references.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -33,6 +34,7 @@ const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Ato
  * supplied through the hook. Later calls for the same atom in that registry are
  * ignored.
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -55,6 +57,7 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  * Subscribes to an atom in the current Solid registry and returns its value as
  * a Solid accessor.
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -136,6 +139,7 @@ const flattenExit = <A, E>(exit: Exit.Exit<A, E>): A => {
  * @see {@link useAtomSet} for mounting a writable atom while returning a setter
  * @see {@link useAtomRefresh} for mounting an atom while returning a refresh callback
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -147,6 +151,14 @@ export const useAtomMount = <A>(atom: () => Atom.Atom<A>): void => {
 /**
  * Returns a setter for a writable atom without subscribing to its value.
  *
+ * **Gotchas**
+ *
+ * In `promise` and `promiseExit` modes, the setter observes the atom's next
+ * settled result, not a result correlated with that write. Overlapping writes
+ * can resolve with another write's result. Serialize writes when each caller
+ * needs its own result.
+ *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -175,6 +187,7 @@ export const useAtomSet = <
 /**
  * Mounts an atom and returns a callback that refreshes the current atom.
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -200,9 +213,17 @@ export const useAtomRefresh = <A>(atom: () => Atom.Atom<A>): () => void => {
  * `AsyncResult` atoms, `promise` and `promiseExit` modes return promises for the
  * success value or full `Exit`.
  *
+ * **Gotchas**
+ *
+ * In `promise` and `promiseExit` modes, the setter observes the atom's next
+ * settled result, not a result correlated with that write. Overlapping writes
+ * can resolve with another write's result. Serialize writes when each caller
+ * needs its own result.
+ *
  * @see {@link useAtomValue} for subscribing to an atom without a setter
  * @see {@link useAtomSet} for updating a writable atom without subscribing to its value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -231,6 +252,7 @@ export const useAtom = <R, W, const Mode extends "value" | "promise" | "promiseE
 /**
  * Subscribes a callback to an atom in the current Solid registry.
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -248,6 +270,7 @@ export const useAtomSubscribe = <A>(
 /**
  * Converts an `AsyncResult` atom into a Solid resource.
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -288,6 +311,7 @@ const constUnresolvedPromise = new Promise<never>(() => {})
  * @see {@link useAtomValue} for reading an `Atom` from the current registry
  * @see {@link useAtomRefPropValue} for reading a property ref value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -322,6 +346,7 @@ export const useAtomRef = <A>(ref: () => AtomRef.ReadonlyRef<A>): Accessor<A> =>
  * @see {@link useAtomRef} for subscribing to an atom ref value
  * @see {@link useAtomRefPropValue} for subscribing directly to a property value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -352,6 +377,7 @@ export const useAtomRefProp = <A, K extends keyof A>(
  * @see {@link useAtomRef} for subscribing to a whole atom ref value
  * @see {@link useAtomRefProp} for returning the property ref directly
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */

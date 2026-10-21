@@ -7,6 +7,7 @@
  * receives parent or client messages, runs Effect handlers, and posts responses
  * back through the browser messaging channel.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -32,6 +33,7 @@ if (typeof self !== "undefined" && "onconnect" in self) {
 /**
  * Creates a `WorkerRunnerPlatform` service that runs worker handlers over a `MessagePort` or `Window`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -91,7 +93,7 @@ export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatf
             closeLatch,
             new WorkerError({
               reason: new WorkerReceiveError({
-                message: "An messageerror event was emitted",
+                message: "A messageerror event was emitted",
                 cause: error.data
               })
             })
@@ -103,7 +105,7 @@ export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatf
             new WorkerError({
               reason: new WorkerReceiveError({
                 message: "An error event was emitted",
-                cause: error.data
+                cause: error.error
               })
             })
           )
@@ -183,6 +185,7 @@ export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatf
  * @see {@link make} for constructing a runner platform from an explicit endpoint
  * @see {@link layerMessagePort} for providing a platform from an explicit endpoint
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -193,6 +196,7 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.sync(
 /**
  * Layer that provides a `WorkerRunnerPlatform` using the supplied `MessagePort` or `Window`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

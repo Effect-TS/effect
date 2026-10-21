@@ -7,6 +7,7 @@
  * Deno connections have no native idle-timeout option, so peer connections use
  * only the one-second open timeout.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as K8sHttpClient from "effect/cluster/K8sHttpClient"
@@ -38,6 +39,7 @@ import * as DenoSocketServer from "./DenoSocketServer.ts"
 /**
  * Provides the cluster `RpcClientProtocol` using native Deno TCP sockets.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -69,6 +71,7 @@ export const layerClientProtocol: Layer.Layer<
  * Provides the socket server used by cluster runners, listening on
  * `ShardingConfig.runnerListenAddress` or `runnerAddress`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -92,6 +95,7 @@ export const layerSocketServer: Layer.Layer<
  * Creates Deno socket cluster layers, configuring serialization, storage,
  * runner health, and optional client-only mode.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -172,6 +176,7 @@ export const layer = <
  * Layer that provides `K8sHttpClient`, using a scoped native Deno HTTP client
  * with the Kubernetes service-account CA certificate when it is available.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

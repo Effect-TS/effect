@@ -18,7 +18,7 @@ import * as Context from "../Context.ts"
 import type { Effect } from "../Effect.ts"
 import type * as Sse from "../encoding/Sse.ts"
 import { identity, memoize } from "../Function.ts"
-import type { HttpMethod } from "../http/HttpMethod.ts"
+import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import type { HttpServerRequest } from "../http/HttpServerRequest.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
@@ -27,9 +27,11 @@ import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as AST from "../SchemaAST.ts"
+import type * as Socket from "../socket/Socket.ts"
 import type * as Stream from "../Stream.ts"
 import type { Simplify } from "../Struct.ts"
 import type * as Types from "../Types.ts"
+import type * as HttpApiError from "./HttpApiError.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
@@ -57,6 +59,8 @@ type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
     infer _Value
   > ? Stream.Stream<_Value, _Error["Type"], never>
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, unknown, never>
+  : S extends HttpApiSchema.StreamNdjson<infer _S> ? Stream.Stream<_S["Type"], unknown, never>
+  : S extends HttpApiSchema.Upgrade ? void
   : S extends Schema.Constraint ? S["Type"]
   : never
 
@@ -66,6 +70,7 @@ type SuccessEncodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Value
 > ? _Events["EncodingServices"] | _Error["EncodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
+  : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["EncodingServices"]
   : S extends Schema.Constraint ? S["EncodingServices"]
   : never
 
@@ -75,6 +80,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Value
 > ? _Events["DecodingServices"] | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
+  : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["DecodingServices"]
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
 
@@ -82,12 +88,17 @@ type UnwrapReadonlyArray<S> = S extends ReadonlyArray<infer A> ? A : S
 
 type ExtractBufferedSuccess<S extends SuccessConstraint> = Exclude<
   Extract<UnwrapReadonlyArray<S>, Schema.Top>,
-  HttpApiSchema.StreamSchema | HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
+  HttpApiSchema.StreamSchema | HttpApiSchema.Upgrade | HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
 >
 
 type ExtractStreamSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.StreamSchema ? Success : never
   : never
+
+type ExtractUpgradeSuccess<S extends SuccessConstraint> = Extract<UnwrapReadonlyArray<S>, HttpApiSchema.Upgrade>
+
+type UpgradeSocket<Success> = [Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {}
+  : { readonly socket: Socket.Socket }
 
 type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.WithHeaders<infer _Inner, infer _Headers> ? HttpApiSchema.WithHeaders<
@@ -98,8 +109,12 @@ type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArra
   : never
 
 type ToSuccessCodec<S extends SuccessConstraint> = [ExtractBufferedSuccess<S>] extends [never] ?
-  ExtractStreamSuccess<S> | ExtractWithHeadersSuccess<S>
-  : Schema.toCodecJson<ExtractBufferedSuccess<S>> | ExtractStreamSuccess<S> | ExtractWithHeadersSuccess<S>
+  ExtractStreamSuccess<S> | ExtractUpgradeSuccess<S> | ExtractWithHeadersSuccess<S>
+  :
+    | Schema.toCodecJson<ExtractBufferedSuccess<S>>
+    | ExtractStreamSuccess<S>
+    | ExtractUpgradeSuccess<S>
+    | ExtractWithHeadersSuccess<S>
 
 type ToJsonCodec<S> = [S] extends [never] ? never
   : [S] extends [Schema.Constraint] ? Schema.toCodecJson<S>
@@ -110,13 +125,33 @@ type ToStringTreeCodec<S> = [S] extends [never] ? never
   : [S] extends [Schema.Constraint] ? Schema.toCodecStringTree<S>
   : never
 
-type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType> =
+type ToPayloadCodec<S> = [Exclude<S, HttpApiSchema.StreamSchema>] extends [never] ?
+  Extract<S, HttpApiSchema.StreamSchema>
+  : ToJsonCodec<Exclude<S, HttpApiSchema.StreamSchema>> | Extract<S, HttpApiSchema.StreamSchema>
+
+// Stream payloads are keyed on the schema, because a stream schema's `Type`
+// describes the response direction.
+type RequestPayload<Payload> = Payload extends HttpApiSchema.StreamUint8Array ?
+  Stream.Stream<Uint8Array, HttpApiError.HttpApiPayloadTooLarge>
+  : Payload extends HttpApiSchema.StreamNdjson<infer _S> ?
+    Stream.Stream<_S["Type"], HttpApiError.HttpApiSchemaError | HttpApiError.HttpApiPayloadTooLarge>
+  : Payload extends Schema.Top ? BufferedRequestPayload<Payload["Type"]>
+  : never
+
+type BufferedRequestPayload<PayloadType> = PayloadType extends Brand<HttpApiSchema.MultipartStreamTypeId> ?
+  Stream.Stream<Multipart.Part, Multipart.MultipartError>
+  : Simplify<PayloadType>
+
+type PayloadError<Payload> = Payload extends HttpApiSchema.StreamUint8Array ? HttpApiError.HttpApiPayloadTooLarge
+  : Payload extends HttpApiSchema.StreamNdjson<infer _S> ?
+    HttpApiError.HttpApiSchemaError | HttpApiError.HttpApiPayloadTooLarge
+  : never
+
+type RequestFromParts<Endpoint, ParamsType, QueryType, Payload, HeadersType, Success> =
+  & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
-  & ([PayloadType] extends [never] ? {}
-    : PayloadType extends Brand<HttpApiSchema.MultipartStreamTypeId> ?
-      { readonly payload: Stream.Stream<Multipart.Part, Multipart.MultipartError> }
-    : { readonly payload: Simplify<PayloadType> })
+  & ([Payload] extends [never] ? {} : { readonly payload: RequestPayload<Payload> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
   & {
     readonly request: HttpServerRequest
@@ -124,7 +159,8 @@ type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType>
     readonly group: HttpApiGroup.Top
   }
 
-type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType> =
+type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType, Success> =
+  & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
@@ -138,14 +174,26 @@ type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType> =
  * Maps normalized media types to a payload encoding strategy and one or more
  * schemas. Each schema retains its declared content type in its encoding annotation.
  *
+ * **Details**
+ *
+ * A streaming payload (`HttpApiSchema.StreamUint8Array` or
+ * `HttpApiSchema.StreamNdjson`) has a `Stream` encoding and is the only schema
+ * for its media type.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type PayloadMap = ReadonlyMap<string, {
-  readonly encoding: HttpApiSchema.PayloadEncoding
-  readonly schemas: readonly [Schema.Top, ...Array<Schema.Top>]
-}>
+export type PayloadMap = ReadonlyMap<
+  string,
+  {
+    readonly encoding: HttpApiSchema.PayloadEncoding
+    readonly schemas: readonly [Schema.Top, ...Array<Schema.Top>]
+  } | {
+    readonly encoding: { readonly _tag: "Stream"; readonly contentType: string }
+    readonly schemas: readonly [HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>]
+  }
+>
 
 /**
  * Represents an API endpoint. An API endpoint is mapped to a single route on
@@ -178,8 +226,15 @@ export interface HttpApiEndpoint<
   readonly "~Error": Error
   readonly "~Middleware": Middleware
   readonly "~MiddlewareServices": MiddlewareServices
-  readonly "~Request": RequestFromParts<this, Params["Type"], Query["Type"], Payload["Type"], Headers["Type"]>
-  readonly "~RequestRaw": RequestRawFromParts<this, Params["Type"], Query["Type"], Headers["Type"]>
+  readonly "~Request": RequestFromParts<
+    this,
+    Params["Type"],
+    Query["Type"],
+    Payload,
+    Headers["Type"],
+    Success
+  >
+  readonly "~RequestRaw": RequestRawFromParts<this, Params["Type"], Query["Type"], Headers["Type"], Success>
 
   readonly identifier: Identifier
   readonly path: Path
@@ -518,7 +573,7 @@ export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint
  * Builds the request object accepted by a generated client method, including the
  * params, query, headers, and payload required by the endpoint, plus optional
  * response mode and SSE decoding options. Multipart payloads are supplied as
- * `FormData`.
+ * `FormData`, and streaming payloads as a `Stream` that requires `PayloadR`.
  *
  * @stability unstable
  * @category utility types
@@ -529,7 +584,8 @@ export type ClientRequest<
   Query extends Schema.Constraint,
   Payload extends Schema.Constraint,
   Headers extends Schema.Constraint,
-  ResponseMode extends ClientResponseMode
+  ResponseMode extends ClientResponseMode,
+  PayloadR = never
 > = (
   & ([Params["Type"]] extends [never] ? {} : { readonly params: Params["Type"] })
   & ([Query["Type"]] extends [never] ? {} : { readonly query: Query["Type"] })
@@ -538,8 +594,8 @@ export type ClientRequest<
     : Payload["Type"] extends infer P ?
       P extends Brand<HttpApiSchema.MultipartTypeId> | Brand<HttpApiSchema.MultipartStreamTypeId>
         ? { readonly payload: FormData }
-      : { readonly payload: Payload["Type"] }
-    : { readonly payload: Payload["Type"] })
+      : { readonly payload: ClientPayload<Payload, PayloadR> }
+    : { readonly payload: ClientPayload<Payload, PayloadR> })
 ) extends infer Req ? keyof Req extends never ? (void | {
       readonly responseMode?: ResponseMode
       readonly sseOptions?: Sse.DecodeOptions | undefined
@@ -549,6 +605,11 @@ export type ClientRequest<
     readonly sseOptions?: Sse.DecodeOptions | undefined
   } :
   void
+
+type ClientPayload<Payload extends Schema.Constraint, R> = Payload extends HttpApiSchema.StreamUint8Array
+  ? Stream.Stream<Uint8Array, unknown, R>
+  : Payload extends HttpApiSchema.StreamNdjson<infer S> ? Stream.Stream<S["Type"], unknown, R>
+  : Payload["Type"]
 
 /**
  * Controls what a generated client method returns: the decoded success value,
@@ -628,7 +689,11 @@ export type ErrorServicesDecode<Endpoint> = Endpoint extends ConstraintRequest ?
  */
 export type Handler<Endpoint extends Constraint, E, R> = (
   request: Simplify<Endpoint["~Request"]>
-) => Effect<SuccessType<Endpoint["~Success"]> | HttpServerResponse, Endpoint["~Error"]["Type"] | E, R>
+) => Effect<
+  SuccessType<Endpoint["~Success"]> | HttpServerResponse,
+  Endpoint["~Error"]["Type"] | PayloadError<Payload<Endpoint>> | E,
+  R
+>
 
 /**
  * The raw server handler for an endpoint, receiving a request shape without a
@@ -981,7 +1046,9 @@ export type QueryConstraint =
  *   encode to `string | ReadonlyArray<string> | undefined` and OpenAPI can expand
  *   it into `in: query` parameters
  * - for body methods, payload may be any `Schema.Top` (or content-type keyed
- *   schemas) and OpenAPI uses `requestBody` instead of `parameters`
+ *   schemas) and OpenAPI uses `requestBody` instead of `parameters`. This
+ *   includes one `HttpApiSchema.StreamUint8Array` or `HttpApiSchema.StreamNdjson`,
+ *   but not `HttpApiSchema.StreamSse`, which is response-only
  *
  * @stability unstable
  * @category utility types
@@ -991,7 +1058,10 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
     string,
     Schema.Encoder<string | ReadonlyArray<string> | undefined, unknown>
   > :
-  Schema.Top | ReadonlyArray<Schema.Top>
+  PayloadSchema | ReadonlyArray<PayloadSchema>
+
+// `StreamSse` is response-only, so it is the one stream schema excluded here.
+type PayloadSchema = Schema.Top & { readonly sseMode?: never }
 
 /**
  * Payload constraint used when automatic codecs are enabled: no-body methods
@@ -1004,7 +1074,7 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
  */
 export type PayloadConstraintCodecs<Method extends HttpMethod> = Method extends HttpMethod.NoBody ?
   Record<string, Schema.Top> :
-  Schema.Top | ReadonlyArray<Schema.Top>
+  PayloadSchema | ReadonlyArray<PayloadSchema>
 
 /**
  * Constraint for success response schemas, allowing either a single schema or a
@@ -1031,7 +1101,7 @@ type ErrorSchema<S> = S extends HttpApiSchema.WithHeaders<infer Inner, Schema.To
 type ErrorNoStream<S extends ErrorConstraint> = [
   Extract<
     ErrorSchema<S extends ReadonlyArray<Schema.Constraint> ? S[number] : S>,
-    HttpApiSchema.StreamSchema
+    HttpApiSchema.StreamSchema | HttpApiSchema.Upgrade
   >
 ] extends [never] ? S : never
 
@@ -1073,7 +1143,7 @@ export const make = <Method extends HttpMethod>(method: Method): {
     Path,
     ToStringTreeCodec<Params>,
     ToStringTreeCodec<Query>,
-    Method extends HttpMethod.WithBody ? ToJsonCodec<ToSchema<Payload>>
+    Method extends HttpMethod.WithBody ? ToPayloadCodec<ToSchema<Payload>>
       : ToStringTreeCodec<ToSchema<Payload>>,
     ToStringTreeCodec<Headers>,
     ToSuccessCodec<Success>,
@@ -1156,7 +1226,7 @@ export const make = <Method extends HttpMethod>(method: Method): {
     query: ensureStruct(options?.query, transformStringTree),
     headers: ensureStruct(options?.headers, transformStringTree),
     payload: getPayload(options?.payload, method, disableCodecs),
-    success: getSuccessResponse(options?.success, method, disableCodecs),
+    success: getSuccessResponse(options?.success, method, options?.payload !== undefined, disableCodecs),
     error: getErrorResponse(options?.error, disableCodecs),
     annotations: Context.empty(),
     middlewares: new Set(),
@@ -1185,21 +1255,46 @@ function getPayload(
 ): PayloadMap {
   const result: Map<
     string,
-    { encoding: HttpApiSchema.PayloadEncoding; schemas: [Schema.Top, ...Array<Schema.Top>] }
+    {
+      encoding: HttpApiSchema.PayloadEncoding | { readonly _tag: "Stream"; readonly contentType: string }
+      schemas: [Schema.Top, ...Array<Schema.Top>]
+    }
   > = new Map()
-  if (payload === undefined) return result
+  if (payload === undefined) return result as PayloadMap
   const schemas: Array<Schema.Top> = Array.isArray(payload)
     ? payload
     : Schema.isSchema(payload)
     ? [payload]
     : [(Schema.Struct(payload as any)).pipe(HttpApiSchema.asFormUrlEncoded())]
   const transform = disableCodecs ? identity : transformPayload
+  let hasStream = false
 
   for (const schema of schemas) {
+    if (HttpApiSchema.isStreamSchema(schema)) {
+      if (HttpApiSchema.isStreamSse(schema)) {
+        throw new Error("StreamSse is response-only and cannot be used as a payload")
+      }
+      if (!hasBody(method)) {
+        throw new Error(`${method} endpoints cannot declare a streaming payload`)
+      }
+      if (hasStream) {
+        throw new Error("Multiple streaming payloads are not supported")
+      }
+      hasStream = true
+      const contentType = MediaType.normalize(schema.contentType)
+      if (result.has(contentType)) {
+        throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${schema.contentType}`)
+      }
+      result.set(contentType, { encoding: { _tag: "Stream", contentType: schema.contentType }, schemas: [schema] })
+      continue
+    }
     const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
     const contentType = MediaType.normalize(encoding.contentType)
     const existing = result.get(contentType)
     if (existing) {
+      if (existing.encoding._tag === "Stream") {
+        throw new Error(`Cannot combine buffered and streaming payloads for content-type: ${encoding.contentType}`)
+      }
       if (existing.encoding._tag !== encoding._tag) {
         throw new Error(`Multiple payload encodings for content-type: ${encoding.contentType}`)
       }
@@ -1211,7 +1306,7 @@ function getPayload(
       result.set(contentType, { encoding, schemas: [transform(schema, method)] })
     }
   }
-  return result
+  return result as PayloadMap
 }
 
 const reservedStreamFailureEvent = "effect/http-api/stream/failure"
@@ -1219,16 +1314,17 @@ const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 function getSuccessResponse(
   success: Schema.Top | ReadonlyArray<Schema.Top> | undefined,
   method: HttpMethod,
+  hasPayload: boolean,
   disableCodecs: boolean
 ): Set<Schema.Top> {
   if (success === undefined) return new Set()
   const schemas = Arr.ensure(success)
-  validateSuccessResponse(schemas, method)
+  validateSuccessResponse(schemas, method, hasPayload)
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
 const transformResponseSchema = memoize((schema: Schema.Top): Schema.Top => {
-  if (HttpApiSchema.isStreamSchema(schema)) return schema
+  if (HttpApiSchema.isStreamSchema(schema) || HttpApiSchema.isUpgrade(schema)) return schema
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)
       ? schema.schema
@@ -1249,12 +1345,27 @@ function getErrorResponse(
     if (HttpApiSchema.isStreamSchema(body)) {
       throw new Error("Streaming schemas are not supported in error responses")
     }
+    if (HttpApiSchema.isUpgrade(body)) {
+      throw new Error("Upgrade schemas are not supported in error responses")
+    }
   }
   validateResponseExclusivity(schemas, HttpApiSchema.getStatusErrorSchema)
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod) {
+function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod, hasPayload: boolean) {
+  if (schemas.some(HttpApiSchema.isUpgrade)) {
+    if (schemas.length > 1) {
+      throw new Error("Cannot combine an upgrade with other success responses")
+    }
+    if (method === "HEAD") {
+      throw new Error("HEAD endpoints cannot declare an upgrade")
+    }
+    if (hasPayload) {
+      throw new Error("Upgrade endpoints cannot declare a payload")
+    }
+    return
+  }
   let hasStream = false
   const statuses = new Map<number, {
     readonly stream?: HttpApiSchema.StreamSchema | undefined

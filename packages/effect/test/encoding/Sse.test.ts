@@ -22,7 +22,8 @@ describe("Sse", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
 
-    parser.feed("data: first\r")
+    parser.feed("data: fir")
+    parser.feed("st\r")
     parser.feed("\ndata: second\n\n")
 
     assert.deepStrictEqual(events, [{
@@ -65,6 +66,16 @@ describe("Sse", () => {
     assert.deepStrictEqual(events, [input])
   })
 
+  it("roundtrips CR, CRLF and LF data lines, preserving a trailing empty line", () => {
+    const input: Sse.Event = { _tag: "Event", event: "message", id: undefined, data: "10%\r50%\r\ndone\n" }
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed(Sse.encoder.write(input))
+
+    assert.deepStrictEqual(events, [{ ...input, data: "10%\n50%\ndone\n" }])
+  })
+
   it("strips a UTF-8 BOM from the start of an SSE stream", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
@@ -87,6 +98,53 @@ describe("Sse", () => {
 
     assert.strictEqual(events.length, 1)
     assert.strictEqual((events[0] as Sse.Event).event, "message")
+  })
+
+  it("parses a long line split across many chunks", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+    const value = "x".repeat(10_000)
+    const input = `event: big\ndata: ${value}\n\n`
+
+    for (let i = 0; i < input.length; i += 7) {
+      parser.feed(input.slice(i, i + 7))
+    }
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      event: "big",
+      id: undefined,
+      data: value
+    }])
+  })
+
+  it("discards the rest of the chunk when reset from onParse", () => {
+    const events: Array<string> = []
+    const parser = Sse.makeParser((event) => {
+      if (event._tag === "Event") {
+        events.push(event.data)
+        if (event.data === "a") parser.reset()
+      }
+    })
+
+    parser.feed("data: a\n\ndata: b\n\n")
+    parser.feed("data: fresh\n\n")
+
+    assert.deepStrictEqual(events, ["a", "fresh"])
+  })
+
+  it("discards the current event and remaining chunk when onParse throws", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const error = new Error("onParse failed")
+    const parser = Sse.makeParser((event) => {
+      if (event._tag === "Event" && event.data === "a") throw error
+      events.push(event)
+    })
+
+    assert.throws(() => parser.feed("event: custom\ndata: a\n\ndata: b\n\n"), Error, "onParse failed")
+    parser.feed("data: c\n\n")
+
+    assert.deepStrictEqual(events, [{ _tag: "Event", event: "message", id: undefined, data: "c" }])
   })
 
   it("ignores retry values that are not ASCII digits", () => {
@@ -166,6 +224,22 @@ describe("Sse", () => {
       assert.instanceOf(error.reason, Sse.EventTooLarge)
       assert.strictEqual(error.reason.maxEventSize, 4)
     }))
+
+  it("counts buffered data and fragmented pending lines toward maxEventSize and recovers", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event), { maxEventSize: 10 })
+
+    assert.isUndefined(parser.feed("data: a\n"))
+    assert.isUndefined(parser.feed("data:"))
+    assert.isUndefined(parser.feed(" bc"))
+    const error = parser.feed("d")
+    assert.instanceOf(error, Sse.SseError)
+    assert.instanceOf(error.reason, Sse.EventTooLarge)
+    assert.strictEqual(error.reason.maxEventSize, 10)
+
+    assert.isUndefined(parser.feed("\uFEFFdata: x\n\n"))
+    assert.deepStrictEqual(events, [{ _tag: "Event", event: "message", id: undefined, data: "x" }])
+  })
 
   it.effect("fails when pending data exceeds maxEventSize", () =>
     Effect.gen(function*() {

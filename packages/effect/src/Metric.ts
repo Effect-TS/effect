@@ -8,6 +8,7 @@
  * histogram boundaries, registry snapshots, text dumps, and controls for
  * enabling runtime metrics.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -16,7 +17,7 @@ import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
 import type { Effect } from "./Effect.ts"
 import type { Exit } from "./Exit.ts"
-import { constUndefined, dual } from "./Function.ts"
+import { constUndefined, constVoid, dual, identity } from "./Function.ts"
 import * as InternalEffect from "./internal/effect.ts"
 import * as InternalMetric from "./internal/metric.ts"
 import * as InternalRecord from "./internal/record.ts"
@@ -105,6 +106,7 @@ import type { Contravariant, Covariant } from "./Types.ts"
  * ] // => [1, 128, 1]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -183,6 +185,7 @@ export interface Metric<in Input, out State> extends Pipeable {
  * const counts = [result.requests.count, result.bytes.count] // => [6, 1024n]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -243,6 +246,7 @@ export interface Counter<in Input extends number | bigint> extends Metric<Input,
  * const counts = [result.requests.total, result.errors.total, result.bytes.total] // => [3, 3, 1024000n]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -317,6 +321,7 @@ export interface CounterState<in Input extends number | bigint> {
  * const values = [result.statusAnalysis.mostFrequent, result.actionAnalysis.mostFrequent] // => ["200", "login"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -401,6 +406,7 @@ export interface Frequency extends Metric<string, FrequencyState> {}
  * mostCommon.map(({ key, count }) => [key, count]) // => [["200", 3], ["click", 3]]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -462,6 +468,7 @@ export interface FrequencyState {
  * const values = [result.memory.currentValue, result.disk.currentValue] // => [704, 5000000000n]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -530,6 +537,7 @@ export interface Gauge<in Input extends number | bigint> extends Metric<Input, G
  * values // => [23.1, 5000000000n, 15]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -618,6 +626,7 @@ export interface GaugeState<in Input extends number | bigint> {
  * values // => [4, 445, 118]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -705,6 +714,7 @@ export interface Histogram<Input> extends Metric<Input, HistogramState> {}
  * values // => [5, 50, 750, 1295]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -810,6 +820,7 @@ export interface HistogramState {
  * counts // => [5, 1461, 3]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -892,6 +903,7 @@ export interface Summary<Input> extends Metric<Input, SummaryState> {}
  * values // => [7, 45, 890, 1879]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -945,6 +957,7 @@ export interface SummaryState {
  * const values = [result.counter.count, result.gauge.value] // => [1, 12]
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Metric {
@@ -1555,6 +1568,7 @@ export declare namespace Metric {
  * const key = result // => { keyValue: "effect/Metric/CurrentMetricAttributes", keyType: "string", isConstant: true }
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 4.0.0
  */
@@ -1602,6 +1616,7 @@ export const CurrentMetricAttributesKey = "effect/Metric/CurrentMetricAttributes
  * const actual = attributes // => { service: "api", version: "1.0" }
  * ```
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -1614,6 +1629,7 @@ const MetricRegistryKey = "effect/Metric/MetricRegistry"
 /**
  * The registry used to store metric metadata and hooks.
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -1642,6 +1658,7 @@ export type MetricRegistry = Map<string, Metric.Metadata<any, any>>
  * @see {@link snapshot} for reading all registered metrics from the current `Effect` context
  * @see {@link snapshotUnsafe} for reading all registered metrics from an explicit `Context`
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -1661,6 +1678,7 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   declare readonly State: Covariant<State>
 
   #extraAttributes: Metric.AttributeSet | undefined
+  #mergedAttributes: Metric.AttributeSet | undefined
   #key = ""
 
   readonly id: string
@@ -1692,27 +1710,59 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   abstract createHooks(): Metric.Hooks<Input, State>
 
   hook(context: Context.Context<never>): Metric.Hooks<Input, State> {
+    const key = this.key(context)
+    // The registry owns the series, so it is looked up on every update.
+    const registry = Context.get(context, MetricRegistry)
+    let metadata = registry.get(key)
+    if (Predicate.isUndefined(metadata)) {
+      metadata = this.metadata(this.createHooks())
+      registry.set(key, metadata)
+    }
+    return metadata.hooks
+  }
+
+  removeUnsafe(context: Context.Context<never>): void {
+    Context.get(context, MetricRegistry).delete(this.key(context))
+  }
+
+  registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input, State>): Registration {
+    const key = this.key(context)
+    // Keep the registry from registration time, so removal does not depend on
+    // the context it is called from.
+    const registry = Context.get(context, MetricRegistry)
+    const metadata = this.metadata({ get: hooks.get, update: constVoid, modify: constVoid })
+    registry.set(key, metadata)
+    return {
+      remove() {
+        if (registry.get(key) === metadata) {
+          registry.delete(key)
+        }
+      }
+    }
+  }
+
+  // Merges the attributes once per contextual attribute set, so series key and
+  // metadata share the result.
+  private key(context: Context.Context<never>): string {
     const extraAttributes = Context.get(context, CurrentMetricAttributes)
     if (extraAttributes !== this.#extraAttributes) {
       this.#extraAttributes = extraAttributes
-      this.#key = makeKey(this, mergeAttributes(this.attributes, extraAttributes))
+      const merged = mergeAttributes(this.attributes, extraAttributes)
+      this.#mergedAttributes = Object.keys(extraAttributes).length > 0 ? merged : this.attributes
+      this.#key = makeKey(this, merged)
     }
-    // The registry owns the series, so it is looked up on every update.
-    const registry = Context.get(context, MetricRegistry)
-    let metadata = registry.get(this.#key)
-    if (Predicate.isUndefined(metadata)) {
-      metadata = {
-        id: this.id,
-        type: this.type,
-        description: this.description,
-        attributes: Object.keys(extraAttributes).length > 0
-          ? mergeAttributes(this.attributes, extraAttributes)
-          : this.attributes,
-        hooks: this.createHooks()
-      }
-      registry.set(this.#key, metadata)
+    return this.#key
+  }
+
+  // Must follow `key(context)`, which computes the merged attributes.
+  private metadata(hooks: Metric.Hooks<Input, State>): Metric.Metadata<Input, State> {
+    return {
+      id: this.id,
+      type: this.type,
+      description: this.description,
+      attributes: this.#mergedAttributes,
+      hooks
     }
-    return metadata.hooks
   }
 
   pipe() {
@@ -1975,28 +2025,49 @@ class SummaryMetric extends Metric$<readonly [value: number, timestamp: number],
   }
 }
 
-class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, State> {
+// Every operation maps the context first and the input second, so wrappers
+// such as `withAttributes` address the same series for update, remove and
+// register.
+class MetricTransform<Input, out State, in Input2> extends Metric$<Input2, State> {
   type: Metric.Type
   readonly metric: Metric<Input, State>
-  override readonly valueUnsafe: (context: Context.Context<never>) => State
-  override readonly updateUnsafe: (input: Input2, context: Context.Context<never>) => void
-  override readonly modifyUnsafe: (input: Input2, context: Context.Context<never>) => void
+  readonly mapInput: (input: Input2, context: Context.Context<never>) => Input
+  readonly mapContext: (context: Context.Context<never>) => Context.Context<never>
 
   constructor(
     metric: Metric<Input, State>,
-    valueUnsafe: (context: Context.Context<never>) => State,
-    updateUnsafe: (input: Input2, context: Context.Context<never>) => void,
-    modifyUnsafe: (input: Input2, context: Context.Context<never>) => void
+    mapInput: (input: Input2, context: Context.Context<never>) => Input,
+    mapContext: (context: Context.Context<never>) => Context.Context<never>
   ) {
     super(metric.id, metric.description, metric.attributes)
     this.metric = metric
-    this.valueUnsafe = valueUnsafe
-    this.updateUnsafe = updateUnsafe
-    this.modifyUnsafe = modifyUnsafe
+    this.mapInput = mapInput
+    this.mapContext = mapContext
     this.type = metric.type
   }
   createHooks(): Metric.Hooks<Input2, State> {
     return (this.metric as any).createHooks()
+  }
+  override valueUnsafe(context: Context.Context<never>): State {
+    return this.metric.valueUnsafe(this.mapContext(context))
+  }
+  override updateUnsafe(input: Input2, context: Context.Context<never>): void {
+    const mapped = this.mapContext(context)
+    this.metric.updateUnsafe(this.mapInput(input, mapped), mapped)
+  }
+  override modifyUnsafe(input: Input2, context: Context.Context<never>): void {
+    const mapped = this.mapContext(context)
+    this.metric.modifyUnsafe(this.mapInput(input, mapped), mapped)
+  }
+  override removeUnsafe(context: Context.Context<never>): void {
+    removeUnsafe(this.metric, this.mapContext(context))
+  }
+  override registerUnsafe(context: Context.Context<never>, hooks: Metric.Hooks<Input2, State>): Registration {
+    return registerUnsafe(this.metric, this.mapContext(context), {
+      get: hooks.get,
+      update: constVoid,
+      modify: constVoid
+    })
   }
 }
 
@@ -2017,6 +2088,7 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
  * Metric.isMetric({ name: "requests" }) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -2077,6 +2149,7 @@ export const isMetric = (u: unknown): u is Metric<never, unknown> =>
  * const counts = [result.requestValue.count, result.eventValue.count, result.bytesValue.count] // => [6, 1, 1024n]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2163,6 +2236,7 @@ export const counter: {
  * const values = [result.memoryValue.value, result.cpuValue.value, result.diskValue.value] // => [800, 75, 1024000000n]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2257,6 +2331,7 @@ export const gauge: {
  * counts // => [3, 2, 2]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2336,6 +2411,7 @@ export const frequency = (name: string, options?: {
  * values // => [5, 500, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2412,6 +2488,7 @@ export const histogram = (name: string, options: {
  * const payloadValues = [payload.count, payload.min, payload.max, payload.sum] // => [4, 1.2, 15.6, 26]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2464,6 +2541,7 @@ export const summary = (name: string, options: {
  * const metadata = [responseTimesSummary.id, responseTimesSummary.type] // => ["response_times_summary", "Summary"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2517,6 +2595,7 @@ export const summaryWithTimestamp = (name: string, options: {
  * ) // => { count: 1, min: 120, max: 120, sum: 120 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2577,6 +2656,7 @@ export const timer = (name: string, options?: {
  * ) // => { requestCount: 1, count: 1, min: 750, max: 750, average: 750 }
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -2627,6 +2707,7 @@ export const value = <Input, State>(
  * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => [22, 15]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 3.6.5
  */
@@ -2689,6 +2770,7 @@ export const modify: {
  * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => [67.8, 2, 3]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -2703,6 +2785,148 @@ export const update: {
   (self, input) =>
     InternalEffect.contextWith((services) => InternalEffect.sync(() => self.updateUnsafe(input, services)))
 )
+
+/**
+ * Handle for a series registered with `Metric.registerUnsafe`.
+ *
+ * **Details**
+ *
+ * `remove` deletes the series from the registry it was registered into, but
+ * only while the registry still holds this registration. Calling it again, or
+ * after another registration has replaced the series, does nothing.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface Registration {
+  readonly remove: () => void
+}
+
+/**
+ * Removes the series of a metric for the current attributes from the metric
+ * registry.
+ *
+ * **When to use**
+ *
+ * Use when a series describes something that has gone away, such as a
+ * connection or an entity, so the registry and exporters stop tracking it.
+ *
+ * **Details**
+ *
+ * The series is identified the same way `update` identifies it: by the metric
+ * and its attributes merged with `CurrentMetricAttributes`. Other series of the
+ * same metric are left alone. A later update creates the series again from its
+ * initial state. Removing a series that does not exist does nothing.
+ *
+ * **Example** (Removing a series)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Metric } from "effect"
+ *
+ * const connections = Metric.gauge("connections")
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Metric.update(connections, 3).pipe(
+ *     Effect.provideService(Metric.CurrentMetricAttributes, { pool: "a" })
+ *   )
+ *   yield* Metric.update(connections, 5).pipe(
+ *     Effect.provideService(Metric.CurrentMetricAttributes, { pool: "b" })
+ *   )
+ *   yield* Metric.remove(connections).pipe(
+ *     Effect.provideService(Metric.CurrentMetricAttributes, { pool: "a" })
+ *   )
+ *   const snapshots = yield* Metric.snapshot
+ *   return snapshots.map((snapshot) => snapshot.attributes)
+ * })
+ *
+ * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => [{ pool: "b" }]
+ * ```
+ *
+ * @see {@link removeUnsafe} for removing a series with an explicit `Context`
+ *
+ * @stability unstable
+ * @category mutations
+ * @since 4.0.6
+ */
+export const remove = <Input, State>(self: Metric<Input, State>): Effect<void> =>
+  InternalEffect.contextWith((context) => InternalEffect.sync(() => removeUnsafe(self, context)))
+
+/**
+ * Removes the series of a metric for the attributes in the provided `Context`
+ * from the metric registry in that `Context`.
+ *
+ * **When to use**
+ *
+ * Use when a low-level integration already holds a `Context`. Use `remove`
+ * in application code.
+ *
+ * @see {@link remove} for the `Effect` version
+ *
+ * @stability unstable
+ * @category mutations
+ * @since 4.0.6
+ */
+export const removeUnsafe = <Input, State>(self: Metric<Input, State>, context: Context.Context<never>): void =>
+  (self as Metric$<Input, State>).removeUnsafe(context)
+
+/**
+ * Registers a series backed by caller-supplied hooks, for gauges whose value is
+ * read when metrics are snapshotted rather than pushed with updates.
+ *
+ * **When to use**
+ *
+ * Use when the value already lives in some data structure, such as a queue
+ * size, and updating a metric on every change would cost more than reading the
+ * value at export time.
+ *
+ * **Details**
+ *
+ * The series is identified as in `remove`, using the attributes and registry
+ * from `context`, and replaces any series with the same identity. `hooks.get`
+ * is called each time the series is read, for example by `snapshot` or an
+ * exporter. The returned {@link Registration} removes it again.
+ * `update` and `modify` on this series do nothing; the supplied mutation hooks
+ * are ignored.
+ *
+ * **Gotchas**
+ *
+ * The registry keeps `hooks.get` reachable until the series is removed, along
+ * with anything it closes over. Call `remove` once the source goes away.
+ *
+ * **Example** (Reporting a queue size on snapshot)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Metric } from "effect"
+ *
+ * const context = Context.make(Metric.MetricRegistry, new Map())
+ * const queueSize = Metric.gauge("queue_size")
+ * const queue: Array<string> = ["a", "b"]
+ *
+ * const registration = Metric.registerUnsafe(queueSize, context, {
+ *   get: () => ({ value: queue.length }),
+ *   update: () => {},
+ *   modify: () => {}
+ * })
+ * queue.push("c")
+ * const sizes = Metric.snapshotUnsafe(context).map((snapshot) => snapshot.state)
+ * registration.remove()
+ *
+ * sizes // => [{ value: 3 }]
+ * Metric.snapshotUnsafe(context).length // => 0
+ * ```
+ *
+ * @see {@link remove} for removing a series updated with `update`
+ *
+ * @stability unstable
+ * @category mutations
+ * @since 4.0.6
+ */
+export const registerUnsafe = <Input, State>(
+  self: Metric<Input, State>,
+  context: Context.Context<never>,
+  hooks: Metric.Hooks<Input, State>
+): Registration => (self as Metric$<Input, State>).registerUnsafe(context, hooks)
 
 /**
  * Returns a new metric that is powered by this one, but which accepts updates
@@ -2734,6 +2958,7 @@ export const update: {
  * const values = [value.count, value.sum] // => [1, 250]
  * ```
  *
+ * @stability stable
  * @category annotations
  * @since 2.0.0
  */
@@ -2756,13 +2981,7 @@ export const mapInput: {
 >(2, <Input, State, Input2>(
   self: Metric<Input, State>,
   f: (input: Input2, context: Context.Context<never>) => Input
-): Metric<Input2, State> =>
-  new MetricTransform(
-    self,
-    (context) => self.valueUnsafe(context),
-    (input, context) => self.updateUnsafe(f(input, context), context),
-    (input, context) => self.modifyUnsafe(f(input, context), context)
-  ))
+): Metric<Input2, State> => new MetricTransform(self, f, identity))
 
 /**
  * Returns a new metric that is powered by this one, but which accepts updates
@@ -2796,6 +3015,7 @@ export const mapInput: {
  * const count = value.count // => 3
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -2861,6 +3081,7 @@ export const withConstantInput: {
  * await Effect.runPromise(Effect.provideService(result, Metric.MetricRegistry, new Map())) // => [2, 1]
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -2874,13 +3095,7 @@ export const withAttributes: {
   self: Metric<Input, State>,
   attributes: Metric.Attributes
 ): Metric<Input, State> => {
-  const attributed = addAttributesToContext(attributes)
-  return new MetricTransform(
-    self,
-    (context) => self.valueUnsafe(attributed(context)),
-    (input, context) => self.updateUnsafe(input, attributed(context)),
-    (input, context) => self.modifyUnsafe(input, attributed(context))
-  )
+  return new MetricTransform(self, identity, addAttributesToContext(attributes))
 })
 
 // Metric Snapshots
@@ -2926,6 +3141,7 @@ export const withAttributes: {
  * const ids = snapshots.map((snapshot) => snapshot.id).sort() // => ["http_requests", "response_time_ms"]
  * ```
  *
+ * @stability stable
  * @category snapshotting
  * @since 2.0.0
  */
@@ -2985,6 +3201,7 @@ export const snapshot: Effect<ReadonlyArray<Metric.Snapshot>> = InternalEffect.m
  * included // => [true, true, true]
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 4.0.0
  */
@@ -3053,6 +3270,7 @@ export const dump: Effect<string> = InternalEffect.flatMap(InternalEffect.contex
  * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => ["http_requests"]
  * ```
  *
+ * @stability stable
  * @category snapshotting
  * @since 4.0.0
  */
@@ -3142,6 +3360,7 @@ const attributesToString = (attributes: Metric.AttributeSet): string => {
  * Metric.boundariesFromIterable([-5, 0, 10, 10, 25, 50]) // => [10, 25, 50, Infinity]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3167,6 +3386,7 @@ export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArra
  * Metric.linearBoundaries({ start: 10, width: 20, count: 5 }) // => [10, 30, 50, 70, Infinity]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3193,6 +3413,7 @@ export const linearBoundaries = (options: {
  * Metric.exponentialBoundaries({ start: 1, factor: 2, count: 5 }) // => [1, 2, 4, 8, Infinity]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3232,6 +3453,7 @@ const fiberFailures = counter("child_fiber_failures", {
  * Metric.FiberRuntimeMetricsKey // => "effect/Metric/FiberRuntimeMetrics"
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 4.0.0
  */
@@ -3260,6 +3482,7 @@ export const FiberRuntimeMetricsKey: "effect/Metric/FiberRuntimeMetrics" = Inter
  * events // => ["start", "success"]
  * ```
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -3299,6 +3522,7 @@ export interface FiberRuntimeMetricsService {
  * const isDefault = result // => true
  * ```
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -3321,6 +3545,7 @@ export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService 
  * ] // => ["function", "function"]
  * ```
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -3361,6 +3586,7 @@ export const FiberRuntimeMetricsImpl: FiberRuntimeMetricsService = {
  * await Effect.runPromise(Effect.provide(program, Metric.enableRuntimeMetricsLayer)) // => true
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 4.0.0
  */
@@ -3400,6 +3626,7 @@ export const enableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(Fibe
  * const values = [result.counterValue.count, result.metricsEnabled] // => [1, false]
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 4.0.0
  */
@@ -3427,6 +3654,7 @@ export const disableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(und
  * await Effect.runPromise(Metric.enableRuntimeMetrics(program)) // => true
  * ```
  *
+ * @stability stable
  * @category providing services
  * @since 4.0.0
  */
@@ -3456,6 +3684,7 @@ export const enableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A,
  * await Effect.runPromise(Metric.disableRuntimeMetrics(program)) // => true
  * ```
  *
+ * @stability stable
  * @category providing services
  * @since 4.0.0
  */

@@ -12,12 +12,14 @@
  * makes those shapes available on the corresponding shared AI error metadata
  * interfaces without defining new runtime error classes.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
 /**
  * OpenAI-specific error metadata fields.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -44,6 +46,7 @@ export type OpenAiErrorMetadata = {
  * Extends base error metadata with rate limit specific information from
  * OpenAI's rate limit headers.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -74,7 +77,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface RateLimitErrorMetadata {
-    readonly openai?: OpenAiRateLimitMetadata | null
+    readonly "openai-compat"?: OpenAiRateLimitMetadata | null
   }
 
   /**
@@ -85,7 +88,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface QuotaExhaustedErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -96,7 +99,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface AuthenticationErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -107,7 +110,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface ContentPolicyErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -118,7 +121,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface InvalidRequestErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -129,7 +132,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface InternalProviderErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -140,7 +143,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface InvalidOutputErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -151,7 +154,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface StructuredOutputErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -162,7 +165,7 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface UnsupportedSchemaErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 
   /**
@@ -173,6 +176,6 @@ declare module "effect/ai/AiError" {
    * @since 4.0.0
    */
   export interface UnknownErrorMetadata {
-    readonly openai?: OpenAiErrorMetadata | null
+    readonly "openai-compat"?: OpenAiErrorMetadata | null
   }
 }

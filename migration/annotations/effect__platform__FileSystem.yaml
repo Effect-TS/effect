@@ -7,6 +7,9 @@
 "@effect/platform/FileSystem#File.Descriptor":
   replacement: "none"
   note: "Native file descriptors are no longer part of the portable File interface; use the File methods and keep any platform handle private in custom implementations."
+"@effect/platform/FileSystem#File.Info":
+  replacement: "FileSystem.File.Info"
+  note: "The module moved to effect/FileSystem. dev is now bigint; ino, rdev, nlink, and blocks are Option<bigint>. Update custom stat results, comparisons, arithmetic, and serialization rather than converting these values to number and losing precision. mode, uid, and gid remain numeric; size and blksize use ByteSize. Node and Bun preserve the 64-bit metadata exactly, while Deno may round large values before converting them to bigint."
 "@effect/platform/FileSystem#FileDescriptor":
   replacement: "none"
   note: "The descriptor branding constructor was removed with the public fd field; use File operations instead of exposing a native descriptor."

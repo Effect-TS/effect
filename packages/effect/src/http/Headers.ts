@@ -406,10 +406,11 @@ export const isRedactedName = (
   name: string,
   patterns: ReadonlyArray<string | RegExp>
 ): boolean => {
+  const lowerName = name.toLowerCase()
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i]
     if (typeof pattern === "string") {
-      if (pattern.toLowerCase() === name.toLowerCase()) {
+      if (pattern.toLowerCase() === lowerName) {
         return true
       }
     } else if (name.search(pattern) !== -1) {
@@ -424,9 +425,9 @@ export const isRedactedName = (
  *
  * **Details**
  *
- * Defaults include `authorization`, `cookie`, `set-cookie`, `x-api-key` and
- * `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`. Names match
- * case-insensitively, and providing a new list replaces the defaults.
+ * Defaults include `authorization`, `cookie`, `set-cookie` and `x-api-key`.
+ * A custom list replaces the defaults. Matching uses `isRedactedName`.
+ * Use `UrlParams.CurrentRedactedNames` for query parameters.
  *
  * @stability unstable
  * @category services
@@ -439,10 +440,6 @@ export const CurrentRedactedNames = Context.Reference<
     "authorization",
     "cookie",
     "set-cookie",
-    "x-api-key",
-    "AWSAccessKeyId",
-    "Signature",
-    "sig",
-    "X-Goog-Signature"
+    "x-api-key"
   ]
 })

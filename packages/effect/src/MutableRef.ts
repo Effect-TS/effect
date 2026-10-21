@@ -7,6 +7,7 @@
  * and updating the value, plus numeric increment/decrement helpers and a
  * boolean toggle helper.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equal from "./Equal.ts"
@@ -64,6 +65,7 @@ const TypeId = "~effect/MutableRef"
  * config.current // => { timeout: 10000, retries: 5 }
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -112,6 +114,7 @@ const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
  * MutableRef.get(status) // => "running"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -166,6 +169,7 @@ export const make = <T>(value: T): MutableRef<T> => {
  * MutableRef.get(ref) // => "final"
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -218,6 +222,7 @@ export const compareAndSet: {
  * MutableRef.get(countdown) // => 0
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -261,6 +266,7 @@ export const decrement = (self: MutableRef<number>): MutableRef<number> => updat
  * MutableRef.get(attempts) // => -1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -299,6 +305,7 @@ export const decrementAndGet = (self: MutableRef<number>): number => updateAndGe
  * value1 === value2 // => true
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -344,6 +351,7 @@ export const get = <T>(self: MutableRef<T>): T => self.current
  * nextIndex // => 2
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -396,6 +404,7 @@ export const getAndDecrement = (self: MutableRef<number>): number => getAndUpdat
  * MutableRef.get(iterations) // => 5
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -445,6 +454,7 @@ export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdat
  * MutableRef.get(buffer) // => []
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -510,6 +520,7 @@ export const getAndSet: {
  * MutableRef.get(list) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -561,6 +572,7 @@ export const getAndUpdate: {
  * MutableRef.get(counter) // => 9
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -607,6 +619,7 @@ export const increment = (self: MutableRef<number>): MutableRef<number> => updat
  * MutableRef.get(attempts) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -659,6 +672,7 @@ export const incrementAndGet = (self: MutableRef<number>): number => updateAndGe
  * MutableRef.get(state) // => "success"
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -716,6 +730,7 @@ export const set: {
  * MutableRef.get(ref1) // => 3
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -782,6 +797,7 @@ export const setAndGet: {
  * MutableRef.get(list) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -847,6 +863,7 @@ export const update: {
  * MutableRef.get(list) // => [2, 4, 6]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -907,6 +924,7 @@ export const updateAndGet: {
  * MutableRef.get(flag) // => true
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */

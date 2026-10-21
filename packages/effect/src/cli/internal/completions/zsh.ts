@@ -14,6 +14,8 @@ import type * as Completions from "../../Completions.ts"
 
 const escapeZsh = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "'\\''").replace(/:/g, "\\:")
 
+const escapeZshExplanation = (s: string): string => escapeZsh(s).replace(/]/g, "\\]")
+
 /** Escape choices for the second parse of a Zsh `_arguments` action. */
 const escapeZshChoice = (s: string): string => s.replace(/[^A-Za-z0-9_.,/@%+-]/gu, "\\$&").replace(/'/g, "'\\''")
 
@@ -69,22 +71,26 @@ const argAction = (type: Completions.ArgumentType): string => {
  */
 const flagSpecs = (flag: Completions.FlagDescriptor): Array<string> => {
   const specs: Array<string> = []
-  const desc = flag.description ? `[${escapeZsh(flag.description)}]` : ""
-  const action = valueAction(flag.type)
+  const desc = flag.description ? `[${escapeZshExplanation(flag.description)}]` : ""
+  // An optional value must follow `=` in the same word (`--name=-`), and `::`
+  // marks it optional.
+  const optional = flag.optionalValue === true && flag.type._tag !== "Boolean"
+  const valueSuffix = optional ? "=-" : ""
+  const action = optional ? `:${valueAction(flag.type)}` : valueAction(flag.type)
   const excl = `(${allForms(flag).join(" ")})`
 
   // Primary long name
-  specs.push(`'${excl}--${flag.name}${desc}${action}'`)
+  specs.push(`'${excl}--${flag.name}${valueSuffix}${desc}${action}'`)
 
   // Aliases
   for (const alias of flag.aliases) {
     const prefix = alias.length === 1 ? "-" : "--"
-    specs.push(`'${excl}${prefix}${alias}${desc}${action}'`)
+    specs.push(`'${excl}${prefix}${alias}${valueSuffix}${desc}${action}'`)
   }
 
   // Boolean negation
   if (flag.type._tag === "Boolean") {
-    const negDesc = flag.description ? `[${escapeZsh(`Disable ${flag.name}`)}]` : ""
+    const negDesc = flag.description ? `[${escapeZshExplanation(`Disable ${flag.name}`)}]` : ""
     specs.push(`'${excl}--no-${flag.name}${negDesc}'`)
   }
 

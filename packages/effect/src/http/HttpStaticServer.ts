@@ -13,6 +13,7 @@
 import * as Effect from "../Effect.ts"
 import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
 import type { PlatformError } from "../PlatformError.ts"
 import * as HttpPlatform from "./HttpPlatform.ts"
@@ -206,6 +207,20 @@ export const make: (options: {
           return serveFile(request, resolvedPath, info.size)
         }
         if (info.type === "Directory" && index !== undefined) {
+          let originalUrl = request.originalUrl
+          if (!originalUrl.startsWith("/")) {
+            const url = new URL(originalUrl)
+            originalUrl = url.pathname + url.search
+          }
+          const pathname = stripQueryString(originalUrl)
+          if (!pathname.endsWith("/")) {
+            // Keep the redirect local even when the path starts with multiple separators.
+            const location = pathname.replace(/^\/+/, "/").replace(/\\/g, "%5C")
+            return Effect.succeed(HttpServerResponse.redirect(
+              `${location}/${originalUrl.slice(pathname.length)}`,
+              { status: 301 }
+            ))
+          }
           return serveFile(request, path.join(resolvedPath, index))
         }
         return Effect.fail(toRouteNotFoundError(request))
@@ -398,16 +413,9 @@ const resolveFilePath = (path: Path.Path, root: string, url: string): string | u
   if (decodedPath.includes("\u0000")) {
     return undefined
   }
-  const normalizedPath = path.normalize(decodedPath.startsWith("/") ? decodedPath.slice(1) : decodedPath)
-  if (normalizedPath === ".." || normalizedPath.startsWith(`..${path.sep}`)) {
-    return undefined
-  }
-  const resolvedPath = path.join(root, normalizedPath)
-  const rootPrefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`
-  if (resolvedPath !== root && !resolvedPath.startsWith(rootPrefix)) {
-    return undefined
-  }
-  return resolvedPath
+  // every leading separator is part of the URL, not a filesystem root
+  const relativePath = decodedPath.replace(path.sep === "\\" ? /^[/\\]+/ : /^\/+/, "")
+  return Option.getOrUndefined(path.resolveWithin(root, relativePath))
 }
 
 const toRouteNotFoundError = (request: HttpServerRequest.HttpServerRequest) =>

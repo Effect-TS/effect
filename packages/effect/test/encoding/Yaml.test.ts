@@ -84,7 +84,11 @@ indented: >-
       "multiple blank paragraph lines",
       "message: >-\n  first\n\n\n  second\n",
       "first\n\nsecond"
-    ]
+    ],
+    ["literal tab content", "message: |\n  all:\n  \tcc\n", "all:\n\tcc\n"],
+    ["folded tab-led content", "message: >\n  a\n  \tb\n  c\n", "a\n\tb\nc\n"],
+    ["whitespace-only content", "message: |\n  a\n    \n  b\n", "a\n  \nb\n"],
+    ["explicit-indicator leading whitespace", "message: |1\n   \n  x\n", "  \n x\n"]
   ])("preserves %s", (_, source, expected) => {
     assert.deepStrictEqual(Yaml.parse(source), { message: expected })
   })
@@ -127,6 +131,21 @@ indented: >-
     assert.deepStrictEqual(Yaml.parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
   })
 
+  it.each([
+    ["|", "    first\n    second\n", "first\nsecond\n"],
+    [">-", "\n    first\n    second\n\n", "\nfirst second"],
+    ["|2+", "    # text\n\n", "  # text\n\n"]
+  ])("ends %s scalars before less-indented comments", (indicator, content, expected) => {
+    assert.deepStrictEqual(Yaml.parse(`message: ${indicator}\n${content} # outside\nnext: 1\n`), {
+      message: expected,
+      next: 1
+    })
+  })
+
+  it("rejects less-indented block scalar content", () => {
+    assert.throws(() => Yaml.parse("message: |\n    first\n  second\nnext: 1\n"), SyntaxError)
+  })
+
   it("resolves aliases", () => {
     assert.deepStrictEqual(
       Yaml.parse(`
@@ -145,6 +164,24 @@ development:
 
   it("rejects invalid indentation", () => {
     assert.throws(() => Yaml.parse("root:\n   child: true\n  sibling: false\n"))
+  })
+
+  it("allows tabs on comment and blank lines outside scalars", () => {
+    assert.deepStrictEqual(Yaml.parse("a: 1\n\t# comment\n\t\nb: 2\n"), { a: 1, b: 2 })
+  })
+
+  it.each([
+    ["structural indentation", "root:\n\tchild: true\n"],
+    ["below block content indentation", "text: |\n  x\n\t\nnext: 1\n"],
+    ["plain continuation", "text: a\n\t\n  b\n"],
+    ["single-quoted continuation", "text: 'a\n\tb'\n"],
+    ["double-quoted continuation", "text: \"a\n\tb\"\n"]
+  ])("rejects tabs in %s", (_, source) => {
+    assert.throws(() => Yaml.parse(source), /Tabs cannot be used for YAML indentation/)
+  })
+
+  it("rejects leading empty lines more indented than the first block content line", () => {
+    assert.throws(() => Yaml.parse("text: |\n    \n  \tx\n"), SyntaxError)
   })
 
   // YAML 1.2.2 §8.2.1: a mapping value's block sequence may be indentless.

@@ -1,10 +1,11 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
+import { inspect } from "node:util"
 import { collectGarbage } from "../utils/gc.ts"
 
 const makeStatusClient = Effect.fnUntraced(function*(status: number) {
@@ -14,6 +15,19 @@ const makeStatusClient = Effect.fnUntraced(function*(status: number) {
       yield* Ref.update(attempts, (n) => n + 1)
       return HttpClientResponse.fromWeb(request, new Response(null, { status }))
     })
+  )
+  return { attempts, client } as const
+})
+
+const makeSequenceClient = Effect.fnUntraced(function*(
+  responses: ReadonlyArray<{ readonly status: number; readonly headers?: Record<string, string> }>
+) {
+  const attempts = yield* Ref.make(0)
+  const client = HttpClient.make((request) =>
+    Effect.map(
+      Ref.getAndUpdate(attempts, (n) => n + 1),
+      (n) => HttpClientResponse.fromWeb(request, new Response(null, responses[Math.min(n, responses.length - 1)]))
+    )
   )
   return { attempts, client } as const
 })
@@ -39,6 +53,21 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
+  it.effect("preserves the response stream after JSON serialization", () =>
+    Effect.gen(function*() {
+      const response = HttpClientResponse.fromWeb(
+        HttpClientRequest.get("https://example.com"),
+        new Response("data: hello\n\n", { headers: { "content-type": "text/event-stream" } })
+      )
+
+      JSON.stringify(response)
+
+      const bytes = yield* Stream.runFold(response.stream, () =>
+        Array<number>(), (bytes, chunk) =>
+        bytes.concat(Array.from(chunk)))
+      assert.deepStrictEqual(bytes, Array.from(new TextEncoder().encode("data: hello\n\n")))
+    }))
+
   it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
     "does not retain unread responses without FinalizationRegistry",
     async () => {
@@ -68,6 +97,53 @@ describe("HttpClient", () => {
       }
     }
   )
+
+  it("does not throw when unread response cleanup runs outside a Cloudflare request", async () => {
+    const cleanups: Array<() => void> = []
+    vi.stubGlobal("navigator", { userAgent: "Cloudflare-Workers" })
+    vi.stubGlobal(
+      "FinalizationRegistry",
+      class<T> {
+        constructor(readonly cleanup: (value: T) => void) {}
+        register(_target: object, value: T) {
+          cleanups.push(() => this.cleanup(value))
+        }
+        unregister(_token: object) {
+          return true
+        }
+      }
+    )
+    let abort: ReturnType<typeof vi.spyOn> | undefined
+    try {
+      // Select the runtime registry on import, then drive GC cleanup deterministically.
+      vi.resetModules()
+      const { Effect } = await import("effect")
+      const { FetchHttpClient, HttpClient } = await import("effect/http")
+      const status = await Effect.runPromise(
+        HttpClient.get("https://example.test/").pipe(
+          Effect.map((response) => response.status),
+          Effect.provide(FetchHttpClient.layer),
+          Effect.provideService(
+            FetchHttpClient.Fetch,
+            Object.assign(async () => new Response("unread"), { preconnect: () => {} })
+          )
+        )
+      )
+      assert.strictEqual(status, 200)
+
+      // workerd disallows aborting request I/O from a finalizer outside its request.
+      abort = vi.spyOn(AbortController.prototype, "abort").mockImplementation(() => {
+        throw new Error("Disallowed operation called within global scope")
+      })
+      assert.doesNotThrow(() => {
+        for (const cleanup of cleanups) cleanup()
+      })
+    } finally {
+      abort?.mockRestore()
+      vi.unstubAllGlobals()
+      vi.resetModules()
+    }
+  })
 
   it.effect("applies JSON revivers to response schema decoders", () =>
     Effect.gen(function*() {
@@ -272,6 +348,166 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
       }))
+
+    it.effect("redacts sensitive query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* client.get("http://test/path?Signature=sig-secret&page=1", {
+          urlParams: { "X-Goog-Signature": "goog-secret" }
+        }).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(sentUrl, "http://test/path?Signature=sig-secret&page=1&X-Goog-Signature=goog-secret")
+      }))
+
+    it.effect("redacts userinfo in url.full", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        )
+
+        yield* client.get("http://user:password@test/path").pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
+      }))
+
+    it.effect("redacts Redacted query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* HttpClientRequest.get("http://test/path?page=1#frag").pipe(
+          HttpClientRequest.appendUrlParam("remote", Redacted.make("param-secret")),
+          HttpClientRequest.appendUrlParam("\uD800", Redacted.make("surrogate-secret")),
+          HttpClientRequest.appendUrlParam("q", "visible"),
+          client.execute,
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?page=1&remote=REDACTED&%EF%BF%BD=REDACTED&q=visible#frag"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "page=1&remote=REDACTED&%EF%BF%BD=REDACTED&q=visible"
+        )
+        assert.strictEqual(
+          sentUrl,
+          "http://test/path?page=1&remote=param-secret&%EF%BF%BD=surrogate-secret&q=visible#frag"
+        )
+      }))
+
+    const makeCapturingClient = () => {
+      let sent: HttpClientRequest.HttpClientRequest | undefined
+      const client = HttpClient.make((request) => {
+        sent = request
+        return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+      })
+      return { client, sent: () => sent }
+    }
+
+    it.effect("sends trace headers by default", () =>
+      Effect.gen(function*() {
+        const { client, sent } = makeCapturingClient()
+
+        yield* client.get("http://test/")
+
+        const request = sent()
+        assert(request !== undefined)
+        assert.strictEqual(typeof request.headers.b3, "string")
+        assert.strictEqual(typeof request.headers.traceparent, "string")
+      }))
+
+    it.effect("omits trace headers when propagation is disabled and keeps the client span", () =>
+      Effect.gen(function*() {
+        const { client, sent } = makeCapturingClient()
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+
+        yield* client.get("http://test/").pipe(
+          Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        const request = sent()
+        assert(request !== undefined)
+        assert.isUndefined(request.headers.b3)
+        assert.isUndefined(request.headers.traceparent)
+        assert(clientSpan !== undefined)
+      }))
+  })
+
+  describe("HttpClientError", () => {
+    it.effect("does not expose Redacted query params", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 500 })))
+        ).pipe(HttpClient.filterStatusOk)
+
+        const error = yield* client.get("http://test/path", {
+          urlParams: { remote: Redacted.make("param-secret"), q: "visible" }
+        }).pipe(Effect.flip)
+
+        for (const output of [JSON.stringify(error), String(error), inspect(error, { depth: 10 })]) {
+          assert.notInclude(output, "param-secret")
+        }
+        assert.include(JSON.stringify(error), "visible")
+      }))
+
+    it.effect("redacts query params in messages using the current redacted names", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request })
+        })
+
+        strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
   })
 
   describe("followRedirects", () => {
@@ -413,6 +649,43 @@ Missing key
         yield* retryClient.get("http://test/").pipe(Effect.ignore)
         strictEqual(yield* Ref.get(attempts), 1)
       }))
+
+    it.effect.each([
+      { name: "seconds", header: "1", status: 503, delay: 1_000 },
+      { name: "a five-minute Retry-After", header: "300", status: 429, delay: 300_000 },
+      { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
+      { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
+      { name: "no header", status: 503, delay: 0 }
+    ])(
+      "honors the retry delay for $name",
+      ({ delay, header, scheduled, status }) =>
+        Effect.gen(function*() {
+          const retryAfter = header === "date"
+            ? new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
+            : header
+          const { attempts, client } = yield* makeSequenceClient([
+            { status, headers: retryAfter === undefined ? {} : { "retry-after": retryAfter } },
+            { status: 200 }
+          ])
+          const retryClient = (header === "date" ? HttpClient.filterStatusOk(client) : client).pipe(
+            HttpClient.retryTransient({
+              retryOn: header === "date" ? "errors-only" : "errors-and-responses",
+              times: 1,
+              ...(scheduled ? { schedule: Schedule.spaced("1 minute") } : {})
+            })
+          )
+          const fiber = yield* retryClient.get("http://test/").pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+
+          if (delay > 0) {
+            yield* TestClock.adjust(Duration.millis(delay - 1))
+            strictEqual(yield* Ref.get(attempts), 1)
+            yield* TestClock.adjust("1 millis")
+          }
+          strictEqual((yield* Fiber.join(fiber)).status, 200)
+        })
+    )
   })
 
   describe("stream", () => {
@@ -606,9 +879,234 @@ Missing key
 
         strictEqual(yield* Ref.get(attempts), 1)
 
-        yield* TestClock.adjust("10 seconds")
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("1 second")
         yield* Fiber.join(fiber)
         strictEqual(yield* Ref.get(attempts), 2)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("tracks remaining headers when the limit header is also present", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                attempt === 1
+                  ? new Response(null, {
+                    status: 200,
+                    headers: {
+                      "ratelimit-limit": "800",
+                      "ratelimit-remaining": "1",
+                      "ratelimit-reset-after": "60"
+                    }
+                  })
+                  : new Response(null, { status: 200 })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "reported-remaining",
+            limit: 800,
+            window: "1 minute"
+          })
+        )
+
+        yield* client.get("http://test/")
+        yield* client.get("http://test/")
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 2)
+
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(fiber)
+        strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("retries a 429 at the reported reset when remaining is exhausted", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                attempt === 1
+                  ? new Response(null, {
+                    status: 429,
+                    headers: {
+                      "ratelimit-limit": "800",
+                      "ratelimit-remaining": "0",
+                      "ratelimit-reset-after": "60"
+                    }
+                  })
+                  : new Response(null, { status: 200 })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "reported-429",
+            limit: 800,
+            window: "1 minute",
+            times: 1,
+            disableAdaptiveLearning: true
+          })
+        )
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("1 second")
+        const response = yield* Fiber.join(fiber)
+        strictEqual(response.status, 200)
+        strictEqual(yield* Ref.get(attempts), 2)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("ignores stale remaining headers from out-of-order responses", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const releaseFirst = yield* Deferred.make<void>()
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) => {
+              const response = (headers: Record<string, string> = {}) =>
+                HttpClientResponse.fromWeb(request, new Response(null, { status: 200, headers }))
+              if (attempt === 1) {
+                return Effect.as(
+                  Deferred.await(releaseFirst),
+                  response({ "ratelimit-remaining": "5", "ratelimit-reset-after": "60" })
+                )
+              }
+              return Effect.succeed(
+                attempt === 2
+                  ? response({ "ratelimit-remaining": "0", "ratelimit-reset-after": "60" })
+                  : response()
+              )
+            }
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "stale-remaining",
+            limit: 800,
+            window: "1 minute"
+          })
+        )
+
+        const first = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* client.get("http://test/")
+        yield* Deferred.succeed(releaseFirst, undefined)
+        yield* Fiber.join(first)
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 2)
+
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(fiber)
+        strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("counts requests sent after the reporting request against its remaining", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const releaseFirst = yield* Deferred.make<void>()
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              attempt === 1
+                ? Effect.as(
+                  Deferred.await(releaseFirst),
+                  HttpClientResponse.fromWeb(
+                    request,
+                    new Response(null, {
+                      status: 200,
+                      headers: { "ratelimit-remaining": "1", "ratelimit-reset-after": "60" }
+                    })
+                  )
+                )
+                : Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "in-flight-remaining",
+            limit: 800,
+            window: "1 minute"
+          })
+        )
+
+        const first = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* client.get("http://test/")
+        yield* Deferred.succeed(releaseFirst, undefined)
+        yield* Fiber.join(first)
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 2)
+
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(fiber)
+        strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("paces requests started while remaining is exhausted with the limiter after reset", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                attempt === 1
+                  ? new Response(null, {
+                    status: 200,
+                    headers: {
+                      "ratelimit-limit": "2",
+                      "ratelimit-remaining": "0",
+                      "ratelimit-reset-after": "60"
+                    }
+                  })
+                  : new Response(null, { status: 200 })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "exhausted-pacing",
+            limit: 2,
+            window: "1 minute",
+            disableAdaptiveLearning: true
+          })
+        )
+
+        yield* client.get("http://test/")
+        const fibers = yield* Effect.forEach(
+          [1, 2, 3],
+          () => client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        )
+
+        yield* TestClock.adjust("60 seconds")
+        strictEqual(yield* Ref.get(attempts), 3)
+
+        yield* TestClock.adjust("60 seconds")
+        yield* Fiber.joinAll(fibers)
+        strictEqual(yield* Ref.get(attempts), 4)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
     it.effect("inspects custom remaining and reset-after headers", () =>
@@ -652,7 +1150,7 @@ Missing key
 
         strictEqual(yield* Ref.get(attempts), 1)
 
-        yield* TestClock.adjust("10 seconds")
+        yield* TestClock.adjust("1 minute")
         yield* Fiber.join(fiber)
         strictEqual(yield* Ref.get(attempts), 2)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
@@ -854,6 +1352,45 @@ Missing key
           strictEqual(error.reason.response.status, 429)
         }
         strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("waits until a Retry-After HTTP date", () =>
+      Effect.gen(function*() {
+        const retryAt = new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                new Response(null, {
+                  status: attempt === 1 ? 429 : 200,
+                  headers: { "retry-after": retryAt }
+                })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "http-date-retry-after",
+            limit: 100,
+            window: "1 minute",
+            times: 1,
+            disableAdaptiveLearning: true
+          })
+        )
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild)
+
+        yield* TestClock.adjust("29 seconds")
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("1 second")
+        const response = yield* Fiber.join(fiber)
+
+        strictEqual(response.status, 200)
+        strictEqual(yield* Ref.get(attempts), 2)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
     it.effect("uses a custom Retry-After header", () =>

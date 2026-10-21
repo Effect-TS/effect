@@ -7,6 +7,7 @@
  * `Combiner` interface, a constructor for custom combining logic, and common
  * combiners for choosing or ordering values.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Order from "./Order.ts"
@@ -35,6 +36,7 @@ import type * as Order from "./Order.ts"
  * ```
  *
  * @see {@link make} – create a `Combiner` from a function
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -73,6 +75,7 @@ export interface Combiner<A> {
  * ```
  *
  * @see {@link Combiner} – the interface this creates
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -104,6 +107,7 @@ export function make<A>(combine: (self: A, that: A) => A): Combiner<A> {
  * ```
  *
  * @see {@link make}
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -137,6 +141,7 @@ export function flip<A>(combiner: Combiner<A>): Combiner<A> {
  * ```
  *
  * @see {@link max}
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -170,6 +175,7 @@ export function min<A>(order: Order.Order<A>): Combiner<A> {
  * ```
  *
  * @see {@link min}
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -199,6 +205,7 @@ export function max<A>(order: Order.Order<A>): Combiner<A> {
  * ```
  *
  * @see {@link last}
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -228,6 +235,7 @@ export function first<A>(): Combiner<A> {
  * ```
  *
  * @see {@link first}
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -260,6 +268,7 @@ export function last<A>(): Combiner<A> {
  *
  * @see {@link first}
  * @see {@link last}
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -294,6 +303,7 @@ export function constant<A>(a: A): Combiner<A> {
  * ```
  *
  * @see {@link make}
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */

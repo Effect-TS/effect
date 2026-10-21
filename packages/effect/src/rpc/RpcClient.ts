@@ -301,8 +301,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   )
 
   const clearEntries = Effect.fnUntraced(function*(exit: Exit.Exit<never>) {
-    for (const [id, entry] of entries) {
-      entries.delete(id)
+    // Resuming callers can synchronously start new requests.
+    const pending = Array.from(entries.values())
+    entries.clear()
+    // Once detached, every entry must complete even if delivery is interrupted.
+    for (const entry of pending) {
       if (entry._tag === "Queue") {
         yield* (exit._tag === "Success"
           ? Queue.end(entry.queue as any)
@@ -311,7 +314,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         entry.resume(exit)
       }
     }
-  })
+  }, Effect.uninterruptible)
 
   const onRequest = (rpc: Rpc.AnyWithProps) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
@@ -420,6 +423,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           )
           fiber.addObserver((exit) => {
             if (exit._tag === "Failure") {
+              entries.delete(id)
               return resume(exit)
             }
           })
@@ -505,7 +509,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
     ).pipe(
       span ? Effect.withParentSpan(span, { captureStackTrace: false }) : identity,
-      Effect.onError((cause) => Queue.failCause(queue, cause)),
+      Effect.onError((cause) => {
+        if (!Cause.hasInterruptsOnly(cause)) entries.delete(id)
+        return Queue.failCause(queue, cause)
+      }),
       Effect.interruptible,
       Effect.forkIn(scope, { startImmediately: true })
     )
@@ -709,6 +716,10 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
                 payload,
                 headers: Object.entries(message.headers)
               }, collector && collector.readUnsafe())
+            ),
+            // An interrupted request keeps its entry until the interrupt is sent.
+            Effect.onError((cause) =>
+              Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.sync(() => entries.delete(message.id))
             )
           ) as Effect.Effect<void, RpcClientError>
         }
@@ -769,15 +780,19 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           })
         ) as Effect.Effect<void>
       }
+      // Clear entries before resuming callers, as they can start new requests
       case "Defect": {
+        entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
+        const requestIds = Array.from(entries.keys())
+        entries.clear()
         return Effect.forEach(
-          Array.from(entries.keys()),
+          requestIds,
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
-        )
+        ).pipe(Effect.uninterruptible)
       }
       default: {
         return Effect.void
@@ -1050,11 +1065,19 @@ export const makeProtocolSocket = (options?: {
   readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
   /**
    * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
-   * A ping timeout fails in-flight calls and is not reported through this hook.
-   * The returned `Effect<void>` cannot fail with a typed error or require
-   * services; defects are logged and ignored so retries can continue.
+   * A ping timeout fails in-flight calls and is reported through `onPingTimeout`
+   * instead. The returned `Effect<void>` cannot fail with a typed error or
+   * require services; defects are logged and ignored so retries can continue.
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
+  /**
+   * Runs when an open connection is dropped because no server frame arrived
+   * within `pingTimeout`, before `ConnectionHooks.onDisconnect` and before
+   * in-flight calls fail with a `SocketReadError`. Defects are logged and ignored.
+   *
+   * @since 4.0.3
+   */
+  readonly onPingTimeout?: Effect.Effect<void> | undefined
 }): Effect.Effect<
   Protocol["Service"],
   never,
@@ -1070,14 +1093,21 @@ export const makeProtocolSocket = (options?: {
 
     let parser = serialization.makeUnsafe()
 
-    // `parser` is replaced on every connect, and a stateful serialization
-    // encodes against the connection it is writing to, so the ping is encoded
-    // when it is sent rather than once up front.
+    // Encode each ping with the current connection's parser.
     const pinger = yield* makePinger(Effect.suspend(() => writer.write(parser.encode(constPing)!)), options)
+    const onPingTimeout = Effect.ignoreCause(options?.onPingTimeout ?? Effect.void, {
+      log: true,
+      message: "RpcClient onPingTimeout hook failed"
+    })
     let currentError: RpcClientError | undefined
 
-    const broadcast = (response: FromServerEncoded) =>
-      Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+    const broadcast = (response: FromServerEncoded) => {
+      const deliver = Effect.forEach(Array.from(clientIds), (clientId) => writeResponse(clientId, response))
+      if (response._tag !== "Defect" && response._tag !== "ClientProtocolError") return deliver
+      // A terminal response ends every request; clear routing before callers can start new ones
+      requestClientMap.clear()
+      return Effect.uninterruptible(deliver)
+    }
     const broadcastError = (error: RpcClientError) => {
       currentError = error
       return broadcast({
@@ -1127,9 +1157,11 @@ export const makeProtocolSocket = (options?: {
     yield* Effect.suspend(() => {
       parser = serialization.makeUnsafe()
       pinger.reset()
+      let connected = false
       return Effect.gen(function*() {
         const { pull } = yield* socket.reader
         currentError = undefined
+        connected = true
         if (Option.isSome(hooks)) {
           yield* hooks.value.onConnect
         }
@@ -1141,17 +1173,19 @@ export const makeProtocolSocket = (options?: {
         }
       }).pipe(
         Effect.scoped,
-        Effect.raceFirst(Effect.flatMap(
-          pinger.timeout,
-          () =>
-            Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketReadError({
-                  cause: new Error("ping timeout")
-                })
+        // The read loop never succeeds, so the race only succeeds on a ping
+        // timeout, after the socket has been cleaned up.
+        Effect.raceFirst(pinger.timeout),
+        Effect.andThen(() => connected ? onPingTimeout : Effect.void),
+        Effect.andThen(() =>
+          Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketReadError({
+                cause: new Error("ping timeout")
               })
-            )
-        ))
+            })
+          )
+        )
       )
     }).pipe(
       Option.isSome(hooks) ? Effect.ensuring(hooks.value.onDisconnect) : identity,
@@ -1188,17 +1222,21 @@ export const makeProtocolSocket = (options?: {
       Effect.forkScoped
     )
 
+    const write = (request: FromClientEncoded) =>
+      Effect.suspend(() => {
+        const encoded = parser.encode(request)
+        return encoded === undefined ? Effect.void : Effect.orDie(writer.write(encoded))
+      })
+
     return {
       send(clientId, request) {
         if (currentError) {
           return Effect.fail(currentError)
         }
-        if (request._tag === "Request") {
-          requestClientMap.set(request.id, clientId)
-        }
-        const encoded = parser.encode(request)
-        if (encoded === undefined) return Effect.void
-        return Effect.orDie(writer.write(encoded))
+        if (request._tag === "Interrupt") requestClientMap.delete(request.requestId)
+        if (request._tag !== "Request") return write(request)
+        requestClientMap.set(request.id, clientId)
+        return Effect.onError(write(request), () => Effect.sync(() => requestClientMap.delete(request.id)))
       },
       supportsAck: true,
       supportsTransferables: false,
@@ -1219,16 +1257,21 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
   const interval = options?.pingInterval ?? "5 seconds"
   const timeoutMillis = Duration.toMillis(options?.pingTimeout ?? interval)
   let lastSeen = clock.currentTimeMillisUnsafe()
+  let awaitingResponse = false
   const latch = Latch.makeUnsafe()
   const onFrame = () => {
     lastSeen = clock.currentTimeMillisUnsafe()
+    awaitingResponse = false
   }
   const reset = () => {
     onFrame()
     latch.closeUnsafe()
   }
   yield* Effect.suspend((): Effect.Effect<void, E, R> => {
-    if (clock.currentTimeMillisUnsafe() - lastSeen > timeoutMillis) return latch.open
+    // A late tick must send a ping before it can declare the connection silent.
+    // Keep the timeout measured from the last frame, including for custom timeouts.
+    if (awaitingResponse && clock.currentTimeMillisUnsafe() - lastSeen > timeoutMillis) return latch.open
+    awaitingResponse = true
     return writePing
   }).pipe(
     Effect.delay(interval),
@@ -1262,11 +1305,19 @@ export const layerProtocolSocket = (options?: {
   readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
   /**
    * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
-   * A ping timeout fails in-flight calls and is not reported through this hook.
-   * The returned `Effect<void>` cannot fail with a typed error or require
-   * services; defects are logged and ignored so retries can continue.
+   * A ping timeout fails in-flight calls and is reported through `onPingTimeout`
+   * instead. The returned `Effect<void>` cannot fail with a typed error or
+   * require services; defects are logged and ignored so retries can continue.
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
+  /**
+   * Runs when an open connection is dropped because no server frame arrived
+   * within `pingTimeout`, before `ConnectionHooks.onDisconnect` and before
+   * in-flight calls fail with a `SocketReadError`. Defects are logged and ignored.
+   *
+   * @since 4.0.3
+   */
+  readonly onPingTimeout?: Effect.Effect<void> | undefined
 }): Layer.Layer<
   Protocol,
   never,

@@ -981,6 +981,24 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives SemVer", () => {
+    assertDeclarationReviver({
+      schema: Schema.SemVer,
+      id: "effect/schema/SemVer",
+      payload: null,
+      reviver: SchemaRepresentation.SemVerReviver
+    })
+  })
+
+  it("revives SemVerRange", () => {
+    assertDeclarationReviver({
+      schema: Schema.SemVerRange,
+      id: "effect/schema/SemVerRange",
+      payload: null,
+      reviver: SchemaRepresentation.SemVerRangeReviver
+    })
+  })
+
   it("revives File", () => {
     assertDeclarationReviver({
       schema: Schema.File,

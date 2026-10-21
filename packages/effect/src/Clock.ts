@@ -5,6 +5,7 @@
  * accessed through a service, tests can replace the clock with a controlled
  * implementation.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Context from "./Context.ts"
@@ -45,6 +46,7 @@ import * as effect from "./internal/effect.ts"
  * await Effect.runPromise(Effect.provideService(clockOperations, Clock.Clock, testClock)) // => [1_000, 1_000_000_000n]
  * ```
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -183,6 +185,7 @@ export interface Clock {
  * @see {@link currentTimeMillis} for reading the current time in milliseconds
  * @see {@link currentTimeNanos} for reading the current time in nanoseconds
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -219,6 +222,7 @@ export const Clock: Context.Reference<Clock> = effect.ClockRef
  * @see {@link Clock} for the service reference
  * @see {@link currentTimeMillis} for convenience accessor that returns milliseconds
  * @see {@link currentTimeNanos} for convenience accessor that returns nanoseconds
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -259,6 +263,7 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
  * @see {@link monotonicTimeNanos} for measuring elapsed time
  * @see {@link clockWith} for accessing the full Clock service
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -299,6 +304,7 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  *
  * @see {@link monotonicTimeNanos} for measuring elapsed time
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -320,6 +326,7 @@ export const currentTimeNanos: Effect<bigint> = effect.currentTimeNanos
  *
  * @see {@link currentTimeNanos} for Unix wall-clock timestamps
  *
+ * @stability stable
  * @category accessors
  * @since 4.0.0
  */

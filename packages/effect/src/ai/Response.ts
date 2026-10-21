@@ -441,16 +441,19 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
 export type ToolCallParts<
   Tools extends Record<string, Tool.Any>,
   ParametersMode extends ToolParametersMode = "decoded"
-> = ToolCallPartForName<Tools, ParametersMode, keyof Tools>
+> = ParametersMode extends "deferred" ?
+  ToolCallPartForName<Tools, "opaque", keyof Tools> | ToolCallPart<string, unknown>
+  : ToolCallPartForName<Tools, ParametersMode, keyof Tools>
 
 /**
- * Controls whether tool parameters are decoded, encoded, or opaque.
+ * Controls tool parameter decoding. `"deferred"` allows undeclared tool names
+ * with opaque parameters, leaving validation to the caller.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
-export type ToolParametersMode = "decoded" | "encoded" | "opaque"
+export type ToolParametersMode = "decoded" | "encoded" | "opaque" | "deferred"
 
 type ToolCallPartForName<
   Tools extends Record<string, Tool.Any>,

@@ -9,6 +9,7 @@
  * and have access to the per-connection WebSocket and `IncomingMessage`
  * services.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Cause } from "effect/Cause"
@@ -50,6 +51,7 @@ const socketAddressFromNode = (
  * Service tag for the Node `IncomingMessage` associated with the current
  * WebSocket server connection.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -63,6 +65,7 @@ export class IncomingMessage extends Context.Service<
  * listening with the supplied options, queues pending connections until `run`
  * is called, and closes the server when the scope ends.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -83,6 +86,7 @@ export const make = (
  * Provides a TCP `SocketServer` by creating and managing a scoped Node
  * `net.Server` with the supplied server and listen options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -105,6 +109,7 @@ export const layer: (
  * also provided as `NodeSocket.NetSocket`. Connections that fail the handshake
  * are destroyed and the server keeps listening.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -131,6 +136,7 @@ export const makeTls = (
  * Provides a TLS `SocketServer` by creating and managing a scoped Node
  * `tls.Server` with the supplied TLS and listen options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

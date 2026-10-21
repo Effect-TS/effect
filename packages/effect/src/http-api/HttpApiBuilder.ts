@@ -10,10 +10,12 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as ByteSize from "../ByteSize.ts"
 import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
+import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import * as Fiber from "../Fiber.ts"
 import type { FileSystem } from "../FileSystem.ts"
@@ -26,6 +28,7 @@ import type { HttpPlatform } from "../http/HttpPlatform.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as Request from "../http/HttpServerRequest.ts"
 import { HttpServerRequest } from "../http/HttpServerRequest.ts"
+import * as Respondable from "../http/HttpServerRespondable.ts"
 import * as Response from "../http/HttpServerResponse.ts"
 import type { HttpServerResponse } from "../http/HttpServerResponse.ts"
 import * as Multipart from "../http/Multipart.ts"
@@ -47,7 +50,7 @@ import type { NoInfer } from "../Types.ts"
 import * as UndefinedOr from "../UndefinedOr.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
-import { HttpApiSchemaError } from "./HttpApiError.ts"
+import { HttpApiPayloadTooLarge, HttpApiSchemaError } from "./HttpApiError.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
@@ -739,6 +742,11 @@ type PayloadDecoder =
     readonly nullOnEmpty: boolean
     readonly decode: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
   }
+  | {
+    readonly _tag: "Stream"
+    readonly maxBytes: number | undefined
+    readonly decode: (request: HttpServerRequest) => Stream.Stream<unknown, unknown, unknown>
+  }
 
 function buildPayloadDecoders(
   payloadMap: HttpApiEndpoint.PayloadMap,
@@ -746,6 +754,15 @@ function buildPayloadDecoders(
 ): Map<string, PayloadDecoder> {
   const result = new Map<string, PayloadDecoder>()
   payloadMap.forEach(({ encoding, schemas }, contentType) => {
+    if (encoding._tag === "Stream") {
+      const schema = schemas[0] as HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>
+      result.set(contentType, {
+        _tag: "Stream",
+        maxBytes: schema.maxBytes === undefined ? undefined : ByteSize.toNumberUnsafe(schema.maxBytes),
+        decode: makePayloadStreamDecoder(schema, options)
+      })
+      return
+    }
     const schema = Schema.Union(schemas)
     const decode = Schema.decodeUnknownEffect(
       encoding._tag === "FormUrlEncoded" ? Schema.toCodecArrayFromSingle(schema) : schema,
@@ -776,6 +793,17 @@ function decodePayload(
   const existing = payloadBy.get(contentType)
   if (!existing) {
     return Response.text(`Unsupported content-type: ${contentType}`, { status: 415 })
+  }
+  if (existing._tag === "Stream") {
+    if (existing.maxBytes !== undefined && Number(httpRequest.headers["content-length"]) > existing.maxBytes) {
+      return payloadTooLargeResponse
+    }
+    // The stream can be pulled after the handler returns, inside a streaming
+    // response, so it carries the element schema's services with it.
+    return Effect.map(
+      Effect.context<unknown>(),
+      (context) => Stream.provideContext(existing.decode(httpRequest), context)
+    )
   }
   const { _tag, decode } = existing
   switch (_tag) {
@@ -824,6 +852,69 @@ function decodePayload(
   }
 }
 
+const payloadTooLargeResponse = Response.empty({ status: 413, headers: { connection: "close" } })
+
+// The handler pulls the body itself, so nothing is read ahead of it. Body read
+// failures stay defects, as they are for buffered payloads.
+function makePayloadStreamDecoder(
+  schema: HttpApiSchema.StreamUint8Array | HttpApiSchema.StreamNdjson<Schema.Top>,
+  options: SchemaAST.ParseOptions | undefined
+): (request: HttpServerRequest) => Stream.Stream<unknown, unknown, unknown> {
+  const maxBytes = schema.maxBytes
+  const readBody = (request: HttpServerRequest) => {
+    const body = Stream.orDie(request.stream)
+    return maxBytes === undefined ? body : limitBytes(body, maxBytes)
+  }
+  if (HttpApiSchema.isStreamUint8Array(schema)) {
+    return readBody
+  }
+  const decodeElement = Schema.decodeUnknownEffect(Schema.toCodecJson(schema.schema), options)
+  const maxElementBytes = schema.maxElementBytes
+  const elementTooLarge = new HttpApiPayloadTooLarge({ limit: "maxElementBytes", size: maxElementBytes })
+  const maxLineBytes = ByteSize.toNumberUnsafe(maxElementBytes)
+  return (request) =>
+    readBody(request).pipe(
+      Stream.pipeThroughChannel(Ndjson.decode({ ignoreEmptyLines: true, maxLineBytes })),
+      Stream.mapEffect((json) => decodeElement(json)),
+      Stream.mapError((error) => {
+        if (HttpApiPayloadTooLarge.is(error)) return error
+        if (!Ndjson.isNdjsonError(error)) return new HttpApiSchemaError({ kind: "Payload", cause: error })
+        if (error.reason === "LineTooLarge") return elementTooLarge
+        return new HttpApiSchemaError({ kind: "Payload", cause: ndjsonSchemaError(error) })
+      })
+    )
+}
+
+// `JSON.stringify` found no JSON representation for an encoded element
+const isNdjsonPackError = (error: unknown): error is Ndjson.NdjsonError =>
+  Ndjson.isNdjsonError(error) && error.kind === "Pack"
+
+const ndjsonSchemaError = (error: Ndjson.NdjsonError): Schema.SchemaError =>
+  new Schema.SchemaError(
+    new SchemaIssue.InvalidValue({
+      message: error.reason === "InvalidUtf8"
+        ? "Expected valid UTF-8"
+        : error.unterminated
+        ? "Expected a valid JSON line, got an unterminated final line"
+        : "Expected a valid JSON line"
+    })
+  )
+
+function limitBytes<E, R>(
+  self: Stream.Stream<Uint8Array, E, R>,
+  maxBytes: ByteSize.ByteSize
+): Stream.Stream<Uint8Array, E | HttpApiPayloadTooLarge, R> {
+  const limit = ByteSize.toNumberUnsafe(maxBytes)
+  const error = new HttpApiPayloadTooLarge({ limit: "maxBytes", size: maxBytes })
+  return Stream.suspend(() => {
+    let total = 0
+    return Stream.mapArrayEffect(self, (chunks) => {
+      for (const chunk of chunks) total += chunk.length
+      return total > limit ? Effect.fail(error) : Effect.succeed(chunks)
+    })
+  })
+}
+
 function handlerToHttpEffect(
   api: Pick<HttpApi.Top, "annotations">,
   group: HttpApiGroup.Top,
@@ -847,6 +938,7 @@ function handlerToHttpEffect(
   )
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
+  const upgrade = getUpgradeSuccessSchema(endpoint)
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
@@ -884,9 +976,19 @@ function handlerToHttpEffect(
           request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
       }
+      if (upgrade !== undefined) {
+        if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
+          return upgradeRequired(upgrade.protocol)
+        }
+        request.socket = yield* Effect.orDie(httpRequest.upgrade)
+      }
       let response = yield* handler(request)
       if (Response.isHttpServerResponse(response)) {
         return response
+      }
+      if (upgrade !== undefined) {
+        // The server replaces this with the 101 once the connection is upgraded.
+        return Response.empty()
       }
       let responseHeaders: unknown | undefined
       if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
@@ -908,8 +1010,11 @@ function handlerToHttpEffect(
   ).pipe(
     Effect.withErrorReporting,
     Effect.catch((error) => {
-      if (HttpApiSchemaError.is(error)) return Effect.die(error)
-      return Effect.orDie(encodeError(error))
+      if (HttpApiSchemaError.is(error) || HttpApiPayloadTooLarge.is(error)) return Effect.die(error)
+      return Effect.catch(encodeError(error), (schemaError) =>
+        Respondable.isRespondable(error)
+          ? Respondable.toResponse(error)
+          : Effect.die(schemaError))
     }),
     Effect.provideContext(context)
   )
@@ -1071,25 +1176,7 @@ function makeStreamEncoder(
   const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
-  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
-    return (response, context) => {
-      if (!Stream.isStream(response)) {
-        return hasBuffered ? undefined : new Schema.SchemaError(
-          new SchemaIssue.InvalidValue({ message: "Expected a streaming response" })
-        )
-      }
-
-      return Effect.succeed(Response.stream(
-        Stream.provideContext(
-          response as Stream.Stream<Uint8Array, unknown, unknown>,
-          context as Context.Context<unknown>
-        ),
-        { status, contentType }
-      ))
-    }
-  }
-
-  const sseEncoder = makeSseEncoder(streamSchema, options)
+  const encodeBody = makeStreamBodyEncoder(streamSchema, options)
 
   return (response, context) => {
     if (!Stream.isStream(response)) {
@@ -1100,13 +1187,54 @@ function makeStreamEncoder(
 
     return Effect.succeed(Response.stream(
       Stream.provideContext(
-        encodeSseStream(response, sseEncoder),
+        encodeBody(response),
         context as Context.Context<unknown>
       ),
       { status, contentType }
     ))
   }
 }
+
+function makeStreamBodyEncoder(
+  streamSchema: HttpApiSchema.StreamSchema,
+  options: SchemaAST.ParseOptions | undefined
+): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<Uint8Array, unknown, unknown> {
+  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
+    return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
+  }
+  if (HttpApiSchema.isStreamNdjson(streamSchema)) {
+    const encodeElements = Schema.encodeUnknownEffect(
+      Schema.NonEmptyArray(Schema.toCodecJson(streamSchema.schema)),
+      options
+    )
+    // There is no error schema, so a bad element aborts the response
+    return (stream) =>
+      stream.pipe(
+        Stream.mapArrayEffect((elements) => Effect.orDie(encodeElements(elements))),
+        Stream.pipeThroughChannel(Ndjson.encode()),
+        Stream.catchIf(isNdjsonPackError, Stream.die)
+      )
+  }
+  const sseEncoder = makeSseEncoder(streamSchema, options)
+  return (stream) => encodeSseStream(stream, sseEncoder)
+}
+
+function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {
+  for (const schema of endpoint.success) {
+    if (HttpApiSchema.isUpgrade(schema)) return schema
+  }
+}
+
+// RFC 9110 §7.8: `Upgrade` only applies with an `upgrade` connection option.
+const isUpgradeRequest = (request: HttpServerRequest, protocol: string): boolean =>
+  request.headers.upgrade?.toLowerCase() === protocol.toLowerCase() &&
+  /(?:^|,)\s*upgrade\s*(?:,|$)/i.test(request.headers.connection ?? "")
+
+const upgradeRequired = (protocol: string) =>
+  Response.empty({
+    status: 426,
+    headers: { connection: "Upgrade", upgrade: protocol }
+  })
 
 function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
   for (const schema of endpoint.success) {

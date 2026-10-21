@@ -49,7 +49,7 @@ export const toHeaders = (span: Tracer.Span): Headers.Headers =>
         onSome: (parent) => `-${parent.spanId}`
       })
     }`,
-    traceparent: `00-${span.traceId}-${span.spanId}-${span.sampled ? "01" : "00"}`
+    traceparent: `00-${span.traceId.padStart(32, "0")}-${span.spanId}-${span.sampled ? "01" : "00"}`
   })
 
 /**
@@ -93,7 +93,7 @@ export const b3: FromHeaders = (headers) => {
     return Option.none()
   }
   const parts = headers["b3"].split("-")
-  if (parts.length < 2) {
+  if (parts.length < 2 || isB3Ids(parts[0], parts[1]) === false) {
     return Option.none()
   }
   return Option.some(Tracer.externalSpan({
@@ -116,7 +116,10 @@ export const b3: FromHeaders = (headers) => {
  * @since 4.0.0
  */
 export const xb3: FromHeaders = (headers) => {
-  if (!(headers["x-b3-traceid"]) || !(headers["x-b3-spanid"])) {
+  if (
+    !(headers["x-b3-traceid"]) || !(headers["x-b3-spanid"]) ||
+    isB3Ids(headers["x-b3-traceid"], headers["x-b3-spanid"]) === false
+  ) {
     return Option.none()
   }
   return Option.some(Tracer.externalSpan({
@@ -129,6 +132,9 @@ export const xb3: FromHeaders = (headers) => {
 
 const w3cTraceId = /^[0-9a-f]{32}$/i
 const w3cSpanId = /^[0-9a-f]{16}$/i
+
+const b3TraceId = /^(?:[0-9a-f]{16}|[0-9a-f]{32})$/i
+const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(traceId) && w3cSpanId.test(spanId)
 
 /**
  * Decodes an external span safely from the W3C `traceparent` header.

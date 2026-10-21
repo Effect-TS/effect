@@ -7,6 +7,7 @@
  * operating system, while preserving useful details such as the module, method,
  * path, descriptor, description, and original cause when available.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "./Data.ts"
@@ -31,6 +32,7 @@ const TypeId = "~effect/PlatformError"
  * @see {@link SystemError} for failures reported by the host platform or operating system
  * @see {@link PlatformError} for the wrapper used by most platform APIs
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -70,6 +72,7 @@ export class BadArgument extends Data.TaggedError("BadArgument")<{
  * @see {@link SystemError} for the error data that carries this tag on its `_tag` field
  * @see {@link systemError} for creating a `PlatformError` from a system failure with one of these tags
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -104,6 +107,7 @@ export type SystemErrorTag =
  * @see {@link BadArgument} for platform API failures caused by rejected caller input before an operation runs
  * @see {@link SystemErrorTag} for the normalized tag values stored in `_tag`
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -152,6 +156,7 @@ export class SystemError extends Data.Error<{
  * @see {@link badArgument} for creating this wrapper from rejected caller input
  * @see {@link systemError} for creating this wrapper from a host or operating-system failure
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -204,6 +209,7 @@ export class PlatformError extends Data.TaggedError("PlatformError")<{
  * PlatformError.isPlatformError(new Error("boom")) // => false
  * ```
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -217,6 +223,7 @@ export const isPlatformError = (u: unknown): u is PlatformError => Predicate.has
  * Use to adapt an operating-system or platform failure into the normalized
  * platform error model.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -238,6 +245,7 @@ export const systemError = (options: {
  * Use to report a platform API rejecting caller input before performing the
  * underlying operation.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

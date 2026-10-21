@@ -739,6 +739,59 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("StreamNdjson responses", () => {
+    const Item = Schema.Struct({ text: Schema.String })
+    const NdjsonApi = HttpApi.make("NdjsonApi").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("items", "/items", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item })
+        }),
+        HttpApiEndpoint.get("limited", "/limited", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item, maxElementBytes: 13 })
+        })
+      )
+    )
+    const makeClient = (body: () => ReadableStream<Uint8Array>) =>
+      HttpApiClient.makeWith(NdjsonApi, {
+        baseUrl: "http://test",
+        httpClient: clientFromResponse(() =>
+          new Response(body(), { status: 200, headers: { "content-type": "application/x-ndjson" } })
+        )
+      })
+    const collectUntilFailure = Effect.fnUntraced(function*<A, E>(stream: Stream.Stream<A, E>) {
+      const delivered: Array<A> = []
+      const error = yield* stream.pipe(
+        Stream.runForEach((item) => Effect.sync(() => delivered.push(item))),
+        Effect.flip
+      )
+      return { delivered, error }
+    })
+
+    it.effect("fails with a SchemaError on malformed JSON after delivering the earlier lines", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient(() => textStream(["{\"text\":\"a\"}\nnope\n{\"text\":\"c\"}\n"]))
+
+        const result = yield* client.test.items().pipe(Effect.flatMap(collectUntilFailure))
+
+        assert.deepStrictEqual(result.delivered, [{ text: "a" }])
+        assert.instanceOf(result.error, Schema.SchemaError)
+      }))
+
+    it.effect("fails with a DecodeError when a line exceeds maxElementBytes in UTF-8 bytes", () =>
+      Effect.gen(function*() {
+        // 13 bytes plus a terminator, then 13 characters encoded as 15 bytes
+        const client = yield* makeClient(() =>
+          textStream(["{\"text\":\"é\"}\r\n{\"text\":\"éé\"}\n{\"text\":\"a\"}\n"])
+        )
+
+        const result = yield* client.test.limited().pipe(Effect.flatMap(collectUntilFailure))
+
+        assert.deepStrictEqual(result.delivered, [{ text: "é" }])
+        assert.instanceOf(result.error, HttpClientError.HttpClientError)
+        assert.strictEqual(result.error.reason._tag, "DecodeError")
+      }))
+  })
+
   describe("error responses", () => {
     const makeClient = (response: () => Response) =>
       HttpApiClient.makeWith(ErrorContentTypeApi, {

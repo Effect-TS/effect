@@ -183,17 +183,21 @@ const hasForbiddenTransactionSql = (db: FakeSqlStorage) =>
   db.statements.some((statement) => /^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT)\b/i.test(normalizeSql(statement)))
 
 describe("Client", () => {
-  it.effect("classifies native errors without stable sqlite codes as UnknownError", () =>
+  it.effect("classifies native errors and releases the connection for the next statement", () =>
     Effect.gen(function*() {
       const failingDb = {
-        exec: () => {
-          throw new Error("boom")
+        exec: (statement: string) => {
+          if (statement === "SELECT broken") {
+            throw new Error("boom")
+          }
+          return new FakeCursor([{ value: 1 }])
         }
       } as unknown as SqlStorage
 
       const client = yield* makeClient({ db: failingDb })
-      const error = yield* Effect.flip(client`SELECT 1`)
+      const error = yield* Effect.flip(client`SELECT broken`)
       assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.deepStrictEqual(yield* client`SELECT 1`, [{ value: 1 }])
     }))
 
   it.effect("classifies streaming native errors without stable sqlite codes as UnknownError", () =>
@@ -222,6 +226,35 @@ describe("Client", () => {
       const rows = yield* sql`SELECT * FROM test`
 
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
+    }))
+
+  it.effect("statements wait for reservations and interrupted waiters do not leak the permit", () =>
+    Effect.gen(function*() {
+      const db = new FakeSqlStorage()
+      const sql = yield* makeClient({ db: db as unknown as SqlStorage })
+      const reserved = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql`INSERT INTO test (name) VALUES (${"hello"})`
+      const reservation = yield* Effect.gen(function*() {
+        yield* sql.reserve
+        yield* Deferred.succeed(reserved, void 0)
+        yield* Deferred.await(release)
+      }).pipe(Effect.scoped, Effect.forkChild)
+      yield* Deferred.await(reserved)
+
+      const interrupted = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isUndefined(interrupted.pollUnsafe())
+      yield* Fiber.interrupt(interrupted)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(interrupted)))
+
+      const query = yield* sql`SELECT * FROM test`.pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isUndefined(query.pollUnsafe())
+      yield* Deferred.succeed(release, void 0)
+      yield* Fiber.join(reservation)
+      assert.deepStrictEqual(yield* Fiber.join(query), [{ id: 1, name: "hello" }])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1, name: "hello" }])
     }))
 
   it.effect("db-only transactions fail clearly without transaction SQL", () =>

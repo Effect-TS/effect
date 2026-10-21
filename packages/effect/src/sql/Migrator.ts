@@ -139,15 +139,30 @@ export const make = <RD = never>({
   name VARCHAR(255) NOT NULL,
   PRIMARY KEY (migration_id)
 )`,
+      clickhouse: () =>
+        // sqlite's `PRIMARY KEY NOT NULL` is a syntax error here
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id Int32,
+  created_at DateTime DEFAULT now(),
+  name String
+) ENGINE = MergeTree
+ORDER BY migration_id`,
       pg: () =>
-        Effect.catch(
-          sql`select ${table}::regclass`,
-          () =>
-            sql`CREATE TABLE ${sql(table)} (
+        Effect.flatMap(
+          migrationsTableExists(sql, table),
+          (exists) =>
+            exists ? Effect.void : Effect.asVoid(sql`CREATE TABLE ${sql(table)} (
   migration_id integer primary key,
   created_at timestamp with time zone not null default now(),
   name text not null
-)`
+)`).pipe(
+              Effect.catch((error) =>
+                Effect.flatMap(
+                  migrationsTableExists(sql, table),
+                  (exists) => exists ? Effect.void : Effect.fail(error)
+                )
+              )
+            )
         ),
       orElse: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
@@ -216,14 +231,12 @@ export const make = <RD = never>({
       name: string,
       effect: Effect.Effect<unknown, unknown, Client.SqlClient>
     ) =>
-      Effect.catch(effect, (error: unknown) =>
-        Effect.die(
-          new MigrationError({
-            cause: error,
-            kind: "Failed",
-            message: `Migration "${id}_${name}" failed`
-          })
-        ))
+      Effect.mapError(effect, (error) =>
+        new MigrationError({
+          cause: error,
+          kind: "Failed",
+          message: `Migration "${id}_${name}" failed`
+        }))
 
     // === run
 
@@ -312,7 +325,11 @@ export const make = <RD = never>({
     yield* ensureMigrationsTable
 
     const completed = yield* pipe(
-      sql.withTransaction(run),
+      sql.onDialectOrElse({
+        // BEGIN is still experimental on clickhouse
+        clickhouse: () => run,
+        orElse: () => sql.withTransaction(run)
+      }),
       Effect.catchTag("MigrationError", (_) =>
         _.kind === "Locked"
           ? Effect.as(Effect.logDebug(_.message), [])
@@ -327,6 +344,15 @@ export const make = <RD = never>({
 
     return completed
   })
+
+const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> => {
+  // Match query quoting: to_regclass folds unquoted names to lowercase.
+  const quotedTable = sql`${sql(table)}`.compile(true)[0]
+  return Effect.map(
+    sql`SELECT 1 AS found WHERE to_regclass(${quotedTable}) IS NOT NULL`.withoutTransform,
+    (rows) => rows.length > 0
+  )
+}
 
 const migrationOrder = Order.make<ResolvedMigration>(([a], [b]) => Order.Number(a, b))
 

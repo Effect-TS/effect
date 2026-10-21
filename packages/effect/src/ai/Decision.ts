@@ -1,13 +1,15 @@
 /**
  * Defines decisions that a `DecisionModel` answers over a single input.
  * Pair an input schema with named classification, rating, or probability
- * decisions using `make`, then answer them with `DecisionModel.decide`.
+ * decisions using `make`, then answer them with `DecisionModel.decide`, or
+ * with `DecisionModel.decideSettled` to keep valid answers when others fail.
  *
  * @see {@link make} for building a definition from an input schema and decisions
  *
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Result from "../Result.ts"
 import type * as Schema from "../Schema.ts"
 
 /**
@@ -29,8 +31,22 @@ export type TypeId = "~effect/ai/Decision"
 export const TypeId: TypeId = "~effect/ai/Decision"
 
 /**
+ * Decision instructions or descriptions: a string, JSON object, or JSON array.
+ *
+ * **Details**
+ *
+ * TypeScript interfaces lack the index signature required by `Schema.JsonObject`;
+ * use object literals, type aliases, or Schema types instead.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export type Description = string | Schema.JsonObject | Schema.JsonArray
+
+/**
  * Decision that assigns the input one label out of a set of criteria.
- * `criteria` maps labels to descriptions.
+ * `criteria` maps labels to descriptions; use `null` for a label without a description.
  *
  * @see {@link classify} for the constructor
  * @see {@link ClassifyAnswer} for the answer produced by this decision
@@ -41,13 +57,14 @@ export const TypeId: TypeId = "~effect/ai/Decision"
  */
 export interface Classify<Label extends string> {
   readonly _tag: "Classify"
-  readonly instructions: string
-  readonly criteria: { readonly [L in Label]: string }
+  readonly instructions: Description
+  readonly criteria: { readonly [L in Label]: Description | null }
 }
 
 /**
  * Decision that places the input on an ordered scale of criteria.
- * `criteria` lists levels from lowest to highest.
+ * `criteria` lists levels from lowest to highest, with labels for answers and
+ * descriptions for the provider.
  *
  * @see {@link rate} for the constructor
  * @see {@link RateAnswer} for the answer produced by this decision
@@ -58,8 +75,8 @@ export interface Classify<Label extends string> {
  */
 export interface Rate<Level extends string> {
   readonly _tag: "Rate"
-  readonly instructions: string
-  readonly criteria: ReadonlyArray<Level>
+  readonly instructions: Description
+  readonly criteria: ReadonlyArray<{ readonly label: Level; readonly description: Description }>
 }
 
 /**
@@ -76,10 +93,10 @@ export interface Rate<Level extends string> {
  */
 export interface Probability {
   readonly _tag: "Probability"
-  readonly instructions: string
+  readonly instructions: Description
   readonly criteria?: {
-    readonly false: string
-    readonly true: string
+    readonly false: Description
+    readonly true: Description
   } | undefined
 }
 
@@ -110,8 +127,9 @@ export interface ClassifyAnswer<Label extends string> {
 /**
  * Answer to a {@link Rate} decision.
  * `rating` is the probability-weighted position on the scale and may fall
- * between two levels, within `[0, criteria.length - 1]`. `label` is the level
- * with the highest probability, choosing the first criteria entry on ties.
+ * between two levels, within `[0, criteria.length - 1]`. `label` is the label
+ * of the level with the highest probability, choosing the first criteria entry
+ * on ties.
  * `confidence` is an optional, provider-defined measure in `[0, 1]`.
  *
  * @stability unstable
@@ -160,6 +178,52 @@ export type Answers<Decisions extends Record<string, Any>> = {
 }
 
 /**
+ * Reason and description of the first failed answer validation check.
+ *
+ * **Details**
+ *
+ * - `"Missing"`: the provider returned no answer for the decision.
+ * - `"Refused"`: the provider declined to answer the decision.
+ * - `"Invalid"`: the answer has an invalid kind, value, confidence, or distribution.
+ * - `"NoDistribution"`: a classify or rate answer is otherwise valid but has
+ *   no probabilities.
+ *
+ * Except for refusals, `description` is the message `DecisionModel.decide`
+ * fails with for the same answer.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface Unanswered {
+  readonly _tag: "Unanswered"
+  readonly reason: "Missing" | "Refused" | "NoDistribution" | "Invalid"
+  readonly description: string
+}
+
+/**
+ * Validated answer or the reason the decision is unanswered.
+ *
+ * @see {@link Unanswered} for the failure reasons
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type Outcome<D extends Any> = Result.Result<Answer<D>, Unanswered>
+
+/**
+ * Settled results keyed by decision name.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type Outcomes<Decisions extends Record<string, Any>> = {
+  readonly [K in keyof Decisions]: Outcome<Decisions[K]>
+}
+
+/**
  * Input schema and named decisions that run together in one provider call.
  *
  * @see {@link make} for the constructor
@@ -176,6 +240,7 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
 
 /**
  * Creates a classification decision from labelled criteria.
+ * Descriptions can be `null` when the label needs no explanation.
  * Throws if fewer than two labels are supplied.
  *
  * **Example** (Choosing a department)
@@ -201,8 +266,8 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
  * @since 4.0.0
  */
 export const classify = <Label extends string>(options: {
-  readonly instructions: string
-  readonly criteria: { readonly [L in Label]: string }
+  readonly instructions: Description
+  readonly criteria: { readonly [L in Label]: Description | null }
 }): Classify<Label> => {
   if (Object.keys(options.criteria).length < 2) {
     throw new Error("Decision.classify: criteria must contain at least two labels")
@@ -216,7 +281,9 @@ export const classify = <Label extends string>(options: {
 
 /**
  * Creates a rating decision from an ordered list of criteria.
- * Throws if fewer than two levels or duplicate levels are supplied.
+ * Strings serve as both label and description; use `{ label, description }`
+ * to separate them. Answers use the label.
+ * Throws if fewer than two levels or duplicate labels are supplied.
  *
  * **Example** (Rating frustration)
  *
@@ -229,6 +296,33 @@ export const classify = <Label extends string>(options: {
  * })
  * ```
  *
+ * **Example** (Describing levels with structure)
+ *
+ * ```ts
+ * import { Decision } from "effect/ai"
+ *
+ * const severity = Decision.rate({
+ *   instructions: "How severe is the reported issue?",
+ *   criteria: [
+ *     "cosmetic",
+ *     {
+ *       label: "degraded",
+ *       description: {
+ *         what: "Broken or degraded feature, but workaround exists",
+ *         examples: ["export fails in one browser but works in another"]
+ *       }
+ *     },
+ *     {
+ *       label: "blocking",
+ *       description: {
+ *         what: "Blocking issue; no workaround exists",
+ *         examples: ["cannot log in", "data loss"]
+ *       }
+ *     }
+ *   ]
+ * })
+ * ```
+ *
  * @see {@link classify} for unordered labels
  *
  * @stability unstable
@@ -236,19 +330,22 @@ export const classify = <Label extends string>(options: {
  * @since 4.0.0
  */
 export const rate = <const Level extends string>(options: {
-  readonly instructions: string
-  readonly criteria: ReadonlyArray<Level>
+  readonly instructions: Description
+  readonly criteria: ReadonlyArray<Level | { readonly label: Level; readonly description: Description }>
 }): Rate<Level> => {
   if (options.criteria.length < 2) {
     throw new Error("Decision.rate: criteria must contain at least two levels")
   }
-  if (new Set(options.criteria).size !== options.criteria.length) {
+  const criteria = options.criteria.map((level) =>
+    typeof level === "string" ? { label: level, description: level } : level
+  )
+  if (new Set(criteria.map((level) => level.label)).size !== criteria.length) {
     throw new Error("Decision.rate: criteria must contain distinct levels")
   }
   return {
     _tag: "Rate",
     instructions: options.instructions,
-    criteria: options.criteria
+    criteria
   }
 }
 
@@ -287,10 +384,10 @@ export const rate = <const Level extends string>(options: {
  * @since 4.0.0
  */
 export const probability = (options: {
-  readonly instructions: string
+  readonly instructions: Description
   readonly criteria?: {
-    readonly false: string
-    readonly true: string
+    readonly false: Description
+    readonly true: Description
   } | undefined
 }): Probability => ({
   _tag: "Probability",

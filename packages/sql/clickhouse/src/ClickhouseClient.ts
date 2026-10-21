@@ -352,6 +352,7 @@ export const make = (
 
     return Object.assign(
       yield* Client.make({
+        driver: "clickhouse",
         acquirer: Effect.succeed(connection),
         compiler,
         spanAttributes: [
@@ -520,7 +521,7 @@ const typeFromUnknown = (value: unknown): string => {
       return "Bool"
     case "object":
       if (value instanceof Date) {
-        return "DateTime()"
+        return "DateTime"
       }
       return "String"
     default:

@@ -1,8 +1,10 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
 import type * as JsonSchema from "effect/JsonSchema"
+import * as Schema from "effect/Schema"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -11,85 +13,69 @@ import { fileURLToPath } from "node:url"
 // These integration checks start a fresh TypeScript compiler under CI load.
 const compilationTimeout = 60_000
 
-function assertRuntime(spec: OpenAPISpec, expected: string) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+const assertRuntime = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: string) {
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient"
+  })
 
-    // console.log(result)
-    assert.strictEqual(result, expected)
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
-  )
-}
+  // console.log(result)
+  assert.strictEqual(result, expected)
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertTypeOnly(spec: OpenAPISpec, expected: string) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+const assertTypeOnly = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: string) {
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only"
+  })
 
-    // console.log(result)
-    assert.strictEqual(result, expected)
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerTs)
-  )
-}
+  // console.log(result)
+  assert.strictEqual(result, expected)
+}, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
-function assertRuntimeIncludes(
+const assertRuntimeIncludes = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
   excludes: ReadonlyArray<string> = []
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient"
+  })
 
-    for (const expected of includes) {
-      assert.include(result, expected)
-    }
-    for (const excluded of excludes) {
-      assert.notInclude(result, excluded)
-    }
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
-  )
-}
+  for (const expected of includes) {
+    assert.include(result, expected)
+  }
+  for (const excluded of excludes) {
+    assert.notInclude(result, excluded)
+  }
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertTypeOnlyIncludes(
+const assertTypeOnlyIncludes = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
   excludes: ReadonlyArray<string> = []
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only"
+  })
 
-    for (const expected of includes) {
-      assert.include(result, expected)
-    }
-    for (const excluded of excludes) {
-      assert.notInclude(result, excluded)
-    }
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerTs)
-  )
-}
+  for (const expected of includes) {
+    assert.include(result, expected)
+  }
+  for (const excluded of excludes) {
+    assert.notInclude(result, excluded)
+  }
+}, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
 function assertGeneratedClientsCompile(
   spec: OpenAPISpec,
@@ -156,31 +142,27 @@ function assertGeneratedClientsCompile(
   })
 }
 
-function assertHttpApiIncludes(
+const assertHttpApiIncludes = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
   excludes: ReadonlyArray<string> = []
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpapi"
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpapi"
+  })
 
-    for (const expected of includes) {
-      assert.include(result, expected)
-    }
-    for (const excluded of excludes) {
-      assert.notInclude(result, excluded)
-    }
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
-  )
-}
+  for (const expected of includes) {
+    assert.include(result, expected)
+  }
+  for (const excluded of excludes) {
+    assert.notInclude(result, excluded)
+  }
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertHttpApiWithWarnings(
+const assertHttpApiWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   options: {
     readonly includes?: ReadonlyArray<string> | undefined
@@ -196,115 +178,126 @@ function assertHttpApiWithWarnings(
     >
   }
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
-    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
 
-    const result = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpapi",
-      onWarning: (warning) => {
-        warnings.push(warning)
-      }
-    })
+  const result = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpapi",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
 
-    for (const expected of options.includes ?? []) {
-      assert.include(result, expected)
-    }
-    for (const excluded of options.excludes ?? []) {
-      assert.notInclude(result, excluded)
-    }
-    for (const { substring, count } of options.occurrences ?? []) {
-      assert.strictEqual(result.split(substring).length - 1, count)
-    }
+  for (const expected of options.includes ?? []) {
+    assert.include(result, expected)
+  }
+  for (const excluded of options.excludes ?? []) {
+    assert.notInclude(result, excluded)
+  }
+  for (const { substring, count } of options.occurrences ?? []) {
+    assert.strictEqual(result.split(substring).length - 1, count)
+  }
 
-    assert.deepStrictEqual(
-      warnings.map((warning) => ({
-        code: warning.code,
-        path: warning.path,
-        method: warning.method,
-        operationId: warning.operationId
-      })),
-      options.warnings
-    )
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
+  assert.deepStrictEqual(
+    warnings.map((warning) => ({
+      code: warning.code,
+      path: warning.path,
+      method: warning.method,
+      operationId: warning.operationId
+    })),
+    options.warnings
   )
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
+
+const generateHttpApi = Effect.fnUntraced(function*(spec: OpenAPISpec) {
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+
+  const source = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpapi",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
+
+  return { source, warnings }
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
+
+const findEndpoint = (source: string, method: string, path: string): string => {
+  const line = source.split("\n").find((line) =>
+    line.includes(`HttpApiEndpoint.${method}(`) && line.includes(`", ${JSON.stringify(path)}`)
+  )
+  assert.isDefined(line, `Expected ${method} ${path} in:\n${source}`)
+  return line!
 }
 
-function assertRuntimeStableWithWarnings(
+const assertRuntimeStableWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   expectedWarnings: ReadonlyArray<
     Pick<OpenApiGenerator.OpenApiGeneratorWarning, "code" | "path" | "method" | "operationId">
   >
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
-    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
 
-    const baseline = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient"
-    })
-    const withWarnings = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient",
-      onWarning: (warning) => {
-        warnings.push(warning)
-      }
-    })
+  const baseline = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient"
+  })
+  const withWarnings = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
 
-    assert.strictEqual(withWarnings, baseline)
-    assert.deepStrictEqual(
-      warnings.map((warning) => ({
-        code: warning.code,
-        path: warning.path,
-        method: warning.method,
-        operationId: warning.operationId
-      })),
-      expectedWarnings
-    )
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerSchema)
+  assert.strictEqual(withWarnings, baseline)
+  assert.deepStrictEqual(
+    warnings.map((warning) => ({
+      code: warning.code,
+      path: warning.path,
+      method: warning.method,
+      operationId: warning.operationId
+    })),
+    expectedWarnings
   )
-}
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
 
-function assertTypeOnlyStableWithWarnings(
+const assertTypeOnlyStableWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
   expectedWarnings: ReadonlyArray<
     Pick<OpenApiGenerator.OpenApiGeneratorWarning, "code" | "path" | "method" | "operationId">
   >
 ) {
-  return Effect.gen(function*() {
-    const generator = yield* OpenApiGenerator.OpenApiGenerator
-    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
 
-    const baseline = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only"
-    })
-    const withWarnings = yield* generator.generate(spec, {
-      name: "TestClient",
-      format: "httpclient-type-only",
-      onWarning: (warning) => {
-        warnings.push(warning)
-      }
-    })
+  const baseline = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only"
+  })
+  const withWarnings = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpclient-type-only",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
 
-    assert.strictEqual(withWarnings, baseline)
-    assert.deepStrictEqual(
-      warnings.map((warning) => ({
-        code: warning.code,
-        path: warning.path,
-        method: warning.method,
-        operationId: warning.operationId
-      })),
-      expectedWarnings
-    )
-  }).pipe(
-    Effect.provide(OpenApiGenerator.layerTransformerTs)
+  assert.strictEqual(withWarnings, baseline)
+  assert.deepStrictEqual(
+    warnings.map((warning) => ({
+      code: warning.code,
+      path: warning.path,
+      method: warning.method,
+      operationId: warning.operationId
+    })),
+    expectedWarnings
   )
-}
+}, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
 const regressionSpec: OpenAPISpec = {
   openapi: "3.1.0",
@@ -640,6 +633,73 @@ function multipartSpec(schema: JsonSchema.JsonSchema, schemas: JsonSchema.Defini
   }
 }
 
+function sharedMultipartSpec(
+  schema: JsonSchema.JsonSchema,
+  schemas: JsonSchema.Definitions,
+  json: Record<string, unknown> = { schema }
+): OpenAPISpec {
+  const spec = multipartSpec(schema, schemas)
+  return {
+    ...spec,
+    paths: {
+      ...spec.paths,
+      "/json": {
+        post: {
+          operationId: "createJson",
+          parameters: [],
+          requestBody: { required: true, content: { "application/json": json } } as any,
+          responses: { "204": { description: "Created" } },
+          tags: ["Upload"],
+          security: []
+        }
+      }
+    }
+  }
+}
+
+const attachmentRef = { $ref: "#/components/schemas/Attachment" }
+
+function attachmentSpec(paths: Record<string, OpenAPISpecPathItem>): OpenAPISpec {
+  return {
+    openapi: "3.1.0",
+    info: { title: "Attachment API", version: "1.0.0" },
+    paths: {
+      "/attachments": {
+        post: {
+          operationId: "createAttachment",
+          parameters: [],
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: attachmentRef } }
+          },
+          responses: {
+            "200": { description: "Created", content: { "application/json": { schema: attachmentRef } } }
+          },
+          tags: ["Attachments"],
+          security: []
+        }
+      },
+      ...paths
+    },
+    components: {
+      schemas: {
+        Attachment: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            data: { type: "string", format: "binary" }
+          },
+          required: ["name", "data"],
+          additionalProperties: false
+        }
+      },
+      securitySchemes: {}
+    },
+    security: [],
+    tags: [{ name: "Attachments" }]
+  }
+}
+
 // spawnSync blocks this worker, so compilation must not consume another test's deadline.
 describe("OpenApiGenerator", { concurrent: false }, () => {
   describe("schema", () => {
@@ -828,8 +888,8 @@ export const make = (
 export interface TestClient {
   readonly httpClient: HttpClient.HttpClient
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config>, HttpClientError.HttpClientError | SchemaError>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config | undefined>, HttpClientError.HttpClientError | SchemaError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError | SchemaError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, HttpClientError.HttpClientError | SchemaError>;
   }
 }
 
@@ -962,7 +1022,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `import * as Sse from "effect/encoding/Sse"`,
-          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: StreamEvents200Sse }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get("/events").pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
@@ -1024,7 +1084,7 @@ export const TestClientError = <Tag extends string, E>(
         [
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/http-api/stream/failure"), "data": Schema.String`,
-          `readonly "streamEventsSse": () => Stream.Stream<typeof StreamEvents200Sse.Type, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<StreamEvents200Sse, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `sseEventRequest(StreamEvents200Sse)`,
           `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
         ]
@@ -1100,6 +1160,7 @@ export const TestClientError = <Tag extends string, E>(
         `Schema.Literal("InvalidRequestError")`,
         `Schema.Literal("DeviceTokenOAuthError")`,
         `"400": decodeError("PollDeviceToken400", PollDeviceToken400)`,
+        `TestClientError<"PollDeviceToken400", PollDeviceToken400>`,
         `export type DownloadArchive404 = { readonly "title": string }`,
         `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
         `Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`,
@@ -1125,7 +1186,7 @@ export const TestClientError = <Tag extends string, E>(
         `TestClientError<"500", undefined>`
       ], [
         `"200": decodeSuccess(DownloadMixedContent200)`,
-        `typeof DownloadMixedContent200.Type | Uint8Array`
+        `DownloadMixedContent200 | Uint8Array`
       ]))
 
     it.effect("routes mixed and non-2xx bodiless success responses", () =>
@@ -1133,7 +1194,7 @@ export const TestClientError = <Tag extends string, E>(
         `"200": decodeSuccess(MixedSuccess200)`,
         `"204": () => Effect.void`,
         `"304": () => Effect.void`,
-        `WithOptionalResponse<typeof MixedSuccess200.Type | void, Config>`
+        `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
   })
 
@@ -2157,6 +2218,134 @@ export const CreatePayloadRequestText = Schema.String`,
         ]
       ))
 
+    describe("streaming payloads", () => {
+      const Item = Schema.Struct({ id: Schema.Finite }).annotate({ identifier: "Item" })
+      const ndjson = (contentType?: string) =>
+        `HttpApiSchema\\.StreamNdjson\\(\\{ schema: \\w+${
+          contentType === undefined
+            ? `(, contentType: "application/x-ndjson")?`
+            : `, contentType: ${JSON.stringify(contentType)}`
+        } \\}\\)`
+
+      it.effect("round-trips streaming payloads and successes", () =>
+        Effect.gen(function*() {
+          // Inline, because every component goes through the multipart rewrite
+          const FormItem = Schema.Struct({ data: Schema.String.annotate({ format: "binary" }) })
+          const Api = HttpApi.make("Api").add(
+            HttpApiGroup.make("items").add(
+              HttpApiEndpoint.post("upload", "/upload", {
+                payload: HttpApiSchema.StreamUint8Array({ maxBytes: "1 MiB" })
+              }),
+              // NDJSON markers win over the SSE and multipart handling of these content types
+              HttpApiEndpoint.post("ingest", "/ingest", {
+                payload: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "text/event-stream" })
+              }),
+              HttpApiEndpoint.post("ingestForm", "/ingest/form", {
+                payload: HttpApiSchema.StreamNdjson({ schema: FormItem, contentType: "multipart/form-data" })
+              }),
+              HttpApiEndpoint.get("export", "/export", {
+                success: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "text/event-stream" })
+              })
+            )
+          )
+
+          const { source } = yield* generateHttpApi(OpenApi.fromApi(Api))
+
+          assert.include(findEndpoint(source, "post", "/upload"), `payload: HttpApiSchema.StreamUint8Array(),`)
+          assert.match(findEndpoint(source, "post", "/ingest"), new RegExp(`payload: ${ndjson("text/event-stream")}`))
+          const form = findEndpoint(source, "post", "/ingest/form").match(
+            /payload: HttpApiSchema\.StreamNdjson\(\{ schema: (\w+), contentType: "multipart\/form-data" \}\)/
+          )
+          assert.isNotNull(form, source)
+          assert.include(source, `export type ${form![1]} = { readonly "data": string }`)
+          assert.match(findEndpoint(source, "get", "/export"), new RegExp(`success: ${ndjson("text/event-stream")}`))
+        }))
+
+      it.effect("maps third-party NDJSON itemSchema media types to StreamNdjson", () =>
+        Effect.gen(function*() {
+          const item = {
+            type: "object",
+            properties: { id: { type: "number" } },
+            required: ["id"],
+            additionalProperties: false
+          }
+          const { source } = yield* generateHttpApi({
+            openapi: "3.2.0",
+            info: { title: "Test API", version: "1.0.0" },
+            paths: {
+              "/ingest": {
+                post: {
+                  operationId: "ingest",
+                  parameters: [],
+                  requestBody: { content: { "application/x-ndjson": { itemSchema: item } }, required: true },
+                  responses: { 204: { description: "Accepted" } },
+                  tags: ["Items"],
+                  security: []
+                }
+              },
+              "/export": {
+                get: {
+                  operationId: "export",
+                  parameters: [],
+                  responses: {
+                    200: { description: "Items", content: { "application/x-ndjson": { itemSchema: item } } }
+                  },
+                  tags: ["Items"],
+                  security: []
+                }
+              }
+            },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [{ name: "Items" }]
+          } as unknown as OpenAPISpec)
+
+          assert.match(findEndpoint(source, "post", "/ingest"), new RegExp(`payload: ${ndjson()}`))
+          assert.match(findEndpoint(source, "get", "/export"), new RegExp(`success: ${ndjson()}`))
+        }))
+
+      it.effect("skips json-seq and SSE request bodies with a warning", () =>
+        Effect.gen(function*() {
+          const event = { type: "object", properties: { id: { type: "number" } } }
+          const { source, warnings } = yield* generateHttpApi({
+            openapi: "3.1.0",
+            info: { title: "Test API", version: "1.0.0" },
+            paths: {
+              "/seq": {
+                post: {
+                  operationId: "seq",
+                  parameters: [],
+                  requestBody: { content: { "application/json-seq": { schema: event } }, required: true },
+                  responses: { 204: { description: "Accepted" } },
+                  tags: ["Events"],
+                  security: []
+                }
+              },
+              "/events": {
+                post: {
+                  operationId: "events",
+                  parameters: [],
+                  requestBody: { content: { "text/event-stream": { schema: event } }, required: true },
+                  responses: { 204: { description: "Accepted" } },
+                  tags: ["Events"],
+                  security: []
+                }
+              }
+            },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [{ name: "Events" }]
+          })
+
+          assert.notInclude(findEndpoint(source, "post", "/seq"), "payload")
+          assert.notInclude(findEndpoint(source, "post", "/events"), "payload")
+          assert.deepStrictEqual(
+            warnings.map((warning) => ({ path: warning.path, method: warning.method })),
+            [{ path: "/seq", method: "post" }, { path: "/events", method: "post" }]
+          )
+        }))
+    })
+
     it.effect("maps multipart schemas referenced through components to Multipart file schemas", () =>
       assertHttpApiIncludes(
         {
@@ -2426,6 +2615,168 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         [
           `contentEncoding`,
           `export type UploadBodyContentEncoding =`
+        ]
+      ))
+
+    it.effect("keeps binary strings in components used only by JSON bodies", () =>
+      assertHttpApiIncludes(
+        attachmentSpec({}),
+        [
+          `export type Attachment = { readonly "name": string, readonly "data": string }`,
+          `export const Attachment = Schema.Struct({ "name": Schema.String, "data": Schema.String`
+        ],
+        [
+          `Multipart`
+        ]
+      ))
+
+    it.effect("copies components shared by JSON and multipart bodies for the multipart body", () =>
+      assertHttpApiIncludes(
+        attachmentSpec({
+          "/attachments/upload": {
+            post: {
+              operationId: "uploadAttachment",
+              parameters: [],
+              requestBody: {
+                required: true,
+                content: { "multipart/form-data": { schema: attachmentRef } }
+              },
+              responses: { "204": { description: "Uploaded" } },
+              tags: ["Attachments"],
+              security: []
+            }
+          }
+        }),
+        [
+          `export type Attachment = { readonly "name": string, readonly "data": string }`,
+          `export const Attachment = Schema.Struct({ "name": Schema.String, "data": Schema.String`,
+          `export type AttachmentMultipart = { readonly "name": string, readonly "data": __HttpApiMultipartSingleFile }`,
+          `export const CreateAttachmentRequestJson = Attachment`,
+          `export const CreateAttachment200 = Attachment`,
+          `export const UploadAttachmentRequestFormData = AttachmentMultipart`,
+          `payload: UploadAttachmentRequestFormData.pipe(HttpApiSchema.asMultipart())`
+        ],
+        [
+          `__HttpApiMultipartFiles`
+        ]
+      ))
+
+    it.effect("keeps multipart copies of shared components nested in other shared components", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec({ $ref: "#/components/schemas/Outer" }, {
+          Outer: {
+            type: "object",
+            properties: { inner: { $ref: "#/components/schemas/Inner" } },
+            required: ["inner"],
+            additionalProperties: false
+          },
+          Inner: {
+            type: "object",
+            properties: { file: { type: "string", format: "binary" } },
+            required: ["file"],
+            additionalProperties: false
+          }
+        }),
+        [
+          `export type Inner = { readonly "file": string }`,
+          `export type Outer = { readonly "inner": Inner }`,
+          `export type InnerMultipart = { readonly "file": __HttpApiMultipartSingleFile }`,
+          `export type OuterMultipart = { readonly "inner": InnerMultipart }`,
+          `export const UploadRequestFormData = OuterMultipart`
+        ]
+      ))
+
+    it.effect("maps shared binary string components to Multipart file schemas", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec(
+          {
+            type: "object",
+            properties: {
+              file: { $ref: "#/components/schemas/BinaryData" },
+              files: { type: "array", items: { $ref: "#/components/schemas/BinaryData" } }
+            },
+            required: ["file", "files"],
+            additionalProperties: false
+          },
+          { BinaryData: { type: "string", format: "binary" } },
+          { schema: { $ref: "#/components/schemas/BinaryData" } }
+        ),
+        [
+          `export type BinaryData = string`,
+          `export const CreateJsonRequestJson = BinaryData`,
+          `export type UploadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`
+        ]
+      ))
+
+    it.effect("treats $ref inside media type examples as data", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec(
+          { type: "object", properties: { file: { type: "string", format: "binary" } } },
+          {},
+          {
+            schema: { type: "object", properties: { name: { type: "string" } } },
+            example: { $ref: "#/this/is/arbitrary-user-data" }
+          }
+        ),
+        [
+          `export type CreateJsonRequestJson = { readonly "name"?: string }`
+        ]
+      ))
+
+    for (
+      const [position, link] of [
+        ["requestBody", { operationId: "createJson", requestBody: { $ref: "#/this/is/arbitrary-user-data" } }],
+        ["parameters", {
+          operationId: "createJson",
+          parameters: { payload: { $ref: "#/this/is/arbitrary-user-data" } }
+        }]
+      ] as const
+    ) {
+      it.effect(`treats $ref inside link ${position} as data`, () => {
+        const spec = sharedMultipartSpec(
+          { type: "object", properties: { file: { type: "string", format: "binary" } } },
+          {},
+          { schema: { type: "object", properties: { name: { type: "string" } } } }
+        )
+        const operation = spec.paths["/json"].post!
+        return assertHttpApiIncludes(
+          {
+            ...spec,
+            paths: {
+              ...spec.paths,
+              "/json": {
+                post: {
+                  ...operation,
+                  responses: { "204": { description: "Created", links: { next: link } } } as any
+                }
+              }
+            }
+          },
+          [
+            `export type CreateJsonRequestJson = { readonly "name"?: string }`
+          ]
+        )
+      })
+    }
+
+    it.effect("copies self-recursive components shared by JSON and multipart bodies", () =>
+      assertHttpApiIncludes(
+        sharedMultipartSpec({ $ref: "#/components/schemas/Node" }, {
+          Node: {
+            type: "object",
+            properties: {
+              file: { type: "string", format: "binary" },
+              child: { $ref: "#/components/schemas/Node" }
+            },
+            required: ["file"],
+            additionalProperties: false
+          }
+        }),
+        [
+          `export type Node = { readonly "file": string, readonly "child"?: Node }`,
+          `export type NodeMultipart = { readonly "file": __HttpApiMultipartSingleFile, readonly "child"?: NodeMultipart }`,
+          `export const CreateJsonRequestJson = Node`,
+          `export const UploadRequestFormData = NodeMultipart`
         ]
       ))
 
@@ -3296,6 +3647,31 @@ export const withString: UploadRequestFormData = { file, child: { file: "upload.
           ]
         ))
     }
+
+    it.effect("maps aliased binary string components to multipart files for generated clients", () =>
+      assertRuntimeIncludes(
+        sharedMultipartSpec(
+          {
+            type: "object",
+            properties: {
+              file: { $ref: "#/components/schemas/Upload" },
+              files: { type: "array", items: { $ref: "#/components/schemas/Upload" } }
+            },
+            required: ["file", "files"],
+            additionalProperties: false
+          },
+          {
+            Upload: { $ref: "#/components/schemas/BinaryData" },
+            BinaryData: { type: "string", format: "binary" }
+          },
+          { schema: { $ref: "#/components/schemas/Upload" } }
+        ),
+        [
+          `export type Upload = string`,
+          `export type CreateJsonRequestJson = Upload`,
+          `export type UploadRequestFormData = { readonly "file": __ClientMultipartFile, readonly "files": ReadonlyArray<__ClientMultipartFile> }`
+        ]
+      ))
 
     it.effect(
       "types multipart binary arrays as File | Blob arrays for generated clients",

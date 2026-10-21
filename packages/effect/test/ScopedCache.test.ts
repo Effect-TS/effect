@@ -445,15 +445,14 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                // Create a resource in the provided scope
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => scopeIds.push(`acquired-${key}`)),
-                  () => Effect.sync(() => scopeIds.push(`released-${key}`))
-                )
-                return `value-${key}`
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              // Create a resource in the provided scope
+              yield* Effect.acquireRelease(
+                Effect.sync(() => scopeIds.push(`acquired-${key}`)),
+                () => Effect.sync(() => scopeIds.push(`released-${key}`))
+              )
+              return `value-${key}`
+            })
           })
 
           yield* ScopedCache.get(cache, "test")
@@ -832,15 +831,14 @@ describe("ScopedCache", () => {
             const owner = yield* Scope.make()
             const cache = yield* ScopedCache.make({
               capacity: 1,
-              lookup: (_key: string) =>
-                Effect.gen(function*() {
-                  const id = yield* Effect.acquireRelease(
-                    Effect.sync(() => ++acquired),
-                    (value) => Effect.sync(() => released.push(value))
-                  )
-                  if (id === 1) return yield* Deferred.await(gate)
-                  return id
-                })
+              lookup: Effect.fnUntraced(function*(_key: string) {
+                const id = yield* Effect.acquireRelease(
+                  Effect.sync(() => ++acquired),
+                  (value) => Effect.sync(() => released.push(value))
+                )
+                if (id === 1) return yield* Deferred.await(gate)
+                return id
+              })
             }).pipe(Scope.provide(owner))
             const lookup = yield* ScopedCache.get(cache, "key").pipe(
               Effect.exit,
@@ -1028,16 +1026,15 @@ describe("ScopedCache", () => {
           const released: Array<number> = []
           const cache = yield* ScopedCache.make({
             capacity: 1,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                const value = key === "a"
-                  ? yield* Deferred.succeed(started, void 0).pipe(Effect.andThen(Deferred.await(result)))
-                  : 99
-                return yield* Effect.acquireRelease(
-                  Effect.succeed(value),
-                  (value) => Effect.sync(() => released.push(value))
-                )
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              const value = key === "a"
+                ? yield* Deferred.succeed(started, void 0).pipe(Effect.andThen(Deferred.await(result)))
+                : 99
+              return yield* Effect.acquireRelease(
+                Effect.succeed(value),
+                (value) => Effect.sync(() => released.push(value))
+              )
+            })
           })
 
           yield* ScopedCache.set(cache, "a", 1)
@@ -1112,6 +1109,45 @@ describe("ScopedCache", () => {
     })
 
     describe("invalidateAll", () => {
+      it.effect.each(["invalidateAll", "owner scope closure"] as const)(
+        "%s releases every entry and propagates all release defects",
+        (operation) =>
+          Effect.gen(function*() {
+            const owner = yield* Scope.make()
+            const released: Array<string> = []
+            const cache = yield* ScopedCache.make({
+              capacity: 10,
+              lookup: (key: string) =>
+                Effect.acquireRelease(
+                  Effect.succeed(key),
+                  () =>
+                    Effect.gen(function*() {
+                      released.push(key)
+                      if (key !== "healthy") {
+                        return yield* Effect.die("release " + key)
+                      }
+                    })
+                )
+            }).pipe(Scope.provide(owner))
+
+            yield* ScopedCache.get(cache, "a")
+            yield* ScopedCache.get(cache, "b")
+            yield* ScopedCache.get(cache, "healthy")
+
+            const exit = yield* Effect.exit(
+              operation === "invalidateAll" ? ScopedCache.invalidateAll(cache) : Scope.close(owner, Exit.void)
+            )
+            assert.deepStrictEqual(released.sort(), ["a", "b", "healthy"])
+            assert.strictEqual(yield* ScopedCache.size(cache), 0)
+            yield* Scope.close(owner, Exit.void)
+            assert(Exit.isFailure(exit))
+            assert.deepStrictEqual(
+              exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag).sort(),
+              ["release a", "release b"]
+            )
+          })
+      )
+
       it.effect.each([false, true])(
         "retains ownership of entries refreshed by finalizers (yield: %s)",
         (yieldBeforeRefresh) =>
@@ -1235,7 +1271,7 @@ describe("ScopedCache", () => {
           yield* ScopedCache.get(cache, "test3")
           assert.strictEqual(cleanupTracker.cleanedUp.length, 0)
 
-          yield* ScopedCache.invalidateAll(cache)
+          assert.isUndefined(yield* ScopedCache.invalidateAll(cache))
           assert.strictEqual(cleanupTracker.cleanedUp.length, 3)
           assert.deepStrictEqual(cleanupTracker.cleanedUp.sort(), ["test1", "test2", "test3"])
         }))
@@ -1374,14 +1410,13 @@ describe("ScopedCache", () => {
 
             const cache = yield* ScopedCache.make({
               capacity: 10,
-              lookup: (key: string) =>
-                Effect.gen(function*() {
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => cleanupTracker.acquired.push(key)),
-                    () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                  )
-                  return `resource-${key}`
-                }),
+              lookup: Effect.fnUntraced(function*(key: string) {
+                yield* Effect.acquireRelease(
+                  Effect.sync(() => cleanupTracker.acquired.push(key)),
+                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
+                )
+                return `resource-${key}`
+              }),
               timeToLive: "1 hour"
             })
 
@@ -1467,14 +1502,13 @@ describe("ScopedCache", () => {
 
             const cache = yield* ScopedCache.make({
               capacity: 10,
-              lookup: (key: string) =>
-                Effect.gen(function*() {
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => cleanupTracker.acquired.push(key)),
-                    () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                  )
-                  return `resource-${key}`
-                }),
+              lookup: Effect.fnUntraced(function*(key: string) {
+                yield* Effect.acquireRelease(
+                  Effect.sync(() => cleanupTracker.acquired.push(key)),
+                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
+                )
+                return `resource-${key}`
+              }),
               timeToLive: "1 hour"
             })
 
@@ -1559,14 +1593,13 @@ describe("ScopedCache", () => {
 
             const cache = yield* ScopedCache.make({
               capacity: 10,
-              lookup: (key: string) =>
-                Effect.gen(function*() {
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => cleanupTracker.acquired.push(key)),
-                    () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                  )
-                  return `resource-${key}`
-                }),
+              lookup: Effect.fnUntraced(function*(key: string) {
+                yield* Effect.acquireRelease(
+                  Effect.sync(() => cleanupTracker.acquired.push(key)),
+                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
+                )
+                return `resource-${key}`
+              }),
               timeToLive: "1 hour"
             })
 
@@ -1767,14 +1800,13 @@ describe("ScopedCache", () => {
 
             const cache = yield* ScopedCache.make({
               capacity: 10,
-              lookup: (key: string) =>
-                Effect.gen(function*() {
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => cleanupTracker.acquired.push(key)),
-                    () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-                  )
-                  return `resource-${key}`
-                }),
+              lookup: Effect.fnUntraced(function*(key: string) {
+                yield* Effect.acquireRelease(
+                  Effect.sync(() => cleanupTracker.acquired.push(key)),
+                  () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
+                )
+                return `resource-${key}`
+              }),
               timeToLive: "1 hour"
             })
 
@@ -2055,14 +2087,13 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 2,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                  () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                )
-                return yield* Effect.fail(`error-${key}`)
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              yield* Effect.acquireRelease(
+                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+              )
+              return yield* Effect.fail(`error-${key}`)
+            })
           })
 
           yield* Effect.exit(ScopedCache.get(cache, "fail1"))
@@ -2112,14 +2143,13 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 2,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                  () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                )
-                return `value-${key}`
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              yield* Effect.acquireRelease(
+                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+              )
+              return `value-${key}`
+            })
           })
 
           yield* ScopedCache.get(cache, "a")
@@ -2138,14 +2168,13 @@ describe("ScopedCache", () => {
             Effect.gen(function*() {
               const cache = yield* ScopedCache.make({
                 capacity: 10,
-                lookup: (key: string) =>
-                  Effect.gen(function*() {
-                    yield* Effect.acquireRelease(
-                      Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                      () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                    )
-                    return `value-${key}`
-                  })
+                lookup: Effect.fnUntraced(function*(key: string) {
+                  yield* Effect.acquireRelease(
+                    Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+                    () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+                  )
+                  return `value-${key}`
+                })
               })
 
               yield* ScopedCache.get(cache, "test1")
@@ -2172,14 +2201,13 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                  () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                )
-                return `value-${key}`
-              }),
+            lookup: Effect.fnUntraced(function*(key: string) {
+              yield* Effect.acquireRelease(
+                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+              )
+              return `value-${key}`
+            }),
             timeToLive: "1 hour"
           })
 
@@ -2199,14 +2227,13 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                  () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                )
-                return `value-${key}`
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              yield* Effect.acquireRelease(
+                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+              )
+              return `value-${key}`
+            })
           })
 
           yield* ScopedCache.get(cache, "test")
@@ -2221,14 +2248,13 @@ describe("ScopedCache", () => {
           const resourceTracker: Array<string> = []
           const cache = yield* ScopedCache.make({
             capacity: 3,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
-                  () => Effect.sync(() => resourceTracker.push(`released-${key}`))
-                )
-                return `value-${key}`
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              yield* Effect.acquireRelease(
+                Effect.sync(() => resourceTracker.push(`acquired-${key}`)),
+                () => Effect.sync(() => resourceTracker.push(`released-${key}`))
+              )
+              return `value-${key}`
+            })
           })
 
           // Fill cache
@@ -2281,14 +2307,13 @@ describe("ScopedCache", () => {
             Effect.gen(function*() {
               const cache = yield* ScopedCache.make({
                 capacity: 10,
-                lookup: (key: string) =>
-                  Effect.gen(function*() {
-                    yield* Effect.acquireRelease(
-                      Effect.sync(() => cleanupOrder.push(`acquired-${key}`)),
-                      () => Effect.sync(() => cleanupOrder.push(`released-${key}`))
-                    )
-                    return `value-${key}`
-                  })
+                lookup: Effect.fnUntraced(function*(key: string) {
+                  yield* Effect.acquireRelease(
+                    Effect.sync(() => cleanupOrder.push(`acquired-${key}`)),
+                    () => Effect.sync(() => cleanupOrder.push(`released-${key}`))
+                  )
+                  return `value-${key}`
+                })
               })
 
               yield* ScopedCache.get(cache, "first")
@@ -2320,11 +2345,10 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                const config = yield* ConfigService
-                return key.length * config.multiplier
-              })
+            lookup: Effect.fnUntraced(function*(key: string) {
+              const config = yield* ConfigService
+              return key.length * config.multiplier
+            })
           }).pipe(
             Effect.provideService(ConfigService, ConfigService.of({ multiplier: 10 }))
           )
@@ -2393,18 +2417,17 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                yield* Effect.acquireRelease(
-                  Effect.void,
-                  () =>
-                    Effect.gen(function*() {
-                      const time = yield* Clock.currentTimeMillis
-                      cleanupTimes.push({ key, time })
-                    })
-                )
-                return key.length
-              }),
+            lookup: Effect.fnUntraced(function*(key: string) {
+              yield* Effect.acquireRelease(
+                Effect.void,
+                () =>
+                  Effect.gen(function*() {
+                    const time = yield* Clock.currentTimeMillis
+                    cleanupTimes.push({ key, time })
+                  })
+              )
+              return key.length
+            }),
             timeToLive: "1 hour"
           })
 
@@ -2527,16 +2550,15 @@ describe("ScopedCache", () => {
         const finish = yield* Latch.make()
         const cache = yield* ScopedCache.make({
           capacity: 1,
-          lookup: (key: string) =>
-            Effect.gen(function*() {
-              if (key === "a") {
-                yield* Effect.acquireRelease(Effect.void, () => closing.open.pipe(Effect.andThen(close.await)))
-                return 1
-              }
-              yield* started.open
-              yield* finish.await
-              return 42
-            })
+          lookup: Effect.fnUntraced(function*(key: string) {
+            if (key === "a") {
+              yield* Effect.acquireRelease(Effect.void, () => closing.open.pipe(Effect.andThen(close.await)))
+              return 1
+            }
+            yield* started.open
+            yield* finish.await
+            return 42
+          })
         })
 
         yield* ScopedCache.get(cache, "a")
@@ -2562,20 +2584,19 @@ describe("ScopedCache", () => {
         let releases = 0
         const cache = yield* ScopedCache.make({
           capacity: 1,
-          lookup: (key: string) =>
-            Effect.gen(function*() {
-              if (key === "a") {
-                yield* Effect.acquireRelease(Effect.void, () =>
-                  Effect.gen(function*() {
-                    yield* closing.open
-                    yield* close.await
-                  }))
-                return 1
-              }
-              yield* Effect.acquireRelease(Effect.sync(() => acquisitions++), () => Effect.sync(() => releases++))
-              yield* acquired.open
-              return yield* Effect.never
-            })
+          lookup: Effect.fnUntraced(function*(key: string) {
+            if (key === "a") {
+              yield* Effect.acquireRelease(Effect.void, () =>
+                Effect.gen(function*() {
+                  yield* closing.open
+                  yield* close.await
+                }))
+              return 1
+            }
+            yield* Effect.acquireRelease(Effect.sync(() => acquisitions++), () => Effect.sync(() => releases++))
+            yield* acquired.open
+            return yield* Effect.never
+          })
         })
 
         yield* ScopedCache.get(cache, "a")
@@ -2601,20 +2622,19 @@ describe("ScopedCache", () => {
         let releases = 0
         const cache = yield* ScopedCache.make({
           capacity: 1,
-          lookup: (key: string) =>
-            Effect.gen(function*() {
-              if (key === "a") {
-                yield* Effect.acquireRelease(Effect.void, () =>
-                  Effect.gen(function*() {
-                    yield* closing.open
-                    yield* close.await
-                  }))
-                return 1
-              }
-              yield* Effect.acquireRelease(Effect.sync(() => acquisitions++), () => Effect.sync(() => releases++))
-              yield* acquired.open
-              return yield* Effect.never
-            })
+          lookup: Effect.fnUntraced(function*(key: string) {
+            if (key === "a") {
+              yield* Effect.acquireRelease(Effect.void, () =>
+                Effect.gen(function*() {
+                  yield* closing.open
+                  yield* close.await
+                }))
+              return 1
+            }
+            yield* Effect.acquireRelease(Effect.sync(() => acquisitions++), () => Effect.sync(() => releases++))
+            yield* acquired.open
+            return yield* Effect.never
+          })
         })
 
         yield* ScopedCache.get(cache, "a")
@@ -2696,12 +2716,11 @@ describe("ScopedCache", () => {
         const acquired = yield* Latch.make()
         const cache = yield* ScopedCache.make({
           capacity: 10,
-          lookup: (_key: string) =>
-            Effect.gen(function*() {
-              yield* Effect.acquireRelease(Effect.void, () => Effect.die("finalizer defect"))
-              yield* acquired.open
-              return yield* Effect.never
-            })
+          lookup: Effect.fnUntraced(function*(_key: string) {
+            yield* Effect.acquireRelease(Effect.void, () => Effect.die("finalizer defect"))
+            yield* acquired.open
+            return yield* Effect.never
+          })
         })
         const get = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
         yield* acquired.await
@@ -2720,13 +2739,12 @@ describe("ScopedCache", () => {
         let lookups = 0
         const cache = yield* ScopedCache.make({
           capacity: 10,
-          lookup: (_key: string) =>
-            Effect.gen(function*() {
-              lookups++
-              yield* started.open
-              yield* finish.await
-              return 42
-            })
+          lookup: Effect.fnUntraced(function*(_key: string) {
+            lookups++
+            yield* started.open
+            yield* finish.await
+            return 42
+          })
         })
 
         const first = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
@@ -2747,16 +2765,15 @@ describe("ScopedCache", () => {
         let releases = 0
         const cache = yield* ScopedCache.make({
           capacity: 10,
-          lookup: (_key: string) =>
-            Effect.gen(function*() {
-              lookups++
-              if (lookups === 1) {
-                yield* Effect.acquireRelease(Effect.void, () => Effect.sync(() => releases++))
-                yield* acquired.open
-                return yield* Effect.never
-              }
-              return 42
-            })
+          lookup: Effect.fnUntraced(function*(_key: string) {
+            lookups++
+            if (lookups === 1) {
+              yield* Effect.acquireRelease(Effect.void, () => Effect.sync(() => releases++))
+              yield* acquired.open
+              return yield* Effect.never
+            }
+            return 42
+          })
         })
 
         const first = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
@@ -2774,19 +2791,18 @@ describe("ScopedCache", () => {
         const released: Array<number> = []
         const cache = yield* ScopedCache.make({
           capacity: 10,
-          lookup: (_key: string) =>
-            Effect.gen(function*() {
-              const id = ++lookups
-              yield* Effect.acquireRelease(Effect.void, () =>
-                Effect.sync(() => {
-                  released.push(id)
-                }))
-              if (id === 2) {
-                yield* acquired.open
-                return yield* Effect.never
-              }
-              return id
-            })
+          lookup: Effect.fnUntraced(function*(_key: string) {
+            const id = ++lookups
+            yield* Effect.acquireRelease(Effect.void, () =>
+              Effect.sync(() => {
+                released.push(id)
+              }))
+            if (id === 2) {
+              yield* acquired.open
+              return yield* Effect.never
+            }
+            return id
+          })
         })
 
         assert.strictEqual(yield* ScopedCache.get(cache, "key"), 1)
@@ -2834,17 +2850,16 @@ describe("ScopedCache", () => {
 
           const cache = yield* ScopedCache.make({
             capacity: 10,
-            lookup: (key: string) =>
-              Effect.gen(function*() {
-                const resourceId = `${key}-${Date.now()}-${Math.random()}`
+            lookup: Effect.fnUntraced(function*(key: string) {
+              const resourceId = `${key}-${Date.now()}-${Math.random()}`
 
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => activeResources.add(resourceId)),
-                  () => Effect.sync(() => activeResources.delete(resourceId))
-                )
+              yield* Effect.acquireRelease(
+                Effect.sync(() => activeResources.add(resourceId)),
+                () => Effect.sync(() => activeResources.delete(resourceId))
+              )
 
-                return resourceId
-              })
+              return resourceId
+            })
           })
 
           // Create initial resources
@@ -2907,31 +2922,30 @@ describe("ScopedCache", () => {
 })
 
 // Helper functions for testing
-const makeScopedTestCache = (capacity: number, ttl?: Duration.Input) =>
-  Effect.gen(function*() {
-    let lookupCount = 0
-    const lookupResults = new Map<string, Effect.Effect<number, string>>()
+const makeScopedTestCache = Effect.fnUntraced(function*(capacity: number, ttl?: Duration.Input) {
+  let lookupCount = 0
+  const lookupResults = new Map<string, Effect.Effect<number, string>>()
 
-    const cache = yield* ScopedCache.make({
-      capacity,
-      lookup: (key: string) => {
-        lookupCount++
-        return lookupResults.get(key) ?? Effect.fail(`Key not found: ${key}`)
-      },
-      timeToLive: ttl
-    })
-
-    return {
-      cache,
-      lookupCount: () => lookupCount,
-      resetLookupCount: () => {
-        lookupCount = 0
-      },
-      setLookupResult: (key: string, result: Effect.Effect<number, string>) => {
-        lookupResults.set(key, result)
-      }
-    }
+  const cache = yield* ScopedCache.make({
+    capacity,
+    lookup: (key: string) => {
+      lookupCount++
+      return lookupResults.get(key) ?? Effect.fail(`Key not found: ${key}`)
+    },
+    timeToLive: ttl
   })
+
+  return {
+    cache,
+    lookupCount: () => lookupCount,
+    resetLookupCount: () => {
+      lookupCount = 0
+    },
+    setLookupResult: (key: string, result: Effect.Effect<number, string>) => {
+      lookupResults.set(key, result)
+    }
+  }
+})
 
 // Helper for tracking resource cleanup
 interface CleanupTracker {
@@ -2939,24 +2953,22 @@ interface CleanupTracker {
   acquired: Array<string>
 }
 
-const makeManagedResourceCache = (capacity: number) =>
-  Effect.gen(function*() {
-    const cleanupTracker: CleanupTracker = {
-      cleanedUp: [],
-      acquired: []
-    }
+const makeManagedResourceCache = Effect.fnUntraced(function*(capacity: number) {
+  const cleanupTracker: CleanupTracker = {
+    cleanedUp: [],
+    acquired: []
+  }
 
-    const cache = yield* ScopedCache.make({
-      capacity,
-      lookup: (key: string) =>
-        Effect.gen(function*() {
-          yield* Effect.acquireRelease(
-            Effect.sync(() => cleanupTracker.acquired.push(key)),
-            () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
-          )
-          return `resource-${key}`
-        })
+  const cache = yield* ScopedCache.make({
+    capacity,
+    lookup: Effect.fnUntraced(function*(key: string) {
+      yield* Effect.acquireRelease(
+        Effect.sync(() => cleanupTracker.acquired.push(key)),
+        () => Effect.sync(() => cleanupTracker.cleanedUp.push(key))
+      )
+      return `resource-${key}`
     })
-
-    return { cache, cleanupTracker }
   })
+
+  return { cache, cleanupTracker }
+})

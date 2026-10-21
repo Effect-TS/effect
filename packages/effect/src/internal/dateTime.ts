@@ -238,8 +238,12 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
  * so `makeUnsafe` appends "Z" to force UTC interpretation.
  * This check prevents appending "Z" to strings that already have a zone
  * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
+ * `Date.parse` also accepts a trailing `z` or `gmt` in any case. Only that trailing
+ * match is case-insensitive, so lowercase letters in a comment like "(xyz)" do not
+ * count as a zone.
  */
-const hasZone = (input: string): boolean => /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input)
+const hasZone = (input: string): boolean =>
+  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /z$|gmt$/i.test(input)
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
@@ -934,10 +938,6 @@ export const subtractDuration: {
     mapEpochMillis(self, (millis) => millis - Duration.toMillis(Duration.fromInputUnsafe(duration)))
 )
 
-const addMillis = (date: Date, amount: number): void => {
-  date.setTime(date.getTime() + amount)
-}
-
 /** @internal */
 export const add: {
   (
@@ -949,20 +949,26 @@ export const add: {
   ): A
 } = dual(
   2,
-  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime =>
-    mutate(self, (date) => {
+  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime => {
+    // time units move the instant, calendar units move the wall clock
+    const shifted = mutateUtc(self, (date) => {
       if (parts.milliseconds) {
-        addMillis(date, parts.milliseconds)
+        date.setTime(date.getTime() + parts.milliseconds)
       }
       if (parts.seconds) {
-        addMillis(date, parts.seconds * 1000)
+        date.setTime(date.getTime() + parts.seconds * 1000)
       }
       if (parts.minutes) {
-        addMillis(date, parts.minutes * 60 * 1000)
+        date.setTime(date.getTime() + parts.minutes * 60 * 1000)
       }
       if (parts.hours) {
-        addMillis(date, parts.hours * 60 * 60 * 1000)
+        date.setTime(date.getTime() + parts.hours * 60 * 60 * 1000)
       }
+    })
+    if (!parts.days && !parts.weeks && !parts.months && !parts.years) {
+      return shifted
+    }
+    return mutate(shifted, (date) => {
       if (parts.days) {
         date.setUTCDate(date.getUTCDate() + parts.days)
       }
@@ -989,6 +995,7 @@ export const add: {
         }
       }
     })
+  }
 )
 
 /** @internal */

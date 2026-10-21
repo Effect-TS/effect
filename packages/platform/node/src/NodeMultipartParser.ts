@@ -1,6 +1,7 @@
 /**
  * Node.js streams adapter for the low-level multipart parser.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 // oxlint-disable typescript/no-unsafe-declaration-merging
@@ -13,6 +14,7 @@ import { Duplex, Readable } from "node:stream"
 /**
  * A part emitted by the Node.js multipart parser.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -21,6 +23,7 @@ export type Part = Field | FileStream
 /**
  * A parsed multipart field.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -33,6 +36,7 @@ export interface Field {
 /**
  * A Node.js duplex stream that emits parsed multipart parts.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -60,6 +64,7 @@ export interface MultipartStream extends Duplex {
 /**
  * Configuration for the Node.js multipart parser.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -70,6 +75,7 @@ export type NodeConfig = Omit<BaseConfig, "headers"> & {
 /**
  * A Node.js duplex stream that parses multipart input.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -82,6 +88,7 @@ export class MultipartStream extends Duplex {
     super({ readableObjectMode: true })
     let currentError: MultipartError | undefined
     let currentFile: FileStream | undefined
+    let initialized = false
     this._parser = makeParser({
       ...(config as any),
       onField: (info, value) => {
@@ -106,14 +113,20 @@ export class MultipartStream extends Duplex {
         }
       },
       onError: (error) => {
+        currentError = error
+        if (!initialized) return
         this.emit("error", error)
         currentFile?.emit("error", error)
-        currentError = error
       },
       onDone: () => {
         this.push(null)
       }
     })
+    initialized = true
+    if (currentError !== undefined) {
+      // destroy defers the error event so callers can attach their listeners.
+      this.destroy(currentError as any)
+    }
   }
 
   _resume() {
@@ -151,6 +164,7 @@ export class MultipartStream extends Duplex {
 /**
  * Creates a Node.js multipart parser stream.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -159,6 +173,7 @@ export const make = (config: NodeConfig): MultipartStream => new MultipartStream
 /**
  * A readable stream containing a parsed multipart file.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

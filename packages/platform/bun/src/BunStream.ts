@@ -7,6 +7,7 @@
  * `ReadableStream` adapter that uses Bun's `readMany` reader method to pull
  * batches of values into an Effect `Stream`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
@@ -27,6 +28,7 @@ export * from "@effect/platform-node-shared/NodeStream"
  * Creates a stream from a `ReadableStream` using Bun's optimized `.readMany`
  * API.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

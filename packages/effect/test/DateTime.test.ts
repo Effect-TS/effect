@@ -105,6 +105,33 @@ describe("DateTime", () => {
         const future = Option.map(now, (value) => DateTime.add(value, { years: 1 }))
         assertSome(Option.map(future, DateTime.formatIso), "2025-02-28T00:00:00.000Z")
       }))
+
+    it("clips fractional time units separately", () => {
+      strictEqual(
+        DateTime.toEpochMillis(DateTime.add(DateTime.makeUnsafe(1000), { milliseconds: 0.5, seconds: 0.0005 })),
+        1000
+      )
+    })
+
+    it("adds and subtracts elapsed time in the repeated DST hour", () => {
+      const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(
+        DateTime.formatIso(DateTime.add(secondOneThirty, { minutes: 1, seconds: 1, milliseconds: 1 })),
+        "2025-11-02T06:31:01.001Z"
+      )
+      strictEqual(DateTime.formatIso(DateTime.subtract(secondOneThirty, { hours: 1 })), "2025-11-02T05:30:00.000Z")
+    })
+
+    it("adds elapsed hours before calendar days across DST", () => {
+      const beforeGap = DateTime.makeZonedUnsafe("2025-03-08T17:00:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { hours: 24 })), "2025-03-09T17:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1 })), "2025-03-09T16:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1, hours: 24 })), "2025-03-10T17:00:00.000Z")
+    })
   })
 
   describe("endOf", () => {
@@ -498,6 +525,17 @@ describe("DateTime", () => {
       }))
   })
 
+  describe("toDate", () => {
+    it("stores zoned wall-clock time in UTC fields", () => {
+      const zoned = DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", {
+        timeZone: "Europe/London"
+      })
+
+      strictEqual(DateTime.toDate(zoned).toISOString(), "2024-07-01T13:00:00.000Z")
+      strictEqual(DateTime.toDateUtc(zoned).toISOString(), "2024-07-01T12:00:00.000Z")
+    })
+  })
+
   describe("nowAsDate", () => {
     it.effect("should return the current Date", () =>
       Effect.gen(function*() {
@@ -525,6 +563,26 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
     })
 
+    it("treats strings with lowercase letters in comments as UTC", { concurrent: false }, () => {
+      const previousTZ = process.env.TZ
+      try {
+        process.env.TZ = "America/New_York"
+        strictEqual(new Date("2026-01-27T17:14:06.000Z").getTimezoneOffset(), 300)
+        const input = "Tue, 27 Jan 2026 17:14:06 (xyz)"
+        const expected = "2026-01-27T17:14:06.000Z"
+        deepStrictEqual(
+          [DateTime.makeUnsafe(input).toJSON(), Option.map(DateTime.make(input), DateTime.formatIso)],
+          [expected, Option.some(expected)]
+        )
+      } finally {
+        if (previousTZ === undefined) {
+          delete process.env.TZ
+        } else {
+          process.env.TZ = previousTZ
+        }
+      }
+    })
+
     it("does not append Z to strings ending with Z", () => {
       const dt = DateTime.makeUnsafe("2026-01-27T17:14:06.000Z")
       strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
@@ -538,6 +596,14 @@ describe("DateTime", () => {
     it("does not append Z to strings containing GMT", () => {
       const dt = DateTime.makeUnsafe("Tue, 27 Jan 2026 17:14:06 GMT")
       strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
+    })
+
+    it.each([
+      ["2024-01-01T00:00:00z", "2024-01-01T00:00:00.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 gmt", "2026-01-27T17:14:06.000Z"]
+    ])("accepts lowercase UTC designators: %s", (input, expected) => {
+      strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
+      assertSomeIso(DateTime.make(input), expected)
     })
   })
 

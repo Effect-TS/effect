@@ -7,6 +7,7 @@
  * `keepAlive` options have no effect on Unix connections. A `CloseEvent` always
  * closes gracefully because Deno has no equivalent of Node's reset-on-close.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
@@ -24,6 +25,7 @@ import * as Socket from "effect/socket/Socket"
 /**
  * Options for opening a TCP or Unix connection.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export type ConnectOptions = (Deno.ConnectOptions | Deno.UnixConnectOptions) & {
 /**
  * Options for opening a TCP or Unix connection.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -45,6 +48,7 @@ export type TcpOptions = ConnectOptions & {
 /**
  * Service tag for the underlying Deno connection.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -60,12 +64,15 @@ export class Conn extends Context.Service<Conn, Deno.Conn>()(
  * Readers over TCP connections can upgrade in place with `Deno.startTls`.
  * Deno exposes only the client side of this transition; Unix connections fail
  * the upgrade with a `SocketUpgradeError`.
+ * `servername` supplies the TLS hostname; when omitted, the remote address
+ * hostname is used.
  *
  * `Deno.startTls` does not support client certificates, so `key`, `cert`,
  * `passphrase`, and `requestCert` do not affect Deno upgrades. Setting
  * `rejectUnauthorized` to `false` disables hostname verification only;
  * certificate-chain validation still applies.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -158,7 +165,7 @@ export const fromConn = <RO>(
           return Effect.tryPromise({
             try: async () => {
               const tls = await Deno.startTls(raw, {
-                hostname: raw.remoteAddr.hostname,
+                hostname: options.servername ?? raw.remoteAddr.hostname,
                 caCerts: options.ca === undefined ? [] : toStrings(options.ca),
                 unsafelyDisableHostnameVerification: options.rejectUnauthorized === false,
                 ...(options.alpnProtocols === undefined ? {} : { alpnProtocols: [...options.alpnProtocols] })
@@ -268,6 +275,7 @@ export const fromConn = <RO>(
  * `Deno.connect` promise. The scope finalizer closes a connection that arrives
  * after the timeout.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -329,6 +337,7 @@ export const makeTcp = (options: TcpOptions): Effect.Effect<Socket.Socket> => {
 /**
  * Creates a channel over a native Deno TCP or Unix connection.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -345,6 +354,7 @@ export const makeTcpChannel = <IE = never>(
 /**
  * Provides a socket by opening a native Deno TCP or Unix connection.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -356,6 +366,7 @@ export const layerTcp: (options: ConnectOptions) => Layer.Layer<
 /**
  * Creates a socket layer connected to a URL with Deno's global WebSocket.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -371,6 +382,7 @@ export const layerWebSocket = (url: string, options?: {
 /**
  * Provides the WebSocket constructor backed by `globalThis.WebSocket`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -394,5 +406,5 @@ const close = (conn: Deno.Conn): Effect.Effect<void> =>
 
 const closeWrite = (conn: Deno.Conn): Effect.Effect<void> =>
   Effect.tryPromise(() => conn.closeWrite()).pipe(
-    Effect.catch((error) => isBadResource(error) ? Effect.void : Effect.die(error))
+    Effect.catch(({ cause }) => isBadResource(cause) ? Effect.void : Effect.die(cause))
   )
