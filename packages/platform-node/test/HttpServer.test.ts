@@ -772,6 +772,28 @@ describe("HttpServer", () => {
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
+  it.scoped("arrayBuffer", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.empty.pipe(
+        HttpRouter.post(
+          "/",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const buffer = yield* request.arrayBuffer
+            return HttpServerResponse.unsafeJson({
+              isArrayBuffer: buffer instanceof ArrayBuffer,
+              text: new TextDecoder().decode(buffer)
+            })
+          })
+        ),
+        HttpServer.serveEffect()
+      )
+      const result = yield* HttpClient.post("/", { body: HttpBody.text("hello") }).pipe(
+        Effect.flatMap((r) => r.json)
+      )
+      assert.deepStrictEqual(result, { isArrayBuffer: true, text: "hello" })
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   describe("HttpServerRequest.toWeb", () => {
     it.scoped("converts POST request with body", () =>
       Effect.gen(function*() {
