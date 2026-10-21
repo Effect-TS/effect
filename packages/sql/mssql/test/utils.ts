@@ -35,5 +35,5 @@ export class MssqlContainer extends Context.Service<MssqlContainer>()("test/Mssq
         trustServer: true
       })
     })
-  ).pipe(Layer.provide(this.layer))
+  ).pipe(Layer.provideMerge(this.layer))
 }
