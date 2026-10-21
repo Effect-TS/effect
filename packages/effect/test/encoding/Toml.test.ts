@@ -147,9 +147,22 @@ two = ${delimiter}value${quote}${quote}${delimiter}`)),
   })
 
   it("rejects out of range dates and times", () => {
-    for (const value of ["1979-02-30T07:32:00Z", "1900-02-29", "1979-13-01", "24:00:00", "07:60:00", "07:32:60"]) {
+    const invalid = [
+      "1979-02-30T07:32:00Z",
+      "1900-02-29",
+      "1979-13-01",
+      "24:00:00",
+      "07:60:00",
+      "07:32:60",
+      "1979-05-27T07:32:00+24:00",
+      "1979-05-27T07:32:00+00:60"
+    ]
+    for (const value of invalid) {
       assert.isTrue(Result.isFailure(Toml.parse(`a = ${value}`)), value)
     }
-    assert.deepStrictEqual(Result.getOrThrow(Toml.parse("a = 2000-02-29T23:59:59")), { a: "2000-02-29T23:59:59" })
+    assert.deepStrictEqual(
+      Result.getOrThrow(Toml.parse("a = 2000-02-29T23:59:59\nb = 1979-05-27T07:32:00+23:59")),
+      { a: "2000-02-29T23:59:59", b: new Date("1979-05-26T07:33:00Z") }
+    )
   })
 })
