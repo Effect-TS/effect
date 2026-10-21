@@ -1,17 +1,65 @@
-const Err = globalThis.Error as any
+/**
+ * Utility for safely manipulating `Error.stackTraceLimit` in environments
+ * where intrinsics may be frozen (e.g., SES / hardened JavaScript or
+ * deterministic sandboxes such as Temporal). When the property is non-writable,
+ * mutating it throws, so all manipulation here degrades to a best-effort,
+ * silent no-op.
+ *
+ * Mirrors the guard Node uses internally:
+ * https://github.com/nodejs/node/blob/e77694631f1642c302f664703197b5aabc65b482/lib/internal/errors.js#L246
+ *
+ * The error is constructed inline at each call site (rather than inside a
+ * closure here) so the captured stack trace keeps pointing at the real caller
+ * instead of this module.
+ *
+ * @internal
+ */
+interface ErrorWithStackTraceLimit {
+  stackTraceLimit?: number | undefined
+}
+
+const ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
+const ObjectPrototypeHasOwnProperty = Object.prototype.hasOwnProperty
+const ObjectIsExtensible = Object.isExtensible
 
 /**
- * Under frozen intrinsics (e.g. SES lockdown or the Temporal workflow sandbox)
- * `Error.stackTraceLimit` is read-only and assigning it throws.
+ * Check if `Error.stackTraceLimit` is writable.
+ * Returns `false` if the property is frozen, non-writable, or `Error` is non-extensible.
+ *
+ * @internal
  */
-const canSetStackTraceLimit = (() => {
-  const desc = Object.getOwnPropertyDescriptor(Err, "stackTraceLimit")
-  return desc === undefined ? Object.isExtensible(Err) : desc.writable === true || desc.set !== undefined
-})()
+export const isStackTraceLimitWritable = (): boolean => {
+  const desc = ObjectGetOwnPropertyDescriptor(Error, "stackTraceLimit")
+  if (desc === undefined) {
+    return ObjectIsExtensible(Error)
+  }
 
-/** @internal */
-export const setStackTraceLimit = (limit: number): void => {
-  if (canSetStackTraceLimit) {
-    Err.stackTraceLimit = limit
+  return ObjectPrototypeHasOwnProperty.call(desc, "writable")
+    ? desc.writable === true
+    : desc.set !== undefined
+}
+
+// Cache the check result since it won't change during runtime
+const canWriteStackTraceLimit = isStackTraceLimitWritable()
+
+/**
+ * Get the current `Error.stackTraceLimit` value.
+ * Returns `undefined` if the property doesn't exist.
+ *
+ * @internal
+ */
+export const getStackTraceLimit = (): number | undefined => (Error as ErrorWithStackTraceLimit).stackTraceLimit
+
+/**
+ * Safely set `Error.stackTraceLimit` if possible, otherwise no-op.
+ *
+ * Accepts `undefined` so a value read via {@link getStackTraceLimit} can be
+ * restored faithfully.
+ *
+ * @internal
+ */
+export const setStackTraceLimit = (value: number | undefined): void => {
+  if (canWriteStackTraceLimit) {
+    ;(Error as ErrorWithStackTraceLimit).stackTraceLimit = value
   }
 }

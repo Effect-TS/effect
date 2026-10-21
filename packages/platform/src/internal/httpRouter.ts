@@ -23,7 +23,7 @@ import * as Error from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
 import * as Respondable from "../HttpServerRespondable.js"
 import type * as ServerResponse from "../HttpServerResponse.js"
-import { setStackTraceLimit } from "./stackTraceLimit.js"
+import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.js"
 
 /** @internal */
 export const TypeId: Router.TypeId = Symbol.for("@effect/platform/HttpRouter") as Router.TypeId
@@ -832,7 +832,7 @@ export const Tag =
     R | Router.HttpRouter.DefaultServices
   > => {
     const Err = globalThis.Error as any
-    const limit = Err.stackTraceLimit
+    const limit = getStackTraceLimit()
     setStackTraceLimit(2)
     const creationError = new Err()
     setStackTraceLimit(limit)

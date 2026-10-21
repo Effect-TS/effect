@@ -40,7 +40,7 @@ import * as option_ from "./internal/option.js"
 import * as query from "./internal/query.js"
 import * as runtime_ from "./internal/runtime.js"
 import * as schedule_ from "./internal/schedule.js"
-import { setStackTraceLimit } from "./internal/stackTraceLimit.js"
+import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.js"
 import * as internalTracer from "./internal/tracer.js"
 import type * as Layer from "./Layer.js"
 import type * as LogLevel from "./LogLevel.js"
@@ -13521,7 +13521,7 @@ export const Tag: <const Id extends string>(id: Id) => <
       : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
       : Effect<X, never, Self>
   } = (id) => () => {
-    const limit = Error.stackTraceLimit
+    const limit = getStackTraceLimit()
     setStackTraceLimit(2)
     const creationError = new Error()
     setStackTraceLimit(limit)
@@ -13680,7 +13680,7 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
   return function() {
     const [id, maker] = arguments
     const proxy = "accessors" in maker ? maker["accessors"] : false
-    const limit = Error.stackTraceLimit
+    const limit = getStackTraceLimit()
     setStackTraceLimit(2)
     const creationError = new Error()
     setStackTraceLimit(limit)
@@ -14640,13 +14640,13 @@ export const fn:
     name: string,
     options?: Tracer.SpanOptions
   ) => fn.Gen & fn.NonGen) = function(nameOrBody: Function | string, ...pipeables: Array<any>) {
-    const limit = Error.stackTraceLimit
+    const limit = getStackTraceLimit()
     setStackTraceLimit(2)
     const errorDef = new Error()
     setStackTraceLimit(limit)
     if (typeof nameOrBody !== "string") {
       return defineLength(nameOrBody.length, function(this: any, ...args: Array<any>) {
-        const limit = Error.stackTraceLimit
+        const limit = getStackTraceLimit()
         setStackTraceLimit(2)
         const errorCall = new Error()
         setStackTraceLimit(limit)
@@ -14671,7 +14671,7 @@ export const fn:
         body.length,
         ({
           [name](this: any, ...args: Array<any>) {
-            const limit = Error.stackTraceLimit
+            const limit = getStackTraceLimit()
             setStackTraceLimit(2)
             const errorCall = new Error()
             setStackTraceLimit(limit)
