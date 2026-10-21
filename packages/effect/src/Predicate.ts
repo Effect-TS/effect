@@ -1207,15 +1207,19 @@ export const hasProperty: {
  */
 export const isTagged: {
   <K extends string>(tag: K): <T>(self: T) => self is unknown extends T ? Extract<{ _tag: K }, T>
-    : [Extract<T, { readonly _tag: K }>] extends [never] ? Extract<T, object> & { _tag: K }
-    : Extract<T, { readonly _tag: K }>
+    : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
+    : TagOverlap<T, K>
   <K extends string, T>(self: T, tag: K): self is unknown extends T ? Extract<{ _tag: K }, T>
-    : [Extract<T, { readonly _tag: K }>] extends [never] ? Extract<T, object> & { _tag: K }
-    : Extract<T, { readonly _tag: K }>
+    : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
+    : TagOverlap<T, K>
 } = dual(
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
+
+type TagOverlap<T, K extends string> = T extends { readonly _tag: K } ? T
+  : T extends { readonly _tag: infer U } ? K extends U ? T & { _tag: K } : never
+  : never
 
 /**
  * Checks whether a value is an `Error`.
