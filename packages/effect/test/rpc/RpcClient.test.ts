@@ -18,7 +18,9 @@ import {
   Tracer
 } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as HttpEffect from "effect/http/HttpEffect"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
@@ -102,6 +104,45 @@ const makeProtocolLayer = (
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
   body: string
 ) => makeProtocolLayerWithClient(serializationLayer, makeHttpClient(body))
+
+const EchoGroup = RpcGroup.make(
+  Rpc.make("Echo", { payload: Schema.Struct({ value: Schema.String }), success: Schema.String })
+)
+
+// Connects a batching HTTP client to a real RPC server, counting the HTTP
+// requests that cross between them.
+const makeBatchingClient = Effect.fnUntraced(function*(
+  serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
+  batch: { readonly window: Duration.Input; readonly maxSize?: number | undefined },
+  beforeRequest: Effect.Effect<void> = Effect.void
+) {
+  const httpEffect = yield* RpcServer.toHttpEffect(EchoGroup).pipe(
+    Effect.provide(Layer.mergeAll(
+      EchoGroup.toLayer({ Echo: ({ value }) => Effect.succeed(value) }),
+      serializationLayer
+    ))
+  )
+  const handler = HttpEffect.toWebHandler(httpEffect)
+  let httpRequests = 0
+  const httpClient = HttpClient.make((request) =>
+    Effect.gen(function*() {
+      httpRequests++
+      yield* beforeRequest
+      const webRequest = yield* Effect.orDie(HttpClientRequest.toWeb(request))
+      const response = yield* Effect.promise(() => handler(webRequest))
+      return HttpClientResponse.fromWeb(request, response)
+    })
+  )
+  const client = yield* RpcClient.make(EchoGroup).pipe(
+    Effect.provide(
+      RpcClient.layerProtocolHttp({ url: "http://localhost/rpc", batch }).pipe(
+        Layer.provideMerge(serializationLayer),
+        Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, httpClient))
+      )
+    )
+  )
+  return { client, httpRequests: () => httpRequests }
+})
 
 const assertEmptyResponseFailsRequest = Effect.fnUntraced(function*(
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
@@ -589,6 +630,64 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "RpcClientDefect")
       assert.strictEqual(error.reason.message, "HTTP response ended before RPC request completed")
     }))
+
+  describe("HTTP batching", () => {
+    for (
+      const [name, serializationLayer] of [
+        ["json", RpcSerialization.layerJson],
+        ["ndjson", RpcSerialization.layerNdjson]
+      ] as const
+    ) {
+      it.effect(`sends ${name} requests made within the batch window as one HTTP request`, () =>
+        Effect.gen(function*() {
+          const { client, httpRequests } = yield* makeBatchingClient(serializationLayer, { window: "5 millis" })
+
+          const results = yield* Effect.all(
+            [client.Echo({ value: "first" }), client.Echo({ value: "second" })],
+            { concurrency: "unbounded" }
+          ).pipe(Effect.forkChild)
+          yield* TestClock.adjust("5 millis")
+
+          assert.deepStrictEqual(yield* Fiber.join(results), ["first", "second"])
+          assert.strictEqual(httpRequests(), 1)
+        }))
+    }
+
+    it.effect("sends a batch as soon as it reaches maxSize", () =>
+      Effect.gen(function*() {
+        const { client, httpRequests } = yield* makeBatchingClient(RpcSerialization.layerJson, {
+          window: "1 hour",
+          maxSize: 2
+        })
+
+        const results = yield* Effect.all(
+          [client.Echo({ value: "first" }), client.Echo({ value: "second" })],
+          { concurrency: "unbounded" }
+        )
+
+        assert.deepStrictEqual(results, ["first", "second"])
+        assert.strictEqual(httpRequests(), 1)
+      }))
+
+    it.effect("keeps a batch in flight when one of its callers is interrupted", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const { client, httpRequests } = yield* makeBatchingClient(
+          RpcSerialization.layerJson,
+          { window: "5 millis" },
+          Deferred.await(release)
+        )
+
+        const interrupted = yield* client.Echo({ value: "interrupted" }).pipe(Effect.forkChild)
+        const kept = yield* client.Echo({ value: "kept" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust("5 millis")
+        yield* Fiber.interrupt(interrupted)
+        yield* Deferred.succeed(release, void 0)
+
+        assert.strictEqual(yield* Fiber.join(kept), "kept")
+        assert.strictEqual(httpRequests(), 1)
+      }))
+  })
 
   it.effect("reports transient socket open errors without failing in-flight streams", () =>
     Effect.gen(function*() {
