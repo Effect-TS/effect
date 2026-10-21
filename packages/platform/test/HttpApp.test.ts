@@ -122,6 +122,21 @@ describe("Http/App", () => {
       const response = await handler(new Request("http://localhost:3000/"))
       strictEqual(await response.text(), "420")
     })
+
+    test("layer is built before the first request", async () => {
+      let built = false
+      const { dispose, handler } = HttpApp.toWebHandlerLayer(
+        HttpServerResponse.text("ok"),
+        Layer.effectDiscard(Effect.sync(() => {
+          built = true
+        }))
+      )
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      strictEqual(built, true)
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "ok")
+      await dispose()
+    })
   })
 
   test("custom context", async () => {
