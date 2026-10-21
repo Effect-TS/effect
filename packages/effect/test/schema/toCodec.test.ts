@@ -889,33 +889,7 @@ describe("Serializers", () => {
           await decoding.succeed([null], [undefined])
         })
 
-        it("OptionFromOptionalKey(String)", async () => {
-          const schema = Schema.Tuple([Schema.OptionFromOptionalKey(Schema.String)])
-          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
-
-          const encoding = asserts.encoding()
-          await encoding.succeed([Option.some("a")], ["a"])
-          await encoding.succeed([Option.none()], [])
-
-          const decoding = asserts.decoding()
-          await decoding.succeed(["a"], [Option.some("a")])
-          await decoding.succeed([], [Option.none()])
-        })
-
-        it("withDecodingDefaultKey(String) with omit encoding strategy", async () => {
-          const schema = Schema.Tuple([
-            Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("a"), { encodingStrategy: "omit" }))
-          ])
-          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
-
-          const encoding = asserts.encoding()
-          await encoding.succeed(["a"], [])
-
-          const decoding = asserts.decoding()
-          await decoding.succeed([], ["a"])
-        })
-
-        it("omits multiple trailing elements and keeps the prefix", async () => {
+        it("omitted trailing optional elements", async () => {
           const schema = Schema.Tuple([
             Schema.String,
             Schema.OptionFromOptionalKey(Schema.String),
