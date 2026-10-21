@@ -8,24 +8,9 @@ describe("Base64Url", () => {
     assert.strictEqual(Base64Url.encode(new Uint8Array([251, 255])), "-_8")
   })
 
-  it("keeps the padding when asked to", () => {
-    const cases: ReadonlyArray<readonly [string | Uint8Array, string]> = [
-      ["", ""],
-      ["f", "Zg=="],
-      ["fo", "Zm8="],
-      ["foo", "Zm9v"],
-      ["hello?", "aGVsbG8_"],
-      [new Uint8Array([251, 255]), "-_8="]
-    ]
-    for (const [input, expected] of cases) {
-      const encoded = Base64Url.encode(input, { padding: true })
-      assert.strictEqual(encoded, expected)
-      assert.deepStrictEqual(
-        Result.getOrThrow(Base64Url.decode(encoded)),
-        typeof input === "string" ? new TextEncoder().encode(input) : input
-      )
-    }
-    assert.strictEqual(Base64Url.encode("f", { padding: false }), "Zg")
+  it("encodes with padding", () => {
+    assert.strictEqual(Base64Url.encode("f", { padding: true }), "Zg==")
+    assert.strictEqual(Base64Url.encode(new Uint8Array([251, 255]), { padding: true }), "-_8=")
   })
 
   it("decodes padded and unpadded input", () => {

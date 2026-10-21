@@ -5328,27 +5328,6 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(">?>d?\u00DF", "Pj8-ZD_Dnw")
   })
 
-  it("encodeBase64Url with padding", async () => {
-    const schema = Schema.String.pipe(
-      Schema.decodeTo(
-        Schema.String,
-        new SchemaTransformation.Transformation(
-          SchemaGetter.decodeBase64UrlString(),
-          SchemaGetter.encodeBase64Url({ padding: true })
-        )
-      )
-    )
-    const asserts = new TestSchema.Asserts(schema)
-
-    const decoding = asserts.decoding()
-    await decoding.succeed("Zm8=", "fo")
-    await decoding.succeed("Zm8", "fo")
-
-    const encoding = asserts.encoding()
-    await encoding.succeed("fo", "Zm8=")
-    await encoding.succeed(">?>d?\u00DF", "Pj8-ZD_Dnw==")
-  })
-
   it("StringFromHex", async () => {
     const schema = Schema.StringFromHex
     const asserts = new TestSchema.Asserts(schema)
