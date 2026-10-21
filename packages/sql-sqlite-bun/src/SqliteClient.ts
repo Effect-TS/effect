@@ -72,6 +72,10 @@ interface SqliteConnection extends Connection {
 }
 
 /**
+ * Explicit transactions use `BEGIN IMMEDIATE`, so they hold the write lock for
+ * their duration (even when they only read) instead of failing when upgrading a
+ * read snapshot under concurrent writers.
+ *
  * @category constructor
  * @since 1.0.0
  */
@@ -93,6 +97,9 @@ export const make = (
         create: options.create ?? true
       } as any)
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
+
+      // match the better-sqlite3 default so concurrent writers wait for locks
+      db.run("PRAGMA busy_timeout = 5000;")
 
       if (options.disableWAL !== true) {
         db.run("PRAGMA journal_mode = WAL;")
@@ -182,6 +189,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        beginTransaction: "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]
