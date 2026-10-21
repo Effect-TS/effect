@@ -68,8 +68,7 @@ export const make = <E, R>(options: {
     Effect.gen(function*() {
       const now = yield* DateTime.now
       const next = DateTime.unsafeFromDate(Cron.next(options.cron, now))
-      const entityId = options.calculateNextRunFromPrevious ? "initial" : DateTime.formatIso(next)
-      const client = (yield* CronEntity.client)(entityId)
+      const client = (yield* CronEntity.client)(DateTime.formatIso(next))
       yield* client.run({ dateTime: next }, { discard: true })
     }),
     { shardGroup: options.shardGroup }
