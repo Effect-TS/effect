@@ -704,49 +704,52 @@ describe("RpcServer", () => {
       ])
     }))
 
-  it.effect("notifies onDisconnect while still interrupting the disconnected client's handlers", () =>
+  it.effect("keeps interrupting disconnected clients while an onDisconnect callback is pending", () =>
     Effect.gen(function*() {
       const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
-      const started = yield* Deferred.make<void>()
-      const interrupted = yield* Deferred.make<void>()
-      const disconnected = yield* Deferred.make<number>()
-      const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
-        Effect.provide(RpcSerialization.layerNdjson)
-      )
+      const started = yield* Queue.unbounded<number>()
+      const interrupted = yield* Queue.unbounded<number>()
+      const observed = yield* Queue.unbounded<number>()
+      const disconnects = yield* Queue.unbounded<number>()
+      let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+      const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
+        writeRequest = writeRequest_
+        return Effect.succeed({
+          disconnects,
+          send: () => Effect.void,
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set([1, 2])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: false,
+          codecFor: RpcSerialization.json.codecFor
+        })
+      })
       yield* RpcServer.make(group, {
-        onDisconnect: (clientId: number) => Deferred.succeed(disconnected, clientId)
+        onDisconnect: (clientId) => Queue.offer(observed, clientId).pipe(Effect.andThen(Effect.never))
       }).pipe(
         Effect.provideService(RpcServer.Protocol, protocol),
         Effect.provide(group.toLayer({
-          wait: () =>
-            Deferred.succeed(started, undefined).pipe(
+          wait: (_, { client }) =>
+            Queue.offer(started, client.id).pipe(
               Effect.andThen(Effect.never),
-              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+              Effect.onInterrupt(() => Queue.offer(interrupted, client.id))
             )
         })),
         Effect.forkScoped
       )
 
-      const clientScope = yield* Scope.fork(yield* Scope.Scope)
-      yield* httpEffect.pipe(
-        Effect.provideService(
-          HttpServerRequest.HttpServerRequest,
-          HttpServerRequest.fromWeb(
-            new Request("http://test/rpc", {
-              method: "POST",
-              body: `{"_tag":"Request","id":1,"tag":"wait","payload":{},"headers":[]}\n`
-            })
-          )
-        ),
-        Effect.provideService(Scope.Scope, clientScope),
-        Effect.forkChild
-      )
-      yield* Deferred.await(started)
-      const [clientId] = yield* protocol.clientIds
-      yield* Scope.close(clientScope, Exit.void)
+      for (const clientId of [1, 2]) {
+        yield* writeRequest(clientId, { _tag: "Request", id: "1", tag: "wait", payload: {}, headers: [] })
+        assert.strictEqual(yield* Queue.take(started), clientId)
+      }
+      yield* Queue.offer(disconnects, 1)
+      yield* Queue.offer(disconnects, 2)
 
-      yield* Deferred.await(interrupted)
-      assert.strictEqual(yield* Deferred.await(disconnected), clientId)
+      assert.deepStrictEqual([yield* Queue.take(interrupted), yield* Queue.take(interrupted)], [1, 2])
+      assert.deepStrictEqual([yield* Queue.take(observed), yield* Queue.take(observed)], [1, 2])
     }))
 
   it.effect("applies backpressure to framed HTTP responses by default", () =>
