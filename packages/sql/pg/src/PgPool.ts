@@ -8,8 +8,9 @@ import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Pool from "effect/Pool"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
@@ -219,22 +220,36 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
         : Effect.succeed(connection))
   )
 
+  const acquireTimedOut = () =>
+    Effect.fail(
+      new SqlError({
+        reason: new ConnectionError({
+          cause: new Error("Timed out waiting for a pooled connection"),
+          message: "PgPool: Timed out waiting for a pooled connection",
+          operation: "acquireConnection"
+        })
+      })
+    )
+
+  // The acquisition runs in a child scope, so a timeout or failure gives back
+  // any lease or reservation it already took instead of leaving them to the
+  // caller's scope. On success the child scope closes with the caller's.
   const withAcquireTimeout = <A>(
     effect: Effect.Effect<A, SqlError, Scope.Scope>
   ): Effect.Effect<A, SqlError, Scope.Scope> =>
-    acquireTimeout === undefined ? effect : Effect.timeoutOrElse(effect, {
-      duration: acquireTimeout,
-      orElse: () =>
-        Effect.fail(
-          new SqlError({
-            reason: new ConnectionError({
-              cause: new Error("Timed out waiting for a pooled connection"),
-              message: "PgPool: Timed out waiting for a pooled connection",
-              operation: "acquireConnection"
-            })
-          })
-        )
-    })
+    acquireTimeout === undefined ?
+      effect :
+      Effect.uninterruptibleMask((restore) =>
+        Effect.flatMap(Effect.scope, (parent) =>
+          Effect.flatMap(Scope.fork(parent), (scope) =>
+            Effect.onError(
+              restore(Effect.timeoutOrElse(Scope.provide(effect, scope), {
+                duration: acquireTimeout,
+                orElse: acquireTimedOut
+              })),
+              (cause) => Scope.close(scope, Exit.failCause(cause))
+            )))
+      )
 
   const get = withAcquireTimeout(checkout)
 
