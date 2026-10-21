@@ -302,9 +302,9 @@ export const FailureOrigin = Context.Reference<Tool.FailureOrigin>("effect/ai/To
  *
  * **Details**
  *
- * Defaults to `"unbounded"`. Provide a positive integer around `handle`, or a
- * program that calls it, to make `HandlerContext.preliminary` suspend while
- * that many results are unconsumed. Other values are defects.
+ * Defaults to `"unbounded"`. Provide it as a positive integer around `handle`,
+ * or around a program that calls it, and `HandlerContext.preliminary` suspends
+ * once that many results are unconsumed. Any other value is a defect.
  *
  * The bound only applies to the stream returned by `handle`. Consume that
  * stream while the handler runs; waiting for the handler before reading it
