@@ -58,9 +58,8 @@ export function toRouterPath(path: string, schema: Schema.Constraint | undefined
 }
 
 /**
- * Replaces each declared `:name` parameter together with a regex constraint or
- * `?` marker that follows it. Returning `undefined` omits the parameter and a
- * `/` directly before it.
+ * Replaces declared `:name` params, including any regex constraint and `?`.
+ * Returning `undefined` also removes a preceding `/`.
  *
  * @internal
  */
