@@ -25,12 +25,11 @@ const WhoAmI = Toolkit.make(
   Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser, McpSchema.McpServerClient] })
 )
 const WhoAmIHandlers = WhoAmI.toLayer({
-  WhoAmI: () =>
-    Effect.gen(function*() {
-      const user = yield* CurrentUser
-      const client = yield* McpSchema.McpServerClient
-      return `${user}@${client.protocolVersion}`
-    })
+  WhoAmI: Effect.fnUntraced(function*() {
+    const user = yield* CurrentUser
+    const client = yield* McpSchema.McpServerClient
+    return `${user}@${client.protocolVersion}`
+  })
 })
 
 describe("McpTest", () => {
@@ -49,7 +48,7 @@ describe("McpTest", () => {
       const tools = yield* client.listTools()
       assert.deepStrictEqual(tools.tools.map((tool) => tool.name), ["WhoAmI"])
       const result = yield* client.callTool({ name: "WhoAmI" })
-      assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("alice@2025-11-25") }])
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "alice@2025-11-25" }])
     }))
 
   it.effect("fails with the MCP error a middleware returns", () =>
@@ -76,6 +75,7 @@ describe("McpTest", () => {
       })
       const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
 
+      yield* client.subscribe({ uri: "test://greeting" })
       yield* client.server.notifications["notifications/resources/updated"]({ uri: "test://greeting" })
       const notification = yield* Queue.take(client.notifications)
       assert.strictEqual(notification.method, "notifications/resources/updated")
