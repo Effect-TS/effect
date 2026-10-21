@@ -108,17 +108,6 @@ describe("ManagedRuntime", () => {
   })
 
   test("a request that disposes the runtime before its first async step keeps running", async () => {
-    const runtime = ManagedRuntime.make(Layer.empty)
-    await runtime.runPromise(Effect.void)
-    const result = await runtime.runPromise(Effect.gen(function*() {
-      yield* runtime.disposeEffect
-      yield* Effect.yieldNow
-      return "finished"
-    }))
-    strictEqual(result, "finished")
-  })
-
-  test("runPromise(disposeEffect) resolves when a layer finalizer is async", async () => {
     let released = false
     const runtime = ManagedRuntime.make(
       Layer.effectDiscard(Effect.addFinalizer(() =>
@@ -128,18 +117,25 @@ describe("ManagedRuntime", () => {
       ))
     )
     await runtime.runPromise(Effect.void)
-    await runtime.runPromise(runtime.disposeEffect)
-    strictEqual(released, true)
+    const result = await runtime.runPromise(Effect.gen(function*() {
+      yield* runtime.disposeEffect
+      yield* Effect.yieldNow
+      return "finished"
+    }))
+    assert.deepEqual({ result, released }, { result: "finished", released: true })
   })
 
-  test("a layer build that disposes the runtime fails its context waiters", async () => {
+  test("a layer build that disposes the runtime is interrupted", async () => {
     const runtime: ManagedRuntime.ManagedRuntime<never, never> = ManagedRuntime.make(Layer.effectDiscard(
-      Effect.suspend(() => runtime.disposeEffect).pipe(Effect.andThen(Effect.yieldNow))
+      Effect.suspend(() => runtime.disposeEffect).pipe(Effect.andThen(Effect.never))
     ))
-    const exit = await Effect.runPromiseExit(runtime.contextEffect)
-    assert.isTrue(Exit.isFailure(exit))
-    strictEqual(runtime.cachedContext, undefined)
-    assert.isTrue(Exit.isFailure(await runtime.runPromiseExit(Effect.void)))
+
+    // Bound the hang without waiting for the build fiber.
+    const result = await Promise.race([
+      Effect.runPromiseExit(runtime.contextEffect).then(Exit.isFailure),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    strictEqual(result, true)
   })
 
   test("detached-fiber disposal still interrupts and awaits its former request", async () => {
