@@ -17,7 +17,22 @@ import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Stdio from "../Stdio.ts"
 
-interface Capabilities {
+/**
+ * Terminal rendering flags for the current process.
+ *
+ * **Details**
+ *
+ * `canColor` says whether styling will be rendered rather than stored as
+ * bytes. `canAnimate` says whether output is being watched, so pacing means
+ * something. `canPrompt` says whether a question can be asked and answered.
+ * Only `canColor` is read by the built-in `Command` output; the other two are
+ * for application code that renders its own output.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface TerminalCapabilities {
   readonly canColor: boolean
   readonly canAnimate: boolean
   readonly canPrompt: boolean
@@ -34,12 +49,6 @@ interface Capabilities {
  *
  * **Details**
  *
- * `canColor` says whether styling will be rendered rather than stored as
- * bytes. `canAnimate` says whether output is being watched, so pacing means
- * something. `canPrompt` says whether a question can be asked and answered.
- * Only `canColor` is read by the built-in `Command` output; the other two are
- * for application code that renders its own output.
- *
  * The default is detected from the current process the first time it is
  * read, so later changes to the environment do not affect it. Without a
  * `process` global, every flag is `false`.
@@ -48,9 +57,10 @@ interface Capabilities {
  * @category services
  * @since 4.0.0
  */
-export class TerminalCapabilities extends Context.Reference<Capabilities>("effect/cli/TerminalCapabilities", {
-  defaultValue: () => fromProcess()
-}) {}
+export const TerminalCapabilities: Context.Reference<TerminalCapabilities> = Context.Reference(
+  "effect/cli/TerminalCapabilities",
+  { defaultValue: () => fromProcess() }
+)
 
 const isPresent = (value: string | undefined): value is string => value !== undefined && value.length > 0
 
@@ -63,7 +73,7 @@ const detect = (input: {
   readonly term: string | undefined
   readonly stdinIsTerminal: boolean
   readonly stdoutIsTerminal: boolean
-}): Capabilities => {
+}): TerminalCapabilities => {
   if (input.term === "dumb") {
     return { canColor: false, canAnimate: false, canPrompt: false }
   }
@@ -75,7 +85,7 @@ const detect = (input: {
   }
 }
 
-const fromProcess = (): Capabilities => {
+const fromProcess = (): TerminalCapabilities => {
   const process = (globalThis as any).process
   return detect({
     noColor: process?.env?.NO_COLOR,
