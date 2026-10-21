@@ -295,6 +295,37 @@ describe("scoped Effect hooks", { concurrent: false }, () => {
       "all:released"
     ])
   })
+
+  describe("failing hook", () => {
+    beforeEach(() => resource("failed").pipe(Effect.andThen(Effect.fail("boom"))))
+    it.fails("fails the test", () => {})
+  })
+
+  describe("hook returning a cleanup function", () => {
+    beforeEach(() => resource("cleanup").pipe(Effect.as(() => events.push("cleanup:ran"))))
+    it("runs the test", () => {})
+  })
+
+  describe("hook returning a throwing cleanup function", () => {
+    beforeEach(() =>
+      resource("throwing").pipe(Effect.as(() => {
+        throw new Error("cleanup failed")
+      }))
+    )
+    it.fails("reports the cleanup error", () => {})
+  })
+
+  it("closes the scope after a failure and after a returned cleanup function", () => {
+    assert.deepStrictEqual(events.slice(6), [
+      "failed:acquired",
+      "failed:released",
+      "cleanup:acquired",
+      "cleanup:ran",
+      "cleanup:released",
+      "throwing:acquired",
+      "throwing:released"
+    ])
+  })
 })
 
 // property testing

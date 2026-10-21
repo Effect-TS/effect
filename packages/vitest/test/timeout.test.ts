@@ -54,7 +54,7 @@ describe("beforeEach timeout finalizers", { concurrent: false }, () => {
       Effect.gen(function*() {
         yield* resource(events, "hook")
         return yield* Effect.never
-      }).pipe(Effect.scoped), 75)
+      }), 75)
 
     it.fails("times out while holding a resource", () => {})
   })
