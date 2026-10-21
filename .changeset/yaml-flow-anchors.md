@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Support anchors and aliases inside YAML flow collections
+Fix `Yaml.parse` rejecting anchors defined inside flow collections, such as `{a: &ref 1, b: *ref}`.

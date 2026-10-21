@@ -257,7 +257,7 @@ class FlowParser {
     if (character === "&") {
       this.index++
       const name = this.readUntil(/[\s,[\]{}]/)
-      if (name.length === 0 || !/^[\s,\]}]?$/.test(this.peek())) this.fail("Invalid anchor")
+      if (name === "" || /[[{]/.test(this.peek())) this.fail("Invalid anchor")
       this.skipWhitespace()
       if (this.peek() === "&") this.fail("Multiple anchors on one node")
       const value = this.parseValue()
