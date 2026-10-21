@@ -244,6 +244,19 @@ describe("McpClient", () => {
       assert.deepStrictEqual((yield* client.listTools()).map((tool) => tool.name), ["nested"])
     }))
 
+  // Results are validated against the selected revision as well as the public model.
+  // https://modelcontextprotocol.io/specification/2026-07-28/schema#listtoolsresult
+  it.effect("should reject a modern list result that omits revision-required fields", () =>
+    Effect.gen(function*() {
+      const { client } = yield* scriptedHttp((message) =>
+        message.method === "tools/list"
+          ? jsonRpcResult(message, { resultType: "complete", tools: [] })
+          : scriptedReply(McpProtocol.v2026_07_28, message)
+      )
+      const error = yield* client.listTools().pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "ValidationError")
+    }))
+
   describe("cancellation", () => {
     // Legacy HTTP sends notifications/cancelled; modern HTTP closes the response stream instead.
     // https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation

@@ -557,6 +557,17 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
             structuredContent: Symbol("not-json")
           } as unknown as McpSchema.CallToolResult)
       })
+      // JSON.stringify would silently turn these nested values into null or {}.
+      yield* server.addTool({
+        tool: makeTool("invalid-nested-json", "Nested non-JSON values"),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.succeed({
+            content: [{ type: "text", text: "invalid" }],
+            structuredContent: { count: Number.NaN },
+            _meta: { seen: new Map() }
+          } as unknown as McpSchema.CallToolResult)
+      })
       yield* server.addTool({
         tool: makeTool("resource-link", "Current-revision resource link"),
         annotations: Context.empty(),
@@ -2016,14 +2027,17 @@ describe("McpServer protocol adapters", () => {
   it.effect("should reject invalid structured content at the protocol serialization boundary", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
-      const response = yield* fixture.post(
-        modernRequest(50, "tools/call", { name: "invalid-structured-content", arguments: {} }),
-        { ...modernHeaders("tools/call"), "Mcp-Name": "invalid-structured-content" }
-      )
-      const message = yield* readJsonRpcResponse(response)
 
-      assert.strictEqual(response.status, 200)
-      assert.strictEqual(errorOf(message).code, McpSchema.INTERNAL_ERROR_CODE)
+      for (const name of ["invalid-structured-content", "invalid-nested-json"]) {
+        const response = yield* fixture.post(
+          modernRequest(50, "tools/call", { name, arguments: {} }),
+          { ...modernHeaders("tools/call"), "Mcp-Name": name }
+        )
+        const message = yield* readJsonRpcResponse(response)
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(errorOf(message).code, McpSchema.INTERNAL_ERROR_CODE)
+      }
     }))
 
   it("should reject a tool schema when inputSchema is not an object", () => {
