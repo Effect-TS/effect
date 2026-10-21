@@ -1,4 +1,4 @@
-import { assert, it, vi } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
   DateTime,
@@ -405,6 +405,33 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
       const client = yield* HttpApiTest.groups(Api, ["search"]).pipe(Effect.provide(GroupLayer))
 
       assert.deepStrictEqual(yield* client.search.run({ payload: { query: "effect" } }), { query: "effect" })
+    }))
+})
+
+it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
+  it.effect("encodes each element as a JSON line", () =>
+    Effect.gen(function*() {
+      const Item = Schema.Struct({ text: Schema.String })
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("items", "/items", {
+            success: HttpApiSchema.StreamNdjson({ schema: Item })
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        api,
+        "test",
+        (handlers) => handlers.handle("items", () => Effect.succeed(Stream.make({ text: "a" }, { text: "b" })))
+      )
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      const response = yield* client.test.items({ responseMode: "response-only" })
+      assert.strictEqual(response.headers["content-type"], "application/x-ndjson")
+      assert.strictEqual(yield* response.text, "{\"text\":\"a\"}\n{\"text\":\"b\"}\n")
+
+      const decoded = yield* client.test.items().pipe(Effect.flatMap(Stream.runCollect))
+      assert.deepStrictEqual(decoded, [{ text: "a" }, { text: "b" }])
     }))
 })
 
@@ -1924,4 +1951,175 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
 
       assert.deepStrictEqual(error, { retryAfter: 30n })
     }))
+})
+
+describe("HttpApiBuilder streaming payloads", () => {
+  const Item = Schema.Struct({ n: Schema.Number })
+  const encoder = new TextEncoder()
+
+  const withHandler = async (
+    app: Layer.Layer<
+      never,
+      never,
+      HttpRouter.HttpRouter | Etag.Generator | FileSystem.FileSystem | HttpPlatform.HttpPlatform | Path.Path
+    >,
+    f: (handler: (request: Request) => Promise<Response>) => Promise<void>
+  ) => {
+    const { dispose, handler } = HttpRouter.toWebHandler(app.pipe(Layer.provide(TestServices)), {
+      disableLogger: true
+    })
+    try {
+      await f((request) => handler(request))
+    } finally {
+      await dispose()
+    }
+  }
+
+  const post = (path: string, contentType: string, body: BodyInit, headers?: Record<string, string>) =>
+    new Request(`http://localhost${path}`, {
+      method: "POST",
+      headers: { "content-type": contentType, ...headers },
+      body,
+      duplex: "half"
+    } as RequestInit)
+
+  it("delivers NDJSON elements to the handler before the body ends", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+          success: Schema.Number
+        })
+      )
+    )
+    const first = Promise.withResolvers<{ readonly n: number }>()
+    const groups = HttpApiBuilder.group(
+      api,
+      "test",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) =>
+          payload.pipe(
+            Stream.tap((item) => Effect.sync(() => first.resolve(item))),
+            Stream.runCollect,
+            Effect.map((items) => items.length)
+          ))
+    )
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      let controller!: ReadableStreamDefaultController<Uint8Array>
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          controller = c
+        }
+      })
+      const response = handler(post("/upload", "application/x-ndjson", body))
+
+      controller.enqueue(encoder.encode(`{"n":1}\n`))
+      assert.deepStrictEqual(await Promise.race([first.promise, response.then((r) => r.status)]), { n: 1 })
+      controller.enqueue(encoder.encode(`{"n":2}\n`))
+      controller.close()
+
+      assert.strictEqual(await (await response).json(), 2)
+    })
+  })
+
+  it("maps payload errors the handler lets through to 400 and 413", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("ndjson", "/ndjson", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item, maxElementBytes: 8 })
+        }),
+        HttpApiEndpoint.post("bytes", "/bytes", {
+          payload: HttpApiSchema.StreamUint8Array({ maxBytes: 4 })
+        })
+      )
+    )
+    const groups = HttpApiBuilder.group(api, "test", (handlers) =>
+      handlers
+        .handle("ndjson", ({ payload }) => Stream.runDrain(payload))
+        .handle("bytes", ({ payload }) => Stream.runDrain(payload)))
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      const badLine = await handler(post("/ndjson", "application/x-ndjson", `{"n":1}\nnot json\n`))
+      assert.strictEqual(badLine.status, 400)
+
+      const longLine = await handler(post("/ndjson", "application/x-ndjson", `{"n":1}\n{"n":123}\n`))
+      assert.strictEqual(longLine.status, 413)
+      assert.strictEqual(await longLine.text(), "")
+
+      const withinLimit = await handler(
+        post("/bytes", "application/octet-stream", new Blob([new Uint8Array(3)]).stream())
+      )
+      assert.strictEqual(withinLimit.status, 204)
+      const overLimit = await handler(
+        post("/bytes", "application/octet-stream", new Blob([new Uint8Array(3), new Uint8Array(3)]).stream())
+      )
+      assert.strictEqual(overLimit.status, 413)
+      assert.strictEqual(await overLimit.text(), "")
+    })
+  })
+
+  it("responds 413 from content-length before the handler runs or the body is read", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamUint8Array({ maxBytes: 4 })
+        })
+      )
+    )
+    let handled = false
+    const groups = HttpApiBuilder.group(
+      api,
+      "test",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) =>
+          Effect.suspend(() => {
+            handled = true
+            return Stream.runDrain(payload)
+          }))
+    )
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      let pulled = false
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulled = true
+          controller.enqueue(new Uint8Array(8))
+          controller.close()
+        }
+      }, { highWaterMark: 0 })
+      const response = await handler(post("/upload", "application/octet-stream", body, { "content-length": "8" }))
+
+      assert.strictEqual(response.status, 413)
+      assert.strictEqual(response.headers.get("connection"), "close")
+      assert.isFalse(handled)
+      assert.isFalse(pulled)
+    })
+  })
+
+  it("responds 415 unless the content-type matches the declared one after normalization", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+          success: Schema.Number
+        })
+      )
+    )
+    const groups = HttpApiBuilder.group(
+      api,
+      "test",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) => Effect.map(Stream.runCollect(payload), (items) => items.length))
+    )
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      const alias = await handler(post("/upload", "application/jsonl", `{"n":1}\n`))
+      assert.strictEqual(alias.status, 415)
+
+      const withParameters = await handler(post("/upload", "Application/X-NDJSON; charset=utf-8", `{"n":1}\n`))
+      assert.strictEqual(withParameters.status, 200)
+      assert.strictEqual(await withParameters.json(), 1)
+    })
+  })
 })

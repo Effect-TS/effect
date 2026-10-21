@@ -62,6 +62,7 @@ export type OpenApiGeneratorWarningCode =
   | "default-response-remapped"
   | "security-and-downgraded"
   | "no-body-method-request-body-skipped"
+  | "streaming-request-body-skipped"
   | "naming-collision"
 
 /**
@@ -408,7 +409,10 @@ const parseOpenApi = (
           requestSchemaNames.set("application/json", op.payload)
         }
 
-        if (Predicate.isNotUndefined(content["multipart/form-data"]?.schema)) {
+        if (
+          Predicate.isNotUndefined(content["multipart/form-data"]?.schema) &&
+          !(isHttpApi && getEffectStreamEncoding(content["multipart/form-data"]) === "ndjson")
+        ) {
           op.payload = addSchema(
             `${schemaId}RequestFormData`,
             transformMultipart(content["multipart/form-data"].schema),
@@ -431,7 +435,43 @@ const parseOpenApi = (
         if (isHttpApi) {
           const representableRequestBody: Array<ParsedOperation.ParsedOperationMediaTypeSchema> = []
           for (const [contentType, mediaType] of Object.entries(content)) {
-            if (!Predicate.isObject(mediaType) || Predicate.isUndefined(mediaType.schema)) {
+            if (!Predicate.isObject(mediaType)) {
+              continue
+            }
+            const streamEncoding = getEffectStreamEncoding(mediaType)
+            if (
+              streamEncoding !== "ndjson" &&
+              unsupportedStreamingRequestMediaTypes.has(normalizeMediaType(contentType))
+            ) {
+              warnForOperation(emitWarning, op, {
+                code: "streaming-request-body-skipped",
+                message: `Request body media type ${contentType} was skipped because HttpApi cannot stream it.`
+              })
+              continue
+            }
+            if (streamEncoding === "uint8array") {
+              representableRequestBody.push({
+                contentType,
+                encoding: "binary",
+                effectStream: "uint8array"
+              })
+              continue
+            }
+            const ndjsonSchema = getNdjsonElementSchema(contentType, mediaType)
+            if (Predicate.isNotUndefined(ndjsonSchema)) {
+              representableRequestBody.push({
+                contentType,
+                encoding: "json",
+                effectStream: "ndjson",
+                schema: requestSchemaNames.get(contentType) ?? addSchema(
+                  `${schemaId}Request${mediaTypeToSuffix(contentType)}`,
+                  ndjsonSchema,
+                  op
+                )
+              })
+              continue
+            }
+            if (Predicate.isUndefined(mediaType.schema)) {
               continue
             }
             const encoding = getRequestMediaTypeEncoding(contentType)
@@ -493,7 +533,8 @@ const parseOpenApi = (
           const jsonResponseEntries = Object.entries(content ?? {}).filter(([contentType, mediaType]) =>
             isJsonMediaType(normalizeMediaType(contentType)) &&
             Predicate.isObject(mediaType) &&
-            Predicate.isNotUndefined(mediaType.schema)
+            Predicate.isNotUndefined(mediaType.schema) &&
+            !(isSuccessStatus(parsedStatus) && getEffectStreamEncoding(mediaType) === "ndjson")
           )
           const jsonResponseEntry = jsonResponseEntries.find(([contentType]) =>
             normalizeMediaType(contentType) === "application/json"
@@ -542,6 +583,22 @@ const parseOpenApi = (
                 contentType,
                 encoding: "binary",
                 effectStream: "uint8array"
+              })
+              continue
+            }
+            const ndjsonSchema = isSuccessStatus(parsedStatus)
+              ? getNdjsonElementSchema(contentType, mediaType)
+              : undefined
+            if (Predicate.isNotUndefined(ndjsonSchema)) {
+              representable.push({
+                contentType,
+                encoding: "json",
+                effectStream: "ndjson",
+                schema: addSchema(
+                  `${schemaId}${status}${mediaTypeToSuffix(contentType)}`,
+                  ndjsonSchema,
+                  op
+                )
               })
               continue
             }
@@ -1097,12 +1154,35 @@ const getResponseMediaTypeEncoding = (
   return
 }
 
-const getEffectStreamEncoding = (mediaType: object): "uint8array" | "sse" | undefined => {
+const getEffectStreamEncoding = (mediaType: object): "uint8array" | "sse" | "ndjson" | undefined => {
   const stream = (mediaType as Record<string, unknown>)["x-effect-stream"]
   if (!Predicate.isObject(stream)) {
     return
   }
-  return stream.encoding === "uint8array" || stream.encoding === "sse" ? stream.encoding : undefined
+  return stream.encoding === "uint8array" || stream.encoding === "sse" || stream.encoding === "ndjson"
+    ? stream.encoding
+    : undefined
+}
+
+const ndjsonMediaTypes = new Set(["application/x-ndjson", "application/jsonl"])
+
+const unsupportedStreamingRequestMediaTypes = new Set(["application/json-seq", "text/event-stream"])
+
+// Effect specs mark NDJSON with x-effect-stream on any content type. Other specs
+// use an OpenAPI 3.2 itemSchema on an NDJSON or JSONL content type.
+const getNdjsonElementSchema = (contentType: string, mediaType: object): JsonSchema.JsonSchema | undefined => {
+  const record = mediaType as Record<string, unknown>
+  if (getEffectStreamEncoding(mediaType) === "ndjson") {
+    return Predicate.isObject(record.schema) ? record.schema as JsonSchema.JsonSchema : undefined
+  }
+  if (
+    Predicate.isUndefined(record["x-effect-stream"]) &&
+    ndjsonMediaTypes.has(normalizeMediaType(contentType)) &&
+    Predicate.isObject(record.itemSchema)
+  ) {
+    return record.itemSchema as JsonSchema.JsonSchema
+  }
+  return
 }
 
 const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | undefined => {
@@ -1305,7 +1385,7 @@ const hasUnsupportedSuccessfulSseResponse = (
         }
         continue
       }
-      if (contentType === "text/event-stream") {
+      if (contentType === "text/event-stream" && streamEncoding !== "ndjson") {
         return true
       }
     }

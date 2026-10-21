@@ -59,6 +59,26 @@ describe("HttpApiEndpoint payload schemas", () => {
   })
 })
 
+describe("HttpApiEndpoint streaming payload schemas", () => {
+  it("rejects two streaming payloads", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: [
+            HttpApiSchema.StreamNdjson({ schema: Schema.Number }),
+            HttpApiSchema.StreamUint8Array()
+          ]
+        }),
+      /Multiple streaming payloads/
+    )
+  })
+
+  it("rejects streaming payloads on no-body methods", () => {
+    const payload: any = HttpApiSchema.StreamUint8Array()
+    assert.throws(() => HttpApiEndpoint.get("upload", "/upload", { payload }), /GET/)
+  })
+})
+
 describe("HttpApiEndpoint streaming success schemas", () => {
   it("GET endpoint accepts StreamSse success", () => {
     const stream = sse()

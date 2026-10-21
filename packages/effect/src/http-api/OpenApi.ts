@@ -467,28 +467,40 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
           if (streamContent !== undefined) {
             streamContent.forEach((stream, contentType) => {
               op.responses[status].content ??= {}
-              if (HttpApiSchema.isStreamSse(stream)) {
-                InternalRecord.assignProperty(op.responses[status].content, contentType, {
-                  schema: registerSchema(stream.events.ast),
-                  "x-effect-stream": {
-                    encoding: "sse",
-                    causeSchema: registerSchema(Schema.Cause(stream.error, Schema.Defect()).ast),
-                    errorSchema: registerSchema(stream.error.ast),
-                    failureEvent: reservedStreamFailureEvent
-                  }
-                })
-              } else {
-                InternalRecord.assignProperty(op.responses[status].content, contentType, {
-                  schema: {
-                    type: "string",
-                    format: "binary"
-                  },
-                  "x-effect-stream": {
-                    encoding: "uint8array"
-                  }
-                })
-              }
+              InternalRecord.assignProperty(op.responses[status].content, contentType, makeStreamMediaType(stream))
             })
+          }
+        }
+      }
+
+      function makeStreamMediaType(stream: HttpApiSchema.StreamSchema): OpenApiSpecMediaType {
+        if (HttpApiSchema.isStreamSse(stream)) {
+          return {
+            schema: registerSchema(stream.events.ast),
+            "x-effect-stream": {
+              encoding: "sse",
+              causeSchema: registerSchema(Schema.Cause(stream.error, Schema.Defect()).ast),
+              errorSchema: registerSchema(stream.error.ast),
+              failureEvent: reservedStreamFailureEvent
+            }
+          }
+        }
+        if (HttpApiSchema.isStreamNdjson(stream)) {
+          // Each line is one element, so the media type documents the element schema.
+          return {
+            schema: registerSchema(stream.schema.ast),
+            "x-effect-stream": {
+              encoding: "ndjson"
+            }
+          }
+        }
+        return {
+          schema: {
+            type: "string",
+            format: "binary"
+          },
+          "x-effect-stream": {
+            encoding: "uint8array"
           }
         }
       }
@@ -554,27 +566,39 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
 
       const hasBody = HttpMethod.hasBody(endpoint.method)
       if (hasBody) {
-        const schemasByContentType = new Map<string, {
-          readonly encoding: HttpApiSchema.PayloadEncoding
-          readonly schemas: Array<Schema.Top>
-        }>()
+        const schemasByContentType = new Map<
+          string,
+          {
+            readonly encoding: HttpApiSchema.PayloadEncoding
+            readonly schemas: Array<Schema.Top>
+          } | HttpApiSchema.StreamSchema
+        >()
         for (const schema of HttpApiEndpoint.getPayloadSchemas(endpoint)) {
+          if (HttpApiSchema.isStreamSchema(schema)) {
+            // Endpoint construction rejects a buffered payload sharing a streaming payload's media type.
+            schemasByContentType.set(schema.contentType, schema)
+            continue
+          }
           if (HttpApiSchema.isNoContent(schema.ast)) continue
           const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, endpoint.method)
           const existing = schemasByContentType.get(encoding.contentType)
           if (existing === undefined) {
             schemasByContentType.set(encoding.contentType, { encoding, schemas: [schema] })
-          } else {
+          } else if (!HttpApiSchema.isStreamSchema(existing)) {
             existing.schemas.push(schema)
           }
         }
         if (schemasByContentType.size > 0) {
           const content: OpenApiSpecContent = {}
-          for (const [contentType, { encoding, schemas }] of schemasByContentType) {
-            const asts = schemas.map(SchemaAST.getAST)
+          for (const [contentType, entry] of schemasByContentType) {
+            if (HttpApiSchema.isStreamSchema(entry)) {
+              InternalRecord.assignProperty(content, contentType, makeStreamMediaType(entry))
+              continue
+            }
+            const asts = entry.schemas.map(SchemaAST.getAST)
             const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
             InternalRecord.assignProperty(content, contentType, {
-              schema: registerSchema(ast, encoding._tag)
+              schema: registerSchema(ast, entry.encoding._tag)
             })
           }
           op.requestBody = { content, required: true }
@@ -1264,7 +1288,8 @@ export interface OpenApiSpecMediaType {
 }
 
 /**
- * Effect-specific metadata for generated streaming response media types.
+ * Effect-specific metadata for generated streaming request and response media
+ * types.
  *
  * @stability unstable
  * @category models
@@ -1279,6 +1304,9 @@ export type OpenApiSpecEffectStream =
   }
   | {
     encoding: "uint8array"
+  }
+  | {
+    encoding: "ndjson"
   }
 
 /**

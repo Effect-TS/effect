@@ -13,6 +13,7 @@ import { HttpServerError, RequestParseError } from "../HttpServerError.ts"
 import * as HttpServerRequest from "../HttpServerRequest.ts"
 import * as Multipart from "../Multipart.ts"
 import * as UrlParams from "../UrlParams.ts"
+import * as lazyStream from "./lazyStream.ts"
 
 /**
  * @internal
@@ -120,7 +121,8 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   }
 
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
-    return Stream.unwrap(Effect.withFiber((fiber) => {
+    // Read the inner body only once the decompressed body is pulled.
+    return lazyStream.openOnFirstPull(Stream.unwrap(Effect.withFiber((fiber) => {
       const limit = this.maxDecompressedSize ?? fiber.getRef(HttpIncomingMessage.MaxBodySize) ??
         defaultMaxDecompressedSize
       return Effect.succeed(Stream.fromReadableStream({
@@ -149,7 +151,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
         },
         onError: (cause) => cause instanceof HttpServerError ? cause : this.parseError(cause)
       }))
-    }))
+    })))
   }
 
   private bytesEffect: Effect.Effect<Uint8Array, HttpServerError> | undefined

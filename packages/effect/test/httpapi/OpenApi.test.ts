@@ -805,6 +805,56 @@ describe("OpenApi", () => {
     })
   })
 
+  it("emits streaming payloads and successes with x-effect-stream and no limits", () => {
+    const Item = Schema.Struct({ id: Schema.Finite })
+    const itemJsonSchema = {
+      type: "object",
+      properties: { id: { type: "number" } },
+      required: ["id"],
+      additionalProperties: false
+    }
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamUint8Array({ maxBytes: "1 MiB" })
+        }),
+        HttpApiEndpoint.post("ingest", "/ingest", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item, maxBytes: "10 MiB", maxElementBytes: "1 KiB" })
+        }),
+        HttpApiEndpoint.get("export", "/export", {
+          success: HttpApiSchema.StreamNdjson({ schema: Item })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/upload"]?.post?.requestBody, {
+      content: {
+        "application/octet-stream": {
+          schema: { type: "string", format: "binary" },
+          "x-effect-stream": { encoding: "uint8array" }
+        }
+      },
+      required: true
+    })
+    assert.deepStrictEqual(spec.paths["/ingest"]?.post?.requestBody, {
+      content: {
+        "application/x-ndjson": {
+          schema: itemJsonSchema,
+          "x-effect-stream": { encoding: "ndjson" }
+        }
+      },
+      required: true
+    })
+    assert.deepStrictEqual(spec.paths["/export"]?.get?.responses[200]?.content, {
+      "application/x-ndjson": {
+        schema: itemJsonSchema,
+        "x-effect-stream": { encoding: "ndjson" }
+      }
+    })
+  })
+
   it("rejects duplicate method and path pairs", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

@@ -1,8 +1,10 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
 import type * as JsonSchema from "effect/JsonSchema"
+import * as Schema from "effect/Schema"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -207,6 +209,29 @@ const assertHttpApiWithWarnings = Effect.fnUntraced(function*(
     options.warnings
   )
 }, Effect.provide(OpenApiGenerator.layerTransformerSchema))
+
+const generateHttpApi = Effect.fnUntraced(function*(spec: OpenAPISpec) {
+  const generator = yield* OpenApiGenerator.OpenApiGenerator
+  const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+
+  const source = yield* generator.generate(spec, {
+    name: "TestClient",
+    format: "httpapi",
+    onWarning: (warning) => {
+      warnings.push(warning)
+    }
+  })
+
+  return { source, warnings }
+}, Effect.provide(OpenApiGenerator.layerTransformerSchema))
+
+const findEndpoint = (source: string, method: string, path: string): string => {
+  const line = source.split("\n").find((line) =>
+    line.includes(`HttpApiEndpoint.${method}(`) && line.includes(`", ${JSON.stringify(path)}`)
+  )
+  assert.isDefined(line, `Expected ${method} ${path} in:\n${source}`)
+  return line!
+}
 
 const assertRuntimeStableWithWarnings = Effect.fnUntraced(function*(
   spec: OpenAPISpec,
@@ -2192,6 +2217,134 @@ export const CreatePayloadRequestText = Schema.String`,
           `HttpApiSchema.StreamUint8Array()`
         ]
       ))
+
+    describe("streaming payloads", () => {
+      const Item = Schema.Struct({ id: Schema.Finite }).annotate({ identifier: "Item" })
+      const ndjson = (contentType?: string) =>
+        `HttpApiSchema\\.StreamNdjson\\(\\{ schema: \\w+${
+          contentType === undefined
+            ? `(, contentType: "application/x-ndjson")?`
+            : `, contentType: ${JSON.stringify(contentType)}`
+        } \\}\\)`
+
+      it.effect("round-trips streaming payloads and successes", () =>
+        Effect.gen(function*() {
+          // Inline, because every component goes through the multipart rewrite
+          const FormItem = Schema.Struct({ data: Schema.String.annotate({ format: "binary" }) })
+          const Api = HttpApi.make("Api").add(
+            HttpApiGroup.make("items").add(
+              HttpApiEndpoint.post("upload", "/upload", {
+                payload: HttpApiSchema.StreamUint8Array({ maxBytes: "1 MiB" })
+              }),
+              // NDJSON markers win over the SSE and multipart handling of these content types
+              HttpApiEndpoint.post("ingest", "/ingest", {
+                payload: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "text/event-stream" })
+              }),
+              HttpApiEndpoint.post("ingestForm", "/ingest/form", {
+                payload: HttpApiSchema.StreamNdjson({ schema: FormItem, contentType: "multipart/form-data" })
+              }),
+              HttpApiEndpoint.get("export", "/export", {
+                success: HttpApiSchema.StreamNdjson({ schema: Item, contentType: "text/event-stream" })
+              })
+            )
+          )
+
+          const { source } = yield* generateHttpApi(OpenApi.fromApi(Api))
+
+          assert.include(findEndpoint(source, "post", "/upload"), `payload: HttpApiSchema.StreamUint8Array(),`)
+          assert.match(findEndpoint(source, "post", "/ingest"), new RegExp(`payload: ${ndjson("text/event-stream")}`))
+          const form = findEndpoint(source, "post", "/ingest/form").match(
+            /payload: HttpApiSchema\.StreamNdjson\(\{ schema: (\w+), contentType: "multipart\/form-data" \}\)/
+          )
+          assert.isNotNull(form, source)
+          assert.include(source, `export type ${form![1]} = { readonly "data": string }`)
+          assert.match(findEndpoint(source, "get", "/export"), new RegExp(`success: ${ndjson("text/event-stream")}`))
+        }))
+
+      it.effect("maps third-party NDJSON itemSchema media types to StreamNdjson", () =>
+        Effect.gen(function*() {
+          const item = {
+            type: "object",
+            properties: { id: { type: "number" } },
+            required: ["id"],
+            additionalProperties: false
+          }
+          const { source } = yield* generateHttpApi({
+            openapi: "3.2.0",
+            info: { title: "Test API", version: "1.0.0" },
+            paths: {
+              "/ingest": {
+                post: {
+                  operationId: "ingest",
+                  parameters: [],
+                  requestBody: { content: { "application/x-ndjson": { itemSchema: item } }, required: true },
+                  responses: { 204: { description: "Accepted" } },
+                  tags: ["Items"],
+                  security: []
+                }
+              },
+              "/export": {
+                get: {
+                  operationId: "export",
+                  parameters: [],
+                  responses: {
+                    200: { description: "Items", content: { "application/x-ndjson": { itemSchema: item } } }
+                  },
+                  tags: ["Items"],
+                  security: []
+                }
+              }
+            },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [{ name: "Items" }]
+          } as unknown as OpenAPISpec)
+
+          assert.match(findEndpoint(source, "post", "/ingest"), new RegExp(`payload: ${ndjson()}`))
+          assert.match(findEndpoint(source, "get", "/export"), new RegExp(`success: ${ndjson()}`))
+        }))
+
+      it.effect("skips json-seq and SSE request bodies with a warning", () =>
+        Effect.gen(function*() {
+          const event = { type: "object", properties: { id: { type: "number" } } }
+          const { source, warnings } = yield* generateHttpApi({
+            openapi: "3.1.0",
+            info: { title: "Test API", version: "1.0.0" },
+            paths: {
+              "/seq": {
+                post: {
+                  operationId: "seq",
+                  parameters: [],
+                  requestBody: { content: { "application/json-seq": { schema: event } }, required: true },
+                  responses: { 204: { description: "Accepted" } },
+                  tags: ["Events"],
+                  security: []
+                }
+              },
+              "/events": {
+                post: {
+                  operationId: "events",
+                  parameters: [],
+                  requestBody: { content: { "text/event-stream": { schema: event } }, required: true },
+                  responses: { 204: { description: "Accepted" } },
+                  tags: ["Events"],
+                  security: []
+                }
+              }
+            },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [{ name: "Events" }]
+          })
+
+          assert.notInclude(findEndpoint(source, "post", "/seq"), "payload")
+          assert.notInclude(findEndpoint(source, "post", "/events"), "payload")
+          assert.deepStrictEqual(
+            warnings.map((warning) => ({ path: warning.path, method: warning.method })),
+            [{ path: "/seq", method: "post" }, { path: "/events", method: "post" }]
+          )
+        }))
+    })
 
     it.effect("maps multipart schemas referenced through components to Multipart file schemas", () =>
       assertHttpApiIncludes(

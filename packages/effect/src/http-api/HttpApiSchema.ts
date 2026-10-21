@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as ByteSize from "../ByteSize.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { constVoid, type LazyArg } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
@@ -252,7 +253,7 @@ export function asNoContent<S extends Schema.Constraint>(options: {
   }
 }
 
-type StreamMode = "sse" | "uint8array"
+type StreamMode = "sse" | "uint8array" | "ndjson"
 
 /**
  * Mode describing whether an SSE stream emits full events or raw data values.
@@ -282,6 +283,9 @@ export type StreamSseMode = "events" | "data"
  * dynamically but decodes `data` to another value, the client emits it as an
  * application event. Endpoint construction rejects event schemas that declare
  * the reserved name statically.
+ *
+ * `StreamSse` is response-only. The `payload` slot's type excludes it, and
+ * endpoint construction rejects it.
  *
  * @stability unstable
  * @category models
@@ -340,13 +344,14 @@ export interface SseEventFromData<Data extends Schema.Constraint> extends
 {}
 
 /**
- * Schema for a streaming `Uint8Array` success response.
+ * Schema for a streaming `Uint8Array` body.
  *
  * **Details**
  *
- * This declaration stores the response content type for later endpoint,
- * server, client, and OpenAPI integrations. It is intentionally separate from
- * the buffered `asUint8Array` response encoding.
+ * It works as a success response or as a request payload. It is intentionally
+ * separate from the buffered `asUint8Array` encoding. As a payload, the handler
+ * receives the body as it is read, and `maxBytes` caps the bytes read. It has
+ * no default and does not fall back to `MaxBodySize`.
  *
  * @stability unstable
  * @category models
@@ -367,21 +372,90 @@ export interface StreamUint8Array extends
   readonly _tag: "StreamUint8Array"
   readonly mode: "uint8array"
   readonly contentType: string
+  readonly maxBytes: ByteSize.ByteSize | undefined
 }
 
 /**
- * Schema for a streaming HTTP API success response.
+ * Schema for a stream of newline-delimited JSON elements.
+ *
+ * **Details**
+ *
+ * Each element is encoded as one line of JSON followed by `\n`, including the
+ * last. When decoding, `\n`, `\r\n` and a bare `\r` end a line, empty lines are
+ * skipped, a leading BOM is stripped and invalid UTF-8 fails. The first
+ * malformed line or element that fails to decode ends the stream, after every
+ * element before it has been delivered. A missing final newline is accepted if
+ * the last line parses.
+ *
+ * `maxElementBytes` caps the UTF-8 bytes of one line, without its terminator.
+ * `maxBytes` caps the whole body and has no default.
+ *
+ * As a request payload, the handler receives the elements as the body is
+ * read. Malformed lines and elements that fail to decode are an
+ * `HttpApiSchemaError`, and limit breaches are an `HttpApiPayloadTooLarge`.
+ *
+ * **Gotchas**
+ *
+ * There is no `error` schema. A failure mid-stream aborts the connection, so
+ * the reader sees a body read error, never a clean end. Typed failures
+ * mid-stream are a {@link StreamSse} feature. A body cut cleanly at a line
+ * boundary can't be told apart from a complete one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface StreamNdjson<S extends Schema.Constraint> extends
+  Schema.BottomLazy<
+    SchemaAST.Declaration,
+    StreamNdjson<S>
+  >
+{
+  readonly "Type": Stream.Stream<S["Type"], unknown, never>
+  readonly "Encoded": Stream.Stream<S["Type"], unknown, never>
+  readonly "DecodingServices": S["DecodingServices"]
+  readonly "EncodingServices": S["EncodingServices"]
+  readonly "Rebuild": StreamNdjson<S>
+  readonly "~type.make.in": Stream.Stream<S["Type"], unknown, never>
+  readonly "~type.make": Stream.Stream<S["Type"], unknown, never>
+  readonly "Iso": Stream.Stream<S["Type"], unknown, never>
+  readonly [StreamSchemaTypeId]: typeof StreamSchemaTypeId
+  readonly _tag: "StreamNdjson"
+  readonly mode: "ndjson"
+  readonly contentType: string
+  readonly schema: S
+  readonly maxBytes: ByteSize.ByteSize | undefined
+  readonly maxElementBytes: ByteSize.ByteSize
+}
+
+/**
+ * Schema for a streaming HTTP API body.
+ *
+ * **Details**
+ *
+ * {@link StreamUint8Array} and {@link StreamNdjson} describe the body in either
+ * direction, with the endpoint slot deciding which. {@link StreamSse} is for
+ * success responses only.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type StreamSchema = StreamSse<Sse.EventCodec, Schema.Top, unknown> | StreamUint8Array
+export type StreamSchema =
+  | StreamSse<Sse.EventCodec, Schema.Top, unknown>
+  | StreamUint8Array
+  | StreamNdjson<Schema.Top>
 
 const streamSchema = Schema.declare(Stream.isStream)
 
+const defaultMaxElementBytes = ByteSize.mebibytes(1)
+
 /**
  * Creates a Server-Sent Events streaming success response schema.
+ *
+ * **Details**
+ *
+ * `StreamSse` is response-only. Endpoint construction rejects it in `payload`.
  *
  * @stability unstable
  * @category constructors
@@ -423,7 +497,12 @@ export const StreamSse: {
 }
 
 /**
- * Creates a streaming `Uint8Array` success response schema.
+ * Creates a streaming `Uint8Array` body schema.
+ *
+ * **Details**
+ *
+ * `contentType` defaults to `application/octet-stream`. `maxBytes` only applies
+ * to request payloads and has no default.
  *
  * @stability unstable
  * @category constructors
@@ -431,12 +510,64 @@ export const StreamSse: {
  */
 export const StreamUint8Array = (options?: {
   readonly contentType?: string | undefined
+  readonly maxBytes?: ByteSize.Input | undefined
 }): StreamUint8Array =>
   Schema.make<StreamUint8Array>(streamSchema.ast, {
     [StreamSchemaTypeId]: StreamSchemaTypeId,
     _tag: "StreamUint8Array",
     mode: "uint8array",
-    contentType: options?.contentType ?? defaultStreamContentType("uint8array")
+    contentType: options?.contentType ?? defaultStreamContentType("uint8array"),
+    maxBytes: options?.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes)
+  })
+
+/**
+ * Creates a schema for a stream of newline-delimited JSON elements.
+ *
+ * **Details**
+ *
+ * `contentType` defaults to `application/x-ndjson` and `maxElementBytes` to 1
+ * MiB. `maxBytes` has no default.
+ *
+ * **Example** (Declaring an NDJSON request payload)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
+ *
+ * const Event = Schema.Struct({ id: Schema.Number })
+ * const payload = HttpApiSchema.StreamNdjson({ schema: Event, maxBytes: "100 MiB" })
+ *
+ * // The handler receives a Stream of Events
+ * const importEvents = HttpApiEndpoint.post("importEvents", "/events", {
+ *   payload,
+ *   success: Schema.Number
+ * })
+ *
+ * importEvents.path // => "/events"
+ * payload.contentType // => "application/x-ndjson"
+ * payload.maxElementBytes // => 1048576n
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.6
+ */
+export const StreamNdjson = <S extends Schema.Constraint>(options: {
+  readonly schema: S
+  readonly contentType?: string | undefined
+  readonly maxBytes?: ByteSize.Input | undefined
+  readonly maxElementBytes?: ByteSize.Input | undefined
+}): StreamNdjson<S> =>
+  Schema.make<StreamNdjson<S>>(streamSchema.ast, {
+    [StreamSchemaTypeId]: StreamSchemaTypeId,
+    _tag: "StreamNdjson",
+    mode: "ndjson",
+    contentType: options.contentType ?? defaultStreamContentType("ndjson"),
+    schema: options.schema,
+    maxBytes: options.maxBytes === undefined ? undefined : ByteSize.fromInputUnsafe(options.maxBytes),
+    maxElementBytes: options.maxElementBytes === undefined
+      ? defaultMaxElementBytes
+      : ByteSize.fromInputUnsafe(options.maxElementBytes)
   })
 
 /**
@@ -456,6 +587,12 @@ export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.T
  */
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
+
+/**
+ * @internal
+ */
+export const isStreamNdjson = (u: unknown): u is StreamNdjson<Schema.Top> =>
+  isStreamSchema(u) && u._tag === "StreamNdjson"
 
 const UpgradeTypeId = "~effect/http-api/HttpApiSchema/Upgrade"
 
@@ -552,6 +689,8 @@ function defaultStreamContentType(mode: StreamMode): string {
       return "text/event-stream"
     case "uint8array":
       return "application/octet-stream"
+    case "ndjson":
+      return "application/x-ndjson"
   }
 }
 

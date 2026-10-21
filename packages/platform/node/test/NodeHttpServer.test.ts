@@ -56,6 +56,119 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect.each([8 * 1024, 512 * 1024])(
+    "delivers a partial-read 413 and drains or closes for %i leftover bytes",
+    (leftoverBytes) =>
+      Effect.gen(function*() {
+        const server = Http.createServer()
+        const body = "rejected".repeat(16 * 1024)
+        yield* HttpServer.serve(
+          HttpServerRequest.HttpServerRequest.use((request) =>
+            request.url === "/next"
+              ? Effect.succeed(HttpServerResponse.text("next"))
+              : request.stream.pipe(
+                Stream.take(1),
+                Stream.runDrain,
+                Effect.as(HttpServerResponse.text(body, { status: 413 }))
+              )
+          )
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+          Layer.build
+        )
+        if (leftoverBytes > 256 * 1024) {
+          // A raw client observes the server FIN; node:http closes its own socket on Connection: close.
+          yield* Effect.callback<void, Error>((resume) => {
+            const socket = Net.connect({ host: "127.0.0.1", port: tcpPort(server), allowHalfOpen: true })
+            let received = ""
+            let sentLeftover = false
+            let fin = false
+            socket.setEncoding("utf8")
+            socket.on("error", (error) => resume(Effect.fail(error)))
+            socket.on("connect", () => {
+              socket.write(
+                `POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: ${
+                  leftoverBytes + 1
+                }\r\nConnection: keep-alive\r\n\r\nx`
+              )
+            })
+            socket.on("data", (chunk: string) => {
+              received += chunk
+              if (!sentLeftover) {
+                sentLeftover = true
+                // Wait for the response so the handler consumes only the first byte.
+                socket.write(Buffer.Buffer.alloc(leftoverBytes))
+              }
+            })
+            socket.on("end", () => {
+              fin = true
+              resume(Effect.sync(() => {
+                const separator = received.indexOf("\r\n\r\n")
+                assert.isAtLeast(separator, 0)
+                const headers = received.slice(0, separator).toLowerCase()
+                assert.match(headers, /^http\/1\.1 413 /)
+                assert.include(headers, "\r\nconnection: close")
+                assert.include(headers, `\r\ncontent-length: ${Buffer.Buffer.byteLength(body)}`)
+                assert.strictEqual(received.slice(separator + 4), body)
+              }))
+            })
+            socket.on("close", () => {
+              if (!fin) resume(Effect.fail(new Error("Socket closed before the server FIN")))
+            })
+            return Effect.sync(() => socket.destroy())
+          }).pipe(Effect.timeout("3 seconds"))
+          return
+        }
+        const agent = yield* Effect.acquireRelease(
+          Effect.sync(() => new Http.Agent({ keepAlive: true, maxSockets: 1 })),
+          (agent) => Effect.sync(() => agent.destroy())
+        )
+        yield* Effect.callback<void, Error>((resume) => {
+          const fail = (error: Error) => resume(Effect.fail(error))
+          const request = Http.request({
+            host: "127.0.0.1",
+            port: tcpPort(server),
+            method: "POST",
+            headers: { "content-length": leftoverBytes + 1 },
+            agent
+          })
+          let firstSocket: Net.Socket
+          request.on("error", fail)
+          request.on("socket", (socket) => {
+            firstSocket = socket
+            socket.on("error", fail)
+          })
+          request.on("response", (response) => {
+            let received = ""
+            response.setEncoding("utf8")
+            response.on("data", (chunk: string) => received += chunk)
+            response.on("error", fail)
+            response.on("end", () => {
+              const status = response.statusCode
+              const next = Http.get({ host: "127.0.0.1", port: tcpPort(server), path: "/next", agent }, (response) => {
+                response.on("error", fail)
+                response.on("end", () => {
+                  resume(Effect.sync(() => {
+                    assert.strictEqual(status, 413)
+                    assert.strictEqual(received, body)
+                    assert.strictEqual(response.statusCode, 200)
+                    // Queued requests can reuse the socket without setting ClientRequest.reusedSocket.
+                    assert.strictEqual(next.socket, firstSocket)
+                  }))
+                })
+                response.resume()
+              })
+              next.on("error", fail)
+            })
+            // The first chunk must be consumed on its own, not coalesced with the leftover body.
+            request.end(Buffer.Buffer.alloc(leftoverBytes))
+          })
+          request.write("x")
+          return Effect.sync(() => request.destroy())
+        }).pipe(Effect.timeout("3 seconds"))
+      })
+  )
+
   it.effect("returns 413 before a chunked upload finishes", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
