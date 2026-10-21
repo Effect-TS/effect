@@ -26,7 +26,6 @@ import { appendPreResponseHandlerUnsafe } from "../http/HttpEffect.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
-import * as InternalToCodec from "../internal/schema/toCodec.ts"
 import type * as JsonSchema from "../JsonSchema.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -2184,11 +2183,11 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// MCP requires an object root. A non-recursive root is compiled inline so it is
-// not also published as a definition. A recursive root keeps its definition and
-// the top-level `$ref` is inlined.
+// MCP requires an object root. A non-recursive root is compiled inline rather
+// than as a definition; a recursive root keeps its definition and the top-level
+// `$ref` is inlined.
 const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
-  const root = SchemaAST.getContextOwner(SchemaAST.getLastEncoding(InternalToCodec.toCodecJsonAST(schema.ast)))
+  const root = SchemaAST.getContextOwner(SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast))
   const document = InternalStructuredOutput.resolveTopLevelReference(
     Schema.toJsonSchemaDocument(schema, {
       onExcessProperty: strict ? "error" : "ignore",
