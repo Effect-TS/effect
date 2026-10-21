@@ -93,7 +93,8 @@ const InputImageContent = Schema.Struct({
   type: Schema.Literal("input_image"),
   image_url: Schema.optionalKey(Schema.NullOr(Schema.String)),
   file_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  detail: Schema.optionalKey(Schema.NullOr(ImageDetail))
+  detail: Schema.optionalKey(Schema.NullOr(ImageDetail)),
+  prompt_cache_breakpoint: Schema.optional(PromptCacheBreakpoint)
 })
 
 const InputFileContent = Schema.Struct({
@@ -101,7 +102,8 @@ const InputFileContent = Schema.Struct({
   file_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   filename: Schema.optionalKey(Schema.String),
   file_url: Schema.optionalKey(Schema.String),
-  file_data: Schema.optionalKey(Schema.String)
+  file_data: Schema.optionalKey(Schema.String),
+  prompt_cache_breakpoint: Schema.optional(PromptCacheBreakpoint)
 })
 
 /**
