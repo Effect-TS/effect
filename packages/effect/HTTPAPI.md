@@ -1521,6 +1521,80 @@ The payload stream's errors are added to the handler's error channel automatical
 - Read the payload stream once. The body is never buffered for a replay, so a repeated read keeps the adapter's native behavior: an empty body, a typed `RequestParseError`, or a replay of the caller's stream under `HttpApiTest`. Don't rely on any of them.
 - A handler can respond without reading the whole body, for example to reject an upload early. Over HTTP/1.1 the Node server then drains up to 256 KiB of what is left. Past that it sends `Connection: close` and closes the socket.
 
+### Timing Out Request Bodies
+
+Effect puts no deadline on reading a request body. Bound the read with Effect timeouts:
+
+- For a streaming payload, use `Stream.timeoutOrElse` to fail the read when the client stops sending. `Stream.timeout` would end the stream instead, so a stalled upload would look complete to the handler.
+- For a buffered payload, add a middleware with `Effect.timeoutOrElse`. Middleware runs around payload decoding (see [Body Lifetime](#body-lifetime)), so its deadline covers receiving and decoding the body as well as the handler.
+
+**Example** (Timing Out Uploads)
+
+```ts
+import { Effect, Layer, Schema, Stream } from "effect"
+import {
+  HttpApi,
+  HttpApiBuilder,
+  HttpApiEndpoint,
+  HttpApiError,
+  HttpApiGroup,
+  HttpApiMiddleware,
+  HttpApiSchema
+} from "effect/http-api"
+
+// Answers 408 when the endpoint, payload decoding included, takes too long
+class Deadline extends HttpApiMiddleware.Service<Deadline>()("Deadline", {
+  error: HttpApiError.RequestTimeout
+}) {}
+
+const Api = HttpApi.make("api").add(
+  HttpApiGroup.make("files").add(
+    HttpApiEndpoint.post("upload", "/upload", {
+      payload: HttpApiSchema.StreamUint8Array(),
+      success: Schema.Number,
+      error: HttpApiError.RequestTimeout
+    }),
+    HttpApiEndpoint.post("import", "/import", {
+      payload: Schema.Array(Schema.String),
+      success: Schema.Number
+    }).middleware(Deadline)
+  )
+)
+
+const DeadlineLayer = Layer.succeed(
+  Deadline,
+  (httpEffect) =>
+    Effect.timeoutOrElse(httpEffect, {
+      duration: "30 seconds",
+      orElse: () => Effect.fail(new HttpApiError.RequestTimeout({}))
+    })
+)
+
+const FilesLayer = HttpApiBuilder.group(
+  Api,
+  "files",
+  (handlers) =>
+    handlers
+      .handle("upload", ({ payload }) =>
+        payload.pipe(
+          // Fail the read when the client sends nothing for 10 seconds
+          Stream.timeoutOrElse({
+            duration: "10 seconds",
+            orElse: () => Stream.fail(new HttpApiError.RequestTimeout({}))
+          }),
+          Stream.runFold(() => 0, (total, chunk) => total + chunk.length)
+        ))
+      .handle("import", ({ payload }) => Effect.succeed(payload.length))
+).pipe(Layer.provide(DeadlineLayer))
+```
+
+When a timeout interrupts a handler before it has read the whole body, the unread rest is handled as described in [Body Lifetime](#body-lifetime). A middleware deadline stops applying once the handler returns a streaming response. To bound the response, see [Timing Out Streaming Responses](#timing-out-streaming-responses).
+
+The runtimes also have their own server-wide timers:
+
+- Node's `requestTimeout` (300 seconds by default) limits the time to receive the whole request, including a streaming upload. When it expires, Node answers `408`, or closes the connection if the response has already started. It also applies to a request body the handler never reads, so it can cut a streaming response that ignores a large upload. Change it on the server you pass to `NodeHttpServer.layer`, for example `createServer({ requestTimeout: 0 })` to disable it. `headersTimeout` (60 seconds by default) may not exceed it, and setting only a smaller `requestTimeout` lowers `headersTimeout` to match.
+- `BunHttpServer` disables Bun's idle timeout by default, so a slow upload is limited only by your own timeouts. Pass `idleTimeout` (in seconds, at most 255) to restore a cut for connections that stay silent that long.
+
 ### Mixing Buffered and Streaming Payloads
 
 One streaming payload can share the `payload` array with buffered payloads that use other content types. The server picks one by the request's content type, and the handler tells them apart with `Stream.isStream`.
@@ -2393,6 +2467,25 @@ Things to know:
 - Wrap a stream schema with `HttpApiSchema.WithHeaders` to declare typed response headers (see [Setting Response Headers](#setting-response-headers)). The handler returns `HttpApiSchema.withHeaders({ body, headers })` with the stream as `body`, and the client resolves to the same shape.
 - An endpoint may declare at most one streaming success schema, `HEAD` endpoints cannot declare one, and streaming schemas are not supported in error responses.
 - The `effect/http-api/stream/failure` event name is reserved: `events` schemas may not declare it, and the client treats such an event as a stream failure only when its `data` decodes to a `Cause`.
+
+### Timing Out Streaming Responses
+
+Neither server adapter cuts a quiet response stream by default. Node's socket inactivity timeout (`server.timeout`) is off unless you enable it, and `BunHttpServer` disables Bun's idle timeout unless you pass `idleTimeout`. To limit how long a stream may stay quiet, time out the stream the handler returns:
+
+- `Stream.timeout(duration)` ends the response normally when no element arrives within `duration`.
+- `Stream.timeoutOrElse({ duration, orElse: () => Stream.fail(error) })` fails it instead. As with any failure after the response has started, the connection is aborted, unless a `StreamSse` endpoint declares the error and sends it as a [typed failure](#typed-stream-failures).
+
+**Example** (Ending a Quiet Stream)
+
+```ts
+handlers.handle("ticks", () =>
+  // End the response when no tick arrives for 60 seconds
+  Effect.succeed(Stream.timeout(ticks, "60 seconds")))
+```
+
+These timeouts are checked each time the server pulls the next element. If the client stops reading, the server stops pulling and no timeout fires. Idle keep-alive connections between requests have no handler at all. Only a socket-level timer covers these cases: an explicit Bun `idleTimeout`, Node's `server.timeout` and `keepAliveTimeout` (5 seconds by default, between requests only), or a proxy with its own idle timeout. Without `idleTimeout`, Bun closes neither stalled readers nor idle keep-alive connections, so a directly exposed Bun server should set one or sit behind such a proxy.
+
+Bun 1.3 still closes connections that never send a complete request when `idleTimeout` is `0`. That is Bun's behavior, not something `BunHttpServer` guarantees across Bun versions.
 
 ## Upgrading the Connection
 

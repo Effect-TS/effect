@@ -125,6 +125,33 @@ export interface Options extends Net.ListenOptions {
  * upgrade handling, and closes the server during scope finalization with
  * optional graceful-shutdown control.
  *
+ * **Details**
+ *
+ * The server's own Node timeouts still apply and are configured where the
+ * server is created, for example `createServer({ requestTimeout: 0 })`:
+ *
+ * - `requestTimeout` (300 seconds by default) limits the time to receive the
+ *   whole request, headers and body. When it expires Node answers `408`, or
+ *   closes the connection if the response has already started. It is checked
+ *   every `connectionsCheckingInterval` (30 seconds by default), so it can fire
+ *   late. `0` disables it.
+ * - `headersTimeout` (60 seconds by default) limits the time to receive the
+ *   headers and may not exceed `requestTimeout`. Setting only a smaller
+ *   `requestTimeout` lowers it to match.
+ * - `keepAliveTimeout` (5 seconds by default) closes keep-alive connections
+ *   that stay idle between requests.
+ * - `server.timeout`, the socket inactivity timeout, is disabled by default,
+ *   so quiet response streams are not cut once the request has been received.
+ *
+ * Use `Stream` and `Effect` timeouts in handlers or middleware for per-route
+ * limits on reading the body or producing the response.
+ *
+ * **Gotchas**
+ *
+ * The request is only received once Node has parsed the whole body. A handler
+ * that streams a response without reading a large request body stays under
+ * `requestTimeout`, and the response is cut when it expires.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -663,6 +690,12 @@ export const layerHttpServices: Layer.Layer<
 /**
  * Provides a Node `HttpServer` together with the Node HTTP platform, ETag, and
  * core platform services required to serve requests.
+ *
+ * **Details**
+ *
+ * Node's `requestTimeout`, `headersTimeout` and `keepAliveTimeout` are
+ * configured on the server returned by `evaluate`. See `make` for what they
+ * cover.
  *
  * @stability unstable
  * @category layers
