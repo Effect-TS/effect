@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { assertNone } from "@effect/vitest/utils"
 import { Context, Effect, Stream } from "effect"
 import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/http"
 
@@ -238,26 +239,9 @@ describe("HttpServerResponse", () => {
         assert.strictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).text()), "hello")
       }))
 
-    it.effect("rebuilds a Web Response with HttpClientResponse.toWeb", () =>
-      Effect.gen(function*() {
-        const web = yield* HttpClientResponse.toWeb(HttpServerResponse.toClientResponse(
-          HttpServerResponse.text("hello", { status: 201 }).pipe(
-            HttpServerResponse.setHeader("x-test", "ok"),
-            HttpServerResponse.setHeader("set-cookie", "session=old; Path=/legacy"),
-            HttpServerResponse.setCookieUnsafe("session", "123")
-          )
-        ))
-        assert.strictEqual(web.status, 201)
-        assert.strictEqual(web.headers.get("x-test"), "ok")
-        assert.deepStrictEqual(web.headers.getSetCookie(), ["session=old; Path=/legacy", "session=123"])
-        assert.strictEqual(yield* Effect.promise(() => web.text()), "hello")
-
-        const empty = yield* HttpClientResponse.toWeb(
-          HttpServerResponse.toClientResponse(HttpServerResponse.empty({ status: 204 }))
-        )
-        assert.strictEqual(empty.status, 204)
-        assert.strictEqual(empty.body, null)
-      }))
+    it("has no Web Response for HttpClientResponse.toWeb", () => {
+      assertNone(HttpClientResponse.toWeb(HttpServerResponse.toClientResponse(HttpServerResponse.text("hello"))))
+    })
   })
 
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>

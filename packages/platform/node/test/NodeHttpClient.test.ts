@@ -105,16 +105,6 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   ),
   HttpRouter.route("GET", "/text", Effect.succeed(HttpServerResponse.text("test"))),
   HttpRouter.route(
-    "GET",
-    "/cookies",
-    Effect.succeed(
-      HttpServerResponse.text("cookies").pipe(
-        HttpServerResponse.setCookieUnsafe("a", "1", { path: "/" }),
-        HttpServerResponse.setCookieUnsafe("b", "2", { path: "/" })
-      )
-    )
-  ),
-  HttpRouter.route(
     "QUERY",
     "/search",
     Effect.gen(function*() {
@@ -210,12 +200,6 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         assert.strictEqual(url.search, "?existing=1&value=a%23b")
         assert.strictEqual(url.hash, "")
         expect(yield* response.text).toBe("test")
-      }).pipe(Effect.provide(localServerTestLayer)))
-
-    it.effect("toWeb sends each response cookie once", () =>
-      Effect.gen(function*() {
-        const web = yield* HttpClientResponse.toWeb(yield* HttpClient.get("/cookies"))
-        assert.deepStrictEqual(web.headers.getSetCookie(), ["a=1; Path=/", "b=2; Path=/"])
       }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("accessing text preserves response bytes", () =>

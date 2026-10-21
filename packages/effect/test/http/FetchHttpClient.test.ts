@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Stream } from "effect"
+import { Effect, Option, Stream } from "effect"
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("FetchHttpClient", () => {
@@ -27,7 +27,7 @@ describe("FetchHttpClient", () => {
     const source = new Response(new Uint8Array([1, 2, 3]))
     return Effect.gen(function*() {
       const response = yield* HttpClient.get("https://example.test/archive.tgz")
-      const web = yield* HttpClientResponse.toWeb(response)
+      const web = Option.getOrThrow(HttpClientResponse.toWeb(response))
       // Runtimes like workerd only accept the original body for known-length writes.
       assert.strictEqual(web.body, source.body)
       assert.deepStrictEqual(new Uint8Array(yield* Effect.promise(() => web.arrayBuffer())), new Uint8Array([1, 2, 3]))
@@ -48,7 +48,7 @@ describe("FetchHttpClient", () => {
           HttpClientRequest.bodyStream(Stream.make(new Uint8Array([1, 2, 3])))
         )
       )
-      const web = yield* HttpClientResponse.toWeb(response)
+      const web = Option.getOrThrow(HttpClientResponse.toWeb(response))
       assert.strictEqual(web.body, source.body)
       assert.strictEqual(yield* Effect.promise(() => web.text()), "done")
     }).pipe(
