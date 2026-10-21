@@ -1,6 +1,6 @@
 import { MssqlClient } from "@effect/sql-mssql"
 import { assert, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Latch, Layer, Pool, Schedule, Schema, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Latch, Layer, Pool, Schedule, Schema, Stream } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
@@ -264,6 +264,79 @@ it.layer(MssqlContainer.layerClient, { timeout: "90 seconds" })((it) => {
       `
         assert.deepStrictEqual(rows, [
           { id: "job", element: JSON.stringify("first") },
+          { id: "other", element: JSON.stringify("other") }
+        ])
+      }).pipe(TestClock.withLive),
+    { timeout: 30000 }
+  )
+
+  it.effect(
+    "PersistedQueue skips a duplicate an older release's offer inserts while the offer waits",
+    () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const xa = yield* makeXactAbortClient((yield* MssqlContainer).getDatabase())
+        const tableName = "effect_queue_mixed_release"
+        const queue = yield* Effect.gen(function*() {
+          const store = yield* PersistedQueue.makeStoreSql({ tableName })
+          const factory = yield* PersistedQueue.makeFactory.pipe(
+            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+          )
+          return yield* factory.make({ name: tableName, schema: Schema.String })
+        }).pipe(Effect.provideService(SqlClient.SqlClient, xa))
+        // the SQL Server offer of releases before the MERGE was replaced, which
+        // keeps writing during a rolling upgrade
+        const legacyOffer = (id: string, element: string) =>
+          sql`
+          MERGE ${sql(tableName)} WITH (HOLDLOCK) AS target
+          USING (SELECT ${id} AS id, ${tableName} AS queue_name) AS source
+          ON target.id = source.id AND target.queue_name = source.queue_name
+          WHEN NOT MATCHED THEN
+            INSERT (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+            VALUES (source.id, source.queue_name, ${JSON.stringify(element)}, 'pending', 0,
+              SYSDATETIME(), SYSDATETIME(), SYSDATETIME());
+        `
+
+        const legacyLocked = yield* Deferred.make<number>()
+        const offerBlocked = Latch.makeUnsafe()
+        const legacy = yield* Effect.gen(function*() {
+          yield* legacyOffer("earlier", "earlier")
+          const [{ spid }] = yield* sql<{ readonly spid: number }>`SELECT @@SPID AS spid`
+          yield* Deferred.succeed(legacyLocked, spid)
+          yield* offerBlocked.await
+          yield* legacyOffer("job", "legacy")
+        }).pipe(sql.withTransaction, Effect.forkScoped)
+        const spid = yield* Deferred.await(legacyLocked)
+
+        const offer = yield* Effect.gen(function*() {
+          const [{ xactAbort }] = yield* xa<{ readonly xactAbort: number }>`
+          SELECT @@OPTIONS & 16384 AS xactAbort
+        `
+          assert.strictEqual(xactAbort, 16384, "XACT_ABORT is on for the offer")
+          yield* queue.offer("new", { id: "job" })
+          yield* queue.offer("other", { id: "other" })
+        }).pipe(xa.withTransaction, Effect.exit, Effect.forkScoped)
+
+        // the older release inserts the same id only once the offer is waiting
+        // on its range locks
+        yield* sql<{ readonly blocked: number }>`
+        SELECT COUNT(*) AS blocked FROM sys.dm_exec_requests WHERE blocking_session_id = ${spid}
+      `.pipe(
+          Effect.flatMap(([{ blocked }]) => blocked > 0 ? Effect.void : Effect.fail("not blocked yet")),
+          Effect.retry({ schedule: Schedule.spaced("50 millis"), times: 100 }),
+          Effect.orDie
+        )
+        yield* offerBlocked.open
+        yield* Fiber.join(legacy)
+
+        const exit = yield* Fiber.join(offer)
+        assert.isTrue(Exit.isSuccess(exit), String(exit))
+        const rows = yield* sql<{ readonly id: string; readonly element: string }>`
+        SELECT id, element FROM ${sql(tableName)} ORDER BY id
+      `
+        assert.deepStrictEqual(rows, [
+          { id: "earlier", element: JSON.stringify("earlier") },
+          { id: "job", element: JSON.stringify("legacy") },
           { id: "other", element: JSON.stringify("other") }
         ])
       }).pipe(TestClock.withLive),
