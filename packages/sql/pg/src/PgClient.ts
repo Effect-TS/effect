@@ -85,7 +85,7 @@ export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
  * @category models
  * @since 4.0.0
  */
-export interface PgClientConfig {
+export interface PgClientConfig<R = never> {
   readonly url?: Redacted.Redacted | undefined
 
   readonly host?: string | undefined
@@ -169,6 +169,11 @@ export interface PgClientConfig {
    * slot while it runs, and a request may run it many times. With `makeClient`
    * and `acquireForStream`, it runs before a stream opens its own connection.
    *
+   * Services the hook requires become requirements of the client constructor
+   * or layer and are captured when the client is built. Services in the
+   * consuming fiber take precedence. The client's `config` holds the hook with
+   * those services already provided.
+   *
    * **Example** (Reading request context on each checkout)
    *
    * ```ts
@@ -188,7 +193,7 @@ export interface PgClientConfig {
    * })
    * ```
    */
-  readonly onAcquire?: Effect.Effect<void> | undefined
+  readonly onAcquire?: Effect.Effect<void, never, R> | undefined
 }
 
 /**
@@ -198,7 +203,7 @@ export interface PgClientConfig {
  * @category models
  * @since 4.0.0
  */
-export interface PgPoolConfig extends PgClientConfig {
+export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
   readonly idleTimeout?: Duration.Input | undefined
 
   readonly maxConnections?: number | undefined
@@ -215,7 +220,9 @@ export interface PgPoolConfig extends PgClientConfig {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+export const make = <R = never>(
+  options: PgPoolConfig<R>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgPool.make(options), (pool) =>
     makeImpl({
       acquirer: Effect.map(pool.get, makeConnection),
@@ -232,14 +239,14 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
  * @category constructors
  * @since 4.0.0
  */
-export const makeClient = (
-  options: PgClientConfig & {
+export const makeClient = <R = never>(
+  options: PgClientConfig<R> & {
     /**
      * Opens a separate connection for each stream and listener when enabled.
      */
     readonly acquireForStream?: boolean | undefined
   }
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> =>
   Effect.flatMap(PgConnection.make(options), (connection) =>
     makeImpl({
       acquirer: Effect.succeed(makeConnection(
@@ -254,18 +261,23 @@ export const makeClient = (
 /**
  * Builds the shared SQL facade around native connection acquirers.
  */
-const makeImpl = Effect.fnUntraced(function*(
+const makeImpl = Effect.fnUntraced(function*<R>(
   options: {
     readonly acquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly borrower?: Borrower | undefined
     readonly transactionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
-    readonly config: PgClientConfig
+    readonly config: PgClientConfig<R>
   }
-): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
-  const config = options.config
+): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
+  // Provide the hook's services from construction, letting the consuming
+  // fiber's context take precedence.
+  const hook = options.config.onAcquire
+  const context = yield* Effect.context<R>()
+  const onAcquire = hook &&
+    Effect.updateContext(hook, (current: Context.Context<never>) => Context.merge(context, current))
+  const config: PgClientConfig = { ...options.config, onAcquire }
   let { acquirer, borrower, listenAcquirer, transactionAcquirer } = options
-  const onAcquire = config.onAcquire
   if (onAcquire !== undefined) {
     acquirer = Effect.tap(acquirer, onAcquire)
     transactionAcquirer = Effect.tap(transactionAcquirer, onAcquire)
@@ -438,9 +450,9 @@ export const layerFrom = <E, R>(
  * @category layers
  * @since 4.0.0
  */
-export const layerConfig = (
-  config: Config.Wrap<PgPoolConfig>
-): Layer.Layer<PgClient | Client.SqlClient, Config.ConfigError | SqlError> =>
+export const layerConfig = <R = never>(
+  config: Config.Wrap<PgPoolConfig<R>>
+): Layer.Layer<PgClient | Client.SqlClient, Config.ConfigError | SqlError, R> =>
   layerFrom(Effect.flatMap(
     Config.unwrap(config),
     make
@@ -453,9 +465,9 @@ export const layerConfig = (
  * @category layers
  * @since 4.0.0
  */
-export const layer = (
-  config: PgPoolConfig
-): Layer.Layer<PgClient | Client.SqlClient, SqlError> => layerFrom(make(config))
+export const layer = <R = never>(
+  config: PgPoolConfig<R>
+): Layer.Layer<PgClient | Client.SqlClient, SqlError, R> => layerFrom(make(config))
 
 /**
  * Creates the PostgreSQL statement compiler.
