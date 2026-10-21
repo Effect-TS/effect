@@ -189,6 +189,57 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
         assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
       }).pipe(TestClock.withLive))
 
+    it.effect("a leased HalfOpen key outlives a shorter idleTimeToLive, and freeing the slot restores it", () =>
+      Effect.gen(function*() {
+        const key = "retention-half-open"
+        const redis = yield* Redis.Redis
+        const store = yield* storeOn(redis, { probeLease: "1 second", idleTimeToLive: "300 millis" })
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "100 millis"
+        }).pipe(Effect.provideService(CircuitBreaker.CircuitBreakerStore, store))
+        const pttl = redis.send<number>("PTTL", `circuitbreaker:${key}`)
+
+        yield* fail(breaker, key)
+        yield* Effect.sleep("200 millis")
+        const probe = yield* held(breaker, key, Effect.fail("boom"))
+        // The remaining lease plus idleTimeToLive.
+        const leased = yield* pttl
+        assert.isAbove(leased, 1000)
+        assert.isAtMost(leased, 1300)
+
+        // Past idleTimeToLive, the first lease and the first expiry: only the
+        // renewals keep the key and the probe's slot.
+        yield* Effect.sleep("1500 millis")
+        assert.deepStrictEqual(yield* breaker.state(key), {
+          _tag: "HalfOpen",
+          key,
+          probing: true,
+          consecutiveOpenings: 1
+        })
+        assert.isAbove(yield* pttl, 300)
+
+        // The probe's failure still counts as the second opening.
+        yield* probe.release
+        const reopened = yield* breaker.state(key)
+        assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
+
+        // An interrupted probe frees the slot, so the key is back on
+        // idleTimeToLive.
+        yield* Effect.sleep("200 millis")
+        const interrupted = yield* held(breaker, key, Effect.void)
+        yield* Fiber.interrupt(interrupted.fiber)
+        assert.deepStrictEqual(yield* breaker.state(key), {
+          _tag: "HalfOpen",
+          key,
+          probing: false,
+          consecutiveOpenings: 2
+        })
+        const freed = yield* pttl
+        assert.isAbove(freed, 0)
+        assert.isAtMost(freed, 300)
+      }).pipe(TestClock.withLive))
+
     it.effect("an idle Closed key expires after idleTimeToLive", () =>
       Effect.gen(function*() {
         const key = "retention-idle"
