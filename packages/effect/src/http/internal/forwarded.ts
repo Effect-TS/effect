@@ -48,9 +48,9 @@ const isValidHost = (host: string): boolean => {
 }
 
 /**
- * Applies the hop selected by walking the chain from the right. The current
- * `remoteAddress` must be trusted; trusted hops are skipped and the first
- * untrusted one is the client. If every hop is trusted, the leftmost one is the
+ * Applies the hop selected by walking the chain from the right. The original
+ * transport peer (`peerAddress`) must be trusted; trusted hops are skipped and
+ * the first untrusted one is the client. If every hop is trusted, the leftmost one is the
  * client. An unparseable hop leaves the request unchanged.
  *
  * @internal
@@ -60,7 +60,7 @@ export const apply = (
   isTrusted: Predicate<NetAddress.IpAddress>,
   getHops: (headers: Headers.Headers) => ReadonlyArray<Hop>
 ): HttpServerRequest => {
-  const peer = parseNode(Option.getOrUndefined(request.remoteAddress))
+  const peer = parseNode(Option.getOrUndefined(request.peerAddress))
   if (peer === undefined || !isTrusted(peer)) return request
   const hops = getHops(request.headers)
   let index = hops.length - 1
@@ -99,6 +99,7 @@ export const xForwardedHops = (headers: Headers.Headers): ReadonlyArray<Hop> => 
 }
 
 const token = /^[!#$%&'*+.^_`|~0-9a-z-]+$/i
+const quotedString = /^"(?:[^"\\]|\\.)*"$/
 
 const addPair = (params: Map<string, string> | undefined, text: string): Map<string, string> | undefined => {
   text = text.trim()
@@ -109,7 +110,7 @@ const addPair = (params: Map<string, string> | undefined, text: string): Map<str
   if (!token.test(name)) return undefined
   let value = text.slice(separator + 1).trim()
   if (value.startsWith("\"")) {
-    if (value.length < 2 || !value.endsWith("\"")) return undefined
+    if (!quotedString.test(value)) return undefined
     value = value.slice(1, -1).replace(/\\(.)/g, "$1")
   } else if (!token.test(value)) {
     return undefined
