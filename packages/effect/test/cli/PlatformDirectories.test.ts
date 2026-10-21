@@ -17,6 +17,10 @@ describe("PlatformDirectories", () => {
         "/custom/myapp"
       )
       assert.strictEqual(
+        yield* resolve("linux", { HOME: "/home/ada", XDG_CONFIG_HOME: "/custom\\" }),
+        "/custom\\/myapp"
+      )
+      assert.strictEqual(
         yield* resolve("win32", {
           USERPROFILE: "C:\\Users\\ada",
           APPDATA: "C:\\AppData",
