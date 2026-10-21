@@ -27,6 +27,20 @@ describe("Fiber", () => {
       assert.deepStrictEqual(yield* Fiber.await(fiber), Exit.succeed("closed"))
     }))
 
+  it.effect("runIn does not wait for the fiber that runs a close effect obtained elsewhere", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      let close = Effect.void
+      const fiber = yield* Effect.suspend(() => close).pipe(
+        Effect.uninterruptible,
+        Effect.as("closed"),
+        Effect.forkDetach
+      )
+      Fiber.runIn(fiber, scope)
+      close = Scope.closeUnsafe(scope, Exit.void) ?? Effect.void
+      assert.deepStrictEqual(yield* Fiber.await(fiber), Exit.succeed("closed"))
+    }))
+
   it("notifies all observers when an observer cancels during exit", () => {
     const fiber = Effect.runFork(Effect.never)
     const observed: Array<number> = []
