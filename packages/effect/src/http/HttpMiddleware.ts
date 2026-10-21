@@ -76,6 +76,14 @@ export declare namespace HttpMiddleware {
 /**
  * Defines an `HttpMiddleware` while preserving its precise type.
  *
+ * **Gotchas**
+ *
+ * TypeScript cannot infer the `app` parameter of an `Effect.fn` or
+ * `Effect.fnUntraced` generator passed directly to `make`, so `app` becomes
+ * `any` and the middleware loses the app's error and service types. Prefer an
+ * arrow function, as in the first example. To use `Effect.fn`, declare `E`
+ * and `R` type parameters and annotate `app` with them.
+ *
  * **Example** (Defining middleware)
  *
  * ```ts import.meta.vitest
@@ -95,14 +103,6 @@ export declare namespace HttpMiddleware {
  * // Effect<HttpServerResponse, "Unauthorized", HttpServerRequest>
  * const withHeaderApp = withHeader(app)
  * ```
- *
- * **Gotchas**
- *
- * TypeScript cannot infer the `app` parameter of an `Effect.fn` or
- * `Effect.fnUntraced` generator passed directly to `make`, so `app` becomes
- * `any` and the middleware loses the app's error and service types. Prefer an
- * arrow function as above. To use `Effect.fn`, declare `E` and `R` type
- * parameters and annotate `app` with them.
  *
  * **Example** (Defining middleware with Effect.fn)
  *
