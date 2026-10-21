@@ -1490,15 +1490,44 @@ export const makeStoreSql: (
         INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
         VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `,
-    mssql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
-      sql`
-        MERGE ${tableNameSql} WITH (HOLDLOCK) AS target
-        USING (SELECT ${id} AS id, ${name} AS queue_name) AS source
-        ON target.id = source.id AND target.queue_name = source.queue_name
-        WHEN NOT MATCHED THEN
-          INSERT (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-          VALUES (source.id, source.queue_name, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow});
-      `,
+    // Avoids MERGE WITH (HOLDLOCK), whose range locks deadlock concurrent offers.
+    // - READCOMMITTEDLOCK makes the check wait for an uncommitted duplicate, even
+    //   under read committed snapshot.
+    // - A duplicate inserted after the check raises 2601/2627. XACT_ABORT is off
+    //   so that error doesn't doom the caller's transaction; it is restored
+    //   before rethrowing any other error.
+    // - The nested sp_executesql restores XACT_ABORT on exit, including on
+    //   cancellation.
+    mssql: () => {
+      // matches the SQL Server compiler's identifier escaping
+      const escape = (name: string) => `[${name.replace(/\]/g, "]]").replace(/\./g, "].[")}]`
+      const table = escape(tableName)
+      const offerSql = `
+        SET XACT_ABORT OFF;
+        BEGIN TRY
+          IF NOT EXISTS (
+            SELECT 1 FROM ${table} WITH (READCOMMITTEDLOCK, FORCESEEK, INDEX(${escape(`idx_${tableName}_id`)}))
+            WHERE id = @id AND queue_name = @name
+          )
+            INSERT INTO ${table} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+            VALUES (@id, @name, @element, 'pending', 0, @visible_at, SYSDATETIME(), SYSDATETIME());
+        END TRY
+        BEGIN CATCH
+          IF ERROR_NUMBER() NOT IN (2601, 2627) OR XACT_STATE() = -1
+          BEGIN
+            IF @xact_abort <> 0 SET XACT_ABORT ON;
+            THROW;
+          END
+        END CATCH`
+      return (id: string, name: string, element: string, visibleAt: Fragment) =>
+        sql`
+          DECLARE @visible_at DATETIME2 = ${visibleAt};
+          DECLARE @xact_abort INT = @@OPTIONS & 16384;
+          EXEC sp_executesql ${offerSql},
+            N'@id NVARCHAR(MAX), @name NVARCHAR(MAX), @element NVARCHAR(MAX), @visible_at DATETIME2, @xact_abort INT',
+            @id = ${id}, @name = ${name}, @element = ${element}, @visible_at = @visible_at, @xact_abort = @xact_abort;
+        `
+    },
     // sqlite
     orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
@@ -1694,10 +1723,13 @@ export const makeStoreSql: (
             }),
             sql.withTransaction
           ),
+        // READPAST skips rows locked by another claim or a settlement instead
+        // of deadlocking with them
         mssql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
-              SELECT TOP ${sql.literal(size.toString())} sequence FROM ${tableNameSql}
+              SELECT TOP ${sql.literal(size.toString())} sequence
+              FROM ${tableNameSql} WITH (UPDLOCK, READPAST, ROWLOCK)
               WHERE queue_name = ${name}
               AND state = 'pending'
               AND attempts < ${maxAttempts}

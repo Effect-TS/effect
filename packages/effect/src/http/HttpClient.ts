@@ -46,6 +46,7 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as tracing from "./internal/tracing.ts"
+import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -1665,6 +1666,37 @@ export const withScope = <E, R>(
 /**
  * Enables following HTTP redirects up to a specified number of times.
  *
+ * **Details**
+ *
+ * Follows `3xx` responses that include a `Location` header, up to
+ * `maxRedirects` (default `10`) times. When the limit is reached or the
+ * `Location` header is not a valid URL, the last redirect response is returned.
+ *
+ * **Gotchas**
+ *
+ * This only sees redirects that the underlying client returns. `fetch`
+ * follows redirects itself by default, so with `FetchHttpClient` provide
+ * `FetchHttpClient.RequestInit` with `{ redirect: "manual" }`. Browsers return
+ * an opaque response without a `Location` header for manual redirects, so
+ * this cannot follow them there.
+ *
+ * **Example** (Following redirects with FetchHttpClient)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { FetchHttpClient, HttpClient } from "effect/http"
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.followRedirects(5)
+ *   )
+ *   return yield* client.get("https://example.com/redirect")
+ * }).pipe(
+ *   Effect.provide(FetchHttpClient.layer),
+ *   Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" })
+ * )
+ * ```
+ *
  * @stability unstable
  * @category redirects
  * @since 4.0.0
@@ -1696,7 +1728,11 @@ export const followRedirects: {
               ) {
                 return Effect.succeed(response)
               }
-              const url = new URL(response.headers.location, response.request.url)
+              const urlResult = Url.fromString(response.headers.location, response.request.url)
+              if (Result.isFailure(urlResult)) {
+                return Effect.succeed(response)
+              }
+              const url = urlResult.success
               const request = currentRequest ?? response.request
               let nextRequest = request
               if (
@@ -1924,6 +1960,13 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
 
   get upgrade() {
     return this.applyInterrupt(this.original.upgrade)
+  }
+
+  [WebSourceSymbol]() {
+    const source = getWebSource(this.original)
+    // A handed-over Web body outlives this wrapper, so collecting it must not abort the request.
+    if (source !== undefined) responseRegistry.unregister(this.original)
+    return source
   }
 
   get stream() {

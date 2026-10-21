@@ -656,6 +656,33 @@ describe("BunHttpServer", () => {
       assert.strictEqual(yield* Deferred.await(logged), 101)
     }).pipe(Effect.timeout("5 seconds")), 10000)
 
+  it.effect("logs status 101 when the client closes an upgraded WebSocket", () =>
+    Effect.gen(function*() {
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+      })
+      const app = yield* HttpRouter.toHttpEffect(HttpRouter.add(
+        "GET",
+        "/",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          const reader = yield* socket.reader
+          yield* reader.pull.pipe(Effect.forever, Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ))
+      const { forceStop, server } = yield* makeForceStoppableServer
+      yield* server.serve(app, HttpMiddleware.logger).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() => Effect.sync(forceStop))
+      const port = (server.address as NetAddress.InetAddress).port
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/`)
+      ws.addEventListener("open", () => ws.close(1000))
+      assert.strictEqual(yield* Deferred.await(logged), 101)
+    }).pipe(Effect.timeout("5 seconds")), 10000)
+
   it.effect("fails a concurrent reader waiting behind a closed reader", () =>
     Effect.gen(function*() {
       const secondReaderFailed = yield* Deferred.make<boolean>()

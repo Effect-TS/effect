@@ -2233,7 +2233,12 @@ export const takeWhile: {
 })
 
 /**
- * Creates a Chunks of unique values, in order, from all given Chunks.
+ * Computes the union of two chunks using Effect equality.
+ *
+ * **Gotchas**
+ *
+ * Each input must already be deduplicated. Use {@link dedupe} to remove
+ * duplicates from an input first.
  *
  * **Example** (Unioning chunks)
  *
@@ -2243,11 +2248,6 @@ export const takeWhile: {
  * const chunk1 = Chunk.make(1, 2, 3)
  * const chunk2 = Chunk.make(3, 4, 5)
  * Chunk.toArray(Chunk.union(chunk1, chunk2)) // => [1, 2, 3, 4, 5]
- *
- * // Handles duplicates within the same chunk
- * const withDupes1 = Chunk.make(1, 1, 2)
- * const withDupes2 = Chunk.make(2, 3, 3)
- * Chunk.toArray(Chunk.union(withDupes1, withDupes2)) // => [1, 2, 3]
  * ```
  *
  * @stability stable

@@ -127,8 +127,8 @@ const ResultProto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
-  [Equal.symbol](this: AsyncResult<any, any>, that: AsyncResult<any, any>): boolean {
-    if (this._tag !== that._tag || this.waiting !== that.waiting) {
+  [Equal.symbol](this: AsyncResult<any, any>, that: Equal.Equal): boolean {
+    if (!isAsyncResult(that) || this._tag !== that._tag || this.waiting !== that.waiting) {
       return false
     }
     switch (this._tag) {

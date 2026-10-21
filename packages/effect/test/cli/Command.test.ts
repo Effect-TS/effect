@@ -1,6 +1,16 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
-import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag, Prompt } from "effect/cli"
+import { Context, Effect, Exit, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
+import {
+  Argument,
+  CliConfig,
+  CliError,
+  CliOutput,
+  Command,
+  Flag,
+  GlobalFlag,
+  Prompt,
+  TerminalCapabilities
+} from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
@@ -956,6 +966,22 @@ describe("Command", () => {
         assert.deepStrictEqual(yield* TestConsole.errorLines, ["CUSTOM ERROR: Deployment failed"])
       }))
 
+    it.effect("should color built-in output from TerminalCapabilities", () =>
+      Effect.gen(function*() {
+        const capabilities = { canColor: true, canAnimate: false, canPrompt: false }
+        const run = Command.runWith(Command.make("tool"), { version: "1.2.3" })(["--version"])
+
+        yield* run.pipe(Effect.provideService(TerminalCapabilities.TerminalCapabilities, capabilities))
+        yield* run.pipe(
+          Effect.provideService(TerminalCapabilities.TerminalCapabilities, capabilities),
+          Effect.provideService(CliOutput.Formatter, CliOutput.defaultFormatter({ colors: false }))
+        )
+
+        const [colored, custom] = yield* TestConsole.logLines
+        assert.include(String(colored), "\x1b[1mtool")
+        assert.strictEqual(String(custom), "tool v1.2.3")
+      }).pipe(Effect.provide(TestLayerWithoutFormatter)))
+
     it.effect("should render UserError once when running wizard-generated arguments", () =>
       Effect.gen(function*() {
         const failure = new CliError.UserError({ cause: "Deployment failed" })
@@ -1854,6 +1880,91 @@ describe("Command", () => {
         ])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should not accept --no-<flag> for boolean flags without negation", () =>
+      Effect.gen(function*() {
+        const captured: Array<boolean> = []
+
+        const cmd = Command.make("tool", {
+          unsafe: Flag.Boolean("unsafe").pipe(
+            Flag.withDefault(false),
+            Flag.withoutNegation
+          )
+        }, (config) => Effect.sync(() => captured.push(config.unsafe)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd(["--unsafe"])
+        yield* runCmd(["--no-unsafe"]).pipe(Effect.catchTag("ShowHelp", () => Effect.void))
+
+        assert.deepStrictEqual(captured, [true])
+
+        const stderr = yield* TestConsole.errorLines
+        assert.isTrue(stderr.join("\n").includes("Unrecognized flag: --no-unsafe"))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should negate boolean flags through a custom negation name", () =>
+      Effect.gen(function*() {
+        const captured: Array<boolean> = []
+
+        const cmd = Command.make("tool", {
+          validate: Flag.Boolean("validate").pipe(
+            Flag.withDefault(true),
+            Flag.withNegation("skip-validate")
+          )
+        }, (config) => Effect.sync(() => captured.push(config.validate)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd([])
+        yield* runCmd(["--skip-validate"])
+        yield* runCmd(["--no-validate"]).pipe(Effect.catchTag("ShowHelp", () => Effect.void))
+
+        assert.deepStrictEqual(captured, [true, false])
+
+        const stderr = yield* TestConsole.errorLines
+        assert.isTrue(stderr.join("\n").includes("Unrecognized flag: --no-validate"))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should reject boolean flags that share a negation name", () =>
+      Effect.gen(function*() {
+        const run = (flags: Record<string, Flag.Flag<boolean>>) =>
+          Effect.exit(Effect.suspend(() => Command.runWith(Command.make("tool", flags), { version: "1.0.0" })([])))
+
+        const sharedCustom = yield* run({
+          validate: Flag.Boolean("validate").pipe(Flag.withNegation("skip")),
+          verify: Flag.Boolean("verify").pipe(Flag.withNegation("skip"))
+        })
+        const customMatchesDefault = yield* run({
+          bar: Flag.Boolean("bar"),
+          foo: Flag.Boolean("foo").pipe(Flag.withNegation("no-bar"))
+        })
+
+        assert.isTrue(Exit.hasDies(sharedCustom))
+        assert.isTrue(Exit.hasDies(customMatchesDefault))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should resolve a disabled negation name to a conflicting alias", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [boolean, boolean]> = []
+
+        const cmd = Command.make("tool", {
+          prompt: Flag.Boolean("prompt").pipe(
+            Flag.withDefault(true),
+            Flag.withoutNegation
+          ),
+          force: Flag.Boolean("force").pipe(
+            Flag.withAlias("no-prompt"),
+            Flag.withDefault(false)
+          )
+        }, (config) => Effect.sync(() => captured.push([config.prompt, config.force] as const)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd(["--no-prompt"])
+
+        assert.deepStrictEqual(captured, [[true, true]])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should prefer canonical negation over conflicting aliases", () =>
       Effect.gen(function*() {
         const captured: Array<readonly [boolean, boolean]> = []
@@ -2484,6 +2595,27 @@ describe("Command", () => {
           { command: "myapp root", description: "Run root command" }
         ])
       }))
+
+    it.effect("should resolve examples from the command path", () =>
+      Effect.gen(function*() {
+        const deploy = Command.make("deploy").pipe(
+          Command.withExamples(({ commandPath }) => [
+            { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
+          ]),
+          Command.withSubcommands([Command.make("status")]),
+          Command.withSharedFlags({ verbose: Flag.Boolean("verbose") })
+        )
+        const tool = Command.make("tool").pipe(Command.withSubcommands([deploy]))
+
+        yield* Command.runWith(deploy, { version: "1.0.0" })(["--help"])
+        const standalone = (yield* TestConsole.logLines).join("\n").split("\n").map((line) => line.trim())
+        assert.include(standalone, "deploy --yes")
+        assert.notInclude(standalone, "tool deploy --yes")
+
+        yield* Command.runWith(tool, { version: "1.0.0" })(["deploy", "--help"])
+        const mounted = (yield* TestConsole.logLines).join("\n").split("\n").map((line) => line.trim())
+        assert.include(mounted, "tool deploy --yes")
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("help docs", () => {

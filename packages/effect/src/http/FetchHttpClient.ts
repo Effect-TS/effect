@@ -48,6 +48,8 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
  *
  * Request-specific method, headers, body, and abort signal are supplied by the client when a request is executed.
  *
+ * @see {@link HttpClient.followRedirects} for following redirects in the client, which needs `{ redirect: "manual" }` here
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -102,7 +104,8 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
         if (!uploadController) return original
         if (response.body === null) uploadController.abort()
         // Finishing or releasing either response reader ends the upload, not
-        // merely receiving headers. Keep the original response and its caches.
+        // merely receiving headers. Keep the original response and its caches,
+        // and inherit its Web source so `toWeb` hands over the original body.
         return Object.create(original, {
           ...Object.fromEntries(
             (["arrayBuffer", "text", "json", "formData", "urlParamsBody"] as const).map((key) => [key, {
@@ -160,7 +163,9 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * **Gotchas**
  *
  * Fetch behavior comes from the runtime's implementation, so CORS, cookies,
- * redirects, abort handling, and streaming support can vary by platform. Trace
+ * redirects, abort handling, and streaming support can vary by platform.
+ * `fetch` follows redirects itself by default, so `HttpClient.followRedirects`
+ * has no effect unless `RequestInit` sets `redirect: "manual"`. Trace
  * propagation is on by default, and a browser preflight fails unless the
  * target allows `b3` and `traceparent`. Stream request bodies are sent as Web
  * streams with `duplex: "half"`, and any `content-length` header is removed

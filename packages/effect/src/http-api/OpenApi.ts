@@ -229,9 +229,20 @@ export const annotations: (
   transform: Transform
 })
 
-const defaultOptions: SchemaRepresentation.ToRepresentationOptions = {}
+/**
+ * Options for {@link fromApi}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface FromApiOptions
+  extends SchemaRepresentation.ToRepresentationOptions, Pick<Schema.ToJsonSchemaOptions, "includeAnnotationKey">
+{}
+
+const defaultOptions: FromApiOptions = {}
 const apiCache = new WeakMap<
-  SchemaRepresentation.ToRepresentationOptions,
+  FromApiOptions,
   WeakMap<HttpApi.Constraint, OpenAPISpec>
 >()
 
@@ -285,7 +296,8 @@ function processAnnotation<Services, S, I>(
  * integrates annotations like descriptions, summaries, external documentation,
  * and overrides. The optional reference policy receives canonical JSON encoded
  * ASTs and controls which schemas are extracted into components. By default, only candidates with resolved identifiers
- * become references; anonymous non-recursive schemas remain inline.
+ * become references; anonymous non-recursive schemas remain inline. The optional `includeAnnotationKey` predicate selects
+ * custom schema annotation keys, such as `x-*` vendor extensions, to include in the generated schemas.
  *
  * **Gotchas**
  *
@@ -299,7 +311,7 @@ function processAnnotation<Services, S, I>(
  */
 export function fromApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>,
-  options?: SchemaRepresentation.ToRepresentationOptions
+  options?: FromApiOptions
 ): OpenAPISpec {
   const resolvedOptions = options ?? defaultOptions
   let cache = apiCache.get(resolvedOptions)
@@ -329,7 +341,7 @@ type SchemaOp =
 
 function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>,
-  options: SchemaRepresentation.ToRepresentationOptions
+  options: FromApiOptions
 ): OpenAPISpec {
   let spec: OpenAPISpec = {
     openapi: "3.1.0",
@@ -423,10 +435,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       }
 
       const paramNames = HttpApiPath.getParamNames(endpoint.params)
-      const path = endpoint.path.replace(
-        /:(\w+)\??/g,
-        (match, key: string) => paramNames === undefined || paramNames.has(key) ? `{${key}}` : match
-      )
+      const path = HttpApiPath.replaceParams(endpoint.path, paramNames, (key) => `{${key}}`)
       const method = endpoint.method.toLowerCase() as Lowercase<HttpMethod.HttpMethod>
       const isQuery = method === "query"
       const operationKey = isQuery ? "QUERY" : method
@@ -702,7 +711,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
 
 function compileSchemaOps(
   schemaOps: Array<SchemaOp>,
-  options: SchemaRepresentation.ToRepresentationOptions,
+  options: FromApiOptions,
   components: JsonSchema.Definitions
 ): void {
   if (!Arr.isArrayNonEmpty(schemaOps)) return
@@ -721,7 +730,7 @@ function compileSchemaOps(
   const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
     InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
       { representations, references },
-      { onExcessProperty: "error" }
+      { onExcessProperty: "error", includeAnnotationKey: options.includeAnnotationKey }
     )
   )
 

@@ -500,6 +500,9 @@ importers:
         specifier: ^8.12.2
         version: 8.12.2
     devDependencies:
+      '@testcontainers/mssqlserver':
+        specifier: ^12.2.1
+        version: 12.2.1(supports-color@10.2.2)
       '@testcontainers/mysql':
         specifier: ^12.2.1
         version: 12.2.1(supports-color@10.2.2)

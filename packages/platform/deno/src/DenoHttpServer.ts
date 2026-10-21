@@ -10,6 +10,11 @@
  * response while still reading the request payload can stall
  * (denoland/deno#36966).
  *
+ * `Deno.serve` negotiates HTTP/2 on its own: over TLS with browsers, and in
+ * cleartext with clients that request it. Deno 2.8.3 to 2.9.2 panic and exit
+ * when an HTTP/2 client cancels a request while its handler is still running
+ * (denoland/deno#36053), so this package requires Deno 2.9.3 or newer.
+ *
  * @stability unstable
  * @since 4.0.0
  */

@@ -1452,6 +1452,84 @@ describe.concurrent("Sharding", () => {
       Layer.merge(TestEntityState.layer)
     ))), 20_000)
 
+  it.effect("reads durable messages from storage when a late entity registers", () =>
+    Effect.gen(function*() {
+      const config = ShardingConfig.layer({
+        entityMailboxCapacity: 10,
+        entityRegistrationTimeout: 6000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: "1 hour",
+        sendRetryInterval: 100,
+        refreshAssignmentsInterval: 0
+      })
+      const env = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const resetStarted = yield* Deferred.make<void>()
+      const releaseReset = yield* Deferred.make<void>()
+      const gateReset = <E>(reset: Effect.Effect<void, E>) =>
+        Deferred.succeed(resetStarted, void 0).pipe(
+          Effect.andThen(Deferred.await(releaseReset)),
+          Effect.andThen(reset)
+        )
+      const delayedEnv = TestEntityNoState.pipe(
+        Layer.provide(Layer.effectDiscard(Effect.sleep(1000))),
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config),
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          resetAddress: (address) => gateReset(storage.resetAddress(address)),
+          resetAddresses: (addresses) => gateReset(storage.resetAddresses(addresses))
+        }))
+      )
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        yield* client.RequestWithKey({ key: "late-registration" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+      }).pipe(
+        Effect.provide(env),
+        Effect.scoped
+      )
+      assert.strictEqual(driver.unprocessed.size, 1)
+
+      const fiber = yield* Effect.never.pipe(
+        Effect.provide(delayedEnv),
+        Effect.scoped,
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      // the startup storage read sees the message before the entity registers,
+      // and the entity registers while the claim reset is still pending
+      yield* TestClock.adjust(999)
+      assert.isTrue(yield* Deferred.isDone(resetStarted))
+      yield* TestClock.adjust(1)
+
+      // the reset must complete before the read woken by registration, without
+      // waiting for the poll interval or new client traffic
+      yield* Deferred.succeed(releaseReset, void 0)
+      yield* Queue.offer(state.messages, void 0)
+      yield* TestClock.adjust(100)
+
+      assert.strictEqual(driver.replyIds.size, 1)
+      assert.strictEqual(driver.unprocessed.size, 0)
+      yield* Fiber.interrupt(fiber)
+    }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+      Layer.provide(ShardingConfig.layer({})),
+      Layer.merge(TestEntityState.layer)
+    ))), 20_000)
+
   it.effect("defects durable messages when no entity ever registers", () =>
     Effect.gen(function*() {
       const config = ShardingConfig.layer({

@@ -38,6 +38,11 @@ import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as Http from "node:http"
 import * as Http2 from "node:http2"
+import {
+  describeHttpServerProtocol,
+  http2Get,
+  layerTestClient
+} from "../../node-shared/test/HttpServerHttp2.test-utils.ts"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -48,6 +53,21 @@ const IdParams = Schema.Struct({
 })
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 const fixture = `${import.meta.dirname}/fixtures/text.txt`
+
+const ca = Deno.readTextFileSync(new URL("./fixtures/tls/ca.pem", import.meta.url))
+const cert = Deno.readTextFileSync(new URL("./fixtures/tls/cert.pem", import.meta.url))
+const key = Deno.readTextFileSync(new URL("./fixtures/tls/key.pem", import.meta.url))
+
+// Deno's fetch client speaks HTTP/2 with prior knowledge over cleartext
+const layerHttp2Client = (options?: Omit<Deno.CreateHttpClientOptions, "http1" | "http2">) =>
+  FetchHttpClient.layer.pipe(Layer.provide(
+    Layer.effect(FetchHttpClient.RequestInit)(
+      Effect.acquireRelease(
+        Effect.sync(() => Deno.createHttpClient({ ...options, http1: false, http2: true })),
+        (client) => Effect.sync(() => client.close())
+      ).pipe(Effect.map((client) => ({ client }) as RequestInit))
+    )
+  ))
 
 describe("DenoHttpServer", () => {
   describe("serve scope ownership", { concurrent: false }, () => {
@@ -130,6 +150,23 @@ describe("DenoHttpServer", () => {
         assert.strictEqual(finalized, true)
       }).pipe(Effect.timeout("2 seconds")))
   })
+
+  // After the sequential block above, which replaces `globalThis.Response` and cancels streaming bodies
+  describeHttpServerProtocol("HTTP/1.1", DenoHttpServer.layerTest)
+  describeHttpServerProtocol(
+    "h2c",
+    layerTestClient("http").pipe(
+      Layer.provide(layerHttp2Client()),
+      Layer.provideMerge(DenoHttpServer.layerServer({ hostname: "127.0.0.1", port: 0, onListen: () => {} }))
+    )
+  )
+  describeHttpServerProtocol(
+    "HTTP/2 over TLS",
+    layerTestClient("https").pipe(
+      Layer.provide(layerHttp2Client({ caCerts: [ca] })),
+      Layer.provideMerge(DenoHttpServer.layerServer({ hostname: "127.0.0.1", port: 0, cert, key, onListen: () => {} }))
+    )
+  )
 
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
@@ -847,6 +884,43 @@ describe("DenoHttpServer", () => {
       }
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
+  // Deno 2.8.3 to 2.9.2 panic when a cancelled HTTP/2 request is answered (denoland/deno#36053).
+  it.live("keeps serving after an HTTP/2 client cancels a request in flight", () =>
+    Effect.gen(function*() {
+      const started = Latch.makeUnsafe()
+      const interrupted = Latch.makeUnsafe()
+      yield* HttpRouter.use((router) =>
+        Effect.andThen(
+          router.add(
+            "GET",
+            "/slow",
+            Effect.andThen(started.open, Effect.never).pipe(Effect.onInterrupt(() => interrupted.open))
+          ),
+          router.add("GET", "/", Effect.succeed(HttpServerResponse.text("ok")))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+
+      yield* Effect.acquireUseRelease(
+        Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
+        (session) =>
+          Effect.gen(function*() {
+            const stream = session.request({ ":path": "/slow" }).end()
+            stream.on("error", () => {})
+            yield* started.await
+            stream.close(Http2.constants.NGHTTP2_CANCEL)
+            yield* interrupted.await
+          }),
+        (session) => Effect.sync(() => session.destroy())
+      )
+
+      assert.strictEqual(yield* http2Get(port, { ":path": "/" }), "ok")
+    }).pipe(
+      Effect.timeout("2 seconds"),
+      Effect.provide(DenoHttpServer.layerTest)
+    ), 5000)
+
   it.effect("excludes a query from the host of an absolute-form HTTP/1.1 target", () =>
     Effect.gen(function*() {
       yield* HttpServer.serveEffect(
@@ -1140,21 +1214,4 @@ const connectWebSocket = (url: string, onOpen: (socket: WebSocket) => void, mess
         return messages
       }),
     (socket) => Effect.sync(() => socket.close())
-  )
-
-const http2Get = (port: number, headers: Http2.OutgoingHttpHeaders) =>
-  Effect.acquireUseRelease(
-    Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
-    (session) =>
-      Effect.callback<string, Error>((resume) => {
-        const stream = session.request(headers)
-        let body = ""
-        stream.setEncoding("utf8")
-        stream.on("data", (chunk: string) => {
-          body += chunk
-        })
-        stream.on("end", () => resume(Effect.succeed(body)))
-        stream.on("error", (error) => resume(Effect.fail(error)))
-      }),
-    (session) => Effect.callback<void>((resume) => session.close(() => resume(Effect.void)))
   )

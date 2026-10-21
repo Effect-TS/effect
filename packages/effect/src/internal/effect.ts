@@ -344,13 +344,18 @@ export const causePrettyError = (
   annotations?: ReadonlyMap<string, unknown>,
   options?: {
     readonly includeCauseInStack?: boolean | undefined
-  }
+  },
+  seen: Set<unknown> = new Set()
 ): Error => {
   const kind = typeof original
   let error: Error
   if (original && kind === "object") {
+    seen.add(original)
+    const cause = original.cause
     error = new globalThis.Error(causePrettyMessage(original), {
-      cause: original.cause !== undefined ? causePrettyError(original.cause as any) : undefined
+      cause: cause !== undefined && !seen.has(cause)
+        ? causePrettyError(cause as any, undefined, undefined, seen)
+        : undefined
     })
     if (typeof original.name === "string") {
       error.name = original.name
@@ -494,6 +499,7 @@ const fiberIdStore = { id: 0 }
 
 interface AsyncContext {
   runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
+  emitDestroy(): void
 }
 
 const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
@@ -613,7 +619,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
-      return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      try {
+        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      } finally {
+        // Each captured context is resumed once, so release it for async_hooks
+        // consumers like vitest's detectAsyncLeaks.
+        asyncContext.emitDestroy()
+      }
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined

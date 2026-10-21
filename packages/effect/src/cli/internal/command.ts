@@ -48,6 +48,7 @@ export interface CommandInternal<Name extends string, Input, E, R, ContextInput>
     commandPath: ReadonlyArray<string>
   ) => Effect.Effect<void, E | CliError.CliError, R | Environment>
   readonly buildHelpDoc: (commandPath: ReadonlyArray<string>) => HelpDoc
+  readonly resolveExamples: (commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>
 }
 
 /* ========================================================================== */
@@ -99,7 +100,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   readonly shortDescription?: string | undefined
   readonly alias?: string | undefined
   readonly unlisted?: boolean | undefined
-  readonly examples?: ReadonlyArray<Command.Example> | undefined
+  readonly resolveExamples?: ((commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>) | undefined
   readonly subcommands?: ReadonlyArray<SubcommandGroup> | undefined
   readonly parse?: ((input: ParsedTokens) => Effect.Effect<Input, CliError.CliError, Environment>) | undefined
   readonly parseContext?:
@@ -115,6 +116,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   const annotations = options.annotations ?? Context.empty()
   const globalFlags = options.globalFlags ?? []
   const subcommands = options.subcommands ?? []
+  const resolveExamples = options.resolveExamples ?? noExamples
 
   const handle = (
     input: Input,
@@ -188,7 +190,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
       })
     }
 
-    const examples: ReadonlyArray<ExampleDoc> = options.examples ?? []
+    const examples: ReadonlyArray<ExampleDoc> = resolveExamples(commandPath)
 
     return {
       description: options.description ?? "",
@@ -204,7 +206,8 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   return Object.assign(Object.create(Proto), {
     [TypeId]: TypeId,
     name: options.name,
-    examples: options.examples ?? [],
+    examples: resolveExamples([options.name]),
+    resolveExamples,
     annotations,
     globalFlags,
     subcommands,
@@ -231,6 +234,8 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
 /* ========================================================================== */
 /* Helpers                                                                    */
 /* ========================================================================== */
+
+const noExamples = (): ReadonlyArray<Command.Example> => []
 
 /**
  * Converts a single flag param into a FlagDoc for help display.

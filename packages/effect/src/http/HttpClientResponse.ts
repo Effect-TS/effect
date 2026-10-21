@@ -25,6 +25,7 @@ import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
+import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -112,6 +113,42 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
  */
 export const fromWeb = (request: HttpClientRequest.HttpClientRequest, source: Response): HttpClientResponse =>
   new WebHttpClientResponse(request, source)
+
+/**
+ * Returns the original Web `Response` of a fetch-backed `HttpClientResponse`.
+ *
+ * **When to use**
+ *
+ * Use to hand a response body to a Web API without copying it, such as
+ * writing a fetched file to Cloudflare R2. The original body keeps runtime
+ * capabilities, such as workerd's known length, that a stream converted from
+ * `stream` does not.
+ *
+ * **Details**
+ *
+ * Returns `Some` for responses created with `fromWeb`, which includes every
+ * response from `FetchHttpClient`, and `None` for other backends.
+ *
+ * Calling `toWeb` hands the body over: the response is no longer aborted when
+ * the `HttpClientResponse` is garbage collected, so read or cancel the body
+ * through the returned `Response`.
+ *
+ * **Gotchas**
+ *
+ * The body can be read once. After converting, read it from the returned
+ * `Response`, not from the `HttpClientResponse`.
+ *
+ * After the hand-off, Effect aborts the request only when the scope of
+ * `HttpClient.withScope` closes. When the request streams its body, finishing
+ * or cancelling the returned body does not stop the upload; execute the
+ * request with `HttpClient.withScope` and close the scope to stop it.
+ *
+ * @stability unstable
+ * @category converting
+ * @since 4.0.0
+ */
+export const toWeb = (self: HttpClientResponse): Option.Option<globalThis.Response> =>
+  Option.fromUndefinedOr(getWebSource(self))
 
 /**
  * Creates a decoder for a response's status, headers, and JSON body using the supplied schema.
@@ -340,6 +377,10 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
 
   get remoteAddress(): Option.Option<string> {
     return Option.none()
+  }
+
+  [WebSourceSymbol](): globalThis.Response {
+    return this.source
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.HttpClientError> {

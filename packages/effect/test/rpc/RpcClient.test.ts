@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import {
   Cause,
   Clock,
+  Context,
   Deferred,
   Duration,
   Effect,
@@ -10,6 +11,8 @@ import {
   identity,
   Layer,
   Queue,
+  Request,
+  RequestResolver,
   Schedule,
   Schema,
   SchemaTransformation,
@@ -18,7 +21,9 @@ import {
   Tracer
 } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as HttpEffect from "effect/http/HttpEffect"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
@@ -27,6 +32,8 @@ import * as Worker from "effect/workers/Worker"
 import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import { vi } from "vitest"
 import type * as RpcClientErrorModule from "../../src/rpc/RpcClientError.ts"
+
+class GetUser extends Request.Class<{ id: number }, string> {}
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -102,6 +109,64 @@ const makeProtocolLayer = (
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
   body: string
 ) => makeProtocolLayerWithClient(serializationLayer, makeHttpClient(body))
+
+// Runs while the client encodes an Echo payload, so a test can suspend it.
+const EchoEncodeGate = Context.Reference<Effect.Effect<void>>("RpcClientTest/EchoEncodeGate", {
+  defaultValue: () => Effect.void
+})
+
+const EchoGroup = RpcGroup.make(
+  Rpc.make("Echo", {
+    payload: Schema.Struct({
+      value: Schema.String.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformEffect({
+          decode: Effect.succeed,
+          encode: Effect.fnUntraced(function*(value) {
+            yield* yield* EchoEncodeGate
+            return value
+          })
+        })
+      ))
+    }),
+    success: Schema.String
+  })
+)
+
+// Connects a batching HTTP client to a real RPC server, counting the HTTP
+// requests that cross between them.
+const makeBatchingClient = Effect.fnUntraced(function*(
+  serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
+  batch: { readonly window: Duration.Input; readonly maxSize?: number | undefined },
+  beforeRequest: Effect.Effect<void> = Effect.void
+) {
+  const httpEffect = yield* RpcServer.toHttpEffect(EchoGroup).pipe(
+    Effect.provide(Layer.mergeAll(
+      EchoGroup.toLayer({ Echo: ({ value }) => Effect.succeed(value) }),
+      serializationLayer
+    ))
+  )
+  const handler = HttpEffect.toWebHandler(httpEffect)
+  let httpRequests = 0
+  const httpClient = HttpClient.make((request) =>
+    Effect.gen(function*() {
+      httpRequests++
+      yield* beforeRequest
+      const webRequest = yield* Effect.orDie(HttpClientRequest.toWeb(request))
+      const response = yield* Effect.promise(() => handler(webRequest))
+      return HttpClientResponse.fromWeb(request, response)
+    })
+  )
+  const client = yield* RpcClient.make(EchoGroup).pipe(
+    Effect.provide(
+      RpcClient.layerProtocolHttp({ url: "http://localhost/rpc", batch }).pipe(
+        Layer.provideMerge(serializationLayer),
+        Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, httpClient))
+      )
+    )
+  )
+  return { client, httpRequests: () => httpRequests }
+})
 
 const assertEmptyResponseFailsRequest = Effect.fnUntraced(function*(
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
@@ -282,6 +347,45 @@ describe("RpcClient", () => {
         yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: "late" } })
         assert.strictEqual(decodedReplies, 0, `${terminal._tag} must release the response decoder`)
       }
+    }))
+
+  it.effect("decodes responses with the ParseOptions annotation", () =>
+    Effect.gen(function*() {
+      const batches: Array<ReadonlyArray<number>> = []
+      const resolver = RequestResolver.make<GetUser>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.map((entry) => entry.request.id))
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed(`user-${entry.request.id}`))
+        })
+      )
+      const User = Schema.Number.pipe(Schema.decodeTo(
+        Schema.String,
+        SchemaTransformation.transformEffect({
+          decode: (id) => Effect.request(new GetUser({ id }), resolver),
+          encode: (name) => Effect.succeed(Number(name.slice("user-".length)))
+        })
+      ))
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      const client = yield* RpcClient.make(RpcGroup.make(
+        Rpc.make("GetUsers", { success: Schema.Array(User) }).annotate(Rpc.ParseOptions, { concurrency: "unbounded" })
+      )).pipe(Effect.provideService(
+        RpcClient.Protocol,
+        RpcClient.Protocol.of({
+          codecFor: RpcSerialization.json.codecFor,
+          supportsAck: false,
+          supportsTransferables: false,
+          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+          send: (_clientId, message) => Effect.asVoid(Queue.offer(sent, message))
+        })
+      ))
+      const handle = yield* Deferred.await(received)
+      const fiber = yield* client.GetUsers().pipe(Effect.forkChild)
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: [1, 2, 3] } })
+
+      assert.deepStrictEqual(yield* Fiber.join(fiber), ["user-1", "user-2", "user-3"])
+      assert.deepStrictEqual(batches, [[1, 2, 3]])
     }))
 
   it.effect("releases socket routing after an encoding defect", () =>
@@ -589,6 +693,108 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "RpcClientDefect")
       assert.strictEqual(error.reason.message, "HTTP response ended before RPC request completed")
     }))
+
+  describe("HTTP batching", () => {
+    for (
+      const [name, serializationLayer] of [
+        ["json", RpcSerialization.layerJson],
+        ["ndjson", RpcSerialization.layerNdjson]
+      ] as const
+    ) {
+      it.effect(`sends ${name} requests made within the batch window as one HTTP request`, () =>
+        Effect.gen(function*() {
+          const { client, httpRequests } = yield* makeBatchingClient(serializationLayer, { window: "5 millis" })
+
+          const results = yield* Effect.all(
+            [client.Echo({ value: "first" }), client.Echo({ value: "second" })],
+            { concurrency: "unbounded" }
+          ).pipe(Effect.forkChild)
+          yield* TestClock.adjust("5 millis")
+
+          assert.deepStrictEqual(yield* Fiber.join(results), ["first", "second"])
+          assert.strictEqual(httpRequests(), 1)
+        }))
+    }
+
+    it.effect("sends a batch as soon as it reaches maxSize", () =>
+      Effect.gen(function*() {
+        const { client, httpRequests } = yield* makeBatchingClient(RpcSerialization.layerJson, {
+          window: "1 hour",
+          maxSize: 2
+        })
+
+        const results = yield* Effect.all(
+          [client.Echo({ value: "first" }), client.Echo({ value: "second" })],
+          { concurrency: "unbounded" }
+        )
+
+        assert.deepStrictEqual(results, ["first", "second"])
+        assert.strictEqual(httpRequests(), 1)
+      }))
+
+    it.effect("keeps a batch in flight when one of its callers is interrupted", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const { client, httpRequests } = yield* makeBatchingClient(
+          RpcSerialization.layerJson,
+          { window: "5 millis" },
+          Deferred.await(release)
+        )
+
+        const interrupted = yield* client.Echo({ value: "interrupted" }).pipe(Effect.forkChild)
+        const kept = yield* client.Echo({ value: "kept" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust("5 millis")
+        yield* Fiber.interrupt(interrupted)
+        yield* Deferred.succeed(release, void 0)
+
+        assert.strictEqual(yield* Fiber.join(kept), "kept")
+        assert.strictEqual(httpRequests(), 1)
+      }))
+
+    it.effect("interrupts batches started while the client is shutting down", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const cleanupStarted = yield* Deferred.make<void>()
+        const encodeRelease = yield* Deferred.make<void>()
+        const interrupted: Array<number> = []
+        let started = 0
+        // The first HTTP request holds shutdown open while it is interrupted.
+        const beforeRequest = Effect.suspend(() => {
+          const request = ++started
+          return Effect.onInterrupt(Effect.never, () =>
+            Effect.andThen(
+              request === 1
+                ? Deferred.succeed(cleanupStarted, void 0).pipe(Effect.andThen(Deferred.await(release)))
+                : Effect.void,
+              Effect.sync(() => interrupted.push(request))
+            ))
+        })
+        const scope = yield* Scope.make()
+        const { client, httpRequests } = yield* makeBatchingClient(
+          RpcSerialization.layerJson,
+          { window: "5 millis" },
+          beforeRequest
+        ).pipe(Scope.provide(scope))
+
+        yield* client.Echo({ value: "first" }).pipe(Effect.forkChild)
+        // admitted before shutdown, but still encoding its payload
+        yield* client.Echo({ value: "encoding" }).pipe(
+          Effect.provideService(EchoEncodeGate, Deferred.await(encodeRelease)),
+          Effect.forkChild
+        )
+        yield* TestClock.adjust("5 millis")
+        const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+        yield* Deferred.await(cleanupStarted)
+        yield* client.Echo({ value: "second" }).pipe(Effect.forkChild)
+        yield* Deferred.succeed(encodeRelease, void 0)
+        yield* TestClock.adjust("5 millis")
+        yield* Deferred.succeed(release, void 0)
+        yield* Fiber.join(closing)
+
+        // every HTTP request that started was interrupted by the shutdown
+        assert.strictEqual(interrupted.length, httpRequests())
+      }))
+  })
 
   it.effect("reports transient socket open errors without failing in-flight streams", () =>
     Effect.gen(function*() {

@@ -86,6 +86,22 @@ describe("OpenApi", () => {
     ])
   })
 
+  it("omits regex constraints from path templates", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("users").add(
+        HttpApiEndpoint.get("get", "/users/:id(\\d+)", {
+          params: { id: Schema.NumberFromString }
+        }),
+        HttpApiEndpoint.get("preview", "/previews/:id(^(?:\\d)+)preview", {
+          params: { id: Schema.NumberFromString }
+        })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(Object.keys(spec.paths), ["/users/{id}", "/previews/{id}preview"])
+  })
+
   it("keeps action paths literal when no parameter schema is declared", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("offers").add(HttpApiEndpoint.post("resolve", "/offers:resolve"))

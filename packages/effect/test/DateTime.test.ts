@@ -404,6 +404,16 @@ describe("DateTime", () => {
     })
   })
 
+  describe("formatIsoDate", () => {
+    it("keeps the day for extended years", () => {
+      strictEqual(DateTime.formatIsoDateUtc(DateTime.makeUnsafe("-000001-12-31T00:00:00.000Z")), "-000001-12-31")
+      const zoned = DateTime.makeZonedUnsafe("9999-12-31T23:30:00.000Z", {
+        timeZone: DateTime.zoneMakeOffset(60 * 60 * 1000)
+      })
+      strictEqual(DateTime.formatIsoDate(zoned), "+010000-01-01")
+    })
+  })
+
   describe("formatIsoOffset", () => {
     it.effect("correctly adds offset", () =>
       Effect.gen(function*() {
@@ -490,6 +500,13 @@ describe("DateTime", () => {
         assertSome(Option.map(dt, (value) => DateTime.zoneToString(value.zone)), "Pacific/Auckland")
         assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T08:12:34.112Z")
       }))
+
+    it.effect("parses a compact offset without colon", () =>
+      Effect.gen(function*() {
+        const dt = DateTime.makeZonedFromString("2024-07-21T20:12:34.112+0530")
+        assertSome(Option.map(dt, (value) => value.zone._tag), "Offset")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T14:42:34.112Z")
+      }))
   })
 
   it("parts equality", () => {
@@ -506,6 +523,24 @@ describe("DateTime", () => {
     ;(date as any).getTimezoneOffset = () => -60
     const dt = DateTime.makeZonedUnsafe(date)
     deepStrictEqual(dt.zone, DateTime.zoneMakeOffset(60 * 60 * 1000))
+  })
+
+  it("accepts GMT as a named timezone", () => {
+    const dt = DateTime.makeZonedUnsafe("2024-01-01T00:00:00Z", { timeZone: "GMT" })
+    strictEqual(dt.toJSON(), "2024-01-01T00:00:00.000Z")
+    strictEqual(dt.zone._tag, "Named")
+  })
+
+  describe("zoneFromString", () => {
+    it("parses GMT as a Named zone", () => {
+      assertSome(Option.map(DateTime.zoneFromString("GMT"), (zone) => zone._tag), "Named")
+      assertSome(DateTime.zoneFromString("GMT+05:30"), DateTime.zoneMakeOffset(5.5 * 60 * 60 * 1000))
+    })
+
+    it("parses a compact offset without colon", () => {
+      assertSome(DateTime.zoneFromString("+0530"), DateTime.zoneMakeOffset(5.5 * 60 * 60 * 1000))
+      assertSome(DateTime.zoneFromString("-0530"), DateTime.zoneMakeOffset(-5.5 * 60 * 60 * 1000))
+    })
   })
 
   describe("toUtc", () => {
@@ -533,6 +568,13 @@ describe("DateTime", () => {
 
       strictEqual(DateTime.toDate(zoned).toISOString(), "2024-07-01T13:00:00.000Z")
       strictEqual(DateTime.toDateUtc(zoned).toISOString(), "2024-07-01T12:00:00.000Z")
+    })
+
+    it("preserves year zero and BCE years in a named zone", () => {
+      for (const iso of ["0000-01-01T12:34:56.789Z", "-000001-01-01T12:34:56.789Z"]) {
+        const zoned = DateTime.makeZonedUnsafe(iso, { timeZone: "UTC" })
+        strictEqual(DateTime.toDate(zoned).toISOString(), iso)
+      }
     })
   })
 
