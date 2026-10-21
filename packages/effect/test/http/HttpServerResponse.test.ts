@@ -243,13 +243,13 @@ describe("HttpServerResponse", () => {
         const web = yield* HttpClientResponse.toWeb(HttpServerResponse.toClientResponse(
           HttpServerResponse.text("hello", { status: 201 }).pipe(
             HttpServerResponse.setHeader("x-test", "ok"),
-            HttpServerResponse.setHeader("set-cookie", "theme=dark; Path=/"),
+            HttpServerResponse.setHeader("set-cookie", "session=old; Path=/legacy"),
             HttpServerResponse.setCookieUnsafe("session", "123")
           )
         ))
         assert.strictEqual(web.status, 201)
         assert.strictEqual(web.headers.get("x-test"), "ok")
-        assert.deepStrictEqual(web.headers.getSetCookie(), ["theme=dark; Path=/", "session=123"])
+        assert.deepStrictEqual(web.headers.getSetCookie(), ["session=old; Path=/legacy", "session=123"])
         assert.strictEqual(yield* Effect.promise(() => web.text()), "hello")
 
         const empty = yield* HttpClientResponse.toWeb(
