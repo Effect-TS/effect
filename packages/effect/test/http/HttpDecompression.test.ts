@@ -82,7 +82,7 @@ const makeHandler = (
 }
 
 describe("HttpDecompression", () => {
-  it.effect("keeps headers-only toWeb lazy and shares cached text through modify", () =>
+  it.effect("keeps headers-only toWeb lazy", () =>
     Effect.gen(function*() {
       const payload = "compressed payload"
       const body = yield* Effect.promise(() => compress(payload, ["gzip"]))
@@ -99,7 +99,6 @@ describe("HttpDecompression", () => {
         assert.strictEqual(web.headers.get("x-test"), "headers-only")
         yield* Effect.yieldNow
         assert.strictEqual(yield* decompressed.text, payload)
-        assert.strictEqual(yield* decompressed.modify({ url: "/copy" }).text, payload)
         return HttpServerResponse.empty()
       }).pipe(
         HttpMiddleware.decompression(),

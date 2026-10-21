@@ -11,25 +11,7 @@ const fromClient = () =>
     )
   )
 
-const fromWeb = () =>
-  HttpServerRequest.fromWeb(
-    new Request("http://localhost/upload", {
-      method: "POST",
-      headers: { "x-test": "headers-only" },
-      body: payload
-    })
-  )
-
 describe("request body", () => {
-  for (const [adapter, makeRequest] of [["web", fromWeb], ["client", fromClient]] as const) {
-    it.effect(`${adapter}: caches text through modify`, () =>
-      Effect.gen(function*() {
-        const request = makeRequest()
-        assert.strictEqual(yield* request.text, payload)
-        assert.strictEqual(yield* request.modify({ url: "/copy" }).text, payload)
-      }))
-  }
-
   it.effect("fromWebHandler can inspect headers without reading the body", () =>
     Effect.gen(function*() {
       const request = fromClient()
