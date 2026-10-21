@@ -11,4 +11,5 @@ Add `effect/docker`, an Effect-native client for the Docker Engine API, and `Nod
 - `DockerApi` defines the Engine API as `HttpApi` endpoint groups, one per area, which the services are clients of, and the models they take and return where those differ from `DockerSchema`'s, such as secrets as `Redacted`. Every group declares the Engine's error responses, which the services fail with as `DockerError` reasons naming the operation.
 - `DockerSystem` covers ping, version, info, events, disk usage, registry login and build-cache pruning.
 - `DockerContainers` covers the container lifecycle, logs, stats, attach and archives; `DockerExec` runs commands in running containers; `DockerNetworks` and `DockerVolumes` manage networks and volumes.
+- `DockerImages` pulls, pushes, tags, saves, loads, imports and commits images, with registry credentials resolved as the Docker CLI does (`DOCKER_AUTH_CONFIG`, credential helpers, `auths`).
 - `NodeDocker.layer` and `NodeDocker.layerFromEnv` provide them on Node.js, over a unix socket or TCP with TLS.

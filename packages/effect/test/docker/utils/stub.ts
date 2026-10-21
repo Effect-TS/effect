@@ -1,6 +1,7 @@
-import { Effect, Layer, Stream } from "effect"
+import { Effect, Layer, PlatformError, Sink, Stream, Tracer } from "effect"
 import { Docker, DockerConfig, DockerEngine } from "effect/docker"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http"
+import { ChildProcessSpawner } from "effect/process"
 import { Socket } from "effect/socket"
 
 /** A request the stub received. */
@@ -93,6 +94,8 @@ export const makeStubEngine = (
     readonly apiVersion?: string
     /** The rest of the configuration, over `DockerConfig.defaults`. */
     readonly config?: Partial<DockerConfig.ResolvedConfig>
+    /** Runs credential helpers; see {@link helpers}. */
+    readonly spawner?: ChildProcessSpawner.ChildProcessSpawner["Service"]
   }
 ) => {
   const requests: Array<Recorded> = []
@@ -138,6 +141,7 @@ export const makeStubEngine = (
     })
   )
   const engine = DockerEngine.make(httpClient).pipe(
+    Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, options?.spawner ?? helpers({})),
     Effect.provideService(DockerConfig.DockerConfig, {
       ...DockerConfig.defaults,
       endpoint: { _tag: "Unix", path: "/test.sock" },
@@ -160,6 +164,27 @@ export const withPing =
       ? { headers: { "Api-Version": version, "Ostype": "linux", "Builder-Version": "2" }, body: "OK" }
       : reply(request)
 
+/** A progress stream: one JSON message per line. */
+export const ndjson = (...messages: ReadonlyArray<unknown>): Reply => ({
+  headers: { "content-type": "application/json" },
+  body: messages.map((message) => JSON.stringify(message)).join("\r\n") + "\r\n"
+})
+
+/** A tracer that records spans, and their attributes as `<span> <key>=<value>` lines. */
+export const recordSpans = () => {
+  const spans: Array<Tracer.NativeSpan> = []
+  const tracer = Tracer.make({
+    span: (options) => {
+      const span = new Tracer.NativeSpan(options)
+      spans.push(span)
+      return span
+    }
+  })
+  const attributes = () =>
+    spans.flatMap((span) => Array.from(span.attributes, ([key, value]) => `${span.name} ${key}=${String(value)}`))
+  return { tracer, attributes }
+}
+
 export const json = (value: unknown, status = 200): Reply => ({
   status,
   headers: { "content-type": "application/json" },
@@ -178,3 +203,55 @@ export const frame = (type: number, text: string): Uint8Array => {
 /** Concatenates byte arrays. */
 export const concat = (...parts: ReadonlyArray<Uint8Array>): Uint8Array =>
   Uint8Array.from(parts.flatMap((part) => Array.from(part)))
+
+/** What a fake credential helper does when it runs. */
+export interface Helper {
+  readonly stdout?: string
+  readonly stderr?: string
+  readonly exitCode?: number
+  /** Never exit. */
+  readonly hang?: boolean
+}
+
+/**
+ * A `ChildProcessSpawner` with fake `docker-credential-<name>` programs,
+ * keyed by name. `runs` records each run as `<program> <args>: <stdin>`; a
+ * program that isn't there fails to spawn.
+ */
+export const helpers = (programs: Readonly<Record<string, (stdin: string) => Helper>>) => {
+  const runs: Array<string> = []
+  const spawner = ChildProcessSpawner.make((command) =>
+    Effect.gen(function*() {
+      if (command._tag !== "StandardCommand") return yield* Effect.die("not supported")
+      const program = programs[command.command.replace(/^docker-credential-/, "")]
+      if (program === undefined) {
+        return yield* Effect.fail(
+          PlatformError.systemError({ _tag: "NotFound", module: "ChildProcess", method: "spawn" })
+        )
+      }
+      const input = command.options.stdin
+      const stdin = Stream.isStream(input)
+        ? new TextDecoder().decode(concat(...yield* Stream.runCollect(input as Stream.Stream<Uint8Array>)))
+        : ""
+      runs.push(`${command.command} ${command.args.join(" ")}: ${stdin}`)
+      const helper = program(stdin)
+      const text = (value: string | undefined) => Stream.make(new TextEncoder().encode(value ?? ""))
+      return ChildProcessSpawner.makeHandle({
+        pid: ChildProcessSpawner.ProcessId(1),
+        exitCode: helper.hang === true
+          ? Effect.never
+          : Effect.succeed(ChildProcessSpawner.ExitCode(helper.exitCode ?? 0)),
+        isRunning: Effect.succeed(false),
+        kill: () => Effect.void,
+        stdin: Sink.drain,
+        stdout: text(helper.stdout),
+        stderr: text(helper.stderr),
+        all: Stream.concat(text(helper.stdout), text(helper.stderr)),
+        getInputFd: () => Sink.drain,
+        getOutputFd: () => Stream.empty,
+        unref: Effect.succeed(Effect.void)
+      })
+    })
+  )
+  return Object.assign(spawner, { runs })
+}

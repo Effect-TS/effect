@@ -158,4 +158,40 @@ describe("NodeDocker", () => {
       assert.strictEqual(error.reason.hint, "the socket /nonexistent/docker.sock doesn't exist: is the Engine running?")
       assert.isTrue(error.isRetryable)
     }))
+
+  it.effect("runs credential helpers as child processes", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      const bin = yield* fs.makeTempDirectoryScoped()
+      // answers for ghcr.io, "not found" for everything else
+      yield* fs.writeFileString(
+        path.join(bin, "docker-credential-test"),
+        `#!/bin/sh
+read registry
+case "$registry" in
+  ghcr.io) echo '{"ServerURL":"ghcr.io","Username":"helper-user","Secret":"helper-secret"}' ;;
+  *) echo "credentials not found in native keychain"; exit 1 ;;
+esac
+`,
+        { mode: 0o755 }
+      )
+      const originalPath = process.env.PATH
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          process.env.PATH = `${bin}:${originalPath}`
+        }),
+        () =>
+          Effect.sync(() => {
+            process.env.PATH = originalPath
+          })
+      )
+      const [ghcr, other] = yield* Effect.gen(function*() {
+        const engine = yield* DockerEngine.DockerEngine
+        return yield* Effect.all([engine.credential("ghcr.io"), engine.credential("quay.io")])
+      }).pipe(Effect.provide(NodeDocker.layer.pipe(Layer.provide(DockerConfig.layer({ credsStore: "test" })))))
+      assert.strictEqual(ghcr?.username, "helper-user")
+      assert.strictEqual(ghcr?.password && Redacted.value(ghcr.password), "helper-secret")
+      assert.isUndefined(other)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 })
