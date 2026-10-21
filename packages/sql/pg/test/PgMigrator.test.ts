@@ -208,26 +208,32 @@ describe("PgMigrator", { concurrent: false }, () => {
       }
     }))
 
-  it.effect("requires an explicit ca when Node cannot report its default CAs", () =>
-    Effect.gen(function*() {
-      yield* withoutGetCACertificates
+  // Bun and Deno do not propagate syncBuiltinESMExports to `node:tls`
+  // namespace imports, so the stub cannot hide getCACertificates there.
+  // Older Node is the only runtime this path targets.
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "requires an explicit ca when Node cannot report its default CAs",
+    () =>
+      Effect.gen(function*() {
+        yield* withoutGetCACertificates
 
-      const implicit = yield* makeMigrator({ host: "db.example.com", username: "alice", ssl: true })
-      yield* implicit.run
-      assert.deepStrictEqual(implicit.commands.map((command) => command.command), [])
-      assert.deepStrictEqual(implicit.files, [])
+        const implicit = yield* makeMigrator({ host: "db.example.com", username: "alice", ssl: true })
+        yield* implicit.run
+        assert.deepStrictEqual(implicit.commands.map((command) => command.command), [])
+        assert.deepStrictEqual(implicit.files, [])
 
-      const explicit = yield* makeMigrator({
-        host: "db.example.com",
-        username: "alice",
-        ssl: { ca: pem("CERTIFICATE", "Y2E=") }
+        const explicit = yield* makeMigrator({
+          host: "db.example.com",
+          username: "alice",
+          ssl: { ca: pem("CERTIFICATE", "Y2E=") }
+        })
+        yield* explicit.run
+        assert.strictEqual(explicit.commands.length, 2)
+        for (const command of explicit.commands) {
+          assert.strictEqual(dumpConnection(command).sslmode, "verify-full")
+        }
       })
-      yield* explicit.run
-      assert.strictEqual(explicit.commands.length, 2)
-      for (const command of explicit.commands) {
-        assert.strictEqual(dumpConnection(command).sslmode, "verify-full")
-      }
-    }))
+  )
 
   it.effect("provides TLS files only while the dump runs", () =>
     Effect.gen(function*() {
