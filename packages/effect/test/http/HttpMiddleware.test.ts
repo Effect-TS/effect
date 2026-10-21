@@ -619,5 +619,21 @@ describe("HttpMiddleware", () => {
           expected
         )
       }))
+
+    it.effect("authorizes against the transport peer, not an address resolved by earlier middleware", () =>
+      Effect.gen(function*() {
+        const outer = HttpMiddleware.xForwardedHeaders({ trustedProxies })
+        const inner = HttpMiddleware.xForwardedHeaders({
+          trustedProxies: [IpNetwork.fromStringUnsafe("198.51.100.0/24")]
+        })
+        assert.deepStrictEqual(
+          yield* observe((app) => outer(inner(app)), "10.0.0.1", {
+            "x-forwarded-for": "6.6.6.6, 198.51.100.7",
+            "x-forwarded-host": "evil.test, b.test",
+            "x-forwarded-proto": "https, http"
+          }),
+          { remoteAddress: "198.51.100.7", host: "b.test", url: "http://b.test/a" }
+        )
+      }))
   })
 })
