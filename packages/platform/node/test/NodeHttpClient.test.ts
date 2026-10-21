@@ -107,10 +107,12 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   HttpRouter.route(
     "GET",
     "/cookies",
-    Effect.succeed(HttpServerResponse.text("cookies").pipe(
-      HttpServerResponse.setCookieUnsafe("a", "1", { path: "/" }),
-      HttpServerResponse.setCookieUnsafe("b", "2", { path: "/" })
-    ))
+    Effect.succeed(
+      HttpServerResponse.text("cookies").pipe(
+        HttpServerResponse.setCookieUnsafe("a", "1", { path: "/" }),
+        HttpServerResponse.setCookieUnsafe("b", "2", { path: "/" })
+      )
+    )
   ),
   HttpRouter.route(
     "QUERY",
