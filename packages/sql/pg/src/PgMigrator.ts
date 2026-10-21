@@ -44,12 +44,19 @@ export * from "effect/sql/Migrator"
  * `options`, and connect timeout. The password is passed through `PGPASSWORD`
  * and the inherited environment is not used.
  *
- * TLS maps to libpq as follows: no TLS uses `sslmode=disable`, URL
- * `sslmode=prefer` / `allow` uses `prefer`, `rejectUnauthorized: false` uses
- * `require`, and verified TLS uses `verify-full` with the client's trusted CAs
- * (`ssl.ca`, or Node's default CAs) written to a temporary `sslrootcert` file.
- * A PEM `ssl.cert` / `ssl.key` pair is passed as `sslcert` / `sslkey`. Unlike
- * the client, libpq `prefer` does not verify the certificate.
+ * TLS maps to libpq as follows: no TLS uses `sslmode=disable`,
+ * `rejectUnauthorized: false` uses `require`, and verified TLS uses
+ * `verify-full` with the client's trusted CAs (`ssl.ca`, or Node's default CAs)
+ * written to a temporary `sslrootcert` file. A PEM `ssl.cert` / `ssl.key` pair
+ * is passed as `sslcert` / `sslkey`.
+ *
+ * URL `sslmode=prefer` / `allow` also uses `verify-full`, because the client
+ * verifies the certificate whenever the server accepts TLS and libpq cannot
+ * verify while keeping a plaintext fallback. Dumps from servers that refuse TLS
+ * therefore fail, even though the client falls back to plaintext.
+ *
+ * Node's default CAs require `tls.getCACertificates` (Node.js 22.15 / 23.10 or
+ * later). On older runtimes, verified TLS dumps require an explicit `ssl.ca`.
  *
  * The dump fails, and the migrator logs the error, for custom `stream`
  * connections, TLS over Unix sockets, socket paths not named
@@ -208,7 +215,13 @@ const tlsParameters = Effect.fnUntraced(function*(config: ResolvedConfig) {
   if (ssl.key !== undefined && typeof ssl.key !== "string" && !(ssl.key instanceof Uint8Array)) {
     return yield* unsupported("ssl key must be a single PEM string or Buffer")
   }
-  const verify = !config.sslOptional && ssl.rejectUnauthorized !== false
+  // Optional TLS still verifies, and libpq cannot verify with a plaintext fallback
+  const verify = ssl.rejectUnauthorized !== false
+  if (verify && ssl.ca === undefined && typeof Tls.getCACertificates !== "function") {
+    return yield* unsupported(
+      "this Node.js version cannot report its default CAs (tls.getCACertificates needs Node.js 22.15 / 23.10), set ssl.ca"
+    )
+  }
   const directory = yield* Effect.acquireRelease(
     Effect.tryPromise({
       try: () => NodeFs.mkdtemp(NodePath.join(Os.tmpdir(), "effect-sql-pg-dump-")),
@@ -224,18 +237,14 @@ const tlsParameters = Effect.fnUntraced(function*(config: ResolvedConfig) {
     }).pipe(Effect.as(NodePath.join(directory, name)))
   const missing = NodePath.join(directory, "none")
   return {
-    sslmode: config.sslOptional ? "prefer" : verify ? "verify-full" : "require",
-    // Node replaces its default trust store when `ca` is set
-    sslrootcert: verify ? yield* write("root.crt", toPem(ssl.ca ?? defaultCertificates())) : missing,
+    sslmode: verify ? "verify-full" : "require",
+    // Node replaces its default trust store when `ca` is set. The default
+    // store includes NODE_EXTRA_CA_CERTS and --use-system-ca.
+    sslrootcert: verify ? yield* write("root.crt", toPem(ssl.ca ?? Tls.getCACertificates("default"))) : missing,
     sslcert: ssl.cert !== undefined ? yield* write("client.crt", toPem(ssl.cert)) : missing,
     sslkey: ssl.key !== undefined ? yield* write("client.key", toPem(ssl.key)) : missing
   }
 })
-
-// The CAs Node uses when `ca` is unset, including NODE_EXTRA_CA_CERTS and
-// --use-system-ca where getCACertificates is available.
-const defaultCertificates = (): ReadonlyArray<string> =>
-  typeof Tls.getCACertificates === "function" ? Tls.getCACertificates("default") : Tls.rootCertificates
 
 const toPem = (value: string | Uint8Array | ReadonlyArray<string | Uint8Array>): string =>
   (Array.isArray(value) ? value : [value]).map((pem) => Buffer.from(pem).toString().trim()).join("\n") + "\n"

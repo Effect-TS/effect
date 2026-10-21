@@ -86,7 +86,8 @@ const withoutGetCACertificates = Effect.acquireRelease(
     })
 )
 
-describe("PgMigrator", () => {
+// Sequential: one test removes tls.getCACertificates process-wide
+describe("PgMigrator", { concurrent: false }, () => {
   it.effect("shares one password per schema dump and refreshes it for the next dump", () =>
     Effect.gen(function*() {
       let calls = 0
