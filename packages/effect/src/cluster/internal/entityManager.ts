@@ -542,6 +542,9 @@ export const make = Effect.fnUntraced(function*<
             yield* state.write(0, { _tag: "Eof" })
           }).pipe(
             Effect.andThen(endLatch.await),
+            // A defect restart that finds the entity retired opens `endLatch`
+            // without building handlers, so the writes above may never land.
+            Effect.raceFirst(endLatch.await),
             Effect.timeoutOption(config.entityTerminationTimeout),
             Effect.interruptible
           ),
