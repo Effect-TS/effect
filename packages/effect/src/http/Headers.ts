@@ -457,7 +457,7 @@ export const CurrentRedactedNames = Context.Reference<
 // Header values
 // -----------------------------------------------------------------------------
 
-const HeaderValueErrorTypeId = "~effect/http/Headers/HeaderValueError"
+const HeaderParseErrorTypeId = "~effect/http/Headers/HeaderParseError"
 
 /**
  * Error reason describing which header value failed to parse.
@@ -470,7 +470,7 @@ const HeaderValueErrorTypeId = "~effect/http/Headers/HeaderValueError"
  * @category errors
  * @since 4.0.0
  */
-export class HeaderValueErrorReason extends Data.Error<{
+export class HeaderParseErrorReason extends Data.Error<{
   readonly _tag: "InvalidHttpDate" | "InvalidRetryAfter"
   readonly input: string
 }> {}
@@ -486,26 +486,26 @@ export class HeaderValueErrorReason extends Data.Error<{
  * @category errors
  * @since 4.0.0
  */
-export class HeaderValueError extends Data.TaggedError("HeaderValueError")<{
-  readonly reason: HeaderValueErrorReason
+export class HeaderParseError extends Data.TaggedError("HeaderParseError")<{
+  readonly reason: HeaderParseErrorReason
 }> {
   /**
-   * Creates a header value error from a reason tag and the rejected input.
+   * Creates a header parse error from a reason tag and the rejected input.
    *
    * @stability unstable
    * @since 4.0.0
    */
-  static fromReason(reason: HeaderValueError["reason"]["_tag"], input: string): HeaderValueError {
-    return new HeaderValueError({ reason: new HeaderValueErrorReason({ _tag: reason, input }) })
+  static fromReason(reason: HeaderParseError["reason"]["_tag"], input: string): HeaderParseError {
+    return new HeaderParseError({ reason: new HeaderParseErrorReason({ _tag: reason, input }) })
   }
 
   /**
-   * Marks this value as a header value error for runtime guards.
+   * Marks this value as a header parse error for runtime guards.
    *
    * @stability unstable
    * @since 4.0.0
    */
-  readonly [HeaderValueErrorTypeId] = HeaderValueErrorTypeId
+  readonly [HeaderParseErrorTypeId] = HeaderParseErrorTypeId
 
   /**
    * Names the failed header and the rejected input.
@@ -519,14 +519,14 @@ export class HeaderValueError extends Data.TaggedError("HeaderValueError")<{
 }
 
 /**
- * Checks whether a value is a `HeaderValueError`.
+ * Checks whether a value is a `HeaderParseError`.
  *
  * @stability unstable
  * @category guards
  * @since 4.0.0
  */
-export const isHeaderValueError = (u: unknown): u is HeaderValueError =>
-  Predicate.hasProperty(u, HeaderValueErrorTypeId)
+export const isHeaderParseError = (u: unknown): u is HeaderParseError =>
+  Predicate.hasProperty(u, HeaderParseErrorTypeId)
 
 // -----------------------------------------------------------------------------
 // HTTP dates (RFC 9110 §5.6.7)
@@ -600,10 +600,10 @@ const httpDateToMillis = (input: string): number | undefined => {
  * @category header values
  * @since 4.0.0
  */
-export const parseHttpDate = (input: string): Result.Result<DateTime.Utc, HeaderValueError> => {
+export const parseHttpDate = (input: string): Result.Result<DateTime.Utc, HeaderParseError> => {
   const millis = httpDateToMillis(input.trim())
   return millis === undefined
-    ? Result.fail(HeaderValueError.fromReason("InvalidHttpDate", input))
+    ? Result.fail(HeaderParseError.fromReason("InvalidHttpDate", input))
     : Result.succeed(DateTime.makeUnsafe(millis))
 }
 
@@ -694,17 +694,17 @@ const wholeSeconds = /^\d+$/
  * @category header values
  * @since 4.0.0
  */
-export const parseRetryAfter = (input: string): Result.Result<RetryAfter, HeaderValueError> => {
+export const parseRetryAfter = (input: string): Result.Result<RetryAfter, HeaderParseError> => {
   const trimmed = input.trim()
   if (wholeSeconds.test(trimmed)) {
     const seconds = Number(trimmed)
     return Number.isSafeInteger(seconds)
       ? Result.succeed(retryAfterSeconds(seconds))
-      : Result.fail(HeaderValueError.fromReason("InvalidRetryAfter", input))
+      : Result.fail(HeaderParseError.fromReason("InvalidRetryAfter", input))
   }
   const millis = httpDateToMillis(trimmed)
   return millis === undefined
-    ? Result.fail(HeaderValueError.fromReason("InvalidRetryAfter", input))
+    ? Result.fail(HeaderParseError.fromReason("InvalidRetryAfter", input))
     : Result.succeed(retryAfterDate(DateTime.makeUnsafe(millis)))
 }
 
