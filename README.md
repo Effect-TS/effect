@@ -89,7 +89,6 @@ This monorepo contains the core `effect` package alongside integration packages 
 | [`@effect/auth`](packages/auth)                                         | Authentication, sessions, OAuth, OpenID Connect, and JOSE | [docs](https://effect.website/docs/v4/api/auth)                    |
 | [`@effect/auth-persistence`](packages/auth-persistence)                 | SQL authentication persistence                            | [guide](packages/auth-persistence/README.md)                       |
 | [`@effect/auth-persistence-drizzle`](packages/auth-persistence-drizzle) | Drizzle authentication mappings and dialect adapters      | [guide](packages/auth-persistence-drizzle/README.md)               |
-| [`@effect/drizzle-effect-v4-patch`](packages/drizzle-effect-v4-patch)   | Drizzle compatibility patch CLI for Bun                   | [guide](packages/drizzle-effect-v4-patch/README.md)                |
 | [`@effect/auth-simplewebauthn`](packages/auth-simplewebauthn)           | SimpleWebAuthn browser and server adapters                | [guide](packages/auth-simplewebauthn/README.md)                    |
 | [`@effect/auth-react-native`](packages/auth-react-native)               | Native passkeys, browser login, and session activity      | [guide](packages/auth-react-native/README.md)                      |
 | [`@effect/auth-electron`](packages/auth-electron)                       | Electron browser login and secure session storage         | [guide](packages/auth-electron/README.md)                          |

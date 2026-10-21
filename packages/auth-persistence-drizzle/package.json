@@ -76,7 +76,7 @@
     "@effect/sql-sqlite-do": "workspace:^",
     "@effect/sql-sqlite-node": "workspace:^",
     "@effect/sql-sqlite-wasm": "workspace:^",
-    "drizzle-orm": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.5",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -89,7 +89,7 @@
     "@effect/sql-sqlite-do": "workspace:^",
     "@effect/sql-sqlite-node": "workspace:^",
     "@effect/sql-sqlite-wasm": "workspace:^",
-    "drizzle-orm": ">=1.0.0-rc.4",
+    "drizzle-orm": ">=1.0.0-rc.5",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {

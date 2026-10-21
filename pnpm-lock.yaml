@@ -10,7 +10,6 @@ overrides:
 
 patchedDependencies:
   '@changesets/get-github-info@1.0.1': 4b2756eb490a2ad802075423f6b08a5f50f12307ec25e117b20a79e12236b625
-  drizzle-orm@1.0.0-rc.4: bfb194db9b8294c35cfdc54a9cf9a56eb62899acbec7771203276030d3e2ac1d
 
 importers:
 
@@ -451,8 +450,8 @@ importers:
         specifier: workspace:^
         version: link:../sql/sqlite-wasm
       drizzle-orm:
-        specifier: 1.0.0-rc.4
-        version: 1.0.0-rc.4(patch_hash=bfb194db9b8294c35cfdc54a9cf9a56eb62899acbec7771203276030d3e2ac1d)(@cloudflare/workers-types@5.20261016.1)(@effect/sql-d1@packages+sql+d1)(@effect/sql-libsql@packages+sql+libsql)(@effect/sql-mysql2@packages+sql+mysql2)(@effect/sql-pg@packages+sql+pg)(@effect/sql-pglite@packages+sql+pglite)(@effect/sql-sqlite-bun@packages+sql+sqlite-bun)(@effect/sql-sqlite-do@packages+sql+sqlite-do)(@effect/sql-sqlite-node@packages+sql+sqlite-node)(@effect/sql-sqlite-wasm@packages+sql+sqlite-wasm)(@electric-sql/pglite@0.5.10)(@libsql/client@0.18.0)(@op-engineering/op-sqlite@18.2.5(react-native@0.83.0(@babel/core@8.0.7)(@types/react@19.3.0)(react@19.3.1)(supports-color@10.2.2))(react@19.3.1))(@opentelemetry/api@1.9.1)(bun-types@1.4.3)(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.5))(postgres@3.4.9)(valibot@1.5.0(typescript@7.0.2))(zod@4.6.7)
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5(@cloudflare/workers-types@5.20261016.1)(@effect/sql-d1@packages+sql+d1)(@effect/sql-libsql@packages+sql+libsql)(@effect/sql-mysql2@packages+sql+mysql2)(@effect/sql-pg@packages+sql+pg)(@effect/sql-pglite@packages+sql+pglite)(@effect/sql-sqlite-bun@packages+sql+sqlite-bun)(@effect/sql-sqlite-do@packages+sql+sqlite-do)(@effect/sql-sqlite-node@packages+sql+sqlite-node)(@effect/sql-sqlite-wasm@packages+sql+sqlite-wasm)(@electric-sql/pglite@0.5.10)(@libsql/client@0.18.0)(@op-engineering/op-sqlite@18.2.5(react-native@0.83.0(@babel/core@8.0.7)(@types/react@19.3.0)(react@19.3.1)(supports-color@10.2.2))(react@19.3.1))(@opentelemetry/api@1.9.1)(bun-types@1.4.3)(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.5))(postgres@3.4.9)(valibot@1.5.0(typescript@7.0.2))(zod@4.6.7)
       effect:
         specifier: workspace:^
         version: link:../effect
@@ -500,25 +499,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect
-
-  packages/drizzle-effect-v4-patch:
-    dependencies:
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform/node
-      effect:
-        specifier: workspace:^
-        version: link:../effect
-    devDependencies:
-      '@effect/vitest':
-        specifier: workspace:^
-        version: link:../vitest
-      '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
-      vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/coverage-v8@5.0.5)(happy-dom@21.0.3)(jsdom@30.0.1)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/effect:
     devDependencies:
@@ -5071,35 +5051,38 @@ packages:
     resolution: {integrity: sha512-WDjG7dR/l5nmtb9rlY0SXlTHjcqr94Gv+NzUZnnMo6XYyIU98acs0GoUk3kv9q+rnrZLTl0w4L/msuCgp8ZAiQ==}
     hasBin: true
 
-  drizzle-orm@1.0.0-rc.4:
-    resolution: {integrity: sha512-BT+pf+qoiYHqltoA88Jmf6ilGMXPlpfE0hEJKc2adRtMCAl25Swk/t5gXcWxZNAwdtf3F5gCd2FpeOyP/pT0Hw==}
+  drizzle-orm@1.0.0-rc.5:
+    resolution: {integrity: sha512-7BMYTsAZbQ9DcQCtLG4G202Hq6nc/e8o1EBKN6nBweRI8EGPFe/VdyvWQCsU9fuZSiRjNpELolUSi//JFBq+lw==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
+      '@aws/aurora-dsql-node-postgres-connector': '>=0.1.9'
+      '@aws/aurora-dsql-postgresjs-connector': '>=0.3.0'
       '@cloudflare/workers-types': '>=4'
-      '@effect/sql-d1': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-libsql': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-mysql2': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-pg': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-pglite': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-sqlite-bun': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-sqlite-do': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-sqlite-node': '>=4.0.0-beta.83 || >=4.0.0'
-      '@effect/sql-sqlite-wasm': '>=4.0.0-beta.83 || >=4.0.0'
+      '@drizzle-team/minipg': '>=0.4.2'
+      '@effect/sql-d1': '>=4.0.0'
+      '@effect/sql-libsql': '>=4.0.0'
+      '@effect/sql-mysql2': '>=4.0.0'
+      '@effect/sql-pg': '>=4.0.0'
+      '@effect/sql-pglite': '>=4.0.0'
+      '@effect/sql-sqlite-bun': '>=4.0.0'
+      '@effect/sql-sqlite-do': '>=4.0.0'
+      '@effect/sql-sqlite-node': '>=4.0.0'
+      '@effect/sql-sqlite-wasm': '>=4.0.0'
       '@electric-sql/pglite': '>=0.2.0'
       '@libsql/client': '>=0.10.0'
       '@libsql/client-wasm': '>=0.10.0'
       '@neondatabase/serverless': '>=0.10.0'
-      '@op-engineering/op-sqlite': '>=2'
+      '@op-engineering/op-sqlite': '>=17'
       '@opentelemetry/api': ^1.4.1
       '@planetscale/database': '>=1.13'
       '@sinclair/typebox': '>=0.34.8'
       '@sqlitecloud/drivers': '>=1.0.653'
       '@tidbcloud/serverless': '*'
-      '@tursodatabase/database': '>=0.6.0-pre.28 || >=0.6.0'
-      '@tursodatabase/database-common': '>=0.6.0-pre.28 || >=0.6.0'
-      '@tursodatabase/database-wasm': '>=0.6.0-pre.28 || >=0.6.0'
-      '@tursodatabase/serverless': '>=1.1.3'
-      '@tursodatabase/sync': '>=0.6.0-pre.28 || >=0.6.0'
+      '@tursodatabase/database': '>=0.7.1'
+      '@tursodatabase/database-common': '>=0.7.1'
+      '@tursodatabase/database-wasm': '>=0.7.1'
+      '@tursodatabase/serverless': '>=1.4.0'
+      '@tursodatabase/sync': '>=0.7.1'
       '@types/better-sqlite3': '*'
       '@types/mssql': ^9.1.4
       '@types/pg': '*'
@@ -5110,7 +5093,7 @@ packages:
       arktype: '>=2.0.0'
       better-sqlite3: '>=9.3.0'
       bun-types: '*'
-      effect: '>=4.0.0-beta.83 || >=4.0.0'
+      effect: '>=4.0.0'
       expo-sqlite: '>=14.0.0'
       mssql: ^11.0.1
       mysql2: '>=2'
@@ -5118,13 +5101,19 @@ packages:
       postgres: '>=3'
       sql.js: '>=1'
       sqlite3: '>=5'
-      typebox: '>=1.0.0'
+      typebox: '>=1.2.0'
       valibot: '>=1.0.0-beta.7'
       zod: ^3.25.0 || ^4.0.0
     peerDependenciesMeta:
       '@aws-sdk/client-rds-data':
         optional: true
+      '@aws/aurora-dsql-node-postgres-connector':
+        optional: true
+      '@aws/aurora-dsql-postgresjs-connector':
+        optional: true
       '@cloudflare/workers-types':
+        optional: true
+      '@drizzle-team/minipg':
         optional: true
       '@effect/sql-d1':
         optional: true
@@ -12393,7 +12382,7 @@ snapshots:
       '@dprint/win32-arm64': 0.63.0
       '@dprint/win32-x64': 0.63.0
 
-  drizzle-orm@1.0.0-rc.4(patch_hash=bfb194db9b8294c35cfdc54a9cf9a56eb62899acbec7771203276030d3e2ac1d)(@cloudflare/workers-types@5.20261016.1)(@effect/sql-d1@packages+sql+d1)(@effect/sql-libsql@packages+sql+libsql)(@effect/sql-mysql2@packages+sql+mysql2)(@effect/sql-pg@packages+sql+pg)(@effect/sql-pglite@packages+sql+pglite)(@effect/sql-sqlite-bun@packages+sql+sqlite-bun)(@effect/sql-sqlite-do@packages+sql+sqlite-do)(@effect/sql-sqlite-node@packages+sql+sqlite-node)(@effect/sql-sqlite-wasm@packages+sql+sqlite-wasm)(@electric-sql/pglite@0.5.10)(@libsql/client@0.18.0)(@op-engineering/op-sqlite@18.2.5(react-native@0.83.0(@babel/core@8.0.7)(@types/react@19.3.0)(react@19.3.1)(supports-color@10.2.2))(react@19.3.1))(@opentelemetry/api@1.9.1)(bun-types@1.4.3)(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.5))(postgres@3.4.9)(valibot@1.5.0(typescript@7.0.2))(zod@4.6.7):
+  drizzle-orm@1.0.0-rc.5(@cloudflare/workers-types@5.20261016.1)(@effect/sql-d1@packages+sql+d1)(@effect/sql-libsql@packages+sql+libsql)(@effect/sql-mysql2@packages+sql+mysql2)(@effect/sql-pg@packages+sql+pg)(@effect/sql-pglite@packages+sql+pglite)(@effect/sql-sqlite-bun@packages+sql+sqlite-bun)(@effect/sql-sqlite-do@packages+sql+sqlite-do)(@effect/sql-sqlite-node@packages+sql+sqlite-node)(@effect/sql-sqlite-wasm@packages+sql+sqlite-wasm)(@electric-sql/pglite@0.5.10)(@libsql/client@0.18.0)(@op-engineering/op-sqlite@18.2.5(react-native@0.83.0(@babel/core@8.0.7)(@types/react@19.3.0)(react@19.3.1)(supports-color@10.2.2))(react@19.3.1))(@opentelemetry/api@1.9.1)(bun-types@1.4.3)(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.5))(postgres@3.4.9)(valibot@1.5.0(typescript@7.0.2))(zod@4.6.7):
     optionalDependencies:
       '@cloudflare/workers-types': 5.20261016.1
       '@effect/sql-d1': link:packages/sql/d1

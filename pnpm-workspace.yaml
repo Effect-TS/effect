@@ -32,7 +32,6 @@ allowBuilds:
   workerd: false
 
 patchedDependencies:
-  'drizzle-orm@1.0.0-rc.4': packages/drizzle-effect-v4-patch/patches/drizzle-orm@1.0.0-rc.4.patch
   '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
 
 overrides:
@@ -44,3 +43,6 @@ overrides:
   # binary (Uint8Array) keys throw DataError during comparison in EventJournal.makeIndexedDb.
   # Remove after a later fake-indexeddb release passes the EventJournal IndexedDB suite.
   fake-indexeddb: 6.2.5
+
+minimumReleaseAgeExclude:
+  - drizzle-orm@1.0.0-rc.5

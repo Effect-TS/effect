@@ -6,7 +6,6 @@
 "@effect/auth-persistence-drizzle": minor
 "@effect/auth-react-native": minor
 "@effect/auth-simplewebauthn": minor
-"@effect/drizzle-effect-v4-patch": minor
 "@effect/platform-bun": minor
 "@effect/platform-node": minor
 "@effect/platform-node-shared": minor

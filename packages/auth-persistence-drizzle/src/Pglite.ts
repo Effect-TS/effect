@@ -15,12 +15,7 @@ export {
   OAuthProxyPersistence
 } from "./internal/drizzlePostgresOauthProxy.ts"
 
-import type { AnyRelations } from "drizzle-orm"
-import {
-  type EffectPgDatabase,
-  EffectPgTransaction as PasskeyTransaction,
-  makeWithDefaults
-} from "drizzle-orm/effect-pglite"
+import { EffectPgTransaction as PasskeyTransaction, makeWithDefaults } from "drizzle-orm/effect-pglite"
 import type { AnyPgTable } from "drizzle-orm/pg-core"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -248,7 +243,7 @@ import { makeOAuthTarget } from "./internal/drizzle/oauthDrivers.ts"
 
 const oauthTarget = makeOAuthTarget<
   Database,
-  EffectPgDatabase<AnyRelations>,
+  Database["Service"],
   AnyPgTable<{ dialect: "pg" }>
 >(Database, {
   mode: "native",
@@ -381,7 +376,7 @@ import { makePasskeyTarget } from "./internal/drizzle/passkeyDrivers.ts"
 
 const passkeyTarget = makePasskeyTarget<
   Database,
-  EffectPgDatabase<AnyRelations>,
+  Database["Service"],
   AnyPgTable<{ dialect: "pg" }>
 >(Database, {
   transactionConstructor: PasskeyTransaction,

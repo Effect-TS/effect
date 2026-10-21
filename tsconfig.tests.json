@@ -74,7 +74,6 @@
       "@effect/auth-electron": ["./packages/auth-electron/src/index.ts"],
       "@effect/auth-electron/*": ["./packages/auth-electron/src/*.ts"],
       "@effect/auth-simplewebauthn/*": ["./packages/auth-simplewebauthn/src/*.ts"],
-      "@effect/drizzle-effect-v4-patch/*": ["./packages/drizzle-effect-v4-patch/src/*.ts"],
       "@effect/opentelemetry": ["./packages/opentelemetry/src/index.ts"],
       "@effect/opentelemetry/*": ["./packages/opentelemetry/src/*.ts"],
       "@effect/platform-browser": ["./packages/platform/browser/src/index.ts"],

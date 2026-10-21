@@ -11,19 +11,8 @@ construction and transaction coordinators, for example with `NodeCrypto.layer`
 from `@effect/platform-node` or `BunCrypto.layer` from `@effect/platform-bun`. Composed drivers expose `AuthPersistence`; explicit driver modules
 also expose lower-level factories.
 
-The supported Drizzle release is `drizzle-orm@1.0.0-rc.4`. Bun projects can apply
-the verified patch with
-[`@effect/drizzle-effect-v4-patch`](../drizzle-effect-v4-patch/README.md):
-
-```sh
-bunx --package @effect/drizzle-effect-v4-patch effect-drizzle-patch patch
-```
-
-For other package managers, apply the
-[Effect compatibility patch](../drizzle-effect-v4-patch/patches/drizzle-orm@1.0.0-rc.4.patch)
-and commit the patch configuration and lockfile. It updates Drizzle’s Effect
-schema API names and SQL import paths. This repository registers the patch in
-`pnpm-workspace.yaml`.
+Requires `drizzle-orm@1.0.0-rc.5` or later, which includes native Effect 4 support.
+Keep Drizzle's `paramsInErrors` option disabled to omit bound values from its query errors.
 
 Applications own subjects, policy, claims, delivery, and database connections.
 Drizzle Kit generates migrations from managed or application-declared tables.

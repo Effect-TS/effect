@@ -83,7 +83,7 @@ export const databaseLayer = Layer.effect(
       })
     }
 
-    return yield* makeDatabase(yield* makeWithDefaults({ storage }))
+    return yield* makeDatabase(yield* makeWithDefaults({}))
   })
 )
 

@@ -34,7 +34,6 @@
       "@effect/auth-persistence-drizzle",
       "@effect/auth-react-native",
       "@effect/auth-simplewebauthn",
-      "@effect/drizzle-effect-v4-patch",
       "@effect/opentelemetry",
       "@effect/platform-browser",
       "@effect/platform-bun",

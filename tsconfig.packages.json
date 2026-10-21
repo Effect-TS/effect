@@ -20,7 +20,6 @@
     { "path": "packages/auth-simplewebauthn" },
     { "path": "packages/auth-react-native" },
     { "path": "packages/auth-electron" },
-    { "path": "packages/drizzle-effect-v4-patch" },
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform/browser" },
     { "path": "packages/platform/bun" },
