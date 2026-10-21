@@ -8,6 +8,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
+import { negatedName } from "./descriptor.ts"
 
 /**
  * Encode non-ASCII and control characters as `[char]` code units. Windows
@@ -46,12 +47,15 @@ const valueFields = (type: Completions.FlagType | Completions.ArgumentType): str
   `values = ${psArray(type._tag === "Choice" ? type.values : [])}; ` +
   `pathType = ${type._tag === "Path" ? quotePs(type.pathType) : "$null"}`
 
-const flagEntry = (flag: Completions.FlagDescriptor): string =>
-  `@{ name = ${quotePs(flag.name)}; forms = ${psArray(flagForms(flag))}; ` +
-  `takesValue = $${flag.type._tag !== "Boolean"}; ` +
-  (flag.optionalValue === true ? `optionalValue = $true; ` : "") +
-  `${valueFields(flag.type)}; ` +
-  `description = ${psOptional(flag.description)} }`
+const flagEntry = (flag: Completions.FlagDescriptor): string => {
+  const negation = negatedName(flag)
+  return `@{ name = ${quotePs(flag.name)}; forms = ${psArray(flagForms(flag))}; ` +
+    `takesValue = $${flag.type._tag !== "Boolean"}; ` +
+    (negation === undefined ? "" : `negation = ${quotePs(`--${negation}`)}; `) +
+    (flag.optionalValue === true ? `optionalValue = $true; ` : "") +
+    `${valueFields(flag.type)}; ` +
+    `description = ${psOptional(flag.description)} }`
+}
 
 const argumentEntry = (argument: Completions.ArgumentDescriptor): string =>
   `@{ name = ${quotePs(argument.name)}; variadic = $${argument.variadic}; ${valueFields(argument.type)}; ` +
@@ -154,10 +158,10 @@ const completer = (dataName: string): string =>
       foreach ($form in $flag.forms) {
         & $add $form 'ParameterName' $flag.description $typed ''
       }
-      if (-not $flag.takesValue) {
+      if ($flag.negation) {
         $tooltip = $null
         if ($flag.description) { $tooltip = 'Disable ' + $flag.name }
-        & $add ('--no-' + $flag.name) 'ParameterName' $tooltip $typed ''
+        & $add $flag.negation 'ParameterName' $tooltip $typed ''
       }
     }
   }
@@ -229,10 +233,8 @@ const completer = (dataName: string): string =>
         $pending = $null
         $flag = $lookup[$form]
         if ($null -eq $flag) {
-          if ($form.StartsWith('--no-')) {
-            $name = $form.Substring(5)
-            $flag = $lookup['--' + $name]
-            if ($null -ne $flag -and -not $flag.takesValue -and $flag.name -ceq $name) { $used[$name] = $true }
+          foreach ($negated in $context.flags) {
+            if ($negated.negation -ceq $form) { $used[$negated.name] = $true }
           }
           continue
         }
