@@ -112,8 +112,9 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
 
 /**
  * ClickHouse-specific `SqlClient` extension with access to its configuration,
- * the underlying `@clickhouse/client` instance, typed parameter fragments, command-mode execution, insert queries, and
- * per-effect query ID and ClickHouse settings.
+ * the underlying `@clickhouse/client` instance, typed parameter fragments,
+ * command-mode execution, insert queries, and per-effect query ID and
+ * ClickHouse settings.
  *
  * @stability unstable
  * @category services
@@ -123,10 +124,11 @@ export interface ClickhouseClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: ClickhouseClientConfig
   /**
-   * The underlying `@clickhouse/client` instance used by this client, for
-   * driver features it does not wrap. It is closed with the client's scope.
-   *
-   * @stability unstable
+   * The `@clickhouse/client` instance behind this client, for driver features
+   * the SQL client does not wrap, such as `exec()` with raw output formats.
+   * Requests made on it bypass `withQueryId`, `withClickhouseSettings` and
+   * interruption handling; pass `query_id`, `clickhouse_settings` and
+   * `abort_signal` directly. It is closed with the client's scope.
    */
   readonly client: Clickhouse.ClickHouseClient
   readonly param: (dataType: string, value: unknown) => Statement.Fragment
