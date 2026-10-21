@@ -25,6 +25,7 @@ import * as Inspectable from "../Inspectable.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
+import type * as CircuitBreaker from "../persistence/CircuitBreaker.ts"
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1358,6 +1359,200 @@ export const withRateLimiter: {
     )
   })
 })
+
+/**
+ * Namespace containing configuration types for `withCircuitBreaker`.
+ *
+ * @stability experimental
+ * @since 4.0.6
+ */
+export declare namespace WithCircuitBreaker {
+  /**
+   * Options used to configure `withCircuitBreaker`.
+   *
+   * **Details**
+   *
+   * They define the breaker that guards each request, how a request maps to a
+   * circuit key, and how each call's `Exit` is classified.
+   *
+   * @stability experimental
+   * @category circuit breaking
+   * @since 4.0.6
+   */
+  export interface Options<E, R2 = never> {
+    /**
+     * The `CircuitBreaker` service that guards each request.
+     */
+    readonly breaker: CircuitBreaker.CircuitBreaker
+    /**
+     * The circuit key for a request. Requests with the same key share one
+     * circuit. Defaults to the request origin, falling back to the raw request
+     * URL when it cannot be parsed.
+     */
+    readonly key?: string | ((request: HttpClientRequest.HttpClientRequest) => string) | undefined
+    /**
+     * Classifies the `Exit` of each request that the breaker admitted.
+     * Defaults to `circuitBreakerClassifier`.
+     */
+    readonly classify?:
+      | ((
+        exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>
+      ) => CircuitBreaker.Outcome | Effect.Effect<CircuitBreaker.Outcome, never, R2>)
+      | undefined
+  }
+}
+
+/**
+ * Guards requests with a `CircuitBreaker`.
+ *
+ * **Details**
+ *
+ * Each request runs through `breaker.execute`, keyed by the request origin
+ * unless `key` is set. While a circuit is open or probing, requests fail with
+ * a `CircuitBreakerError` without reaching the wrapped client. Each admitted
+ * request's `Exit` is classified with `circuitBreakerClassifier` unless
+ * `classify` is set.
+ *
+ * Put the breaker outermost:
+ * `client.pipe(withRateLimiter(...), retryTransient(...), withCircuitBreaker(...))`.
+ * The breaker then sees one outcome per call after retries, and an open
+ * circuit stops a call before any retry loop starts. `retryTransient` never
+ * retries a `CircuitBreakerError`.
+ *
+ * **Gotchas**
+ *
+ * The breaker's view of a call ends at the response headers, because body
+ * decoding runs on the caller's side. Lift semantic errors into the error
+ * channel below the breaker, for example with `transformResponse`.
+ *
+ * A rejected request has no client span, because the span is created inside
+ * the wrapped client.
+ *
+ * @stability experimental
+ * @category circuit breaking
+ * @since 4.0.6
+ */
+export const withCircuitBreaker: {
+  <E, R2 = never>(options: WithCircuitBreaker.Options<E, R2>): <R>(
+    self: HttpClient.With<E, R>
+  ) => HttpClient.With<E | CircuitBreaker.CircuitBreakerError, R | R2>
+  <E, R, R2 = never>(
+    self: HttpClient.With<E, R>,
+    options: WithCircuitBreaker.Options<E, R2>
+  ): HttpClient.With<E | CircuitBreaker.CircuitBreakerError, R | R2>
+} = dual(2, <E, R, R2>(
+  self: HttpClient.With<E, R>,
+  options: WithCircuitBreaker.Options<E, R2>
+): HttpClient.With<E | CircuitBreaker.CircuitBreakerError, R | R2> => {
+  const keyOption = options.key
+  const resolveKey: (request: HttpClientRequest.HttpClientRequest) => string = typeof keyOption === "function"
+    ? keyOption
+    : keyOption === undefined
+    ? requestOrigin
+    : constant(keyOption)
+  const classify = options.classify ?? circuitBreakerClassifier
+  return transform(self, (effect, request) => options.breaker.execute(effect, { key: resolveKey(request), classify }))
+})
+
+const requestOrigin = (request: HttpClientRequest.HttpClientRequest): string =>
+  Option.match(HttpClientRequest.toUrl(request), {
+    onNone: () => request.url,
+    onSome: (url) => url.origin
+  })
+
+/**
+ * The default `withCircuitBreaker` classifier.
+ *
+ * **Details**
+ *
+ * - Status 408, 500, 502, 503 or 504, returned or wrapped in a
+ *   `StatusCodeError`, a `TransportError` and a `Cause.TimeoutError` are
+ *   failures.
+ * - Any other response, including a non-transient 4xx, is a success, because
+ *   the dependency answered.
+ * - Status 429 is ignored, because `withRateLimiter` owns quota.
+ * - `EncodeError`, `InvalidUrlError`, `DecodeError`, `EmptyBodyError`,
+ *   defects and unknown typed errors are ignored.
+ *
+ * When a cause holds several errors, a failure beats a success and a success
+ * beats an ignored outcome. A failure carries the longest `Retry-After` among
+ * its failure-class responses, which the breaker caps at `maxOpenDuration`.
+ *
+ * The result is an `Effect` only because parsing an HTTP-date `Retry-After`
+ * reads the current time from `Clock`. It performs no I/O and never reads the
+ * response body.
+ *
+ * **Gotchas**
+ *
+ * `TransportError` also covers client-side refusals, which then count as
+ * failures.
+ *
+ * @stability experimental
+ * @category circuit breaking
+ * @since 4.0.6
+ */
+export const circuitBreakerClassifier = <E>(
+  exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>
+): Effect.Effect<CircuitBreaker.Outcome> =>
+  Effect.clockWith((clock) => Effect.succeed(classifyCircuitBreakerExit(exit, clock.currentTimeMillisUnsafe())))
+
+const classifyCircuitBreakerExit = <E>(
+  exit: Exit.Exit<HttpClientResponse.HttpClientResponse, E>,
+  nowMillis: number
+): CircuitBreaker.Outcome => {
+  if (Exit.isSuccess(exit)) {
+    const outcome = circuitBreakerStatusOutcome(exit.value.status)
+    return outcome === "Failure" ? circuitBreakerFailure(retryAfterOf(exit.value, nowMillis)) : { _tag: outcome }
+  }
+  let failed = false
+  let succeeded = false
+  let retryAfter: Duration.Duration | undefined
+  for (const reason of exit.cause.reasons) {
+    if (!Cause.isFailReason(reason)) {
+      continue
+    }
+    const outcome = circuitBreakerErrorOutcome(reason.error)
+    if (outcome === "Failure") {
+      failed = true
+      const hint = retryAfterOf(reason.error, nowMillis)
+      if (hint !== undefined) {
+        retryAfter = retryAfter === undefined ? hint : Duration.max(retryAfter, hint)
+      }
+    } else if (outcome === "Success") {
+      succeeded = true
+    }
+  }
+  return failed ? circuitBreakerFailure(retryAfter) : { _tag: succeeded ? "Success" : "Ignored" }
+}
+
+const circuitBreakerFailure = (retryAfter: Duration.Duration | undefined): CircuitBreaker.Outcome => ({
+  _tag: "Failure",
+  retryAfter
+})
+
+const circuitBreakerErrorOutcome = (error: unknown): CircuitBreaker.Outcome["_tag"] => {
+  if (Cause.isTimeoutError(error)) {
+    return "Failure"
+  }
+  if (!Error.isHttpClientError(error)) {
+    return "Ignored"
+  }
+  switch (error.reason._tag) {
+    case "TransportError":
+      return "Failure"
+    case "StatusCodeError":
+      return circuitBreakerStatusOutcome(error.reason.response.status)
+    default:
+      return "Ignored"
+  }
+}
+
+const circuitBreakerStatusOutcome = (status: number): CircuitBreaker.Outcome["_tag"] =>
+  status === 429
+    ? "Ignored"
+    : status === 408 || status === 500 || status === 502 || status === 503 || status === 504
+    ? "Failure"
+    : "Success"
 
 interface RateLimiterHeaderNames {
   readonly limit: ReadonlyArray<string>
