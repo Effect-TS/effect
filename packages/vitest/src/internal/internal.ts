@@ -53,6 +53,25 @@ const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>
   return promise
 }
 
+const runHook = <Args extends Array<any>>(
+  fn: (...args: Args) => unknown,
+  ctx?: (...args: Args) => Pick<V.TestContext, "signal">
+) => {
+  const hook = (...args: Args) => {
+    const result = fn(...args)
+    return Effect.isEffect(result) ? runPromise(result as Effect.Effect<unknown, unknown>, ctx?.(...args)) : result
+  }
+  // Vitest reads the fixtures a hook uses from its source.
+  hook.toString = () => fn.toString()
+  return hook
+}
+
+/** @internal */
+export const beforeAll: typeof V.beforeAll = (fn, timeout) => V.beforeAll(runHook(fn), timeout)
+
+/** @internal */
+export const beforeEach: typeof V.beforeEach = (fn, timeout) => V.beforeEach(runHook(fn, (ctx) => ctx), timeout)
+
 /** @internal */
 export type TestContext = TestConsole.TestConsole | TestClock.TestClock
 

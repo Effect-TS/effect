@@ -218,6 +218,26 @@ export declare namespace Vitest {
 export const addEqualityTesters: () => void = internal.addEqualityTesters
 
 /**
+ * Registers a callback to run once before all tests in the current suite. If
+ * the callback returns an `Effect`, it is run and awaited.
+ *
+ * @stability unstable
+ * @category hooks
+ * @since 4.0.0
+ */
+export const beforeAll: typeof V.beforeAll = internal.beforeAll
+
+/**
+ * Registers a callback to run before each test in the current suite. If the
+ * callback returns an `Effect`, it is run and awaited.
+ *
+ * @stability unstable
+ * @category hooks
+ * @since 4.0.0
+ */
+export const beforeEach: typeof V.beforeEach = internal.beforeEach
+
+/**
  * Runs a scoped Effect test with test clock and console services.
  *
  * @stability unstable
