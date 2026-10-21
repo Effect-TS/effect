@@ -37,7 +37,7 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
-import { storageObjectName, storageTableName } from "./internal/sqlIdentifier.ts"
+import { hashString } from "./internal/hash.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -46,6 +46,24 @@ import type { ShardingConfig } from "./ShardingConfig.ts"
 import * as Snowflake from "./Snowflake.ts"
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
+
+// PostgreSQL truncates identifiers longer than 63 characters
+const maxIdentifierLength = 63
+
+const makeTableName = (
+  options: {
+    readonly prefix?: string | undefined
+    readonly limitIdentifiers?: boolean | undefined
+  } | undefined
+) =>
+(name: string): string => {
+  const identifier = `${options?.prefix ?? "cluster"}_${name}`
+  if (options?.limitIdentifiers !== true || identifier.length <= maxIdentifierLength) {
+    return identifier
+  }
+  const hash = (hashString(identifier) >>> 0).toString(36)
+  return `${identifier.slice(0, maxIdentifierLength - hash.length - 1)}_${hash}`
+}
 
 /**
  * Creates a SQL-backed encoded message storage driver, running its migrations
@@ -95,9 +113,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const crypto = yield* Crypto.Crypto
-  const prefix = options?.prefix ?? "cluster"
-  const limitIdentifiers = options?.limitIdentifiers === true
-  const table = (name: string) => storageTableName(prefix, name, limitIdentifiers)
+  const table = makeTableName(options)
 
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
   const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
@@ -865,11 +881,7 @@ export const migrations = (options?: {
   readonly prefix?: string | undefined
   readonly limitIdentifiers?: boolean | undefined
 }): Migrator.Loader => {
-  const prefix = options?.prefix ?? "cluster"
-  const limitIdentifiers = options?.limitIdentifiers === true
-  const table = (name: string) => storageTableName(prefix, name, limitIdentifiers)
-  const objectName = (tableName: string, suffix: string) =>
-    storageObjectName(prefix, tableName, suffix, limitIdentifiers)
+  const table = makeTableName(options)
   const messagesTable = table("messages")
   const repliesTable = table("replies")
 
@@ -987,8 +999,8 @@ export const migrations = (options?: {
       })
 
       // Add message indexes optimized for the specific query patterns
-      const shardLookupIndex = objectName("messages", "shard_idx")
-      const requestIdLookupIndex = objectName("messages", "request_id_idx")
+      const shardLookupIndex = table("messages_shard_idx")
+      const requestIdLookupIndex = table("messages_request_id_idx")
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
@@ -1044,8 +1056,8 @@ export const migrations = (options?: {
               payload TEXT NOT NULL,
               sequence INT,
               acked BIT NOT NULL DEFAULT 0,
-              CONSTRAINT ${sql(objectName("replies", "one_exit"))} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(objectName("replies", "sequence"))} UNIQUE (request_id, sequence)
+              CONSTRAINT ${sql(table("replies_one_exit"))} UNIQUE (request_id, kind),
+              CONSTRAINT ${sql(table("replies_sequence"))} UNIQUE (request_id, sequence)
             )
           `,
         mysql: () =>
@@ -1094,7 +1106,7 @@ export const migrations = (options?: {
       })
 
       // Add reply indexes optimized for request_id lookups
-      const replyLookupIndex = objectName("replies", "request_lookup_idx")
+      const replyLookupIndex = table("replies_request_lookup_idx")
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
@@ -1146,7 +1158,7 @@ export const migrations = (options?: {
     "0003_pg_messages_rowid_index": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
       const messagesTableSql = sql(messagesTable)
-      const rowIdIndex = objectName("messages", "rowid_idx")
+      const rowIdIndex = table("messages_rowid_idx")
 
       yield* sql.onDialectOrElse({
         pg: () =>
@@ -1166,7 +1178,7 @@ const runMessageMigrations = (options?: {
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
   Migrator.make({})({
     loader: migrations(options),
-    table: storageTableName(options?.prefix ?? "cluster", "migrations", options?.limitIdentifiers === true)
+    table: makeTableName(options)("migrations")
   }).pipe(Effect.asVoid, Effect.orDie)
 
 /**
