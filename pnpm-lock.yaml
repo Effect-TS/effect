@@ -502,8 +502,8 @@ importers:
         specifier: ^1.11.10
         version: 1.11.10
       multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
+        specifier: ^0.2.9
+        version: 0.2.9
     devDependencies:
       ajv:
         specifier: ^8.17.1
@@ -516,8 +516,8 @@ importers:
   packages/platform-browser:
     dependencies:
       multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
+        specifier: ^0.2.9
+        version: 0.2.9
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -542,8 +542,8 @@ importers:
         specifier: workspace:^
         version: link:../platform-node-shared
       multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
+        specifier: ^0.2.9
+        version: 0.2.9
     devDependencies:
       '@effect/cluster':
         specifier: workspace:^
@@ -612,8 +612,8 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1
       multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
+        specifier: ^0.2.9
+        version: 0.2.9
       ws:
         specifier: ^8.18.2
         version: 8.18.3
@@ -5626,8 +5626,8 @@ packages:
   msgpackr@1.11.10:
     resolution: {integrity: sha512-iCZNq+HszvF+fC3anCm4nBmWEnbeIAfpDs6IStAEKhQ2YSgkjzVG2FF9XJqwwQh5bH3N9OUTUt4QwVN6MLMLtA==}
 
-  multipasta@0.2.8:
-    resolution: {integrity: sha512-ZPWuMKyv0cSO29f7hozp+k6+crZbQijV8ipMvxNxRf2SwtYGTX1ZX89Kd20VV4H9Znonx+EQn+iy1wGQsJ+b+Q==}
+  multipasta@0.2.9:
+    resolution: {integrity: sha512-kAovZHgxryqb0xTFz7OTCPxbas8UBTTwCDhfrlaNecp1/z6xcMfp5PVhDxsW7jONHyDF10/ccp30MxA2+66GJw==}
 
   mysql2@3.14.2:
     resolution: {integrity: sha512-YD6mZMeoypmheHT6b2BrVmQFvouEpRICuvPIREulx2OvP1xAxxeqkMQqZSTBefv0PiOBKGYFa2zQtY+gf/4eQw==}
@@ -12294,7 +12294,7 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  multipasta@0.2.8: {}
+  multipasta@0.2.9: {}
 
   mysql2@3.14.2:
     dependencies:
