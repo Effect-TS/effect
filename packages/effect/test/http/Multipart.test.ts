@@ -421,6 +421,18 @@ describe("Multipart", () => {
     {
       disposition: `filename=my file.txt`,
       expected: [["error", "InvalidDisposition"]]
+    },
+    {
+      disposition: `filename*=UTF-8''%ZZ.txt`,
+      expected: [["error", "InvalidDisposition"]]
+    },
+    {
+      disposition: `\tfilename = "file.txt"`,
+      expected: [["file", "file.txt"]]
+    },
+    {
+      disposition: `filename="first.txt"; FILENAME="second.txt"`,
+      expected: [["error", "InvalidDisposition"]]
     }
   ])("parses Content-Disposition parameters: $disposition", ({ disposition, expected }) => {
     const boundary = "----testboundary"
