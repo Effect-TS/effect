@@ -81,22 +81,13 @@ export const make: (
       idleTimeToLive: "10 millis"
     })
 
-    // Only key input needs raw mode. `readLine` leaves the TTY in cooked mode,
-    // so the terminal echoes typed characters and turns Ctrl+C into SIGINT.
+    // Only key input needs raw mode; `readLine` never requests it.
+    const setRawMode = (enabled: boolean) =>
+      Effect.sync(() => {
+        if (stdin.isTTY) stdin.setRawMode(enabled)
+      })
     const rawModeRef = yield* RcRef.make({
-      acquire: Effect.acquireRelease(
-        Effect.sync(() => {
-          if (stdin.isTTY) {
-            stdin.setRawMode(true)
-          }
-        }),
-        () =>
-          Effect.sync(() => {
-            if (stdin.isTTY) {
-              stdin.setRawMode(false)
-            }
-          })
-      ),
+      acquire: Effect.acquireRelease(setRawMode(true), () => setRawMode(false)),
       idleTimeToLive: "10 millis"
     })
 
