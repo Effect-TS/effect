@@ -528,6 +528,54 @@ describe("HttpApi", () => {
       }).pipe(Effect.provide(ApiLayer))
     })
 
+    it.effect("basic security round trips non-ASCII credentials", () => {
+      class CurrentCredentials extends Context.Service<CurrentCredentials, string>()("CurrentCredentials") {}
+
+      class M extends HttpApiMiddleware.Service<M, {
+        provides: CurrentCredentials
+      }>()("Client/Security/Basic", {
+        security: {
+          basic: HttpApiSecurity.basic
+        }
+      }) {}
+
+      const Api = HttpApi.make("api").add(
+        HttpApiGroup.make("group")
+          .add(HttpApiEndpoint.get("a", "/a", {
+            success: Schema.String
+          }))
+          .middleware(M)
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "group",
+        (handlers) => handlers.handle("a", () => CurrentCredentials)
+      )
+      const MLayer = Layer.succeed(M)({
+        basic: (effect, { credential }) =>
+          Effect.provideService(
+            effect,
+            CurrentCredentials,
+            `${credential.username}:${Redacted.value(credential.password)}`
+          )
+      })
+
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(MLayer)),
+        { disableListenLog: true, disableLogger: true }
+      ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+
+      return Effect.gen(function*() {
+        const MClient = HttpApiMiddleware.layerClient(
+          M,
+          ({ next, request }) => next(HttpClientRequest.basicAuth(request, "usér", "pässword€"))
+        )
+        const client = yield* HttpApiClient.make(Api).pipe(Effect.provide(MClient))
+
+        assert.strictEqual(yield* client.group.a(), "usér:pässword€")
+      }).pipe(Effect.provide(ApiLayer))
+    })
+
     it("security middleware cache does not reuse the first service impl", async () => {
       class CurrentMarker extends Context.Service<CurrentMarker, string>()("CurrentMarker") {}
 
