@@ -3269,6 +3269,63 @@ export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalCo
           compilationTimeout
         )
       }
+
+      it.effect(
+        `preserves HttpClient error and requirement types (${format})`,
+        () =>
+          assertGeneratedClientsCompile({
+            openapi: "3.1.0",
+            info: { title: "Channels", version: "1.0.0" },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [],
+            paths: Object.fromEntries(
+              [
+                ["/value", "getValue", "application/json"],
+                ["/download", "download", "application/octet-stream"],
+                ...(format === "httpclient" ? [["/events", "events", "text/event-stream"]] : [])
+              ].map(([path, operationId, contentType]) => [path, {
+                get: {
+                  operationId,
+                  parameters: [],
+                  security: [],
+                  tags: ["Channels"],
+                  responses: {
+                    "200": { description: "OK", content: { [contentType]: { schema: { type: "string" } } } }
+                  }
+                }
+              }])
+            )
+          }, {
+            formats: [format],
+            usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
+  (<T>() => T extends B ? 1 : 2) ? true : false
+type Assert<T extends true> = T
+interface CustomError { readonly _tag: "CustomError" }
+interface CustomService { readonly _tag: "CustomService" }
+declare const httpClient: HttpClient.HttpClient.With<CustomError, CustomService>
+declare const defaultHttpClient: HttpClient.HttpClient
+
+const client = make(httpClient)
+const value = client.getValue(undefined)
+const download = client.downloadStream()
+
+export const defaultClient: TestClient = make(defaultHttpClient)
+export type ValueError = Assert<CustomError | HttpClientError.HttpClientError extends Effect.Error<typeof value> ? true : false>
+export type ValueServices = Assert<Equal<Effect.Services<typeof value>, CustomService>>
+export type DownloadError = Assert<Equal<Stream.Error<typeof download>, CustomError | HttpClientError.HttpClientError>>
+export type DownloadServices = Assert<Equal<Stream.Services<typeof download>, CustomService>>
+${
+              format === "httpclient"
+                ? `const events = client.eventsSse()
+export type EventsError = Assert<CustomError | HttpClientError.HttpClientError extends Stream.Error<typeof events> ? true : false>
+export type EventsServices = Assert<CustomService extends Stream.Services<typeof events> ? true : false>
+`
+                : ""
+            }`
+          }),
+        compilationTimeout
+      )
     }
 
     it.effect("quotes static path text with and without parameters", () => {
