@@ -704,6 +704,51 @@ describe("RpcServer", () => {
       ])
     }))
 
+  it.effect("notifies onDisconnect while still interrupting the disconnected client's handlers", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
+      const started = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const disconnected = yield* Deferred.make<number>()
+      const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      yield* RpcServer.make(group, {
+        onDisconnect: (clientId: number) => Deferred.succeed(disconnected, clientId)
+      }).pipe(
+        Effect.provideService(RpcServer.Protocol, protocol),
+        Effect.provide(group.toLayer({
+          wait: () =>
+            Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+            )
+        })),
+        Effect.forkScoped
+      )
+
+      const clientScope = yield* Scope.fork(yield* Scope.Scope)
+      yield* httpEffect.pipe(
+        Effect.provideService(
+          HttpServerRequest.HttpServerRequest,
+          HttpServerRequest.fromWeb(
+            new Request("http://test/rpc", {
+              method: "POST",
+              body: `{"_tag":"Request","id":1,"tag":"wait","payload":{},"headers":[]}\n`
+            })
+          )
+        ),
+        Effect.provideService(Scope.Scope, clientScope),
+        Effect.forkChild
+      )
+      yield* Deferred.await(started)
+      const [clientId] = yield* protocol.clientIds
+      yield* Scope.close(clientScope, Exit.void)
+
+      yield* Deferred.await(interrupted)
+      assert.strictEqual(yield* Deferred.await(disconnected), clientId)
+    }))
+
   it.effect("applies backpressure to framed HTTP responses by default", () =>
     Effect.gen(function*() {
       const produced = yield* producedWithoutReadingFramedBody()
