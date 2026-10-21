@@ -101,8 +101,21 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  * **Details**
  *
  * - `tripPolicy` decides when a Closed circuit opens.
- * - `openDuration` is a fixed duration, or a schedule whose delays are used
- *   for successive openings. When the schedule ends, its last delay repeats.
+ * - `openDuration` is a fixed duration, or a schedule whose output is
+ *   ignored. The schedule is never stored. For each opening the breaker takes
+ *   a fresh step from the schedule and replays it `consecutiveOpenings` times
+ *   against a simulated clock. The clock starts at the current time when the
+ *   opening is recorded and advances by each replayed delay, so step k sees
+ *   `attempt = k` and `elapsed` equal to the sum of the earlier replayed
+ *   delays. Wall time spent idle, waiting for the probe, or inside the probe
+ *   never enters the replay.
+ * - Delay-, attempt- and elapsed-time-based schedules (`exponential`,
+ *   `fibonacci`, `spaced`, `fixed`, `recurs`, `upTo`, `during`, `jittered`)
+ *   are supported as `openDuration`; `jittered` draws fresh randomness on
+ *   every replay. Schedules that read the absolute timestamp, such as `cron`,
+ *   are not supported. When the schedule ends, the last delay it produced
+ *   repeats; a schedule that ends before producing any delay opens the
+ *   circuit for zero time.
  * - `maxOpenDuration` caps a `Retry-After` hint from `failure`, and defaults
  *   to one hour. It never caps `openDuration`.
  * - `onStoreError` decides what a call does when the store cannot admit it:
@@ -110,6 +123,32 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  *   fails it with `CircuitBreakerStoreError`.
  *
  * The breaker's `transitions` stream ends when the surrounding scope closes.
+ *
+ * **Example** (Capping backoff growth by time spent open)
+ *
+ * `upTo({ duration })` measures the sum of the earlier open windows, not wall
+ * time. Here the delay keeps doubling while the previous open windows add up
+ * to at most one minute, then the last delay repeats.
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schedule } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * // Openings last 1, 2, 4, 8, 16 and 32 seconds. The seventh replay sees 63
+ * // seconds of earlier open time, so the schedule ends and every later
+ * // opening lasts 32 seconds, until a successful probe closes the circuit.
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(5),
+ *     openDuration: Schedule.exponential("1 second").pipe(
+ *       Schedule.upTo({ duration: "1 minute" })
+ *     )
+ *   })
+ *   return yield* Effect.succeed("ok").pipe(breaker.execute({ key: "payments" }))
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => "ok"
+ * ```
  *
  * @stability experimental
  * @category constructors
