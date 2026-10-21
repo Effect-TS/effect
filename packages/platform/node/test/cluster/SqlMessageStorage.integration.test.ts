@@ -22,6 +22,7 @@ import {
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, Statement } from "effect/sql"
 import { TestClock } from "effect/testing"
+import { MssqlContainer } from "../fixtures/mssql-utils.ts"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
@@ -106,6 +107,7 @@ describe("SqlMessageStorage", () => {
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
+    ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
     // Tests truncate this backend's shared tables.
@@ -192,6 +194,22 @@ describe("SqlMessageStorage", () => {
               AND indexname = 'cluster_messages_rowid_idx'
             `
             expect(indexes).toHaveLength(1)
+          }))
+      }
+
+      if (label === "mssql") {
+        it.effect("rejects duplicate exit replies when another table has the same index name", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+            yield* sql`CREATE TABLE collision_other (id INT)`
+            yield* sql`CREATE INDEX collision_replies_one_exit ON collision_other (id)`
+            const storage = yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(
+              Effect.provide(NodeCrypto.layer)
+            )
+            const exit = { _tag: "WithExit", requestId: "1", exit: { _tag: "Success", value: null } } as const
+            yield* storage.saveReply({ ...exit, id: "1" })
+            const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "2" }))
+            expect(error._tag).toEqual("PersistenceError")
           }))
       }
 
