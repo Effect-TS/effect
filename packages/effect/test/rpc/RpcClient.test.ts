@@ -118,11 +118,10 @@ const EchoGroup = RpcGroup.make(
         Schema.String,
         SchemaTransformation.transformEffect({
           decode: Effect.succeed,
-          encode: (value) =>
-            Effect.gen(function*() {
-              yield* yield* EchoEncodeGate
-              return value
-            })
+          encode: Effect.fnUntraced(function*(value) {
+            yield* yield* EchoEncodeGate
+            return value
+          })
         })
       ))
     }),
