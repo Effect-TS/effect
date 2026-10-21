@@ -208,32 +208,40 @@ export const getStatusErrorAST = (ast: AST.AST): number => getStatus(ast, 500)
 export const getStatusError = <A extends Schema.Schema.All>(self: A): number => getStatusErrorAST(self.ast)
 
 /**
- * Extracts all individual types from a union type recursively.
+ * Extracts the member types of a union recursively, preserving their order.
  *
- * **Details**
- *
- * This function traverses an AST and collects all the types within a union,
- * even if they are nested. It ensures that every type in a union (including
- * deeply nested unions) is included in the resulting array. The returned array
- * contains each type as an individual AST node, preserving the order in which
- * they appear.
+ * An annotated union is kept intact so its annotations are not lost, unless a
+ * member needs its own response (status, encoding or void). The union is then
+ * split and its response annotations are inherited by the members that do not
+ * define them.
  *
  * @internal
  */
 export const extractUnionTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => {
-  function process(ast: AST.AST): void {
-    if (AST.isUnion(ast)) {
-      for (const type of ast.types) {
-        process(type)
-      }
-    } else {
-      out.push(ast)
-    }
+  if (!AST.isUnion(ast)) {
+    return [ast]
   }
-  const out: Array<AST.AST> = []
-  process(ast)
-  return out
+  const types = ast.types.flatMap(extractUnionTypes)
+  if (!types.some(needsOwnResponse)) {
+    return Reflect.ownKeys(ast.annotations).length > 0 ? [ast] : types
+  }
+  const annotations = extractAnnotations(ast.annotations)
+  const keys = Reflect.ownKeys(annotations)
+  if (keys.length === 0) {
+    return types
+  }
+  return types.map((type) => {
+    const merged = mergedAnnotations(type)
+    return keys.every((key) => key in merged) ? type : AST.annotations(type, {
+      ...annotations,
+      ...extractAnnotations(merged),
+      ...type.annotations
+    })
+  })
 }
+
+const needsOwnResponse = (ast: AST.AST): boolean =>
+  isVoid(ast) || Reflect.ownKeys(extractAnnotations(mergedAnnotations(ast))).length > 0
 
 /** @internal */
 export const UnionUnifyAST = (self: AST.AST, that: AST.AST): AST.AST =>
@@ -578,27 +586,21 @@ export const deunionize = (
   schemas: Set<Schema.Schema.Any>,
   schema: Schema.Schema.Any
 ): void => {
-  if (astCache.has(schema.ast)) {
-    schemas.add(astCache.get(schema.ast)!)
-    return
-  }
   const ast = schema.ast
-  if (ast._tag === "Union") {
-    for (const astType of ast.types) {
-      if (astCache.has(astType)) {
-        schemas.add(astCache.get(astType)!)
-        continue
-      }
-      const memberSchema = Schema.make(AST.annotations(astType, {
+  const hasAnnotations = Reflect.ownKeys(ast.annotations).length > 0
+  for (let type of extractUnionTypes(ast)) {
+    if (type !== ast && hasAnnotations) {
+      type = AST.annotations(type, {
         ...ast.annotations,
-        ...astType.annotations
-      }))
-      astCache.set(astType, memberSchema)
-      schemas.add(memberSchema)
+        ...type.annotations
+      })
     }
-  } else {
-    astCache.set(ast, schema)
-    schemas.add(schema)
+    let member = astCache.get(type)
+    if (member === undefined) {
+      member = type === ast ? schema : Schema.make(type)
+      astCache.set(type, member)
+    }
+    schemas.add(member)
   }
 }
 
