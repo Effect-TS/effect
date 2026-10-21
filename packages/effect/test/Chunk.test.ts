@@ -1003,4 +1003,84 @@ describe("Chunk", () => {
     assertEquals(Chunk.difference(curr, Chunk.empty()), curr)
     assertEquals(Chunk.difference(curr, curr), Chunk.empty())
   })
+
+  it("fromNonEmptyArrayUnsafe", () => {
+    const chunk = Chunk.fromNonEmptyArrayUnsafe([1, 2, 3])
+    assertTrue(Chunk.isNonEmpty(chunk))
+    deepStrictEqual(Chunk.toArray(chunk), [1, 2, 3])
+  })
+
+  it("isNonEmpty", () => {
+    assertFalse(Chunk.isNonEmpty(Chunk.empty()))
+    assertTrue(Chunk.isNonEmpty(Chunk.make(1)))
+  })
+
+  it("head / headUnsafe / headNonEmpty", () => {
+    assertNone(Chunk.head(Chunk.empty()))
+    assertSome(Chunk.head(Chunk.make(1, 2, 3)), 1)
+
+    strictEqual(Chunk.headUnsafe(Chunk.make(1, 2, 3)), 1)
+    throws(() => Chunk.headUnsafe(Chunk.empty()))
+
+    strictEqual(Chunk.headNonEmpty(Chunk.make(1, 2, 3)), 1)
+  })
+
+  it("lastNonEmpty", () => {
+    strictEqual(Chunk.lastNonEmpty(Chunk.make(1, 2, 3)), 3)
+    strictEqual(Chunk.lastNonEmpty(Chunk.make("a")), "a")
+  })
+
+  it("tailNonEmpty", () => {
+    assertEquals(Chunk.tailNonEmpty(Chunk.make(1, 2, 3)), Chunk.make(2, 3))
+    assertEquals(Chunk.tailNonEmpty(Chunk.make(1)), Chunk.empty())
+  })
+
+  it("sort", () => {
+    const chunk = Chunk.make(3, 1, 2)
+    assertEquals(Chunk.sort(chunk, Order.Number), Chunk.make(1, 2, 3))
+    assertEquals(pipe(chunk, Chunk.sort(Order.flip(Order.Number))), Chunk.make(3, 2, 1))
+    assertEquals(chunk, Chunk.make(3, 1, 2))
+  })
+
+  it("contains", () => {
+    const chunk = Chunk.make(1, 2, 3)
+    assertTrue(Chunk.contains(chunk, 2))
+    assertFalse(Chunk.contains(chunk, 4))
+    assertTrue(pipe(chunk, Chunk.contains(3)))
+    assertFalse(Chunk.contains(Chunk.empty<number>(), 1))
+  })
+
+  it("containsWith", () => {
+    const containsById = Chunk.containsWith<{ id: number }>((a, b) => a.id === b.id)
+    const chunk = Chunk.make({ id: 1 }, { id: 2 })
+    assertTrue(containsById(chunk, { id: 2 }))
+    assertFalse(containsById(chunk, { id: 3 }))
+    assertTrue(pipe(chunk, containsById({ id: 1 })))
+  })
+
+  it("findFirst", () => {
+    const chunk = Chunk.make(1, 2, 3, 4)
+    assertSome(Chunk.findFirst(chunk, (n) => n > 2), 3)
+    assertNone(Chunk.findFirst(chunk, (n) => n > 10))
+    assertSome(pipe(chunk, Chunk.findFirst((n) => n % 2 === 0)), 2)
+  })
+
+  it("findFirstIndex", () => {
+    const chunk = Chunk.make(1, 2, 3, 4)
+    assertSome(Chunk.findFirstIndex(chunk, (n) => n > 2), 2)
+    assertNone(Chunk.findFirstIndex(chunk, (n) => n > 10))
+    assertSome(pipe(chunk, Chunk.findFirstIndex((n) => n % 2 === 0)), 1)
+  })
+
+  it("reduce", () => {
+    const chunk = Chunk.make("a", "b", "c")
+    strictEqual(Chunk.reduce(chunk, "", (acc, s, i) => `${acc}${i}${s}`), "0a1b2c")
+    strictEqual(pipe(Chunk.make(1, 2, 3), Chunk.reduce(0, (acc, n) => acc + n)), 6)
+  })
+
+  it("reduceRight", () => {
+    const chunk = Chunk.make("a", "b", "c")
+    strictEqual(Chunk.reduceRight(chunk, "", (acc, s, i) => `${acc}${i}${s}`), "2c1b0a")
+    strictEqual(pipe(Chunk.make(1, 2, 3), Chunk.reduceRight(0, (acc, n) => acc + n)), 6)
+  })
 })
