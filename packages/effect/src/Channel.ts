@@ -6501,7 +6501,7 @@ export const mergeAll: {
           : Math.max(1, concurrency)
         const semaphore = switch_ ? undefined : Semaphore.makeUnsafe(concurrencyN)
         const doneLatch = yield* Latch.make(true)
-        const fibers = new Set<Fiber.Fiber<any, any>>()
+        const fibers = new Map<Fiber.Fiber<any, any>, Scope.Closeable>()
 
         const queue = yield* Queue.bounded<OutElem, OutErr | OutErr1 | Cause.Done<OutDone>>(
           bufferSize
@@ -6531,10 +6531,14 @@ export const mergeAll: {
             const childPull = yield* toTransform(channel)(upstream, childScope)
 
             while (fibers.size >= concurrencyN) {
-              const fiber = Iterable.headUnsafe(fibers)
+              const [fiber, fiberScope] = Iterable.headUnsafe(fibers)
               fibers.delete(fiber)
               if (fibers.size === 0) yield* doneLatch.open
               yield* Fiber.interrupt(fiber)
+              // A worker interrupted before it starts never closes its own
+              // scope. Finalizer failures of replaced workers are discarded
+              // either way.
+              yield* Effect.ignoreCause(Scope.close(fiberScope, Exit.interrupt()))
             }
 
             const fiber = yield* childPull.pipe(
@@ -6558,7 +6562,7 @@ export const mergeAll: {
             )
 
             doneLatch.closeUnsafe()
-            fibers.add(fiber)
+            fibers.set(fiber, childScope)
           }
         }).pipe(
           Effect.catchCause((cause) => {

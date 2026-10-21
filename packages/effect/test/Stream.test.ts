@@ -1966,6 +1966,36 @@ describe("Stream", () => {
       "fails promptly and interrupts a slow inner stream when the outer stream fails",
       () => testOuterFailure("switchMap", "slow")
     )
+
+    it.effect("finalizes inner streams that are replaced before they start", () =>
+      Effect.gen(function*() {
+        const finalized: Array<number> = []
+        const lastStarted = yield* Latch.make(false)
+        const fiber = yield* Stream.make(1, 2, 3).pipe(
+          Stream.concat(Stream.never),
+          Stream.switchMap((n) =>
+            Stream.never.pipe(
+              Stream.onStart(n === 3 ? lastStarted.open : Effect.void),
+              Stream.ensuring(Effect.sync(() => finalized.push(n)))
+            )
+          ),
+          Stream.runDrain,
+          Effect.forkChild
+        )
+        yield* lastStarted.await
+        assert.deepStrictEqual(finalized, [1, 2])
+        yield* Fiber.interrupt(fiber)
+        assert.deepStrictEqual(finalized, [1, 2, 3])
+      }))
+
+    it.effect("ignores finalizer failures of inner streams replaced before they start", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2).pipe(
+          Stream.switchMap((n) => n === 1 ? Stream.never.pipe(Stream.ensuring(Effect.die("boom"))) : Stream.make(n)),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [2])
+      }))
   })
 
   it.effect.prop(
