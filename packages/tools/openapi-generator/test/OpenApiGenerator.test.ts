@@ -796,12 +796,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig | undefined> 
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
   : A | [A, HttpClientResponse.HttpClientResponse]
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): TestClient => {
+): TestClient<E, R> => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
       Effect.orElseSucceed(response.json, () => "Unexpected status code"),
@@ -818,7 +818,7 @@ export const make = (
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -885,11 +885,11 @@ export const make = (
   }
 }
 
-export interface TestClient {
-  readonly httpClient: HttpClient.HttpClient
+export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError | SchemaError>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, HttpClientError.HttpClientError | SchemaError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError | SchemaError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError | SchemaError, R>;
   }
 }
 
@@ -1022,7 +1022,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `import * as Sse from "effect/encoding/Sse"`,
-          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: StreamEvents200Sse }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: StreamEvents200Sse }, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, R | typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get("/events").pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
@@ -1084,7 +1084,7 @@ export const TestClientError = <Tag extends string, E>(
         [
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/http-api/stream/failure"), "data": Schema.String`,
-          `readonly "streamEventsSse": () => Stream.Stream<StreamEvents200Sse, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<StreamEvents200Sse, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, R | typeof StreamEvents200Sse.DecodingServices>`,
           `sseEventRequest(StreamEvents200Sse)`,
           `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
         ]
@@ -1168,17 +1168,17 @@ export const TestClientError = <Tag extends string, E>(
         `readonly "downloadArchive": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
-        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
+        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"downloadAvatar": (options: Parameters<TestClient["downloadAvatar"]>[0]) => HttpClientRequest.get("/avatar").pipe(
       withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeBinary`,
-        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"400": decodeError("DownloadMixedContent400", DownloadMixedContent400)`,
         `readonly "downloadMixedContent": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"200": () => Effect.void`,
         `"404": decodeVoidError("404")`,
         `"500": decodeVoidError("500")`,
@@ -1326,12 +1326,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig | undefined> 
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
   : A | [A, HttpClientResponse.HttpClientResponse]
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): TestClient => {
+): TestClient<E, R> => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
       Effect.orElseSucceed(response.json, () => "Unexpected status code"),
@@ -1348,7 +1348,7 @@ export const make = (
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -1435,11 +1435,11 @@ export const make = (
   }
 }
 
-export interface TestClient {
-  readonly httpClient: HttpClient.HttpClient
+export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, HttpClientError.HttpClientError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError, R>;
   }
 }
 
@@ -1481,16 +1481,16 @@ export const TestClientError = <Tag extends string, E>(
         `readonly "downloadArchive": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `"downloadAvatar": (options: Parameters<TestClient["downloadAvatar"]>[0]) => HttpClientRequest.get("/avatar").pipe(
       onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
-        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `import * as HttpClient from "effect/http/HttpClient"`,
         `onRequest(options?.config)([], {"400":"DownloadMixedContent400"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadMixedContent": {`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `<Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<Uint8Array, Config | undefined>`,
-        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
+        `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`,
         `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["200"],"voidError":["404","500"]})`,
         `cases[code] = decodeVoidError(code)`,
         `TestClientError<"404", undefined>`,
@@ -3422,6 +3422,63 @@ export type ConditionalConfig = Assert<Equal<Effect.Success<typeof conditionalCo
           compilationTimeout
         )
       }
+
+      it.effect(
+        `preserves HttpClient error and requirement types (${format})`,
+        () =>
+          assertGeneratedClientsCompile({
+            openapi: "3.1.0",
+            info: { title: "Channels", version: "1.0.0" },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [],
+            paths: Object.fromEntries(
+              [
+                ["/value", "getValue", "application/json"],
+                ["/download", "download", "application/octet-stream"],
+                ...(format === "httpclient" ? [["/events", "events", "text/event-stream"]] : [])
+              ].map(([path, operationId, contentType]) => [path, {
+                get: {
+                  operationId,
+                  parameters: [],
+                  security: [],
+                  tags: ["Channels"],
+                  responses: {
+                    "200": { description: "OK", content: { [contentType]: { schema: { type: "string" } } } }
+                  }
+                }
+              }])
+            )
+          }, {
+            formats: [format],
+            usage: `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
+  (<T>() => T extends B ? 1 : 2) ? true : false
+type Assert<T extends true> = T
+interface CustomError { readonly _tag: "CustomError" }
+interface CustomService { readonly _tag: "CustomService" }
+declare const httpClient: HttpClient.HttpClient.With<CustomError, CustomService>
+declare const defaultHttpClient: HttpClient.HttpClient
+
+const client = make(httpClient)
+const value = client.getValue(undefined)
+const download = client.downloadStream()
+
+export const defaultClient: TestClient = make(defaultHttpClient)
+export type ValueError = Assert<CustomError | HttpClientError.HttpClientError extends Effect.Error<typeof value> ? true : false>
+export type ValueServices = Assert<Equal<Effect.Services<typeof value>, CustomService>>
+export type DownloadError = Assert<Equal<Stream.Error<typeof download>, CustomError | HttpClientError.HttpClientError>>
+export type DownloadServices = Assert<Equal<Stream.Services<typeof download>, CustomService>>
+${
+              format === "httpclient"
+                ? `const events = client.eventsSse()
+export type EventsError = Assert<CustomError | HttpClientError.HttpClientError extends Stream.Error<typeof events> ? true : false>
+export type EventsServices = Assert<CustomService extends Stream.Services<typeof events> ? true : false>
+`
+                : ""
+            }`
+          }),
+        compilationTimeout
+      )
     }
 
     it.effect("quotes static path text with and without parameters", () => {
