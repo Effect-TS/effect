@@ -77,10 +77,28 @@ const summarizeDeadlock = (graph: string) => {
   return `${transactions.join(" vs ")} on ${Array.from(new Set(locks)).join(", ")}`
 }
 
+// Declares statement parameters as variables, for a client that sends every
+// statement as a plain batch instead of through sp_executesql
+const declareParameter = (value: unknown, i: number): string => {
+  const name = `@${i + 1}`
+  if (typeof value === "string") return `DECLARE ${name} NVARCHAR(MAX) = N'${value.replaceAll("'", "''")}';`
+  if (typeof value === "number") return `DECLARE ${name} ${Number.isInteger(value) ? "BIGINT" : "FLOAT"} = ${value};`
+  if (typeof value === "bigint") return `DECLARE ${name} BIGINT = ${value};`
+  if (typeof value === "boolean") return `DECLARE ${name} BIT = ${value ? 1 : 0};`
+  if (value instanceof Date) return `DECLARE ${name} DATETIME2 = CONVERT(DATETIME2, '${value.toISOString()}', 127);`
+  if (value === null || value === undefined) return `DECLARE ${name} NVARCHAR(MAX) = NULL;`
+  throw new Error(`unsupported parameter ${String(value)}`)
+}
+
 // A third-party mssql-dialect client built from the public SqlClient
 // constructor, whose sessions run with XACT_ABORT ON: any error inside a
-// transaction dooms it.
-const makeXactAbortClient = Effect.fnUntraced(function*(database: string) {
+// transaction dooms it. With rawBatch, statements run as plain batches with
+// their parameters declared inline. Interruption sends an attention and waits
+// for the request to settle.
+const makeXactAbortClient = Effect.fnUntraced(function*(
+  database: string,
+  options?: { readonly rawBatch?: boolean; readonly size?: number }
+) {
   const container = yield* MssqlContainer
   const fail = (cause: unknown) =>
     Effect.fail(new SqlError.SqlError({ reason: new SqlError.UnknownError({ cause, operation: "execute" }) }))
@@ -106,15 +124,21 @@ const makeXactAbortClient = Effect.fnUntraced(function*(database: string) {
     }),
     (conn) => Effect.sync(() => conn.close())
   )
-  const pool = yield* Pool.make({ acquire: connect, size: 4 })
+  const pool = yield* Pool.make({ acquire: connect, size: options?.size ?? 4 })
 
   const run = (conn: Tedious.Connection, sql: string, params: ReadonlyArray<unknown>, rowsAsArray: boolean) =>
     Effect.callback<ReadonlyArray<any>, SqlError.SqlError>((resume) => {
-      const request = new Tedious.Request(sql, (
+      let settled = false
+      let onCancelled: (() => void) | undefined
+      const rawBatch = options?.rawBatch === true
+      const text = rawBatch ? params.map(declareParameter).join("\n") + "\n" + sql : sql
+      const request = new Tedious.Request(text, (
         cause,
         _rowCount,
         rows: Array<Array<{ readonly metadata: { readonly colName: string }; readonly value: unknown }>>
       ) => {
+        settled = true
+        if (onCancelled) return onCancelled()
         resume(
           cause ? fail(cause) : Effect.succeed(rows.map((row) =>
             rowsAsArray
@@ -123,15 +147,22 @@ const makeXactAbortClient = Effect.fnUntraced(function*(database: string) {
           ))
         )
       })
-      params.forEach((value, i) => {
-        request.addParameter(`${i + 1}`, MssqlClient.defaultParameterTypes[Statement.primitiveKind(value)], value)
-      })
+      if (!rawBatch) {
+        params.forEach((value, i) => {
+          request.addParameter(`${i + 1}`, MssqlClient.defaultParameterTypes[Statement.primitiveKind(value)], value)
+        })
+      }
       // transaction control runs as a plain batch, so it outlives the statement
-      if (params.length === 0) {
+      if (rawBatch || params.length === 0) {
         conn.execSqlBatch(request)
       } else {
         conn.execSql(request)
       }
+      return Effect.callback<void>((cancelled) => {
+        if (settled) return cancelled(Effect.void)
+        onCancelled = () => cancelled(Effect.void)
+        conn.cancel()
+      })
     })
 
   return yield* SqlClient.make({
@@ -346,6 +377,59 @@ it.layer(MssqlContainer.layerClient, { concurrent: false, timeout: "90 seconds" 
             { id: "job", element: JSON.stringify("legacy") },
             { id: "other", element: JSON.stringify("other") }
           ])
+        }).pipe(TestClock.withLive),
+      { timeout: 30000 }
+    )
+
+    it.effect(
+      "PersistedQueue keeps a raw batch session's XACT_ABORT when an offer is cancelled",
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          // a single connection, so the cancelled offer's session is the one
+          // the next statement gets
+          const raw = yield* makeXactAbortClient((yield* MssqlContainer).getDatabase(), { rawBatch: true, size: 1 })
+          const tableName = "effect_queue_raw_cancel"
+          const makeQueue = (client: SqlClient.SqlClient) =>
+            Effect.gen(function*() {
+              const store = yield* PersistedQueue.makeStoreSql({ tableName })
+              const factory = yield* PersistedQueue.makeFactory.pipe(
+                Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+              )
+              return yield* factory.make({ name: tableName, schema: Schema.String })
+            }).pipe(Effect.provideService(SqlClient.SqlClient, client))
+          const queue = yield* makeQueue(sql)
+          const rawQueue = yield* makeQueue(raw)
+
+          const holding = yield* Deferred.make<number>()
+          const release = Latch.makeUnsafe()
+          const holder = yield* Effect.gen(function*() {
+            yield* queue.offer("first", { id: "job" })
+            const [{ spid }] = yield* sql<{ readonly spid: number }>`SELECT @@SPID AS spid`
+            yield* Deferred.succeed(holding, spid)
+            yield* release.await
+          }).pipe(sql.withTransaction, Effect.forkScoped)
+          const holderSpid = yield* Deferred.await(holding)
+
+          const offer = yield* Effect.forkScoped(rawQueue.offer("duplicate", { id: "job" }))
+          // cancel only once the offer waits on the uncommitted duplicate
+          const session = yield* sql<{ readonly session: number }>`
+          SELECT session_id AS session FROM sys.dm_exec_requests WHERE blocking_session_id = ${holderSpid}
+        `.pipe(
+            Effect.flatMap((rows) =>
+              rows.length > 0 ? Effect.succeed(rows[0].session) : Effect.fail("not blocked yet")
+            ),
+            Effect.retry({ schedule: Schedule.spaced("50 millis"), times: 100 }),
+            Effect.orDie
+          )
+          yield* Fiber.interrupt(offer)
+          yield* release.open
+          yield* Fiber.join(holder)
+
+          const [state] = yield* raw<{ readonly spid: number; readonly tranCount: number; readonly xactAbort: number }>`
+          SELECT @@SPID AS spid, @@TRANCOUNT AS tranCount, @@OPTIONS & 16384 AS xactAbort
+        `
+          assert.deepStrictEqual(state, { spid: session, tranCount: 0, xactAbort: 16384 })
         }).pipe(TestClock.withLive),
       { timeout: 30000 }
     )
