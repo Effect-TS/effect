@@ -16,6 +16,7 @@ import { constVoid, type LazyArg } from "../Function.ts"
 import { hasBody, type HttpMethod } from "../http/HttpMethod.ts"
 import * as HttpStatus from "../http/HttpStatus.ts"
 import type * as Multipart_ from "../http/Multipart.ts"
+import * as ProblemDetails from "../http/ProblemDetails.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
@@ -249,6 +250,90 @@ export function asNoContent<S extends Schema.Constraint>(options: {
           encode: constVoid
         })
       )
+    )
+  }
+}
+
+/**
+ * The encoded body produced by `asProblem`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export interface ProblemBody extends
+  Schema.Struct<{
+    readonly type: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
+    readonly status: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<number>>, never>
+    readonly title: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
+  }>
+{}
+
+/**
+ * Schema type returned by `asProblem`, encoding as a problem details body
+ * while decoding to the original schema type.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export interface asProblem<S extends Schema.Constraint> extends Schema.decodeTo<Schema.toType<S>, ProblemBody> {}
+
+/**
+ * Renders an error class as an RFC 9457 problem.
+ *
+ * **Details**
+ *
+ * The server encodes the error as an `application/problem+json` body carrying
+ * `type`, `title` and the status of the class. Generated clients decode a body
+ * with the same `type` back into an instance by calling `decode`, which
+ * defaults to constructing the class without arguments.
+ *
+ * **Example** (A built-in error as a problem)
+ *
+ * ```ts
+ * import { HttpApiEndpoint, HttpApiError, HttpApiSchema } from "effect/http-api"
+ *
+ * const user = HttpApiEndpoint.get("user", "/user", {
+ *   error: HttpApiError.NotFound.pipe(HttpApiSchema.asProblem({ title: "Not Found" }))
+ * })
+ * // A NotFound failure responds with 404 and
+ * // { "type": "about:blank", "title": "Not Found", "status": 404 }
+ * ```
+ *
+ * @see {@link asNoContent} for the empty-body equivalent.
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.0.6
+ */
+export function asProblem<S extends Schema.Constraint & (new() => S["Type"])>(options: {
+  /**
+   * The problem type URI. Defaults to `about:blank`.
+   */
+  readonly type?: string | undefined
+  readonly title: string
+  readonly decode?: LazyArg<S["Type"]> | undefined
+}) {
+  return (self: S): asProblem<S> => {
+    const status = getStatusError(self.ast)
+    const type = options.type ?? ProblemDetails.blankType
+    const body = { type, status, title: options.title }
+    const decode = options.decode ?? (() => new self())
+    const problem: ProblemBody = Schema.Struct({
+      type: ProblemDetails.fixedMember(type),
+      status: ProblemDetails.fixedMember(status),
+      title: ProblemDetails.fixedMember(options.title)
+    })
+    return problem.pipe(
+      Schema.decodeTo(
+        Schema.toType(self),
+        SchemaTransformation.transform({
+          decode,
+          encode: () => body
+        })
+      ),
+      asJson({ contentType: ProblemDetails.contentType })
     )
   }
 }

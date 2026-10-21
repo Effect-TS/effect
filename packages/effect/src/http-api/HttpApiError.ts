@@ -11,13 +11,16 @@
  * @since 4.0.0
  */
 import type * as ByteSize from "../ByteSize.ts"
+import type * as Cause from "../Cause.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import * as HttpServerRespondable from "../http/HttpServerRespondable.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
+import * as ProblemDetails from "../http/ProblemDetails.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
+import type { Simplify } from "../Struct.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 
 const badRequestResponse = HttpServerResponse.empty({ status: 400 })
@@ -448,6 +451,229 @@ export class ServiceUnavailable extends Schema.Error<ServiceUnavailable>("effect
 export const ServiceUnavailableNoContent = ServiceUnavailable.pipe(HttpApiSchema.asNoContent({
   decode: () => new ServiceUnavailable({})
 }))
+
+/**
+ * The constant members of a typed problem declaration.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface ProblemDeclaration<Type extends string, Status extends number> {
+  /**
+   * The problem type URI. It is the discriminator between problem classes that
+   * share a status.
+   */
+  readonly type: Type
+  /**
+   * The HTTP status of the response.
+   */
+  readonly status: Status
+  /**
+   * The short human-readable summary of the problem type.
+   */
+  readonly title: string
+}
+
+/**
+ * The standard problem members of a typed problem class.
+ *
+ * **Details**
+ *
+ * `type`, `status` and `title` are fixed by the declaration: they are
+ * constructor defaults, are always encoded, and decode to the declared value
+ * whatever the body carries. `detail` and `instance` are optional per-instance
+ * members. Declared fields with the same name replace these members.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface ProblemMembers<Type extends string, Status extends number> {
+  readonly type: FixedMember<Type>
+  readonly status: FixedMember<Status>
+  readonly title: FixedMember<string>
+  readonly detail: OptionalMember<Schema.String>
+  readonly instance: OptionalMember<Schema.String>
+}
+
+type FixedMember<L extends string | number> = Schema.middlewareDecoding<
+  Schema.withDecodingDefaultKey<Schema.tag<L>>,
+  never
+>
+
+type OptionalMember<S extends Schema.Constraint> = Schema.middlewareDecoding<Schema.optionalKey<S>, never>
+
+/**
+ * The fields of a typed problem class: the standard members plus the declared
+ * extension fields.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ProblemFields<Type extends string, Status extends number, Fields extends Schema.Struct.Fields> = Simplify<
+  Omit<ProblemMembers<Type, Status>, keyof Fields> & Fields
+>
+
+const problemEncoding: HttpApiSchema.ResponseEncoding = { _tag: "Json", contentType: ProblemDetails.contentType }
+
+/**
+ * The class returned by {@link Problem}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface ProblemClass<
+  Self,
+  Type extends string,
+  Status extends number,
+  Fields extends Schema.Struct.Fields,
+  Brand
+> extends
+  Schema.Class<
+    Self,
+    Schema.Struct<ProblemFields<Type, Status, Fields>>,
+    Cause.YieldableError & HttpServerRespondable.Respondable & Brand & { readonly _tag: string }
+  >
+{}
+
+type MissingSelfGeneric = "Missing `Self` generic - use `class Self extends HttpApiError.Problem<Self>(...)`"
+
+/**
+ * Declares a typed RFC 9457 problem as a yieldable error class.
+ *
+ * **Details**
+ *
+ * The class is a `Schema.Error` whose `_tag` is the identifier, so `Effect.catchTag`
+ * works without `_tag` on the wire. It carries the `httpApiStatus` and
+ * `application/problem+json` annotations, so endpoints that declare it as an
+ * error render, document and decode it as a problem. The extension fields are
+ * validated on both sides; unknown extensions are not kept. An undeclared
+ * instance still renders as a problem through `HttpServerRespondable`.
+ *
+ * **Example** (Declaring and using a typed problem)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiError } from "effect/http-api"
+ *
+ * class OutOfCredit extends HttpApiError.Problem<OutOfCredit>("OutOfCredit")({
+ *   type: "https://example.com/probs/out-of-credit",
+ *   status: 403,
+ *   title: "You do not have enough credit."
+ * }, {
+ *   balance: Schema.Number
+ * }) {}
+ *
+ * const buy = HttpApiEndpoint.post("buy", "/buy", { error: OutOfCredit })
+ *
+ * const failing = Effect.fail(new OutOfCredit({ balance: 30 }))
+ * // Responds with 403 and { "type": "https://example.com/probs/out-of-credit",
+ * //   "status": 403, "title": "You do not have enough credit.", "balance": 30 }
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.6
+ */
+export const Problem =
+  <Self = never, Brand = {}>(tag: string) =>
+  <const Type extends string, const Status extends number, const Fields extends Schema.Struct.Fields = {}>(
+    declaration: ProblemDeclaration<Type, Status>,
+    fields?: Fields,
+    annotations?: Schema.Annotations.Declaration<Self, readonly [Schema.Struct<ProblemFields<Type, Status, Fields>>]>
+  ): [Self] extends [never] ? MissingSelfGeneric
+    : ProblemClass<Self, Type, Status, Fields, Brand> =>
+  {
+    const struct = Schema.Struct({
+      type: ProblemDetails.fixedMember(declaration.type),
+      status: ProblemDetails.fixedMember(declaration.status),
+      title: ProblemDetails.fixedMember(declaration.title),
+      detail: ProblemDetails.optionalMember(Schema.String),
+      instance: ProblemDetails.optionalMember(Schema.String),
+      ...fields
+    })
+    const encode = Schema.encodeUnknownEffect(struct)
+    const Base = Schema.Error<any, {}>(tag)(struct, {
+      description: declaration.title,
+      httpApiStatus: declaration.status,
+      "~httpApiEncoding": problemEncoding,
+      ...annotations as {}
+    })
+    Object.assign(Base.prototype, {
+      _tag: tag,
+      [ErrorReporter.ignore]: declaration.status < 500,
+      [HttpServerRespondable.symbol](this: object) {
+        return Effect.map(
+          encode(this),
+          (body) =>
+            HttpServerResponse.jsonUnsafe(body, { status: declaration.status, contentType: ProblemDetails.contentType })
+        )
+      }
+    })
+    Object.defineProperty(Base.prototype, "message", {
+      get(this: { readonly detail?: string }) {
+        return this.detail ?? declaration.title
+      },
+      configurable: true
+    })
+    return Base as any
+  }
+
+/**
+ * One entry of `BadRequestProblem.errors`: the location of a request value
+ * that failed decoding and the reason.
+ *
+ * **Details**
+ *
+ * The first path segment names the request slot (`params`, `headers`, `query`
+ * or `payload`).
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ProblemIssue = Schema.Struct({
+  path: Schema.Array(Schema.Union([Schema.String, Schema.Number])),
+  message: Schema.String
+})
+
+/**
+ * The problem rendered by `HttpApiMiddleware.layerProblemDetails` when a
+ * request fails decoding.
+ *
+ * **Details**
+ *
+ * The body is generic by default. `errors` is only filled when the layer is
+ * built with `includeDetails: true`.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class BadRequestProblem extends Problem<BadRequestProblem>("BadRequestProblem")({
+  type: ProblemDetails.blankType,
+  status: 400,
+  title: "Bad Request"
+}, {
+  errors: Schema.optionalKey(Schema.Array(ProblemIssue))
+}) {}
+
+/**
+ * The problem rendered by `HttpApiMiddleware.layerProblemDetails` when a
+ * response fails encoding.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class InternalServerErrorProblem extends Problem<InternalServerErrorProblem>("InternalServerErrorProblem")({
+  type: ProblemDetails.blankType,
+  status: 500,
+  title: "Internal Server Error"
+}) {}
 
 /**
  * Type-level identifier used to mark `HttpApiSchemaError` values.
