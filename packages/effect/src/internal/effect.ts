@@ -5629,9 +5629,7 @@ export const awaitAllChildren = <A, E, R>(
 // `Scope.closeUnsafe` can be invoked outside the fiber that later runs it, so
 // that fiber is checked again when the effect runs.
 const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
-  getCurrentFiber() === fiber
-    ? void_
-    : withFiberId((fiberId) => fiberId === fiber.id ? void_ : fiberInterrupt(fiber))
+  getCurrentFiber() === fiber ? void_ : withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
 
 /** @internal */
 export const forkIn: {
