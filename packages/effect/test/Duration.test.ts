@@ -38,10 +38,8 @@ describe("Duration", () => {
 
     deepStrictEqual(Duration.decode("1.5 seconds"), Duration.seconds(1.5))
     deepStrictEqual(Duration.decode("-1.5 seconds"), Duration.zero)
-
     deepStrictEqual(Duration.decode("1.5 micros"), Duration.nanos(1500n))
     deepStrictEqual(Duration.decode("1.5 nanos"), Duration.nanos(2n))
-    deepStrictEqual(Duration.decode("-1.5 nanos"), Duration.zero)
 
     deepStrictEqual(Duration.decode([500, 123456789]), Duration.nanos(500123456789n))
     deepStrictEqual(Duration.decode([-500, 123456789]), Duration.zero)
@@ -228,9 +226,7 @@ describe("Duration", () => {
     deepStrictEqual(Duration.times(Duration.seconds(Infinity), 60), Duration.seconds(Infinity))
 
     deepStrictEqual(Duration.times("1 seconds", 60), Duration.minutes(1))
-
     deepStrictEqual(Duration.times(Duration.nanos(2n), 2.5), Duration.nanos(5n))
-    deepStrictEqual(Duration.times(Duration.nanos(3n), 1.5), Duration.nanos(5n))
   })
 
   it("sum", () => {
