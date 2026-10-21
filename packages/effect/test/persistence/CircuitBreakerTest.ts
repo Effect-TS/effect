@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Deferred, Duration, Effect, Exit, Fiber, type Layer, Schedule, Stream } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, type Layer, Schedule, Stream } from "effect"
 import { CircuitBreaker } from "effect/persistence"
 
 /**
@@ -212,8 +212,7 @@ export const suite = (
           openDuration: "200 millis"
         })
         const classify = () => CircuitBreaker.failure()
-        const closedCall = yield* held(breaker, key, Effect.void, { classify })
-        yield* Fiber.interrupt(closedCall.fiber)
+        yield* Effect.failCause(Cause.interrupt()).pipe(breaker.execute({ key, classify }), Effect.exit)
         assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
 
         yield* fail(breaker, key)

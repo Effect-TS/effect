@@ -31,7 +31,7 @@ const causeOf = <A, E>(exit: Exit.Exit<A, E>) => Exit.isFailure(exit) ? exit.cau
 
 describe("CircuitBreaker", () => {
   describe("onStoreError", () => {
-    const unavailable = memoryStoreWith({ admit: () => Effect.fail(storeError) })
+    const unavailable = memoryStoreWith({ admit: () => Effect.fail(storeError), state: () => Effect.fail(storeError) })
 
     it.effect("allow: an admit outage runs the call unrecorded and logs a warning", () => {
       const { layer, warnings } = captureLogs()
