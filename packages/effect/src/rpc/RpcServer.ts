@@ -632,9 +632,18 @@ const applyMiddleware = <A, E, R>(
  *
  * The server consumes `Protocol.disconnects` to interrupt a disconnected
  * client's requests, so use the `onDisconnect` option to observe disconnects
- * instead of taking from that queue. It runs after the server has handled each
- * disconnect, and failures are logged and ignored. Disconnects are handled one
- * at a time, so keep the callback short or fork long-running work.
+ * instead of taking from that queue.
+ *
+ * `onDisconnect` is called for each disconnect reported by the `Protocol`,
+ * after the server has requested interruption of that client's in-flight
+ * requests. It does not wait for those requests to finish. It is not called
+ * when a client ends its input normally, or for clients still connected when
+ * the server stops.
+ *
+ * Each callback runs in its own fiber, so a slow callback does not delay
+ * cleanup for other clients, and callbacks may run concurrently. Pending
+ * callbacks are interrupted when the server stops. Failures are logged and
+ * ignored.
  *
  * @stability unstable
  * @category running
@@ -735,7 +744,7 @@ export const make: <Rpcs extends Rpc.Any>(
         Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
           log: true,
           message: "RpcServer onDisconnect hook failed"
-        })
+        }).pipe(Effect.forkIn(scope))
       )
     : server.disconnect
   yield* Effect.forkChild(
