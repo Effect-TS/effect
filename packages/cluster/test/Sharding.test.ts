@@ -639,6 +639,63 @@ describe.concurrent("Sharding", () => {
       Layer.merge(TestEntityState.Default)
     ))))
 
+  it.scoped("defects durable messages after two registration intervals when no entity registers", () =>
+    Effect.gen(function*() {
+      const config = ShardingConfig.layer({
+        entityMailboxCapacity: 10,
+        entityRegistrationTimeout: 1000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 100,
+        sendRetryInterval: 100
+      })
+      const EnvLayer = TestShardingWithoutState.pipe(
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const NoEntitiesLayer = Sharding.layer.pipe(
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const driver = yield* MessageStorage.MemoryDriver
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        yield* Effect.fork(client.RequestWithKey({ key: "missing-registration" }))
+        yield* TestClock.adjust(1)
+      }).pipe(
+        Effect.provide(EnvLayer),
+        Effect.scoped
+      )
+
+      expect(driver.replyIds.size).toEqual(0)
+      expect(driver.unprocessed.size).toEqual(1)
+
+      // restart without registering any entities
+      const fiber = yield* Effect.never.pipe(
+        Effect.provide(NoEntitiesLayer),
+        Effect.scoped,
+        Effect.fork
+      )
+
+      // held past one registration interval
+      yield* TestClock.adjust(1900)
+      expect(driver.replyIds.size).toEqual(0)
+      expect(driver.unprocessed.size).toEqual(1)
+
+      // a defect reply is saved after two registration intervals
+      yield* TestClock.adjust(1100)
+      expect(driver.replyIds.size).toEqual(1)
+      expect(driver.unprocessed.size).toEqual(0)
+      yield* Fiber.interrupt(fiber)
+    }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+      Layer.provide(TestShardingConfig),
+      Layer.merge(TestEntityState.Default)
+    ))))
+
   it.scoped("durable streams are resumed on restart", () =>
     Effect.gen(function*() {
       const EnvLayer = TestShardingWithoutState.pipe(
