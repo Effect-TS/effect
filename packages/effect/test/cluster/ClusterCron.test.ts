@@ -143,6 +143,29 @@ describe("ClusterCron", () => {
       assert.deepStrictEqual(scheduled, [...scheduled].sort())
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
+  it.effect("runs later instants with calculateNextRunFromPrevious while one instant keeps failing", () =>
+    Effect.gen(function*() {
+      const scheduled: Array<string> = []
+      let failing: string | undefined
+      const cron = ClusterCron.make({
+        name: "test",
+        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+        calculateNextRunFromPrevious: true,
+        execute: Effect.gen(function*() {
+          const dateTime = DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime)
+          failing ??= dateTime
+          if (dateTime === failing) {
+            return yield* Effect.fail("boom")
+          }
+          scheduled.push(dateTime)
+        })
+      })
+
+      yield* deploy(cron, 4500)
+
+      assert.isAbove(scheduled.length, 1)
+    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+
   it.effect("runs each instant once across a legacy pending run and a redeploy", () =>
     Effect.gen(function*() {
       const everySecond = Cron.parseUnsafe("* * * * * *", "UTC")
