@@ -12,6 +12,7 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
+import { AsyncResource } from "./internal/asyncContext.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -106,9 +107,13 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     return (): void => clearTimeout(timer)
   }
 
-// Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
-// scope. Fall back to a microtask so effects can still yield at module load.
-const setImmediate = (f: () => void) => {
+// Cloudflare Workers drops timers set by a request once it has responded, which
+// would strand the dispatcher's queued tasks, so always use a microtask there.
+const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
+
+// Some runtimes throw when a timer is set in global scope. Fall back to a
+// microtask so effects can still yield at module load.
+const setImmediate = isCloudflareWorkers ? setMicrotask : (f: () => void) => {
   try {
     return setTimer(f)
   } catch {
@@ -162,12 +167,12 @@ class PriorityBuckets {
  *
  * **Gotchas**
  *
- * On Cloudflare Workers, request-owned scheduler timers can be discarded,
- * leaving shared fibers suspended. Use `new MixedScheduler("sync")` for the
- * whole application; see `HttpRouter.toWebHandler` for a recipe.
- * Sync mode does not yield to the event loop: CPU-heavy work delays other
- * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
- * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
+ * On Cloudflare Workers, a timer set by a request never fires once that
+ * request has responded, so `"async"` mode dispatches queued tasks in a
+ * microtask there instead. Like `"sync"` mode, this does not yield to the event
+ * loop: CPU-heavy work delays other requests, and I/O-polling loops can exhaust
+ * the CPU limit. It does not fix request-owned timers (such as `Effect.sleep`)
+ * or request-bound async contexts.
  *
  * @stability stable
  * @category models
@@ -176,6 +181,8 @@ class PriorityBuckets {
 export class MixedScheduler implements Scheduler {
   readonly executionMode: "sync" | "async"
   readonly setImmediate: (f: () => void) => () => void
+  private readonly shareDispatcher: boolean
+  private dispatcher: MixedSchedulerDispatcher | undefined
 
   constructor(
     executionMode: "sync" | "async" = "async",
@@ -183,6 +190,11 @@ export class MixedScheduler implements Scheduler {
   ) {
     this.executionMode = executionMode
     this.setImmediate = setImmediateFn ?? (executionMode === "sync" ? setMicrotask : setImmediate)
+    // A custom setImmediate may drop callbacks, which would stall every fiber
+    // sharing the dispatcher, so only share with the built-in dispatch. Cloudflare
+    // Workers throws when a fiber resumes in an async context captured by an
+    // earlier request, which would abort the other fibers' tasks in the drain.
+    this.shareDispatcher = setImmediateFn === undefined && AsyncResource !== undefined && !isCloudflareWorkers
   }
 
   /**
@@ -200,17 +212,30 @@ export class MixedScheduler implements Scheduler {
   }
 
   /**
-   * Creates a dispatcher that schedules work through this scheduler.
+   * Returns a dispatcher that schedules work through this scheduler.
    *
    * **When to use**
    *
-   * Use when you need a standalone dispatcher from a scheduler instance, for
-   * example in tests that enqueue tasks and then flush them deterministically.
+   * Use when you need a dispatcher from a scheduler instance, for example in
+   * tests that enqueue tasks and then flush them deterministically.
+   *
+   * **Details**
+   *
+   * When `AsyncResource` from `node:async_hooks` is available, no custom
+   * `setImmediate` function was passed to the constructor, and the runtime is
+   * not Cloudflare Workers, every call returns the same dispatcher, so fibers on
+   * this scheduler share one queue. Fibers re-enter their own async context when
+   * they resume, so sharing does not leak `AsyncLocalStorage` state between
+   * them. Otherwise each call returns a new dispatcher, which keeps tasks from
+   * different fibers on separate timers.
    *
    * @since 4.0.0
    */
   makeDispatcher() {
-    return new MixedSchedulerDispatcher(this.setImmediate)
+    if (!this.shareDispatcher) {
+      return new MixedSchedulerDispatcher(this.setImmediate)
+    }
+    return this.dispatcher ??= new MixedSchedulerDispatcher(this.setImmediate)
   }
 }
 

@@ -46,6 +46,7 @@ import type {
   unassigned
 } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
+import { type AsyncContext, captureAsyncContext } from "./asyncContext.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
@@ -491,21 +492,6 @@ const fiberVariance = {
 }
 
 const fiberIdStore = { id: 0 }
-
-interface AsyncContext {
-  runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
-}
-
-const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
-  try {
-    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-  } catch {
-    return undefined
-  }
-})()
-
-const captureAsyncContext = (): AsyncContext | undefined =>
-  AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
 
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
