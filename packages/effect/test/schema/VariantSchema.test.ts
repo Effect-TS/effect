@@ -103,6 +103,13 @@ describe("Model", () => {
         return this.name.toUpperCase()
       }
     }
+    const base: Schema.Class<
+      Person,
+      Schema.Struct<{ readonly id: Schema.Number; readonly name: Schema.String }>,
+      {}
+    > = Person
+    assert.isTrue(Schema.isSchema(base))
+    Model.extract(Person, "json")
     class PersonWithPosts extends Person.extend<PersonWithPosts>("PersonWithPosts")({
       posts: Model.FieldOnly(["select", "json"])(Schema.Array(Schema.String))
     }) {}
@@ -115,6 +122,7 @@ describe("Model", () => {
     assert.deepStrictEqual(person.posts, ["Hello"])
     assert.deepStrictEqual(Object.keys(PersonWithPosts.select.fields), ["id", "name", "posts"])
     assert.deepStrictEqual(Object.keys(PersonWithPosts.insert.fields), ["name"])
+    assert.deepStrictEqual(Object.keys(Model.extract(PersonWithPosts, "json").fields), ["id", "name", "posts"])
     assert.deepStrictEqual(Schema.decodeSync(PersonWithPosts.json)({ id: 1, name: "Alex", posts: [] }), {
       id: 1,
       name: "Alex",
