@@ -4012,11 +4012,6 @@ const combineFinalizerCause = <A, E, XE, XR>(
     ? finalizer
     : catchCause(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
 
-// Set while finalizer effects are produced for parallel dispatch, where they run
-// on daemon fibers forked from the closing fiber. `fiberScopeFinalizer` uses it to
-// tell that dispatch apart from a `Scope.closeUnsafe` effect handed to another fiber.
-let parallelFinalizerDispatch = false
-
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
   finalizers: NonNullable<Scope.State.Open["finalizers"]>,
@@ -4024,22 +4019,16 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
 ) {
   let exits: Array<Exit.Exit<any, never>> = []
   const fibers: Array<Fiber.Fiber<any, never>> = []
-  const arr = Array.from(finalizers.values())
+  const arr = Array.from(finalizers)
   const parent = getCurrentFiber()!
   for (let i = arr.length - 1; i >= 0; i--) {
-    const finalizer = arr[i]
+    const [key, finalizer] = arr[i]
     if (self.strategy === "sequential") {
       exits.push(yield* exit(runFinalizer(finalizer, exit_)))
-    } else {
-      const previous = parallelFinalizerDispatch
-      parallelFinalizerDispatch = true
-      let effect: Effect.Effect<unknown>
-      try {
-        effect = runFinalizer(finalizer, exit_)
-      } finally {
-        parallelFinalizerDispatch = previous
-      }
-      fibers.push(forkUnsafe(parent, effect, true, true, "inherit"))
+    } else if (key !== parent) {
+      // Skip the closing fiber's own `forkIn` / `Fiber.runIn` finalizer, as
+      // running it in another fiber would wait for the closing fiber to exit.
+      fibers.push(forkUnsafe(parent, runFinalizer(finalizer, exit_), true, true, "inherit"))
     }
   }
   if (fibers.length > 0) {
@@ -5636,14 +5625,10 @@ export const awaitAllChildren = <A, E, R>(
     )
   })
 
-// Skips the fiber that is closing the scope, which would otherwise wait on itself.
-// The parallel dispatch forks a daemon fiber to run this effect, so that case is
-// decided when the effect is produced. Otherwise the run-time check decides, as a
-// `Scope.closeUnsafe` effect produced by the fiber may be run by a different fiber.
+// Interrupts the attached fiber, unless it is the fiber running the close. It is
+// keyed by the fiber, so that parallel scopes can skip it on the closing fiber.
 const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
-  parallelFinalizerDispatch && getCurrentFiber() === fiber
-    ? void_
-    : withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
+  withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
 
 /** @internal */
 export const forkIn: {
@@ -5681,9 +5666,8 @@ export const forkIn: {
         : forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
-          const key = {}
-          scopeAddFinalizerUnsafe(scope, key, fiberScopeFinalizer(fiber))
-          fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
+          scopeAddFinalizerUnsafe(scope, fiber, fiberScopeFinalizer(fiber))
+          fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, fiber))
         } else {
           fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
         }
