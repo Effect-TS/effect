@@ -200,4 +200,52 @@ describe("McpServer visibility", () => {
       })
       assert.deepStrictEqual(second.error, { code: -32602, message: "Tool 'Approve' not found" })
     }))
+
+  it.effect("keeps middleware provided locally and globally outside a visibility that reads it", () =>
+    Effect.gen(function*() {
+      const { Auth, state } = makeFixture()
+      const registrations = Layer.mergeAll(
+        McpServer.toolkit(AdminTools).pipe(
+          Layer.provide(Auth.layer),
+          Layer.provide(AdminTools.toLayer({
+            DeleteUser: () => Effect.succeed("deleted"),
+            ResetPassword: () => Effect.succeed("reset")
+          }))
+        ),
+        AdminOnly.combine(Auth).layerGlobal
+      )
+      const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+      yield* harness.initialize()
+
+      assert.deepStrictEqual(names(yield* harness.sendRequest("tools/list", {}), "tools"), [])
+      state.user = "admin"
+      assert.deepStrictEqual(
+        names(yield* harness.sendRequest("tools/list", {}), "tools"),
+        ["DeleteUser", "ResetPassword"]
+      )
+      const call = yield* harness.sendRequest("tools/call", { name: "DeleteUser", arguments: {} })
+      assert.deepStrictEqual((call.result as { readonly content: unknown }).content, [
+        { type: "text", text: "deleted" }
+      ])
+    }))
+
+  it.effect("passes middleware outside a visibility an MCP error for hidden requests", () =>
+    Effect.gen(function*() {
+      const LogCode = McpServer.middleware()((effect) =>
+        Effect.tapError(effect, (error) => Effect.sync(() => error.code.toFixed(0)))
+      )
+      const registrations = McpServer.toolkit(AdminTools).pipe(
+        Layer.provide(McpServer.visibility(() => Effect.succeed(false)).combine(LogCode).layer),
+        Layer.provide(AdminTools.toLayer({
+          DeleteUser: () => Effect.succeed("deleted"),
+          ResetPassword: () => Effect.succeed("reset")
+        }))
+      )
+      const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+      yield* harness.initialize()
+
+      const call = yield* harness.sendRequest("tools/call", { name: "DeleteUser", arguments: {} })
+
+      assert.deepStrictEqual(call.error, { code: -32602, message: "Tool 'DeleteUser' not found" })
+    }))
 })
