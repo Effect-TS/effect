@@ -837,28 +837,18 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 // ----------------------------------------------------------------------------
 
-const paramsRegExp = /(\/?):(\w+)(\?)?/g
-
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {
     return (_: any) => path
   }
   const paramNames = HttpApiPath.getParamNames(schema)
-  return (params: Record<string, string | undefined>) => {
-    return path.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
-      if (paramNames !== undefined && !paramNames.has(key)) {
-        return match
-      }
+  return (params: Record<string, string | undefined>) =>
+    HttpApiPath.replaceParams(path, paramNames, (key, optional) => {
       const value = params[key]
-      if (value === undefined) {
-        if (optional !== undefined) {
-          return ""
-        }
-        throw new Error(`Missing path parameter: ${key}`)
-      }
-      return `${slash}${encodeURIComponent(value)}`
+      if (value !== undefined) return encodeURIComponent(value)
+      if (optional) return undefined
+      throw new Error(`Missing path parameter: ${key}`)
     })
-  }
 }
 
 function schemasToResponse(
