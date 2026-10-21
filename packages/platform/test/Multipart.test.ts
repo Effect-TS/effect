@@ -58,6 +58,28 @@ describe("Multipart", () => {
       strictEqual(error.reason, "TooManyParts")
     }).pipe(Effect.runPromise))
 
+  test("parses raw UTF-8 filenames outside latin-1", () =>
+    Effect.gen(function*() {
+      const boundary = "X"
+      const filename = "Screenshot 2025-01-01 at 10.00.00 AM.png"
+      const body = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="photos"; filename="${filename}"\r\n` +
+        `Content-Type: image/png\r\n\r\n` +
+        "A\r\n" +
+        `--${boundary}--\r\n`
+
+      const parts = yield* pipe(
+        Stream.fromChunk(Chunk.of(new TextEncoder().encode(body))),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.map((part) => part._tag === "File" ? [part._tag, part.key, part.name] : [part._tag, part.key]),
+        Stream.runCollect
+      )
+
+      deepStrictEqual(Chunk.toReadonlyArray(parts), [["File", "photos", filename]])
+    }).pipe(Effect.runPromise))
+
   test("it parses", () =>
     Effect.gen(function*() {
       const data = new globalThis.FormData()
