@@ -440,8 +440,8 @@ export type ExtractError<Options> = Options extends {
   AiError.AiError
 
 /**
- * Utility type that determines whether tool call parameters in a response are
- * left encoded, which is the case when tool call resolution is disabled.
+ * Utility type that determines whether the tool call parameters in a response
+ * are left encoded, which is the case when `disableToolCallResolution` is set.
  *
  * Resolves to `boolean` when the option may be either enabled or disabled.
  *
@@ -451,7 +451,8 @@ export type ExtractError<Options> = Options extends {
 export type ExtractEncodedToolParameters<Options> = Options extends {
   readonly disableToolCallResolution: true
 } ? true
-  // `object &` stops the all-optional target from being treated as a weak type
+  // `object &` keeps the all-optional target from being a weak type, which
+  // would otherwise fail to match options that omit the flag
   : Options extends object & { readonly disableToolCallResolution?: false | undefined } ? false
   : boolean
 
@@ -794,20 +795,17 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.tools = tools
         providerOptions.toolChoice = toolChoice
 
-        // Construct the response schema with the tools from the toolkit, keeping
-        // tool call parameters encoded when tool call resolution is disabled
-        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(
-          options.disableToolCallResolution === true ? makeToolkitWithEncodedParameters(toolkit) : toolkit
-        )))
-
         // If tool call resolution is disabled, return the response without
         // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
+          const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(withEncodedParameters(toolkit))))
           const rawContent = yield* params.generateText(providerOptions)
           const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
           return content as Array<Response.Part<Tools>>
         }
 
+        // Construct the response schema with the tools from the toolkit
+        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
         const rawContent = yield* params.generateText(providerOptions)
 
         // Resolve the generated tool calls
@@ -863,10 +861,9 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.toolChoice = toolChoice
 
         // If tool call resolution is disabled, return the response without
-        // resolving the tool calls that were generated, keeping tool call
-        // parameters encoded
+        // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
-          const schema = Schema.ChunkFromSelf(Response.StreamPart(makeToolkitWithEncodedParameters(toolkit)))
+          const schema = Schema.ChunkFromSelf(Response.StreamPart(withEncodedParameters(toolkit)))
           const decode = Schema.decode(schema)
           return params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(decode)
@@ -1067,11 +1064,13 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
-const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
+// When tool calls are not resolved, their parameters are left encoded so that
+// `Toolkit.handle` can decode them
+const withEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool): Tool.Any => ({
+    ...Object.values(toolkit.tools).map((tool) => ({
       ...tool,
       parametersSchema: Schema.encodedSchema(tool.parametersSchema) as any
     }))
