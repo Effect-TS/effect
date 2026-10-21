@@ -3478,6 +3478,55 @@ export const withoutLocale = client.getGreeting({ params: {} })
         assert.strictEqual(requests[0].headers["cookie"], "locale=en-US")
       }).pipe(Effect.scoped, Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
+    it.effect("drops structured cookie parameters with a warning", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+        const result = yield* generator.generate({
+          ...cookieParameterSpec,
+          paths: {
+            "/greeting": {
+              get: {
+                ...cookieParameterSpec.paths["/greeting"].get!,
+                parameters: [
+                  {
+                    name: "inlinePrefs",
+                    in: "cookie",
+                    required: true,
+                    schema: { type: "object", properties: { locale: { type: "string" } }, required: ["locale"] }
+                  },
+                  {
+                    name: "refPrefs",
+                    in: "cookie",
+                    required: true,
+                    schema: { $ref: "#/components/schemas/Preferences" }
+                  }
+                ]
+              }
+            }
+          },
+          components: {
+            schemas: {
+              Preferences: { type: "object", properties: { locale: { type: "string" } }, required: ["locale"] }
+            },
+            securitySchemes: {}
+          }
+        }, {
+          name: "TestClient",
+          format: "httpclient",
+          onWarning: (warning) => {
+            warnings.push(warning)
+          }
+        })
+
+        assert.deepStrictEqual(
+          warnings.map((warning) => [warning.code, warning.operationId]),
+          [["cookie-parameter-dropped", "getGreeting"], ["cookie-parameter-dropped", "getGreeting"]]
+        )
+        assert.notInclude(result, "inlinePrefs")
+        assert.notInclude(result, "refPrefs")
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
     it.effect("emits compilable clients when schema examples are invalid", () =>
       assertGeneratedClientsCompile({
         openapi: "3.0.3",
