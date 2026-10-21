@@ -250,6 +250,8 @@ describe("BigDecimal", () => {
     deepStrictEqual(BigDecimal.normalize($("-0.000123000")), BigDecimal.unsafeMakeNormalized(-123n, 6))
     deepStrictEqual(BigDecimal.normalize($("-123.000")), BigDecimal.unsafeMakeNormalized(-123n, 0))
     deepStrictEqual(BigDecimal.normalize($("12300000")), BigDecimal.unsafeMakeNormalized(123n, -5))
+    const normalized = $("1.23")
+    strictEqual(BigDecimal.normalize(normalized), normalized)
   })
 
   it("fromString", () => {
