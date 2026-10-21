@@ -1304,16 +1304,54 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("rejects a reference below a definition that leads back to itself", () => {
+    it("resolves a recursive reference below a definition", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Tree/properties/node",
+        $defs: {
+          Tree: {
+            type: "object",
+            properties: {
+              node: { type: "object", properties: { next: { $ref: "#/$defs/Tree/properties/node" } } }
+            }
+          }
+        }
+      }))
+      const is = Schema.is(schema)
+      assert.isTrue(is({ next: { next: {} } }))
+      assert.isFalse(is({ next: { next: 1 } }))
+    })
+
+    it("exports a reference below a definition as one shared definition", () => {
+      const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: {
+          a: { $ref: "#/$defs/O/properties/v" },
+          b: { $ref: "#/$defs/O/properties/v" }
+        },
+        $defs: { O: { type: "object", properties: { v: { type: "string" } } } }
+      }))
+      const hoisted = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+        type: "object",
+        properties: {
+          a: { $ref: "#/$defs/O~1properties~1v" },
+          b: { $ref: "#/$defs/O~1properties~1v" }
+        },
+        $defs: { "O/properties/v": { type: "string" } }
+      }))
+      deepStrictEqual(Schema.toJsonSchemaDocument(schema), Schema.toJsonSchemaDocument(hoisted))
+    })
+
+    it("rejects a reference below a definition whose derived key is already a definition", () => {
       throws(
         () =>
           toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-            $ref: "#/$defs/A/properties/self",
+            $ref: "#/$defs/O/properties/v",
             $defs: {
-              A: { type: "object", properties: { self: { $ref: "#/$defs/A/properties/self" } } }
+              O: { type: "object", properties: { v: { type: "string" } } },
+              "O/properties/v": { type: "number" }
             }
           })),
-        `Recursive $ref "#/$defs/A/properties/self" cannot be inlined. Use "#/$defs/Name".\n  at ["definitions"]["A"]["properties"]["self"]["$ref"]`
+        `Pointer $ref "#/$defs/O/properties/v" conflicts with definition "O/properties/v".\n  at ["schema"]["$ref"]`
       )
     })
 
