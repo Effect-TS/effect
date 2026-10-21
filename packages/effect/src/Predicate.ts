@@ -1213,8 +1213,8 @@ export const isTagged: {
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
 
-// `any` and `unknown` narrow to `{ _tag: K }`. Otherwise the members whose tag
-// can equal `K` are kept; when there are none, every object member gains `{ _tag: K }`.
+// `any` and `unknown` narrow to `{ _tag: K }`. Otherwise keep the members whose
+// tag can be `K`, or add `{ _tag: K }` to every object member when there are none.
 type Tagged<T, K extends string> = unknown extends T ? Extract<{ _tag: K }, T>
   : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
   : TagOverlap<T, K>
