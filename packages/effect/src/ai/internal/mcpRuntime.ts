@@ -186,7 +186,8 @@ export interface ServerRuntimeShape {
     clientId: number,
     headers: Headers.Headers,
     notification: McpCore.ServerNotification,
-    fallbackLogLevel: LogLevel.LogLevel
+    fallbackLogLevel: LogLevel.LogLevel,
+    listChangeRevision: number | undefined
   ) => boolean
   readonly installHandlers: (
     options: HandlerInstallationOptions
@@ -507,8 +508,8 @@ export const make = Effect.fnUntraced(function*(
           })
       ),
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
-    canDeliver: (clientId, headers, notification, fallback) =>
-      stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,
+    canDeliver: (clientId, headers, notification, fallback, listChangeRevision) =>
+      stateful?.canDeliver(clientId, headers, notification, fallback, listChangeRevision) ?? true,
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
@@ -562,7 +563,8 @@ export const make = Effect.fnUntraced(function*(
                 protocol: protocol as PublicMcpProtocol.ProtocolAdapter,
                 supportsResourceSubscriptions: httpRequest === undefined &&
                   capabilities.resources?.subscribe === true,
-                logLevel: options.defaultLogLevel
+                logLevel: options.defaultLogLevel,
+                listChangeRevision: options.getListChangeRevision?.() ?? 0
               }
               if (httpRequest !== undefined) {
                 const sessionId = SecureRandom.uuidV4Unsafe()
