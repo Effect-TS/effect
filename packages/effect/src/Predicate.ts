@@ -1206,16 +1206,18 @@ export const hasProperty: {
  * @since 2.0.0
  */
 export const isTagged: {
-  <K extends string>(tag: K): <T>(self: T) => self is unknown extends T ? Extract<{ _tag: K }, T>
-    : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
-    : TagOverlap<T, K>
-  <K extends string, T>(self: T, tag: K): self is unknown extends T ? Extract<{ _tag: K }, T>
-    : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
-    : TagOverlap<T, K>
+  <K extends string>(tag: K): <T>(self: T) => self is Tagged<T, K>
+  <K extends string, T>(self: T, tag: K): self is Tagged<T, K>
 } = dual(
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
+
+// `any` and `unknown` narrow to `{ _tag: K }`. Otherwise the members whose tag
+// can equal `K` are kept; when there are none, every object member gains `{ _tag: K }`.
+type Tagged<T, K extends string> = unknown extends T ? Extract<{ _tag: K }, T>
+  : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
+  : TagOverlap<T, K>
 
 type TagOverlap<T, K extends string> = T extends { readonly _tag: K } ? T
   : T extends { readonly _tag: infer U } ? [U & K] extends [never] ? never : T & { _tag: K }
