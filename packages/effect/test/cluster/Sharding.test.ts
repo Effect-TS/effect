@@ -1469,22 +1469,28 @@ describe.concurrent("Sharding", () => {
         Layer.provide(Runners.layerNoop),
         Layer.provide(config)
       )
+      const resetStarted = yield* Deferred.make<void>()
+      const releaseReset = yield* Deferred.make<void>()
+      const gateReset = <E>(reset: Effect.Effect<void, E>) =>
+        Deferred.succeed(resetStarted, void 0).pipe(
+          Effect.andThen(Deferred.await(releaseReset)),
+          Effect.andThen(reset)
+        )
       const delayedEnv = TestEntityNoState.pipe(
         Layer.provide(Layer.effectDiscard(Effect.sleep(1000))),
         Layer.provideMerge(Sharding.layer),
         Layer.provide(RunnerStorage.layerMemory),
         Layer.provide(RunnerHealth.layerNoop),
         Layer.provide(Runners.layerNoop),
-        Layer.provide(config)
+        Layer.provide(config),
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          resetAddress: (address) => gateReset(storage.resetAddress(address)),
+          resetAddresses: (addresses) => gateReset(storage.resetAddresses(addresses))
+        }))
       )
       const driver = yield* MessageStorage.MemoryDriver
       const state = yield* TestEntityState
-      const warnings: Array<unknown> = []
-      const logger = Logger.make<unknown, void>((options) => {
-        if (options.logLevel === "Warn") {
-          warnings.push(options.message)
-        }
-      })
 
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
@@ -1501,19 +1507,18 @@ describe.concurrent("Sharding", () => {
       const fiber = yield* Effect.never.pipe(
         Effect.provide(delayedEnv),
         Effect.scoped,
-        Effect.withLogger(logger),
         Effect.forkChild({ startImmediately: true })
       )
 
-      // the startup storage read sees the message before the entity registers
+      // the startup storage read sees the message before the entity registers,
+      // and the entity registers while the claim reset is still pending
       yield* TestClock.adjust(999)
-      assert.isTrue(warnings.some((message) =>
-        globalThis.Array.isArray(message) && message.includes("Could not find entity manager for address, retrying")
-      ))
-
-      // registration must wake the storage read loop without waiting for the
-      // poll interval or new client traffic
+      assert.isTrue(yield* Deferred.isDone(resetStarted))
       yield* TestClock.adjust(1)
+
+      // the reset must complete before the read woken by registration, without
+      // waiting for the poll interval or new client traffic
+      yield* Deferred.succeed(releaseReset, void 0)
       yield* Queue.offer(state.messages, void 0)
       yield* TestClock.adjust(100)
 
