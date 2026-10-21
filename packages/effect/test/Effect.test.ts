@@ -2996,6 +2996,15 @@ describe("Effect", () => {
         yield* Scope.close(scope, Exit.void)
         assert.isTrue(interrupted)
       }))
+
+    it.effect("does not wait for the fiber that closes a parallel scope", () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make("parallel")
+        const sibling = yield* Effect.forkIn(Effect.never, scope)
+        const closer = yield* Scope.close(scope, Exit.void).pipe(Effect.as("closed"), Effect.forkIn(scope))
+        assert.deepStrictEqual(yield* Fiber.await(closer), Exit.succeed("closed"))
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(sibling)))
+      }))
   })
 
   describe("forkScoped", () => {
