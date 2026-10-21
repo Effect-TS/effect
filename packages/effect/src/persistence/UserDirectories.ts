@@ -1,7 +1,7 @@
 /**
  * Well-known directories for an application's persisted data.
  *
- * `AppDirectories` resolves where an application should keep its
+ * `UserDirectories` resolves where an application should keep its
  * configuration, following the conventions of the host platform. The
  * resolved directory is what `KeyValueStore.layerFileSystem` expects.
  *
@@ -9,10 +9,10 @@
  *
  * ```ts import.meta.vitest
  * import { Effect, Layer } from "effect"
- * import { AppDirectories, KeyValueStore } from "effect/persistence"
+ * import { UserDirectories, KeyValueStore } from "effect/persistence"
  *
  * const StoreLive = Layer.unwrap(
- *   Effect.map(AppDirectories.config("myapp"), KeyValueStore.layerFileSystem)
+ *   Effect.map(UserDirectories.config("myapp"), KeyValueStore.layerFileSystem)
  * )
  * ```
  *
@@ -39,7 +39,7 @@ export interface Service {
 }
 
 /**
- * Context reference for the application directory resolver. The default
+ * Context reference for the user directory resolver. The default
  * resolves from the current `ConfigProvider` using the host platform's
  * conventions.
  *
@@ -52,7 +52,7 @@ export interface Service {
  * @category services
  * @since 4.0.0
  */
-export class AppDirectories extends Context.Reference<Service>("effect/persistence/AppDirectories", {
+export class UserDirectories extends Context.Reference<Service>("effect/persistence/UserDirectories", {
   defaultValue: () => make()
 }) {}
 
@@ -64,7 +64,7 @@ export class AppDirectories extends Context.Reference<Service>("effect/persisten
  * @category errors
  * @since 4.0.0
  */
-export class HomeNotFound extends Data.TaggedError("AppDirectoriesHomeNotFound")<{
+export class HomeNotFound extends Data.TaggedError("UserDirectoriesHomeNotFound")<{
   readonly appName: string
 }> {
   override get message(): string {
@@ -123,10 +123,10 @@ const join = (platform: string, base: string, ...segments: ReadonlyArray<string>
  *
  * ```ts import.meta.vitest
  * import { ConfigProvider, Effect } from "effect"
- * import { AppDirectories } from "effect/persistence"
+ * import { UserDirectories } from "effect/persistence"
  *
- * const program = AppDirectories.config("myapp").pipe(
- *   Effect.provideService(AppDirectories.AppDirectories, AppDirectories.make({ platform: "darwin" })),
+ * const program = UserDirectories.config("myapp").pipe(
+ *   Effect.provideService(UserDirectories.UserDirectories, UserDirectories.make({ platform: "darwin" })),
  *   Effect.provideService(
  *     ConfigProvider.ConfigProvider,
  *     ConfigProvider.fromEnv({ env: { HOME: "/Users/ada" } })
@@ -162,16 +162,16 @@ export const make = (options?: {
 
 /**
  * Resolves the directory where `appName` should keep its configuration, using
- * the current `AppDirectories` reference.
+ * the current `UserDirectories` reference.
  *
  * **Example** (Resolving the config directory)
  *
  * ```ts import.meta.vitest
  * import { ConfigProvider, Effect } from "effect"
- * import { AppDirectories } from "effect/persistence"
+ * import { UserDirectories } from "effect/persistence"
  *
- * const program = AppDirectories.config("myapp").pipe(
- *   Effect.provideService(AppDirectories.AppDirectories, AppDirectories.make({ platform: "linux" })),
+ * const program = UserDirectories.config("myapp").pipe(
+ *   Effect.provideService(UserDirectories.UserDirectories, UserDirectories.make({ platform: "linux" })),
  *   Effect.provideService(
  *     ConfigProvider.ConfigProvider,
  *     ConfigProvider.fromEnv({ env: { HOME: "/home/ada" } })
@@ -186,4 +186,4 @@ export const make = (options?: {
  * @since 4.0.0
  */
 export const config = (appName: string): Effect.Effect<string, HomeNotFound> =>
-  AppDirectories.use((dirs) => dirs.config(appName))
+  UserDirectories.use((dirs) => dirs.config(appName))

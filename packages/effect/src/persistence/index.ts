@@ -9,12 +9,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-export * as AppDirectories from "./AppDirectories.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
 export * as KeyValueStore from "./KeyValueStore.ts"
 
 /**
@@ -52,3 +46,9 @@ export * as RateLimiter from "./RateLimiter.ts"
  * @since 4.0.0
  */
 export * as Redis from "./Redis.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as UserDirectories from "./UserDirectories.ts"
