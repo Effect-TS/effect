@@ -48,8 +48,7 @@ const assertScheduledFromExecutionTime = (
 }
 
 const assertScheduledFromPrevious = (cron: Cron.Cron, ticks: ReadonlyArray<Tick>) => {
-  assert.strictEqual(ticks[0].scheduled, "initial")
-  for (let index = 2; index < ticks.length; index++) {
+  for (let index = 1; index < ticks.length; index++) {
     assert.strictEqual(ticks[index].scheduled, nextScheduled(cron, ticks[index - 1].scheduled))
   }
 }
