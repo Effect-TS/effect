@@ -1416,17 +1416,122 @@ export declare namespace WithCircuitBreaker {
  * Put the breaker outermost:
  * `client.pipe(withRateLimiter(...), retryTransient(...), withCircuitBreaker(...))`.
  * The breaker then sees one outcome per call after retries, and an open
- * circuit stops a call before any retry loop starts. `retryTransient` never
- * retries a `CircuitBreakerError`.
+ * circuit stops a call before any retry loop starts. The rate limiter's `429`
+ * loop stays nearest the wire. `retryTransient` never retries a
+ * `CircuitBreakerError`.
+ *
+ * A custom `classify` can handle the cases it cares about and delegate the
+ * rest to `circuitBreakerClassifier`. Map over its result rather than
+ * re-implementing the status table.
  *
  * **Gotchas**
  *
- * The breaker's view of a call ends at the response headers, because body
- * decoding runs on the caller's side. Lift semantic errors into the error
- * channel below the breaker, for example with `transformResponse`.
+ * - The breaker's view of a call ends at the response headers, because body
+ *   decoding runs on the caller's side. Lift semantic errors into the error
+ *   channel below the breaker with `transformResponse` or `filterOrElse`, and
+ *   count them in `classify`, since the default classifier ignores errors it
+ *   does not know. As a fallback, an effectful `classify` can read the body
+ *   itself. Map a failed body read to `ignored`, and read the body afterwards
+ *   with `text`, `json` or `arrayBuffer`, not `stream`.
+ * - `withRateLimiter` retries `429` responses without limit by default, so a
+ *   HalfOpen probe stuck behind it can hold the probe slot for minutes. Set
+ *   `times` on `withRateLimiter`.
+ * - A rejected request has no client span, because the span is created inside
+ *   the wrapped client. The rejection fails the caller's own span instead.
  *
- * A rejected request has no client span, because the span is created inside
- * the wrapped client.
+ * **Example** (Guarding an API in the recommended order)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Ref, Schedule } from "effect"
+ * import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+ * import { CircuitBreaker, RateLimiter } from "effect/persistence"
+ *
+ * const program = Effect.gen(function*() {
+ *   const requests = yield* Ref.make(0)
+ *   // A dependency that always answers 503.
+ *   const unavailable = HttpClient.make((request) =>
+ *     Effect.as(Ref.update(requests, (n) => n + 1), HttpClientResponse.fromWeb(request, new Response(null, { status: 503 })))
+ *   )
+ *
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "30 seconds"
+ *   })
+ *   const client = unavailable.pipe(
+ *     HttpClient.withRateLimiter({
+ *       limiter: yield* RateLimiter.RateLimiter,
+ *       key: "inventory",
+ *       limit: 100,
+ *       window: "1 second",
+ *       times: 3
+ *     }),
+ *     HttpClient.retryTransient({ times: 2, schedule: Schedule.exponential("1 millis") }),
+ *     HttpClient.withCircuitBreaker({ breaker })
+ *   )
+ *
+ *   // Three attempts, then the breaker records one failure and opens.
+ *   yield* client.execute(HttpClientRequest.get("http://inventory.test/items"))
+ *   // Rejected before the retry loop starts, so no further request is sent.
+ *   const rejected = yield* Effect.flip(client.execute(HttpClientRequest.get("http://inventory.test/items")))
+ *
+ *   return [yield* Ref.get(requests), rejected._tag]
+ * }).pipe(
+ *   Effect.scoped,
+ *   Effect.provide(Layer.merge(
+ *     CircuitBreaker.layerStoreMemory(),
+ *     RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
+ *   ))
+ * )
+ *
+ * await Effect.runPromise(program) // => [3, "CircuitBreakerError"]
+ * ```
+ *
+ * **Example** (Counting an error in the body as a failure)
+ *
+ * This API answers `200` with `{ "status": "degraded" }` when it is failing.
+ * `transformResponse` lifts that into a typed error below the breaker, and
+ * `classify` counts it, delegating everything else to
+ * `circuitBreakerClassifier`.
+ *
+ * ```ts import.meta.vitest
+ * import { Data, Effect, Exit, Option } from "effect"
+ * import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class Degraded extends Data.TaggedError("Degraded") {}
+ *
+ * const degraded = HttpClient.make((request) =>
+ *   Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ status: "degraded" })))
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "30 seconds"
+ *   })
+ *   const client = degraded.pipe(
+ *     HttpClient.transformResponse(Effect.flatMap((response) =>
+ *       Effect.flatMap(response.json, (body) =>
+ *         typeof body === "object" && body !== null && "status" in body && body.status === "degraded"
+ *           ? Effect.fail(new Degraded())
+ *           : Effect.succeed(response))
+ *     )),
+ *     HttpClient.withCircuitBreaker({
+ *       breaker,
+ *       classify: (exit) =>
+ *         Option.exists(Exit.findErrorOption(exit), (error) => error._tag === "Degraded")
+ *           ? CircuitBreaker.failure()
+ *           : HttpClient.circuitBreakerClassifier(exit)
+ *     })
+ *   )
+ *
+ *   yield* Effect.flip(client.get("http://status.test/"))
+ *   const state = yield* breaker.state("http://status.test")
+ *   return state._tag
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => "Open"
+ * ```
  *
  * @stability experimental
  * @category circuit breaking

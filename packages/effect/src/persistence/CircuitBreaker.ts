@@ -1,11 +1,157 @@
 /**
  * Guards calls to unreliable dependencies with keyed circuit breakers.
  *
- * A `CircuitBreaker` holds one circuit per key. Each circuit is Closed, Open,
- * or HalfOpen, and its state lives in a `CircuitBreakerStore` so that several
- * fibers or processes can share it. Calls made through an Open or probing
- * HalfOpen circuit are rejected with a typed `CircuitBreakerError` instead of
- * running.
+ * A `CircuitBreaker` is built once from a policy and holds one circuit per
+ * key. Each call through `execute` names its key, so one breaker can guard
+ * every host, tenant or endpoint that shares the policy. Circuit state lives
+ * in a `CircuitBreakerStore`: `layerStoreMemory` keeps it in the process, and
+ * `layerStoreRedis` shares it between processes.
+ *
+ * The breaker only rejects; it never waits. A rejected call fails with a
+ * `CircuitBreakerError` whose `reason` says why, and can be handled with
+ * `Effect.catchReason`. To wait out an open circuit, retry the rejection with
+ * a schedule, as in the "Retrying rejections" example below.
+ *
+ * **Details**
+ *
+ * - A Closed circuit runs calls and feeds their outcomes to the trip policy.
+ *   When the policy trips, the circuit opens.
+ * - An Open circuit rejects calls with `CircuitOpen`, whose `retryAfter` says
+ *   how long it stays open. The open time comes from `openDuration`, and a
+ *   `Retry-After` hint on the failure that opened it can lengthen it.
+ * - Once the open time ends, the next call moves the circuit to HalfOpen and
+ *   becomes the probe. Other calls are rejected with `CircuitHalfOpen` while
+ *   it runs. A successful probe closes the circuit, and a failed one opens it
+ *   again for the next `openDuration` delay. An interrupted or `Ignored` probe
+ *   frees the slot for the next caller.
+ *
+ * One policy per key: keys are global within a store, and a circuit's state
+ * does not record which policy wrote it. Two breakers with different policies
+ * that share a key and a store share one circuit, and each applies its own
+ * policy to it. On Redis, two `rate` policies with different sizes trim the
+ * shared ring to whichever recorded last. Nothing checks for this. Give each
+ * deployable unit whose policies differ its own Redis `prefix`, and give one
+ * HTTP client its own circuits with a `key` function that prefixes the
+ * origin, such as `payments:https://api.example.com`.
+ *
+ * Composition rules:
+ *
+ * - Put `Effect.retry` inside the breaker, so the breaker sees one outcome per
+ *   call after retries and an open circuit stops a call before any retry loop
+ *   starts. Libraries such as resilience4j and Polly put retry outside the
+ *   breaker instead. There, every attempt counts and the breaker opens sooner.
+ *   Here it opens later, and a failure a retry recovered from never counts.
+ * - Put `Effect.timeout` inside the breaker. A timeout outside it interrupts
+ *   the call, and an interrupted call is recorded as `Ignored`.
+ * - With `ExecutionPlan`, put the breaker inside each step and give each
+ *   fallback its own key, so an open circuit fails its step fast and the plan
+ *   moves on.
+ * - Retry rejections outside the breaker, with the schedule from the
+ *   "Retrying rejections" example.
+ *
+ * The breaker emits no metrics, spans or span annotations of its own. What you
+ * can observe is `state(key)`, the `transitions` stream and the typed error.
+ * The "Counting transitions" example on `CircuitBreaker` turns transitions into
+ * a metric. With `HttpClient.withCircuitBreaker`, a rejected request never
+ * reaches the client, so it has no client span.
+ *
+ * **Gotchas**
+ *
+ * - Every permit admitted before a trip goes stale when the circuit opens. The
+ *   outcomes of stale permits change nothing, but work that is already running
+ *   cannot be revoked and runs to completion.
+ * - "Consecutive" means in order of completion, not of start. Concurrent calls
+ *   feed the streak as they finish.
+ * - `state(key)` reads the shared store, so it shows what every process did.
+ *   `transitions` shows only the transitions this breaker instance made.
+ * - With `onStoreError: "allow"` (the default), a call that the store cannot
+ *   admit runs unrecorded and logs a warning, so a store outage logs one
+ *   warning per call.
+ * - On Redis, a probe holds a lease that is renewed while it runs. If renewals
+ *   cannot reach Redis, the lease lapses and another caller can start a second
+ *   probe.
+ *
+ * **Example** (Rejecting calls once a circuit opens)
+ *
+ * ```ts import.meta.vitest
+ * import { Data, Effect } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class PaymentsError extends Data.TaggedError("PaymentsError") {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(2),
+ *     openDuration: "30 seconds"
+ *   })
+ *   const charge = Effect.fail(new PaymentsError()).pipe(
+ *     breaker.execute({ key: "payments" })
+ *   )
+ *
+ *   // Two failures in a row open the circuit.
+ *   yield* Effect.flip(charge)
+ *   yield* Effect.flip(charge)
+ *
+ *   // The third call is rejected without running.
+ *   return yield* charge.pipe(
+ *     Effect.catchReason("CircuitBreakerError", "CircuitOpen", (reason) => Effect.succeed(`${reason.key} is open`))
+ *   )
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => "payments is open"
+ * ```
+ *
+ * **Example** (Retrying rejections)
+ *
+ * There is no wait mode. This schedule retries rejections with only public
+ * API. `Schedule.modifyDelay` reads the rejection from `metadata.input`. For
+ * `CircuitOpen` it waits for the longer of the backoff delay and the
+ * rejection's `retryAfter`. For `CircuitHalfOpen`, which has no deadline, it
+ * uses the jittered backoff delay, so waiting callers don't all retry at the
+ * moment the probe finishes. Store errors and the call's own errors are not
+ * retried.
+ *
+ * ```ts import.meta.vitest
+ * import { Data, Duration, Effect, Ref, Schedule } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * const isRejection = (error: unknown): error is CircuitBreaker.CircuitBreakerError =>
+ *   error instanceof CircuitBreaker.CircuitBreakerError && error.reason._tag !== "CircuitBreakerStoreError"
+ *
+ * const retryRejections = Schedule.exponential("20 millis").pipe(
+ *   Schedule.jittered,
+ *   Schedule.modifyDelay(({ duration, input }) =>
+ *     Effect.succeed(
+ *       isRejection(input) && input.reason._tag === "CircuitOpen"
+ *         ? Duration.max(duration, input.reason.retryAfter)
+ *         : duration
+ *     )
+ *   )
+ * )
+ *
+ * class QuoteError extends Data.TaggedError("QuoteError") {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "50 millis"
+ *   })
+ *   const healthy = yield* Ref.make(false)
+ *   const quote = Effect.flatMap(Ref.get(healthy), (ok) => ok ? Effect.succeed(42) : Effect.fail(new QuoteError()))
+ *
+ *   // One failure opens the circuit, then the dependency recovers.
+ *   yield* Effect.flip(quote.pipe(breaker.execute({ key: "quotes" })))
+ *   yield* Ref.set(healthy, true)
+ *
+ *   // Rejected while open, then retried once the circuit lets a probe through.
+ *   return yield* quote.pipe(
+ *     breaker.execute({ key: "quotes" }),
+ *     Effect.retry({ schedule: retryRejections, while: isRejection, times: 5 })
+ *   )
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => 42
+ * ```
  *
  * @stability experimental
  * @since 4.0.6
@@ -60,6 +206,181 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  * - `transitions` emits the transitions made by this breaker instance only,
  *   and ends when the breaker's scope closes.
  *
+ * The default classification counts defects because a generic effect has no
+ * typed error to fail with in many cases. `Effect.promise`, for example, turns
+ * a rejected promise into a defect, so a default that ignored defects would
+ * never open the circuit for it. `HttpClient.circuitBreakerClassifier` makes
+ * the opposite choice, because HttpClient errors are typed and a defect there
+ * is a bug in the caller.
+ *
+ * **Gotchas**
+ *
+ * - A throw or defect inside `classify` records `Ignored` and the call dies.
+ * - Bound an effectful `classify` with `Effect.timeoutOrElse` or
+ *   `Effect.timeoutOption` rather than `Effect.timeout`, which adds a typed
+ *   error. A call to the same key from inside `classify` is rejected with
+ *   `CircuitHalfOpen` while that call is the probe.
+ *
+ * **Example** (Timing out calls inside the breaker)
+ *
+ * A timeout inside the breaker fails the call, which counts as a `Failure`. A
+ * timeout outside it interrupts the call, which is `Ignored`.
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "1 minute"
+ *   })
+ *
+ *   yield* Effect.never.pipe(
+ *     Effect.timeout("10 millis"),
+ *     breaker.execute({ key: "inside" }),
+ *     Effect.ignore
+ *   )
+ *   yield* Effect.never.pipe(
+ *     breaker.execute({ key: "outside" }),
+ *     Effect.timeout("10 millis"),
+ *     Effect.ignore
+ *   )
+ *
+ *   const inside = yield* breaker.state("inside")
+ *   const outside = yield* breaker.state("outside")
+ *   return [inside._tag, outside._tag]
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => ["Open", "Closed"]
+ * ```
+ *
+ * **Example** (Retrying inside the breaker)
+ *
+ * With the retry inside, the breaker sees one outcome per call. A call that a
+ * retry rescued counts as one `Success`, and once the circuit is open a call
+ * is rejected before its retry loop starts.
+ *
+ * ```ts import.meta.vitest
+ * import { Data, Effect, Ref, Schedule } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class InventoryError extends Data.TaggedError("InventoryError") {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "1 minute"
+ *   })
+ *   const attempts = yield* Ref.make(0)
+ *   // Fails twice, then succeeds.
+ *   const stock = Effect.flatMap(
+ *     Ref.updateAndGet(attempts, (n) => n + 1),
+ *     (n) => n <= 2 ? Effect.fail(new InventoryError()) : Effect.succeed(7)
+ *   )
+ *
+ *   const result = yield* stock.pipe(
+ *     Effect.retry({ schedule: Schedule.exponential("1 millis"), times: 3 }),
+ *     breaker.execute({ key: "inventory" })
+ *   )
+ *   const state = yield* breaker.state("inventory")
+ *   return [result, state._tag]
+ * }).pipe(Effect.scoped, Effect.provide(CircuitBreaker.layerStoreMemory()))
+ *
+ * await Effect.runPromise(program) // => [7, "Closed"]
+ * ```
+ *
+ * **Example** (Falling back to another provider with ExecutionPlan)
+ *
+ * Each provider guards its own calls under its own key. Once the primary's
+ * circuit opens, its step fails fast with `CircuitOpen` and the plan moves
+ * straight to the fallback. A breaker wrapped around the whole plan would see
+ * only the plan's final result, and its open circuit would block the fallback
+ * too.
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Data, Effect, ExecutionPlan, Layer } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class GeocoderError extends Data.TaggedError("GeocoderError") {}
+ *
+ * class Geocoder extends Context.Service<Geocoder, {
+ *   readonly lookup: (address: string) => Effect.Effect<string, GeocoderError | CircuitBreaker.CircuitBreakerError>
+ * }>()("app/Geocoder") {}
+ *
+ * const provider = (name: string, lookup: (address: string) => Effect.Effect<string, GeocoderError>) =>
+ *   Layer.effect(
+ *     Geocoder,
+ *     Effect.gen(function*() {
+ *       const breaker = yield* CircuitBreaker.CircuitBreaker
+ *       return Geocoder.of({
+ *         lookup: (address) => lookup(address).pipe(breaker.execute({ key: `geocoder:${name}` }))
+ *       })
+ *     })
+ *   )
+ *
+ * const Primary = provider("primary", () => Effect.fail(new GeocoderError()))
+ * const Fallback = provider("fallback", (address) => Effect.succeed(`${address} (fallback)`))
+ *
+ * const plan = ExecutionPlan.make({ provide: Primary }, { provide: Fallback })
+ *
+ * const program = Effect.gen(function*() {
+ *   const geocoder = yield* Geocoder
+ *   return yield* geocoder.lookup("1 Main St")
+ * }).pipe(
+ *   Effect.withExecutionPlan(plan),
+ *   Effect.provide(
+ *     CircuitBreaker.layer({ tripPolicy: CircuitBreaker.consecutive(3), openDuration: "30 seconds" }).pipe(
+ *       Layer.provide(CircuitBreaker.layerStoreMemory())
+ *     )
+ *   )
+ * )
+ *
+ * await Effect.runPromise(program) // => "1 Main St (fallback)"
+ * ```
+ *
+ * **Example** (Counting transitions)
+ *
+ * Label the counter with `from` and `to`, not `key`, so the number of series
+ * stays fixed however many keys there are. The counter only sees this
+ * breaker's transitions.
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Metric, Stream } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * const transitionsTotal = Metric.counter("circuit_breaker_transitions_total", { incremental: true })
+ *
+ * const countTransitions = (breaker: CircuitBreaker.CircuitBreaker) =>
+ *   breaker.transitions.pipe(
+ *     Stream.runForEach((transition) =>
+ *       Metric.update(Metric.withAttributes(transitionsTotal, { from: transition.from, to: transition.to }), 1)
+ *     ),
+ *     Effect.forkScoped({ startImmediately: true })
+ *   )
+ *
+ * const program = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.make({
+ *     tripPolicy: CircuitBreaker.consecutive(1),
+ *     openDuration: "1 minute"
+ *   })
+ *   yield* countTransitions(breaker)
+ *
+ *   yield* Effect.fail("unavailable").pipe(breaker.execute({ key: "a" }), Effect.ignore)
+ *   yield* Effect.fail("unavailable").pipe(breaker.execute({ key: "b" }), Effect.ignore)
+ *   yield* Effect.yieldNow
+ *
+ *   const opened = yield* Metric.value(Metric.withAttributes(transitionsTotal, { from: "Closed", to: "Open" }))
+ *   return opened.count
+ * }).pipe(
+ *   Effect.scoped,
+ *   Effect.provide(CircuitBreaker.layerStoreMemory()),
+ *   Effect.provideService(Metric.MetricRegistry, new Map())
+ * )
+ *
+ * await Effect.runPromise(program) // => 2
+ * ```
+ *
  * @stability experimental
  * @category models
  * @since 4.0.6
@@ -88,6 +409,45 @@ export interface CircuitBreaker {
 
 /**
  * Service tag for the default `CircuitBreaker`.
+ *
+ * **When to use**
+ *
+ * Use when one breaker policy serves the whole context. For several policies,
+ * use a `LayerMap` keyed by policy or dependency, or define your own tags.
+ *
+ * **Details**
+ *
+ * A `LayerMap` key names a policy or a dependency, not a circuit key. Each
+ * entry is a breaker that still holds one circuit per `execute` key. Circuit
+ * state lives in the store, so evicting an entry loses none of it, as long as
+ * every entry shares one store.
+ *
+ * **Example** (Several breaker policies with LayerMap)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, LayerMap, Schedule } from "effect"
+ * import { CircuitBreaker } from "effect/persistence"
+ *
+ * class Breakers extends LayerMap.Service<Breakers>()("app/Breakers", {
+ *   lookup: (dependency: "payments" | "search") =>
+ *     dependency === "payments"
+ *       ? CircuitBreaker.layer({ tripPolicy: CircuitBreaker.consecutive(5), openDuration: "30 seconds" })
+ *       : CircuitBreaker.layer({
+ *         tripPolicy: CircuitBreaker.rate({ threshold: 0.5, size: 20 }),
+ *         openDuration: Schedule.exponential("1 second")
+ *       }),
+ *   // One store shared by every entry.
+ *   dependencies: [CircuitBreaker.layerStoreMemory()],
+ *   idleTimeToLive: "10 minutes"
+ * }) {}
+ *
+ * const search = Effect.gen(function*() {
+ *   const breaker = yield* CircuitBreaker.CircuitBreaker
+ *   return yield* Effect.succeed(["result"]).pipe(breaker.execute({ key: "search:eu" }))
+ * }).pipe(Effect.provide(Breakers.get("search")))
+ *
+ * await Effect.runPromise(search.pipe(Effect.provide(Breakers.layer))) // => ["result"]
+ * ```
  *
  * @stability experimental
  * @category services
