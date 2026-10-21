@@ -3,6 +3,7 @@ import { Array, ByteSize, Cause, Option, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
 export interface TestLayerOptions {
@@ -784,7 +785,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const root = yield* fs.makeTempDirectoryScoped()
         const missing = `${root}/missing`
         const destination = `${root}/destination`
-        const operations = {
+        const operations: Record<string, Effect.Effect<unknown, unknown, Scope.Scope>> = {
           access: fs.access(missing),
           chmod: fs.chmod(missing, 0o600),
           chown: fs.chown(missing, 0, 0),
@@ -838,8 +839,12 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* fs.writeFileString(path, "abc")
 
         yield* fs.truncate(path, 4)
+        assert.deepStrictEqual(yield* fs.readFile(path), new Uint8Array([97, 98, 99, 0]))
+
         const file = yield* fs.open(path, { flag: "r+" })
         yield* file.truncate(5)
+        assert.deepStrictEqual(yield* fs.readFile(path), new Uint8Array([97, 98, 99, 0, 0]))
+
         yield* file.seek(BigInt(6), "start")
         yield* file.writeAll(new Uint8Array([42]))
 
@@ -862,9 +867,10 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
           return yield* Effect.fail("boom")
         }).pipe(Effect.scoped, Effect.flip)
 
+        const normalize = (path: string) => path.replaceAll("\\", "/")
         assert.strictEqual(error, "boom")
-        assert.isTrue(directory.startsWith(`${root}/directory-`))
-        assert.isTrue(file.startsWith(`${root}/file-`))
+        assert.isTrue(normalize(directory).startsWith(`${normalize(root)}/directory-`))
+        assert.isTrue(normalize(file).startsWith(`${normalize(root)}/file-`))
         assert.isTrue(file.endsWith(".txt"))
         assert.isFalse(yield* fs.exists(directory))
         assert.isFalse(yield* fs.exists(file))
