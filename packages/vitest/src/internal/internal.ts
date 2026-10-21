@@ -163,35 +163,22 @@ const closeHookScope = (scope: Scope.Closeable) => runPromise(Scope.close(scope,
 
 /** @internal */
 export const beforeAll: typeof V.beforeAll = (fn, timeout) => {
-  let abandon: (() => Promise<void> | undefined) | undefined
-  // Vitest drops the cleanup of a setup that outlives its timeout, so a hook
-  // registered alongside this one disposes the scope in that case, bounded by
-  // the default hook timeout. Otherwise Vitest runs the hook's own cleanup
-  // with its native order and timeout, whatever `sequence.hooks` is.
-  V.beforeAll(() => {
-    abandon = undefined
-    return () => abandon?.()
-  })
+  let dispose = () => Promise.resolve()
+  // Vitest drops the cleanup of a setup that outlives its timeout, so the
+  // scope is disposed by the cleanup of a hook registered just before this
+  // one. It runs in the same cleanup phase, in the slot next to this hook's,
+  // with this hook's timeout.
+  V.beforeAll(() => () => dispose(), timeout)
   V.beforeAll(
-    runHook(fn, ([, suite], effect, scope) => {
+    runHook(fn, (_, effect, scope) => {
       const fiber = Effect.runFork(effect)
-      let disposal: Promise<void> | undefined
       // Interrupting a setup that Vitest stopped waiting for awaits its release.
-      const dispose = () =>
-        disposal ??= runPromise(Effect.andThen(Fiber.interrupt(fiber), Scope.close(scope, Exit.void)))
-      // Tests only run once every `beforeAll` has succeeded in time, so Vitest
-      // has received the cleanup below.
-      abandon = () => hasRunTests(suite) ? undefined : dispose()
-      return runPromise(Fiber.join(fiber)).then(() => dispose)
+      dispose = () => runPromise(Effect.andThen(Fiber.interrupt(fiber), Scope.close(scope, Exit.void)))
+      return runPromise(Fiber.join(fiber))
     }),
     timeout
   )
 }
-
-const hasRunTests = (suite: Readonly<V.RunnerTestSuite>): boolean =>
-  suite.tasks.some((task) =>
-    task.type === "suite" ? hasRunTests(task) : task.result?.state === "pass" || task.result?.state === "fail"
-  )
 
 /** @internal */
 export const beforeEach: typeof V.beforeEach = (fn, timeout) =>
