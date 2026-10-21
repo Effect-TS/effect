@@ -1669,8 +1669,8 @@ export const withScope = <E, R>(
  * **Details**
  *
  * Follows `3xx` responses that include a `Location` header, up to
- * `maxRedirects` (default `10`) times. When the limit is reached, the last
- * redirect response is returned.
+ * `maxRedirects` (default `10`) times. When the limit is reached or the
+ * `Location` header is not a valid URL, the last redirect response is returned.
  *
  * **Gotchas**
  *
@@ -1728,7 +1728,11 @@ export const followRedirects: {
               ) {
                 return Effect.succeed(response)
               }
-              const url = new URL(response.headers.location, response.request.url)
+              const urlResult = Url.fromString(response.headers.location, response.request.url)
+              if (Result.isFailure(urlResult)) {
+                return Effect.succeed(response)
+              }
+              const url = urlResult.success
               const request = currentRequest ?? response.request
               let nextRequest = request
               if (
