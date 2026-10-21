@@ -15268,7 +15268,7 @@ export interface RetryAfter extends
   Union<
     readonly [
       Struct<{ readonly _tag: tag<"Duration">; readonly duration: Duration }>,
-      Struct<{ readonly _tag: tag<"Date">; readonly date: DateTimeUtc }>
+      Struct<{ readonly _tag: tag<"DateTime">; readonly dateTime: DateTimeUtc }>
     ]
   >
 {
@@ -15281,8 +15281,8 @@ export interface RetryAfter extends
  * **Details**
  *
  * Matches `Headers.RetryAfter`: either `{ _tag: "Duration", duration }` or
- * `{ _tag: "Date", date }`. The duration must be finite and non-negative. Use
- * {@link RetryAfterFromString} for the header string form.
+ * `{ _tag: "DateTime", dateTime }`. The duration must be finite and
+ * non-negative. Use {@link RetryAfterFromString} for the header string form.
  *
  * @stability unstable
  * @category schemas
@@ -15297,7 +15297,7 @@ export const RetryAfter: RetryAfter = Union([
       })
     )
   }),
-  Struct({ _tag: tag("Date"), date: DateTimeUtc })
+  Struct({ _tag: tag("DateTime"), dateTime: DateTimeUtc })
 ])
 
 const retryAfterFromString: SchemaTransformation.Transformation<Headers_.RetryAfter, string> = SchemaTransformation

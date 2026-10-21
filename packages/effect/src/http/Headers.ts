@@ -645,9 +645,9 @@ export interface RetryAfterDuration {
  * @category models
  * @since 4.0.0
  */
-export interface RetryAfterDate {
-  readonly _tag: "Date"
-  readonly date: DateTime.Utc
+export interface RetryAfterDateTime {
+  readonly _tag: "DateTime"
+  readonly dateTime: DateTime.Utc
 }
 
 /**
@@ -663,7 +663,7 @@ export interface RetryAfterDate {
  * @category models
  * @since 4.0.0
  */
-export type RetryAfter = RetryAfterDuration | RetryAfterDate
+export type RetryAfter = RetryAfterDuration | RetryAfterDateTime
 
 /**
  * Creates a `Retry-After` value from a delay.
@@ -697,7 +697,7 @@ export const retryAfterDuration = (input: Duration.Input): RetryAfter => {
  * @category constructors
  * @since 4.0.0
  */
-export const retryAfterDate = (date: DateTime.Utc): RetryAfter => ({ _tag: "Date", date })
+export const retryAfterDateTime = (dateTime: DateTime.Utc): RetryAfter => ({ _tag: "DateTime", dateTime })
 
 const wholeSeconds = /^\d+$/
 const nanosPerSecond = BigInt(1_000_000_000)
@@ -729,7 +729,7 @@ export const parseRetryAfter = (input: string): Result.Result<RetryAfter, Header
   const millis = httpDateToMillis(trimmed)
   return millis === undefined
     ? Result.fail(HeaderParseError.fromReason("InvalidRetryAfter", input))
-    : Result.succeed(retryAfterDate(DateTime.makeUnsafe(millis)))
+    : Result.succeed(retryAfterDateTime(DateTime.makeUnsafe(millis)))
 }
 
 /**
@@ -748,7 +748,7 @@ export const parseRetryAfter = (input: string): Result.Result<RetryAfter, Header
 export const formatRetryAfter = (self: RetryAfter): string =>
   self._tag === "Duration"
     ? String((Duration.toNanosUnsafe(self.duration) + nanosPerSecond - BigInt(1)) / nanosPerSecond)
-    : formatHttpDate(self.date)
+    : formatHttpDate(self.dateTime)
 
 /**
  * Computes how long to wait for a `Retry-After` value, measured from `now`
@@ -767,7 +767,7 @@ export const formatRetryAfter = (self: RetryAfter): string =>
 export const retryAfterDelay = (self: RetryAfter, now: number): Duration.Duration =>
   self._tag === "Duration"
     ? self.duration
-    : Duration.millis(Math.max(0, DateTime.toEpochMillis(self.date) - now))
+    : Duration.millis(Math.max(0, DateTime.toEpochMillis(self.dateTime) - now))
 
 /**
  * Provides an `Equivalence` instance for `Retry-After` values.
@@ -779,4 +779,4 @@ export const retryAfterDelay = (self: RetryAfter, now: number): Duration.Duratio
 export const RetryAfterEquivalence: Equ.Equivalence<RetryAfter> = (self, that) =>
   self._tag === "Duration"
     ? that._tag === "Duration" && Duration.Equivalence(self.duration, that.duration)
-    : that._tag === "Date" && DateTime.Equivalence(self.date, that.date)
+    : that._tag === "DateTime" && DateTime.Equivalence(self.dateTime, that.dateTime)
