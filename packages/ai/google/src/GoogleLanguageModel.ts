@@ -390,7 +390,8 @@ const prepareMessages: (
               functionResponse: {
                 id: part.id,
                 name: part.name,
-                response: part.result as any
+                // Gemini requires `response` to be a JSON object
+                response: Predicate.isRecord(part.result) ? part.result : { result: part.result }
               }
             })
           }
