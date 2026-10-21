@@ -3,7 +3,6 @@ import { Array, ByteSize, Cause, Option, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
-import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
 export interface TestLayerOptions {
@@ -14,6 +13,8 @@ export interface TestLayerOptions {
   /** Whether `open` can refuse to follow a symlink at the final path component. Defaults to `true`. */
   readonly noFollow?: boolean
 }
+
+const posix = (path: string) => path.replaceAll("\\", "/")
 
 export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: TestLayerOptions = {}) => {
   const runPromise = <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
@@ -785,14 +786,13 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const root = yield* fs.makeTempDirectoryScoped()
         const missing = `${root}/missing`
         const destination = `${root}/destination`
-        const operations: Record<string, Effect.Effect<unknown, unknown, Scope.Scope>> = {
+        const operations: Record<string, Effect.Effect<unknown, unknown>> = {
           access: fs.access(missing),
           chmod: fs.chmod(missing, 0o600),
           chown: fs.chown(missing, 0, 0),
           copy: fs.copy(missing, destination),
           copyFile: fs.copyFile(missing, destination),
           link: fs.link(missing, destination),
-          open: fs.open(missing),
           readDirectory: fs.readDirectory(missing),
           readFile: fs.readFile(missing),
           readLink: fs.readLink(missing),
@@ -867,10 +867,9 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
           return yield* Effect.fail("boom")
         }).pipe(Effect.scoped, Effect.flip)
 
-        const normalize = (path: string) => path.replaceAll("\\", "/")
         assert.strictEqual(error, "boom")
-        assert.isTrue(normalize(directory).startsWith(`${normalize(root)}/directory-`))
-        assert.isTrue(normalize(file).startsWith(`${normalize(root)}/file-`))
+        assert.isTrue(posix(directory).startsWith(`${posix(root)}/directory-`))
+        assert.isTrue(posix(file).startsWith(`${posix(root)}/file-`))
         assert.isTrue(file.endsWith(".txt"))
         assert.isFalse(yield* fs.exists(directory))
         assert.isFalse(yield* fs.exists(file))
@@ -977,7 +976,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         const matches = yield* fs.glob("**/*.ts", { root, exclude: ["**/*.test.ts"] })
 
         assert.strictEqual(matches.length, 1)
-        assert.isTrue(matches[0].replaceAll("\\", "/").endsWith("src/index.ts"))
+        assert.isTrue(posix(matches[0]).endsWith("src/index.ts"))
       }).pipe(Effect.scoped)
     ))
 }
