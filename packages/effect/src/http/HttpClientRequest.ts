@@ -400,9 +400,8 @@ export const removeHeader: {
 )
 
 /**
- * Sets the `Authorization` header using HTTP Basic authentication credentials.
- *
- * The credentials are encoded as UTF-8 before base64 encoding.
+ * Sets the `Authorization` header using HTTP Basic authentication credentials,
+ * encoded as UTF-8 before base64 encoding.
  *
  * @stability unstable
  * @category combinators
