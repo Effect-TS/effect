@@ -296,27 +296,23 @@ describe("HttpApiBuilder", () => {
     }
   })
 
-  it("Union response status", async () => {
-    const Union = Schema.Union(Schema.Literal("A"), Schema.Literal("B"))
+  it("does not share Union success status between endpoints", async () => {
+    const Union = Schema.Literal("A", "B")
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("group")
-        .add(HttpApiEndpoint.get("endpoint1", "/1").addSuccess(Union, { status: 201 }))
-        .add(HttpApiEndpoint.get("endpoint2", "/2").addSuccess(Union))
+        .add(HttpApiEndpoint.get("created", "/created").addSuccess(Union, { status: 201 }))
+        .add(HttpApiEndpoint.get("ok", "/ok").addSuccess(Union))
     )
-    const ApiImplementation = HttpApiBuilder.api(Api).pipe(
-      Layer.provide(
-        HttpApiBuilder.group(Api, "group", (_) =>
-          _
-            .handle("endpoint1", () => Effect.succeed("A"))
-            .handle("endpoint2", () => Effect.succeed("A")))
-      ),
-      Layer.merge(HttpServer.layerContext)
+    const GroupLive = HttpApiBuilder.group(Api, "group", (handlers) =>
+      handlers
+        .handle("created", () => Effect.succeed("A" as const))
+        .handle("ok", () => Effect.succeed("A" as const)))
+    const { dispose, handler } = HttpApiBuilder.toWebHandler(
+      HttpApiBuilder.api(Api).pipe(Layer.provide(GroupLive), Layer.merge(HttpServer.layerContext))
     )
-    const { handler } = HttpApiBuilder.toWebHandler(ApiImplementation)
 
-    const response1 = await handler(new Request("http://localhost:3000/1"))
-    strictEqual(response1.status, 201)
-    const response2 = await handler(new Request("http://localhost:3000/2"))
-    strictEqual(response2.status, 200)
+    strictEqual((await handler(new Request("http://localhost/created"))).status, 201)
+    strictEqual((await handler(new Request("http://localhost/ok"))).status, 200)
+    await dispose()
   })
 })
