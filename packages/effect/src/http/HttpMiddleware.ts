@@ -78,10 +78,10 @@ export declare namespace HttpMiddleware {
  *
  * **Gotchas**
  *
- * TypeScript cannot infer the app parameter of an `Effect.fn` or
- * `Effect.fnUntraced` generator passed to `make`, so the middleware loses the
- * app's error and service types. Declare `E` and `R` type parameters and
- * annotate the app parameter to preserve them.
+ * TypeScript cannot infer the `app` parameter of an `Effect.fn` or
+ * `Effect.fnUntraced` generator passed to `make`, so `app` becomes `any` and
+ * the middleware loses the app's error and service types. Declare `E` and `R`
+ * type parameters and annotate `app` with them to preserve the types.
  *
  * **Example** (Preserving app types with Effect.fn)
  *
