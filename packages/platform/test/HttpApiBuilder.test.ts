@@ -310,12 +310,24 @@ describe("HttpApiBuilder", () => {
             ).annotations({ title: "Errors" })
           )
         )
+        .add(
+          HttpApiEndpoint.get("nested", "/nested").addSuccess(
+            Schema.Union(
+              Schema.Union(
+                Schema.Literal("A").annotations(HttpApiSchema.annotations({ status: 202 })),
+                Schema.Literal("B")
+              ).annotations(HttpApiSchema.annotations({ status: 201 })),
+              Schema.Literal("C")
+            )
+          )
+        )
     )
     const GroupLive = HttpApiBuilder.group(Api, "group", (handlers) =>
       handlers
         .handle("created", () => Effect.succeed("A" as const))
         .handle("ok", () => Effect.succeed("A" as const))
-        .handle("error", () => Effect.fail("NotFound" as const)))
+        .handle("error", () => Effect.fail("NotFound" as const))
+        .handle("nested", () => Effect.succeed("B" as const)))
     const { dispose, handler } = HttpApiBuilder.toWebHandler(
       HttpApiBuilder.api(Api).pipe(Layer.provide(GroupLive), Layer.merge(HttpServer.layerContext))
     )
@@ -323,6 +335,7 @@ describe("HttpApiBuilder", () => {
     strictEqual((await handler(new Request("http://localhost/created"))).status, 201)
     strictEqual((await handler(new Request("http://localhost/ok"))).status, 200)
     strictEqual((await handler(new Request("http://localhost/error"))).status, 404)
+    strictEqual((await handler(new Request("http://localhost/nested"))).status, 201)
     await dispose()
   })
 })
