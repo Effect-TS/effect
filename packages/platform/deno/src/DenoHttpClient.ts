@@ -9,9 +9,10 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
-import type * as HttpClient from "effect/http/HttpClient"
+import * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 
@@ -79,10 +80,11 @@ interface ClientRequestInit extends globalThis.RequestInit {
  * **Details**
  *
  * The native client is acquired in the layer's scope and closed when the
- * scope ends. It is passed to `fetch` as the `client` field of the
- * `RequestInit` service of a fresh `FetchHttpClient.layer`, so this layer
- * replaces any `RequestInit` supplied from outside. Request-specific method,
- * headers, body and abort signal are still set per request.
+ * scope ends. Before each request it is set as the `client` field of the
+ * `RequestInit` service found in the request context, so an application-wide
+ * `RequestInit` for `credentials`, `cache` or default headers still applies
+ * and only `client` is overridden. Request-specific method, headers, body and
+ * abort signal are still set per request.
  *
  * **Example** (Sending requests over a Unix domain socket)
  *
@@ -114,9 +116,16 @@ interface ClientRequestInit extends globalThis.RequestInit {
  * @since 4.0.6
  */
 export const layerOptions = (options?: Options): Layer.Layer<HttpClient.HttpClient> =>
-  Layer.fresh(FetchHttpClient.layer).pipe(
-    Layer.provide(Layer.effect(
-      FetchHttpClient.RequestInit,
-      Effect.map(makeClient(options), (client): ClientRequestInit => ({ client }))
-    ))
-  )
+  Layer.effect(HttpClient.HttpClient)(
+    Effect.gen(function*() {
+      const client = yield* makeClient(options)
+      const httpClient = yield* HttpClient.HttpClient
+      return HttpClient.transformResponse(
+        httpClient,
+        Effect.updateContext((context: Context.Context<never>) => {
+          const init: ClientRequestInit = { ...Context.getOrUndefined(context, FetchHttpClient.RequestInit), client }
+          return Context.add(context, FetchHttpClient.RequestInit, init)
+        })
+      )
+    })
+  ).pipe(Layer.provide(FetchHttpClient.layer))

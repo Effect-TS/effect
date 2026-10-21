@@ -8,8 +8,10 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
-import type * as HttpClient from "effect/http/HttpClient"
+import * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
 
 /**
@@ -50,11 +52,12 @@ export type Options = Omit<BunFetchRequestInit, "method" | "body" | "signal" | "
  *
  * **Details**
  *
- * The options are provided as the `RequestInit` service of a fresh
- * `FetchHttpClient.layer`, so they replace any `RequestInit` supplied from
- * outside. Request-specific method, body, abort signal and duplex mode are
- * still set per request, and request headers override the same keys in
- * `options.headers`.
+ * Before each request the options are merged over the `RequestInit` service
+ * found in the request context, so an application-wide `RequestInit` for
+ * `credentials`, `cache` or default headers still applies, and the native
+ * options win per top-level key. Request-specific method, body, abort signal
+ * and duplex mode are still set per request, and request headers override the
+ * same keys in `headers`.
  *
  * Bun also offers `session` for sharing a connection pool across requests;
  * pass it through these options if your Bun version supports it.
@@ -86,6 +89,17 @@ export type Options = Omit<BunFetchRequestInit, "method" | "body" | "signal" | "
  * @since 4.0.6
  */
 export const layerOptions = (options: Options): Layer.Layer<HttpClient.HttpClient> =>
-  Layer.fresh(FetchHttpClient.layer).pipe(
-    Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, options))
-  )
+  Layer.effect(HttpClient.HttpClient)(
+    Effect.gen(function*() {
+      const client = yield* HttpClient.HttpClient
+      return HttpClient.transformResponse(
+        client,
+        Effect.updateContext((context: Context.Context<never>) =>
+          Context.add(context, FetchHttpClient.RequestInit, {
+            ...Context.getOrUndefined(context, FetchHttpClient.RequestInit),
+            ...options
+          })
+        )
+      )
+    })
+  ).pipe(Layer.provide(FetchHttpClient.layer))
