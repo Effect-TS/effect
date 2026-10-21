@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Fiber, Latch, References, Scope } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Scope } from "effect"
 
 describe("Fiber", () => {
   it("is a fiber", async () => {
@@ -39,6 +39,18 @@ describe("Fiber", () => {
       Fiber.runIn(fiber, scope)
       close = Scope.closeUnsafe(scope, Exit.void) ?? Effect.void
       assert.deepStrictEqual(yield* Fiber.await(fiber), Exit.succeed("closed"))
+    }))
+
+  it.effect("runIn interrupts the fiber when its close effect runs on another fiber", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const close = yield* Deferred.make<Effect.Effect<void>>()
+      const fiber = yield* Effect.suspend(() =>
+        Deferred.succeed(close, Scope.closeUnsafe(scope, Exit.void) ?? Effect.void)
+      ).pipe(Effect.andThen(Effect.never), Effect.forkDetach)
+      Fiber.runIn(fiber, scope)
+      yield* Effect.flatten(Deferred.await(close))
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
     }))
 
   it("notifies all observers when an observer cancels during exit", () => {
