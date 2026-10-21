@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks"
+import { getEventListeners } from "node:events"
 
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throwsAsync } from "@effect/vitest/utils"
@@ -171,5 +172,11 @@ describe("Runtime", () => {
         await Runtime.runPromiseExit(Runtime.defaultRuntime, Effect.never, { signal: controller.signal })
       )
     )
+  })
+
+  it("runPromiseExit/signal removes the abort listener on completion", async () => {
+    const controller = new AbortController()
+    await Runtime.runPromiseExit(Runtime.defaultRuntime, Effect.yieldNow(), { signal: controller.signal })
+    strictEqual(getEventListeners(controller.signal, "abort").length, 0)
   })
 })
