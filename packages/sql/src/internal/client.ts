@@ -142,14 +142,19 @@ export const makeWithTransaction = <I, S>(options: {
               [scope, conn]
             ) =>
               (id === 0 ? options.begin(conn) : options.savepoint(conn, id)).pipe(
-                Effect.zipRight(Effect.locally(
-                  restore(effect),
-                  FiberRef.currentContext,
-                  Context.add(context, options.transactionTag, [conn, id]).pipe(
-                    Context.add(Tracer.ParentSpan, span)
-                  )
-                )),
-                Effect.exit,
+                // nothing to roll back if the transaction could not begin
+                Effect.onError((cause) =>
+                  scope !== undefined ? Scope.close(scope, Exit.failCause(cause)) : Effect.void
+                ),
+                Effect.zipRight(
+                  Effect.locally(
+                    restore(effect),
+                    FiberRef.currentContext,
+                    Context.add(context, options.transactionTag, [conn, id]).pipe(
+                      Context.add(Tracer.ParentSpan, span)
+                    )
+                  ).pipe(Effect.exit)
+                ),
                 Effect.flatMap((exit) => {
                   let effect: Effect.Effect<void>
                   if (Exit.isSuccess(exit)) {

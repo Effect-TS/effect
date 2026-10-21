@@ -98,6 +98,9 @@ export const make = (
       } as any)
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
+      // match the better-sqlite3 default so concurrent writers wait for locks
+      db.run("PRAGMA busy_timeout = 5000;")
+
       if (options.disableWAL !== true) {
         db.run("PRAGMA journal_mode = WAL;")
       }
