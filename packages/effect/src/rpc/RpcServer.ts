@@ -728,17 +728,23 @@ export const make: <Rpcs extends Rpc.Any>(
 
   // handle disconnects
   const onDisconnect = options?.onDisconnect
+  const handleDisconnect = onDisconnect
+    ? (clientId: number) =>
+      Effect.andThen(
+        server.disconnect(clientId),
+        Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
+          log: true,
+          message: "RpcServer onDisconnect hook failed"
+        })
+      )
+    : server.disconnect
   yield* Effect.forkChild(
     Effect.whileLoop({
       while: constTrue,
       body: constant(
         Effect.flatMap(Queue.take(disconnects), (clientId) => {
           clients.delete(clientId)
-          if (!onDisconnect) return server.disconnect(clientId)
-          return Effect.andThen(
-            server.disconnect(clientId),
-            Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), { log: true })
-          )
+          return handleDisconnect(clientId)
         })
       ),
       step: constVoid
