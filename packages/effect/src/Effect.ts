@@ -9816,6 +9816,18 @@ export declare namespace fn {
         : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
         : never
     >
+    <Self, Eff extends Effect<any, any, any>, AEff, Args extends Array<any>>(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>
+    ): (...args: Args) => Effect<
+      AEff,
+      [Eff] extends [never] ? never
+        : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+        : never,
+      [Eff] extends [never] ? never
+        : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+        : never
+    >
 
     <Eff extends Effect<any, any, any>, AEff, Args extends Array<any>, A>(
       body: (this: unassigned, ...args: Args) => Generator<Eff, AEff, never>,
@@ -9847,6 +9859,22 @@ export declare namespace fn {
         ...args: Args
       ) => A
     ): (this: Self, ...args: Args) => A
+    <Self, Eff extends Effect<any, any, any>, AEff, Args extends Array<any>, A>(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A
+    ): (...args: Args) => A
     <Eff extends Effect<any, any, any>, AEff, Args extends Array<any>, A, B>(
       body: (this: unassigned, ...args: Args) => Generator<Eff, AEff, never>,
       a: (
@@ -9879,6 +9907,23 @@ export declare namespace fn {
       ) => A,
       b: (_: A, ...args: Args) => B
     ): (this: Self, ...args: Args) => B
+    <Self, Eff extends Effect<any, any, any>, AEff, Args extends Array<any>, A, B>(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B
+    ): (...args: Args) => B
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -9928,6 +9973,32 @@ export declare namespace fn {
       b: (_: A, ...args: Args) => B,
       c: (_: B, ...args: Args) => C
     ): (this: Self, ...args: Args) => C
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C
+    ): (...args: Args) => C
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -9981,6 +10052,34 @@ export declare namespace fn {
       c: (_: B, ...args: Args) => C,
       d: (_: C, ...args: Args) => D
     ): (this: Self, ...args: Args) => D
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D
+    ): (...args: Args) => D
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10038,6 +10137,36 @@ export declare namespace fn {
       d: (_: C, ...args: Args) => D,
       e: (_: D, ...args: Args) => E
     ): (this: Self, ...args: Args) => E
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E
+    ): (...args: Args) => E
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10099,6 +10228,38 @@ export declare namespace fn {
       e: (_: D, ...args: Args) => E,
       f: (_: E, ...args: Args) => F
     ): (this: Self, ...args: Args) => F
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F
+    ): (...args: Args) => F
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10164,6 +10325,40 @@ export declare namespace fn {
       f: (_: E, ...args: Args) => F,
       g: (_: F, ...args: Args) => G
     ): (this: Self, ...args: Args) => G
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G
+    ): (...args: Args) => G
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10233,6 +10428,42 @@ export declare namespace fn {
       g: (_: F, ...args: Args) => G,
       h: (_: G, ...args: Args) => H
     ): (this: Self, ...args: Args) => H
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H
+    ): (...args: Args) => H
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10306,6 +10537,44 @@ export declare namespace fn {
       h: (_: G, ...args: Args) => H,
       i: (_: H, ...args: Args) => I
     ): (this: Self, ...args: Args) => I
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I
+    ): (...args: Args) => I
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10383,6 +10652,46 @@ export declare namespace fn {
       i: (_: H, ...args: Args) => I,
       j: (_: I, ...args: Args) => J
     ): (this: Self, ...args: Args) => J
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J
+    ): (...args: Args) => J
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10464,6 +10773,48 @@ export declare namespace fn {
       j: (_: I, ...args: Args) => J,
       k: (_: J, ...args: Args) => K
     ): (this: Self, ...args: Args) => K
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K
+    ): (...args: Args) => K
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10549,6 +10900,50 @@ export declare namespace fn {
       k: (_: J, ...args: Args) => K,
       l: (_: K, ...args: Args) => L
     ): (this: Self, ...args: Args) => L
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L
+    ): (...args: Args) => L
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10638,6 +11033,52 @@ export declare namespace fn {
       l: (_: K, ...args: Args) => L,
       m: (_: L, ...args: Args) => M
     ): (this: Self, ...args: Args) => M
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M
+    ): (...args: Args) => M
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10731,6 +11172,54 @@ export declare namespace fn {
       m: (_: L, ...args: Args) => M,
       n: (_: M, ...args: Args) => N
     ): (this: Self, ...args: Args) => N
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N
+    ): (...args: Args) => N
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10828,6 +11317,56 @@ export declare namespace fn {
       n: (_: M, ...args: Args) => N,
       o: (_: N, ...args: Args) => O
     ): (this: Self, ...args: Args) => O
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N,
+      o: (_: N, ...args: Args) => O
+    ): (...args: Args) => O
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -10929,6 +11468,58 @@ export declare namespace fn {
       o: (_: N, ...args: Args) => O,
       p: (_: O, ...args: Args) => P
     ): (this: Self, ...args: Args) => P
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O,
+      P
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N,
+      o: (_: N, ...args: Args) => O,
+      p: (_: O, ...args: Args) => P
+    ): (...args: Args) => P
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -11034,6 +11625,60 @@ export declare namespace fn {
       p: (_: O, ...args: Args) => P,
       q: (_: P, ...args: Args) => Q
     ): (this: Self, ...args: Args) => Q
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O,
+      P,
+      Q
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N,
+      o: (_: N, ...args: Args) => O,
+      p: (_: O, ...args: Args) => P,
+      q: (_: P, ...args: Args) => Q
+    ): (...args: Args) => Q
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -11143,6 +11788,62 @@ export declare namespace fn {
       q: (_: P, ...args: Args) => Q,
       r: (_: Q, ...args: Args) => R
     ): (this: Self, ...args: Args) => R
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O,
+      P,
+      Q,
+      R
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N,
+      o: (_: N, ...args: Args) => O,
+      p: (_: O, ...args: Args) => P,
+      q: (_: P, ...args: Args) => Q,
+      r: (_: Q, ...args: Args) => R
+    ): (...args: Args) => R
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -11256,6 +11957,64 @@ export declare namespace fn {
       r: (_: Q, ...args: Args) => R,
       s: (_: R, ...args: Args) => S
     ): (this: Self, ...args: Args) => S
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O,
+      P,
+      Q,
+      R,
+      S
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N,
+      o: (_: N, ...args: Args) => O,
+      p: (_: O, ...args: Args) => P,
+      q: (_: P, ...args: Args) => Q,
+      r: (_: Q, ...args: Args) => R,
+      s: (_: R, ...args: Args) => S
+    ): (...args: Args) => S
     <
       Eff extends Effect<any, any, any>,
       AEff,
@@ -11373,6 +12132,66 @@ export declare namespace fn {
       s: (_: R, ...args: Args) => S,
       t: (_: S, ...args: Args) => T
     ): (this: Self, ...args: Args) => T
+    <
+      Self,
+      Eff extends Effect<any, any, any>,
+      AEff,
+      Args extends Array<any>,
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O,
+      P,
+      Q,
+      R,
+      S,
+      T
+    >(
+      options: { readonly self: Self },
+      body: (this: Self, ...args: Args) => Generator<Eff, AEff, never>,
+      a: (
+        _: Effect<
+          AEff,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E
+            : never,
+          [Eff] extends [never] ? never
+            : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R
+            : never
+        >,
+        ...args: Args
+      ) => A,
+      b: (_: A, ...args: Args) => B,
+      c: (_: B, ...args: Args) => C,
+      d: (_: C, ...args: Args) => D,
+      e: (_: D, ...args: Args) => E,
+      f: (_: E, ...args: Args) => F,
+      g: (_: F, ...args: Args) => G,
+      h: (_: G, ...args: Args) => H,
+      i: (_: H, ...args: Args) => I,
+      j: (_: I, ...args: Args) => J,
+      k: (_: J, ...args: Args) => K,
+      l: (_: K, ...args: Args) => L,
+      m: (_: L, ...args: Args) => M,
+      n: (_: M, ...args: Args) => N,
+      o: (_: N, ...args: Args) => O,
+      p: (_: O, ...args: Args) => P,
+      q: (_: P, ...args: Args) => Q,
+      r: (_: Q, ...args: Args) => R,
+      s: (_: R, ...args: Args) => S,
+      t: (_: S, ...args: Args) => T
+    ): (...args: Args) => T
   }
 
   /**
@@ -13839,6 +14658,8 @@ export declare namespace fn {
  * the original function arguments. Annotate the generator return type with
  * `Effect.fn.Return<A, E, R>` when the produced `Effect` type needs to be
  * stated explicitly.
+ * Pass `{ self }` before the generator body to bind its `this` value, including
+ * when the returned function is called separately from its object.
  *
  * **Example** (Defining untraced effect functions)
  *

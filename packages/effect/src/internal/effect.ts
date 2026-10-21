@@ -1274,9 +1274,12 @@ export const gen = <
 
 /** @internal */
 export const fnUntraced: Effect.fn.Untraced = (
-  body: Function,
+  bodyOrOptions: Function | { readonly self: any },
   ...pipeables: Array<any>
 ) => {
+  const body = typeof bodyOrOptions === "function"
+    ? bodyOrOptions
+    : pipeables.shift()!.bind(bodyOrOptions.self)
   const fn = pipeables.length === 0
     ? function(this: any) {
       return suspend(() => fromIteratorUnsafe(body.apply(this, arguments)))
@@ -1380,10 +1383,13 @@ const makeFn = (
 
 /** @internal */
 export const fnUntracedEager: Effect.fn.Untraced = (
-  body: Function,
+  bodyOrOptions: Function | { readonly self: any },
   ...pipeables: Array<any>
-) =>
-  defineFunctionLength(
+) => {
+  const body = typeof bodyOrOptions === "function"
+    ? bodyOrOptions
+    : pipeables.shift()!.bind(bodyOrOptions.self)
+  return defineFunctionLength(
     body.length,
     pipeables.length === 0
       ? function(this: any) {
@@ -1397,6 +1403,7 @@ export const fnUntracedEager: Effect.fn.Untraced = (
         return effect
       }
   )
+}
 
 const fromIteratorEagerUnsafe = (
   evaluate: () => Iterator<Effect.Effect<any, any, any>>

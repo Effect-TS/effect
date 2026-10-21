@@ -834,6 +834,40 @@ describe("Effect.unwrapReason", () => {
   })
 })
 
+describe("Effect.fnUntraced", () => {
+  it("infers bound self and preserves argument, error, and service types", () => {
+    class Service extends Context.Service<Service, { readonly value: string }>()("Service") {}
+    class Counter {
+      value = 1
+      method = Effect.fnUntraced({ self: this }, function*(amount: number) {
+        const service = yield* Service
+        if (amount < 0) return yield* Effect.fail("negative" as const)
+        return service.value + (this.value + amount)
+      })
+    }
+    expect(new Counter().method).type.toBe<(amount: number) => Effect.Effect<string, "negative", Service>>()
+  })
+
+  it("infers transforms with bound self and the original arguments", () => {
+    const fn = Effect.fnUntraced(
+      { self: { value: 1 } },
+      function*(amount: number) {
+        return this.value + amount
+      },
+      (effect, amount) => {
+        expect(amount).type.toBe<number>()
+        expect(effect).type.toBe<Effect.Effect<number>>()
+        return Effect.map(effect, String)
+      },
+      Effect.map((value) => {
+        expect(value).type.toBe<string>()
+        return value.length
+      })
+    )
+    expect(fn).type.toBe<(amount: number) => Effect.Effect<number>>()
+  })
+})
+
 describe("Effect.fn", () => {
   it("with a span, generator", () => {
     const fn = Effect.fn("span")(function*() {

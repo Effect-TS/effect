@@ -4573,6 +4573,45 @@ describe("Effect", () => {
     })
   })
 
+  for (
+    const [name, untraced] of [["fnUntraced", Effect.fnUntraced], ["fnUntracedEager", Effect.fnUntracedEager]] as const
+  ) {
+    describe(`Effect.${name}`, () => {
+      it.effect("binds self when the method is detached", () => {
+        class Counter {
+          value = 1
+          add = untraced({ self: this }, function*(amount: number) {
+            this.value += amount
+            return this.value
+          })
+        }
+        const counter = new Counter()
+        const add = counter.add
+        assert.strictEqual(add.length, 1)
+        return Effect.gen(function*() {
+          assert.strictEqual(yield* add(2), 3)
+          assert.strictEqual(yield* add.call({ value: 100 }, 4), 7)
+          assert.strictEqual(counter.value, 7)
+        })
+      })
+
+      it.effect("passes the original arguments to transforms with bound self", () => {
+        const self = { prefix: "bound" }
+        const fn = untraced(
+          { self },
+          function*(value: string) {
+            return `${this.prefix}:${value}`
+          },
+          (effect, value) => Effect.map(effect, (result) => `${result}:${value}`),
+          Effect.map((value) => value.toUpperCase())
+        )
+        return Effect.gen(function*() {
+          assert.strictEqual(yield* fn("input"), "BOUND:INPUT:INPUT")
+        })
+      })
+    })
+  }
+
   describe("Effect.fn", () => {
     it.effect("should support pipeable arguments", () => {
       const fn = Effect.fn(function*(s: string) {
