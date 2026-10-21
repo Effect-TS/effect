@@ -84,6 +84,14 @@ const classifyError = (
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
 }
 
+const killQuery = (client: Clickhouse.ClickHouseClient, queryId: string) =>
+  Effect.promise(() =>
+    client.command({
+      query: "KILL QUERY WHERE query_id = {queryId:String}",
+      query_params: { queryId }
+    })
+  )
+
 /**
  * Unique runtime identifier used to tag `ClickhouseClient` values.
  *
@@ -267,12 +275,7 @@ export const make = (
             }
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() =>
-                this.conn.command({
-                  query: "KILL QUERY WHERE query_id = {queryId:String}",
-                  query_params: { queryId }
-                })
-              )
+              return killQuery(this.conn, queryId)
             })
           })
         })
@@ -328,7 +331,8 @@ export const make = (
               if (!("stream" in result)) {
                 return Stream.empty
               }
-              // the query may still be running if the response is not read to the end
+              // Closing the socket does not stop a query the server is still
+              // computing, so kill it unless the response was read to the end.
               let done = false
               return NodeStream.fromReadable<ReadonlyArray<Clickhouse.Row<any, "JSONEachRow">>, SqlError>({
                 evaluate: () => result.stream() as any,
@@ -337,14 +341,7 @@ export const make = (
                 Stream.onEnd(Effect.sync(() => {
                   done = true
                 })),
-                Stream.ensuring(Effect.suspend(() =>
-                  done ? Effect.void : Effect.ignoreCause(Effect.promise(() =>
-                    conn.command({
-                      query: "KILL QUERY WHERE query_id = {queryId:String}",
-                      query_params: { queryId }
-                    })
-                  ))
-                ))
+                Stream.ensuring(Effect.suspend(() => done ? Effect.void : Effect.ignoreCause(killQuery(conn, queryId))))
               )
             })
           )
@@ -416,12 +413,7 @@ export const make = (
             )
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() =>
-                client.command({
-                  query: "KILL QUERY WHERE query_id = {queryId:String}",
-                  query_params: { queryId }
-                })
-              )
+              return killQuery(client, queryId)
             })
           })
         },
