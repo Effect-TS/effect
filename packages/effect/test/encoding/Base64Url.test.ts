@@ -8,9 +8,9 @@ describe("Base64Url", () => {
     assert.strictEqual(Base64Url.encode(new Uint8Array([251, 255])), "-_8")
   })
 
-  it("encodes with padding", () => {
-    assert.strictEqual(Base64Url.encode("f", { padding: true }), "Zg==")
-    assert.strictEqual(Base64Url.encode(new Uint8Array([251, 255]), { padding: true }), "-_8=")
+  it("encodePadded keeps the padding", () => {
+    assert.strictEqual(Base64Url.encodePadded("f"), "Zg==")
+    assert.strictEqual(Base64Url.encodePadded(new Uint8Array([251, 255])), "-_8=")
   })
 
   it("decodes padded and unpadded input", () => {
