@@ -125,9 +125,7 @@ export interface HandlerContext<Tool extends Tool.Any> {
    * **Details**
    *
    * Preliminary results are streamed to the caller before the handler completes,
-   * enabling real-time progress updates for lengthy operations. Up to 16
-   * results are buffered per tool call; when the buffer is full, this effect
-   * waits for the caller to consume them.
+   * enabling real-time progress updates for lengthy operations.
    */
   readonly preliminary: (result: Tool.Success<Tool>) => Effect.Effect<void>
 }
@@ -408,7 +406,7 @@ const Proto = {
           readonly result: any
           readonly isFailure: boolean
           readonly preliminary: boolean
-        }, Cause.Done>({ capacity: 16 })
+        }, Cause.Done>()
         const context: HandlerContext<any> = {
           toolCallId,
           preliminary: (result) =>
