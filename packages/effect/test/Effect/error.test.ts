@@ -1,5 +1,5 @@
-import { describe, it } from "@effect/vitest"
-import { assertInclude, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { describe, it, vi } from "@effect/vitest"
+import { assertInclude, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { Cause, Data, Effect, pipe } from "effect"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}
@@ -93,5 +93,62 @@ describe("Effect", () => {
   it("toJSON", () => {
     class MessageError extends Data.TaggedError("MessageError")<{}> {}
     deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
+  })
+
+  it.sequential("supports a non-writable Error.stackTraceLimit", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")!
+    Object.defineProperty(Error, "stackTraceLimit", { ...descriptor, writable: false })
+    vi.resetModules()
+    try {
+      const { Cause, Context, Effect, Exit, Layer, LayerMap, Micro, Runtime } = await import("effect")
+
+      class A extends Context.Tag("A")<A, { readonly a: () => Effect.Effect<number> }>() {}
+      class B extends Context.Reference<B>()("B", { defaultValue: () => 1 }) {}
+      class C extends Effect.Tag("C")<C, number>() {}
+      class D extends Effect.Service<D>()("D", { succeed: { d: 1 } }) {}
+      const F = Context.GenericTag<number>("F")
+      class E extends LayerMap.Service<E>()("E", { lookup: (_key: string) => Layer.succeed(F, 1) }) {}
+      strictEqual(E.key, "E")
+
+      const add = Effect.fn(function*(a: number, b: number) {
+        return a + b
+      })
+      const double = Effect.functionWithSpan({
+        body: (n: number) => Effect.succeed(n * 2),
+        options: { name: "double" }
+      })
+      const program = Effect.fn("program")(function*() {
+        const b = yield* B
+        const c = yield* C
+        const { d } = yield* D
+        const f = yield* F
+        return yield* add(b + c, yield* double(d + f))
+      })
+      strictEqual(
+        Effect.runSync(
+          program().pipe(
+            Effect.withSpan("span"),
+            Effect.provide(D.Default),
+            Effect.provideService(C, 1),
+            Effect.provideService(F, 1)
+          )
+        ),
+        6
+      )
+
+      const exit = Effect.runSyncExit(Effect.flatMap(A, (a) => a.a()).pipe(Effect.provide(Layer.mock(A, {}))))
+      assertTrue(Exit.isFailure(exit))
+      assertInclude(Cause.pretty(exit.cause), "A: Unimplemented method \"a\"")
+
+      throws(() => Effect.runSync(Effect.promise(() => Promise.resolve(1))), (u) => {
+        assertTrue(Runtime.isFiberFailure(u))
+        assertTrue(Runtime.isAsyncFiberException(Cause.squash(u[Runtime.FiberFailureCauseId])))
+      })
+
+      assertTrue(Micro.exitIsFailure(Micro.runSyncExit(Micro.fail("boom").pipe(Micro.withTrace("trace")))))
+    } finally {
+      Object.defineProperty(Error, "stackTraceLimit", descriptor)
+      vi.resetModules()
+    }
   })
 })
