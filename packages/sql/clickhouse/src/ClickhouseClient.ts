@@ -319,16 +319,36 @@ export const make = (
         params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
-        return this.runRaw(sql, params, "JSONEachRow").pipe(
-          Effect.map((result) => {
-            if (!("stream" in result)) {
-              return Stream.empty
-            }
-            return NodeStream.fromReadable<ReadonlyArray<Clickhouse.Row<any, "JSONEachRow">>, SqlError>({
-              evaluate: () => result.stream() as any,
-              onError: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
+        const conn = this.conn
+        return Effect.withFiber((fiber) => {
+          const queryId = fiber.getRef(QueryId) ?? Crypto.randomUUID()
+          return this.runRaw(sql, params, "JSONEachRow").pipe(
+            Effect.provideService(QueryId, queryId),
+            Effect.map((result) => {
+              if (!("stream" in result)) {
+                return Stream.empty
+              }
+              // the query may still be running if the response is not read to the end
+              let done = false
+              return NodeStream.fromReadable<ReadonlyArray<Clickhouse.Row<any, "JSONEachRow">>, SqlError>({
+                evaluate: () => result.stream() as any,
+                onError: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
+              }).pipe(
+                Stream.onEnd(Effect.sync(() => {
+                  done = true
+                })),
+                Stream.ensuring(Effect.suspend(() =>
+                  done ? Effect.void : Effect.ignoreCause(Effect.promise(() =>
+                    conn.command({
+                      query: "KILL QUERY WHERE query_id = {queryId:String}",
+                      query_params: { queryId }
+                    })
+                  ))
+                ))
+              )
             })
-          }),
+          )
+        }).pipe(
           Stream.unwrap,
           Stream.chunks,
           Stream.mapEffect((chunk) => {
