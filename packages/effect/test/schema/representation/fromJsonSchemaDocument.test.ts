@@ -1317,6 +1317,25 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("rejects references below a pointer that passes through a definition with its own id", () => {
+      throws(
+        () =>
+          toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+            $ref: "#/$defs/Outer/properties/value",
+            $defs: {
+              X: { type: "string" },
+              Outer: {
+                $id: "https://example.com/child",
+                $defs: { X: { type: "number" } },
+                type: "object",
+                properties: { value: { $ref: "#/$defs/X" } }
+              }
+            }
+          })),
+        `Cannot resolve $ref under a nested "$id". Resolve or flatten it first.\n  at ["definitions"]["Outer"]["properties"]["value"]["$ref"]`
+      )
+    })
+
     it("rejects an empty reference", () => {
       throws(
         () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ $ref: "" })),
