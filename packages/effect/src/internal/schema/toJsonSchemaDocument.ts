@@ -30,27 +30,23 @@ function collectJsonSchemaAnnotations(
   if (annotations === undefined) return undefined
 
   const out: JsonSchema.JsonSchema = {}
-  const title = annotations.title
-  if (typeof title === "string") out.title = title
-  const description = annotations.description
+  for (const key of ["title", "description", "format", "contentEncoding", "contentMediaType"] as const) {
+    const value = annotations[key]
+    if (typeof value === "string") out[key] = value
+  }
+  for (const key of ["readOnly", "writeOnly"] as const) {
+    const value = annotations[key]
+    if (typeof value === "boolean") out[key] = value
+  }
   const expected = annotations.expected
-  if (typeof description === "string") out.description = description
-  else if (options?.generateDescriptions === true && typeof expected === "string") out.description = expected
+  if (out.description === undefined && options?.generateDescriptions === true && typeof expected === "string") {
+    out.description = expected
+  }
 
   const defaultValue = annotations.default
   if (InternalAST.isJson(defaultValue)) out.default = defaultValue
   const examples = annotations.examples
   if (Array.isArray(examples) && InternalAST.isJson(examples)) out.examples = examples
-  const readOnly = annotations.readOnly
-  if (typeof readOnly === "boolean") out.readOnly = readOnly
-  const writeOnly = annotations.writeOnly
-  if (typeof writeOnly === "boolean") out.writeOnly = writeOnly
-  const format = annotations.format
-  if (typeof format === "string") out.format = format
-  const contentEncoding = annotations.contentEncoding
-  if (typeof contentEncoding === "string") out.contentEncoding = contentEncoding
-  const contentMediaType = annotations.contentMediaType
-  if (typeof contentMediaType === "string") out.contentMediaType = contentMediaType
   const contentSchema = annotations.contentSchema
   if (InternalAST.isJson(contentSchema)) out.contentSchema = contentSchema
 
@@ -662,9 +658,6 @@ function compileJsonSchema(
   ): ReadonlyArray<string> | undefined {
     switch (parameter._tag) {
       case "Reference": {
-        if (!Object.hasOwn(references, parameter.$ref)) {
-          throw errorWithPath(`Invalid reference ${parameter.$ref}`, [...path, "$ref"])
-        }
         compileDefinition(parameter.$ref, path)
         if (seenReferences.has(parameter.$ref)) return undefined
         const next = new Set(seenReferences).add(parameter.$ref)
