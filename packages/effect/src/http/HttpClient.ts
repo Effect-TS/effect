@@ -46,6 +46,7 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as tracing from "./internal/tracing.ts"
+import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -1955,6 +1956,13 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
 
   get upgrade() {
     return this.applyInterrupt(this.original.upgrade)
+  }
+
+  [WebSourceSymbol]() {
+    const source = getWebSource(this.original)
+    // A handed-over Web body outlives this wrapper, so collecting it must not abort the request.
+    if (source !== undefined) responseRegistry.unregister(this.original)
+    return source
   }
 
   get stream() {
