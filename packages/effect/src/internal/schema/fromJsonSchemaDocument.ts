@@ -1,5 +1,5 @@
 import * as Iterable from "../../Iterable.ts"
-import { parseUriFragment } from "../../JsonPointer.ts"
+import { escapeToken, parseUriFragment } from "../../JsonPointer.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
 import type * as Schema from "../../Schema.ts"
@@ -418,7 +418,13 @@ function translateJsonSchemaMultiDocument(
       return cached
     }
     definitionCache.set(key, null)
-    const representation = translateSchema(document.definitions[key], ["definitions", key])
+    const pointer = pointers.get(key)
+    const wasInNestedResource = inNestedResource
+    if (pointer !== undefined) inNestedResource = pointer.crossesResource
+    const representation = pointer === undefined
+      ? translateSchema(document.definitions[key], ["definitions", key])
+      : translateSchema(pointer.target, ["definitions", ...pointer.tokens])
+    inNestedResource = wasInNestedResource
     definitionCache.set(key, representation)
     return representation
   }
@@ -446,21 +452,26 @@ function translateJsonSchemaMultiDocument(
     return representation
   }
 
-  // Pointer targets are inlined, so a pointer cannot lead back to itself
-  const pointersInProgress = new Set<string>()
+  // Pointers below a definition are registered as definitions keyed by their escaped tokens, e.g. "O/properties/v"
+  const pointers = new Map<
+    string,
+    { readonly target: unknown; readonly tokens: ReadonlyArray<string>; readonly crossesResource: boolean }
+  >()
 
-  function translatePointer($ref: string, path: Path): ImportedJsonSchemaRepresentation {
+  function resolvePointer($ref: string, path: Path): string {
     const pointer = $ref.startsWith("#") ? parseUriFragment($ref) : undefined
     if (pointer === undefined || pointer.length < 3 || pointer[0] !== "$defs") {
       throw errorWithPath(`Unsupported $ref ${JSON.stringify($ref)}. Use "#/$defs/Name".`, [...path, "$ref"])
     }
-    if (pointersInProgress.has($ref)) {
+    const tokens = pointer.slice(1)
+    const key = tokens.map(escapeToken).join("/")
+    if (Object.hasOwn(document.definitions, key)) {
       throw errorWithPath(
-        `Recursive $ref ${JSON.stringify($ref)} cannot be inlined. Use "#/$defs/Name".`,
+        `Pointer $ref ${JSON.stringify($ref)} conflicts with definition ${JSON.stringify(key)}.`,
         [...path, "$ref"]
       )
     }
-    const tokens = pointer.slice(1)
+    if (pointers.has(key)) return key
     // Walk through the onEnter result of each ancestor schema, as translateSchema would see it
     let node: unknown = document.definitions
     let position: "schema" | "container" | "value" = "container"
@@ -489,13 +500,8 @@ function translateJsonSchemaMultiDocument(
         [...path, "$ref"]
       )
     }
-    pointersInProgress.add($ref)
-    const wasInNestedResource = inNestedResource
-    inNestedResource ||= crossesResource
-    const representation = translateSchema(node, ["definitions", ...tokens])
-    inNestedResource = wasInNestedResource
-    pointersInProgress.delete($ref)
-    return representation
+    pointers.set(key, { target: node, tokens, crossesResource })
+    return key
   }
 
   function mergeAnnotations(
@@ -1081,31 +1087,28 @@ function translateJsonSchemaMultiDocument(
           [...path, "$ref"]
         )
       }
-      const $ref = JsonSchema.getReferenceKey(schema.$ref)
-      if ($ref === undefined) {
-        representation = intersect(translatePointer(schema.$ref, path), representation, path)
-      } else {
-        if (!Object.hasOwn(document.definitions, $ref)) {
-          throw errorWithPath(
-            `Missing definition ${JSON.stringify($ref)} for $ref ${JSON.stringify(schema.$ref)}.`,
-            [...path, "$ref"]
-          )
-        }
-        const reference: ImportedReference = { _tag: "Reference", $ref, path }
-        representation = representation._tag === "Unknown"
-          ? reference
-          : representation._tag === "Never"
-          ? never
-          : intersect(
-            resolveReference(
-              reference,
-              path,
-              `Recursive $ref ${JSON.stringify(reference.$ref)} cannot have sibling constraints.`
-            ),
-            representation,
-            path
-          )
+      const key = JsonSchema.getReferenceKey(schema.$ref)
+      if (key !== undefined && !Object.hasOwn(document.definitions, key)) {
+        throw errorWithPath(
+          `Missing definition ${JSON.stringify(key)} for $ref ${JSON.stringify(schema.$ref)}.`,
+          [...path, "$ref"]
+        )
       }
+      const $ref = key ?? resolvePointer(schema.$ref, path)
+      const reference: ImportedReference = { _tag: "Reference", $ref, path }
+      representation = representation._tag === "Unknown"
+        ? reference
+        : representation._tag === "Never"
+        ? never
+        : intersect(
+          resolveReference(
+            reference,
+            path,
+            `Recursive $ref ${JSON.stringify(reference.$ref)} cannot have sibling constraints.`
+          ),
+          representation,
+          path
+        )
     }
     representation = annotate(representation, jsonSchemaAnnotations(schema, options))
 
