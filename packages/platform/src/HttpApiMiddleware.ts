@@ -8,6 +8,7 @@ import * as Schema from "effect/Schema"
 import type { Mutable, Simplify } from "effect/Types"
 import type * as HttpApiSecurity from "./HttpApiSecurity.js"
 import type * as HttpRouter from "./HttpRouter.js"
+import { setStackTraceLimit } from "./internal/stackTraceLimit.js"
 
 /**
  * @since 1.0.0
@@ -287,9 +288,9 @@ export const Tag = <Self>(): <
 ) => {
   const Err = globalThis.Error as any
   const limit = Err.stackTraceLimit
-  Err.stackTraceLimit = 2
+  setStackTraceLimit(2)
   const creationError = new Err()
-  Err.stackTraceLimit = limit
+  setStackTraceLimit(limit)
 
   function TagClass() {}
   const TagClass_ = TagClass as any as Mutable<TagClassSecurityAny>

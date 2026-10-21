@@ -17,7 +17,7 @@ import type { AnySpan, Span } from "../Tracer.js"
 import type * as Types from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
-import * as StackTraceLimit from "./stackTraceLimit.js"
+import { setStackTraceLimit } from "./stackTraceLimit.js"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -899,19 +899,19 @@ const renderErrorCause = (cause: Cause.PrettyError, prefix: string) => {
 /** @internal */
 export const makePrettyError = (originalError: unknown): Cause.PrettyError => {
   const originalErrorIsObject = typeof originalError === "object" && originalError !== null
-  const prevLimit = StackTraceLimit.getStackTraceLimit()
-  StackTraceLimit.setStackTraceLimit(1)
+  const prevLimit = Error.stackTraceLimit
+  setStackTraceLimit(1)
   const error = new Error(
     prettyErrorMessage(originalError),
     originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
       ? { cause: makePrettyError(originalError.cause) }
       : undefined
   ) as Types.Mutable<Cause.PrettyError>
-  StackTraceLimit.setStackTraceLimit(prevLimit)
+  setStackTraceLimit(prevLimit)
   if (error.message === "") {
     error.message = "An error has occurred"
   }
-  StackTraceLimit.setStackTraceLimit(prevLimit)
+  setStackTraceLimit(prevLimit)
   error.name = originalError instanceof Error ? originalError.name : "Error"
   if (originalErrorIsObject) {
     if (spanSymbol in originalError) {

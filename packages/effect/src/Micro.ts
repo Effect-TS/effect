@@ -21,7 +21,7 @@ import { format, NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
 import * as InternalContext from "./internal/context.js"
 import * as doNotation from "./internal/doNotation.js"
 import { StructuralPrototype } from "./internal/effectable.js"
-import * as StackTraceLimit from "./internal/stackTraceLimit.js"
+import { setStackTraceLimit } from "./internal/stackTraceLimit.js"
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -2985,10 +2985,10 @@ export const withTrace: {
   (name: string): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, name: string): Micro<A, E, R>
 } = function() {
-  const prevLimit = StackTraceLimit.getStackTraceLimit()
-  StackTraceLimit.setStackTraceLimit(2)
+  const prevLimit = globalThis.Error.stackTraceLimit
+  setStackTraceLimit(2)
   const error = new globalThis.Error()
-  StackTraceLimit.setStackTraceLimit(prevLimit)
+  setStackTraceLimit(prevLimit)
   function generate(name: string, cause: MicroCause<any>) {
     const stack = error.stack
     if (!stack) {

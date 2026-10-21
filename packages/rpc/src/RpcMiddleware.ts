@@ -8,6 +8,7 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import { Scope } from "effect/Scope"
 import type { Mutable } from "effect/Types"
+import { setStackTraceLimit } from "./internal/stackTraceLimit.js"
 import type * as Rpc from "./Rpc.js"
 import type { Request } from "./RpcMessage.js"
 
@@ -255,9 +256,9 @@ export const Tag = <Self>(): <
 ) => {
   const Err = globalThis.Error as any
   const limit = Err.stackTraceLimit
-  Err.stackTraceLimit = 2
+  setStackTraceLimit(2)
   const creationError = new Err()
-  Err.stackTraceLimit = limit
+  setStackTraceLimit(limit)
 
   function TagClass() {}
   const TagClass_ = TagClass as any as Mutable<TagClassAny>

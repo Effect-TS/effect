@@ -1506,21 +1506,12 @@ function filter(obj: any) {
   return obj
 }
 
-// Utility for safely manipulating `Error.stackTraceLimit` in environments where
-// intrinsics may be frozen (e.g., SES / hardened JavaScript). Duplicated here
-// because `effect`'s internal helper is not part of its public API. When the
-// property is non-writable, mutating it throws, so this degrades to a no-op.
-const isStackTraceLimitWritable = (): boolean => {
+// Under frozen intrinsics (e.g. SES lockdown or the Temporal workflow sandbox)
+// `Error.stackTraceLimit` is read-only and assigning it throws.
+const canSetStackTraceLimit = (() => {
   const desc = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")
-  if (desc === undefined) {
-    return Object.isExtensible(Error)
-  }
-  return Object.prototype.hasOwnProperty.call(desc, "writable")
-    ? desc.writable === true
-    : desc.set !== undefined
-}
-
-const canWriteStackTraceLimit = isStackTraceLimitWritable()
+  return desc === undefined ? Object.isExtensible(Error) : desc.writable === true || desc.set !== undefined
+})()
 
 /**
  * **Unsafe**: This function will throw an error if an insecure property is
@@ -1530,16 +1521,16 @@ const canWriteStackTraceLimit = isStackTraceLimitWritable()
  * @category Utilities
  */
 export const unsafeSecureJsonParse = (text: string): unknown => {
-  // Performance optimization, see https://github.com/fastify/secure-json-parse/pull/90
-  if (!canWriteStackTraceLimit) {
+  if (!canSetStackTraceLimit) {
     return _parse(text)
   }
-  const prevLimit = Error.stackTraceLimit
+  // Performance optimization, see https://github.com/fastify/secure-json-parse/pull/90
+  const { stackTraceLimit } = Error
   Error.stackTraceLimit = 0
   try {
     return _parse(text)
   } finally {
-    Error.stackTraceLimit = prevLimit
+    Error.stackTraceLimit = stackTraceLimit
   }
 }
 

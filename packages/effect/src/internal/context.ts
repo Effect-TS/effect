@@ -12,7 +12,7 @@ import type * as STM from "../STM.js"
 import type { NoInfer } from "../Types.js"
 import { EffectPrototype, effectVariance } from "./effectable.js"
 import * as option from "./option.js"
-import * as StackTraceLimit from "./stackTraceLimit.js"
+import { setStackTraceLimit } from "./stackTraceLimit.js"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
@@ -68,10 +68,10 @@ export const ReferenceProto: any = {
 
 /** @internal */
 export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C.Tag<Identifier, Service> => {
-  const limit = StackTraceLimit.getStackTraceLimit()
-  StackTraceLimit.setStackTraceLimit(2)
+  const limit = Error.stackTraceLimit
+  setStackTraceLimit(2)
   const creationError = new Error()
-  StackTraceLimit.setStackTraceLimit(limit)
+  setStackTraceLimit(limit)
   const tag = Object.create(TagProto)
   Object.defineProperty(tag, "stack", {
     get() {
@@ -84,10 +84,10 @@ export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C
 
 /** @internal */
 export const Tag = <const Id extends string>(id: Id) => <Self, Shape>(): C.TagClass<Self, Id, Shape> => {
-  const limit = StackTraceLimit.getStackTraceLimit()
-  StackTraceLimit.setStackTraceLimit(2)
+  const limit = Error.stackTraceLimit
+  setStackTraceLimit(2)
   const creationError = new Error()
-  StackTraceLimit.setStackTraceLimit(limit)
+  setStackTraceLimit(limit)
 
   function TagClass() {}
   Object.setPrototypeOf(TagClass, TagProto)
@@ -105,10 +105,10 @@ export const Reference = <Self>() =>
 <const Id extends string, Service>(id: Id, options: {
   readonly defaultValue: () => Service
 }): C.ReferenceClass<Self, Id, Service> => {
-  const limit = StackTraceLimit.getStackTraceLimit()
-  StackTraceLimit.setStackTraceLimit(2)
+  const limit = Error.stackTraceLimit
+  setStackTraceLimit(2)
   const creationError = new Error()
-  StackTraceLimit.setStackTraceLimit(limit)
+  setStackTraceLimit(limit)
 
   function ReferenceClass() {}
   Object.setPrototypeOf(ReferenceClass, ReferenceProto)
