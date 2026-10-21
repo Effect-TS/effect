@@ -24,23 +24,11 @@ import { hasProperty } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import * as Redactable from "../Redactable.ts"
 import * as Redacted from "../Redacted.ts"
+import * as Tuple from "../Tuple.ts"
 import * as Headers from "./Headers.ts"
 import * as internal from "./internal/urlParams.ts"
 
 const TypeId = "~effect/http/UrlParams"
-const EncodedValue = Symbol.for("~effect/http/UrlParams/EncodedValue")
-
-const encodedValue = (pair: object): string | undefined =>
-  hasProperty(pair, EncodedValue) && typeof pair[EncodedValue] === "string" ? pair[EncodedValue] : undefined
-
-const encode = (value: string): string => new URLSearchParams([["", value]]).toString().slice(1)
-
-const withEncodedValue = <A extends object>(pair: A, value: string | undefined): A => {
-  if (value !== undefined) {
-    Object.defineProperty(pair, EncodedValue, { value })
-  }
-  return pair
-}
 
 /**
  * Immutable collection of URL query parameters.
@@ -184,38 +172,21 @@ export const make = (params: ReadonlyArray<readonly [string, string | Redacted.R
  * Primitive values are converted to strings, arrays produce repeated parameters,
  * nested records use bracket notation, and `undefined` values are omitted.
  * `Redacted` values are kept as-is.
- * With `arrayFormat: "comma"`, array elements are encoded separately and joined
- * with literal commas. Decoded accessors still return the joined string, while
- * serialization preserves the difference between delimiter and data commas.
- * Empty arrays are omitted. Existing `UrlParams` inputs are returned unchanged.
- *
- * **Example** (Comma-separated array parameters)
- *
- * ```ts import.meta.vitest
- * import { UrlParams } from "effect/http"
- *
- * const params = UrlParams.fromInput({ tags: ["a,b", "c"] }, { arrayFormat: "comma" })
- * UrlParams.toString(params) // => "tags=a%2Cb,c"
- * UrlParams.getAll(params, "tags") // => ["a,b,c"]
- * ```
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const fromInput = (input: Input, options?: {
-  readonly arrayFormat?: "repeat" | "comma" | undefined
-}): UrlParams => {
+export const fromInput = (input: Input): UrlParams => {
   if (isUrlParams(input)) {
     return input
   }
-  const parsed = fromInputNested(input, options?.arrayFormat === "comma")
+  const parsed = fromInputNested(input)
   const out: Array<[string, string | Redacted.Redacted]> = []
   for (let i = 0; i < parsed.length; i++) {
     if (Array.isArray(parsed[i][0])) {
       const [keys, value] = parsed[i] as [Array<string>, string | Redacted.Redacted]
-      const pair: [string, string | Redacted.Redacted] = [`${keys[0]}[${keys.slice(1).join("][")}]`, value]
-      out.push(withEncodedValue(pair, encodedValue(parsed[i])))
+      out.push([`${keys[0]}[${keys.slice(1).join("][")}]`, value])
     } else {
       out.push(parsed[i] as [string, string | Redacted.Redacted])
     }
@@ -223,37 +194,22 @@ export const fromInput = (input: Input, options?: {
   return make(out)
 }
 
-const fromInputNested = (
-  input: Input,
-  comma = false
-): Array<[string | Array<string>, string | Redacted.Redacted]> => {
+const fromInputNested = (input: Input): Array<[string | Array<string>, string | Redacted.Redacted]> => {
   const entries = typeof (input as any)[Symbol.iterator] === "function"
     ? Arr.fromIterable(input as Iterable<readonly [string, Coercible]>)
     : Object.entries(input)
   const out: Array<[string | Array<string>, string | Redacted.Redacted]> = []
-  for (const entry of entries) {
-    const [key, value] = entry
-    const encoded = encodedValue(entry)
-    if (encoded !== undefined) {
-      out.push(entry as [string, string | Redacted.Redacted])
-    } else if (Array.isArray(value) && comma) {
-      const values = value.filter((item) => item !== undefined).map((item) => internal.unwrap(coerce(item)))
-      if (values.length > 0) {
-        const pair: [string, string] = [key, values.join(",")]
-        out.push(withEncodedValue(pair, values.map(encode).join(",")))
-      }
-    } else if (Array.isArray(value)) {
+  for (const [key, value] of entries) {
+    if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
         if (value[i] !== undefined) {
           out.push([key, coerce(value[i])])
         }
       }
     } else if (value !== null && typeof value === "object" && !Redacted.isRedacted(value)) {
-      const nested = fromInputNested(value as CoercibleRecord, comma)
-      for (const pair of nested) {
-        const [k, v] = pair
-        const next: [Array<string>, string | Redacted.Redacted] = [[key, ...(typeof k === "string" ? [k] : k)], v]
-        out.push(withEncodedValue(next, encodedValue(pair)))
+      const nested = fromInputNested(value as CoercibleRecord)
+      for (const [k, v] of nested) {
+        out.push([[key, ...(typeof k === "string" ? [k] : k)], v])
       }
     } else if (value !== undefined) {
       out.push([key, coerce(value)])
@@ -270,7 +226,7 @@ const coerce = (value: Coercible): string | Redacted.Redacted => Redacted.isReda
  * **Details**
  *
  * Two values are equivalent when they contain the same key-value pairs in the same
- * order and use the same value encoding.
+ * order.
  *
  * @stability unstable
  * @category instances
@@ -281,9 +237,7 @@ export const Equivalence: Equ.Equivalence<UrlParams> = Equ.make<UrlParams>((a, b
 )
 
 const arrayEquivalence = Arr.makeEquivalence(
-  (a: readonly [string, string | Redacted.Redacted], b: readonly [string, string | Redacted.Redacted]) =>
-    a[0] === b[0] && Equal.equals(a[1], b[1]) &&
-    (encodedValue(a) ?? encode(internal.unwrap(a[1]))) === (encodedValue(b) ?? encode(internal.unwrap(b[1])))
+  Tuple.makeEquivalence([Equ.strictEqual<string>(), Equal.asEquivalence<string | Redacted.Redacted>()])
 )
 
 /**
@@ -399,9 +353,7 @@ export const set: {
  *
  * **Details**
  *
- * The result is wrapped in a new `UrlParams` value. Retaining a pair also retains
- * its array encoding. Rebuilding a pair from its decoded strings uses ordinary
- * string encoding, since the original array boundaries are no longer available.
+ * The result is wrapped in a new `UrlParams` value.
  *
  * @stability unstable
  * @category combinators
@@ -498,14 +450,8 @@ export const remove: {
  * @category converting
  * @since 4.0.0
  */
-export const toString = (input: Input): string => {
-  const params = fromInput(input).params
-  if (!params.some((pair) => encodedValue(pair) !== undefined)) {
-    return new URLSearchParams(params.map(([key, value]) => [key, internal.unwrap(value)])).toString()
-  }
-  return params.map((pair) => `${encode(pair[0])}=${encodedValue(pair) ?? encode(internal.unwrap(pair[1]))}`)
-    .join("&")
-}
+export const toString = (input: Input): string =>
+  new URLSearchParams(fromInput(input).params.map(([key, value]) => [key, internal.unwrap(value)])).toString()
 
 /**
  * Builds a `Record` containing all the key-value pairs in the given `UrlParams`
