@@ -229,6 +229,22 @@ describe("Chunk", () => {
         assertNone(pipe(chunk, Chunk.get(4)))
       })
     })
+
+    describe("Given a singleton Chunk and a fractional index in range", () => {
+      const chunk = Chunk.make(1)
+
+      it("should return the value at the floored index", () => {
+        assertSome(Chunk.get(chunk, 0.5), 1)
+      })
+    })
+
+    describe("Given a non-finite index", () => {
+      it("should return a None", () => {
+        assertNone(Chunk.get(Chunk.empty(), Number.NaN))
+        assertNone(Chunk.get(Chunk.make(1), Number.NaN))
+        assertNone(Chunk.get(Chunk.make(1, 2, 3), Number.NaN))
+      })
+    })
   })
 
   describe("getUnsafe", () => {
@@ -327,6 +343,20 @@ describe("Chunk", () => {
 
       it("should return the value", () => {
         strictEqual(pipe(chunk, Chunk.getUnsafe(index)), 1)
+      })
+    })
+
+    describe("Given a singleton Chunk and a fractional index in range", () => {
+      const chunk = Chunk.make(1)
+
+      it("should return the value at the floored index", () => {
+        strictEqual(Chunk.getUnsafe(chunk, 0.5), 1)
+      })
+    })
+
+    describe("Given a non-finite index", () => {
+      it("should throw", () => {
+        throws(() => Chunk.getUnsafe(Chunk.make(1, 2), Number.NaN))
       })
     })
 
@@ -678,7 +708,7 @@ describe("Chunk", () => {
     )
     assertTuple(
       Chunk.partition(Chunk.make(1, 3), (n) => n > 2 ? Result.succeed(n) : Result.fail(n)),
-      [Chunk.make(1), Chunk.make(3)]
+      [Chunk.make(3), Chunk.make(1)]
     )
 
     assertTuple(
@@ -690,23 +720,23 @@ describe("Chunk", () => {
     )
     assertTuple(
       Chunk.partition(Chunk.make(1, 2), (n, i) => n + i > 2 ? Result.succeed(n + i) : Result.fail(`negative:${n + i}`)),
-      [Chunk.make("negative:1"), Chunk.make(3)]
+      [Chunk.make(3), Chunk.make("negative:1")]
     )
   })
 
   it("partition (identity)", () => {
     assertTuple(Chunk.partition(Chunk.empty(), identity), [Chunk.empty(), Chunk.empty()])
     assertTuple(Chunk.partition(Chunk.make(Result.succeed(1), Result.fail("a"), Result.succeed(2)), identity), [
-      Chunk.make("a"),
-      Chunk.make(1, 2)
+      Chunk.make(1, 2),
+      Chunk.make("a")
     ])
   })
 
   it("separate", () => {
     assertTuple(Chunk.separate(Chunk.empty()), [Chunk.empty(), Chunk.empty()])
     assertTuple(Chunk.separate(Chunk.make(Result.succeed(1), Result.fail("e"), Result.succeed(2))), [
-      Chunk.make("e"),
-      Chunk.make(1, 2)
+      Chunk.make(1, 2),
+      Chunk.make("e")
     ])
   })
 

@@ -1336,6 +1336,27 @@ describe("JsonSchema", () => {
             type: ["string", "null"],
             allOf: [{}]
           }
+        },
+        {
+          name: "makes a single-member allOf nullable while preserving siblings and relocating refs",
+          input: {
+            nullable: true,
+            allOf: [{ $ref: "#/components/schemas/A" }],
+            description: "a",
+            enum: ["a"],
+            properties: { copy: { $ref: "#/allOf/0" } }
+          },
+          expected: {
+            anyOf: [{ $ref: "#/$defs/A" }, { type: "null" }],
+            description: "a",
+            enum: ["a"],
+            properties: { copy: { $ref: "#/anyOf/0" } }
+          }
+        },
+        {
+          name: "does not rewrite a nullable single-member allOf when anyOf is present",
+          input: { nullable: true, allOf: [{ type: "string" }], anyOf: [{ minLength: 1 }] },
+          expected: { allOf: [{ type: "string" }], anyOf: [{ minLength: 1 }] }
         }
       ])
     })

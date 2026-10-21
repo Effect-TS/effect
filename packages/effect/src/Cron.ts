@@ -5,6 +5,7 @@
  * can create or parse schedules, compare them, test whether a date matches, and
  * find previous or next scheduled occurrences.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "./Array.ts"
@@ -13,7 +14,7 @@ import type * as DateTime from "./DateTime.ts"
 import * as Equal from "./Equal.ts"
 import * as Equ from "./Equivalence.ts"
 import { format as formatValue } from "./Formatter.ts"
-import { constVoid, dual, pipe } from "./Function.ts"
+import { constFalse, constVoid, dual, pipe } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
 import * as dateTime from "./internal/dateTime.ts"
@@ -65,6 +66,7 @@ const TypeId = "~effect/Cron"
  * @see {@link match} for testing a date against a schedule
  * @see {@link next} for finding the next scheduled occurrence
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -201,6 +203,7 @@ const CronProto = {
  * @see {@link make} for constructing a `Cron` value directly
  * @see {@link parse} for constructing a `Cron` value from a string
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -288,6 +291,7 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  *
  * @see {@link parse} for building a schedule from a cron expression string
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -465,6 +469,7 @@ const CronParseErrorTypeId = "~effect/Cron/CronParseError"
  * @see {@link parse} for the parser that returns this error in `Result.fail`
  * @see {@link isCronParseError} for narrowing unknown values to this error type
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -501,6 +506,7 @@ export class CronParseError extends Data.TaggedError("CronParseError")<{
  * @see {@link CronParseError} for the parse error type
  * @see {@link parse} for producing `CronParseError` values on invalid input
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -539,6 +545,7 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  * @see {@link parseUnsafe} for throwing on invalid cron expressions
  * @see {@link make} for constructing a schedule from explicit field constraints
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -607,6 +614,7 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
  * Cron.match(cronWithTz, "2024-01-01T14:00:00Z") // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -637,6 +645,7 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  * Cron.format(cron, { includeSeconds: true }) // => "0 23 0-20/2 * * 0"
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -708,6 +717,7 @@ const formatSegment = (values: ReadonlySet<number>): string => {
  * @see {@link next} for finding the next matching date/time
  * @see {@link prev} for finding the previous matching date/time
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -783,6 +793,7 @@ const daysInMonth = (date: Date): number =>
  * @see {@link prev} for finding the previous scheduled occurrence
  * @see {@link sequence} for iterating future scheduled occurrences
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -804,11 +815,12 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  *
  * **Gotchas**
  *
- * The search is strict: if the supplied date/time already matches the schedule,
- * the result is the earlier occurrence.
+ * The search is strict: if the supplied date/time is exactly an occurrence of
+ * the schedule, the result is the earlier occurrence.
  *
  * @see {@link next} for finding the next scheduled occurrence
  *
+ * @stability stable
  * @category getters
  * @since 3.20.0
  */
@@ -845,8 +857,19 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     }
   }
 
+  // Repeated wall times resolve to their first occurrence, so when the search
+  // starts in the second occurrence, matches inside that fold are in the past.
+  const isBeforeStart = reverse || utc ? constFalse : (current: Date) =>
+    dateTime.makeZonedUnsafe(current, {
+      timeZone: zoned.zone,
+      adjustForTimeZone: true
+    }).epochMilliseconds <= zoned.epochMilliseconds
+
   const result = dateTime.mutate(zoned, (current) => {
-    current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
+    // Start from the nearest whole second strictly past the input in the search
+    // direction. Going backward, a fractional input already has one.
+    const offset = reverse && current.getUTCMilliseconds() > 0 ? 0 : tick
+    current.setUTCSeconds(current.getUTCSeconds() + offset, 0)
 
     for (let i = 0; i < 10_000; i++) {
       if (cron.seconds.size !== 0) {
@@ -988,6 +1011,12 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
         }
       }
 
+      if (isBeforeStart(current)) {
+        current.setUTCSeconds(current.getUTCSeconds() + 1)
+        i = -1 // skipped fold candidates do not count against the search budget
+        continue
+      }
+
       return
     }
 
@@ -1033,6 +1062,7 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
  *
  * @see {@link next} for computing one next occurrence
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1082,6 +1112,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  *
  * @see {@link equals} for directly comparing two `Cron` values
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -1141,6 +1172,7 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
  *
  * @see {@link Equivalence} for the reusable equivalence instance
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */

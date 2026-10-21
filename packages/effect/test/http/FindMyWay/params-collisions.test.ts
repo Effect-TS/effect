@@ -93,9 +93,11 @@ it("distinguishes routes with different static parts between parameters", () => 
   assert.strictEqual(router.find("GET", "/foo/x.y")?.handler, "dot")
 })
 
-it("preserves parameters named __proto__", () => {
+it("preserves prototype-sensitive parameter names as own properties", () => {
   const router = Router.make<boolean>()
-  router.on("GET", "/foo/:__proto__", true)
+  router.on("GET", "/foo/:__proto__/:constructor/:toString", true)
 
-  assert.strictEqual(router.find("GET", "/foo/value")?.params.__proto__, "value")
+  const params = router.find("GET", "/foo/a/b/c")!.params
+  assert.strictEqual(Object.getPrototypeOf(params), null)
+  assert.deepStrictEqual(Object.entries(params), [["__proto__", "a"], ["constructor", "b"], ["toString", "c"]])
 })

@@ -494,6 +494,14 @@ describe("Cron", () => {
     deepStrictEqual(next(Cron.parseUnsafe("0 1 * * TUE", utc), wednesday), new Date("2025-10-28T01:00:00.000Z"))
   })
 
+  it("prev includes an occurrence earlier in the same second", () => {
+    const daily = Cron.parseUnsafe("0 0 * * *", "UTC")
+    deepStrictEqual(prev(daily, new Date("2024-01-01T00:00:00.001Z")), new Date("2024-01-01T00:00:00.000Z"))
+    deepStrictEqual(prev(daily, new Date("2024-01-01T00:00:00.000Z")), new Date("2023-12-31T00:00:00.000Z"))
+    const seconds = Cron.parseUnsafe("10,30 * * * * *", "UTC")
+    deepStrictEqual(prev(seconds, new Date("2024-01-01T00:00:30.999Z")), new Date("2024-01-01T00:00:30.000Z"))
+  })
+
   it("returns the latest second when rolling back a minute", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const expr = Cron.parseUnsafe("10,30 * * * * *", utc)
@@ -758,6 +766,24 @@ describe("Cron", () => {
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), e.pipe(DateTime.formatIsoZoned))
+  })
+
+  it("next skips the repeated hour when starting in the second DST fold hour", () => {
+    const cron = Cron.parseUnsafe("30 * * * *", "Europe/Berlin")
+    // Ambiguous times run only once, so both occurrences of 02:30 must be skipped.
+    deepStrictEqual(
+      next(cron, new Date("2024-10-27T02:15:00+01:00")),
+      new Date("2024-10-27T03:30:00+01:00")
+    )
+  })
+
+  it("next skips the repeated interval when starting in a three-hour fold", () => {
+    const cron = Cron.parseUnsafe("* * * * * *", "Antarctica/Casey")
+    // Casey rolls back from +11:00 to +08:00, repeating 00:00 through 02:59:59.
+    deepStrictEqual(
+      next(cron, new Date("2023-03-09T00:00:00+08:00")),
+      new Date("2023-03-09T03:00:00+08:00")
+    )
   })
 
   it("handles utc timezone", () => {

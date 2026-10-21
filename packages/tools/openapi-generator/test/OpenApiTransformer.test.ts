@@ -70,6 +70,61 @@ const paths = [
 ] as const
 
 describe("OpenApiTransformer", () => {
+  it.effect("returns only the body when a nullable response config is undefined", () =>
+    Effect.gen(function*() {
+      const spec: OpenAPISpec = {
+        openapi: "3.1.0",
+        info: { title: "Nullable include response", version: "1.0.0" },
+        components: { schemas: {}, securitySchemes: {} },
+        security: [],
+        tags: [],
+        paths: {
+          "/value": {
+            get: {
+              operationId: "getValue",
+              parameters: [],
+              tags: ["Value"],
+              security: [],
+              responses: {
+                "200": {
+                  description: "Value",
+                  content: { "application/json": { schema: { type: "string" } } }
+                }
+              }
+            }
+          }
+        }
+      }
+      for (const format of ["httpclient", "httpclient-type-only"] as const) {
+        const source = yield* Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          return yield* generator.generate(spec, { name: "TestClient", format })
+        }).pipe(Effect.provide(
+          format === "httpclient"
+            ? OpenApiGenerator.layerTransformerSchema
+            : OpenApiGenerator.layerTransformerTs
+        ))
+        const make = yield* Effect.promise(() =>
+          loadClient<{
+            getValue: (options?: { config?: { includeResponse?: boolean } | undefined }) => Effect.Effect<unknown>
+          }>(source)
+        )
+        const client = make(
+          HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(request, new Response(JSON.stringify("hello"))))
+          ).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+        )
+
+        const body = yield* client.getValue({ config: undefined })
+        assert.strictEqual(body, "hello")
+
+        const withResponse = yield* client.getValue({ config: { includeResponse: true } })
+        if (!Array.isArray(withResponse)) throw new Error("Expected response tuple")
+        assert.strictEqual(withResponse[0], "hello")
+        assert.strictEqual((withResponse[1] as HttpClientResponse.HttpClientResponse).status, 200)
+      }
+    }))
+
   describe("path parameters", () => {
     const generate = Effect.gen(function*() {
       const generator = yield* OpenApiGenerator.OpenApiGenerator

@@ -32,7 +32,6 @@ describe("storage transaction scheduling", () => {
               workers: [{
                 config: {
                   name: "test",
-                  type: "worker",
                   compatibilityDate: "2026-09-11",
                   compatibilityFlags: ["nodejs_compat"],
                   manifest: {

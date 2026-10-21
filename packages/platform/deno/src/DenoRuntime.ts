@@ -1,6 +1,7 @@
 /**
  * Deno helper for running a root Effect program.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -10,6 +11,7 @@ import * as Runtime from "effect/Runtime"
 /**
  * Run an Effect as the entrypoint to a Deno application.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -35,11 +37,8 @@ export const runMain: {
   let receivedSignal = false
 
   fiber.addObserver((exit) => {
-    if (!receivedSignal) {
-      Deno.removeSignalListener("SIGINT", onSigint)
-      Deno.removeSignalListener("SIGTERM", onSigint)
-    }
-
+    Deno.removeSignalListener("SIGINT", onSigint)
+    Deno.removeSignalListener("SIGTERM", onSigint)
     teardown(exit, (code) => {
       if (receivedSignal || code !== 0) {
         Deno.exit(code)
@@ -49,8 +48,6 @@ export const runMain: {
 
   function onSigint(): void {
     receivedSignal = true
-    Deno.removeSignalListener("SIGINT", onSigint)
-    Deno.removeSignalListener("SIGTERM", onSigint)
     fiber.interruptUnsafe(fiber.id)
   }
 

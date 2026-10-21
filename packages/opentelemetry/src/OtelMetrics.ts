@@ -7,6 +7,7 @@
  * layer. The `TemporalityPreference` type lets callers choose cumulative or
  * delta metric values.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { MetricProducer, MetricReader } from "@opentelemetry/sdk-metrics"
@@ -30,6 +31,7 @@ import { Resource } from "./Resource.ts"
  * changes since the last export. Each interval is independent with no
  * dependency on previous measurements.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,6 +54,7 @@ export type TemporalityPreference = "cumulative" | "delta"
  * @see {@link registerProducer} for attaching a producer to metric readers
  * @see {@link layer} for creating and registering a producer in a scoped layer
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -65,6 +68,7 @@ export const makeProducer = (temporality?: TemporalityPreference): Effect.Effect
 /**
  * Registers a metric producer with one or more metric readers.
  *
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -76,22 +80,32 @@ export const registerProducer = (
   }
 ): Effect.Effect<Array<any>, never, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.sync(() => {
+    Effect.suspend(() => {
       const reader = metricReader()
       const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
-      readers.forEach((reader) => reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self))
-      return readers
+      const bound: Array<MetricReader> = []
+      try {
+        for (const reader of readers) {
+          reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self)
+          bound.push(reader)
+        }
+        return Effect.succeed(bound)
+      } catch (error) {
+        // Roll back only the readers bound by this acquisition.
+        return Effect.andThen(Effect.ignoreCause(shutdownReaders(bound, options)), Effect.die(error))
+      }
     }),
-    (readers) =>
-      Effect.promise(() =>
-        Promise.all(
-          readers.map((reader) => reader.shutdown())
-        )
-      ).pipe(
-        Effect.ignore,
-        Effect.interruptible,
-        Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
-      )
+    (readers) => shutdownReaders(readers, options)
+  )
+
+const shutdownReaders = (
+  readers: ReadonlyArray<MetricReader>,
+  options?: { readonly shutdownTimeout?: Duration.Input | undefined }
+) =>
+  Effect.promise(() => Promise.all(readers.map((reader) => reader.shutdown()))).pipe(
+    Effect.ignore,
+    Effect.interruptible,
+    Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
   )
 
 /**
@@ -133,6 +147,7 @@ export const registerProducer = (
  * await Effect.runPromise(program) // => ["docs.requests", AggregationTemporality.DELTA, 2]
  * ```
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

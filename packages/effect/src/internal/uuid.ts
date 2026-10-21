@@ -1,16 +1,21 @@
-const hex = (byte: number): string => byte.toString(16).padStart(2, "0")
+const hex = Array.from({ length: 256 }, (_, byte) => byte.toString(16).padStart(2, "0"))
 
 /** @internal */
 export const stringify = (bytes: Uint8Array): string => {
-  const segments = [
-    bytes.subarray(0, 4),
-    bytes.subarray(4, 6),
-    bytes.subarray(6, 8),
-    bytes.subarray(8, 10),
-    bytes.subarray(10, 16)
-  ]
-
-  return segments.map((segment) => Array.from(segment, hex).join("")).join("-")
+  if (bytes.length < 16) {
+    return [
+      bytes.subarray(0, 4),
+      bytes.subarray(4, 6),
+      bytes.subarray(6, 8),
+      bytes.subarray(8, 10),
+      bytes.subarray(10, 16)
+    ].map((segment) => Array.from(segment, (byte) => hex[byte]).join("")).join("-")
+  }
+  return hex[bytes[0]] + hex[bytes[1]] + hex[bytes[2]] + hex[bytes[3]] + "-" +
+    hex[bytes[4]] + hex[bytes[5]] + "-" +
+    hex[bytes[6]] + hex[bytes[7]] + "-" +
+    hex[bytes[8]] + hex[bytes[9]] + "-" +
+    hex[bytes[10]] + hex[bytes[11]] + hex[bytes[12]] + hex[bytes[13]] + hex[bytes[14]] + hex[bytes[15]]
 }
 
 const randomBytes = (): Uint8Array<ArrayBuffer> => globalThis.crypto.getRandomValues(new Uint8Array(16))

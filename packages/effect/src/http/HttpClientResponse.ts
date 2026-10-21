@@ -17,6 +17,7 @@ import * as Option from "../Option.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Schema from "../Schema.ts"
 import type { ParseOptions } from "../SchemaAST.ts"
+import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import type { Unify } from "../Unify.ts"
 import * as Cookies from "./Cookies.ts"
@@ -83,6 +84,23 @@ export interface HttpClientResponse extends HttpIncomingMessage.HttpIncomingMess
   readonly status: number
   readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.HttpClientError>
+  /**
+   * Hands over the connection of a `101 Switching Protocols` response as a
+   * `Socket`.
+   *
+   * **Details**
+   *
+   * Ask for an upgrade with `HttpClientRequest.upgrade`. Bytes the server
+   * sent after the response head come first on the reader. Releasing the
+   * writer's scope half-closes the connection, and releasing the reader's
+   * scope closes it. Closing the request's scope (see `HttpClient.withScope`)
+   * also closes it.
+   *
+   * Fails with a `StatusCodeError` for any other status, so a refusal can be
+   * read from the response body as usual. Backends that cannot hand over a
+   * connection, such as fetch, never produce a `101` and fail the same way.
+   */
+  readonly upgrade: Effect.Effect<Socket.Socket, Error.HttpClientError>
 }
 
 /**
@@ -315,7 +333,9 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    return this.cachedCookies = Cookies.fromSetCookie(this.source.headers.getSetCookie())
+    // React Native's Headers does not implement getSetCookie, and it never
+    // exposes Set-Cookie to JavaScript anyway.
+    return this.cachedCookies = Cookies.fromSetCookie(this.source.headers.getSetCookie?.() ?? [])
   }
 
   get remoteAddress(): Option.Option<string> {
@@ -413,6 +433,18 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
         })
     }).pipe(Effect.cached, Effect.runSync)
     return this.arrayBufferBody
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpClientError> {
+    return Effect.fail(
+      new Error.HttpClientError({
+        reason: new Error.StatusCodeError({
+          request: this.request,
+          response: this,
+          description: "fetch cannot hand over the connection of an HTTP upgrade"
+        })
+      })
+    )
   }
 
   pipe() {

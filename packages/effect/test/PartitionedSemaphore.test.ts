@@ -2,6 +2,51 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler } from "effect"
 
 describe("PartitionedSemaphore", () => {
+  it.effect("a resumed waiter can immediately reacquire released permits", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      yield* sem.take("holder", 1)
+      const waiter = yield* Effect.gen(function*() {
+        yield* sem.take("waiter", 1)
+        const released = yield* sem.release(1)
+        const available = yield* sem.available
+        const reacquired = yield* sem.withPermitsIfAvailable(1)(Effect.succeed("ok"))
+        return [released, available, reacquired]
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* sem.release(1)
+      assert.deepStrictEqual(yield* Fiber.join(waiter), [1, 1, Option.some("ok")])
+      assert.strictEqual(yield* sem.available, 1)
+    }))
+
+  it.effect("drains a long queue of synchronous withPermit tasks", () =>
+    Effect.gen(function*() {
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => tasks.push(task),
+          flush() {}
+        }),
+        shouldYield: () => false
+      }
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      yield* sem.take("holder", 1)
+      let completed = 0
+      for (let i = 0; i < 10_000; i++) {
+        // Detach so a stranded waiter cannot hang scope teardown on regression.
+        yield* sem.withPermit(String(i))(Effect.sync(() => completed++)).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkDetach({ startImmediately: true })
+        )
+      }
+      assert.strictEqual(completed, 0)
+      yield* sem.release(1).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      while (tasks.length > 0) tasks.shift()!()
+      assert.strictEqual(completed, 10_000)
+      assert.strictEqual(yield* sem.available, 1)
+    }))
+
   it.effect("module-level combinators delegate to the instance api", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })

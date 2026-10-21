@@ -21,8 +21,8 @@ const assertFencedCode = (
   assert.deepStrictEqual(Core.extractFencedCode(markdown), [expectedExamples, expectedWarnings])
 }
 
-const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, runExamples = true) =>
-  Effect.gen(function*() {
+const assertExampleFiles = Effect.fnUntraced(
+  function*(source: string, expected: ReadonlyArray<string>, runExamples = true) {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const cwd = yield* fs.makeTempDirectoryScoped()
@@ -86,7 +86,9 @@ const assertExampleFiles = (source: string, expected: ReadonlyArray<string>, run
     )
     const executables = expected.length === 0 ? [] : runExamples ? ["tsc", "tsx"] : ["tsc"]
     assert.deepStrictEqual(commands, executables.map((name) => process.platform === "win32" ? `${name}.cmd` : name))
-  }).pipe(Effect.provide(NodeServices.layer))
+  },
+  Effect.provide(NodeServices.layer)
+)
 
 describe("Core", () => {
   describe("class property examples", { timeout: 20_000 }, () => {
@@ -156,7 +158,9 @@ describe("Core", () => {
       ))
   })
 
-  describe("[internal] getModuleMarkdownFiles", () => {
+  // The first case initializes ts-morph and renders Markdown for three modules.
+  // Concurrent Bun CI projects can push that cold start beyond the 5s default.
+  describe("[internal] getModuleMarkdownFiles", { timeout: 20_000 }, () => {
     for (const srcDir of [".", "src", "source/lib", path.resolve("source/lib"), process.cwd()]) {
       it.effect(`generates distinct source-relative pages for ${srcDir}`, () =>
         Effect.gen(function*() {

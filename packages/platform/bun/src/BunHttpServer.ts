@@ -5,14 +5,19 @@
  * `Request` values into `HttpServerRequest` values and Effect
  * `HttpServerResponse` values back into Web `Response` values. The server
  * supports streaming bodies, multipart requests, file responses through
- * `BunHttpPlatform`, and WebSocket upgrades. This module also provides layers
- * for the server alone, the Bun HTTP support services, the combined server,
- * configurable server options, and a test server with an HTTP client.
+ * `BunHttpPlatform`, and WebSocket upgrades. `Bun.serve` cannot hand over the
+ * connection for other protocols, so other upgrades fail. This module also
+ * provides layers for the server alone, the Bun HTTP support services, the
+ * combined server, configurable server options, and a test server with an
+ * HTTP client.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Server as BunServer, ServerWebSocket } from "bun"
 import type * as Arr from "effect/Array"
+import * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/Config"
 import * as Context from "effect/Context"
@@ -59,6 +64,7 @@ import * as BunStream from "./BunStream.ts"
 /**
  * Bun serve options accepted by the HTTP server, extended with typed route definitions.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -84,6 +90,7 @@ export type ServeOptions<R extends string> =
  * that is compressed when per-message deflate is negotiated. It defaults to
  * 1024, matching the default threshold of Node's `ws` server.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -105,6 +112,7 @@ export type WebSocketOptions =
 /**
  * Creates a scoped Bun `HttpServer` from `Bun.serve` options, stopping the server on scope finalization with optional graceful shutdown settings.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -188,10 +196,15 @@ export const make = Effect.fnUntraced(
 
         const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
           Effect.sync(() => {
-            ;(request as BunServerRequest).resolve(makeResponse(request, response, services, scope))
+            const bunRequest = request as BunServerRequest
+            bunRequest.resolve(makeResponse(bunRequest, response, services, scope))
+            if (upgradedSources.has(bunRequest.source)) return upgradedResponse
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
+          if (request.method === "CONNECT") {
+            return Promise.resolve(new Response(null, { status: 501 }))
+          }
           return new Promise<Response>((resolve, _reject) => {
             const context = Context.add(
               services,
@@ -226,8 +239,19 @@ export const make = Effect.fnUntraced(
 
 const MIN_COMPRESSIBLE_SIZE = 1024
 
+// Reported to middleware in place of the handler's discarded response.
+const upgradedResponse = ServerResponse.empty({ status: 101 })
+
+// Keyed by source so request copies from `modify` share the upgrade state.
+const upgradedSources = new WeakSet<Request>()
+
+const isRawUpgrade = (request: Request): boolean => {
+  const protocol = request.headers.get("upgrade")
+  return protocol !== null && protocol.toLowerCase() !== "websocket"
+}
+
 const makeResponse = (
-  request: ServerRequest.HttpServerRequest,
+  request: BunServerRequest,
   response: ServerResponse.HttpServerResponse,
   context: Context.Context<never>,
   scope: Scope.Scope
@@ -265,10 +289,7 @@ const makeResponse = (
     }
     case "Raw": {
       if (body.body instanceof Response) {
-        for (const [key, value] of fields.headers.entries()) {
-          body.body.headers.set(key, value)
-        }
-        return body.body
+        return ServerResponse.toWeb(response)
       }
       return new Response(body.body as any, fields)
     }
@@ -278,11 +299,15 @@ const makeResponse = (
     case "Stream": {
       return new Response(
         Stream.toReadableStreamWith(
-          Stream.unwrap(Effect.withFiber((fiber) => {
-            Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
-          })),
-          context
+          // Attach before transforming: startup can suspend. Register the request finalizer before the first pull.
+          Stream.fromChannel(Channel.fromTransform((upstream, streamScope) =>
+            Effect.withFiber((fiber) => {
+              Fiber.runIn(fiber, scope)
+              return Channel.toTransform(body.stream.channel)(upstream, streamScope)
+            })
+          )),
+          context,
+          { signal: request.source.signal }
         ),
         fields
       )
@@ -293,6 +318,7 @@ const makeResponse = (
 /**
  * Layer that provides only `HttpServer` by constructing a scoped Bun server from the supplied serve options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -307,6 +333,7 @@ export const layerServer: <R extends string>(
 /**
  * Layer that provides Bun HTTP support services: `HttpPlatform`, weak ETag generation, and `BunServices`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -323,6 +350,7 @@ export const layerHttpServices: Layer.Layer<
 /**
  * Layer that provides a Bun `HttpServer` together with the Bun HTTP platform, ETag generator, and Bun services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -343,6 +371,7 @@ export const layer = <R extends string>(
 /**
  * Layer that starts a Bun HTTP server on an ephemeral port for tests.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -358,6 +387,7 @@ export const layerTest: Layer.Layer<
 /**
  * Creates the Bun HTTP server and support-services layer from configurable serve options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -429,7 +459,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     return IncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: UrlParams.redactUrl(this.originalUrl)
     })
   }
   modify(
@@ -606,12 +636,15 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
           new Error.HttpServerError({
             reason: new Error.RequestParseError({
               request: this,
-              description: "Not an upgradeable ServerRequest"
+              description: isRawUpgrade(this.source)
+                ? "Bun.serve only supports WebSocket upgrades"
+                : "Not an upgradeable ServerRequest"
             })
           })
         ))
         return
       }
+      upgradedSources.add(this.source)
       const compressionThreshold = this.compressionThreshold
       resume(Effect.map(Deferred.await(deferred), (ws) => {
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
@@ -689,20 +722,21 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 
           ws.data.run = push
           ws.data.onClose = fail
-          yield* Scope.addFinalizer(
+          yield* Scope.addFinalizerExit(
             scope,
-            Effect.suspend(() => {
-              // resume a pull blocked in another fiber before detaching
-              fail(
-                new Socket.SocketError({
-                  reason: new Socket.SocketCloseError({ code: 1006 })
-                })
-              )
-              ws.data.run = wsDefaultRun
-              ws.data.onClose = constVoid
-              ws.close(1000)
-              return Effect.void
-            })
+            (exit) =>
+              Effect.suspend(() => {
+                // resume a pull blocked in another fiber before detaching
+                fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketCloseError({ code: 1006 })
+                  })
+                )
+                ws.data.run = wsDefaultRun
+                ws.data.onClose = constVoid
+                ws.close(closeCode(exit))
+                return Effect.void
+              })
           )
 
           return {
@@ -726,6 +760,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     })
   }
 }
+
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const emptyReadbleStream = new ReadableStream({
   start(controller) {

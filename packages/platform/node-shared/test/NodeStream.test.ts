@@ -10,6 +10,99 @@ import { Duplex, Readable, Transform } from "node:stream"
 import * as Zlib from "node:zlib"
 
 describe("Stream", () => {
+  const destroyedOnRead = () =>
+    new Readable({
+      read() {
+        this.destroy()
+      }
+    })
+  const errorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
+
+  it.effect("fromReadable fails on premature close", () =>
+    Effect.gen(function*() {
+      const code = yield* NodeStream.fromReadable({ evaluate: destroyedOnRead, onError: errorCode }).pipe(
+        Stream.runDrain,
+        Effect.flip
+      )
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("fromReadable fails on an already destroyed readable", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ read() {} })
+      const closed = new Promise((resolve) => readable.once("close", resolve))
+      readable.destroy()
+      yield* Effect.promise(() => closed)
+      const code = yield* NodeStream.fromReadable({ evaluate: () => readable, onError: errorCode }).pipe(
+        Stream.runDrain,
+        Effect.flip
+      )
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("fromReadable removes its listeners when destroyed without a close event", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ emitClose: false, read() {} })
+      readable.push("a")
+      yield* NodeStream.fromReadable({ evaluate: () => readable }).pipe(Stream.take(1), Stream.runDrain)
+      yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)))
+      assert.strictEqual(readable.listenerCount("error"), 0)
+      assert.strictEqual(readable.listenerCount("close"), 0)
+    }))
+
+  it.effect("toString fails on premature close", () =>
+    Effect.gen(function*() {
+      const code = yield* NodeStream.toString(destroyedOnRead, { onError: errorCode }).pipe(Effect.flip)
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("toArrayBuffer fails on premature close", () =>
+    Effect.gen(function*() {
+      const code = yield* NodeStream.toArrayBuffer(destroyedOnRead, { onError: errorCode }).pipe(Effect.flip)
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("toString keeps the maxBytes failure when destroy fails", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({
+        read() {
+          this.push("too large")
+        },
+        destroy(_error, callback) {
+          setImmediate(() => callback(new Error("destroy failed")))
+        }
+      })
+      const closed = new Promise((resolve) => readable.once("close", resolve))
+      const error = yield* NodeStream.toString(() => readable, {
+        maxBytes: 1,
+        onError: (error) => (error as Error).message
+      }).pipe(Effect.flip)
+      assert.strictEqual(error, "maxBytes exceeded")
+      yield* Effect.promise(() => closed)
+    }))
+
+  it.effect("handles a late upload error after overflow without leaking listeners", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ read() {} })
+      yield* Effect.addFinalizer(() => Effect.sync(() => readable.destroy()))
+      readable.push(Buffer.from("too large"))
+      const error = yield* NodeStream.toString(() => readable, {
+        maxBytes: 1,
+        destroyOnOverflow: false,
+        onError: (error) => error
+      }).pipe(Effect.flip)
+
+      assert.instanceOf(error, NodeStream.MaxBytesError)
+      assert.isFalse(readable.destroyed)
+      readable.push(Buffer.from("remaining upload"))
+      const closed = new Promise<void>((resolve) => readable.once("close", resolve))
+      readable.destroy(new Error("late upload failure"))
+      yield* Effect.promise(() => closed)
+      for (const event of ["data", "end", "error", "close", "finish"]) {
+        assert.strictEqual(readable.listenerCount(event), 0)
+      }
+    }))
+
   it.effect("should read a stream", () =>
     Effect.gen(function*() {
       const stream = NodeStream.fromReadable<"error", string>({

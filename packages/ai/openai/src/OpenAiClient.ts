@@ -6,6 +6,7 @@
  * WebSocket response streams, and embeddings, and maps transport or decoding
  * failures into `AiError`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -37,6 +38,8 @@ import * as Errors from "./internal/errors.ts"
 import { OpenAiConfig } from "./OpenAiConfig.ts"
 import * as OpenAiSchema from "./OpenAiSchema.ts"
 
+const decodeResponseStreamEvent = Schema.decodeUnknownEffect(Schema.fromJsonString(OpenAiSchema.ResponseStreamEvent))
+
 // =============================================================================
 // Service Interface
 // =============================================================================
@@ -48,6 +51,7 @@ import * as OpenAiSchema from "./OpenAiSchema.ts"
  *
  * Provides the configured HTTP client plus helpers for Responses API calls, streaming Responses events, and embeddings. Transport and schema decoding failures are mapped to `AiError`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -86,6 +90,13 @@ export interface Service {
   readonly createEmbedding: (
     options: typeof OpenAiSchema.CreateEmbeddingRequest.Encoded
   ) => Effect.Effect<typeof OpenAiSchema.CreateEmbeddingResponse.Type, AiError.AiError>
+
+  /**
+   * Answer decision questions using the OpenAI decisions endpoint.
+   */
+  readonly createDecisions: (
+    options: typeof OpenAiSchema.CreateDecisionsRequest.Encoded
+  ) => Effect.Effect<typeof OpenAiSchema.CreateDecisionsResponse.Type, AiError.AiError>
 }
 
 // =============================================================================
@@ -104,6 +115,7 @@ export interface Service {
  * @see {@link layer} for providing a client from explicit options
  * @see {@link layerConfig} for providing a client from `Config`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -118,6 +130,7 @@ export class OpenAiClient extends Context.Service<OpenAiClient, Service>()(
 /**
  * Options for configuring the OpenAI client.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -186,6 +199,7 @@ const withRedactedHeaders = Effect.updateService(
  * @see {@link layer} for providing this client from explicit options
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -268,13 +282,15 @@ export const make = Effect.fnUntraced(
     ] => {
       const stream = response.stream.pipe(
         Stream.decodeText(),
-        Stream.pipeThroughChannel(Sse.decodeDataSchema(OpenAiSchema.ResponseStreamEvent)),
+        Stream.pipeThroughChannel(Sse.decode()),
+        // Some OpenAI-compatible servers end the stream with `data: [DONE]`
+        Stream.takeWhile((event) => event.data !== "[DONE]"),
+        Stream.mapEffect((event) => decodeResponseStreamEvent(event.data)),
         Stream.takeUntil((event) =>
-          event.data.type === "response.completed" ||
-          event.data.type === "response.incomplete" ||
-          event.data.type === "response.failed"
+          event.type === "response.completed" ||
+          event.type === "response.incomplete" ||
+          event.type === "response.failed"
         ),
-        Stream.map((event) => event.data),
         Stream.catchTags({
           // TODO: handle SSE retries
           Retry: (error) => Stream.die(error),
@@ -306,31 +322,47 @@ export const make = Effect.fnUntraced(
         )
       })
 
-    const decodeEmbedding = HttpClientResponse.schemaBodyJson(OpenAiSchema.CreateEmbeddingResponse)
+    const postJson = <Response extends Schema.Decoder<unknown>>(
+      path: string,
+      schema: Response,
+      method: string
+    ) => {
+      const decode = HttpClientResponse.schemaBodyJson(schema)
+      return (payload: unknown): Effect.Effect<Response["Type"], AiError.AiError> =>
+        resolveHttpClient.pipe(
+          Effect.flatMap((client) =>
+            client.execute(HttpClientRequest.post(path, {
+              body: HttpBody.jsonUnsafe(payload)
+            })).pipe(
+              Effect.flatMap(decode),
+              Effect.catchTags({
+                HttpClientError: (error) => Errors.mapHttpClientError(error, method),
+                SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, method))
+              })
+            )
+          ),
+          withRedactedHeaders
+        )
+    }
 
-    const createEmbedding = (
-      payload: typeof OpenAiSchema.CreateEmbeddingRequest.Encoded
-    ): Effect.Effect<typeof OpenAiSchema.CreateEmbeddingResponse.Type, AiError.AiError> =>
-      resolveHttpClient.pipe(
-        Effect.flatMap((client) =>
-          client.execute(HttpClientRequest.post("/embeddings", {
-            body: HttpBody.jsonUnsafe(payload)
-          })).pipe(
-            Effect.flatMap(decodeEmbedding),
-            Effect.catchTags({
-              HttpClientError: (error) => Errors.mapHttpClientError(error, "createEmbedding"),
-              SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createEmbedding"))
-            })
-          )
-        ),
-        withRedactedHeaders
-      )
+    const createEmbedding: Service["createEmbedding"] = postJson(
+      "/embeddings",
+      OpenAiSchema.CreateEmbeddingResponse,
+      "createEmbedding"
+    )
+
+    const createDecisions: Service["createDecisions"] = postJson(
+      "/decisions",
+      OpenAiSchema.CreateDecisionsResponse,
+      "createDecisions"
+    )
 
     return OpenAiClient.of({
       client: httpClient,
       createResponse,
       createResponseStream,
-      createEmbedding
+      createEmbedding,
+      createDecisions
     })
   },
   withRedactedHeaders
@@ -351,6 +383,7 @@ export const make = Effect.fnUntraced(
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -374,6 +407,7 @@ export const layer = (options: Options): Layer.Layer<OpenAiClient, never, HttpCl
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layer} for providing the client from already-resolved options
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -435,6 +469,7 @@ export const layerConfig = (options?: {
 /**
  * Response stream event emitted by the OpenAI Responses API.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -462,6 +497,7 @@ export type ResponseStreamEvent = typeof OpenAiSchema.ResponseStreamEvent.Type
  * @see {@link withWebSocketMode} for enabling WebSocket mode for one effect
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -746,6 +782,7 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  * @see {@link OpenAiSocket} for direct access to the WebSocket-backed streaming service
  *
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -783,6 +820,7 @@ export const withWebSocketMode = <A, E, R>(
  *
  * @see {@link withWebSocketMode} for enabling WebSocket mode around a single effect
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

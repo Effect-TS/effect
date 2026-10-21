@@ -22,13 +22,21 @@ type Facts = {
   supported: boolean
   outputFree: boolean
   makeSafe: boolean
+  hasOneOf: boolean
   nodes: number
   height: number
 }
 
 const factsCache = new WeakMap<SchemaAST.AST, Facts>()
 
-const unsupportedFacts: Facts = { supported: false, outputFree: false, makeSafe: false, nodes: 1, height: 0 }
+const unsupportedFacts: Facts = {
+  supported: false,
+  outputFree: false,
+  makeSafe: false,
+  hasOneOf: false,
+  nodes: 1,
+  height: 0
+}
 
 const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
   ast._tag !== "Union" && ast._tag !== "Declaration" && ast._tag !== "Suspend" &&
@@ -59,6 +67,7 @@ const addChild = (
       }
       if (!childFacts.outputFree) facts.outputFree = false
       if (!childFacts.makeSafe) facts.makeSafe = false
+      if (childFacts.hasOneOf) facts.hasOneOf = true
       facts.nodes += childFacts.nodes
       if (childFacts.height >= facts.height) facts.height = childFacts.height + 1
       return true
@@ -89,12 +98,24 @@ const getFacts = (
     return budget.remaining < 0 || depth + cached.height > maxGeneratedDepth ? undefined : cached
   }
   if (--budget.remaining < 0 || depth > maxGeneratedDepth) return undefined
-  const facts: Facts = { supported: true, outputFree: true, makeSafe: true, nodes: 1, height: 0 }
+  const facts: Facts = {
+    supported: true,
+    outputFree: true,
+    makeSafe: true,
+    hasOneOf: ast._tag === "Union" && ast.options?.mode === "oneOf",
+    nodes: 1,
+    height: 0
+  }
   const next = depth + 1
   switch (ast._tag) {
     case "TemplateLiteral":
       for (const part of ast.parts) {
         if (!addChild(facts, part, next, budget)) return stop(ast, facts)
+      }
+      // matchPart only segments the input; the tuple parser enforces oneOf.
+      if (facts.hasOneOf) {
+        facts.supported = false
+        return stop(ast, facts)
       }
       break
     case "Arrays":
@@ -297,12 +318,10 @@ const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter, operation: Oper
   if (cached !== undefined) return cached
   const name = `u${emitter.next++}`
   emitter.unionHelpers.set(ast, name)
-  const entries = ast.types.map((type, index) =>
-    `[${constant(emitter, type, `${path}.types[${index}]`)},${
-      emitDecoderHelper(type, emitter, operation, `${path}.types[${index}]`)
-    }]`
+  const decoders = ast.types.map((type, index) =>
+    emitDecoderHelper(type, emitter, operation, `${path}.types[${index}]`)
   )
-  emitter.initializers.push(`const ${name}=new Map([${entries.join(",")}])`)
+  emitter.initializers.push(`const ${name}=[${decoders.join(",")}]`)
   return name
 }
 
@@ -607,20 +626,22 @@ const emitBase = (
       const decoder = variable(emitter)
       const types = constant(emitter, ast.types, `${path}.types`)
       const decoders = emitUnionHelper(ast, emitter, operation, path)
+      const select = variable(emitter)
+      emitter.initializers.push(`const ${select}=U(${types})`)
       statements.push(
-        `const ${candidates}=U(${input},${types})`,
+        `const ${candidates}=${select}(${input},false)`,
         `let ${output}=${invalid},${candidate},${decoder}`
       )
       if (ast.options?.mode !== "oneOf") {
         statements.push(
-          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){${output}=${candidate};break}}`
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}[${candidates}[${index}]];${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){${output}=${candidate};break}}`
         )
         statements.push(`if(${output}===${invalid})return ${invalid}`)
       } else {
         const successes = variable(emitter)
         statements.push(`let ${successes}=0`)
         statements.push(
-          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){if(++${successes}>1)return ${invalid};${output}=${candidate}}}`
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}[${candidates}[${index}]];${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){if(++${successes}>1)return ${invalid};${output}=${candidate}}}`
         )
         statements.push(`if(${successes}!==1)return ${invalid}`)
       }
@@ -664,7 +685,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): 
   const bindings = {
     K: "getCheckIssues",
     T: "matchesTemplateLiteral",
-    U: "getCandidates",
+    U: "getCandidateIndex",
     G: "getIndexSignatureKeys",
     D: "defaultParseOptions",
     E: "hasExcessProperties"
@@ -761,16 +782,12 @@ const inlineTypePredicate = (ast: SchemaAST.AST, input: string, path: string): s
     case "BigInt":
       return `typeof ${input}==="bigint"`
     case "TemplateLiteral":
-      return `R.matchesTemplateLiteral(${path},${input},o)`
+      // Its parser reports structured issues, not an InvalidType failure.
+      return undefined
     default:
       return undefined
   }
 }
-
-const inlineIdentityPredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined =>
-  ast.checks === undefined && getEncodingChecks(ast) === undefined
-    ? inlineTypePredicate(ast, input, path)
-    : undefined
 
 const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   const links = ast.encoding
@@ -779,7 +796,6 @@ const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   const transformation = link.transformation
   if (
     link.to.encoding !== undefined ||
-    link.to.checks !== undefined ||
     getEncodingChecks(link.to) !== undefined ||
     transformation._tag !== "Transformation" ||
     transformation.decode._tag !== "Transform"
@@ -790,10 +806,14 @@ const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   const target = inlineTypePredicate(ast, "value", "ast")
   if (source === undefined || target === undefined) return undefined
   const success = ast.checks === undefined ? "R.succeed(value)" : "R.check(ast,value,o)"
-  return `const transform=ast.encoding[0].transformation.decode.transform;return function(i,o){try{
+  const sourceChecks = link.to.checks === undefined
+    ? ""
+    : "const issues=R.getCheckIssues(from,i,false,o);" +
+      "if(issues!==void 0)return R.invalidEncodingChecks(ast,i,issues,o);"
+  return `const transform=ast.encoding[0].transformation.decode.transform,from=ast.encoding[0].to;return function(i,o){try{
     if(i===R.missing)return R.missingExit;
     if(!(${source}))return R.invalidEncoding(ast,1,i,i,o);
-    const value=transform(i);
+    ${sourceChecks}const value=transform(i);
     if(value===R.missing)return R.missingExit;
     if(!(${target}))return R.invalidEncoding(ast,0,i,value,o);
     return ${success}
@@ -804,10 +824,13 @@ const canInlineEncoding = (ast: SchemaAST.AST): ast is SchemaAST.AST & { readonl
   ast.encoding !== undefined &&
   ast.checks === undefined &&
   getEncodingChecks(ast) === undefined &&
-  inlineIdentityPredicate(ast, "v", "ast") !== undefined &&
-  ast.encoding.every((link) =>
+  inlineTypePredicate(ast, "v", "ast") !== undefined &&
+  ast.encoding.every((link, index, links) =>
     link.to.encoding === undefined &&
-    inlineIdentityPredicate(link.to, "v", "ast") !== undefined &&
+    getEncodingChecks(link.to) === undefined &&
+    // Only the initial source may have checks; they run before any transformation.
+    (link.to.checks === undefined || index === links.length - 1) &&
+    inlineTypePredicate(link.to, "v", "ast") !== undefined &&
     link.transformation._tag === "Transformation" &&
     (link.transformation.decode._tag === "Passthrough" || link.transformation.decode._tag === "Transform")
   )
@@ -818,8 +841,18 @@ const inlinePropertyHandler =
 const emitObject = (ast: SchemaAST.Objects): string => {
   const initializers: Array<string> = []
   const transforms = new Map<object, string>()
+  const bindTransform = (transform: object, path: string): string => {
+    let name = transforms.get(transform)
+    if (name === undefined) {
+      name = `t${transforms.size}`
+      transforms.set(transform, name)
+      initializers.push(`const ${name}=${path}`)
+    }
+    return name
+  }
   let usesInlinePropertyHandler = false
   let usesInlinePropertyFailure = false
+  let usesInlineSourceFailure = false
   const lazyProperties = ast.propertySignatures.every((property) =>
     typeof property.name !== "symbol" && canInlineEncoding(property.type)
   )
@@ -845,51 +878,60 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       const descriptor = lazyProperties ? `p(${index})` : `p${index}`
       const handleInline = `t=handle(state,${index},${descriptor},h${index},v${index},r);if(t)return t`
       const links = property.type.encoding
+      const sourceAst = links[links.length - 1].to
       const sourcePath = `${propertyPath}.encoding[${links.length - 1}].to`
-      const source = inlineIdentityPredicate(links[links.length - 1].to, `v${index}`, sourcePath)!
+      const source = inlineTypePredicate(sourceAst, `v${index}`, sourcePath)!
+      const sourceChecks = sourceAst.checks !== undefined
+      if (sourceChecks) initializers.push(`const s${index}=${sourcePath}`)
+      const checkSource = sourceChecks ? `const c${index}=R.getCheckIssues(s${index},v${index},false,o);` : ""
       // Share cold diagnostics without adding a call to the successful path.
       if (lazyProperties && links.length === 1 && property.name !== "__proto__") {
         usesInlinePropertyFailure = true
         const transformation = links[0].transformation
         let decoded = `v${index}`
         if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
-          let transform = transforms.get(transformation.decode.transform)
-          if (transform === undefined) {
-            transform = `t${transforms.size}`
-            transforms.set(transformation.decode.transform, transform)
-            initializers.push(`const ${transform}=${propertyPath}.encoding[0].transformation.decode.transform`)
-          }
+          const transform = bindTransform(
+            transformation.decode.transform,
+            `${propertyPath}.encoding[0].transformation.decode.transform`
+          )
           decoded = `${transform}(v${index})`
         }
-        const predicate = inlineIdentityPredicate(property.type, `x${index}`, propertyPath)!
+        const predicate = inlineTypePredicate(property.type, `x${index}`, propertyPath)!
+        let run = `const x${index}=${decoded};` +
+          `if(x${index}!==R.missing&&(${predicate})){out[${key}]=x${index}}` +
+          `else{t=invalid(state,${index},h${index},v${index},x${index},o);if(t)return t}`
+        if (sourceChecks) {
+          usesInlineSourceFailure = true
+          run = `${checkSource}if(c${index}===void 0){${run}}` +
+            `else{t=invalidSource(state,${index},h${index},v${index},c${index},o);if(t)return t}`
+        }
         statements.push(
           `const h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
-          `if(v${index}!==R.missing&&(${source})){const x${index}=${decoded};` +
-            `if(x${index}!==R.missing&&(${predicate})){out[${key}]=x${index}}` +
-            `else{t=invalid(state,${index},h${index},v${index},x${index},o);if(t)return t}}` +
+          `if(v${index}!==R.missing&&(${source})){${run}}` +
             `else{t=fallbackProperty(state,${index},h${index},v${index},o);if(t)return t}`
         )
         return
       }
       const fast: Array<string> = [`let x${index}=v${index};r=void 0;l${index}:{`]
+      if (sourceChecks) {
+        fast.push(
+          `${checkSource}if(c${index}!==void 0){r=R.invalidEncodingChecks(${descriptor}.type,v${index},c${index},o);break l${index}}`
+        )
+      }
       for (let linkIndex = links.length - 1; linkIndex >= 0; linkIndex--) {
         const transformation = links[linkIndex].transformation
         if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
-          let transform = transforms.get(transformation.decode.transform)
-          if (transform === undefined) {
-            transform = `t${transforms.size}`
-            transforms.set(transformation.decode.transform, transform)
-            initializers.push(
-              `const ${transform}=${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
-            )
-          }
+          const transform = bindTransform(
+            transformation.decode.transform,
+            `${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
+          )
           fast.push(`x${index}=${transform}(x${index})`)
         }
         const targetPath = linkIndex === 0
           ? propertyPath
           : `${propertyPath}.encoding[${linkIndex - 1}].to`
         const target = linkIndex === 0 ? property.type : links[linkIndex - 1].to
-        const predicate = inlineIdentityPredicate(target, `x${index}`, targetPath)!
+        const predicate = inlineTypePredicate(target, `x${index}`, targetPath)!
         fast.push(
           `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=R.invalidEncoding(${descriptor}.type,${linkIndex},v${index},x${index},o);break l${index}}`
         )
@@ -922,6 +964,11 @@ const emitObject = (ast: SchemaAST.Objects): string => {
     initializers.push(
       "const invalid=(state,index,present,input,output,o)=>{const property=p(index);return handle(state,index,property,present,input,output===R.missing?R.missingExit:R.invalidEncoding(property.type,0,input,output,o))}",
       "const fallbackProperty=(state,index,present,input,o)=>{const property=p(index);return handle(state,index,property,present,input,property.parser(input,o))}"
+    )
+  }
+  if (usesInlineSourceFailure) {
+    initializers.push(
+      "const invalidSource=(state,index,present,input,issues,o)=>{const property=p(index);return handle(state,index,property,present,input,R.invalidEncodingChecks(property.type,input,issues,o))}"
     )
   }
   return `function({ast,getProperties,fallback,resume,step}){${initializers.join(";")};return function(i,o){try{${

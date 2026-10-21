@@ -40,6 +40,38 @@ declare const nonEmptyABs: Array.NonEmptyReadonlyArray<AB>
 declare const orderA: Order.Order<A>
 
 describe("Array", () => {
+  it("match", () => {
+    expect(Array.match(numbers, {
+      onEmpty: () => "empty" as const,
+      onNonEmpty: (items) => {
+        expect(items).type.toBe<Array.NonEmptyArray<number>>()
+        return items[0]
+      }
+    })).type.toBe<number | "empty">()
+    expect(Array.match(readonlyNumbers, {
+      onEmpty: () => "empty" as const,
+      onNonEmpty: (items) => {
+        expect(items).type.toBe<Array.NonEmptyReadonlyArray<number>>()
+        return items[0]
+      }
+    })).type.toBe<number | "empty">()
+
+    const matchReadonly = Array.match({
+      onEmpty: () => "empty" as const,
+      onNonEmpty: (items: Array.NonEmptyReadonlyArray<number>) => items[0]
+    })
+    expect(matchReadonly).type.toBe<(items: ReadonlyArray<number>) => number | "empty">()
+    expect(pipe(readonlyNumbers, matchReadonly)).type.toBe<number | "empty">()
+
+    const matchMutable = Array.match({
+      onEmpty: () => "empty" as const,
+      onNonEmpty: (items: Array.NonEmptyArray<number>) => items[0]
+    })
+    expect(matchMutable).type.toBe<(items: Array<number>) => number | "empty">()
+    expect(pipe(numbers, matchMutable)).type.toBe<number | "empty">()
+    expect(matchMutable).type.not.toBeCallableWith(readonlyNumbers)
+  })
+
   it("isArray", () => {
     if (Array.isArray(unknownValue)) {
       expect(unknownValue).type.toBe<Array<unknown>>()
@@ -334,7 +366,7 @@ describe("Array", () => {
       expect(item).type.toBe<string | number>()
       expect(i).type.toBe<number>()
       return typeof item === "number" ? Result.succeed(item + i) : Result.fail(item)
-    })).type.toBe<[excluded: Array<string>, satisfying: Array<number>]>()
+    })).type.toBe<[passes: Array<number>, fails: Array<string>]>()
     expect(pipe(
       numbersOrStrings,
       Array.partition((item, i) => {
@@ -342,7 +374,7 @@ describe("Array", () => {
         expect(i).type.toBe<number>()
         return typeof item === "number" ? Result.succeed(item + i) : Result.fail(item)
       })
-    )).type.toBe<[excluded: Array<string>, satisfying: Array<number>]>()
+    )).type.toBe<[passes: Array<number>, fails: Array<string>]>()
 
     expect(Array.partition).type.not.toBeCallableWith(
       numbersOrStrings,
@@ -1053,17 +1085,17 @@ describe("Array", () => {
 
   it("separate", () => {
     expect(Array.separate([])).type.toBe<[Array<unknown>, Array<unknown>]>()
-    expect(Array.separate([Result.succeed(1)])).type.toBe<[Array<never>, Array<number>]>()
-    expect(Array.separate([Result.fail("a")])).type.toBe<[Array<string>, Array<never>]>()
-    expect(Array.separate([Result.fail("a"), Result.succeed(1)])).type.toBe<[Array<string>, Array<number>]>()
-    expect(Array.separate(hole<Array<Result.Result<number, string>>>())).type.toBe<[Array<string>, Array<number>]>()
-    expect(Array.separate(hole<Iterable<Result.Result<number, string>>>())).type.toBe<[Array<string>, Array<number>]>()
+    expect(Array.separate([Result.succeed(1)])).type.toBe<[Array<number>, Array<never>]>()
+    expect(Array.separate([Result.fail("a")])).type.toBe<[Array<never>, Array<string>]>()
+    expect(Array.separate([Result.fail("a"), Result.succeed(1)])).type.toBe<[Array<number>, Array<string>]>()
+    expect(Array.separate(hole<Array<Result.Result<number, string>>>())).type.toBe<[Array<number>, Array<string>]>()
+    expect(Array.separate(hole<Iterable<Result.Result<number, string>>>())).type.toBe<[Array<number>, Array<string>]>()
     expect(Array.separate(
       hole<Iterable<Result.Result<number, string> | Result.Result<boolean, Date>>>()
-    )).type.toBe<[Array<string | Date>, Array<number | boolean>]>()
+    )).type.toBe<[Array<number | boolean>, Array<string | Date>]>()
     expect(Array.separate(
       hole<Iterable<Result.Result<number, string>> | Iterable<Result.Result<boolean, Date>>>()
-    )).type.toBe<[Array<string | Date>, Array<number | boolean>]>()
+    )).type.toBe<[Array<number | boolean>, Array<string | Date>]>()
   })
 
   it("getSuccesses", () => {

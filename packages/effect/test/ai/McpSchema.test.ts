@@ -46,4 +46,12 @@ describe("McpSchema", () => {
       legacy: { type: "string", enum: ["one"], enumNames: ["One"] }
     })
   })
+
+  it("round-trips an implementation with icons", () => {
+    const implementation = { name: "server", version: "1.0.0", icons: [{ src: "https://example.com/icon.png" }] }
+    assert.deepStrictEqual(
+      Schema.encodeSync(McpSchema.Implementation)(Schema.decodeUnknownSync(McpSchema.Implementation)(implementation)),
+      implementation
+    )
+  })
 })

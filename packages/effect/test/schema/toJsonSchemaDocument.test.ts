@@ -635,7 +635,9 @@ describe("toJsonSchemaDocument", () => {
                   "enum": ["Millis"]
                 },
                 "value": {
-                  "type": "integer"
+                  "type": "integer",
+                  "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+                  "maximum": globalThis.Number.MAX_SAFE_INTEGER
                 }
               },
               "required": ["_tag", "value"],
@@ -1264,10 +1266,8 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "minItems": 1,
-                "allOf": [
-                  { "minItems": 2, "maxItems": 2 }
-                ]
+                "minItems": 2,
+                "maxItems": 2
               }
             }
           )
@@ -1357,10 +1357,7 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "minItems": 1,
-                "allOf": [
-                  { "minItems": 2 }
-                ]
+                "minItems": 2
               }
             }
           )
@@ -1586,7 +1583,72 @@ describe("toJsonSchemaDocument", () => {
           Schema.Finite.check(Schema.isInt()),
           {
             schema: {
-              "type": "integer"
+              "type": "integer",
+              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+              "maximum": globalThis.Number.MAX_SAFE_INTEGER
+            }
+          }
+        )
+      })
+
+      it("keeps oneOf for exact integer branches", () => {
+        assertJsonSchemaDocument(Schema.Union([Schema.Int, Schema.Boolean], { mode: "oneOf" }), {
+          schema: {
+            oneOf: [
+              {
+                type: "integer",
+                minimum: globalThis.Number.MIN_SAFE_INTEGER,
+                maximum: globalThis.Number.MAX_SAFE_INTEGER
+              },
+              { type: "boolean" }
+            ]
+          }
+        })
+      })
+
+      it("merges colliding inclusive bounds into the tighter bound", () => {
+        assertJsonSchemaDocument(
+          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).annotate({ description: "a", default: 5 }),
+          {
+            schema: {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "a",
+              "default": 5
+            }
+          }
+        )
+      })
+
+      it("keeps only the tightest inclusive or exclusive bound", () => {
+        assertJsonSchemaDocument(
+          Schema.Finite.check(
+            Schema.isGreaterThan(0),
+            Schema.isGreaterThan(1),
+            Schema.isGreaterThanOrEqualTo(1),
+            Schema.isLessThan(10),
+            Schema.isLessThan(9),
+            Schema.isLessThanOrEqualTo(8)
+          ),
+          { schema: { type: "number", exclusiveMinimum: 1, maximum: 8 } }
+        )
+      })
+
+      it("merges colliding property-count bounds into the tighter bound", () => {
+        assertJsonSchemaDocument(
+          Schema.Record(Schema.String, Schema.String).check(
+            Schema.isMinProperties(2),
+            Schema.isMinProperties(1),
+            Schema.isMaxProperties(5),
+            Schema.isMaxProperties(3)
+          ),
+          {
+            schema: {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "minProperties": 2,
+              "maxProperties": 3
             }
           }
         )
@@ -1599,6 +1661,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "integer",
               "allOf": [
+                { "minimum": globalThis.Number.MIN_SAFE_INTEGER, "maximum": globalThis.Number.MAX_SAFE_INTEGER },
                 { "maximum": 2147483647, "minimum": -2147483648 }
               ]
             }
@@ -1613,6 +1676,7 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "integer",
               "allOf": [
+                { "minimum": globalThis.Number.MIN_SAFE_INTEGER, "maximum": globalThis.Number.MAX_SAFE_INTEGER },
                 { "maximum": 4294967295, "minimum": 0 }
               ]
             }
@@ -1627,6 +1691,7 @@ describe("toJsonSchemaDocument", () => {
                 {
                   "description": "a",
                   "allOf": [
+                    { "minimum": globalThis.Number.MIN_SAFE_INTEGER, "maximum": globalThis.Number.MAX_SAFE_INTEGER },
                     { "maximum": 4294967295, "minimum": 0 }
                   ]
                 }
@@ -1645,6 +1710,7 @@ describe("toJsonSchemaDocument", () => {
                 {
                   "description": "a",
                   "allOf": [
+                    { "minimum": globalThis.Number.MIN_SAFE_INTEGER, "maximum": globalThis.Number.MAX_SAFE_INTEGER },
                     { "maximum": 4294967295, "minimum": 0 }
                   ]
                 }
@@ -1751,6 +1817,8 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "integer",
+              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+              "maximum": globalThis.Number.MAX_SAFE_INTEGER,
               "multipleOf": 2
             }
           }
@@ -1760,6 +1828,8 @@ describe("toJsonSchemaDocument", () => {
           {
             schema: {
               "type": "integer",
+              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+              "maximum": globalThis.Number.MAX_SAFE_INTEGER,
               "multipleOf": 2
             }
           }
@@ -3550,6 +3620,80 @@ describe("toJsonSchemaDocument", () => {
   })
 
   describe("Union", () => {
+    describe("nested unions", () => {
+      const Person = Schema.Struct({ name: Schema.String })
+      const Company = Schema.Struct({ company: Schema.String })
+      const Team = Schema.Struct({ team: Schema.String })
+      const person: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+        additionalProperties: false
+      }
+      const company: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: { company: { type: "string" } },
+        required: ["company"],
+        additionalProperties: false
+      }
+      const team: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: { team: { type: "string" } },
+        required: ["team"],
+        additionalProperties: false
+      }
+
+      it("flattens a union inside NullOr", () => {
+        assertJsonSchemaDocument(Schema.NullOr(Schema.Union([Person, Company])), {
+          schema: { anyOf: [person, company, { type: "null" }] }
+        })
+      })
+
+      it("flattens a union inside another anyOf", () => {
+        assertJsonSchemaDocument(Schema.Union([Schema.Union([Person, Company]), Team]), {
+          schema: { anyOf: [person, company, team] }
+        })
+      })
+
+      it("preserves annotations on a nested anyOf", () => {
+        const inner = Schema.Union([Schema.String, Schema.Boolean]).annotate({ description: "inner" })
+        assertJsonSchemaDocument(Schema.Union([inner, Schema.Null]), {
+          schema: {
+            anyOf: [
+              { anyOf: [{ type: "string" }, { type: "boolean" }], description: "inner" },
+              { type: "null" }
+            ]
+          }
+        })
+      })
+
+      it("preserves references to a nested anyOf", () => {
+        const inner = Schema.Union([Schema.String, Schema.Boolean]).annotate({ identifier: "Inner" })
+        assertJsonSchemaDocument(Schema.Union([inner, Schema.Null]), {
+          schema: { anyOf: [{ $ref: "#/$defs/Inner" }, { type: "null" }] },
+          definitions: { Inner: { anyOf: [{ type: "string" }, { type: "boolean" }] } }
+        })
+      })
+
+      it.each(
+        [
+          ["anyOf", "oneOf"],
+          ["oneOf", "anyOf"],
+          ["oneOf", "oneOf"]
+        ] as const
+      )("preserves an inner %s inside an outer %s", (innerMode, outerMode) => {
+        const inner = Schema.Union([Schema.String, Schema.Boolean], { mode: innerMode })
+        assertJsonSchemaDocument(Schema.Union([inner, Schema.String], { mode: outerMode }), {
+          schema: {
+            [outerMode]: [
+              { [innerMode]: [{ type: "string" }, { type: "boolean" }] },
+              { type: "string" }
+            ]
+          }
+        })
+      })
+    })
+
     it("empty union", () => {
       const schema = Schema.Union([])
       assertJsonSchemaDocument(schema, {
@@ -3970,6 +4114,53 @@ describe("toJsonSchemaDocument", () => {
           "additionalProperties": false
         }
       }
+    })
+  })
+
+  describe("toCodecGoJson", () => {
+    it("describes the nil values written by Go as null", () => {
+      assertJsonSchemaDocument(
+        Schema.toCodecGoJson(Schema.Struct({
+          a: Schema.String,
+          b: Schema.optionalKey(Schema.FiniteFromString),
+          c: Schema.Array(Schema.String)
+        })),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" },
+              "b": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "c": { "anyOf": [{ "type": "array", "items": { "type": "string" } }, { "type": "null" }] }
+            },
+            "required": ["a", "c"],
+            "additionalProperties": false
+          }
+        }
+      )
+    })
+
+    it("describes recursive schemas", () => {
+      interface Node {
+        readonly Children: ReadonlyArray<Node>
+      }
+      const Node: Schema.Codec<Node> = Schema.Struct({
+        Children: Schema.Array(Schema.suspend(() => Node))
+      }).annotate({ identifier: "Node" })
+
+      assertJsonSchemaDocument(Schema.toCodecGoJson(Node), {
+        schema: { "$ref": "#/$defs/Node" },
+        definitions: {
+          Node: {
+            "type": "object",
+            "properties": {
+              "Children": { "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/Node" } }, { "type": "null" }] }
+            },
+            "required": ["Children"],
+            "additionalProperties": false
+          }
+        }
+      })
     })
   })
 })

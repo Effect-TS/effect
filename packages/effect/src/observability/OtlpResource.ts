@@ -13,6 +13,7 @@ import * as Config from "../Config.ts"
 import * as Effect from "../Effect.ts"
 import { format } from "../Formatter.ts"
 import * as Schema from "../Schema.ts"
+import * as Version from "../Version.ts"
 
 /**
  * OTLP resource metadata attached to exported logs, metrics, and traces.
@@ -28,46 +29,36 @@ export interface Resource {
   droppedAttributesCount: number
 }
 
+const isBrowser = "window" in globalThis || "importScripts" in globalThis
+
 /**
  * Creates an OTLP resource from service metadata and additional attributes.
  *
  * **Details**
  *
- * The resource always includes `service.name`, includes `service.version` when
- * provided, and converts custom attributes into OTLP attribute values.
+ * Adds `telemetry.sdk.*` defaults and converts custom attributes to OTLP values.
+ * Custom attributes override SDK defaults; service options override matching
+ * attributes. Omitted service options add no service attributes.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = (options: {
-  readonly serviceName: string
+  readonly serviceName?: string | undefined
   readonly serviceVersion?: string | undefined
   readonly attributes?: Record<string, unknown> | undefined
-}): Resource => {
-  const resourceAttributes = options.attributes
-    ? entriesToAttributes(Object.entries(options.attributes))
-    : []
-  resourceAttributes.push({
-    key: "service.name",
-    value: {
-      stringValue: options.serviceName
-    }
-  })
-  if (options.serviceVersion) {
-    resourceAttributes.push({
-      key: "service.version",
-      value: {
-        stringValue: options.serviceVersion
-      }
-    })
-  }
-
-  return {
-    attributes: resourceAttributes,
-    droppedAttributesCount: 0
-  }
-}
+}): Resource => ({
+  attributes: entriesToAttributes(Object.entries({
+    "telemetry.sdk.name": "effect",
+    "telemetry.sdk.language": isBrowser ? "webjs" : "nodejs",
+    "telemetry.sdk.version": Version.getCurrentVersion(),
+    ...options.attributes,
+    ...(options.serviceName ? { "service.name": options.serviceName } : undefined),
+    ...(options.serviceVersion ? { "service.version": options.serviceVersion } : undefined)
+  })),
+  droppedAttributesCount: 0
+})
 
 /**
  * Creates an OTLP resource from explicit options and OpenTelemetry
@@ -179,13 +170,18 @@ export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array
   return attributes
 }
 
+// OTLP `intValue` is a signed 64-bit integer
+const int64Bound = 2 ** 63
+
 /**
  * Converts an arbitrary JavaScript value into an OTLP `AnyValue`.
  *
  * **Details**
  *
  * Arrays are converted recursively, primitive values use their matching OTLP
- * fields, and unsupported values are formatted as strings.
+ * fields, and unsupported values are formatted as strings. Integers outside the
+ * signed 64-bit range fall back to `doubleValue` for numbers and `stringValue`
+ * for bigints.
  *
  * @stability unstable
  * @category attributes
@@ -205,13 +201,18 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
         stringValue: value
       }
     case "bigint":
-      return {
-        intValue: String(value)
-      }
-    case "number":
-      return Number.isInteger(value)
+      return BigInt.asIntN(64, value) === value
         ? {
-          intValue: value
+          intValue: String(value)
+        }
+        : {
+          stringValue: String(value)
+        }
+    case "number":
+      return Number.isInteger(value) && value >= -int64Bound && value < int64Bound
+        ? {
+          // Unsafe integers would be rounded when written as JSON numbers
+          intValue: Number.isSafeInteger(value) ? value : String(BigInt(value))
         }
         : {
           doubleValue: value

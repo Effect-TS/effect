@@ -2,6 +2,7 @@ import * as Context from "../../Context.ts"
 import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
+import * as Fiber from "../../Fiber.ts"
 import * as MutableHashMap from "../../MutableHashMap.ts"
 import * as MutableRef from "../../MutableRef.ts"
 import * as Scope from "../../Scope.ts"
@@ -44,9 +45,9 @@ export class ResourceMap<K, A, E> {
       scope,
       (exit) => {
         MutableRef.set(isClosed, true)
-        return Effect.forEach(entries.map, ([key, { scope }]) => {
+        return Effect.forEach(entries.map, ([key, { fiber, scope }]) => {
           backingDelete(entries, key)
-          return Effect.exit(Scope.close(scope, exit))
+          return Effect.exit(Effect.andThen(Fiber.interrupt(fiber), Scope.close(scope, exit)))
         }, { concurrency: "unbounded", discard: true })
       }
     )
@@ -67,28 +68,62 @@ export class ResourceMap<K, A, E> {
   }
 
   get(key: K): Effect.Effect<A, E> {
-    return Effect.suspend(() => {
+    return Effect.uninterruptibleMask((restore) => {
       if (MutableRef.get(this.isClosed)) {
         return Effect.interrupt
       }
       const existing = backingGet(this.entries, key)
       if (existing) {
-        return Deferred.await(existing.deferred)
+        return this.awaitEntry(key, existing, restore)
       }
-      const scope = Scope.makeUnsafe()
-      const deferred = Deferred.makeUnsafe<A, E>()
-      backingSet(this.entries, key, { scope, deferred })
-      return Effect.onExit(this.lookup(key, scope), (exit) => {
-        if (exit._tag === "Success") {
-          return Deferred.done(deferred, exit)
-        }
-        backingDelete(this.entries, key)
-        return Effect.andThen(
-          Deferred.done(deferred, exit),
-          Scope.close(scope, exit)
-        )
-      })
+      const entry: Entry<A, E> = {
+        scope: Scope.makeUnsafe(),
+        deferred: Deferred.makeUnsafe<A, E>(),
+        fiber: undefined as any,
+        awaiters: 0
+      }
+      backingSet(this.entries, key, entry)
+      // Run the lookup on a detached fiber so it is shared by every caller and
+      // only interrupted once all of them have been interrupted.
+      entry.fiber = Effect.runForkWith(Fiber.getCurrent()!.context)(
+        Effect.onExit(this.lookup(key, entry.scope), (exit) => {
+          if (exit._tag === "Success") {
+            return Deferred.done(entry.deferred, exit)
+          }
+          this.deleteEntry(key, entry)
+          return Effect.andThen(
+            Deferred.done(entry.deferred, exit),
+            Scope.close(entry.scope, exit)
+          )
+        })
+      )
+      return this.awaitEntry(key, entry, restore)
     })
+  }
+
+  private awaitEntry(
+    key: K,
+    entry: Entry<A, E>,
+    restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
+  ): Effect.Effect<A, E> {
+    if (Deferred.isDoneUnsafe(entry.deferred)) return Deferred.await(entry.deferred)
+    entry.awaiters++
+    return Effect.onExit(restore(Deferred.await(entry.deferred)), () => {
+      if (--entry.awaiters > 0 || Deferred.isDoneUnsafe(entry.deferred)) {
+        return Effect.void
+      }
+      // Detach the abandoned entry first so new callers start a fresh lookup
+      // instead of joining one that is being interrupted.
+      this.deleteEntry(key, entry)
+      return Fiber.interrupt(entry.fiber)
+    })
+  }
+
+  private deleteEntry(key: K, entry: Entry<A, E>): void {
+    // Never delete a replacement entry created after this one was removed.
+    if (backingGet(this.entries, key) === entry) {
+      backingDelete(this.entries, key)
+    }
   }
 
   remove(key: K): Effect.Effect<void> {
@@ -123,6 +158,9 @@ type BackingMap<K, A, E> = {
 type Entry<A, E> = {
   readonly scope: Scope.Closeable
   readonly deferred: Deferred.Deferred<A, E>
+  // Assigned as soon as the lookup is forked.
+  fiber: Fiber.Fiber<unknown, unknown>
+  awaiters: number
 }
 
 const backingGet = <K, A, E>(map: BackingMap<K, A, E>, key: K): Entry<A, E> | undefined => {

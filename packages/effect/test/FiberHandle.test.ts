@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
-import { Deferred, Effect, Exit, Fiber, FiberHandle, Option, pipe, Ref } from "effect"
+import { Deferred, Effect, Exit, Fiber, FiberHandle, Option, pipe, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 const makeWorker = Effect.gen(function*() {
@@ -18,6 +18,36 @@ const makeWorker = Effect.gen(function*() {
 })
 
 describe("FiberHandle", () => {
+  it.effect("closing the scope waits for asynchronous cleanup of a replaced fiber", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const scope = yield* Scope.make()
+      yield* Scope.addFinalizer(scope, Effect.sync(() => events.push("resource released")))
+      const container = yield* FiberHandle.make().pipe(Scope.provide(scope))
+      const previous = yield* FiberHandle.run(
+        container,
+        Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Effect.never),
+          Effect.onInterrupt(() =>
+            Deferred.await(release).pipe(
+              Effect.andThen(Effect.sync(() => events.push("worker cleanup done")))
+            )
+          )
+        )
+      )
+      yield* Deferred.await(started)
+      yield* FiberHandle.run(container, Effect.never)
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(closing)
+      yield* Fiber.await(previous)
+
+      assert.deepStrictEqual(events, ["worker cleanup done", "resource released"])
+    }))
+
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
       const container = yield* FiberHandle.make()
@@ -47,6 +77,28 @@ describe("FiberHandle", () => {
       )
 
       strictEqual(yield* (Ref.get(ref)), 1)
+    }))
+
+  it.effect("retains ownership of a replacement made by a synchronous finalizer", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const handle = yield* FiberHandle.make().pipe(Scope.provide(scope))
+      const run = yield* FiberHandle.runtime(handle)()
+      const fibers: Array<Fiber.Fiber<unknown, unknown>> = []
+      yield* Effect.addFinalizer(() => Fiber.interruptAll(fibers))
+
+      const previous = run(Effect.never.pipe(Effect.ensuring(Effect.sync(() => {
+        fibers.push(run(Effect.never))
+      }))))
+      const replacement = run(Effect.never)
+      fibers.push(previous, replacement)
+      assert.strictEqual(fibers.length, 3)
+
+      yield* Scope.close(scope, Exit.void)
+
+      assert.isDefined(previous.pollUnsafe())
+      assert.isDefined(replacement.pollUnsafe())
+      assert.isDefined(fibers[0].pollUnsafe(), "fiber started by the finalizer still running after scope close")
     }))
 
   it.effect("runtime", () =>

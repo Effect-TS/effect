@@ -5,6 +5,7 @@
  * typed helpers for non-streaming chat completions, streaming chat completions,
  * and embedding requests.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as AiError from "effect/ai/AiError"
@@ -20,6 +21,7 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Errors from "./internal/errors.ts"
@@ -34,6 +36,7 @@ import { OpenAiConfig } from "./OpenAiConfig.ts"
  * completions, streaming chat completions, and embeddings. Transport and
  * schema decoding failures are mapped to `AiError`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -77,6 +80,7 @@ export interface Service {
  * @see {@link layer} for providing the service from explicit options
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -87,6 +91,7 @@ export class OpenAiClient extends Context.Service<OpenAiClient, Service>()(
 /**
  * Configuration options used to construct an OpenAI-compatible client.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -130,6 +135,7 @@ const withRedactedHeaders = Effect.updateService(
  * @see {@link layer} for providing this client from explicit options
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -211,9 +217,9 @@ export const make = Effect.fnUntraced(
       const stream = response.stream.pipe(
         Stream.decodeText(),
         Stream.pipeThroughChannel(Sse.decode()),
-        Stream.flatMap((event) => {
+        Stream.filterMap((event) => {
           const data = decodeChatCompletionSseData(event.data)
-          return Stream.fromIterable(data !== undefined ? [data] : [])
+          return data !== undefined ? Result.succeed(data) : Result.failVoid
         }),
         Stream.takeUntil((event) => event === "[DONE]"),
         Stream.catchTags({
@@ -288,6 +294,7 @@ export const make = Effect.fnUntraced(
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -312,6 +319,7 @@ export const layer = (options: Options): Layer.Layer<OpenAiClient, never, HttpCl
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layer} for providing the client from already-resolved options
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -352,6 +360,7 @@ type JsonObject = { readonly [x: string]: Schema.Json }
 /**
  * Optional response fields that can be requested with the `include` parameter.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -363,6 +372,7 @@ export type IncludeEnum =
 /**
  * Lifecycle status shared by message, reasoning, and tool-call items.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -391,6 +401,7 @@ type InputFileContent = {
 /**
  * Content blocks accepted in input messages.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -399,6 +410,7 @@ export type InputContent = InputTextContent | InputImageContent | InputFileConte
 /**
  * Text content block used for model-provided reasoning summaries.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -461,6 +473,7 @@ type FilePathAnnotation = {
 /**
  * Citation and file-path annotations attached to output text content.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -500,6 +513,7 @@ type OutputMessage = {
  * Reasoning output item containing encrypted reasoning content, summaries, and
  * optional reasoning text.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -518,6 +532,7 @@ type FunctionCall = {
   readonly call_id: string
   readonly name: string
   readonly arguments: string
+  readonly extra_content?: JsonObject | undefined
   readonly status?: MessageStatus | undefined
 }
 
@@ -557,6 +572,7 @@ type ItemReference = {
  * Supports input messages, output messages, tool calls, tool outputs, reasoning
  * items, custom tool interactions, and item references.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -598,6 +614,7 @@ type CustomToolParam = {
 /**
  * Tool definitions that can be supplied to a Responses-style request.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -627,6 +644,7 @@ type ToolChoice =
  * Text output format configuration for plain text, JSON object, or JSON Schema
  * responses.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -649,6 +667,7 @@ export type TextResponseFormatConfiguration =
  * Request options for creating a Responses-style response with an
  * OpenAI-compatible provider.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -689,6 +708,7 @@ export type CreateResponse = {
 /**
  * Token accounting reported on Responses-style response objects.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -710,6 +730,7 @@ type OutputItem =
  * Responses-style response object returned by compatible providers or embedded
  * in response stream lifecycle events.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -839,6 +860,7 @@ type UnknownResponseStreamEvent = {
 /**
  * Server-sent event shapes emitted by Responses-style response streams.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */
@@ -867,6 +889,7 @@ export type ResponseStreamEvent =
  * string. The `index` field identifies the input item that produced this
  * embedding.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -879,6 +902,7 @@ export type Embedding = {
 /**
  * Request payload for the embeddings endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -893,6 +917,7 @@ export type CreateEmbeddingRequest = {
 /**
  * Successful response payload returned by the embeddings endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -909,6 +934,7 @@ export type CreateEmbeddingResponse = {
 /**
  * JSON request body accepted by the embeddings endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -916,6 +942,7 @@ export type CreateEmbeddingRequestJson = CreateEmbeddingRequest
 /**
  * Decoded successful embeddings response body.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -923,6 +950,7 @@ export type CreateEmbedding200 = CreateEmbeddingResponse
 /**
  * Structured content parts accepted in chat completion messages.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -941,6 +969,7 @@ export type ChatCompletionContentPart =
 /**
  * Tool call data attached to an assistant chat completion message.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -951,10 +980,12 @@ export type ChatCompletionRequestToolCall = {
     readonly name: string
     readonly arguments: string
   }
+  readonly extra_content?: JsonObject | undefined
 }
 /**
  * Message shapes accepted by the chat completions endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -963,6 +994,15 @@ export type ChatCompletionRequestMessage =
     readonly role: "system" | "developer" | "user" | "assistant"
     readonly content: string | ReadonlyArray<ChatCompletionContentPart> | null
     readonly tool_calls?: ReadonlyArray<ChatCompletionRequestToolCall> | undefined
+    /**
+     * Assistant reasoning replayed for providers that read it from
+     * `reasoning_content`.
+     */
+    readonly reasoning_content?: string | undefined
+    /**
+     * Assistant reasoning replayed for providers that read it from `reasoning`.
+     */
+    readonly reasoning?: string | undefined
   }
   | {
     readonly role: "tool"
@@ -972,6 +1012,7 @@ export type ChatCompletionRequestMessage =
 /**
  * Function tool definition accepted by the chat completions endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -987,6 +1028,7 @@ export type ChatCompletionTool = {
 /**
  * Controls whether the model may call tools and can force a specific function.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -1003,6 +1045,7 @@ export type ChatCompletionToolChoice =
 /**
  * JSON response format configuration for chat completion requests.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -1022,6 +1065,7 @@ export type ChatCompletionResponseFormat =
 /**
  * Request payload for the OpenAI-compatible chat completions endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1048,6 +1092,7 @@ export type ChatCompletionRequest = {
 /**
  * JSON request body used by this client when creating a chat completion response.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1055,6 +1100,7 @@ export type CreateResponseRequestJson = ChatCompletionRequest
 /**
  * Decoded successful chat completion response body returned by `createResponse`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1062,6 +1108,7 @@ export type CreateResponse200 = ChatCompletionResponse
 /**
  * Decoded server-sent event payload emitted by `createResponseStream`.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */
@@ -1100,6 +1147,7 @@ const ChatCompletionToolCall = Schema.Struct({
   id: Schema.optionalKey(Schema.String),
   index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
+  extra_content: Schema.optionalKey(Schema.NullOr(Schema.JsonObject)),
   function: Schema.optionalKey(ChatCompletionToolFunction)
 })
 
@@ -1108,6 +1156,7 @@ const ChatCompletionToolCallDelta = Schema.Struct({
   id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
+  extra_content: Schema.optionalKey(Schema.NullOr(Schema.JsonObject)),
   function: Schema.optionalKey(ChatCompletionToolFunctionDelta)
 })
 
@@ -1167,6 +1216,7 @@ const ChatCompletionChunk = Schema.Struct({
 /**
  * Decoded tool-call object from a chat completion response or streaming chunk.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1174,6 +1224,7 @@ export type ChatCompletionToolCall = typeof ChatCompletionToolCall.Type
 /**
  * Decoded message object from a non-streaming chat completion choice.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1181,6 +1232,7 @@ export type ChatCompletionMessage = typeof ChatCompletionMessage.Type
 /**
  * Decoded choice object returned by chat completion responses and chunks.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1188,6 +1240,7 @@ export type ChatCompletionChoice = typeof ChatCompletionChoice.Type
 /**
  * Decoded token usage summary returned by chat completions.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1195,6 +1248,7 @@ export type ChatCompletionUsage = typeof ChatCompletionUsage.Type
 /**
  * Decoded successful response from the chat completions endpoint.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1202,6 +1256,7 @@ export type ChatCompletionResponse = typeof ChatCompletionResponse.Type
 /**
  * Decoded streaming chunk emitted by the chat completions endpoint.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */
@@ -1209,6 +1264,7 @@ export type ChatCompletionChunk = typeof ChatCompletionChunk.Type
 /**
  * A parsed chat completion event that does not match the expected chunk schema.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */
@@ -1220,6 +1276,7 @@ export interface UnknownChatCompletionEvent {
  * Streaming chat completion event, including decoded chunks, unknown parsed
  * events, and the `[DONE]` sentinel.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */

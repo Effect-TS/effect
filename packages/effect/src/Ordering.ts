@@ -5,6 +5,7 @@
  * provides helpers for reversing an ordering, matching on the three cases, and
  * combining ordered comparison results with a reducer.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { LazyArg } from "./Function.ts"
@@ -47,6 +48,7 @@ import * as Reducer_ from "./Reducer.ts"
  * }
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -89,6 +91,7 @@ export type Ordering = -1 | 0 | 1
  * }
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -117,6 +120,7 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  * toMessage(1) // => "greater than"
  * ```
  *
+ * @stability stable
  * @category pattern matching
  * @since 2.0.0
  */
@@ -163,6 +167,7 @@ export const match: {
  * `combineAll` stops consuming the iterable as soon as it finds a non-zero
  * `Ordering`.
  *
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */

@@ -23,6 +23,7 @@ import type * as LogLevel from "../LogLevel.ts"
 import * as Option from "../Option.ts"
 import { CurrentLogAnnotations, CurrentLogSpans } from "../References.ts"
 import type * as Scope from "../Scope.ts"
+import * as Version from "../Version.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 import * as Exporter from "./OtlpExporter.ts"
 import type { AnyValue, Fixed64, KeyValue, Resource } from "./OtlpResource.ts"
@@ -51,6 +52,11 @@ export const make: (
       readonly attributes?: Record<string, unknown>
     } | undefined
     readonly headers?: Headers.Input | undefined
+    /**
+     * Request compression. Defaults to "none". Gzip uses
+     * HttpClientRequest's default minimum body size of 1KB.
+     */
+    readonly compression?: "gzip" | "none" | undefined
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
@@ -64,13 +70,15 @@ export const make: (
   const serialization = yield* OtlpSerialization
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: IInstrumentationScope = {
-    name: OtlpResource.serviceNameUnsafe(otelResource)
+    name: "effect",
+    version: Version.getCurrentVersion()
   }
 
   const exporter = yield* Exporter.make({
     label: "OtlpLogger",
     url: options.url,
     headers: options.headers,
+    compression: options.compression,
     maxBatchSize: options.maxBatchSize ?? 1000,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
     body: (data) => [
@@ -116,6 +124,11 @@ export const layer = (options: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /**
+   * Request compression. Defaults to "none". Gzip uses
+   * HttpClientRequest's default minimum body size of 1KB.
+   */
+  readonly compression?: "gzip" | "none" | undefined
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
@@ -128,6 +141,13 @@ export const layer = (options: {
 
 /**
  * Creates an OTLP logs layer from OpenTelemetry configuration.
+ *
+ * **Details**
+ *
+ * Compression accepts "gzip" or "none".
+ * `OTEL_EXPORTER_OTLP_LOGS_COMPRESSION` takes precedence over
+ * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses
+ * HttpClientRequest's default minimum body size of 1KB.
  *
  * @stability unstable
  * @category layers
@@ -154,7 +174,17 @@ export const layerFromConfig = (options?: {
       return Exporter.layerFlusher
     }
 
-    const { baseTimeout, logsTimeout, exportTimeout, scheduleDelay, maxBatchSize } = yield* Config.all({
+    const {
+      baseCompression,
+      compression,
+      baseTimeout,
+      logsTimeout,
+      exportTimeout,
+      scheduleDelay,
+      maxBatchSize
+    } = yield* Config.all({
+      baseCompression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_COMPRESSION")),
+      compression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_LOGS_COMPRESSION")),
       baseTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_TIMEOUT")),
       logsTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_LOGS_TIMEOUT")),
       exportTimeout: Config.option(Config.Int("OTEL_BLRP_EXPORT_TIMEOUT")),
@@ -171,6 +201,7 @@ export const layerFromConfig = (options?: {
       url: endpoint.toString(),
       resource: options?.resource,
       headers: options?.headers ?? (yield* OtlpEnv.headers("LOGS")),
+      compression: Option.getOrElse(Option.firstSomeOf([compression, baseCompression]), () => "none" as const),
       exportInterval: Option.getOrUndefined(exportInterval),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
       shutdownTimeout: Option.getOrUndefined(shutdownTimeout),
@@ -192,32 +223,29 @@ export interface LogsData {
 
 // internal
 
+const nanosPerMilli = BigInt(1_000_000)
+
 const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   readonly excludeLogSpans: boolean
   readonly clock: Clock
 }): ILogRecord => {
-  const now = opts.clock.currentTimeNanosUnsafe()
-  const nanosString = now.toString()
-  const nowMillis = options.date.getTime()
+  const observedTime = opts.clock.currentTimeNanosUnsafe().toString()
+  const eventMillis = options.date.getTime()
+  const eventTime = (BigInt(eventMillis) * nanosPerMilli).toString()
 
-  const attributes = OtlpResource.entriesToAttributes(Object.entries(options.fiber.getRef(CurrentLogAnnotations)))
-  attributes.push({
-    key: "fiberId",
-    value: { intValue: options.fiber.id }
-  })
+  const attributes: Record<string, unknown> = { ...options.fiber.getRef(CurrentLogAnnotations) }
+  attributes["effect.fiberId"] = options.fiber.id
   if (!opts.excludeLogSpans) {
+    // Outermost spans win duplicate labels.
     for (const [label, startTime] of options.fiber.getRef(CurrentLogSpans)) {
-      attributes.push({
-        key: `logSpan.${label}`,
-        value: { stringValue: `${nowMillis - startTime}ms` }
-      })
+      attributes[`effect.log_span.${label}`] = eventMillis - startTime
     }
   }
-  if (options.cause.reasons.length > 0) {
-    attributes.push({
-      key: "log.error",
-      value: { stringValue: Cause.pretty(options.cause) }
-    })
+  const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
+  if (errors.length > 0) {
+    attributes["exception.type"] = errors[0].name
+    attributes["exception.message"] = errors[0].message
+    attributes["exception.stacktrace"] = errors.map((error) => error.stack).join("\n")
   }
 
   const message = Arr.ensure(options.message)
@@ -225,15 +253,15 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   const logRecord: ILogRecord = {
     severityNumber: logLevelToSeverityNumber(options.logLevel),
     severityText: options.logLevel,
-    timeUnixNano: nanosString,
-    observedTimeUnixNano: nanosString,
-    attributes,
+    timeUnixNano: eventTime,
+    observedTimeUnixNano: observedTime,
+    attributes: OtlpResource.entriesToAttributes(Object.entries(attributes)),
     body: OtlpResource.unknownToAttributeValue(message.length === 1 ? message[0] : message),
     droppedAttributesCount: 0
   }
 
   if (options.fiber.cache.span) {
-    logRecord.traceId = options.fiber.cache.span.traceId
+    logRecord.traceId = options.fiber.cache.span.traceId.padStart(32, "0")
     logRecord.spanId = options.fiber.cache.span.spanId
   }
 

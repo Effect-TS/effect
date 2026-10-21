@@ -12,6 +12,10 @@ import { vi } from "vitest"
 
 const tlsOptions = new WeakMap<Duplex, Tls.ConnectionOptions | undefined>()
 
+vi.mock("node:net", async (importOriginal) => ({
+  ...await importOriginal<typeof Net>()
+}))
+
 // Only simulate TLS for registered streams; other connections use native TLS.
 vi.mock("node:tls", async (importOriginal) => {
   const original = await importOriginal<typeof Tls>()
@@ -129,7 +133,7 @@ const consumeFrontend = (
       const message = buffered.subarray(0, messageLength)
       buffered = buffered.subarray(messageLength)
       const tag = startup ? undefined : String.fromCharCode(message[0])
-      startup = false
+      startup = tag === undefined && message.equals(sslRequest)
       onMessage(tag, message)
     }
   })
@@ -209,7 +213,105 @@ const withUnixServer = (
       })
   )
 
+interface KeepAliveConnection {
+  readonly socket: Net.Socket
+  readonly options: Net.NetConnectOpts
+}
+
+const withKeepAliveServer = Effect.fnUntraced(function*(options?: { readonly tls?: boolean }) {
+  const { port } = yield* withTcpServer((socket) => {
+    consumeFrontend(socket, (tag, message) => {
+      if (tag === undefined && message.equals(sslRequest)) socket.write(Buffer.from("S"))
+      else if (tag === undefined && message.equals(cancelRequest)) socket.end()
+      else if (tag === undefined) socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+      else if (tag === "S") socket.write(emptyQueryResult)
+    })
+  })
+  const connections: Array<KeepAliveConnection> = []
+  const original = Net.connect
+  yield* Effect.acquireRelease(
+    Effect.sync(() =>
+      vi.spyOn(Net, "connect").mockImplementation(
+        ((connectOptions: Net.NetConnectOpts) => {
+          const socket = original(connectOptions)
+          if ("port" in connectOptions && connectOptions.port === port) {
+            connections.push({ socket, options: connectOptions })
+            if (options?.tls) tlsOptions.set(socket, undefined)
+          }
+          return socket
+        }) as typeof Net.connect
+      )
+    ),
+    (spy) => Effect.sync(() => spy.mockRestore())
+  )
+  return { config: { host: "127.0.0.1", port, username: "test" }, connections }
+})
+
 describe("PgConnection in-process server", () => {
+  describe("TCP keepalive", { concurrent: false }, () => {
+    it.live("leaves keepalives disabled by default", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { config, connections } = yield* withKeepAliveServer()
+        const connection = yield* PgConnection.make(config)
+        yield* connection.interrupt
+        assert.deepStrictEqual(connections.map(({ options }) => options.keepAlive), [undefined, undefined])
+      })))
+
+    it.live("enables keepalive at TCP connect time but not for cancellation", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { config, connections } = yield* withKeepAliveServer()
+        const connection = yield* PgConnection.make({ ...config, keepAlive: "30 seconds" })
+        yield* connection.interrupt
+        assert.deepStrictEqual(connections.map(({ options }) => [options.keepAlive, options.keepAliveInitialDelay]), [
+          [true, 30_000],
+          [undefined, undefined]
+        ])
+      })))
+
+    it.live("configures keepalive before TLS", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { config, connections } = yield* withKeepAliveServer({ tls: true })
+        yield* PgConnection.make({
+          ...config,
+          keepAlive: "15 seconds",
+          ssl: { rejectUnauthorized: false }
+        })
+        assert.deepStrictEqual(connections.map(({ options }) => [options.keepAlive, options.keepAliveInitialDelay]), [
+          [true, 15_000]
+        ])
+        assert.strictEqual(tlsOptions.get(connections[0]!.socket)?.rejectUnauthorized, false)
+      })))
+
+    it.effect("leaves caller-supplied streams unconfigured", () =>
+      Effect.gen(function*() {
+        const stream = makeSslStream("S", false)
+        const setKeepAlive = vi.fn()
+        Object.assign(stream.socket, { setKeepAlive })
+        yield* PgConnection.make({
+          username: "test",
+          ssl: true,
+          keepAlive: "30 seconds",
+          stream: () => stream.socket
+        })
+        assert.strictEqual(setKeepAlive.mock.calls.length, 0)
+      }))
+
+    it.live("leaves Unix sockets unconfigured", () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { directory } = yield* withUnixServer((socket) => {
+          consumeFrontend(socket, (tag) => {
+            if (tag === undefined) socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+          })
+        })
+        const spy = yield* Effect.acquireRelease(
+          Effect.sync(() => vi.spyOn(Net.Socket.prototype, "setKeepAlive")),
+          (spy) => Effect.sync(() => spy.mockRestore())
+        )
+        yield* PgConnection.make({ host: directory, username: "test", keepAlive: "30 seconds" })
+        assert.deepStrictEqual(spy.mock.calls, [])
+      })))
+  })
+
   it.live("forwards startup defaults and lets explicit fields override URL values", () =>
     Effect.scoped(Effect.gen(function*() {
       let parameters: ReadonlyMap<string, string> | undefined

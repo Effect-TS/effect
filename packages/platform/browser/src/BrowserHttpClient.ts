@@ -8,6 +8,10 @@
  * XHR response type, an overridable `XMLHttpRequest` constructor service, and
  * the `layerXMLHttpRequest` layer.
  *
+ * Requests with an `Upgrade` header fail with `TransportError` before anything
+ * is sent because neither fetch nor XMLHttpRequest can hand over the connection.
+ *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -29,6 +33,7 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Queue from "effect/Queue"
 import type * as Schema from "effect/Schema"
+import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 
 // =============================================================================
@@ -39,6 +44,7 @@ export {
   /**
    * Context reference for the `fetch` implementation used by the fetch-based HTTP client.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -46,6 +52,7 @@ export {
   /**
    * Layer that provides an `HttpClient` implementation backed by the configured `Fetch` function.
    *
+   * @stability unstable
    * @category layers
    * @since 4.0.0
    */
@@ -58,6 +65,7 @@ export {
    * Use to provide default credentials, cache, redirect, integrity, or other
    * fetch options for browser HTTP requests.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -71,6 +79,7 @@ export {
 /**
  * Allowed response body modes for the browser XHR HTTP client.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -87,6 +96,7 @@ export type XHRResponseType = "arraybuffer" | "text"
  * @see {@link XHRResponseType} for the allowed response body modes
  * @see {@link withXHRArrayBuffer} for scoping XHR response handling to `ArrayBuffer`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -98,6 +108,7 @@ export const CurrentXHRResponseType: Context.Reference<XHRResponseType> = Contex
 /**
  * Runs an effect with `CurrentXHRResponseType` set to `"arraybuffer"` so the XHR HTTP client receives response bodies as `ArrayBuffer` values.
  *
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -113,6 +124,7 @@ export const withXHRArrayBuffer = <A, E, R>(
 /**
  * Service tag for the `XMLHttpRequest` constructor used by the browser XHR HTTP client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -126,6 +138,16 @@ const makeXhrRequest = () => new globalThis.XMLHttpRequest()
 const makeXmlHttpRequest = HttpClient.make(
   (request, url, signal, fiber) =>
     Effect.suspend(() => {
+      if (request.headers.upgrade !== undefined) {
+        return Effect.fail(
+          new HttpClientError.HttpClientError({
+            reason: new HttpClientError.TransportError({
+              request,
+              description: "XMLHttpRequest cannot send an HTTP upgrade request"
+            })
+          })
+        )
+      }
       const xhr = Context.getOrElse(
         fiber.context,
         XMLHttpRequest,
@@ -184,12 +206,7 @@ const sendBody = (
       return Effect.sync(() => xhr.send(body.formData))
     case "Stream":
       return Effect.matchEffect(
-        Stream.runFold(body.stream, () => new Uint8Array(0), (acc, chunk) => {
-          const next = new Uint8Array(acc.length + chunk.length)
-          next.set(acc, 0)
-          next.set(chunk, acc.length)
-          return next
-        }),
+        Stream.mkUint8Array(body.stream),
         {
           onFailure: (cause) =>
             Effect.fail(
@@ -334,10 +351,12 @@ abstract class IncomingMessageImpl<E> extends Inspectable.Class implements HttpI
       this.source.addEventListener("readystatechange", onReadyStateChange)
       this.source.addEventListener("error", onError)
       onReadyStateChange()
-      return Effect.sync(() => {
-        this.source.removeEventListener("readystatechange", onReadyStateChange)
-        this.source.removeEventListener("error", onError)
-      })
+      return Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          this.source.removeEventListener("readystatechange", onReadyStateChange)
+          this.source.removeEventListener("error", onError)
+        })
+      )
     })
   }
 
@@ -423,6 +442,18 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
       }))
   }
 
+  get upgrade(): Effect.Effect<Socket.Socket, HttpClientError.HttpClientError> {
+    return Effect.fail(
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.StatusCodeError({
+          request: this.request,
+          response: this,
+          description: "XMLHttpRequest cannot hand over the connection of an HTTP upgrade"
+        })
+      })
+    )
+  }
+
   override toString(): string {
     return `ClientResponse(${this.status})`
   }
@@ -443,6 +474,7 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
 /**
  * Layer that provides an `HttpClient` implementation backed by the browser `XMLHttpRequest` API.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

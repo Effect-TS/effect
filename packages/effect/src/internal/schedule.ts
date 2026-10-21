@@ -1,6 +1,6 @@
 import type * as Cause from "../Cause.ts"
 import type { Effect, Repeat, Retry } from "../Effect.ts"
-import { constant, constTrue, dual, identity } from "../Function.ts"
+import { dual, identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
@@ -29,21 +29,19 @@ export const repeatOrElse: {
 ): Effect<B, E3, R | R2 | R3> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
-    return effect.catch_(
-      effect.forever(
-        effect.tap(
-          effect.flatMap(effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)), step),
-          (meta_) =>
-            effect.sync(() => {
-              meta = meta_
-            })
-        ),
-        { disableYield: true }
-      ),
-      (error) =>
-        core.isDone(error)
-          ? effect.succeed(error.value as B)
-          : orElse(error as E | E2, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
+    const loop = (input: A): Effect<B, E | E2, R | R2> =>
+      Pull.matchEffect(step(input), {
+        onSuccess(meta_) {
+          meta = meta_
+          return effect.flatMap(effect.provideService(self, Schedule.CurrentMetadata, meta), loop)
+        },
+        onFailure: effect.failCause,
+        onDone: effect.succeed
+      })
+    return effect.catchCauseFilter(
+      effect.flatMap(effect.provideService(self, Schedule.CurrentMetadata, meta), loop),
+      effect.findRecoverableError,
+      (error) => orElse(error, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
     )
   }))
 
@@ -66,8 +64,9 @@ export const retryOrElse: {
   effect.flatMap(Schedule.toStepWithMetadata(policy), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
     let lastError!: E
-    const loop: Effect<A, E1 | Cause.Done<A1>, R | R1> = effect.catch_(
+    const loop: Effect<A, E1 | Cause.Done<A1>, R | R1> = effect.catchCauseFilter(
       effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)),
+      effect.findRecoverableError,
       (error) => {
         lastError = error
         return effect.flatMap(step(error), (meta_) => {
@@ -196,25 +195,13 @@ export const scheduleFrom = dual<
   schedule: Schedule.Schedule<Output, Input, Error, Env>
 ): Effect<Output, E | Error, R | Env> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
-    let meta = Schedule.CurrentMetadata.defaultValue()
-    const selfWithMeta = effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta))
-    return effect.catch_(
-      effect.flatMap(
-        step(initial),
-        (meta_) => {
-          meta = meta_
-          const body = constant(effect.flatMap(selfWithMeta, step))
-          return effect.whileLoop({
-            while: constTrue,
-            body,
-            step(meta_) {
-              meta = meta_
-            }
-          }) as Effect<never, E, R | Env>
-        }
-      ),
-      (error) => core.isDone(error) ? effect.succeed(error.value as Output) : effect.fail(error as E | Error)
-    )
+    const loop = (input: Input): Effect<Output, E | Error, R | Env> =>
+      Pull.matchEffect(step(input), {
+        onSuccess: (meta) => effect.flatMap(effect.provideService(self, Schedule.CurrentMetadata, meta), loop),
+        onFailure: effect.failCause,
+        onDone: effect.succeed
+      })
+    return loop(initial)
   }))
 
 const passthroughForever = Schedule.passthrough(Schedule.forever)

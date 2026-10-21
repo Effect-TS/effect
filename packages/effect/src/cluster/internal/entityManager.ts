@@ -8,7 +8,7 @@ import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
-import { identity } from "../../Function.ts"
+import { constVoid, identity } from "../../Function.ts"
 import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Metric from "../../Metric.ts"
@@ -67,6 +67,9 @@ export interface EntityManager {
   readonly interruptShard: (shardId: ShardId, options?: {
     readonly force?: boolean
   }) => Effect.Effect<void>
+  // Whether any of the shard's entities are still open, including those that
+  // `interruptShard` is waiting on
+  readonly hasServersUnsafe: (shardId: ShardId) => boolean
 
   readonly activeEntityCount: Effect.Effect<number>
 }
@@ -86,6 +89,10 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
+interface RequestTransaction {
+  settle?: ((outcome: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
+}
+
 // Represents the entities managed by this entity manager
 /**
  * @internal
@@ -97,11 +104,16 @@ export type EntityState = {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
     sentReply: boolean
+    /** Excludes requests awaiting their first dispatch from replay. */
+    delivered: boolean
     sentExit: boolean
+    /** Treat early termination interrupts like shutdown interrupts. */
+    terminating?: boolean | undefined
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
+    transaction?: RequestTransaction | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -128,6 +140,7 @@ export const make = Effect.fnUntraced(function*<
     readonly maxIdleTime?: Input | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly mailboxCapacity?: number | "unbounded" | undefined
+    readonly mailboxMetrics?: boolean | undefined
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never, never> | undefined
     readonly spanAttributes?: Record<string, string> | undefined
@@ -138,6 +151,7 @@ export const make = Effect.fnUntraced(function*<
   const managerScope = yield* Effect.scope
   const storageEnabled = options.storage !== MessageStorage.noop
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
+  const mailboxMetrics = options.mailboxMetrics ?? config.entityMailboxMetrics
   const clock = yield* Clock
   const context = yield* Effect.context<Rpc.Services<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
   const defectRetryPolicy = options.defectRetryPolicy
@@ -146,13 +160,61 @@ export const make = Effect.fnUntraced(function*<
   const retryDriver = yield* Schedule.toStepWithSleep(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
+  // The series reads the mailbox size on snapshot, so delivery does no extra work.
+  const registerMailboxSize = (address: EntityAddress, activeRequests: EntityState["activeRequests"]) =>
+    Metric.registerUnsafe(
+      Metric.withAttributes(ClusterMetrics.entityMailboxSize, {
+        type: entity.type,
+        id: address.entityId,
+        shard: address.shardId.toString()
+      }),
+      context as Context.Context<never>,
+      {
+        get: () => ({ value: BigInt(activeRequests.size) }),
+        update: constVoid,
+        modify: constVoid
+      }
+    )
+
   // add internal rpcs
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
   const activeServers = new Map<EntityId, EntityState>()
+  // Entities finishing their in-flight requests after removal, which still
+  // accept interrupts and acks
+  const drainingServers = new Map<EntityId, EntityState>()
+  // Mailboxes of every resident entity, including draining ones. Unlike the
+  // server maps it is not keyed by entity id, which can be resident on several
+  // shards at once.
+  const residentMailboxes = new Set<EntityState["activeRequests"]>()
+
+  // Registered before the entities resource map, so the series is removed
+  // only after every entity has drained on shutdown.
+  yield* Effect.acquireRelease(
+    Effect.sync(() =>
+      Metric.registerUnsafe(
+        Metric.withAttributes(ClusterMetrics.entityMailboxSizeMax, { type: entity.type }),
+        context as Context.Context<never>,
+        {
+          get: () => {
+            let max = 0
+            for (const mailbox of residentMailboxes) {
+              if (mailbox.size > max) max = mailbox.size
+            }
+            return { value: BigInt(max) }
+          },
+          update: constVoid,
+          modify: constVoid
+        }
+      )
+    ),
+    (registration) => Effect.sync(registration.remove)
+  )
+
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Latch.Latch
     readonly force: Latch.Latch
+    closing: boolean
   }>()
   const processedRequestIds = new Set<Snowflake.Snowflake>()
 
@@ -179,13 +241,20 @@ export const make = Effect.fnUntraced(function*<
     const keepAliveLatch = Latch.makeUnsafe()
     const closeLatches = {
       closed: Latch.makeUnsafe(),
-      force: Latch.makeUnsafe()
+      force: Latch.makeUnsafe(),
+      closing: false
     }
 
+    // Finalizers run in reverse, so the mailbox series and the resident
+    // mailbox are removed only after the drain finalizer below has finished.
+    const activeRequests: EntityState["activeRequests"] = new Map()
+    let mailboxSeries: Metric.Registration | undefined
     yield* Scope.addFinalizer(
       scope,
       Effect.sync(() => {
         releaseEntity(address)
+        mailboxSeries?.remove()
+        residentMailboxes.delete(activeRequests)
       })
     )
 
@@ -199,12 +268,19 @@ export const make = Effect.fnUntraced(function*<
       }
     )
 
-    const activeRequests: EntityState["activeRequests"] = new Map()
-    let defectRequestIds = new Set<Snowflake.Snowflake>()
-    let isRestartingDueToDefect = false
+    const retired = Latch.makeUnsafe()
+    const isActive = () => !retired.isOpen()
 
-    // the server is stored in a ref, so if there is a defect, we can
-    // swap the server without losing the active requests
+    // Replay previously dispatched requests before admitting new work.
+    const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
+      if (!isActive()) return
+      for (const request of activeRequests.values()) {
+        if (!request.delivered) continue
+        request.sentExit = false
+        yield* write(0, requestEnvelope(request), requestWriteOptions(request))
+      }
+    })
+
     const writeRef = yield* ResourceRef.from(
       scope,
       Effect.fnUntraced(function*(handlerScope) {
@@ -228,7 +304,7 @@ export const make = Effect.fnUntraced(function*<
         ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
-          spanPrefix: `${entity.type}(${address.entityId})`,
+          spanPrefix: entity.type,
           spanAttributes: {
             ...options.spanAttributes,
             "entity.type": entity.type,
@@ -245,11 +321,8 @@ export const make = Effect.fnUntraced(function*<
                 request.sentReply = true
                 request.sentExit = true
 
-                if (
-                  isShuttingDown &&
-                  Exit.hasInterrupts(response.exit) &&
-                  defectRequestIds.has(Snowflake.Snowflake(response.requestId))
-                ) {
+                // Rebuild interrupts are not replies; replacement handlers replay the request.
+                if (isShuttingDown && Exit.hasInterrupts(response.exit) && isActive()) {
                   return Effect.void
                 }
 
@@ -257,34 +330,23 @@ export const make = Effect.fnUntraced(function*<
                 // They will be retried when the entity is restarted.
                 // Also, if the request is uninterruptible, we ignore the
                 // interrupt.
+                const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
                 if (
-                  storageEnabled &&
-                  Context.get(request.message.annotations, Persisted) &&
+                  persisted &&
                   Exit.hasInterrupts(response.exit) &&
-                  (isShuttingDown || isUninterruptibleForServer(request.message.annotations))
+                  (isShuttingDown || request.terminating || isUninterruptibleForServer(request.message.annotations))
                 ) {
-                  if (!isShuttingDown) {
+                  if (!isShuttingDown && !request.terminating) {
                     request.sentExit = false
-                    return server.write(
-                      0,
-                      {
-                        ...request.message.envelope,
-                        id: request.message.envelope.requestId as any,
-                        tag: request.message.envelope.tag as any,
-                        payload: new Request({
-                          ...request.message.envelope,
-                          lastSentChunk: request.lastSentChunk
-                        } as any) as any
-                      },
-                      requestWriteOptions(request)
-                    ).pipe(
+                    return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
+                      Effect.setContext(handlerContext),
                       Effect.forkIn(handlerScope)
                     )
                   }
                   activeRequests.delete(Snowflake.Snowflake(response.requestId))
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                return retryRespond(
+                const save = retryRespond(
                   4,
                   Effect.suspend(() =>
                     request.message.respond(
@@ -295,21 +357,53 @@ export const make = Effect.fnUntraced(function*<
                       })
                     )
                   )
-                ).pipe(
-                  Effect.flatMap(() => {
-                    processedRequestIds.add(request.message.envelope.requestId)
-                    activeRequests.delete(Snowflake.Snowflake(response.requestId))
-
-                    // ensure that the reaper does not remove the entity as we haven't
-                    // been "idle" yet
-                    if (activeRequests.size === 0) {
-                      state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                    }
-
-                    return Effect.void
-                  }),
-                  Effect.orDie
                 )
+                const complete = Effect.sync(() => {
+                  if (storageEnabled) {
+                    processedRequestIds.add(request.message.envelope.requestId)
+                  }
+                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
+
+                  // Start the idle timer when the last request completes.
+                  if (activeRequests.size === 0) {
+                    state.lastActiveCheck = clock.currentTimeMillisUnsafe()
+                  }
+                })
+                const respond = Effect.orDie(Effect.andThen(save, complete))
+                const transaction = request.transaction
+                if (!transaction) return respond
+                const exit = response.exit
+
+                if (!persisted) {
+                  if (Exit.isSuccess(exit)) return respond
+                  transaction.settle = () => respond
+                  return Effect.void
+                }
+
+                if (Exit.isSuccess(exit)) {
+                  transaction.settle = (outcome) =>
+                    Exit.isSuccess(outcome) ? complete : Effect.flatMap(
+                      hasStoredExit(request.message.envelope.requestId),
+                      (committed) => {
+                        if (!committed) return restartFrom(outcome.cause)
+                        // Commit succeeded despite the error; let callers read the saved reply.
+                        return Effect.andThen(
+                          complete,
+                          options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                        )
+                      }
+                    )
+                  return Effect.orDie(save)
+                }
+                transaction.settle = (outcome) =>
+                  // Transaction wrappers can add defects, but not typed errors; interrupts may be repeated.
+                  Exit.isSuccess(outcome) || !outcome.cause.reasons.some((reason) =>
+                      Cause.isDieReason(reason) &&
+                      !exit.cause.reasons.some((r) => Cause.isDieReason(r) && r.defect === reason.defect)
+                    )
+                    ? respond
+                    : restartFrom(outcome.cause)
+                return Effect.void
               }
               case "Chunk": {
                 const request = activeRequests.get(Snowflake.Snowflake(response.requestId))
@@ -334,7 +428,7 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                return Effect.forkIn(onDefect(Cause.die(response.defect)), managerScope)
+                return restartFrom(Cause.die(response.defect))
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -346,6 +440,21 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
+        // Replay if the stored reply cannot be read.
+        const hasStoredExit = (requestId: Snowflake.Snowflake): Effect.Effect<boolean> =>
+          options.storage.repliesForUnfiltered([requestId]).pipe(
+            Effect.map((replies) => replies.some((reply) => reply._tag === "WithExit")),
+            Effect.catchCause(() => Effect.succeed(false))
+          )
+
+        // Do not inherit the failed handler's transaction context.
+        const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
+          if (!isActive()) return endLatch.open
+          const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
+          if (!rebuild) return Effect.void
+          return Effect.forkIn(Effect.setContext(restart(cause, rebuild), handlerContext), managerScope)
+        }
+
         yield* Scope.addFinalizer(
           handlerScope,
           Effect.sync(() => {
@@ -353,56 +462,25 @@ export const make = Effect.fnUntraced(function*<
           })
         )
 
-        if (defectRequestIds.size > 0) {
-          for (const id of defectRequestIds) {
-            const request = activeRequests.get(id)
-            if (!request) continue
-            const { lastSentChunk, message } = request
-            request.sentExit = false
-            yield* server.write(
-              0,
-              {
-                ...message.envelope,
-                id: message.envelope.requestId as any,
-                tag: message.envelope.tag as any,
-                payload: new Request({
-                  ...message.envelope,
-                  lastSentChunk
-                } as any) as any
-              },
-              requestWriteOptions(request)
-            )
-          }
-          defectRequestIds.clear()
-        }
-
         return server.write
       }),
       address
     )
 
-    function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
-      if (!activeServers.has(address.entityId)) {
-        return endLatch.open
-      }
-      if (isRestartingDueToDefect) {
-        return Effect.void
-      }
-      defectRequestIds = new Set(activeRequests.keys())
-      isRestartingDueToDefect = true
-      const effect = writeRef.rebuildUnsafe()
+    function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver(void 0))),
-        Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
-        Effect.ensuring(Effect.sync(() => {
-          isRestartingDueToDefect = false
-        })),
+        Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
           runner: options.runnerAddress
         }),
-        Effect.catchCause(onDefect)
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) return Effect.void
+          const retry = isActive() ? writeRef.rebuildUnsafe({ prepare: replay }) : undefined
+          return retry ? restart(cause, retry) : Effect.void
+        })
       )
     }
 
@@ -410,10 +488,27 @@ export const make = Effect.fnUntraced(function*<
       scope,
       address,
       write(clientId, message, writeOptions) {
-        if (writeRef.state.current._tag !== "Acquired") {
-          return Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
-        }
-        return writeRef.state.current.value(clientId, message, writeOptions)
+        return Effect.suspend(() => {
+          if (message._tag !== "Request") {
+            // Interrupts, acks and EOF reach the handlers even during shutdown.
+            const write = writeRef.getUnsafe()
+            return write
+              ? write(clientId, message, writeOptions)
+              : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
+          }
+          if (!isActive()) return Effect.interrupt
+          const write = writeRef.getUnsafe()
+          if (write === undefined) {
+            return Effect.flatMap(
+              Effect.raceFirst(writeRef.await, retired.await),
+              () => state.write(clientId, message, writeOptions)
+            )
+          }
+          const request = activeRequests.get(Snowflake.Snowflake(message.id))
+          if (!request) return Effect.void
+          request.delivered = true
+          return write(clientId, message, writeOptions)
+        })
       },
       activeRequests,
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
@@ -429,20 +524,45 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
+        retired.openUnsafe()
+        closeLatches.closing = true
         acquireEntity(address)
+        drainingServers.set(address.entityId, state)
         return Effect.raceFirst(
-          state.write(0, { _tag: "Eof" }).pipe(
+          Effect.gen(function*() {
+            for (const [requestId, request] of activeRequests) {
+              if (
+                !request.delivered || request.sentExit ||
+                !Context.get(request.message.annotations, ClusterSchema.InterruptOnTermination) ||
+                isUninterruptibleForServer(request.message.annotations)
+              ) continue
+              request.terminating = true
+              yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
+            }
+            yield* state.write(0, { _tag: "Eof" })
+          }).pipe(
             Effect.andThen(endLatch.await),
             Effect.timeoutOption(config.entityTerminationTimeout),
             Effect.interruptible
           ),
           Effect.interruptible(closeLatches.force.await)
-        )
+        ).pipe(Effect.ensuring(Effect.sync(() => {
+          if (drainingServers.get(address.entityId) === state) {
+            drainingServers.delete(address.entityId)
+          }
+        })))
       })
     )
+    if (!options.sharding.hasShardId(address.shardId)) {
+      return yield* new EntityNotAssignedToRunner({ address })
+    }
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
+    residentMailboxes.add(activeRequests)
+    if (mailboxMetrics) {
+      mailboxSeries = registerMailboxSize(address, activeRequests)
+    }
 
     return state
   }, Effect.provideService(CurrentLogAnnotations, {})))
@@ -459,19 +579,51 @@ export const make = Effect.fnUntraced(function*<
     })
   }
 
-  // update metrics for active servers
-  const typeAttributes = Metric.CurrentMetricAttributes.context({ type: entity.type })
-  yield* Effect.sync(() => {
-    ClusterMetrics.entities.updateUnsafe(BigInt(activeServers.size), typeAttributes)
-  }).pipe(
-    Effect.andThen(Effect.sleep(1000)),
-    Effect.forever,
-    Effect.forkIn(managerScope)
+  // The series reads the active entity count on snapshot, so an idle runner
+  // does no work.
+  const entitiesSeries = Metric.registerUnsafe(
+    Metric.withAttributes(ClusterMetrics.entities, { type: entity.type }),
+    context as Context.Context<never>,
+    {
+      get: () => ({ value: BigInt(activeServers.size) }),
+      update: constVoid,
+      modify: constVoid
+    }
   )
+  yield* Scope.addFinalizer(managerScope, Effect.sync(entitiesSeries.remove))
+
+  function sendEnvelope(server: EntityState, message: Message.IncomingEnvelope): Effect.Effect<void> {
+    const entry = server.activeRequests.get(message.envelope.requestId)
+    if (!entry) {
+      return Effect.void
+    } else if (
+      message.envelope._tag === "AckChunk" &&
+      Option.isSome(entry.lastSentChunk) &&
+      message.envelope.replyId !== entry.lastSentChunk.value.id
+    ) {
+      return Effect.void
+    }
+    return server.write(
+      0,
+      message.envelope._tag === "AckChunk"
+        ? { _tag: "Ack", requestId: message.envelope.requestId as any }
+        : {
+          _tag: "Interrupt",
+          requestId: message.envelope.requestId as any,
+          interruptors: []
+        }
+    )
+  }
 
   function sendLocal<R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
   ): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> {
+    if (message._tag === "IncomingEnvelope") {
+      const draining = drainingServers.get(message.envelope.address.entityId)
+      if (draining?.activeRequests.has(message.envelope.requestId)) {
+        return sendEnvelope(draining, message)
+      }
+    }
     return Effect.provideService(
       Effect.flatMap(
         entities.get(message.envelope.address),
@@ -543,6 +695,7 @@ export const make = Effect.fnUntraced(function*<
                 rpc,
                 message,
                 sentReply: false,
+                delivered: false,
                 sentExit: false,
                 lastSentChunk: Option.filter(
                   message.lastSentReply,
@@ -564,43 +717,10 @@ export const make = Effect.fnUntraced(function*<
                     }
                   }))
               }
-              return server.write(
-                0,
-                {
-                  ...message.envelope,
-                  id: message.envelope.requestId as any,
-                  payload: new Request({
-                    ...message.envelope,
-                    lastSentChunk: Option.filter(
-                      message.lastSentReply,
-                      (reply): reply is Reply.Chunk<R> => reply._tag === "Chunk"
-                    )
-                  })
-                },
-                requestWriteOptions(entry)
-              )
+              return server.write(0, requestEnvelope(entry), requestWriteOptions(entry))
             }
             case "IncomingEnvelope": {
-              const entry = server.activeRequests.get(message.envelope.requestId)
-              if (!entry) {
-                return Effect.void
-              } else if (
-                message.envelope._tag === "AckChunk" &&
-                Option.isSome(entry.lastSentChunk) &&
-                message.envelope.replyId !== entry.lastSentChunk.value.id
-              ) {
-                return Effect.void
-              }
-              return server.write(
-                0,
-                message.envelope._tag === "AckChunk"
-                  ? { _tag: "Ack", requestId: message.envelope.requestId as any }
-                  : {
-                    _tag: "Interrupt",
-                    requestId: message.envelope.requestId as any,
-                    interruptors: []
-                  }
-              )
+              return sendEnvelope(server, message)
             }
           }
         }
@@ -620,11 +740,24 @@ export const make = Effect.fnUntraced(function*<
     })
 
   const requestWriteOptions = (
-    entry: { readonly message: Message.IncomingRequestLocal<any>; readonly callerScope?: Scope.Scope | undefined }
+    entry: {
+      readonly message: Message.IncomingRequestLocal<any>
+      readonly callerScope?: Scope.Scope | undefined
+      transaction?: RequestTransaction | undefined
+    }
   ): Parameters<EntityState["write"]>[2] => {
-    const onTransaction = Context.get(entry.message.annotations, WithTransaction)
-      ? options.storage.withTransaction
-      : undefined
+    const onTransaction = !Context.get(entry.message.annotations, WithTransaction)
+      ? undefined
+      : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+        // Interrupts during commit must not hide the outcome from settle.
+        Effect.uninterruptibleMask((restore) => {
+          const transaction: RequestTransaction = {}
+          entry.transaction = transaction
+          return Effect.onExit(options.storage.withTransaction(restore(effect)), (outcome) => {
+            if (entry.transaction === transaction) entry.transaction = undefined
+            return transaction.settle ? transaction.settle(outcome) : Effect.void
+          })
+        })
     const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
     if (!onCaller) return onTransaction && { onRequest: onTransaction }
     return { onRequest: onTransaction ? (effect) => onCaller(onTransaction(effect)) : onCaller }
@@ -645,13 +778,13 @@ export const make = Effect.fnUntraced(function*<
             }
           })
         }
-        activeServers.forEach((state) => {
-          if (shardId[Equal.symbol](state.address.shardId)) {
-            fibers.push(runFork(entities.removeIgnore(state.address)))
-          }
-        })
+        // Look entities up by address: `activeServers` is keyed by entity id,
+        // so an entity with the same id on another shard can hide this one.
         serverCloseLatches.forEach((latches, address) => {
           if (shardId[Equal.symbol](address.shardId)) {
+            if (!latches.closing) {
+              fibers.push(runFork(entities.removeIgnore(address)))
+            }
             fibers.push(runFork(latches.closed.await))
           }
         })
@@ -679,6 +812,12 @@ export const make = Effect.fnUntraced(function*<
     },
     clearProcessed() {
       processedRequestIds.clear()
+    },
+    hasServersUnsafe(shardId) {
+      for (const address of serverCloseLatches.keys()) {
+        if (shardId[Equal.symbol](address.shardId)) return true
+      }
+      return false
     },
     isResidentUnsafe: (address) => entities.hasUnsafe(address),
     residentAddressesUnsafe: () => entities.keysUnsafe(),
@@ -793,6 +932,19 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
     >
   }
 }
+
+const requestEnvelope = (entry: {
+  readonly message: Message.IncomingRequestLocal<any>
+  readonly lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+}): Parameters<EntityState["write"]>[1] => ({
+  ...entry.message.envelope,
+  id: entry.message.envelope.requestId as any,
+  tag: entry.message.envelope.tag as any,
+  payload: new Request({
+    ...entry.message.envelope,
+    lastSentChunk: entry.lastSentChunk
+  } as any) as any
+})
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?

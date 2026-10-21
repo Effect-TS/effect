@@ -657,7 +657,8 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
 
       assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaDocument(document).schema, {
         type: "integer",
-        minimum: 0
+        minimum: 0,
+        maximum: globalThis.Number.MAX_SAFE_INTEGER
       })
       assert.strictEqual(receivedType, "integer")
     })
@@ -1008,16 +1009,30 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         })
       }
 
-      it("keeps colliding keywords in separate schema objects", () => {
+      it("tightens colliding bounds in place", () => {
         assert.deepStrictEqual(
           compile({
             _tag: "String",
-            checks: [check({ minLength: 1 }), check({ minLength: 2 })]
+            checks: [check({ minLength: 1 }), check({ minLength: 2 }), check({ maxLength: 5 }), check({ maxLength: 9 })]
           }),
           {
             type: "string",
-            minLength: 1,
-            allOf: [{ minLength: 2 }]
+            minLength: 2,
+            maxLength: 5
+          }
+        )
+      })
+
+      it("keeps other colliding keywords in separate schema objects", () => {
+        assert.deepStrictEqual(
+          compile({
+            _tag: "String",
+            checks: [check({ pattern: "a" }), check({ pattern: "b" })]
+          }),
+          {
+            type: "string",
+            pattern: "a",
+            allOf: [{ pattern: "b" }]
           }
         )
       })

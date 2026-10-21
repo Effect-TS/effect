@@ -1412,11 +1412,10 @@ describe("Dynamic", () => {
         const toolkit = Toolkit.make(SearchTool)
 
         const layer = toolkit.toLayer({
-          SearchTool: (params: unknown) =>
-            Effect.gen(function*() {
-              const { query, limit } = params as { query: string; limit: number }
-              return Array.from({ length: limit }, (_, i) => `${query}-${i}`)
-            })
+          SearchTool: Effect.fnUntraced(function*(params: unknown) {
+            const { query, limit } = params as { query: string; limit: number }
+            return Array.from({ length: limit }, (_, i) => `${query}-${i}`)
+          })
         })
 
         const response = yield* LanguageModel.generateText({

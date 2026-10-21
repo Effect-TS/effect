@@ -1,3 +1,4 @@
+import { assert as runtimeAssert } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -8,9 +9,21 @@ import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import assert from "node:assert/strict"
+import { inspect } from "node:util"
 import { describe, it } from "vitest"
 
 describe("Cause", () => {
+  it("uses reasons in runtime JSON and Node inspection", () => {
+    const cause = Cause.combine(Cause.fail("boom"), Cause.die("bad"))
+    const json = {
+      _id: "Cause",
+      reasons: [{ _tag: "Fail", error: "boom" }, { _tag: "Die", defect: "bad" }]
+    }
+    runtimeAssert.deepStrictEqual(cause.toJSON(), json)
+    runtimeAssert.strictEqual(JSON.stringify(cause), JSON.stringify(json))
+    runtimeAssert.strictEqual(inspect(cause), inspect(json))
+  })
+
   describe("TypeId", () => {
     it("is a string constant", () => {
       assert.strictEqual(Cause.TypeId, "~effect/Cause")
@@ -593,6 +606,18 @@ describe("Cause", () => {
     it("handles empty cause", () => {
       const errors = Cause.prettyErrors(Cause.empty)
       assert.ok(Array.isArray(errors))
+    })
+
+    it("preserves falsy Error causes", () => {
+      for (const value of [0, false, "", null]) {
+        const [error] = Cause.prettyErrors(Cause.fail(new Error("outer", { cause: value })))
+        assert.ok(error.cause instanceof Error)
+        assert.strictEqual(error.cause.message, `Unknown error: ${value}`)
+      }
+      for (const original of [new Error("outer"), new Error("outer", { cause: undefined })]) {
+        const [error] = Cause.prettyErrors(Cause.fail(original))
+        assert.strictEqual(error.cause, undefined)
+      }
     })
 
     it("restores Error.stackTraceLimit when formatting a reason throws", () => {

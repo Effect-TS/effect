@@ -12,6 +12,15 @@ describe("PubSub", () => {
       assert.isFalse(PubSub.isPubSub(null))
     }))
 
+  it.effect("takeBetween returns a large backlog", () =>
+    Effect.gen(function*() {
+      const values = Array.makeBy(200000, (i) => i)
+      const pubsub = yield* PubSub.unbounded<number>()
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publishAll(pubsub, values)
+      assert.deepStrictEqual(yield* PubSub.takeBetween(subscription, 1, values.length), values)
+    }))
+
   for (const batch of [false, true]) {
     it.effect.each([1, 2, 3])(
       `sliding capacity %s delivers each retained message once per subscriber (batch: ${batch})`,
@@ -414,6 +423,20 @@ describe("PubSub", () => {
         Array.map(values, (n) => -n)
       )
     }))
+
+  it.effect("infinite capacity behaves as unbounded", () =>
+    Effect.gen(function*() {
+      const values = Array.range(0, 64)
+      for (const make of [PubSub.bounded, PubSub.dropping, PubSub.sliding]) {
+        const pubsub = yield* make<number>({ capacity: Infinity, replay: 2 })
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publishAll(pubsub, values)
+        assert.deepStrictEqual(yield* PubSub.takeAll(subscription), values)
+        const late = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(yield* PubSub.takeAll(late), [63, 64])
+      }
+    }))
+
   it.effect("null values", () => {
     const messages = [1, null]
     return PubSub.unbounded<number | null>().pipe(
@@ -447,6 +470,15 @@ describe("PubSub", () => {
       yield* PubSub.publishAll(pubsub, [1, 2])
       assert.deepStrictEqual(PubSub.sizeUnsafe(pubsub), 0)
     }))
+
+  for (const options of [false, true]) {
+    it.each([Number.NaN, 0.5, 1.5])(
+      `makeAtomicBounded rejects invalid capacity %s (options: ${options})`,
+      (capacity) => {
+        assert.throws(() => PubSub.makeAtomicBounded<number>(options ? { capacity } : capacity))
+      }
+    )
+  }
 
   it("normalizes low-level polling and replay counts", () => {
     const implementations = [
@@ -518,6 +550,18 @@ describe("PubSub", () => {
 
       assert.isFalse(retains(replayWindow, slidOut))
       assert.strictEqual(replayWindow.take(), replayed)
+    })
+
+    it("does not retain values through a dropped replay node", () => {
+      const pubsub = PubSub.makeAtomicUnbounded<object>({ replay: 1 })
+      const first = {}
+      pubsub.publish(first)
+      const droppedNode = (pubsub as unknown as { readonly replayBuffer: { readonly head: object } }).replayBuffer.head
+      const second = {}
+      pubsub.publish(second)
+
+      assert.isFalse(retains(droppedNode, first))
+      assert.isFalse(retains(droppedNode, second))
     })
 
     it("preserves replay order across multiple slides", () => {
@@ -601,6 +645,18 @@ describe("PubSub", () => {
         assert.deepStrictEqual(yield* PubSub.takeUpTo(replay, 1.9), [1])
         assert.deepStrictEqual(yield* PubSub.takeUpTo(replay, Number.NaN), [])
         assert.deepStrictEqual(yield* PubSub.takeAll(replay), [2, 3])
+      }))
+
+    it.effect("takeUpTo keeps its limit when run again after taking replayed messages", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 2 })
+        yield* PubSub.publishAll(pubsub, [1, 2])
+        const sub = yield* PubSub.subscribe(pubsub)
+        const takeThree = PubSub.takeUpTo(sub, 3)
+        yield* PubSub.publish(pubsub, 3)
+        assert.deepStrictEqual(yield* takeThree, [1, 2, 3])
+        yield* PubSub.publishAll(pubsub, [4, 5, 6])
+        assert.deepStrictEqual(yield* takeThree, [4, 5, 6])
       }))
 
     it.effect("dropping", () =>
@@ -687,19 +743,18 @@ describe("PubSub", () => {
   // A small op budget makes the fiber yield at each point between starting a
   // wait and suspending on it; interrupting it there must leave nothing behind.
   // (With a budget below 3 a fiber yields again before making progress.)
-  const interruptAtEveryYield = (
+  const interruptAtEveryYield = Effect.fnUntraced(function*(
     test: (
       budget: (effect: Effect.Effect<unknown>) => Effect.Effect<unknown>
     ) => Effect.Effect<boolean, never, Scope.Scope>
-  ) =>
-    Effect.gen(function*() {
-      const failed: Array<number> = []
-      for (let ops = 3; ops <= 64; ops++) {
-        const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
-        if (!ok) failed.push(ops)
-      }
-      assert.deepStrictEqual(failed, [])
-    })
+  ) {
+    const failed: Array<number> = []
+    for (let ops = 3; ops <= 64; ops++) {
+      const ok = yield* Effect.scoped(test(Effect.provideService(Scheduler.MaxOpsBeforeYield, ops)))
+      if (!ok) failed.push(ops)
+    }
+    assert.deepStrictEqual(failed, [])
+  })
 
   it.effect("an interrupted take never swallows the next message", () =>
     interruptAtEveryYield((budget) =>
@@ -781,6 +836,39 @@ describe("PubSub", () => {
     }))
 
   describe("end", () => {
+    // Yield after the empty check, before the subscriber registers its waiter.
+    it.effect("take delivers data published during waiter registration before the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(
+          PubSub.take(subscription).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+        PubSub.publishUnsafe(pubsub, 1)
+        PubSub.endUnsafe(pubsub, 0)
+
+        const first = yield* Fiber.join(fiber)
+        const last = yield* PubSub.take(subscription)
+        assert.deepStrictEqual([first, last], [1, 0])
+      }))
+
+    it.effect("takeAll delivers data published during waiter registration before the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(
+          PubSub.takeAll(subscription).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+        PubSub.publishUnsafe(pubsub, 1)
+        PubSub.endUnsafe(pubsub, 0)
+
+        const first = yield* Fiber.join(fiber)
+        const last = yield* PubSub.takeAll(subscription)
+        assert.deepStrictEqual([first, last], [[1], [0]])
+      }))
+
     it.effect("delivers buffered messages before the final message and rejects later publishes", () =>
       Effect.gen(function*() {
         const pubsub = yield* PubSub.bounded<number>(4)
@@ -850,6 +938,25 @@ describe("PubSub", () => {
         assert.isFalse(yield* Fiber.join(publisher))
         assert.strictEqual(yield* PubSub.take(fast), 0)
         assert.strictEqual(yield* PubSub.take(slow), 0)
+      }))
+
+    it.effect("rejects a backpressured publish that yields before registering its surplus", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        // Yield after the initial lifecycle check, before surplus registration.
+        const publisher = yield* Effect.forkChild(
+          PubSub.publish(pubsub, 2).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+
+        PubSub.endUnsafe(pubsub, 0)
+        yield* Effect.yieldNow
+
+        assert.strictEqual(yield* PubSub.take(subscription), 1)
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+        assert.isFalse(yield* Fiber.join(publisher))
       }))
 
     it.effect("shutdown still interrupts subscribers", () =>

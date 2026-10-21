@@ -59,6 +59,26 @@ describe("HttpApiEndpoint payload schemas", () => {
   })
 })
 
+describe("HttpApiEndpoint streaming payload schemas", () => {
+  it("rejects two streaming payloads", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: [
+            HttpApiSchema.StreamNdjson({ schema: Schema.Number }),
+            HttpApiSchema.StreamUint8Array()
+          ]
+        }),
+      /Multiple streaming payloads/
+    )
+  })
+
+  it("rejects streaming payloads on no-body methods", () => {
+    const payload: any = HttpApiSchema.StreamUint8Array()
+    assert.throws(() => HttpApiEndpoint.get("upload", "/upload", { payload }), /GET/)
+  })
+})
+
 describe("HttpApiEndpoint streaming success schemas", () => {
   it("GET endpoint accepts StreamSse success", () => {
     const stream = sse()
@@ -478,5 +498,58 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         { "retry-after": "30" }
       )
     }
+  })
+
+  describe("Upgrade", () => {
+    const upgrade = HttpApiSchema.Upgrade({ protocol: "tcp" })
+
+    it.each([
+      {
+        name: "with another success",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { success: [upgrade, Schema.String] }),
+        message: "Cannot combine an upgrade with other success responses"
+      },
+      {
+        name: "wrapped in WithHeaders",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", {
+            success: HttpApiSchema.WithHeaders(upgrade, { "x-id": Schema.String })
+          }),
+        message: "WithHeaders cannot wrap an upgrade"
+      },
+      {
+        name: "wrapped by encodeToWithHeaders",
+        make: () =>
+          upgrade.pipe(
+            HttpApiSchema.encodeToWithHeaders(
+              { body: upgrade, headers: { "x-id": Schema.String } },
+              { decode: ({ body }) => body, encode: (body) => ({ body, headers: { "x-id": "id" } }) }
+            )
+          ),
+        message: "encodeToWithHeaders cannot wrap an upgrade"
+      },
+      {
+        name: "on HEAD",
+        make: () => HttpApiEndpoint.head("attach", "/attach", { success: upgrade }),
+        message: "HEAD endpoints cannot declare an upgrade"
+      },
+      {
+        name: "with a payload",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { payload: Schema.String, success: upgrade }),
+        message: "Upgrade endpoints cannot declare a payload"
+      },
+      {
+        name: "as an error",
+        make: () => HttpApiEndpoint.post("attach", "/attach", { error: upgrade as any }),
+        message: "Upgrade schemas are not supported in error responses"
+      },
+      {
+        name: "to WebSocket",
+        make: () => HttpApiSchema.Upgrade({ protocol: "WebSocket" }),
+        message: "Upgrade does not support WebSocket"
+      }
+    ])("rejects an upgrade $name", ({ make, message }) => {
+      assert.throws(make, message)
+    })
   })
 })

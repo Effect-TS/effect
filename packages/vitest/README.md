@@ -7,10 +7,26 @@ Helpers for testing Effect-based code with [Vitest](https://vitest.dev). Provide
 Install Vitest 5 (`>=5.0.0 <6.0.0`) with the package as a dev dependency:
 
 ```sh
-npm install -D vitest@^5 @effect/vitest@rc
+npm install -D vitest@^5 @effect/vitest
 ```
 
 Vitest 5 supports Node.js `^22.12.0 || ^24.0.0 || >=26.0.0` and Vite 6.4 or later within majors 6, 7, and 8.
+
+## Links
+
+- [Website](https://effect.website): documentation, guides, and news.
+- [Reference](https://effect.website/docs/v4/api/vitest): API documentation for this package.
+- [Discord](https://discord.gg/effect-ts): ask questions, share what you're building, and talk to the core team.
+- [Community](https://effect.website/community-hub): meetups and events, or bring Effect to your own.
+- [Issues](https://github.com/Effect-TS/effect/issues): bug reports and feature requests.
+
+## Let's talk
+
+Whether your team is considering Effect, rolling it out, or already running it in production, we'd love to hear from you: what you're building, what works, and what you need from Effect next.
+
+- **Talk to the maintainers.** Introduce your team on [Discord](https://discord.gg/effect-ts) or email [contact@effectful.co](mailto:contact@effectful.co). We're happy to connect privately on Slack or Discord for feedback and help with adoption.
+- **Production support.** We're exploring how to better support teams running Effect in production. If your organization has specific support needs, let's discuss them.
+- **Adoption help.** Our [adoption partners](https://effect.website/adoption-partners) offer implementation, consulting, team extension, training, and commercial support.
 
 ## Migrating to Vitest 5
 
@@ -40,11 +56,6 @@ Both `layer` and `it.layer` accept `{ concurrent: false }` to serialize a named 
 
 In concurrent tests, use the callback's `ctx.expect` so snapshots and assertion counts belong to the right test.
 
-## Documentation
-
-- [Effect website](https://effect.website)
-- [API reference](https://effect.website/docs/v4/api/vitest)
-
 ## Overview
 
 The main entry point is the following import:
@@ -64,8 +75,10 @@ This import enhances the standard `it` function from `vitest` with several power
 | `it.flakyTest` | Retries an Effect that might occasionally fail until it succeeds or reaches the configured timeout. |
 
 Property tests shrink callbacks that return `false`, throw, or complete with a non-interruption Effect failure. This
-includes failed assertions, typed failures, and defects. Effect interruption still interrupts the test. Returning
-normally with any value other than `false`, including `void`, passes for that generated input.
+includes failed assertions, typed failures, and defects. Effect interruption still interrupts the test.
+Synchronous `it.prop` callbacks must return a boolean or `void`: `true` and `undefined` pass, while `false`
+falsifies the property. Other return values, including Effects and Promises, are rejected. Use `it.effect.prop`
+for Effect callbacks; their successful results pass unless the value is `false`.
 
 The Vitest `timeout` interrupts the Effect fiber running property generation, evaluation, and shrinking. Effect
 finalizers run during the interruption, which is reported as a test timeout rather than a property falsification. As
@@ -83,7 +96,7 @@ import { it } from "@effect/vitest"
 it.effect("test name", () => EffectContainingAssertions, timeout: number | TestOptions = 5_000)
 ```
 
-`it.effect` automatically provides the Effect test services, including [`TestClock`](#using-the-testclock), and a fresh `Scope` for each test. The scope is closed when the test finishes.
+`it.effect` automatically provides the Effect test services, including [`TestClock`](#using-the-testclock) and `TestConsole`, and a fresh `Scope` for each test. The scope is closed when the test finishes. Logs are captured by `TestConsole`; use `it.live` for live console output, or see [Logging](#logging) to override the console explicitly.
 
 ### Testing Successful Operations
 
@@ -263,26 +276,27 @@ it.effect.fails("dividing by zero special cases", ({ expect }) =>
 
 ### Logging
 
-By default, `it.effect` suppresses log output, which can be useful for keeping test results clean. However, if you want to enable logging during tests, you can use `it.live` or provide a custom logger to control the output.
+By default, `it.effect` captures log output in `TestConsole`; inspect it with `TestConsole.logLines`. A custom logger, including `Logger.consolePretty()`, still writes to that test console. To print to the live console, use `it.live` or explicitly provide `Console.Console` with `globalThis.console`.
 
 **Example** (Controlling Logging in Tests)
 
 ```ts
 import { it } from "@effect/vitest"
-import { Effect, Logger } from "effect"
+import { Console, Effect, Logger } from "effect"
 
-// This test won't display the log message, as logging is suppressed by default in `it.effect`
+// This test captures the log in TestConsole rather than displaying it
 it.effect("does not display a log", () =>
   Effect.gen(function*() {
-    yield* Effect.log("it.effect") // Log won't be shown
+    yield* Effect.log("it.effect") // Read it back with TestConsole.logLines
   }))
 
-// This test will display the log because a custom logger is provided
-it.effect("providing a logger displays a log", () =>
+// A pretty logger displays output when paired with the live console
+it.effect("providing the live console displays a log", () =>
   Effect.gen(function*() {
     yield* Effect.log("it.effect with custom logger") // Log will be displayed
   }).pipe(
-    Effect.provide(Logger.layer([Logger.consolePretty()])) // Providing a pretty logger for log output
+    Effect.provide(Logger.layer([Logger.consolePretty()])),
+    Effect.provideService(Console.Console, globalThis.console)
   ))
 
 // This test runs using `it.live`, which enables logging by default

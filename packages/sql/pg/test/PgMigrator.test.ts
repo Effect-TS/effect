@@ -5,49 +5,49 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 
-const makeMigrator = (password: PgClient.PgClientConfig["password"]) =>
-  Effect.gen(function*() {
-    const commands: Array<ChildProcess.StandardCommand> = []
-    const files: Array<string> = []
-    const pg = yield* PgClient.make({ password })
-    const sql = yield* SqlClient.make({
-      acquirer: Effect.succeed({
-        execute: () => Effect.succeed([]),
-        executeRaw: () => Effect.succeed([]),
-        executeValues: () => Effect.succeed([]),
-        executeUnprepared: () => Effect.succeed([]),
-        executeValuesUnprepared: () => Effect.succeed([]),
-        executeStream: () => Stream.empty
-      }),
-      compiler: PgClient.makeCompiler(),
-      spanAttributes: []
-    })
-    const run = PgMigrator.run({
-      loader: PgMigrator.fromRecord({ "1_init": Effect.void }),
-      schemaDirectory: "migrations"
-    }).pipe(
-      Effect.provideService(PgClient.PgClient, pg),
-      Effect.provideService(SqlClient.SqlClient, sql),
-      Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, {
-        ...ChildProcessSpawner.make(() => Effect.die("unexpected spawn")),
-        string: (command) =>
-          Effect.sync(() => {
-            assert(ChildProcess.isStandardCommand(command))
-            commands.push(command)
-            return "SELECT 1;"
-          })
-      }),
-      Effect.provide(FileSystem.layerNoop({
-        makeDirectory: () => Effect.void,
-        writeFileString: (path) =>
-          Effect.sync(() => {
-            files.push(path)
-          })
-      })),
-      Effect.provide(Path.layer)
-    )
-    return { commands, files, run }
-  }).pipe(Effect.provide(Reactivity.layer))
+const makeMigrator = Effect.fnUntraced(function*(password: PgClient.PgClientConfig["password"]) {
+  const commands: Array<ChildProcess.StandardCommand> = []
+  const files: Array<string> = []
+  const pg = yield* PgClient.make({ password })
+  const sql = yield* SqlClient.make({
+    driver: "test",
+    acquirer: Effect.succeed({
+      execute: () => Effect.succeed([]),
+      executeRaw: () => Effect.succeed([]),
+      executeValues: () => Effect.succeed([]),
+      executeUnprepared: () => Effect.succeed([]),
+      executeValuesUnprepared: () => Effect.succeed([]),
+      executeStream: () => Stream.empty
+    }),
+    compiler: PgClient.makeCompiler(),
+    spanAttributes: []
+  })
+  const run = PgMigrator.run({
+    loader: PgMigrator.fromRecord({ "1_init": Effect.void }),
+    schemaDirectory: "migrations"
+  }).pipe(
+    Effect.provideService(PgClient.PgClient, pg),
+    Effect.provideService(SqlClient.SqlClient, sql),
+    Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, {
+      ...ChildProcessSpawner.make(() => Effect.die("unexpected spawn")),
+      string: (command) =>
+        Effect.sync(() => {
+          assert(ChildProcess.isStandardCommand(command))
+          commands.push(command)
+          return "SELECT 1;"
+        })
+    }),
+    Effect.provide(FileSystem.layerNoop({
+      makeDirectory: () => Effect.void,
+      writeFileString: (path) =>
+        Effect.sync(() => {
+          files.push(path)
+        })
+    })),
+    Effect.provide(Path.layer)
+  )
+  return { commands, files, run }
+}, Effect.provide(Reactivity.layer))
 
 describe("PgMigrator", () => {
   it.effect("shares one password per schema dump and refreshes it for the next dump", () =>

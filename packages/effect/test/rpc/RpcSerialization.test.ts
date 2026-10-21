@@ -80,18 +80,21 @@ const Handlers = Rpcs.toLayer({
   Boom: () => Effect.die("boom")
 })
 
-const Server = RpcServer.layerHttp({
-  group: Rpcs,
-  path: "/rpc",
-  protocol: "http"
-}).pipe(
-  Layer.provide(Handlers),
-  Layer.provide(layerSerialization)
-)
+const makeServer = (serialization: Layer.Layer<RpcSerialization.RpcSerialization>) =>
+  RpcServer.layerHttp({
+    group: Rpcs,
+    path: "/rpc",
+    protocol: "http"
+  }).pipe(
+    Layer.provide(Handlers),
+    Layer.provide(serialization)
+  )
 
-const makeClient = Effect.fnUntraced(function*() {
+const makeClient = Effect.fnUntraced(function*(
+  serialization: Layer.Layer<RpcSerialization.RpcSerialization> = layerSerialization
+) {
   const requests: Array<string> = []
-  const { dispose, handler } = HttpRouter.toWebHandler(Server)
+  const { dispose, handler } = HttpRouter.toWebHandler(makeServer(serialization))
   yield* Effect.addFinalizer(() => Effect.promise(dispose))
 
   const httpClient = HttpClient.make((request) => {
@@ -107,7 +110,7 @@ const makeClient = Effect.fnUntraced(function*() {
   const client = yield* RpcClient.make(Rpcs).pipe(
     Effect.provide(
       RpcClient.layerProtocolHttp({ url: "http://test/rpc" }).pipe(
-        Layer.provide(layerSerialization),
+        Layer.provide(serialization),
         Layer.provide(Layer.succeed(HttpClient.HttpClient)(httpClient))
       )
     )
@@ -292,6 +295,34 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(bytes.slice(split)), [message])
   })
 
+  it("ndjson uses the application/x-ndjson content type", () => {
+    assert.strictEqual(RpcSerialization.makeNdjson().contentType, "application/x-ndjson")
+    assert.strictEqual(RpcSerialization.ndjson.contentType, "application/x-ndjson")
+  })
+
+  it("ndjson fails with NdjsonDecodeError and a SyntaxError cause for a malformed non-empty line", () => {
+    const parser = RpcSerialization.ndjson.makeUnsafe()
+
+    let error: unknown
+    try {
+      parser.decode("{\"id\":1}\nnot json\n{\"id\":2}\n")
+    } catch (cause) {
+      error = cause
+    }
+    assert.instanceOf(error, RpcSerialization.NdjsonDecodeError)
+    assert.strictEqual(error._tag, "NdjsonDecodeError")
+    assert.instanceOf(error.cause, SyntaxError)
+  })
+
+  it.each(["\n", "\r\n"])("ndjson skips blank lines with %j line endings", (newline) => {
+    const parser = RpcSerialization.ndjson.makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode(`${newline}{"id":1}${newline}${newline}{"id":2}${newline}`), [
+      { id: 1 },
+      { id: 2 }
+    ])
+  })
+
   it.effect("layerNdjsonWith forwards maxBufferSize to its decoder", () =>
     Effect.gen(function*() {
       const serialization = yield* RpcSerialization.RpcSerialization
@@ -391,6 +422,44 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(decoded, [{
       _tag: "Request",
       id: "",
+      tag: "users.get",
+      payload: null,
+      headers: []
+    }])
+  })
+
+  it("jsonRpc skips non-objects in a batch without losing requests", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("null"), [])
+    assert.deepStrictEqual(parser.decode("7"), [])
+    assert.deepStrictEqual(
+      parser.decode(
+        "[null,{\"jsonrpc\":\"2.0\",\"method\":1},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+      ),
+      [{
+        _tag: "Request",
+        id: "",
+        tag: 1,
+        isNotification: true,
+        payload: null,
+        headers: []
+      }, {
+        _tag: "Request",
+        id: 2,
+        tag: "users.get",
+        payload: null,
+        headers: []
+      }]
+    )
+  })
+
+  it("ndJsonRpc keeps requests that share a chunk with a value that is not a message", () => {
+    const parser = RpcSerialization.ndJsonRpc().makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("null\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}\n"), [{
+      _tag: "Request",
+      id: 2,
       tag: "users.get",
       payload: null,
       headers: []
@@ -640,6 +709,28 @@ describe("RpcSerialization", () => {
       assert.strictEqual(RpcSerialization.ndjson.codecFor, RpcSerialization.json.codecFor)
       assert.strictEqual(RpcSerialization.jsonRpc().codecFor, RpcSerialization.json.codecFor)
     })
+
+    it.effect("builds each server's codecs when that server is created", () =>
+      Effect.gen(function*() {
+        // A custom factory may read configuration when it builds a codec.
+        let asJsonString = false
+        const codecFor = ((schema: Schema.Top) =>
+          asJsonString
+            ? Schema.fromJsonString(Schema.toCodecJson(schema as any))
+            : Schema.toCodecJson(schema as any)) as RpcSerialization.CodecFor
+        const serialization = Layer.succeed(RpcSerialization.RpcSerialization)(
+          RpcSerialization.RpcSerialization.of({ ...RpcSerialization.ndjson, codecFor })
+        )
+        const echo = (value: string) =>
+          makeClient(serialization).pipe(
+            Effect.flatMap(({ client }) => client.Echo({ value })),
+            Effect.scoped
+          )
+
+        assert.strictEqual(yield* echo("first"), "first!")
+        asJsonString = true
+        assert.strictEqual(yield* echo("second"), "second!")
+      }))
 
     it.effect("fills the request payload hole with the serialization's codec", () =>
       Effect.gen(function*() {

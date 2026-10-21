@@ -10,19 +10,22 @@
  * direct or config-backed layers, and default parameter type mappings.
  * Streaming queries are not implemented by this driver.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Rec from "effect/Record"
 import * as Redacted from "effect/Redacted"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import {
@@ -145,6 +148,7 @@ const classifyError = (
 /**
  * Runtime type identifier used to mark `MssqlClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -153,6 +157,7 @@ export const TypeId: unique symbol = Symbol.for("@effect/sql-mssql/MssqlClient")
 /**
  * Type-level identifier used to mark `MssqlClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -161,6 +166,7 @@ export type TypeId = typeof TypeId
 /**
  * Microsoft SQL Server client service, extending `SqlClient` with typed parameter fragments and stored procedure calls.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -169,6 +175,11 @@ export interface MssqlClient extends Client.SqlClient {
 
   readonly config: MssqlClientConfig
 
+  /**
+   * Creates a statement parameter with an explicit `tedious` data type.
+   *
+   * @stability unstable
+   */
   readonly param: (
     type: DataType,
     value: unknown,
@@ -192,6 +203,7 @@ export interface MssqlClient extends Client.SqlClient {
  * Use to access or provide a Microsoft SQL Server client through the Effect
  * context.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -200,6 +212,7 @@ export const MssqlClient = Context.Service<MssqlClient>("@effect/sql-mssql/Mssql
 /**
  * Configuration for a Microsoft SQL Server client, including connection, authentication, pool, parameter type, span attribute, and query/result name transform options.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -230,6 +243,11 @@ export interface MssqlClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
 
+  /**
+   * Overrides the `tedious` data type used for each primitive parameter kind.
+   *
+   * @stability unstable
+   */
   readonly parameterTypes?: Record<Statement.PrimitiveKind, DataType> | undefined
 
   readonly spanAttributes?: Record<string, unknown> | undefined
@@ -260,6 +278,7 @@ let clientIdCounter = 0
 /**
  * Creates a scoped Microsoft SQL Server client backed by a connection pool, with transaction and stored procedure support. Streaming queries are not implemented.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -285,6 +304,15 @@ export const make = (
 
     // oxlint-disable-next-line prefer-const
     let pool: Pool.Pool<MssqlConnection, SqlError>
+    const connectionEnded = new WeakMap<MssqlConnection, Deferred.Deferred<void>>()
+    // Invalidation can run before acquisition publishes the pool item. Check
+    // the latch on every lease so an early event cannot leave it reusable.
+    const acquireConnection: Effect.Effect<MssqlConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
+      Effect.flatMap(Pool.get(pool), (connection) =>
+        Deferred.isDoneUnsafe(connectionEnded.get(connection)!)
+          ? Effect.andThen(Pool.invalidate(pool, connection), acquireConnection)
+          : Effect.succeed(connection))
+    )
 
     const makeConnection = Effect.gen(function*() {
       const conn = new Tedious.Connection({
@@ -321,7 +349,34 @@ export const make = (
         }
       })
 
-      yield* Effect.addFinalizer(() => Effect.sync(() => conn.close()))
+      const ended = Deferred.makeUnsafe<void>()
+      let closing = false
+      let endEmitted = false
+      const onError = () => {
+        Deferred.doneUnsafe(ended, Effect.void)
+      }
+      const removeListeners = () => {
+        // Tedious can emit a queued error after end, even once pool cleanup
+        // has closed the connection. Keep onError for the connection lifetime.
+        conn.removeListener("end", onEnd)
+      }
+      const onEnd = () => {
+        endEmitted = true
+        Deferred.doneUnsafe(ended, Effect.void)
+        if (closing) removeListeners()
+      }
+
+      // Install before connect and keep the error handler through asynchronous
+      // close. The latch also records events before the pool item exists.
+      conn.on("error", onError)
+      conn.on("end", onEnd)
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          closing = true
+          conn.close()
+          if (endEmitted) removeListeners()
+        })
+      )
 
       yield* Effect.callback<void, SqlError>((resume) => {
         conn.connect((cause) => {
@@ -513,10 +568,9 @@ export const make = (
           })
       })
 
-      yield* Effect.callback<never, unknown>((resume) => {
-        conn.on("error", (_) => resume(Effect.fail(_)))
-      }).pipe(
-        Effect.catch(() => Pool.invalidate(pool, connection)),
+      connectionEnded.set(connection, ended)
+      yield* Deferred.await(ended).pipe(
+        Effect.andThen(Effect.suspend(() => pool ? Pool.invalidate(pool, connection) : Effect.void)),
         Effect.interruptible,
         Effect.forkScoped
       )
@@ -532,7 +586,7 @@ export const make = (
       timeToLiveStrategy: "creation"
     })
 
-    yield* Pool.get(pool).pipe(
+    yield* acquireConnection.pipe(
       Effect.tap((connection) => connection.executeUnprepared("SELECT 1", [], undefined)),
       Effect.mapError((cause) =>
         new SqlError({ reason: classifyError(cause, "MssqlClient: Failed to connect", "connect", "connection") })
@@ -554,15 +608,19 @@ export const make = (
     )
 
     const transactionService = TransactionConnection(clientIdCounter++)
+    // Inside `withTransaction`, statements and procedures use its connection.
+    const getConnection = Effect.flatMap(
+      Effect.serviceOption(transactionService),
+      Option.match({
+        onNone: () => acquireConnection,
+        onSome: ([conn]) => Effect.succeed(conn)
+      })
+    )
 
     const withTransaction = Client.makeWithTransaction({
       transactionService,
       spanAttributes,
-      acquireConnection: Effect.gen(function*() {
-        const scope = Scope.makeUnsafe()
-        const conn = yield* Scope.provide(Pool.get(pool), scope)
-        return [scope, conn] as const
-      }),
+      acquireConnection: (restore) => restore(acquireConnection),
       begin: (conn) => conn.begin,
       savepoint: (conn, id) => conn.savepoint(`effect_sql_${id}`),
       commit: (conn) => conn.commit,
@@ -572,7 +630,8 @@ export const make = (
 
     return identity<MssqlClient>(Object.assign(
       yield* Client.make({
-        acquirer: Pool.get(pool),
+        driver: "mssql",
+        acquirer: acquireConnection,
         compiler,
         transactionService: transactionService as any,
         spanAttributes,
@@ -593,9 +652,9 @@ export const make = (
           A
         >(
           procedure: Procedure.ProcedureWithValues<I, O, A>
-        ) => Effect.scoped(Effect.flatMap(Pool.get(pool), (_) => _.call(procedure, transformRows))),
+        ) => Effect.scoped(Effect.flatMap(getConnection, (_) => _.call(procedure, transformRows))),
         withoutTransforms() {
-          const statement = Statement.make(Pool.get(pool), compiler.withoutTransform, spanAttributes, undefined)
+          const statement = Statement.make(getConnection, compiler.withoutTransform, spanAttributes, undefined)
           const client = Object.assign(
             statement,
             this,
@@ -607,7 +666,7 @@ export const make = (
                 A
               >(
                 procedure: Procedure.ProcedureWithValues<I, O, A>
-              ) => Effect.scoped(Effect.flatMap(Pool.get(pool), (_) => _.call(procedure, undefined)))
+              ) => Effect.scoped(Effect.flatMap(getConnection, (_) => _.call(procedure, undefined)))
             }
           )
           ;(client as any).safe = client
@@ -621,6 +680,7 @@ export const make = (
 /**
  * Creates a layer from a `Config`-wrapped SQL Server client configuration, providing both `MssqlClient` and `SqlClient`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -643,6 +703,7 @@ export const layerConfig: (
 /**
  * Creates a layer from a concrete SQL Server client configuration, providing both `MssqlClient` and `SqlClient`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -659,6 +720,7 @@ export const layer = (
 /**
  * Creates the SQL Server statement compiler, using `@1`-style placeholders, bracket-escaped identifiers, and SQL Server `OUTPUT INSERTED` returning clauses.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -722,6 +784,7 @@ const byteArrayParameterType: DataType = {
 /**
  * Default mapping from Effect SQL primitive value kinds to Tedious SQL Server parameter data types.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */

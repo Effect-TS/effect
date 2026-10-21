@@ -26,8 +26,6 @@ interface PreviousHistogramState {
   readonly count: number
   readonly sum: number
   readonly bucketCounts: ReadonlyArray<number>
-  readonly min: number
-  readonly max: number
 }
 
 interface PreviousSummaryState {
@@ -80,6 +78,16 @@ export class MetricProducerImpl implements MetricProducer {
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
     const snapshot = Metric.snapshotUnsafe(this.context)
     const hrTimeNow = currentHrTime()
+    // Only series in this snapshot carry their delta state forward, so removed
+    // series do not leak state or report a negative delta when recreated.
+    const previousCounterState = this.previousCounterState
+    const previousHistogramState = this.previousHistogramState
+    const previousFrequencyState = this.previousFrequencyState
+    const previousSummaryState = this.previousSummaryState
+    this.previousCounterState = new Map()
+    this.previousHistogramState = new Map()
+    this.previousFrequencyState = new Map()
+    this.previousSummaryState = new Map()
     const metricData: Array<MetricData> = []
     const metricDataByName = new Map<string, MetricData>()
     const addMetricData = (data: MetricDataWithInstrumentDescriptor) => {
@@ -111,7 +119,7 @@ export class MetricProducerImpl implements MetricProducer {
           let reportValue: number | bigint = currentCount
 
           if (isDelta) {
-            const previousCount = this.previousCounterState.get(metricKey)
+            const previousCount = previousCounterState.get(metricKey)
             if (previousCount !== undefined) {
               if (typeof currentCount === "bigint" && typeof previousCount === "bigint") {
                 reportValue = currentCount - previousCount
@@ -176,43 +184,41 @@ export class MetricProducerImpl implements MetricProducer {
           break
         }
         case "Histogram": {
-          const size = state.state.buckets.length
           const currentBuckets = {
-            boundaries: Arr.allocate(size - 1) as Array<number>,
-            counts: Arr.allocate(size) as Array<number>
+            boundaries: [] as Array<number>,
+            counts: [] as Array<number>
           }
-          let idx = 0
           let prev = 0
           for (const [boundary, value] of state.state.buckets) {
-            if (idx < size - 1) {
-              currentBuckets.boundaries[idx] = boundary
-            }
-            currentBuckets.counts[idx] = value - prev
+            if (boundary === Number.POSITIVE_INFINITY) break
+            currentBuckets.boundaries.push(boundary)
+            currentBuckets.counts.push(value - prev)
             prev = value
-            idx++
           }
+          // Derive overflow from the total count, whether or not boundaries include Infinity.
+          currentBuckets.counts.push(state.state.count - prev)
 
           let reportCount = state.state.count
           let reportSum = state.state.sum
           let reportBucketCounts = currentBuckets.counts
-          const reportMin = state.state.min
-          const reportMax = state.state.max
+          let reportExtrema = true
 
           if (isDelta) {
-            const previousState = this.previousHistogramState.get(metricKey)
+            const previousState = previousHistogramState.get(metricKey)
             if (previousState !== undefined) {
               reportCount = state.state.count - previousState.count
               reportSum = state.state.sum - previousState.sum
               reportBucketCounts = currentBuckets.counts.map((c, i) =>
                 Math.max(0, c - (previousState.bucketCounts[i] ?? 0))
               )
+              // Interval extrema cannot be derived from cumulative min / max,
+              // so omit the optional fields rather than report stale values
+              reportExtrema = false
             }
             this.previousHistogramState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum,
-              bucketCounts: currentBuckets.counts.slice(),
-              min: state.state.min,
-              max: state.state.max
+              bucketCounts: currentBuckets.counts.slice()
             })
           }
 
@@ -228,8 +234,7 @@ export class MetricProducerImpl implements MetricProducer {
                 counts: reportBucketCounts
               },
               count: reportCount,
-              min: reportMin,
-              max: reportMax,
+              ...(reportExtrema ? { min: state.state.min, max: state.state.max } : undefined),
               sum: reportSum
             }
           }
@@ -255,7 +260,7 @@ export class MetricProducerImpl implements MetricProducer {
             let reportValue = value
 
             if (isDelta) {
-              const previousOccurrences = this.previousFrequencyState.get(metricKey)
+              const previousOccurrences = previousFrequencyState.get(metricKey)
               if (previousOccurrences !== undefined) {
                 const previousValue = previousOccurrences.get(freqKey) ?? 0
                 reportValue = Math.max(0, value - previousValue)
@@ -321,7 +326,7 @@ export class MetricProducerImpl implements MetricProducer {
           let reportSum = state.state.sum
 
           if (isDelta) {
-            const previousState = this.previousSummaryState.get(metricKey)
+            const previousState = previousSummaryState.get(metricKey)
             if (previousState !== undefined) {
               reportCount = state.state.count - previousState.count
               reportSum = state.state.sum - previousState.sum

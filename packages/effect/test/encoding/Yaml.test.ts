@@ -84,9 +84,66 @@ indented: >-
       "multiple blank paragraph lines",
       "message: >-\n  first\n\n\n  second\n",
       "first\n\nsecond"
-    ]
+    ],
+    ["literal tab content", "message: |\n  all:\n  \tcc\n", "all:\n\tcc\n"],
+    ["folded tab-led content", "message: >\n  a\n  \tb\n  c\n", "a\n\tb\nc\n"],
+    ["whitespace-only content", "message: |\n  a\n    \n  b\n", "a\n  \nb\n"],
+    ["explicit-indicator leading whitespace", "message: |1\n   \n  x\n", "  \n x\n"]
   ])("preserves %s", (_, source, expected) => {
     assert.deepStrictEqual(Yaml.parse(source), { message: expected })
+  })
+
+  describe.each(["|", ">"])("block scalar chomping (%s)", (style) => {
+    it.each([
+      ["strip", "-", "  text\n\n\n", "text"],
+      ["clip", "", "  text\n\n\n", "text\n"],
+      ["keep", "+", "  text\n\n\n", "text\n\n\n"],
+      ["keep without trailing empty lines", "+", "  text\n", "text\n"],
+      ["empty clip", "", "", ""],
+      ["empty keep", "+", "", ""],
+      ["keep with only empty lines", "+", "\n\n", "\n\n"]
+    ])("applies %s before a sibling key", (_, chomp, content, expected) => {
+      assert.deepStrictEqual(Yaml.parse(`message: ${style}${chomp}\n${content}next: 1\n`), {
+        message: expected,
+        next: 1
+      })
+    })
+
+    // YAML 1.2.2 §8.1.1.2: end-of-input is not a final line break.
+    it.each([
+      ["clip without a final line break", "", "  text", "text"],
+      ["keep without a final line break", "+", "  text", "text"],
+      ["keep with trailing empty lines", "+", "  text\n\n\n", "text\n\n\n"]
+    ])("applies %s at end-of-input", (_, chomp, content, expected) => {
+      assert.deepStrictEqual(Yaml.parse(`message: ${style}${chomp}\n${content}`), { message: expected })
+    })
+  })
+
+  it("parses YAML 1.2.2 example 8.6 (empty scalar chomping)", () => {
+    assert.deepStrictEqual(Yaml.parse("strip: >-\n\nclip: >\n\nkeep: |+\n\n"), {
+      strip: "",
+      clip: "",
+      keep: "\n"
+    })
+  })
+
+  it("preserves kept trailing lines in block sequence entries", () => {
+    assert.deepStrictEqual(Yaml.parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
+  })
+
+  it.each([
+    ["|", "    first\n    second\n", "first\nsecond\n"],
+    [">-", "\n    first\n    second\n\n", "\nfirst second"],
+    ["|2+", "    # text\n\n", "  # text\n\n"]
+  ])("ends %s scalars before less-indented comments", (indicator, content, expected) => {
+    assert.deepStrictEqual(Yaml.parse(`message: ${indicator}\n${content} # outside\nnext: 1\n`), {
+      message: expected,
+      next: 1
+    })
+  })
+
+  it("rejects less-indented block scalar content", () => {
+    assert.throws(() => Yaml.parse("message: |\n    first\n  second\nnext: 1\n"), SyntaxError)
   })
 
   it("resolves aliases", () => {
@@ -107,6 +164,24 @@ development:
 
   it("rejects invalid indentation", () => {
     assert.throws(() => Yaml.parse("root:\n   child: true\n  sibling: false\n"))
+  })
+
+  it("allows tabs on comment and blank lines outside scalars", () => {
+    assert.deepStrictEqual(Yaml.parse("a: 1\n\t# comment\n\t\nb: 2\n"), { a: 1, b: 2 })
+  })
+
+  it.each([
+    ["structural indentation", "root:\n\tchild: true\n"],
+    ["below block content indentation", "text: |\n  x\n\t\nnext: 1\n"],
+    ["plain continuation", "text: a\n\t\n  b\n"],
+    ["single-quoted continuation", "text: 'a\n\tb'\n"],
+    ["double-quoted continuation", "text: \"a\n\tb\"\n"]
+  ])("rejects tabs in %s", (_, source) => {
+    assert.throws(() => Yaml.parse(source), /Tabs cannot be used for YAML indentation/)
+  })
+
+  it("rejects leading empty lines more indented than the first block content line", () => {
+    assert.throws(() => Yaml.parse("text: |\n    \n  \tx\n"), SyntaxError)
   })
 
   // YAML 1.2.2 §8.2.1: a mapping value's block sequence may be indentless.

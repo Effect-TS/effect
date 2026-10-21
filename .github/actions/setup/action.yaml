@@ -21,6 +21,8 @@ runs:
       with:
         node-version: 26.4.0
         package-manager-cache: ${{ env.NSC_CONTAINER_REGISTRY == '' }}
+        cache: ${{ env.NSC_CONTAINER_REGISTRY == '' && 'pnpm' || '' }}
+        cache-dependency-path: pnpm-lock.yaml
     - name: Configure pnpm cache
       if: ${{ env.NSC_CONTAINER_REGISTRY != '' }}
       uses: namespacelabs/nscloud-cache-action@c5f8dab7560444c4bf8dbc64f1b203431873c547 # v1.6.1

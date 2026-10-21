@@ -1,8 +1,9 @@
-import { assert, it, vi } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import {
   Cause,
   DateTime,
   Effect,
+  type Exit,
   FileSystem,
   Layer,
   Path,
@@ -11,7 +12,17 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import {
+  Etag,
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpEffect,
+  HttpPlatform,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerResponse
+} from "effect/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -198,6 +209,122 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder slot ParseOptions", (it) => {
+  it.effect("API slot annotations replace endpoint ParseOptions one codec at a time", () =>
+    Effect.gen(function*() {
+      const Person = Schema.Struct({ name: Schema.String })
+      const Group = HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/users", {
+          headers: { "x-api-key": Schema.String },
+          query: { q: Schema.String },
+          payload: Person,
+          success: Person
+        }).annotate(HttpApi.ParseOptions, { onExcessProperty: "error", errors: "all" }),
+        HttpApiEndpoint.get("fail", "/fail", { error: Person.pipe(HttpApiSchema.status(400)) })
+          .annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      )
+      const respond = Effect.fnUntraced(function*(api: HttpApi.HttpApi<"Api", typeof Group>, request: Request) {
+        const handler = yield* HttpRouter.toHttpEffect(
+          HttpApiBuilder.layer(api).pipe(
+            Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
+              handlers
+                .handle("create", () => Effect.succeed({ name: "Ada", extra: true }))
+                .handle("fail", () => Effect.fail({ name: "Ada", extra: true }))))
+          )
+        )
+        return yield* handler.pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, HttpServerRequest.fromWeb(request)),
+          Effect.exit
+        )
+      })
+      const create = (api: HttpApi.HttpApi<"Api", typeof Group>) =>
+        respond(
+          api,
+          new Request("http://localhost/users?q=x&extra=1", {
+            method: "POST",
+            headers: { "content-type": "application/json", "user-agent": "test", "x-api-key": "key" },
+            body: JSON.stringify({ name: "Ada", extra: true })
+          })
+        )
+      const failedSlot = (exit: Exit.Exit<HttpServerResponse.HttpServerResponse, unknown>) => {
+        if (exit._tag === "Success") throw new Error("Expected the request to fail")
+        const error = Cause.squash(exit.cause)
+        return HttpApiError.HttpApiSchemaError.is(error) ? error.kind : undefined
+      }
+
+      // Unset slots fall back to the strict endpoint ParseOptions, headers included.
+      let api = HttpApi.make("Api").add(Group)
+      assert.strictEqual(failedSlot(yield* create(api)), "Headers")
+      api = api.annotate(HttpApi.HeadersParseOptions, {})
+      assert.strictEqual(failedSlot(yield* create(api)), "Query")
+      api = api.annotate(HttpApi.QueryParseOptions, {})
+      assert.strictEqual(failedSlot(yield* create(api)), "Payload")
+      // Replaces ParseOptions: onExcessProperty is not merged in.
+      api = api.annotate(HttpApi.PayloadParseOptions, { errors: "first" })
+      assert.strictEqual(failedSlot(yield* create(api)), "Body")
+      api = api.annotate(HttpApi.SuccessParseOptions, {})
+      const created = yield* create(api)
+      assert.strictEqual(created._tag, "Success")
+      if (created._tag === "Success") {
+        assert.deepStrictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(created.value).json()), {
+          name: "Ada"
+        })
+      }
+
+      assert.strictEqual((yield* respond(api, new Request("http://localhost/fail")))._tag, "Failure")
+      const failed = yield* respond(api.annotate(HttpApi.ErrorParseOptions, {}), new Request("http://localhost/fail"))
+      assert.strictEqual(failed._tag === "Success" && failed.value.status, 400)
+    }))
+
+  it.effect("encodeToWithHeaders response headers use HeadersParseOptions", () =>
+    Effect.gen(function*() {
+      class Limited extends Schema.TaggedError<Limited>()("Limited", { id: Schema.String }) {}
+      const LimitedResponse = Limited.pipe(HttpApiSchema.encodeToWithHeaders({
+        body: HttpApiSchema.Empty(429),
+        headers: { "x-id": Schema.String }
+      }, {
+        decode: ({ headers }) => new Limited({ id: headers["x-id"] }),
+        encode: (error) => {
+          const headers = { "x-id": error.id, "x-extra": "extra" }
+          return { body: undefined, headers }
+        }
+      }))
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("limited", "/limited", { error: LimitedResponse }))
+      )
+      const respond = Effect.fnUntraced(function*(api: typeof Api) {
+        const handler = yield* HttpRouter.toHttpEffect(
+          HttpApiBuilder.layer(api).pipe(
+            Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
+              handlers.handle("limited", () =>
+                Effect.fail(new Limited({ id: "1" })))))
+          )
+        )
+        return yield* handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/limited"))
+          ),
+          Effect.exit
+        )
+      })
+
+      // Strict error body options do not apply to the headers.
+      const relaxed = yield* respond(
+        Api.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }).annotate(HttpApi.HeadersParseOptions, {})
+      )
+      assert.strictEqual(relaxed._tag, "Success")
+      if (relaxed._tag === "Success") {
+        assert.strictEqual(relaxed.value.status, 429)
+        assert.strictEqual(relaxed.value.headers["x-id"], "1")
+        assert.isUndefined(relaxed.value.headers["x-extra"])
+      }
+      // Strict header options apply even with default error body options.
+      const strict = yield* respond(Api.annotate(HttpApi.HeadersParseOptions, { onExcessProperty: "error" }))
+      assert.strictEqual(strict._tag, "Failure")
+    }))
+})
+
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
   it.effect("round trips a path parameter followed by a literal action suffix", () =>
     Effect.gen(function*() {
@@ -281,7 +408,79 @@ it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder StreamNdjson responses", (it) => {
+  it.effect("encodes each element as a JSON line", () =>
+    Effect.gen(function*() {
+      const Item = Schema.Struct({ text: Schema.String })
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("items", "/items", {
+            success: HttpApiSchema.StreamNdjson({ schema: Item })
+          })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(
+        api,
+        "test",
+        (handlers) => handlers.handle("items", () => Effect.succeed(Stream.make({ text: "a" }, { text: "b" })))
+      )
+      const client = yield* HttpApiTest.groups(api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      const response = yield* client.test.items({ responseMode: "response-only" })
+      assert.strictEqual(response.headers["content-type"], "application/x-ndjson")
+      assert.strictEqual(yield* response.text, "{\"text\":\"a\"}\n{\"text\":\"b\"}\n")
+
+      const decoded = yield* client.test.items().pipe(Effect.flatMap(Stream.runCollect))
+      assert.deepStrictEqual(decoded, [{ text: "a" }, { text: "b" }])
+    }))
+})
+
 it.layer(TestServices)("HttpApiTest pre-response handlers", (it) => {
+  it.effect("runs pre-response handlers once per response across retries", () =>
+    Effect.gen(function*() {
+      class Middleware extends HttpApiMiddleware.Service<Middleware>()("PreResponseRetry", {}) {}
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/fixture", { success: Schema.String }).middleware(Middleware)
+        )
+      )
+      let attempts = 0
+      let handlerRuns = 0
+      const MiddlewareLayer = Layer.succeed(Middleware)((effect) =>
+        Effect.gen(function*() {
+          attempts++
+          yield* HttpEffect.appendPreResponseHandler((_request, response) => {
+            handlerRuns++
+            return Effect.succeed(response)
+          })
+          const response = yield* effect
+          return HttpServerResponse.setStatus(response, attempts === 1 ? 503 : 200)
+        })
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("get", () =>
+          Effect.succeed("ok")))
+      // Resolve the URL once and disable tracing, so neither prepends a base URL
+      // nor sets headers per attempt and the transport sees the same request twice.
+      const client = yield* HttpApiTest.groups(Api, ["test"], { baseUrl: "" }).pipe(
+        Effect.provide(GroupLayer),
+        Effect.provide(MiddlewareLayer),
+        Effect.provide(HttpApiMiddleware.layerClient(Middleware, ({ next, request }) =>
+          next(HttpClientRequest.setUrl(request, "http://localhost:3000/fixture")).pipe(
+            Effect.flatMap(HttpClientResponse.filterStatusOk),
+            Effect.retry({ times: 1 })
+          )))
+      )
+      const response = yield* client.test.get({ responseMode: "response-only" }).pipe(
+        Effect.provideService(HttpClient.TracerDisabledWhen, () =>
+          true)
+      )
+
+      assert.strictEqual(attempts, 2)
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(handlerRuns, 2)
+    }))
+
   it.effect("runs registered pre-response handlers", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
@@ -430,6 +629,38 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
       const result = yield* client.test.create({ payload: { name: "Ada" } })
 
       assert.deepStrictEqual(result, { name: "Ada" })
+    }))
+})
+
+it.layer(TestServices)("HttpApiBuilder array payloads", (it) => {
+  const Tags = Schema.Struct({ tags: Schema.Array(Schema.String) })
+  const Api = HttpApi.make("Api").add(
+    HttpApiGroup.make("test")
+      .add(HttpApiEndpoint.post("create", "/create", {
+        payload: Tags.pipe(HttpApiSchema.asFormUrlEncoded()),
+        success: Tags
+      }))
+      .add(HttpApiEndpoint.get("list", "/list", { payload: Tags.fields, success: Tags }))
+  )
+  const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+    handlers
+      .handle("create", ({ payload }) => Effect.succeed(payload))
+      .handle("list", ({ payload }) => Effect.succeed(payload)))
+
+  it.effect("round trips form-urlencoded array payloads with one or more values", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.create({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.create({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
+    }))
+
+  it.effect("round trips GET array payloads with one or more values", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
     }))
 })
 
@@ -1720,4 +1951,175 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
 
       assert.deepStrictEqual(error, { retryAfter: 30n })
     }))
+})
+
+describe("HttpApiBuilder streaming payloads", () => {
+  const Item = Schema.Struct({ n: Schema.Number })
+  const encoder = new TextEncoder()
+
+  const withHandler = async (
+    app: Layer.Layer<
+      never,
+      never,
+      HttpRouter.HttpRouter | Etag.Generator | FileSystem.FileSystem | HttpPlatform.HttpPlatform | Path.Path
+    >,
+    f: (handler: (request: Request) => Promise<Response>) => Promise<void>
+  ) => {
+    const { dispose, handler } = HttpRouter.toWebHandler(app.pipe(Layer.provide(TestServices)), {
+      disableLogger: true
+    })
+    try {
+      await f((request) => handler(request))
+    } finally {
+      await dispose()
+    }
+  }
+
+  const post = (path: string, contentType: string, body: BodyInit, headers?: Record<string, string>) =>
+    new Request(`http://localhost${path}`, {
+      method: "POST",
+      headers: { "content-type": contentType, ...headers },
+      body,
+      duplex: "half"
+    } as RequestInit)
+
+  it("delivers NDJSON elements to the handler before the body ends", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+          success: Schema.Number
+        })
+      )
+    )
+    const first = Promise.withResolvers<{ readonly n: number }>()
+    const groups = HttpApiBuilder.group(
+      api,
+      "test",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) =>
+          payload.pipe(
+            Stream.tap((item) => Effect.sync(() => first.resolve(item))),
+            Stream.runCollect,
+            Effect.map((items) => items.length)
+          ))
+    )
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      let controller!: ReadableStreamDefaultController<Uint8Array>
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          controller = c
+        }
+      })
+      const response = handler(post("/upload", "application/x-ndjson", body))
+
+      controller.enqueue(encoder.encode(`{"n":1}\n`))
+      assert.deepStrictEqual(await Promise.race([first.promise, response.then((r) => r.status)]), { n: 1 })
+      controller.enqueue(encoder.encode(`{"n":2}\n`))
+      controller.close()
+
+      assert.strictEqual(await (await response).json(), 2)
+    })
+  })
+
+  it("maps payload errors the handler lets through to 400 and 413", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("ndjson", "/ndjson", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item, maxElementBytes: 8 })
+        }),
+        HttpApiEndpoint.post("bytes", "/bytes", {
+          payload: HttpApiSchema.StreamUint8Array({ maxBytes: 4 })
+        })
+      )
+    )
+    const groups = HttpApiBuilder.group(api, "test", (handlers) =>
+      handlers
+        .handle("ndjson", ({ payload }) => Stream.runDrain(payload))
+        .handle("bytes", ({ payload }) => Stream.runDrain(payload)))
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      const badLine = await handler(post("/ndjson", "application/x-ndjson", `{"n":1}\nnot json\n`))
+      assert.strictEqual(badLine.status, 400)
+
+      const longLine = await handler(post("/ndjson", "application/x-ndjson", `{"n":1}\n{"n":123}\n`))
+      assert.strictEqual(longLine.status, 413)
+      assert.strictEqual(await longLine.text(), "")
+
+      const withinLimit = await handler(
+        post("/bytes", "application/octet-stream", new Blob([new Uint8Array(3)]).stream())
+      )
+      assert.strictEqual(withinLimit.status, 204)
+      const overLimit = await handler(
+        post("/bytes", "application/octet-stream", new Blob([new Uint8Array(3), new Uint8Array(3)]).stream())
+      )
+      assert.strictEqual(overLimit.status, 413)
+      assert.strictEqual(await overLimit.text(), "")
+    })
+  })
+
+  it("responds 413 from content-length before the handler runs or the body is read", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamUint8Array({ maxBytes: 4 })
+        })
+      )
+    )
+    let handled = false
+    const groups = HttpApiBuilder.group(
+      api,
+      "test",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) =>
+          Effect.suspend(() => {
+            handled = true
+            return Stream.runDrain(payload)
+          }))
+    )
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      let pulled = false
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulled = true
+          controller.enqueue(new Uint8Array(8))
+          controller.close()
+        }
+      }, { highWaterMark: 0 })
+      const response = await handler(post("/upload", "application/octet-stream", body, { "content-length": "8" }))
+
+      assert.strictEqual(response.status, 413)
+      assert.strictEqual(response.headers.get("connection"), "close")
+      assert.isFalse(handled)
+      assert.isFalse(pulled)
+    })
+  })
+
+  it("responds 415 unless the content-type matches the declared one after normalization", async () => {
+    const api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("upload", "/upload", {
+          payload: HttpApiSchema.StreamNdjson({ schema: Item }),
+          success: Schema.Number
+        })
+      )
+    )
+    const groups = HttpApiBuilder.group(
+      api,
+      "test",
+      (handlers) =>
+        handlers.handle("upload", ({ payload }) => Effect.map(Stream.runCollect(payload), (items) => items.length))
+    )
+
+    await withHandler(HttpApiBuilder.layer(api).pipe(Layer.provide(groups)), async (handler) => {
+      const alias = await handler(post("/upload", "application/jsonl", `{"n":1}\n`))
+      assert.strictEqual(alias.status, 415)
+
+      const withParameters = await handler(post("/upload", "Application/X-NDJSON; charset=utf-8", `{"n":1}\n`))
+      assert.strictEqual(withParameters.status, 200)
+      assert.strictEqual(await withParameters.json(), 1)
+    })
+  })
 })

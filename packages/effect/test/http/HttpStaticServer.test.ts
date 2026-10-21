@@ -101,7 +101,7 @@ describe("HttpStaticServer precision", () => {
     const [url, range, start, end] of [
       ["/file.bin", "bytes=0-0", 0n, 0n],
       ["/file.bin", "bytes=-2", size - 2n, size - 1n],
-      ["/directory", "bytes=1-", 1n, size - 1n]
+      ["/directory/", "bytes=1-", 1n, size - 1n]
     ] as const
   ) {
     it.effect(`preserves ${range} and the exact total for ${url}`, () => {
@@ -115,7 +115,7 @@ describe("HttpStaticServer precision", () => {
         assert.strictEqual(response.status, 206)
         assert.strictEqual(response.headers["content-range"], `bytes ${start}-${end}/${size}`)
         assert.deepStrictEqual(calls, [{
-          path: url === "/directory" ? "/root/directory/index.html" : "/root/file.bin",
+          path: url === "/directory/" ? "/root/directory/index.html" : "/root/file.bin",
           options: { status: 206, offset: start, bytesToRead: end - start + 1n }
         }])
       }).pipe(Effect.provide(precisionServices(size, calls)))
@@ -134,5 +134,20 @@ describe("HttpStaticServer precision", () => {
       assert.strictEqual(response.headers["content-range"], `bytes */${size}`)
       assert.deepStrictEqual(calls, [])
     }).pipe(Effect.provide(precisionServices(size, calls)))
+  })
+})
+
+describe("HttpStaticServer paths", () => {
+  it.effect("serves a path with repeated leading slashes from the root", () => {
+    const calls: Array<{ path: string; options: FileOptions }> = []
+    return Effect.gen(function*() {
+      const app = yield* HttpStaticServer.make({ root: "/root" })
+      const response = yield* app.pipe(Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(new Request("http://localhost//nested/file.txt"))
+      ))
+      assert.strictEqual(response.status, 200)
+      assert.deepStrictEqual(calls.map((call) => call.path), ["/root/nested/file.txt"])
+    }).pipe(Effect.provide(precisionServices(10n, calls)))
   })
 })

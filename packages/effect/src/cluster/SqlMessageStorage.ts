@@ -8,6 +8,11 @@
  * storage constructor, layers, migrations, optional table prefixes, and the row
  * mapping needed by encoded message storage.
  *
+ * `layer`, `layerWith`, `make`, and `makeEncoded` run the migrations before
+ * building the storage. To run migrations with a different connection, such as
+ * a schema owner in a deploy step, use `layerMigrations` there and
+ * `layerStorage` in the runtime.
+ *
  * Request deduplication keys that exceed the 255-character `message_id`
  * column are hashed with the `Crypto` service before they are written, so
  * composed keys of any length are supported; shorter keys are stored as
@@ -24,11 +29,11 @@ import * as Hex from "../encoding/Hex.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as PlatformError from "../PlatformError.ts"
-import * as Schedule from "../Schedule.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
 import { isSqlError, type SqlError } from "../sql/SqlError.ts"
+import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
@@ -72,18 +77,17 @@ export const makeEncoded: (options?: {
   MessageStorage.Encoded,
   never,
   SqlClient.SqlClient | Crypto.Crypto
-> = Effect.fnUntraced(function*(options) {
+> = (options) => Effect.andThen(runMessageMigrations(options), makeEncodedStorage(options))
+
+const makeEncodedStorage = Effect.fnUntraced(function*(
+  options: {
+    readonly prefix?: string | undefined
+  } | undefined
+) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const crypto = yield* Crypto.Crypto
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
-
-  yield* Effect.orDie(
-    Migrator.make({})({
-      loader: migrations(options),
-      table: table("migrations")
-    })
-  )
 
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
   const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
@@ -273,9 +277,35 @@ export const makeEncoded: (options?: {
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
+  // Read SQLite IDs as text to avoid rounding on number-returning drivers
+  // such as Durable Objects.
+  const idsAsText = sql.onDialectOrElse({
+    sqlite: () => true,
+    orElse: () => false
+  })
+  const idAs = (column: string, alias: string) =>
+    idsAsText ? `CAST(${column} AS TEXT) AS ${alias}` : `${column} AS ${alias}`
+  const replyJoinColumns = "r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence"
+  const messageColumns = idsAsText
+    ? `${idAs("m.id", "id")}, m.message_id, m.shard_id, m.entity_type, m.entity_id, m.kind, m.tag, m.payload, ` +
+      `m.headers, m.trace_id, m.span_id, m.sampled, m.processed, ${idAs("m.request_id", "request_id")}, ` +
+      `${idAs("m.reply_id", "reply_id")}, ${idAs("m.last_reply_id", "last_reply_id")}, m.last_read, m.deliver_at`
+    : "m.*"
+
+  const idColumn = sql.literal(idAs("id", "id"))
+  const replyColumns = sql.literal(
+    `${idAs("id", "id")}, kind, ${idAs("request_id", "request_id")}, payload, sequence`
+  )
+  const duplicateColumns = sql.literal(
+    `${idAs("m.id", "id")}, ${idAs("r.id", "reply_id")}, ${replyJoinColumns}`
+  )
+  const messageJoinColumns = sql.literal(
+    `${messageColumns}, ${idAs("r.id", "reply_reply_id")}, ${replyJoinColumns}`
+  )
+
   const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
     sql`
-      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+      SELECT ${duplicateColumns}
       FROM ${messagesTableSql} m
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
@@ -455,7 +485,7 @@ export const makeEncoded: (options?: {
       `,
     orElse: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
       sql<MessageJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        SELECT ${messageJoinColumns}
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
@@ -493,6 +523,28 @@ export const makeEncoded: (options?: {
     options?.addresses?.length === 0
       ? Effect.succeed([])
       : getUnprocessedMessagesForDialect(shardIds, now, unprocessedFilters(options))
+
+  const resetUnprocessed = sql.onDialectOrElse({
+    // Match the claim query's lock order to avoid deadlocks during resets.
+    pg: () => (filter: Fragment) =>
+      sql`
+      WITH messages AS (
+        SELECT id FROM ${messagesTableSql}
+        WHERE processed = ${sqlFalse} AND ${filter}
+        ORDER BY rowid ASC
+        FOR UPDATE
+      )
+      UPDATE ${messagesTableSql}
+      SET last_read = NULL
+      WHERE id IN (SELECT id FROM messages)
+    `,
+    orElse: () => (filter: Fragment) =>
+      sql`
+      UPDATE ${messagesTableSql}
+      SET last_read = NULL
+      WHERE processed = ${sqlFalse} AND ${filter}
+    `
+  })
 
   const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
@@ -576,14 +628,25 @@ export const makeEncoded: (options?: {
       ),
 
     clearReplies: Effect.fnUntraced(
-      function*(requestId) {
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
-        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
-          String(requestId)
-        } AND kind = ${messageKindInterrupt}`
-        yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
-          String(requestId)
-        }`
+      function*(requestId, options) {
+        const expectedReplyId = options?.expectedReplyId
+        if (expectedReplyId === undefined) {
+          yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
+          yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
+            String(requestId)
+          } AND kind = ${messageKindInterrupt}`
+          yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
+            String(requestId)
+          }`
+          return
+        }
+        const id = String(requestId)
+        const expected = String(expectedReplyId)
+        // Check at the storage boundary, not at the earlier workflow read.
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0
+          AND EXISTS (SELECT 1 FROM ${messagesTableSql} WHERE id = ${id} AND last_reply_id = ${expected})`
+        yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL
+          WHERE request_id = ${id} AND last_reply_id = ${expected}`
       },
       sql.withTransaction,
       PersistenceError.refail,
@@ -593,11 +656,11 @@ export const makeEncoded: (options?: {
     requestIdForPrimaryKey: (primaryKey) =>
       messageIdForPrimaryKey(primaryKey).pipe(
         Effect.flatMap((messageId) =>
-          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+          sql<{ id: string | bigint }>`SELECT ${idColumn} FROM ${messagesTableSql} WHERE message_id = ${messageId}`
         ),
         Effect.flatMap((rows) =>
           rows.length === 0 && mayHaveLegacyRow(primaryKey)
-            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            ? sql<{ id: string | bigint }>`SELECT ${idColumn} FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
             : Effect.succeed(rows)
         ),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
@@ -612,7 +675,7 @@ export const makeEncoded: (options?: {
       // - the kind is WithExit
       // - or the kind is Chunk and has not been acked yet
       sql<ReplyRow>`
-        SELECT id, kind, request_id, payload, sequence
+        SELECT ${replyColumns}
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
         AND (
@@ -632,7 +695,7 @@ export const makeEncoded: (options?: {
 
     repliesForUnfiltered: (requestIds) =>
       sql<ReplyRow>`
-        SELECT id, kind, request_id, payload, sequence
+        SELECT ${replyColumns}
         FROM ${repliesTableSql}
         WHERE request_id IN (${sql.literal(requestIds.join(","))})
         ORDER BY rowid ASC
@@ -668,7 +731,7 @@ export const makeEncoded: (options?: {
     unprocessedMessagesById(ids, now) {
       const idArr = Array.from(ids, (id) => String(id))
       return sql<MessageRow & ReplyJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        SELECT ${messageJoinColumns}
         FROM ${messagesTableSql} m
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.id IN (${sql.literal(idArr.join(","))})
@@ -705,11 +768,7 @@ export const makeEncoded: (options?: {
     resetAddresses: (addresses) =>
       addresses.length === 0
         ? Effect.void
-        : sql`
-        UPDATE ${messagesTableSql}
-        SET last_read = NULL
-        WHERE processed = ${sqlFalse}
-        AND (${
+        : resetUnprocessed(sql`(${
           sql.or(
             groupAddresses(addresses).map(
               (group) =>
@@ -720,8 +779,7 @@ export const makeEncoded: (options?: {
                 ])
             )
           )
-        })
-        `.pipe(
+        })`).pipe(
           Effect.asVoid,
           PersistenceError.refail,
           withTracerDisabled
@@ -750,12 +808,7 @@ export const makeEncoded: (options?: {
       ),
 
     resetShards: (shardIds) =>
-      sql`
-        UPDATE ${messagesTableSql}
-        SET last_read = NULL
-        WHERE processed = ${sqlFalse}
-        AND shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-      `.pipe(
+      resetUnprocessed(sql`shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})`).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
@@ -786,69 +839,27 @@ export const make: (options?: {
 > = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)
 
 /**
- * Layer that provides SQL-backed `MessageStorage` using the default table prefix
- * and the default snowflake generator.
- *
- * **When to use**
- *
- * Use when a cluster should persist mailbox messages and replies in SQL using
- * the default `cluster` table prefix and the standard snowflake generator.
+ * Migration loader for the SQL message storage tables.
  *
  * **Details**
  *
- * The layer runs the SQL migrations through `make`, provides `MessageStorage`,
- * and supplies `Snowflake.layerGenerator` internally. Callers still provide
- * `SqlClient`, `ShardingConfig`, and `Crypto.Crypto`, which is used to hash
- * message deduplication keys that would overflow the fixed-width
- * `message_id` column.
- *
- * **Gotchas**
- *
- * This layer always uses the `cluster` table prefix. Use `layerWith` before
- * deployment if you need a different stable prefix, because changing prefixes
- * later points the runtime at a different set of tables.
- *
- * @see {@link layerWith} for the same SQL storage layer with a custom table prefix
- * @see {@link make} for the lower-level service constructor that uses an existing `Snowflake.Generator`
+ * History is recorded in `<prefix>_migrations`; the default
+ * prefix is `cluster`.
  *
  * @stability unstable
- * @category layers
- * @since 4.0.0
+ * @category migrations
+ * @since 4.1.0
  */
-export const layer: Layer.Layer<
-  MessageStorage.MessageStorage,
-  never,
-  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
-> = Layer.effect(MessageStorage.MessageStorage, make()).pipe(
-  Layer.provide(Snowflake.layerGenerator)
-)
-
-/**
- * Layer that provides SQL-backed `MessageStorage` using a custom table prefix.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerWith = (options: {
+export const migrations = (options?: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
-  Layer.effect(MessageStorage.MessageStorage, make(options)).pipe(
-    Layer.provide(Snowflake.layerGenerator)
-  )
-
-// -------------------------------------------------------------------------------------------------
-// internal
-// -------------------------------------------------------------------------------------------------
-
-const migrations = (options?: {
-  readonly prefix?: string | undefined
-}) => {
+}): Migrator.Loader => {
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
   const messagesTable = table("messages")
   const repliesTable = table("replies")
 
+  // The migrator serializes PostgreSQL DDL. Propagate errors: retrying in an
+  // aborted transaction cannot succeed.
   return Migrator.fromRecord({
     "0001_create_tables": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -932,7 +943,7 @@ const migrations = (options?: {
               deliver_at BIGINT,
               UNIQUE (message_id)
             )
-          `.pipe(Effect.ignore),
+          `,
         orElse: () =>
           // sqlite
           sql`
@@ -982,28 +993,16 @@ const migrations = (options?: {
             CREATE INDEX ${sql(requestIdLookupIndex)}
             ON ${messagesTableSql} (request_id);
           `.unprepared.pipe(Effect.ignore),
-        pg: () =>
-          Effect.gen(function*() {
-            yield* sql`
+        pg: Effect.fnUntraced(function*() {
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
               ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
             `
-            yield* sql`
+          yield* sql`
               CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
               ON ${messagesTableSql} (request_id)
             `
-          }).pipe(
-            sql.withTransaction,
-            Effect.tapDefect((error) =>
-              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
-                package: "@effect/cluster",
-                module: "SqlMessageStorage"
-              })
-            ),
-            Effect.retry({
-              schedule: Schedule.spaced(1000)
-            })
-          ),
+        }),
         orElse: () =>
           // sqlite
           Effect.all([
@@ -1097,17 +1096,7 @@ const migrations = (options?: {
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
-          `.pipe(
-            Effect.tapDefect((error) =>
-              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
-                package: "@effect/cluster",
-                module: "SqlMessageStorage"
-              })
-            ),
-            Effect.retry({
-              schedule: Schedule.spaced(1000)
-            })
-          ),
+          `,
         orElse: () =>
           // sqlite
           sql`
@@ -1155,6 +1144,100 @@ const migrations = (options?: {
     })
   })
 }
+
+const runMessageMigrations = (options?: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<void, never, SqlClient.SqlClient> =>
+  Migrator.make({})({
+    loader: migrations(options),
+    table: `${options?.prefix ?? "cluster"}_migrations`
+  }).pipe(Effect.asVoid, Effect.orDie)
+
+/**
+ * Runs the SQL message storage migrations without providing storage.
+ *
+ * **Details**
+ *
+ * Use an owner connection in a deploy step, then use `layerStorage` with a
+ * DML-only runtime connection. History is recorded in `<prefix>_migrations`.
+ * Migration errors become defects.
+ *
+ * On PostgreSQL, use the role's `search_path` to select a schema. A
+ * schema-qualified prefix such as `app.cluster` produces an invalid index name.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerMigrations = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<never, never, SqlClient.SqlClient> => Layer.effectDiscard(runMessageMigrations(options))
+
+/**
+ * Provides SQL-backed `MessageStorage` without DDL or startup schema checks.
+ *
+ * **Details**
+ *
+ * Run `layerMigrations` separately before using this layer.
+ * This layer supplies `Snowflake.layerGenerator` internally.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerStorage = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+  Layer.effect(
+    MessageStorage.MessageStorage,
+    Effect.flatMap(makeEncodedStorage(options), MessageStorage.makeEncoded)
+  ).pipe(
+    Layer.provide(Snowflake.layerGenerator)
+  )
+
+/**
+ * Provides SQL-backed `MessageStorage` with a custom table prefix,
+ * running migrations first.
+ *
+ * **Details**
+ *
+ * Migration errors become defects. Use `layerMigrations` and `layerStorage`
+ * to migrate separately.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerWith = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+  layerStorage(options).pipe(
+    Layer.provide(layerMigrations(options))
+  )
+
+/**
+ * Provides SQL-backed `MessageStorage` with the `cluster` table prefix,
+ * running migrations first and supplying `Snowflake.layerGenerator`.
+ *
+ * **Details**
+ *
+ * The connection needs DDL permissions. PostgreSQL takes an exclusive lock
+ * on the migration history table. Use `layerWith` for a custom prefix or
+ * `layerMigrations` and `layerStorage` to migrate separately.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<
+  MessageStorage.MessageStorage,
+  never,
+  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
+> = layerWith({})
+
+// -------------------------------------------------------------------------------------------------
+// internal
+// -------------------------------------------------------------------------------------------------
 
 const messageKind = {
   "Request": 0,

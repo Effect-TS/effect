@@ -1,50 +1,58 @@
 /**
  * Schemas for OpenRouter's alpha Decisions API.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Schema from "effect/Schema"
 import * as Generated from "./Generated.ts"
 
+const Entry = Schema.Union([Schema.String, Schema.JsonObject, Schema.Array(Schema.Json)])
+
 /**
  * A choice question with descriptions keyed by choice label.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const ChoiceQuestion = Schema.Struct({
   type: Schema.Literal("choice"),
-  instructions: Schema.String,
-  criteria: Schema.Record(Schema.String, Schema.String)
+  instructions: Entry,
+  criteria: Schema.Record(Schema.String, Schema.NullOr(Entry))
 })
 
 /**
  * A score question with ordered criteria.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const ScoreQuestion = Schema.Struct({
   type: Schema.Literal("score"),
-  instructions: Schema.String,
-  criteria: Schema.Array(Schema.String)
+  instructions: Entry,
+  criteria: Schema.Array(Entry)
 })
 
 /**
  * A probability question with optional true and false descriptions.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const NoulQuestion = Schema.Struct({
   type: Schema.Literal("noul"),
-  instructions: Schema.String,
-  criteria: Schema.optional(Schema.Struct({ true: Schema.String, false: Schema.String }))
+  instructions: Entry,
+  criteria: Schema.optional(Schema.Struct({ true: Entry, false: Entry }))
 })
 
 /**
- * A choice, ordered score, or probability question.
+ * A choice, score, or probability question with string, JSON object, or JSON array
+ * instructions and descriptions. Choice descriptions also accept `null`.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -57,6 +65,7 @@ export const DecisionsQuestion = Schema.Union([
 /**
  * A provider answer with optional probabilities and confidence.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -72,7 +81,7 @@ export const Answer = Schema.Union([
     score: Schema.Finite,
     confidence: Schema.optional(Schema.Finite),
     probabilities: Schema.optional(Schema.Record(Schema.String, Schema.Finite)),
-    legend: Schema.optional(Schema.Record(Schema.String, Schema.String))
+    legend: Schema.optional(Schema.Record(Schema.String, Schema.Json))
   }),
   Schema.Struct({ type: Schema.Literal("noul"), noul: Schema.Finite })
 ])
@@ -80,6 +89,7 @@ export const Answer = Schema.Union([
 /**
  * Request body for the alpha Decisions endpoint.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -96,6 +106,7 @@ export const DecisionsRequest = Schema.Struct({
 /**
  * Response body for the alpha Decisions endpoint.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

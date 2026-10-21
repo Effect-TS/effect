@@ -512,6 +512,39 @@ describe("HttpApiClient", () => {
         }
       >()
     })
+
+    it("infers services but not source errors from streaming payloads", () => {
+      type Item = { readonly n: number }
+
+      const Item = hole<Schema.Codec<Item, Item, never, "ItemEncoding">>()
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.post("bytes", "/bytes", {
+                payload: HttpApiSchema.StreamUint8Array()
+              }),
+              HttpApiEndpoint.post("ndjson", "/ndjson", {
+                payload: HttpApiSchema.StreamNdjson({ schema: Item })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.group.bytes({ payload: hole<Stream.Stream<Uint8Array, "BytesError", "BytesSource">>() })).type
+        .toBe<
+          Effect.Effect<void, HttpClientError.HttpClientError | Schema.SchemaError, "BytesSource">
+        >()
+      expect(client.group.ndjson({ payload: hole<Stream.Stream<Item, "ItemError", "ItemSource">>() })).type.toBe<
+        Effect.Effect<
+          void,
+          HttpClientError.HttpClientError | Schema.SchemaError,
+          "ItemSource" | "ItemEncoding"
+        >
+      >()
+    })
   })
 
   describe("success", () => {
@@ -594,6 +627,22 @@ describe("HttpApiClient", () => {
 
       expect(f({ responseMode: "response-only" })).type.toBe<
         Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
+      >()
+
+      expect(f({ responseMode: hole<"decoded-only" | "response-only">() })).type.toBe<
+        Effect.Effect<
+          { readonly a: number } | HttpClientResponse.HttpClientResponse,
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+
+      expect(f({ responseMode: hole<ResponseMode>() })).type.toBe<
+        Effect.Effect<
+          | { readonly a: number }
+          | HttpClientResponse.HttpClientResponse
+          | [{ readonly a: number }, HttpClientResponse.HttpClientResponse],
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
       >()
     })
 
@@ -858,6 +907,25 @@ describe("HttpApiClient", () => {
       >()
     })
 
+    it("returns the response headers and socket for Upgrade successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.post("a", "/a", {
+                success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.group.a()).type.toBe<
+        Effect.Effect<HttpApiClient.Upgraded, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+    })
+
     it("returns decoded streams for StreamUint8Array successes", () => {
       const Api = HttpApi.make("Api")
         .add(
@@ -883,6 +951,34 @@ describe("HttpApiClient", () => {
           [ClientStream, HttpClientResponse.HttpClientResponse],
           HttpClientError.HttpClientError | Schema.SchemaError
         >
+      >()
+      expect(f({ responseMode: "response-only" })).type.toBe<
+        Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
+      >()
+    })
+
+    it("returns decoded streams with element decoding services for StreamNdjson successes", () => {
+      type Item = { readonly text: string }
+
+      const Item = hole<Schema.Codec<Item, Item, "ItemDecoding", never>>()
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: HttpApiSchema.StreamNdjson({ schema: Item })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+      const f = client.group.a
+
+      type ClientStream = Stream.Stream<Item, HttpClientError.HttpClientError | Schema.SchemaError>
+
+      expect(f()).type.toBe<
+        Effect.Effect<ClientStream, HttpClientError.HttpClientError | Schema.SchemaError, "ItemDecoding">
       >()
       expect(f({ responseMode: "response-only" })).type.toBe<
         Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>

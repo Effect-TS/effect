@@ -47,7 +47,7 @@ export const mapSchemaError = dual<
   AiError.make({
     module: "OpenAiClient",
     method,
-    reason: AiError.InvalidOutputError.fromSchemaError(error)
+    reason: AiError.InvalidResponseError.fromSchemaError(error)
   }))
 
 /** @internal */
@@ -58,7 +58,7 @@ export const mapSseError = dual<
   AiError.make({
     module: "OpenAiClient",
     method,
-    reason: new AiError.InvalidOutputError({ description: error.message })
+    reason: new AiError.InvalidResponseError({ description: error.message })
   }))
 
 /** @internal */
@@ -230,34 +230,34 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
     case 400:
       return new AiError.InvalidRequestError({
         description: errorDescription,
-        metadata: { openai: metadata },
+        metadata: { "openai-compat": metadata },
         http
       })
     case 401:
       return new AiError.AuthenticationError({
         kind: "InvalidKey",
         description: errorDescription,
-        metadata,
+        metadata: { "openai-compat": metadata },
         http
       })
     case 403:
       return new AiError.AuthenticationError({
         kind: "InsufficientPermissions",
         description: errorDescription,
-        metadata,
+        metadata: { "openai-compat": metadata },
         http
       })
     case 404:
       return new AiError.InvalidRequestError({
         description: errorDescription,
-        metadata: { openai: metadata },
+        metadata: { "openai-compat": metadata },
         http
       })
     case 409:
     case 422:
       return new AiError.InvalidRequestError({
         description: errorDescription,
-        metadata: { openai: metadata },
+        metadata: { "openai-compat": metadata },
         http
       })
     case 429: {
@@ -268,7 +268,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
         metadata.errorType?.includes("exhausted")
       ) {
         return new AiError.QuotaExhaustedError({
-          metadata: { openai: metadata },
+          metadata: { "openai-compat": metadata },
           http
         })
       }
@@ -276,7 +276,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
       return new AiError.RateLimitError({
         retryAfter,
         metadata: {
-          openai: {
+          "openai-compat": {
             ...metadata,
             ...rateLimitMetadata
           }
@@ -288,13 +288,13 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
       if (status >= 500) {
         return new AiError.InternalProviderError({
           description: message ?? "Server error",
-          metadata,
+          metadata: { "openai-compat": metadata },
           http
         })
       }
       return new AiError.UnknownError({
         description: message,
-        metadata,
+        metadata: { "openai-compat": metadata },
         http
       })
   }

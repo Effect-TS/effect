@@ -297,7 +297,7 @@ export type ExitEncoded<A, E> = {
       readonly defect: unknown
     } | {
       readonly _tag: "Interrupt"
-      readonly fiberId: number | undefined
+      readonly fiberId: number | null | undefined
     }
   >
 }

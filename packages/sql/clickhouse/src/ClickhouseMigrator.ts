@@ -7,6 +7,7 @@
  * names, while `layer` runs the migrations during layer construction and
  * provides no services.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "effect/Effect"
@@ -24,6 +25,7 @@ export * from "effect/sql/Migrator"
  * Runs SQL migrations for ClickHouse using the supplied migrator options and
  * returns the applied migration IDs and names.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -39,6 +41,7 @@ export const run: <R2 = never>(
  * Creates a layer that runs the configured ClickHouse migrations during layer
  * construction and provides no services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

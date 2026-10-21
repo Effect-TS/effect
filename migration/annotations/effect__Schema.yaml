@@ -120,10 +120,10 @@ effect/Schema#BooleanFromUnknown:
   note: Use the boolean schema and perform any coercion explicitly before decoding.
 effect/Schema#brand:
   replacement: Schema.brand
-  note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+  note: Pass one concrete string literal as the brand identifier. Widened strings, unions, open template literals, and symbol identifiers are rejected; apply brand repeatedly to compose brands. V4 branding is type-only and does not add runtime AST metadata.
 effect/Schema#BrandSchema:
   replacement: Schema.brand
-  note: Use the schema returned by the v4 `brand` combinator and infer its concrete type.
+  note: Use the schema returned by the v4 `brand` combinator and infer its concrete type. The brand exists only in the TypeScript type and cannot be inspected through the runtime AST.
 effect/Schema#BrandSchemaId:
   replacement: none
   note: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
@@ -372,7 +372,7 @@ effect/Schema#format:
   note: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
 effect/Schema#fromBrand:
   replacement: Schema.fromBrand
-  note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+  note: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives. Constructor checks remain at runtime, while the brand is type-only and does not add AST metadata.
 effect/Schema#fromKey:
   replacement: Schema.encodeKeys
   note: Use `encodeKeys` to map decoded property names to encoded keys.
@@ -792,7 +792,7 @@ effect/Schema#Number:
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#NumberFromString:
   replacement: Schema.NumberFromString
-  note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+  note: "Decoding now uses JavaScript number coercion: unlike v3, `\"abc\"` decodes to `NaN`, while `\"\"` and whitespace-only strings decode to `0`. `FiniteFromString` rejects non-finite results, so it rejects invalid strings but also the `\"NaN\"` and infinity spellings accepted by v3; it still decodes blank strings to `0`. Use a custom codec to preserve the v3 acceptance rules exactly."
 effect/Schema#Object:
   replacement: Schema.ObjectKeyword
   note: Rename the object keyword schema.
@@ -839,14 +839,14 @@ effect/Schema#OptionFromUndefinedOr:
   replacement: Schema.OptionFromUndefinedOr
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#parseJson:
-  replacement: Schema.UnknownFromJsonString / Schema.fromJsonString(schema)
-  note: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+  replacement: Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)
+  note: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 effect/Schema#ParseJsonOptions:
   replacement: none
   note: The old parse-json options type was removed; configure `fromJsonString` and its underlying getter directly.
 effect/Schema#parseNumber:
   replacement: Schema.NumberFromString
-  note: Use the built-in string-to-number codec.
+  note: "Use the built-in string-to-number codec. Unlike v3 `parseNumber`, invalid strings decode to `NaN`, while blank strings decode to `0`. `FiniteFromString` rejects non-finite results but also the `\"NaN\"` and infinity spellings accepted by v3; exact compatibility requires a custom codec."
 effect/Schema#partial:
   replacement: schema.mapFields(Struct.map(Schema.optional))
   note: Map struct fields with `Schema.optional`.

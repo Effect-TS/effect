@@ -26,6 +26,7 @@ import * as Option from "../Option.ts"
 import type * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type { ExtractTag } from "../Types.ts"
+import * as Version from "../Version.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 import * as Exporter from "./OtlpExporter.ts"
 import type { KeyValue, Resource } from "./OtlpResource.ts"
@@ -54,6 +55,11 @@ export const make: (
       readonly attributes?: Record<string, unknown>
     } | undefined
     readonly headers?: Headers.Input | undefined
+    /**
+     * Request compression. Defaults to "none". Gzip uses
+     * HttpClientRequest's default minimum body size of 1KB.
+     */
+    readonly compression?: "gzip" | "none" | undefined
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
     readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
@@ -67,13 +73,15 @@ export const make: (
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const serialization = yield* OtlpSerialization
   const scope: Scope = {
-    name: OtlpResource.serviceNameUnsafe(otelResource)
+    name: "effect",
+    version: Version.getCurrentVersion()
   }
 
   const exporter = yield* Exporter.make({
     label: "OtlpTracer",
     url: options.url,
     headers: options.headers,
+    compression: options.compression,
     exportInterval: options.exportInterval ?? Duration.seconds(5),
     maxBatchSize: options.maxBatchSize ?? 1000,
     body(spans) {
@@ -126,6 +134,11 @@ export const layer: (options: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /**
+   * Request compression. Defaults to "none". Gzip uses
+   * HttpClientRequest's default minimum body size of 1KB.
+   */
+  readonly compression?: "gzip" | "none" | undefined
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
@@ -138,6 +151,13 @@ export const layer: (options: {
 
 /**
  * Creates an OTLP traces layer from OpenTelemetry configuration.
+ *
+ * **Details**
+ *
+ * Compression accepts "gzip" or "none".
+ * `OTEL_EXPORTER_OTLP_TRACES_COMPRESSION` takes precedence over
+ * `OTEL_EXPORTER_OTLP_COMPRESSION`, defaulting to "none". Gzip uses
+ * HttpClientRequest's default minimum body size of 1KB.
  *
  * @stability unstable
  * @category layers
@@ -163,7 +183,17 @@ export const layerFromConfig = (options?: {
       return Exporter.layerFlusher
     }
 
-    const { baseTimeout, tracesTimeout, exportTimeout, scheduleDelay, maxBatchSize } = yield* Config.all({
+    const {
+      baseCompression,
+      compression,
+      baseTimeout,
+      tracesTimeout,
+      exportTimeout,
+      scheduleDelay,
+      maxBatchSize
+    } = yield* Config.all({
+      baseCompression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_COMPRESSION")),
+      compression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_TRACES_COMPRESSION")),
       baseTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_TIMEOUT")),
       tracesTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_TRACES_TIMEOUT")),
       exportTimeout: Config.option(Config.Int("OTEL_BSP_EXPORT_TIMEOUT")),
@@ -183,6 +213,7 @@ export const layerFromConfig = (options?: {
       url: endpoint.toString(),
       resource: options?.resource,
       headers: options?.headers ?? (yield* OtlpEnv.headers("TRACES")),
+      compression: Option.getOrElse(Option.firstSomeOf([compression, baseCompression]), () => "none" as const),
       exportInterval: Option.getOrUndefined(scheduleDelay),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
       context: options?.context,
@@ -295,53 +326,44 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   if (status.exit._tag === "Success") {
     otelStatus = { code: StatusCode.Ok }
   } else if (Cause.hasInterruptsOnly(status.exit.cause)) {
-    otelStatus = {
-      code: StatusCode.Ok,
-      message: "Interrupted"
-    }
+    otelStatus = { code: StatusCode.Unset }
     attributes.push({
-      key: "span.label",
-      value: { stringValue: "⚠︎ Interrupted" }
-    }, {
-      key: "status.interrupted",
+      key: "effect.fiber.interrupted",
       value: { boolValue: true }
     })
   } else {
     const errors = Cause.prettyErrors(status.exit.cause, {
       includeCauseInStack: true
     })
-    otelStatus = {
-      code: StatusCode.Error
-    }
-    if (errors.length > 0) {
-      otelStatus.message = errors[0].message
-      for (const error of errors) {
-        events.push({
-          name: "exception",
-          timeUnixNano: String(status.endTime),
-          droppedAttributesCount: 0,
-          attributes: [
-            {
-              "key": "exception.type",
-              "value": {
-                "stringValue": error.name
-              }
-            },
-            {
-              "key": "exception.message",
-              "value": {
-                "stringValue": error.message
-              }
-            },
-            {
-              "key": "exception.stacktrace",
-              "value": {
-                "stringValue": error.stack ?? "No stack trace available"
-              }
+    otelStatus = errors.length > 0
+      ? { code: StatusCode.Error, message: errors[0].message }
+      : { code: StatusCode.Ok }
+    for (const error of errors) {
+      events.push({
+        name: "exception",
+        timeUnixNano: String(status.endTime),
+        droppedAttributesCount: 0,
+        attributes: [
+          {
+            "key": "exception.type",
+            "value": {
+              "stringValue": error.name
             }
-          ]
-        })
-      }
+          },
+          {
+            "key": "exception.message",
+            "value": {
+              "stringValue": error.message
+            }
+          },
+          {
+            "key": "exception.stacktrace",
+            "value": {
+              "stringValue": error.stack ?? "No stack trace available"
+            }
+          }
+        ]
+      })
     }
   }
 
@@ -349,7 +371,7 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   for (let i = 0; i < self.links.length; i++) {
     const link = self.links[i]
     links.push({
-      traceId: link.span.traceId,
+      traceId: link.span.traceId.padStart(32, "0"),
       spanId: link.span.spanId,
       attributes: entriesToAttributes(Object.entries(link.attributes)),
       droppedAttributesCount: 0
@@ -357,7 +379,7 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   }
 
   return {
-    traceId: self.traceId,
+    traceId: self.traceId.padStart(32, "0"),
     spanId: self.spanId,
     parentSpanId: Option.isSome(self.parent) ? self.parent.value.spanId : undefined,
     name: self.name,
@@ -413,6 +435,7 @@ export interface ScopeSpan {
 
 interface Scope {
   readonly name: string
+  readonly version?: string
 }
 
 interface OtlpSpan {

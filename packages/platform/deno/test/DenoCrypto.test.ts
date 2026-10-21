@@ -26,12 +26,12 @@ describe("DenoCrypto", () => {
   it.effect("generates UUIDv4 values", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
-      assert.match(yield* crypto.randomUUIDv4, uuidV4Regex)
+      assert.match(yield* crypto.randomUUIDv4(), uuidV4Regex)
     }).pipe(Effect.provide(DenoCrypto.layer)))
 
   it.effect("generates UUIDv7 values", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
-      assert.match(yield* crypto.randomUUIDv7, uuidV7Regex)
+      assert.match(yield* crypto.randomUUIDv7(), uuidV7Regex)
     }).pipe(Effect.provide(DenoCrypto.layer)))
 })

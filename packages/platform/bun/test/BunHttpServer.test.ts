@@ -6,11 +6,17 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as NetAddress from "effect/net/NetAddress"
+import * as References from "effect/References"
 import * as Scope from "effect/Scope"
+import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
@@ -19,6 +25,69 @@ import { join } from "node:path"
 
 const fetchText = (url: string) =>
   Effect.promise(() => fetch(url, { headers: { connection: "close" } }).then((response) => response.text()))
+
+const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>, path = "/") =>
+  Effect.callback<number, Error>((resume) => {
+    const socket = Net.createConnection({ host: "127.0.0.1", port })
+    let received = Buffer.alloc(0)
+    let upgraded = false
+    let closeCode: number | undefined
+    socket.on("close", () => {
+      if (closeCode !== undefined) resume(Effect.succeed(closeCode))
+    })
+    socket.on("connect", () =>
+      socket.write([
+        `GET ${path} HTTP/1.1`,
+        "Host: 127.0.0.1:" + port,
+        "Connection: Upgrade",
+        "Upgrade: websocket",
+        "Sec-WebSocket-Version: 13",
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+        "",
+        ""
+      ].join("\r\n")))
+    socket.on("error", (error) => resume(Effect.fail(error)))
+    socket.on("data", (chunk) => {
+      received = Buffer.concat([received, typeof chunk === "string" ? Buffer.from(chunk) : chunk])
+      if (!upgraded) {
+        const headerEnd = received.indexOf("\r\n\r\n")
+        if (headerEnd === -1) return
+        if (!received.subarray(0, headerEnd).toString().startsWith("HTTP/1.1 101")) {
+          resume(Effect.fail(new Error("WebSocket upgrade was refused")))
+          return
+        }
+        upgraded = true
+        received = received.subarray(headerEnd + 4)
+        Effect.runSync(Deferred.succeed(opened, undefined))
+      }
+      if (received.length < 4 || (received[0] & 0x0f) !== 8) return
+      if (closeCode !== undefined) return
+      closeCode = received.readUInt16BE(2)
+      socket.write(Buffer.from([0x88, 0x82, 0, 0, 0, 0, closeCode >> 8, closeCode & 0xff]))
+    })
+    return Effect.sync(() => socket.destroy())
+  })
+
+// Force-stop Bun after the close frame; graceful stop can hang here.
+const makeForceStoppableServer = Effect.gen(function*() {
+  const serve = Bun.serve
+  let forceStop: (() => void) | undefined
+  Bun.serve = ((options: Parameters<typeof Bun.serve>[0]) => {
+    const bunServer = serve(options)
+    forceStop = () => {
+      bunServer.stop(true)
+    }
+    return bunServer
+  }) as typeof Bun.serve
+  const server = yield* BunHttpServer.make({
+    hostname: "127.0.0.1",
+    port: 0,
+    gracefulShutdownTimeout: "100 millis"
+  }).pipe(Effect.ensuring(Effect.sync(() => {
+    Bun.serve = serve
+  })))
+  return { server, forceStop: () => forceStop?.() }
+})
 
 interface WebSocketFrame {
   readonly opcode: number
@@ -115,6 +184,124 @@ const makeWebSocketServer = Effect.fnUntraced(function*(payload: string, compres
 })
 
 describe("BunHttpServer", () => {
+  describe("serve scope ownership", { concurrent: false }, () => {
+    it.live("closes the request scope when a streaming body is cancelled synchronously during construction", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        let pulled = false
+        let cancellation: Promise<void> | undefined
+        const OriginalResponse = globalThis.Response
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            // Intercept construction: awaiting a response over HTTP lets the first pull run already.
+            globalThis.Response = class extends OriginalResponse {
+              constructor(body?: BodyInit | null, init?: ResponseInit) {
+                if (body instanceof ReadableStream) {
+                  cancellation = body.cancel()
+                  super(null, init)
+                } else {
+                  super(body, init)
+                }
+              }
+            }
+          }),
+          () =>
+            Effect.sync(() => {
+              globalThis.Response = OriginalResponse
+            })
+        )
+        yield* HttpServer.serveEffect(Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          return HttpServerResponse.stream(Stream.fromEffect(Effect.sync(() => {
+            pulled = true
+            return new Uint8Array([1])
+          })))
+        }))
+        const response = yield* HttpClient.get("/")
+        assert.strictEqual(response.status, 200)
+        yield* response.text
+        assert.isDefined(cancellation)
+        yield* Effect.promise(() => cancellation!)
+        assert.strictEqual(pulled, false)
+        assert.strictEqual(finalized, true)
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(BunHttpServer.layerTest)))
+
+    it.live("interrupts a streaming body suspended during startup when the serve scope closes", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0, disablePreemptiveShutdown: true })
+        // Let the body finish on teardown so the server can stop if it was never interrupted.
+        yield* Effect.addFinalizer(() => Deferred.succeed(release, undefined))
+        const serveScope = yield* Scope.fork(yield* Effect.scope)
+        yield* server.serve(Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          // The body suspends during startup, before it can serve a pull.
+          return HttpServerResponse.stream(
+            Stream.transformPull(
+              Stream.empty,
+              (pull) =>
+                Deferred.succeed(started, undefined).pipe(Effect.andThen(Deferred.await(release)), Effect.as(pull))
+            )
+          )
+        })).pipe(Scope.provide(serveScope))
+        // Not awaited: headers may not be sent while the body is suspended.
+        fetch(NetAddress.formatUrlUnsafe(server.address), { headers: { connection: "close" } }).catch(() => undefined)
+        yield* Deferred.await(started)
+        assert.strictEqual(finalized, false)
+        yield* Scope.close(serveScope, Exit.void)
+        assert.strictEqual(finalized, true)
+      }).pipe(Effect.timeout("2 seconds")))
+  })
+
+  for (const kind of ["serveEffect", "uninterruptible route"] as const) {
+    it.live(`closes the request scope when ${kind} returns a stream after client abort`, () =>
+      Effect.gen(function*() {
+        const closed = yield* Deferred.make<void>()
+        const controller = new AbortController()
+        const handler = Effect.gen(function*() {
+          yield* Effect.addFinalizer(() => Deferred.succeed(closed, undefined))
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const signal = (request.source as Request).signal
+          // Wait for Bun to observe the disconnect before returning the response.
+          yield* Effect.callback<void>((resume) => {
+            const onAbort = () => resume(Effect.void)
+            signal.addEventListener("abort", onAbort, { once: true })
+            controller.abort()
+            return Effect.sync(() => signal.removeEventListener("abort", onAbort))
+          })
+          const chunk = new TextEncoder().encode("body")
+          return HttpServerResponse.stream(Stream.concat(Stream.succeed(chunk), Stream.succeed(chunk)))
+        })
+        if (kind === "serveEffect") {
+          yield* HttpServer.serveEffect(handler)
+        } else {
+          yield* HttpRouter.add("GET", "/", handler, { uninterruptible: true }).pipe(
+            HttpRouter.serve,
+            Layer.build
+          )
+        }
+        const server = yield* HttpServer.HttpServer
+        const aborted = yield* Effect.promise(() =>
+          fetch(NetAddress.formatUrlUnsafe(server.address), { signal: controller.signal }).then(
+            () => false,
+            () => true
+          )
+        )
+        assert.isTrue(aborted)
+        yield* Deferred.await(closed).pipe(Effect.timeout("2 seconds"))
+      }).pipe(Effect.provide(BunHttpServer.layerTest)), 5000)
+  }
+
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
       for (const bodyKind of ["text", "stream"]) {
@@ -246,6 +433,37 @@ describe("BunHttpServer", () => {
       assert.strictEqual(NetAddress.formatUrlUnsafe(unixServer.address), `unix://${path}`)
     }))
 
+  it.effect("answers CONNECT with 501 without running the app", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      yield* HttpRouter.add(
+        "*",
+        "*",
+        Effect.sync(() => {
+          calls++
+          return HttpServerResponse.empty()
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      // fetch cannot send CONNECT.
+      const statusLine = yield* Effect.callback<string, Error>((resume) => {
+        const socket = Net.createConnection({ host: "127.0.0.1", port })
+        let received = ""
+        socket.on("connect", () => socket.write("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n"))
+        socket.on("error", (error) => resume(Effect.fail(error)))
+        socket.on("data", (chunk) => {
+          received += chunk.toString()
+          const lineEnd = received.indexOf("\r\n")
+          if (lineEnd !== -1) resume(Effect.succeed(received.slice(0, lineEnd)))
+        })
+        socket.on("close", () => resume(Effect.succeed(received)))
+        return Effect.sync(() => socket.destroy())
+      })
+      assert.strictEqual(statusLine.split(" ")[1], "501")
+      assert.strictEqual(calls, 0)
+    }).pipe(Effect.provide(BunHttpServer.layerTest)))
+
   it.effect("closing an older serve scope keeps the newer handler active", () =>
     Effect.gen(function*() {
       const ownerScope = yield* Effect.scope
@@ -361,6 +579,83 @@ describe("BunHttpServer", () => {
       assert.deepStrictEqual(frames.map((frame) => new TextDecoder().decode(frame.payload)), [payload, payload])
     }))
 
+  for (
+    const [name, exit, code] of [
+      ["success", "success", 1000],
+      ["interrupt", "interrupt", 1001],
+      ["failure", "failure", 1011],
+      ["defect", "defect", 1011],
+      ["explicit close before failure", "explicit", 4400]
+    ] as const
+  ) {
+    it.effect(`closes a WebSocket with the handler's ${name} code`, () =>
+      Effect.gen(function*() {
+        const opened = yield* Deferred.make<void>()
+        const logged = yield* Deferred.make<unknown>()
+        const logger = Logger.make((options) => {
+          const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+          if (annotations["http.url"] === "/") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+        })
+        const { forceStop, server } = yield* makeForceStoppableServer
+        yield* server.serve(
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            const readerScope = yield* Scope.fork(yield* Effect.scope)
+            yield* socket.reader.pipe(Scope.provide(readerScope))
+            yield* Deferred.await(opened)
+            if (exit === "explicit") {
+              const writer = yield* socket.writer
+              yield* writer.write(new Socket.CloseEvent(4400, "handler closed"))
+            }
+            if (exit === "interrupt") return yield* Effect.interrupt
+            if (exit === "failure" || exit === "explicit") return yield* Effect.fail(new Error("handler failed"))
+            if (exit === "defect") return yield* Effect.die(new Error("handler defect"))
+            return HttpServerResponse.empty()
+          }),
+          HttpMiddleware.logger
+        ).pipe(Effect.provide(Logger.layer([logger])))
+        yield* Effect.addFinalizer(() => Effect.sync(forceStop))
+        const port = (server.address as NetAddress.InetAddress).port
+        const actual = yield* readWebSocketClose(port, opened)
+        forceStop()
+        assert.strictEqual(actual, code)
+        if (exit === "success") assert.strictEqual(yield* Deferred.await(logged), 101)
+      }).pipe(Effect.timeout("5 seconds")), 10000)
+  }
+
+  it.effect("logs status 101 for a WebSocket upgraded through a prefixed route", () =>
+    Effect.gen(function*() {
+      const opened = yield* Deferred.make<void>()
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+      })
+      const app = yield* HttpRouter.toHttpEffect(HttpRouter.use((router) =>
+        router.prefixed("/ws").add(
+          "GET",
+          "/",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            const readerScope = yield* Scope.fork(yield* Effect.scope)
+            yield* socket.reader.pipe(Scope.provide(readerScope))
+            yield* Deferred.await(opened)
+            return HttpServerResponse.empty()
+          })
+        )
+      ))
+      const { forceStop, server } = yield* makeForceStoppableServer
+      yield* server.serve(app, HttpMiddleware.logger).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() => Effect.sync(forceStop))
+      const port = (server.address as NetAddress.InetAddress).port
+      const actual = yield* readWebSocketClose(port, opened, "/ws")
+      forceStop()
+      assert.strictEqual(actual, 1000)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
+    }).pipe(Effect.timeout("5 seconds")), 10000)
+
   it.effect("fails a concurrent reader waiting behind a closed reader", () =>
     Effect.gen(function*() {
       const secondReaderFailed = yield* Deferred.make<boolean>()
@@ -396,5 +691,24 @@ describe("BunHttpServer", () => {
       yield* readWebSocketFrames(port, false)
       const failed = yield* Deferred.await(secondReaderFailed)
       assert.isTrue(failed)
+    }))
+
+  it.effect("fails upgrades to protocols other than WebSocket", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
+      yield* server.serve(Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const error = yield* Effect.flip(request.upgrade)
+        return HttpServerResponse.text(error.reason.message, { status: 501 })
+      }))
+      const port = (server.address as NetAddress.InetAddress).port
+      const response = yield* Effect.promise(() =>
+        fetch(`http://127.0.0.1:${port}/attach`, {
+          method: "POST",
+          headers: { connection: "Upgrade", upgrade: "tcp" }
+        })
+      )
+      assert.strictEqual(response.status, 501)
+      assert.include(yield* Effect.promise(() => response.text()), "Bun.serve only supports WebSocket upgrades")
     }))
 })

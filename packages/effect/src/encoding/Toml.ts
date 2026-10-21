@@ -169,9 +169,9 @@ class TomlParser {
           this.advance()
         }
         key = this.input.slice(start, this.index)
-      }
-      if (key.length === 0) {
-        this.fail("Expected a key")
+        if (key.length === 0) {
+          this.fail("Expected a key")
+        }
       }
       keys.push(key)
       this.skipInlineWhitespace()
@@ -283,7 +283,7 @@ class TomlParser {
     if (multiline) {
       this.expect("\"")
       this.expect("\"")
-      if (this.peek() === "\n") this.advance()
+      this.advance(this.input.startsWith("\r\n", this.index) ? 2 : this.peek() === "\n" ? 1 : 0)
     }
     let output = ""
     while (!this.done) {
@@ -347,7 +347,7 @@ class TomlParser {
     if (multiline) {
       this.expect("'")
       this.expect("'")
-      if (this.peek() === "\n") this.advance()
+      this.advance(this.input.startsWith("\r\n", this.index) ? 2 : this.peek() === "\n" ? 1 : 0)
     }
     const start = this.index
     while (!this.done) {

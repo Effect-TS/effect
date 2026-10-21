@@ -3,6 +3,49 @@ import { Cause, Data, Deferred, Effect, Exit, Fiber, MutableHashMap, Option, RcM
 import { TestClock } from "effect/testing"
 
 describe("RcMap", () => {
+  describe("owner shutdown", () => {
+    for (
+      const { idleTimeToLive, outstanding } of [
+        { idleTimeToLive: 1000, outstanding: false },
+        { idleTimeToLive: Infinity, outstanding: false },
+        { idleTimeToLive: 0, outstanding: true }
+      ]
+    ) {
+      it.effect(`releases every entry and propagates all defects with TTL ${idleTimeToLive}`, () =>
+        Effect.gen(function*() {
+          const released: Array<string> = []
+          const owner = yield* Scope.make()
+          const borrower = yield* Scope.make()
+          const map = yield* RcMap.make({
+            lookup: (key: string) =>
+              Effect.acquireRelease(Effect.succeed(key), () =>
+                Effect.gen(function*() {
+                  released.push(key)
+                  if (key !== "ok") return yield* Effect.die(`release ${key}`)
+                })),
+            idleTimeToLive
+          }).pipe(Scope.provide(owner))
+
+          for (const key of ["a", "b", "ok"]) {
+            yield* RcMap.get(map, key).pipe(Scope.provide(borrower))
+          }
+          if (!outstanding) yield* Scope.close(borrower, Exit.void)
+          assert.deepStrictEqual(released, [])
+
+          const exit = yield* Scope.close(owner, Exit.void).pipe(Effect.exit)
+          yield* Scope.close(borrower, Exit.void)
+
+          assert.deepStrictEqual(released.sort(), ["a", "b", "ok"])
+          assert.deepStrictEqual(yield* RcMap.getOption(map, "a"), Option.none())
+          if (Exit.isSuccess(exit)) assert.fail("owner shutdown discarded release defects")
+          assert.deepStrictEqual(
+            exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag).sort(),
+            ["release a", "release b"]
+          )
+        }))
+    }
+  })
+
   describe("lookup defects", () => {
     for (const throws of [false, true]) {
       it.effect.each([0, 1000])(
@@ -554,11 +597,10 @@ describe("RcMap", () => {
       let released = 0
       const scope = yield* Scope.make()
       const map = yield* RcMap.make({
-        lookup: (_: string) =>
-          Effect.gen(function*() {
-            yield* Effect.addFinalizer(() => Effect.sync(() => released++))
-            yield* Effect.addFinalizer(() => Effect.andThen(Deferred.await(gate), Effect.sync(() => released++)))
-          }),
+        lookup: Effect.fnUntraced(function*(_: string) {
+          yield* Effect.addFinalizer(() => Effect.sync(() => released++))
+          yield* Effect.addFinalizer(() => Effect.andThen(Deferred.await(gate), Effect.sync(() => released++)))
+        }),
         idleTimeToLive: "1 second"
       }).pipe(Scope.provide(scope))
       yield* Effect.scoped(RcMap.get(map, "a"))
@@ -568,5 +610,32 @@ describe("RcMap", () => {
       yield* Deferred.succeed(gate, void 0)
       yield* Fiber.join(close)
       assert.strictEqual(released, 2)
+    }))
+
+  it.effect("drops an interrupted lookup and closes its scope", () =>
+    Effect.gen(function*() {
+      let lookups = 0
+      const started = yield* Deferred.make<void>()
+      const interrupt = yield* Deferred.make<void>()
+      const finalized = yield* Deferred.make<void>()
+      const map = yield* RcMap.make({
+        lookup: Effect.fnUntraced(function*(_key: string) {
+          if (++lookups > 1) return lookups
+          yield* Effect.addFinalizer(() => Deferred.succeed(finalized, void 0))
+          yield* Deferred.succeed(started, void 0)
+          yield* Deferred.await(interrupt)
+          return yield* Effect.interrupt
+        }),
+        idleTimeToLive: "1 minute"
+      })
+
+      // The only borrower leaves, so nothing else releases the entry.
+      const borrower = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+      yield* Deferred.await(started)
+      yield* Fiber.interrupt(borrower)
+      yield* Deferred.succeed(interrupt, void 0)
+
+      assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "key")), 2)
+      yield* Deferred.await(finalized)
     }))
 })

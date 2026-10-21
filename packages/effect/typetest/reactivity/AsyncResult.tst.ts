@@ -77,4 +77,12 @@ describe("AsyncResult", () => {
       expect(missingSuccess).type.not.toHaveProperty("exhaustive")
     })
   })
+  it("flatMap", () => {
+    expect(
+      AsyncResult.success(1).pipe(AsyncResult.flatMap((value) => AsyncResult.success(value)))
+    ).type.toBe<AsyncResult.AsyncResult<number, never>>()
+    expect(
+      AsyncResult.success(1).pipe(AsyncResult.flatMap((value) => AsyncResult.success(String(value))))
+    ).type.toBe<AsyncResult.AsyncResult<string, never>>()
+  })
 })

@@ -205,7 +205,12 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       }),
       Match.exhaustive
     )
-    return new ProtocolError({ code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE, message })
+    return new ProtocolError({
+      code: error._tag === "ToolExecutionError"
+        ? PublicMcpSchema.INTERNAL_ERROR_CODE
+        : PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+      message
+    })
   }
 
   static fromFeature(error: unknown): ProtocolError {
@@ -377,6 +382,8 @@ export interface HandlerInstallationContext {
     never,
     Scope.Scope
   >
+  /** Current list-change revision; subscriptions ignore changes emitted at or before it. */
+  readonly getListChangeRevision?: (() => number) | undefined
   readonly sendNotification?: (
     protocolVersion: string,
     clientId: number,
@@ -414,6 +421,7 @@ export interface HandlerInstallationContext {
  */
 export interface CanonicalServerNotification {
   readonly notification: SubscriptionServerNotification
+  readonly listChangeRevision?: number | undefined
   readonly targetClientId?: number | undefined
 }
 

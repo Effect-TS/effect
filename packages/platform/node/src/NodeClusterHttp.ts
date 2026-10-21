@@ -8,6 +8,7 @@
  * this module re-exports the Kubernetes HTTP client layer used by runner health
  * checks.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as HttpRunner from "effect/cluster/HttpRunner"
@@ -29,7 +30,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as RpcSerialization from "effect/rpc/RpcSerialization"
 import type { SqlClient } from "effect/sql/SqlClient"
-import { createServer } from "node:http"
+import { http } from "./internal/http.ts"
 import { layerK8sHttpClient } from "./NodeClusterSocket.ts"
 import * as NodeCrypto from "./NodeCrypto.ts"
 import * as NodeHttpClient from "./NodeHttpClient.ts"
@@ -41,6 +42,7 @@ export {
   /**
    * Provides the Kubernetes HTTP client layer used by Kubernetes runner health checks.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -52,6 +54,7 @@ export {
  * transport, RPC serialization, message storage, runner health checks, and
  * optional client-only mode.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -139,6 +142,7 @@ export const layer = <
  * Provides the HTTP server and Node HTTP services used by cluster runners,
  * listening on `ShardingConfig.runnerListenAddress` or `runnerAddress`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -155,5 +159,5 @@ export const layerHttpServer: Layer.Layer<
   if (Option.isNone(listenAddress)) {
     return yield* Effect.die("NodeClusterHttp.layerHttpServer: ShardingConfig.runnerAddress is None")
   }
-  return NodeHttpServer.layer(createServer, listenAddress.value)
+  return NodeHttpServer.layer(http.createServer, listenAddress.value)
 }).pipe(Layer.unwrap)

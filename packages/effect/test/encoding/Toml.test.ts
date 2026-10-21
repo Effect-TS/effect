@@ -58,6 +58,22 @@ started = 2026-08-05
     )
   })
 
+  it("parses empty quoted keys", () => {
+    assert.deepStrictEqual(
+      Toml.parse(`"" = 1
+nested.'' = 2`),
+      { "": 1, nested: { "": 2 } }
+    )
+  })
+
+  it("rejects empty bare keys, unterminated keys, and duplicate empty keys", () => {
+    assert.throws(() => Toml.parse(" = 1\n"))
+    assert.throws(() => Toml.parse("a. = 1\n"))
+    assert.throws(() => Toml.parse("\" = 1"))
+    assert.throws(() => Toml.parse("' = 1"))
+    assert.throws(() => Toml.parse(`"" = 1\n'' = 2`))
+  })
+
   it("parses multiline strings and numeric formats", () => {
     assert.deepStrictEqual(
       Toml.parse(`
@@ -74,6 +90,18 @@ local = 2026-08-05 01:02:03
         fraction: 1000.5,
         local: "2026-08-05T01:02:03"
       }
+    )
+  })
+
+  it.each([
+    ["LF", "\nvalue", "value"],
+    ["CRLF", "\r\nvalue", "value"],
+    ["additional newlines", "\r\n\r\nfirst\r\nsecond", "\r\nfirst\r\nsecond"],
+    ["leading whitespace", " \r\nvalue", " \r\nvalue"]
+  ])("trims only an immediate opening newline in multiline strings (%s)", (_, content, expected) => {
+    assert.deepStrictEqual(
+      Toml.parse(`basic = """${content}"""\nliteral = '''${content}'''\n`),
+      { basic: expected, literal: expected }
     )
   })
 

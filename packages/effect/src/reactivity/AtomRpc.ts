@@ -15,7 +15,6 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Headers from "../http/Headers.ts"
 import * as Layer from "../Layer.ts"
-import type { ReadonlyRecord } from "../Record.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import * as RpcClient from "../rpc/RpcClient.ts"
 import { RpcClientError } from "../rpc/RpcClientError.ts"
@@ -57,8 +56,8 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
 
   readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(
     arg: Tag
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
+  ) => Rpcs extends Rpc.Rpc<
+    infer _Tag extends Tag,
     infer _Payload,
     infer _Success,
     infer _Error,
@@ -67,11 +66,8 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
   > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? never
     : Atom.AtomResultFn<
       {
-        readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
-        readonly reactivityKeys?:
-          | ReadonlyArray<unknown>
-          | ReadonlyRecord<string, ReadonlyArray<unknown>>
-          | undefined
+        readonly payload: Rpc.PayloadConstructor<Rpcs>
+        readonly reactivityKeys?: Reactivity.KeysInput | undefined
         readonly headers?: Headers.Input | undefined
       },
       _Success["Type"],
@@ -84,15 +80,12 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
-      readonly reactivityKeys?:
-        | ReadonlyArray<unknown>
-        | ReadonlyRecord<string, ReadonlyArray<unknown>>
-        | undefined
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
+  ) => Rpcs extends Rpc.Rpc<
+    infer _Tag extends Tag,
     infer _Payload,
     infer _Success,
     infer _Error,
@@ -196,10 +189,7 @@ export const Service = <Self>() =>
     const rpc = options.group.requests.get(tag)! as any as Rpc.AnyWithProps
     return self.runtime.fn<{
       readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
-      readonly reactivityKeys?:
-        | ReadonlyArray<unknown>
-        | ReadonlyRecord<string, ReadonlyArray<unknown>>
-        | undefined
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly headers?: Headers.Input | undefined
     }>()(
       Effect.fnUntraced(function*({ headers, payload, reactivityKeys }) {
@@ -211,7 +201,7 @@ export const Service = <Self>() =>
       })
     ).pipe(
       Atom.serializable({
-        key: `AtomRpc:mutation:${tag}`,
+        key: `AtomRpc:mutation:${JSON.stringify([id, tag])}`,
         schema: AsyncResult.Schema({
           success: rpc.successSchema,
           error: makeErrorSchema(rpc)
@@ -264,10 +254,7 @@ export const Service = <Self>() =>
     payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
-      readonly reactivityKeys?:
-        | ReadonlyArray<unknown>
-        | ReadonlyRecord<string, ReadonlyArray<unknown>>
-        | undefined
+      readonly reactivityKeys?: Reactivity.KeysInput | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
@@ -294,10 +281,7 @@ interface QueryKey {
   tag: string
   payload: any
   headers: Headers.Headers | undefined
-  reactivityKeys:
-    | ReadonlyArray<unknown>
-    | ReadonlyRecord<string, ReadonlyArray<unknown>>
-    | undefined
+  reactivityKeys: Reactivity.KeysInput | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
 }

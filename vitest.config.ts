@@ -87,6 +87,7 @@ export default defineConfig({
   test: {
     passWithNoTests: true,
     projects: [
+      ...project("scripts", "scripts", true, {}, undefined, ["codemods/jsdoc.test.ts"]),
       ...project(
         "effect",
         "packages/effect",
@@ -107,6 +108,7 @@ export default defineConfig({
           : undefined
       ),
       ...project("@effect/ai-anthropic", "packages/ai/anthropic"),
+      ...project("@effect/ai-cloudflare", "packages/ai/cloudflare"),
       ...project("@effect/ai-openai", "packages/ai/openai"),
       ...project("@effect/ai-typesafe", "packages/ai/typesafe"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),
@@ -204,7 +206,7 @@ export default defineConfig({
         // Miniflare needs Node/Bun; keep the in-process client tests on Deno.
         isDeno ? [...exclude, "test/Miniflare.test.ts"] : undefined
       ),
-      ...project("@effect/sql-sqlite-node", "packages/sql/sqlite-node", isNode),
+      ...project("@effect/sql-sqlite-node", "packages/sql/sqlite-node", isNode || isDeno),
       ...project("@effect/sql-sqlite-react-native", "packages/sql/sqlite-react-native"),
       ...project("@effect/sql-sqlite-wasm", "packages/sql/sqlite-wasm"),
       ...project("@effect/ai-codegen", "packages/tools/ai-codegen", isNode),
@@ -213,7 +215,9 @@ export default defineConfig({
       ...project("@effect/doctest", "packages/tools/doctest"),
       ...project("@effect/docgen", "packages/tools/docgen"),
       ...project("@effect/jsdocs", "packages/tools/jsdocs"),
+      ...project("@effect/npm-promote", "packages/tools/npm-promote"),
       ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),
+      ...project("@effect/graphql-generator", "packages/tools/graphql-generator"),
       ...project("@effect/utils", "packages/tools/utils", isNode),
       ...project("@effect/oxc", "packages/tools/oxc")
     ]

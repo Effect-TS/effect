@@ -9,6 +9,7 @@
  * typed headers, remote address lookup, stream access, and text, JSON,
  * URL-encoded, and array-buffer body readers.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -21,6 +22,8 @@ import type * as Schema from "effect/Schema"
 import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
 import * as NodeStream from "./NodeStream.ts"
+
+const textDecoder = new TextDecoder()
 
 /**
  * Adapts a Node `IncomingMessage` to Effect HTTP incoming messages.
@@ -35,6 +38,7 @@ import * as NodeStream from "./NodeStream.ts"
  * The adapter exposes headers, remote address, stream access, and cached body
  * decoders. Subclasses provide the error mapping for unknown Node errors.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -50,6 +54,8 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   readonly source: Http.IncomingMessage
   readonly onError: (error: unknown) => E
   readonly remoteAddressOverride?: Option.Option<string> | undefined
+  protected readonly destroyOnOverflow: boolean = true
+  protected readonly closeOnDone: boolean = true
 
   constructor(
     source: Http.IncomingMessage,
@@ -76,7 +82,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.map(this.arrayBuffer, (_) => Buffer.from(_).toString("utf8"))
+    this.textEffect = Effect.map(this.arrayBuffer, (_) => textDecoder.decode(_))
     return this.textEffect
   }
 
@@ -107,7 +113,8 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   get stream(): Stream.Stream<Uint8Array, E> {
     return NodeStream.fromReadable({
       evaluate: () => this.source,
-      onError: this.onError
+      onError: this.onError,
+      closeOnDone: this.closeOnDone
     })
   }
 
@@ -119,13 +126,14 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     this.arrayBufferEffect = Effect.withFiber((fiber) =>
       NodeStream.toArrayBuffer(() => this.source, {
         onError: this.onError,
+        destroyOnOverflow: this.destroyOnOverflow,
         maxBytes: fiber.getRef(IncomingMessage.MaxBodySize)
       })
     ).pipe(
       Effect.cached,
       Effect.runSync
     )
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
+    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => textDecoder.decode(_))
     return this.arrayBufferEffect
   }
 }

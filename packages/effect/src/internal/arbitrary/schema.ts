@@ -30,10 +30,11 @@ interface Checks {
 
 const infinity = Number.POSITIVE_INFINITY
 const finiteNumberConstraint: FilterConstraint = { number: "finite" }
-const optionMatch = { onFailure: Option.none, onSuccess: Option.some }
-
 const optionComputation = <A, E, R>(self: Effect.Effect<A, E, R>): Model.Computation<Option.Option<A>> => {
-  const result = Effect.matchEager(self, optionMatch) as Effect.Effect<Option.Option<A>>
+  const result = Effect.matchCauseEffectEager(self, {
+    onFailure: Model.onTypedFailure(() => Effect.succeedNone),
+    onSuccess: Effect.succeedSome
+  }) as Effect.Effect<Option.Option<A>>
   return effectIsExit(result) && result._tag === "Success" ? result.value : result
 }
 

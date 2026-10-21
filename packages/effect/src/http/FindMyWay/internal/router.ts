@@ -49,6 +49,12 @@ export const make = <A>(
   options: Partial<Router.RouterConfig> = {}
 ): Router.Router<A> => new RouterImpl(options)
 
+/** @internal */
+export const getMaxParamLengthExceeded = <A>(router: Router.Router<A>): number | undefined => {
+  const impl = router as RouterImpl<A>
+  return impl.maxParamLengthExceeded ? impl.options.maxParamLength : undefined
+}
+
 class RouterImpl<A> implements Router.Router<A> {
   constructor(options: Partial<Router.RouterConfig> = {}) {
     this.options = {
@@ -61,6 +67,7 @@ class RouterImpl<A> implements Router.Router<A> {
   }
 
   readonly options: Router.RouterConfig
+  maxParamLengthExceeded = false
   routes: Array<Route> = []
   trees: Record<string, StaticNode> = Object.create(null)
   staticRoutes: Record<string, Map<string, Handler>> = Object.create(null)
@@ -309,6 +316,7 @@ class RouterImpl<A> implements Router.Router<A> {
   }
 
   find(method: string, path: string): Router.FindResult<A> | undefined {
+    this.maxParamLengthExceeded = false
     let currentNode: Node | undefined = this.trees[method]
     if (currentNode === undefined) return undefined
 
@@ -338,13 +346,6 @@ class RouterImpl<A> implements Router.Router<A> {
         path = path.replace(FULL_PATH_REGEXP, "/")
       }
 
-      // This must be run before sanitizeUrl as the resulting function
-      // .sliceParameter must be constructed with same URL string used
-      // throughout the rest of this function.
-      if (this.options.ignoreDuplicateSlashes) {
-        path = removeDuplicateSlashes(path)
-      }
-
       let sanitizedUrl
       try {
         sanitizedUrl = safeDecodeURI(path)
@@ -353,6 +354,10 @@ class RouterImpl<A> implements Router.Router<A> {
         shouldDecodeParam = sanitizedUrl.shouldDecodeParam
       } catch (error) {
         return undefined
+      }
+
+      if (this.options.ignoreDuplicateSlashes) {
+        path = removeDuplicateSlashes(path)
       }
 
       if (this.options.ignoreTrailingSlash) {
@@ -397,6 +402,7 @@ class RouterImpl<A> implements Router.Router<A> {
             searchParams: QS.parse(querystring)
           } as const
         }
+        this.maxParamLengthExceeded = true
       }
     }
 
@@ -486,6 +492,7 @@ class RouterImpl<A> implements Router.Router<A> {
             const matchedParam = matchedParameters[i] ?? ""
             if (matchedParam.length > maxParamLength) {
               maxParamLengthExceeded = true
+              this.maxParamLengthExceeded = true
               break
             }
           }
@@ -507,6 +514,7 @@ class RouterImpl<A> implements Router.Router<A> {
           }
         } else {
           if (param.length > maxParamLength) {
+            this.maxParamLengthExceeded = true
             if (brothersNodesStack.length === 0) {
               return undefined
             }
@@ -551,7 +559,7 @@ class HandlerStorage {
     const handler: Handler = {
       params: route.params,
       handler: route.handler,
-      createParams: compileCreateParams(route.params)
+      createParams: makeCreateParams(route.params)
     }
     this.handlers.push(handler)
     this.unconstrainedHandler = this.handlers[0]
@@ -844,28 +852,12 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
-// Compile safe, unique parameter names into a stable null-prototype shape.
-// Other names and codegen-restricted runtimes use assignment.
-const safeParamName = /^[A-Za-z_$][A-Za-z0-9_$]*$/
-const isCompilableParamName = (name: string): boolean => name !== "__proto__" && safeParamName.test(name)
-
-function compileCreateParams(
+function makeCreateParams(
   params: ReadonlyArray<string>
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
   const len = params.length
   if (len === 0) {
     return () => Object.create(null)
-  }
-  if (params.every(isCompilableParamName) && new Set(params).size === len) {
-    try {
-      // eslint-disable-next-line no-new-func
-      return new Function(
-        "a",
-        `return {__proto__:null,${params.map((name, i) => `${name}:a[${i}]`).join(",")}}`
-      ) as (paramsArray: ReadonlyArray<string>) => Record<string, string>
-    } catch {
-      // Use assignment when CSP blocks Function construction.
-    }
   }
   return function(paramsArray) {
     const paramsObject: Record<string, string> = Object.create(null)
@@ -876,7 +868,8 @@ function compileCreateParams(
   }
 }
 
-function getClosingParenthensePosition(path: string, idx: number) {
+/** @internal */
+export function getClosingParenthensePosition(path: string, idx: number) {
   // `path.indexOf()` will always return the first position of the closing parenthese,
   // but it's inefficient for grouped or wrong regexp expressions.
   // see issues #62 and #63 for more info

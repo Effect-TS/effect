@@ -217,14 +217,12 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       }
       case "Union": {
         const types = SchemaAST.toType(ast).types
-        const getCandidates = (value: any) => SchemaAST.getCandidates(value, types)
-        const compiled = new Map(
-          types.map((candidate, i) => [candidate, [SchemaParser._is(candidate), recur(ast.types[i])] as const] as const)
-        )
+        const index = SchemaAST.getCandidateIndex(types)
+        const compiled = types.map((candidate, i) => [SchemaParser._is(candidate), recur(ast.types[i])] as const)
         return (value) => {
-          const candidates = getCandidates(value)
+          const candidates = index(value, false)
           for (let i = 0; i < candidates.length; i++) {
-            const [is, formatter] = compiled.get(candidates[i])!
+            const [is, formatter] = compiled[candidates[i]]
             if (is(value)) {
               return formatter(value)
             }

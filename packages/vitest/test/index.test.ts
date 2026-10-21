@@ -21,6 +21,14 @@ it("throwsAsync fails when the promise resolves", async () => {
   await expect(testAssert.throwsAsync(() => Promise.resolve())).rejects.toThrow()
 })
 
+it("deepStrictEqual fails with the assertion diff when no message is given", () => {
+  expect(() => testAssert.deepStrictEqual({ a: 1 }, { a: 2 })).toThrow("Expected values to be strictly deep-equal")
+})
+
+it("notDeepStrictEqual fails with the assertion message when no message is given", () => {
+  expect(() => testAssert.notDeepStrictEqual({ a: 1 }, { a: 1 })).toThrow("not to be strictly deep-equal")
+})
+
 // each
 
 it.effect.each([1, 2, 3])(
@@ -342,6 +350,13 @@ it.effect.prop(
 )
 
 describe("property failures", () => {
+  it.prop(
+    "rejects Effect returns from synchronous properties",
+    [Schema.Int],
+    () => Effect.fail("must not silently pass") as unknown as void,
+    { fails: true }
+  )
+
   const Input = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 1_000 }))
   const pureDefectValues: Array<number> = []
   const effectDefectValues: Array<number> = []

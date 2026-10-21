@@ -264,16 +264,14 @@ const projectError = (error: ProtocolError): McpSchema.McpError => {
   })
 }
 
-const failWithHttpStatus = Effect.fnUntraced(function*(status: number, error: McpProtocol.ProtocolError) {
-  const request = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
-  if (Option.isSome(request)) {
+const failWithHttpStatus = (status: number, error: McpProtocol.ProtocolError) =>
+  Effect.withFiber((fiber) => {
     appendPreResponseHandlerUnsafe(
-      request.value,
+      fiber.context,
       (_request, response) => Effect.succeed(HttpServerResponse.setStatus(response, status))
     )
-  }
-  return yield* error
-})
+    return Effect.fail(error)
+  })
 
 /**
  * @internal
@@ -386,6 +384,8 @@ export const makeHandlers = (
       }
       const presence = yield* context.registrationPresence
       const eventsScope = yield* Scope.fork(yield* Effect.scope)
+      // Ignore changes emitted before this subscription, even if delivery was deferred.
+      const listChangeRevision = context.getListChangeRevision?.() ?? 0
       const events = yield* Scope.provide(context.subscribeServerNotifications, eventsScope)
       const honored = {
         ...(presence.tools && request.notifications.toolsListChanged === true
@@ -410,6 +410,9 @@ export const makeHandlers = (
       yield* Effect.gen(function*() {
         while (true) {
           const event = yield* PubSub.take(events)
+          if (event.listChangeRevision !== undefined && event.listChangeRevision <= listChangeRevision) {
+            continue
+          }
           if (event.targetClientId !== undefined && event.targetClientId !== client.id) {
             continue
           }

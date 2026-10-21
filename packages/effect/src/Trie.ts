@@ -7,6 +7,7 @@
  * includes exact lookup, prefix lookup, longest-prefix lookup, iteration,
  * mapping, filtering, reducing, and traversal helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Equal } from "./Equal.ts"
@@ -54,6 +55,7 @@ const TypeId = TR.TrieTypeId
  * Trie.size(trie) // => 4
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -77,6 +79,7 @@ export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pi
  * Array.from(trie) // => []
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -101,6 +104,7 @@ export const empty: <V = never>() => Trie<V> = TR.empty
  * trie // => Trie.make(["call", 0], ["me", 1], ["mind", 2], ["mid", 3])
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -120,6 +124,7 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<
  * trie // => Trie.fromIterable([["ca", 0], ["me", 1]])
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -148,6 +153,7 @@ export const make: <Entries extends Array<readonly [string, any]>>(
  * Array.from(trie4) // => [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -177,6 +183,7 @@ export const insert: {
  * Array.from(Trie.keys(trie)) // => ["abc", "bca", "cab"]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -203,6 +210,7 @@ export const keys: <V>(self: Trie<V>) => IterableIterator<string> = TR.keys
  * Array.from(Trie.values(trie)) // => [2, 0, 1]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -228,6 +236,7 @@ export const values: <V>(self: Trie<V>) => IterableIterator<V> = TR.values
  * Array.from(Trie.entries(trie)) // => [["call", 0], ["me", 1]]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -252,6 +261,7 @@ export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.e
  * Trie.toEntries(trie) // => [["call", 0], ["me", 1]]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -276,6 +286,7 @@ export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(en
  * Array.from(Trie.keysWithPrefix(trie, "she")) // => ["she", "shells"]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -303,6 +314,7 @@ export const keysWithPrefix: {
  * Array.from(Trie.valuesWithPrefix(trie, "she")) // => [0, 1]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -330,6 +342,7 @@ export const valuesWithPrefix: {
  * Array.from(Trie.entriesWithPrefix(trie, "she")) // => [["she", 0], ["shells", 1]]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -357,6 +370,7 @@ export const entriesWithPrefix: {
  * Trie.toEntriesWithPrefix(trie, "she") // => [["she", 3], ["shells", 0]]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -384,6 +398,7 @@ export const toEntriesWithPrefix: {
  * Trie.longestPrefixOf(trie, "sells") // => Option.some(["sells", 1])
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -408,6 +423,7 @@ export const longestPrefixOf: {
  * Trie.size(trie) // => 2
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -438,6 +454,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  * Trie.get(trie, "mea") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -471,6 +488,7 @@ export const get: {
  * Trie.has(trie, "mea") // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -494,6 +512,7 @@ export const has: {
  * Trie.isEmpty(trie1) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -528,6 +547,7 @@ export const isEmpty: <V>(self: Trie<V>) => boolean = TR.isEmpty
  * }) // => Result.fail("Expected trie to contain key")
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -559,6 +579,7 @@ export const getUnsafe: {
  * Trie.get(trie2, "call") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -586,6 +607,7 @@ export const remove: {
  * trie.pipe(Trie.reduce("", (acc, _, key) => acc + key)) // => "sellssheshells"
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -612,6 +634,7 @@ export const reduce: {
  * Trie.map(trie, (_, k) => k.length) // => Trie.make(["shells", 6], ["sells", 5], ["she", 3])
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -638,6 +661,7 @@ export const map: {
  * Trie.filter(trie, (_, k) => k.length > 3) // => Trie.make(["shells", 0], ["sells", 1])
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -670,6 +694,7 @@ export const filter: {
  * ) // => Trie.make(["shells", 0], ["sells", 1])
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -695,6 +720,7 @@ export const filterMap: {
  * Trie.compact(trie) // => Trie.make(["shells", 0], ["she", 2])
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -722,6 +748,7 @@ export const compact: <A>(self: Trie<Option<A>>) => Trie<A> = TR.compact
  * value // => 17
  * ```
  *
+ * @stability stable
  * @category traversing
  * @since 2.0.0
  */
@@ -748,6 +775,7 @@ export const forEach: {
  * trie.pipe(Trie.modify("me", (v) => v)) // => trie
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -773,6 +801,7 @@ export const modify: {
  * trie.pipe(Trie.removeMany(["she", "sells"])) // => Trie.make(["shells", 0])
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -798,6 +827,7 @@ export const removeMany: {
  * ) // => Trie.make(["shells", 0], ["sells", 1], ["she", 2])
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
