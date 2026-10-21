@@ -487,6 +487,21 @@ development:
       assert.throws(() => Yaml.parse(source), SyntaxError)
     })
 
+    it.each(
+      [
+        ["block mapping", "a: &a\n  b: *a\n", ["a", "b"], ["a"]],
+        ["block sequence", "- &a\n  - *a\n", [0, 0], [0]],
+        ["flow sequence", "&a [*a]\n", [0], []],
+        ["flow mapping", "&a {b: *a}\n", ["b"], []],
+        ["nested flow collection", "a: &a [1, {b: *a}]\n", ["a", 1, "b"], ["a"]]
+      ] as const
+    )("resolves a recursive alias in a %s", (_, source, aliasPath, anchorPath) => {
+      const value = Yaml.parse(source)
+      const select = (path: ReadonlyArray<string | number>) =>
+        path.reduce((node: unknown, key) => (node as Record<string | number, unknown>)[key], value)
+      assert.strictEqual(select(aliasPath), select(anchorPath))
+    })
+
     // yaml 2.9.1 warns and keeps the untagged value instead.
     it.each([
       ["!!int scalar", "a: !!int abc\n"],

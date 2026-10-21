@@ -7,8 +7,10 @@
  * `!!bool`, `!!null`, `!!map`, `!!seq`) are resolved, including through
  * `%TAG` handles; other tags are ignored, so their scalars stay strings.
  *
- * Unsupported: recursive aliases and document streams. Mapping keys are
- * JavaScript strings, so explicit (`?`) keys must be scalars.
+ * An alias inside the collection its anchor names yields a cyclic value.
+ *
+ * Unsupported: document streams. Mapping keys are JavaScript strings, so
+ * explicit (`?`) keys must be scalars.
  *
  * @stability unstable
  * @since 4.0.0
