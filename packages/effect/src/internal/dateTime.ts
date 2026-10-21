@@ -1264,16 +1264,11 @@ export const formatIntl: {
 /** @internal */
 export const formatIso = (self: DateTime.DateTime): string => toDateUtc(self).toISOString()
 
-const isoDatePart = (date: Date): string => {
-  const iso = date.toISOString()
-  return iso.slice(0, iso.indexOf("T"))
-}
+/** @internal */
+export const formatIsoDate = (self: DateTime.DateTime): string => toDate(self).toISOString().split("T")[0]
 
 /** @internal */
-export const formatIsoDate = (self: DateTime.DateTime): string => isoDatePart(toDate(self))
-
-/** @internal */
-export const formatIsoDateUtc = (self: DateTime.DateTime): string => isoDatePart(toDateUtc(self))
+export const formatIsoDateUtc = (self: DateTime.DateTime): string => toDateUtc(self).toISOString().split("T")[0]
 
 /** @internal */
 export const formatIsoOffset = (self: DateTime.DateTime): string => {
