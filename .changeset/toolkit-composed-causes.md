@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve every reason and its annotations when a tool handler fails with a composed cause. Return mode still returns single typed failures as results; its `HandlerError` now includes declared failures because composed causes propagate in both modes.
+Fix `Toolkit.handle` dropping or reclassifying reasons when a tool handler fails with a composed cause. Every failure, defect and interruption now propagates with its annotations. In `"return"` failure mode, a single typed failure is still returned as the tool result, and `Tool.HandlerError` now includes the tool's failure type.

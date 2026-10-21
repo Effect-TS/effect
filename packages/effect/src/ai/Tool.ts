@@ -114,9 +114,9 @@ export type DynamicTypeId = "~effect/ai/Tool/Dynamic"
  * If set to `"error"` (the default), errors that occur during tool call handler
  * execution will be returned in the error channel of the calling effect.
  *
- * If set to `"return"`, a single typed failure will be captured and returned as
- * part of the tool call result. Composed causes propagate without discarding
- * their other failures, defects, or interruptions.
+ * If set to `"return"`, a single typed failure will be returned as part of the
+ * tool call result. Any other cause, such as multiple failures or a failure
+ * with a defect, is returned in the error channel with all of its reasons.
  *
  * @stability unstable
  * @category models
@@ -246,9 +246,10 @@ export interface Tool<
    * handler execution will be returned in the error channel of the calling
    * effect.
    *
-   * If set to `"return"`, a single typed failure will be captured and returned as
-   * part of the tool call result. Composed causes propagate without discarding
-   * their other failures, defects, or interruptions.
+   * If set to `"return"`, a single typed failure will be returned as part of
+   * the tool call result. Any other cause, such as multiple failures or a
+   * failure with a defect, is returned in the error channel with all of its
+   * reasons.
    */
   readonly failureMode: FailureMode
 
@@ -1055,8 +1056,8 @@ export type HandlerOutput<Success> =
  *
  * **Details**
  *
- * Return mode converts a single typed failure into a result. Composed causes
- * still propagate their typed failures, defects, and interruptions.
+ * Includes the tool's failure type in both failure modes, since `"return"`
+ * mode only captures a cause containing a single typed failure.
  *
  * @stability unstable
  * @category utility types
