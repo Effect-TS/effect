@@ -370,8 +370,8 @@ export const make = <R, ER>(
         ),
         {
           scheduler: fiber.cache.scheduler,
-          // Unlike requests, the build joins the fiber scope even if it disposed
-          // the runtime, so disposal still interrupts it.
+          // Unlike requests, the build joins fiberScope even if it disposed the
+          // runtime, so disposal still interrupts it.
           onFiberStart(fiber) {
             managedFibers.add(fiber)
             Fiber.runIn(fiber, fiberScope)
@@ -409,7 +409,7 @@ export const make = <R, ER>(
       // Once `disposed` is set the close must run, or later calls would wait forever.
       fiberEnterUninterruptibleUnsafe(fiber)
       const done = disposed = Deferred.makeUnsafe<void>()
-      // Closing fiberScope interrupts and awaits every managed fiber. Skip the
+      // Closing fiberScope interrupts and awaits every managed fiber. Exempt the
       // disposing fiber and its ancestors, which would otherwise await themselves.
       for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
         disposingFibers.add(current)
