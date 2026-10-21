@@ -146,6 +146,18 @@ describe("HttpDate", () => {
     }
   })
 
+  it("reads RFC 850 two-digit years with the RFC 6265 pivot: 70-99 as 19xx, 00-69 as 20xx", () => {
+    const year = (input: string) => DateTime.toDateUtc(Result.getOrThrow(Headers.parseHttpDate(input))).getUTCFullYear()
+    strictEqual(year("Thursday, 01-Jan-70 00:00:00 GMT"), 1970)
+    strictEqual(year("Wednesday, 31-Dec-69 23:59:59 GMT"), 2069)
+    strictEqual(year("Saturday, 01-Jan-00 00:00:00 GMT"), 2000)
+  })
+
+  it("reads a leap second as the following second", () => {
+    const leap = Result.getOrThrow(Headers.parseHttpDate("Sat, 31 Dec 2016 23:59:60 GMT"))
+    strictEqual(DateTime.formatIso(leap), "2017-01-01T00:00:00.000Z")
+  })
+
   it("formats as IMF-fixdate", () => {
     strictEqual(Headers.formatHttpDate(DateTime.makeUnsafe(httpDateMillis)), "Sun, 06 Nov 1994 08:49:37 GMT")
   })
@@ -179,6 +191,20 @@ describe("RetryAfter", () => {
 
   it("rejects negative, fractional, exponent and non-finite seconds", () => {
     for (const input of ["-5", "1.5", "1e3", "Infinity", "", "soon"]) {
+      const result = Headers.parseRetryAfter(input)
+      assertTrue(Result.isFailure(result) && result.failure.reason._tag === "InvalidRetryAfter", input)
+    }
+  })
+
+  it("accepts seconds up to the largest safe integer and rejects larger ones", () => {
+    const max = String(Number.MAX_SAFE_INTEGER)
+    const value = Result.getOrThrow(Headers.parseRetryAfter(max))
+    strictEqual(Headers.formatRetryAfter(value), max)
+    strictEqual(
+      Schema.encodeSync(Schema.RetryAfterFromString)(Schema.decodeSync(Schema.RetryAfterFromString)(max)),
+      max
+    )
+    for (const input of ["9007199254740992", "1000000000000000000000"]) {
       const result = Headers.parseRetryAfter(input)
       assertTrue(Result.isFailure(result) && result.failure.reason._tag === "InvalidRetryAfter", input)
     }
