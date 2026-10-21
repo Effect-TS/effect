@@ -50,6 +50,7 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import { protocolVersion as requestScopedProtocolVersion } from "./internal/mcpSchema/v2026_07_28.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
@@ -93,6 +94,10 @@ import * as Toolkit from "./Toolkit.ts"
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
 const encodeJson = Schema.encodeEffect(Schema.UnknownFromJsonString)
+const decodeJson = Schema.decodeEffect(Schema.UnknownFromJsonString)
+const decodeToolOutputJson = Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)
+const decodeToolInputJson = Schema.decodeUnknownEffect(ToolJson)
+const decodeElicitRequestFormParams = Schema.decodeUnknownEffect(McpSchema.ElicitRequestFormParams)
 const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
 
 interface QueuedServerNotification {
@@ -950,7 +955,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
     const selectedProtocol = session?.protocol ??
       clientState?.protocol ??
       runtime.protocolForInternalTag(rpc._tag)
-    if (!isProtocolVersion(selectedProtocol.protocolVersion) || selectedProtocol.protocolVersion === "2026-07-28") {
+    if (
+      !isProtocolVersion(selectedProtocol.protocolVersion) ||
+      selectedProtocol.protocolVersion === requestScopedProtocolVersion
+    ) {
       return Effect.die(`Unsupported selected MCP protocol version: ${selectedProtocol.protocolVersion}`)
     }
     const profile: McpCore.NegotiatedProtocolProfile = session?.negotiatedProfile ?? {
@@ -1845,7 +1853,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
     }
     return Effect.gen(function*() {
       const parsed = yield* Effect.result(
-        Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
+        Effect.flatMap(request.text, decodeJson)
       )
       const admission = runtime.admitHttp(request.headers, parsed)
       if (admission._tag === "Rejected") {
@@ -2020,8 +2028,9 @@ const InitializeJsonRpcMessage = Schema.Struct({
   method: Schema.Literal("initialize")
 })
 
+const decodeInitializeJsonRpcMessage = Schema.decodeUnknownResult(InitializeJsonRpcMessage)
 const isInitializeJsonRpcMessage = (message: unknown): boolean =>
-  Result.isSuccess(Schema.decodeUnknownResult(InitializeJsonRpcMessage)(message))
+  Result.isSuccess(decodeInitializeJsonRpcMessage(message))
 
 const JsonRpcProtocolVersion = Schema.Struct({
   params: Schema.Struct({
@@ -2029,8 +2038,9 @@ const JsonRpcProtocolVersion = Schema.Struct({
   })
 })
 
+const decodeJsonRpcProtocolVersion = Schema.decodeUnknownResult(JsonRpcProtocolVersion)
 const getJsonRpcProtocolVersion = (message: unknown): string | undefined => {
-  const decoded = Schema.decodeUnknownResult(JsonRpcProtocolVersion)(message)
+  const decoded = decodeJsonRpcProtocolVersion(message)
   return Result.isSuccess(decoded) ? decoded.success.params.protocolVersion : undefined
 }
 
@@ -2107,19 +2117,11 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extend
   }
   const registrations: Array<Parameters<McpServer["Service"]["addTool"]>[0]> = []
   for (const tool of Object.values(built.tools)) {
-    const strict = Tool.getStrictMode(tool) === true
-    const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
-    if (strict && rawJsonSchema !== undefined) {
-      return yield* Effect.die(
-        `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
-      )
-    }
+    const descriptor = yield* makeToolDescriptor(tool)
     const decodeOptions: SchemaAST.ParseOptions = {
-      onExcessProperty: strict ? "error" : "ignore",
+      onExcessProperty: Tool.getStrictMode(tool) === true ? "error" : "ignore",
       errors: "all"
     }
-    const annotations = tool.annotations
-    const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
     const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as (
       error: unknown
@@ -2145,42 +2147,8 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extend
       }
       return internalToolError(cause)
     }
-    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
-      toolJsonSchema(tool.successSchema, false)
-    ).pipe(Effect.orDie)
-    const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
-    ).pipe(
-      Effect.catchTag("SchemaError", (error) =>
-        Effect.die(
-          rawJsonSchema !== undefined
-            ? `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
-              `(type: "object").\n\n${error.message}`
-            : `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
-              `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
-              `parameters.\n\n${error.message}`
-        ))
-    )
-    const mcpTool = new McpTool({
-      name: tool.name,
-      description: Tool.getDescription(tool),
-      inputSchema,
-      outputSchema,
-      annotations: {
-        ...(Context.getOption(tool.annotations, Tool.Title).pipe(
-          Option.map((title) => ({ title })),
-          Option.getOrUndefined
-        )),
-        readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
-        destructiveHint: Context.get(tool.annotations, Tool.Destructive),
-        idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
-        openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
-      },
-      _meta: toolMeta
-    })
     registrations.push({
-      tool: mcpTool,
-      annotations,
+      ...descriptor,
       handle: Effect.fnUntraced(function*(payload) {
         return yield* built.handle(tool.name, payload ?? {}, undefined, decodeOptions).pipe(
           Stream.unwrap,
@@ -2208,6 +2176,53 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extend
     })
   }
   return registrations
+})
+
+/** @internal */
+export const makeToolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any) {
+  const strict = Tool.getStrictMode(tool) === true
+  const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
+  if (strict && rawJsonSchema !== undefined) {
+    return yield* Effect.die(
+      `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
+    )
+  }
+  const annotations = tool.annotations
+  const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
+  const outputSchema = yield* decodeToolOutputJson(
+    toolJsonSchema(tool.successSchema, false)
+  ).pipe(Effect.orDie)
+  const inputSchema = yield* decodeToolInputJson(
+    rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
+  ).pipe(
+    Effect.catchTag("SchemaError", (error) =>
+      Effect.die(
+        rawJsonSchema !== undefined
+          ? `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
+            `(type: "object").\n\n${error.message}`
+          : `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
+            `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
+            `parameters.\n\n${error.message}`
+      ))
+  )
+  const mcpTool = new McpTool({
+    name: tool.name,
+    description: Tool.getDescription(tool),
+    inputSchema,
+    outputSchema,
+    annotations: {
+      ...(Context.getOption(tool.annotations, Tool.Title).pipe(
+        Option.map((title) => ({ title })),
+        Option.getOrUndefined
+      )),
+      readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
+      destructiveHint: Context.get(tool.annotations, Tool.Destructive),
+      idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
+      openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
+    },
+    _meta: toolMeta
+  })
+  return { tool: mcpTool, annotations }
 })
 
 const isParameterValidationError = (
@@ -2759,7 +2774,7 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   const { getClient } = yield* McpServerClient
   const client = yield* getClient
   const schema = options.schema
-  const request = yield* Schema.decodeUnknownEffect(McpSchema.ElicitRequestFormParams)({
+  const request = yield* decodeElicitRequestFormParams({
     mode: "form",
     message: options.message,
     requestedSchema: toolJsonSchema(schema, false)
@@ -2872,4 +2887,4 @@ const isProtocolVersion = (version: string): version is McpProtocol.ProtocolVers
   version === "2025-03-26" ||
   version === "2025-06-18" ||
   version === "2025-11-25" ||
-  version === "2026-07-28"
+  version === requestScopedProtocolVersion

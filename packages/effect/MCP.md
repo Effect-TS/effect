@@ -621,8 +621,10 @@ Workflow owns execution, results, interruption, and history cleanup. The MCP
 implementation stores two immutable facts through `DurableDeferred`: owner and
 creation time, and a finished timestamp recorded by a Workflow finalizer. A normal
 active read uses two engine lookups. A terminal read uses three. Neither scans
-history or starts a background poller. Creation and terminal reads briefly retry
-facts that are not yet visible, then return a retryable error.
+history or starts a background poller. After submission, creation waits until the
+identity is readable before returning its handle. It does not report a retryable
+creation error for work already accepted by Workflow. Terminal reads briefly
+retry a missing finished timestamp, then return a retryable error for that handle.
 
 ### Memory execution
 
