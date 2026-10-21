@@ -43,6 +43,9 @@ import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpRespon
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
+// oxlint-disable-next-line @typescript-eslint/no-require-imports
+const Ajv2020 = require("ajv/dist/2020")
+
 const OptionalStringTool = Tool.make("OptionalStringTool", {
   parameters: Schema.Struct({ signature: Schema.optional(Schema.String) }),
   success: Schema.String
@@ -1587,24 +1590,25 @@ describe("McpServer", () => {
     it.effect("publishes the definitions an inlined tool schema still references", () =>
       Effect.gen(function*() {
         const Tag = Schema.Struct({ label: Schema.String }).annotate({ identifier: "Tag" })
-        const Note = Schema.Struct({ id: Schema.String, tags: Schema.Array(Tag) }).annotate({ identifier: "Note" })
-        const Unused = Schema.Struct({ value: Schema.String }).annotate({ identifier: "Unused" })
-        const ListNotesTool = Tool.make("ListNotesTool", {
-          parameters: Schema.Struct({ filter: Schema.optional(Unused) }).annotate({ identifier: "ListNotesInput" }),
-          success: Schema.Struct({ notes: Schema.Array(Note) }).annotate({ identifier: "NoteList" })
-        })
-        const toolkit = Toolkit.make(ListNotesTool)
+        const Note = Schema.Struct({
+          title: Schema.String,
+          subtitle: Schema.String.check(
+            Schema.makeFilter(() => true, { toJsonSchema: () => ({ $ref: "#/$defs/Note/properties/title" }) })
+          ),
+          tags: Schema.Array(Tag)
+        }).annotate({ identifier: "Note" })
+        const NoteTool = Tool.make("NoteTool", { success: Note })
+        const toolkit = Toolkit.make(NoteTool)
         const server = yield* McpServer.McpServer.make
         yield* McpServer.registerToolkit(toolkit).pipe(
           Effect.provideService(McpServer.McpServer, server),
           Effect.provide(toolkit.toLayer({
-            ListNotesTool: () => Effect.succeed({ notes: [] })
+            NoteTool: () => Effect.succeed({ title: "a", subtitle: "b", tags: [] })
           }))
         )
 
-        const { inputSchema, outputSchema } = server.tools[0].tool
-        assert.deepStrictEqual(Object.keys(inputSchema.$defs ?? {}), ["Unused"])
-        assert.deepStrictEqual(Object.keys(outputSchema?.$defs ?? {}).sort(), ["Note", "Tag"])
+        const validate = new Ajv2020.default({ strict: false }).compile(server.tools[0].tool.outputSchema)
+        assertTrue(validate({ title: "a", subtitle: "b", tags: [{ label: "c" }] }))
       }))
 
     it.effect("advertises closed strict input schemas with escaped identifiers", () =>
