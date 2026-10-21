@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Layer, Path, Schema } from "effect"
+import { Cause, Effect, ErrorReporter, Exit, FileSystem, Layer, Path, Schema } from "effect"
 import { Etag, HttpPlatform, HttpRouter } from "effect/http"
 import {
   HttpApi,
@@ -23,11 +23,17 @@ const fetchWith = async (
   app: Layer.Layer<
     never,
     never,
-    HttpRouter.HttpRouter | Etag.Generator | FileSystem.FileSystem | HttpPlatform.HttpPlatform | Path.Path
+    | HttpRouter.HttpRouter
+    | Etag.Generator
+    | FileSystem.FileSystem
+    | HttpPlatform.HttpPlatform
+    | Path.Path
+    | ErrorReporter.ErrorReporter
   >,
-  path: string
+  path: string,
+  reporter: Layer.Layer<ErrorReporter.ErrorReporter> = ErrorReporter.layer([])
 ): Promise<Response> => {
-  const { dispose, handler } = HttpRouter.toWebHandler(app.pipe(Layer.provide(TestServices)), {
+  const { dispose, handler } = HttpRouter.toWebHandler(app.pipe(Layer.provide(TestServices), Layer.provide(reporter)), {
     disableLogger: true
   })
   try {
@@ -37,7 +43,8 @@ const fetchWith = async (
   }
 }
 
-class OutOfCredit extends HttpApiError.Problem<OutOfCredit>("OutOfCredit")(
+class OutOfCredit extends HttpApiError.Problem<OutOfCredit>()(
+  "OutOfCredit",
   { type: "https://example.com/probs/out-of-credit", status: 403, title: "You do not have enough credit." },
   { balance: Schema.Number }
 ) {}
@@ -80,6 +87,19 @@ describe("HttpApiError.Problem", () => {
   it("lists application/problem+json under the status in the OpenAPI spec", () => {
     const content = OpenApi.fromApi(PurchaseApi).paths["/purchase"]?.get?.responses[403]?.content
     assert.isDefined(content?.["application/problem+json"])
+  })
+
+  it("discriminates decoding by type and keeps the declared status", () => {
+    class Banned extends HttpApiError.Problem<Banned>()(
+      "Banned",
+      { type: "https://example.com/probs/banned", status: 403, title: "You are banned." },
+      { balance: Schema.Number }
+    ) {}
+    const body = { type: "https://example.com/probs/banned", status: 999, title: "wire", balance: 1 }
+    assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(OutOfCredit)(body)))
+    const decoded = Schema.decodeUnknownSync(Schema.Union([OutOfCredit, Banned]))(body)
+    assert.instanceOf(decoded, Banned)
+    assert.strictEqual(decoded.status, 403)
   })
 })
 
@@ -136,6 +156,57 @@ describe("HttpApiMiddleware.ProblemDetails", () => {
     const content = OpenApi.fromApi(ProblemApi).paths["/list"]?.get?.responses[400]?.content
     assert.isDefined(content?.["application/problem+json"])
   })
+
+  describe("response encoding failure", () => {
+    const EncodeApi = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(HttpApiEndpoint.get("count", "/count", { success: Schema.Number }))
+    ).middleware(HttpApiMiddleware.ProblemDetails)
+    const EncodeGroup = HttpApiBuilder.group(
+      EncodeApi,
+      "test",
+      (handlers) => handlers.handle("count", () => Effect.succeed("not a number" as unknown as number))
+    )
+
+    it("renders a generic problem+json 500 and reports the schema error once", async () => {
+      const reports: Array<Cause.Cause<unknown>> = []
+      const reporter = ErrorReporter.make(({ cause }) => reports.push(cause))
+      const response = await fetchWith(
+        HttpApiBuilder.layer(EncodeApi).pipe(
+          Layer.provide(EncodeGroup),
+          Layer.provide(HttpApiMiddleware.layerProblemDetails({ includeDetails: true }))
+        ),
+        "/count",
+        ErrorReporter.layer([reporter])
+      )
+      assert.strictEqual(response.status, 500)
+      assert.strictEqual(response.headers.get("content-type"), "application/problem+json")
+      assert.deepStrictEqual(await response.json(), {
+        type: "about:blank",
+        title: "Internal Server Error",
+        status: 500
+      })
+      assert.strictEqual(reports.length, 1)
+      const reported = Cause.squash(reports[0])
+      assert.isTrue(HttpApiError.HttpApiSchemaError.is(reported))
+      assert.strictEqual((reported as HttpApiError.HttpApiSchemaError).kind, "Body")
+    })
+
+    it.layer(TestServices)("client", (it) => {
+      it.effect("decodes the 500 into InternalServerErrorProblem", () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiTest.groups(EncodeApi, ["test"]).pipe(
+            Effect.provide(EncodeGroup.pipe(Layer.provideMerge(HttpApiMiddleware.layerProblemDetails())))
+          )
+          const error = yield* Effect.flip(client.test.count())
+          assert.instanceOf(error, HttpApiError.InternalServerErrorProblem)
+        }))
+    })
+
+    it("adds a problem+json 500 to the OpenAPI spec", () => {
+      const content = OpenApi.fromApi(EncodeApi).paths["/count"]?.get?.responses[500]?.content
+      assert.isDefined(content?.["application/problem+json"])
+    })
+  })
 })
 
 describe("HttpApiSchema.asProblem", () => {
@@ -157,5 +228,14 @@ describe("HttpApiSchema.asProblem", () => {
     assert.strictEqual(response.status, 404)
     assert.strictEqual(response.headers.get("content-type"), "application/problem+json")
     assert.deepStrictEqual(await response.json(), { type: "about:blank", title: "Not Found", status: 404 })
+  })
+
+  it("rejects a body with a different type", () => {
+    const exit = Schema.decodeUnknownExit(HttpApiError.NotFound.pipe(HttpApiSchema.asProblem({ title: "Not Found" })))({
+      type: "https://example.com/probs/other",
+      title: "Not Found",
+      status: 404
+    })
+    assert.isTrue(Exit.isFailure(exit))
   })
 })
