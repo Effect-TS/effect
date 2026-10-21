@@ -162,6 +162,8 @@ export interface PgClientConfig<R = never> {
    * stream outside a transaction, even when `multiplex` shares one connection
    * between them, and once per outermost `withTransaction`, `reserve`, `listen`
    * and `notify`. If it fails or is interrupted, the connection is released.
+   * The hook's `Scope` belongs to that acquisition, so finalizers it adds run
+   * when the statement, stream, transaction, reservation, or listener ends.
    *
    * **Gotchas**
    *
@@ -170,9 +172,9 @@ export interface PgClientConfig<R = never> {
    * and `acquireForStream`, it runs before a stream opens its own connection.
    *
    * Services the hook requires become requirements of the client constructor
-   * or layer and are captured when the client is built. Services in the
-   * consuming fiber take precedence. The client's `config` holds the hook with
-   * those services already provided.
+   * or layer, except those the layer supplies itself, and are captured when
+   * the client is built. Services in the consuming fiber take precedence. The
+   * client's `config` holds the hook with those services already provided.
    *
    * **Example** (Reading request context on each checkout)
    *
@@ -284,7 +286,9 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     listenAcquirer = Effect.tap(listenAcquirer, onAcquire)
     if (borrower !== undefined) {
       const borrow = borrower
-      borrower = (f) => borrow((connection) => Effect.andThen(onAcquire, f(connection)))
+      // Give each statement its own scope, so finalizers the hook adds run
+      // when the statement ends rather than when the client closes.
+      borrower = (f) => borrow((connection) => Effect.scoped(Effect.andThen(onAcquire, f(connection))))
     }
   }
   const compiler = makeCompiler(
@@ -452,7 +456,11 @@ export const layerFrom = <E, R>(
  */
 export const layerConfig = <R = never>(
   config: Config.Wrap<PgPoolConfig<R>>
-): Layer.Layer<PgClient | Client.SqlClient, Config.ConfigError | SqlError, R> =>
+): Layer.Layer<
+  PgClient | Client.SqlClient,
+  Config.ConfigError | SqlError,
+  Exclude<R, Scope.Scope | Reactivity.Reactivity>
+> =>
   layerFrom(Effect.flatMap(
     Config.unwrap(config),
     make
@@ -467,7 +475,8 @@ export const layerConfig = <R = never>(
  */
 export const layer = <R = never>(
   config: PgPoolConfig<R>
-): Layer.Layer<PgClient | Client.SqlClient, SqlError, R> => layerFrom(make(config))
+): Layer.Layer<PgClient | Client.SqlClient, SqlError, Exclude<R, Scope.Scope | Reactivity.Reactivity>> =>
+  layerFrom(make(config))
 
 /**
  * Creates the PostgreSQL statement compiler.
