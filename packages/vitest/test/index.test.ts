@@ -264,6 +264,39 @@ describe("Effect hooks", () => {
   })
 })
 
+describe("scoped Effect hooks", { concurrent: false }, () => {
+  const events: Array<string> = []
+  const resource = (name: string) =>
+    Effect.acquireRelease(
+      Effect.sync(() => events.push(`${name}:acquired`)),
+      () => Effect.sleep(10).pipe(Effect.andThen(Effect.sync(() => events.push(`${name}:released`))))
+    )
+
+  describe("suite", () => {
+    beforeAll(() => resource("all"))
+    beforeEach(() => resource("each"))
+
+    it("keeps hook resources alive during the test", () => {
+      assert.deepStrictEqual(events, ["all:acquired", "each:acquired"])
+    })
+
+    it("releases the beforeEach resource before the next test", () => {
+      assert.deepStrictEqual(events, ["all:acquired", "each:acquired", "each:released", "each:acquired"])
+    })
+  })
+
+  it("releases the beforeAll resource when the suite ends", () => {
+    assert.deepStrictEqual(events, [
+      "all:acquired",
+      "each:acquired",
+      "each:released",
+      "each:acquired",
+      "each:released",
+      "all:released"
+    ])
+  })
+})
+
 // property testing
 
 const realNumber = Schema.Finite
