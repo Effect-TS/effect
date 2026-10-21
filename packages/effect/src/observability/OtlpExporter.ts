@@ -29,13 +29,13 @@ import * as Version from "../Version.ts"
 
 // A missing or invalid Retry-After falls back to a fixed delay.
 const retryAfterDelay = (value: string | undefined): Effect.Effect<Duration.Duration> => {
-  const retryAfter = value === undefined ? undefined : Result.getOrUndefined(Headers.parseRetryAfter(value))
-  if (retryAfter === undefined) {
+  const retryAfter = value === undefined ? undefined : Headers.parseRetryAfter(value)
+  if (retryAfter === undefined || Result.isFailure(retryAfter)) {
     return Effect.succeed(Duration.seconds(5))
   }
   return Effect.map(
     Clock,
-    (clock) => Headers.retryAfterDelay(retryAfter, clock.currentTimeMillisUnsafe())
+    (clock) => Headers.retryAfterDelay(retryAfter.success, clock.currentTimeMillisUnsafe())
   )
 }
 

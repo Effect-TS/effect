@@ -469,8 +469,11 @@ const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | unde
     return false
   }
   const ifModifiedSinceDate = Headers.parseHttpDate(ifModifiedSince)
+  if (Result.isFailure(ifModifiedSinceDate)) {
+    return false
+  }
   const lastModifiedDate = Headers.parseHttpDate(lastModified)
-  return Result.isSuccess(ifModifiedSinceDate) && Result.isSuccess(lastModifiedDate) &&
+  return Result.isSuccess(lastModifiedDate) &&
     DateTime.toEpochMillis(lastModifiedDate.success) <= DateTime.toEpochMillis(ifModifiedSinceDate.success)
 }
 

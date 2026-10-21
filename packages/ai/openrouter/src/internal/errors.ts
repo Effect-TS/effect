@@ -1,6 +1,7 @@
 import * as AiError from "effect/ai/AiError"
 import type * as Response from "effect/ai/Response"
 import * as Clock from "effect/Clock"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Sse from "effect/encoding/Sse"
 import { dual } from "effect/Function"
@@ -66,19 +67,16 @@ export const mapSseError = dual<
     reason: new AiError.InvalidResponseError({ description: error.message })
   }))
 
+type ClientError = Generated.OpenRouterClientError<string, OpenRouterClientErrorBody>
+
 /** @internal */
 export const mapClientError = dual<
-  (
-    method: string
-  ) => (
-    error: Generated.OpenRouterClientError<string, OpenRouterClientErrorBody>
-  ) => Effect.Effect<never, AiError.AiError>,
-  (
-    error: Generated.OpenRouterClientError<string, OpenRouterClientErrorBody>,
-    method: string
-  ) => Effect.Effect<never, AiError.AiError>
->(2, (error, method) =>
-  Effect.flatMap(Clock.currentTimeMillis, (now) => {
+  (method: string) => (error: ClientError) => Effect.Effect<never, AiError.AiError>,
+  (error: ClientError, method: string) => Effect.Effect<never, AiError.AiError>
+>(
+  2,
+  Effect.fnUntraced(function*(error: ClientError, method: string) {
+    const now = yield* Clock.currentTimeMillis
     const { request, response, cause } = error
     const status = response.status
     const headers = response.headers as Record<string, string>
@@ -96,8 +94,9 @@ export const mapClientError = dual<
       metadata,
       http
     })
-    return Effect.fail(AiError.make({ module: "OpenRouterClient", method, reason }))
-  }))
+    return yield* AiError.make({ module: "OpenRouterClient", method, reason })
+  })
+)
 
 /** @internal */
 export const mapHttpClientError = dual<
@@ -211,15 +210,16 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
 // Rate Limits
 // =============================================================================
 
+const retryAfterFromHeader = (raw: string, now: number): Duration.Duration | undefined => {
+  const retryAfter = Headers.parseRetryAfter(raw)
+  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
+}
+
 /** @internal */
 export const parseRateLimitHeaders = (headers: Record<string, string>, now: number) => {
   const retryAfterRaw = headers["retry-after"]
   // an invalid Retry-After is treated as absent
-  const retryAfter = retryAfterRaw === undefined
-    ? undefined
-    : Result.getOrUndefined(
-      Result.map(Headers.parseRetryAfter(retryAfterRaw), (value) => Headers.retryAfterDelay(value, now))
-    )
+  const retryAfter = retryAfterRaw === undefined ? undefined : retryAfterFromHeader(retryAfterRaw, now)
   const remainingRaw = headers["x-ratelimit-remaining-requests"]
   const remaining = Predicate.isNotUndefined(remainingRaw)
     ? Option.getOrNull(Number.parse(remainingRaw))

@@ -39,9 +39,9 @@ const retryAfter = (headers: Readonly<Record<string, string>>, now: number) => {
   const ms = nonNegative(headers["retry-after-ms"])
   if (ms !== undefined) return Duration.millis(ms)
   const raw = headers["retry-after"]
-  return raw === undefined
-    ? undefined
-    : Result.getOrUndefined(Result.map(Headers.parseRetryAfter(raw), (value) => Headers.retryAfterDelay(value, now)))
+  if (raw === undefined) return undefined
+  const retryAfter = Headers.parseRetryAfter(raw)
+  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
 }
 
 export const mapSchemaError = (error: Schema.SchemaError, method: string): AiError.AiError =>

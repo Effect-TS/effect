@@ -26,10 +26,11 @@ const ErrorBody = Schema.Struct({
 const decodeErrorBody = Schema.decodeUnknownOption(ErrorBody)
 
 // an invalid Retry-After is treated as absent
-const retryAfter = (raw: string | undefined, now: number): Duration.Duration | undefined =>
-  raw === undefined
-    ? undefined
-    : Result.getOrUndefined(Result.map(Headers.parseRetryAfter(raw), (value) => Headers.retryAfterDelay(value, now)))
+const retryAfter = (raw: string | undefined, now: number): Duration.Duration | undefined => {
+  if (raw === undefined) return undefined
+  const retryAfter = Headers.parseRetryAfter(raw)
+  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
+}
 
 const fail = (reason: AiError.AiErrorReason) =>
   Effect.fail(AiError.make({ module: "CloudflareClient", method: "createDecisions", reason }))

@@ -532,91 +532,46 @@ export const isHeaderValueError = (u: unknown): u is HeaderValueError =>
 // HTTP dates (RFC 9110 §5.6.7)
 // -----------------------------------------------------------------------------
 
-const monthIndexes: Record.ReadonlyRecord<string, number> = {
-  jan: 0,
-  feb: 1,
-  mar: 2,
-  apr: 3,
-  may: 4,
-  jun: 5,
-  jul: 6,
-  aug: 7,
-  sep: 8,
-  oct: 9,
-  nov: 10,
-  dec: 11
-}
+const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
-// Sun, 06 Nov 1994 08:49:37 GMT
-const imfFixdate = /^(?:mon|tue|wed|thu|fri|sat|sun), (\d{2}) ([a-z]{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) gmt$/i
-// Sunday, 06-Nov-94 08:49:37 GMT
-const rfc850Date =
-  /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday), (\d{2})-([a-z]{3})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) gmt$/i
-// Sun Nov  6 08:49:37 1994
-const asctimeDate = /^(?:mon|tue|wed|thu|fri|sat|sun) ([a-z]{3}) ( \d|\d{2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})$/i
-
-const utcMillis = (
-  year: number,
-  monthName: string,
-  day: number,
-  hour: number,
-  minute: number,
-  second: number
-): number | undefined => {
-  const month = monthIndexes[monthName.toLowerCase()]
-  // the grammar allows 23:59:60 for a leap second
-  if (month === undefined || hour > 23 || minute > 59 || second > 60) {
-    return undefined
-  }
-  // setUTCFullYear keeps years below 100 as-is, unlike Date.UTC
-  const date = new Date(0)
-  date.setUTCFullYear(year, month, day)
-  // an impossible day such as 31 Feb rolls over into the next month
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
-    return undefined
-  }
-  // a leap second cannot be represented in epoch time and reads as the
-  // following second
-  return date.getTime() + ((hour * 60 + minute) * 60 + second) * 1000
-}
+// RFC 9110 §5.6.7: IMF-fixdate, then the obsolete RFC 850 and asctime forms
+const httpDateFormats = [
+  // Sun, 06 Nov 1994 08:49:37 GMT
+  /^(?:mon|tue|wed|thu|fri|sat|sun), (?<day>\d{2}) (?<month>[a-z]{3}) (?<year>\d{4}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) gmt$/i,
+  // Sunday, 06-Nov-94 08:49:37 GMT
+  /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday), (?<day>\d{2})-(?<month>[a-z]{3})-(?<year>\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) gmt$/i,
+  // Sun Nov  6 08:49:37 1994
+  /^(?:mon|tue|wed|thu|fri|sat|sun) (?<month>[a-z]{3}) (?<day> \d|\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) (?<year>\d{4})$/i
+]
 
 const httpDateToMillis = (input: string): number | undefined => {
-  let match = imfFixdate.exec(input)
-  if (match !== null) {
-    return utcMillis(
-      Number(match[3]),
-      match[2],
-      Number(match[1]),
-      Number(match[4]),
-      Number(match[5]),
-      Number(match[6])
-    )
-  }
-  match = rfc850Date.exec(input)
-  if (match !== null) {
-    // Deviation from RFC 9110 §5.6.7, which wants a two-digit year read
-    // relative to the current time: a fixed pivot keeps parsing pure and
-    // matches what other HTTP implementations do. See parseHttpDate.
-    const shortYear = Number(match[3])
-    return utcMillis(
-      shortYear < 70 ? 2000 + shortYear : 1900 + shortYear,
-      match[2],
-      Number(match[1]),
-      Number(match[4]),
-      Number(match[5]),
-      Number(match[6])
-    )
-  }
-  match = asctimeDate.exec(input)
-  if (match !== null) {
-    return utcMillis(
-      Number(match[6]),
-      match[1],
-      Number(match[2].trim()),
-      Number(match[3]),
-      Number(match[4]),
-      Number(match[5])
-    )
+  for (const format of httpDateFormats) {
+    const groups = format.exec(input)?.groups
+    if (groups === undefined) continue
+    const month = monthNames.indexOf(groups.month.toLowerCase())
+    const hour = Number(groups.hour)
+    const minute = Number(groups.minute)
+    const second = Number(groups.second)
+    // the grammar allows 23:59:60 for a leap second
+    if (month === -1 || hour > 23 || minute > 59 || second > 60) {
+      return undefined
+    }
+    // two-digit years use a fixed pivot, see parseHttpDate
+    let year = Number(groups.year)
+    if (groups.year.length === 2) {
+      year += year < 70 ? 2000 : 1900
+    }
+    const day = Number(groups.day)
+    // setUTCFullYear keeps years below 100 as-is, unlike Date.UTC
+    const date = new Date(0)
+    date.setUTCFullYear(year, month, day)
+    // an impossible day such as 31 Feb rolls over into the next month
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) {
+      return undefined
+    }
+    // a leap second cannot be represented in epoch time and reads as the
+    // following second
+    return date.getTime() + ((hour * 60 + minute) * 60 + second) * 1000
   }
   return undefined
 }

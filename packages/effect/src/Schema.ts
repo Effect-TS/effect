@@ -15267,7 +15267,7 @@ export const Headers: Headers = declare(
 export interface RetryAfter extends
   Union<
     readonly [
-      Struct<{ readonly _tag: tag<"Seconds">; readonly seconds: Int }>,
+      Struct<{ readonly _tag: tag<"Seconds">; readonly seconds: Natural }>,
       Struct<{ readonly _tag: tag<"Date">; readonly date: DateTimeUtc }>
     ]
   >
@@ -15289,7 +15289,7 @@ export interface RetryAfter extends
  * @since 4.0.0
  */
 export const RetryAfter: RetryAfter = Union([
-  Struct({ _tag: tag("Seconds"), seconds: Int.check(isGreaterThanOrEqualTo(0)) }),
+  Struct({ _tag: tag("Seconds"), seconds: Natural }),
   Struct({ _tag: tag("Date"), date: DateTimeUtc })
 ])
 
