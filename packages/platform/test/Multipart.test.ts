@@ -61,7 +61,7 @@ describe("Multipart", () => {
   test("parses raw UTF-8 filenames outside latin-1", () =>
     Effect.gen(function*() {
       const boundary = "X"
-      const filename = "Screenshot 2025-01-01 at 10.00.00 AM.png"
+      const filename = "Screenshot 2025-01-01 at 10.00.00\u202fAM.png"
       const body = `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="photos"; filename="${filename}"\r\n` +
         `Content-Type: image/png\r\n\r\n` +
