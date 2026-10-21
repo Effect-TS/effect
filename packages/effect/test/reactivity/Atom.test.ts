@@ -632,6 +632,32 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it("effect read completes while another effect atom has queued work", async () => {
+    const deferred = Deferred.makeUnsafe<void>()
+    const first = Atom.make(Deferred.await(deferred).pipe(Effect.andThen(Effect.yieldNow), Effect.as("first")))
+    const second = Atom.make(Effect.as(Effect.yieldNow, "second"))
+    const r = AtomRegistry.make()
+    const firstTags: Array<string> = []
+    try {
+      r.subscribe(first, (result) => firstTags.push(result._tag))
+      assert(AsyncResult.isInitial(r.get(first)))
+      // Resumes the first fiber, which then queues its continuation.
+      Effect.runSync(Deferred.succeed(deferred, undefined))
+
+      const result = r.get(second)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, "second")
+
+      await Effect.runPromise(Effect.yieldNow)
+      const firstResult = r.get(first)
+      assert(AsyncResult.isSuccess(firstResult))
+      assert.strictEqual(firstResult.value, "first")
+      assert.deepStrictEqual(firstTags.filter((tag) => tag === "Success"), ["Success"])
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("effectFn", async () => {
     const count = Atom.fn((n: number) => Effect.succeed(n + 1))
     const r = AtomRegistry.make()
