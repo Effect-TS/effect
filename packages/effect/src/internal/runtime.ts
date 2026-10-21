@@ -350,9 +350,14 @@ export const unsafeRunPromiseExit: {
       if (options.signal.aborted) {
         fiber.unsafeInterruptAsFork(fiber.id())
       } else {
-        options.signal.addEventListener("abort", () => {
+        const signal = options.signal
+        const onAbort = () => {
           fiber.unsafeInterruptAsFork(fiber.id())
-        }, { once: true })
+        }
+        signal.addEventListener("abort", onAbort, { once: true })
+        fiber.addObserver(() => {
+          signal.removeEventListener("abort", onAbort)
+        })
       }
     }
   })
