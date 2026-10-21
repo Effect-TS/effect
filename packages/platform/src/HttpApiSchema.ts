@@ -213,25 +213,24 @@ export const getStatusError = <A extends Schema.Schema.All>(self: A): number => 
  * **Details**
  *
  * This function traverses an AST and collects all the types within a union,
- * even if they are nested. It ensures that every type in a union (including
- * deeply nested unions) is included in the resulting array. The returned array
- * contains each type as an individual AST node, preserving the order in which
- * they appear.
+ * even if they are nested. The returned array preserves the order in which the
+ * types appear.
+ *
+ * An annotated union is kept intact, so its annotations are not lost, unless
+ * one of its members needs its own response status or encoding.
  *
  * @internal
  */
 export const extractUnionTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => {
-  if (AST.isUnion(ast)) {
-    const types = ast.types.flatMap((type) => extractUnionTypes(type))
-    if (Reflect.ownKeys(ast.annotations).length === 0) {
-      return types
-    } else {
-      return [AST.Union.make(types, ast.annotations)]
-    }
-  } else {
+  if (!AST.isUnion(ast)) {
     return [ast]
   }
+  const types = ast.types.flatMap(extractUnionTypes)
+  return Reflect.ownKeys(ast.annotations).length > 0 && !types.some(hasResponseAnnotations) ? [ast] : types
 }
+
+const hasResponseAnnotations = (ast: AST.AST): boolean =>
+  isVoid(ast) || Reflect.ownKeys(extractAnnotations(mergedAnnotations(ast))).length > 0
 
 /** @internal */
 export const UnionUnifyAST = (self: AST.AST, that: AST.AST): AST.AST =>
@@ -566,7 +565,7 @@ export const Uint8Array = (options?: {
 
 const astCache = globalValue(
   "@effect/platform/HttpApiSchema/astCache",
-  () => new WeakMap<AST.AST, ReadonlyArray<Schema.Schema.Any>>()
+  () => new WeakMap<AST.AST, Schema.Schema.Any>()
 )
 
 /**
@@ -576,25 +575,21 @@ export const deunionize = (
   schemas: Set<Schema.Schema.Any>,
   schema: Schema.Schema.Any
 ): void => {
-  if (astCache.has(schema.ast)) {
-    astCache.get(schema.ast)!.forEach((s) => schemas.add(s))
-    return
-  }
   const ast = schema.ast
-  if (ast._tag === "Union") {
-    const memberSchemas: Array<Schema.Schema.Any> = []
-    for (const astType of ast.types) {
-      const memberSchema = Schema.make(AST.annotations(astType, {
+  const hasAnnotations = Reflect.ownKeys(ast.annotations).length > 0
+  for (let type of extractUnionTypes(ast)) {
+    if (type !== ast && hasAnnotations) {
+      type = AST.annotations(type, {
         ...ast.annotations,
-        ...astType.annotations
-      }))
-      memberSchemas.push(memberSchema)
-      schemas.add(memberSchema)
+        ...type.annotations
+      })
     }
-    astCache.set(ast, memberSchemas)
-  } else {
-    astCache.set(ast, [schema])
-    schemas.add(schema)
+    let member = astCache.get(type)
+    if (member === undefined) {
+      member = type === ast ? schema : Schema.make(type)
+      astCache.set(type, member)
+    }
+    schemas.add(member)
   }
 }
 
