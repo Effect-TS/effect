@@ -68,6 +68,11 @@ import {
  * are local to each storage instance; clients on other instances must reconnect
  * to read those writes.
  *
+ * Inside a caller's transaction, `write` and `compaction.rollback` publish to
+ * live readers only after the outermost commit, and publish nothing when it
+ * rolls back. Live readers of concurrent caller transactions may receive their
+ * batches out of sequence order; `changes` always reads committed order.
+ *
  * Instances that share a database should share compaction options. A
  * generation's prune time and a stage's expiry are fixed by the instance that
  * wrote them.
@@ -914,7 +919,7 @@ export const makeStorage = (options?: {
     }, sql.withTransaction)
 
     const rollbackTransaction = Effect.fnUntraced(function*(
-      { scope, snapshotTableSql, tableSql }: StoreResources,
+      { pubsub, scope, snapshotTableSql, tableSql }: StoreResources,
       now: number,
       expectedActivationId: string
     ) {
@@ -1004,19 +1009,16 @@ export const makeStorage = (options?: {
       if (reappended.length > 0) {
         yield* sql`UPDATE ${storesSql} SET next_sequence = ${nextSequence} WHERE scope = ${scope}`
         yield* upsertBucket(scope, Math.floor(now / hourMillis), nextSequence - 1)
+        yield* sql.afterCommit(Effect.asVoid(PubSub.publishAll(pubsub, reappended)))
       }
-      return { activationId, target, withdrawn, reappended }
+      return { activationId, target, withdrawn }
     }, sql.withTransaction)
 
-    // Publishes the re-appended batches after the commit, under the write
-    // semaphore so they reach live readers in sequence order.
+    // The re-appended batches are published after the outermost commit. When
+    // the storage owns the transaction that is before the write semaphore is
+    // released, so they reach live readers in sequence order.
     const rollback = (store: StoreResources, now: number, expectedActivationId: string) =>
-      store.semaphore.withPermits(1)(
-        Effect.tap(
-          rollbackTransaction(store, now, expectedActivationId),
-          (outcome) => PubSub.publishAll(store.pubsub, outcome.reappended)
-        )
-      )
+      store.semaphore.withPermits(1)(rollbackTransaction(store, now, expectedActivationId))
 
     const history = Effect.fnUntraced(function*({ scope }: StoreResources) {
       const store = (yield* selectStore(scope))!
@@ -1347,15 +1349,13 @@ export const makeStorage = (options?: {
             if (stored.length > 0) {
               yield* sql`UPDATE ${storesSql} SET next_sequence = ${nextSequence} WHERE scope = ${scope}`
               yield* upsertBucket(scope, Math.floor(now / hourMillis), nextSequence - 1)
+              // Published after the outermost commit, as `rollback` publishes.
+              yield* sql.afterCommit(Effect.asVoid(PubSub.publishAll(pubsub, stored)))
             }
             return stored
           })
 
-          return yield* semaphore.withPermits(1)(Effect.gen(function*() {
-            const stored = yield* sql.withTransaction(writeBatches)
-            yield* PubSub.publishAll(pubsub, stored)
-            return stored
-          }))
+          return yield* semaphore.withPermits(1)(sql.withTransaction(writeBatches))
         },
         Effect.orDie,
         Effect.scoped,
