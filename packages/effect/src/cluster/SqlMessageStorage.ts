@@ -310,6 +310,9 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
     `
+  // an insert that returned no rows hit an existing message_id
+  const selectUnlessInserted = (message_id: string) => (inserted: ReadonlyArray<unknown>) =>
+    inserted.length > 0 ? Effect.succeed([]) : selectByMessageId(message_id)
 
   const insertEnvelope: (
     row: MessageRow,
@@ -320,11 +323,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
         INSERT INTO ${messagesTableSql} ${sql.insert(row)}
         ON CONFLICT (message_id) DO NOTHING
         RETURNING id
-      `.pipe(Effect.flatMap((rows) => {
-        // inserted a new row
-        if (rows.length > 0) return Effect.succeed([])
-        return selectByMessageId(message_id)
-      })),
+      `.pipe(Effect.flatMap(selectUnlessInserted(message_id))),
     mysql: () => (row, message_id) =>
       Effect.flatMap(
         sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
@@ -343,11 +342,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
         WHEN NOT MATCHED THEN
           INSERT ${sql.insert(row)}
         OUTPUT inserted.id;
-      `.pipe(Effect.flatMap((rows) => {
-        // inserted a new row
-        if (rows.length > 0) return Effect.succeed([])
-        return selectByMessageId(message_id)
-      })),
+      `.pipe(Effect.flatMap(selectUnlessInserted(message_id))),
     orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
@@ -379,7 +374,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     sqlite: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE")
   })
-  // mssql has no FOR UPDATE, so lock the claimed rows with a table hint
+  // mssql locks claimed rows with a table hint instead of FOR UPDATE
   const updateLock = sql.onDialectOrElse({
     mssql: () => sql.literal("WITH (UPDLOCK)"),
     orElse: () => sql.literal("")
@@ -1132,11 +1127,10 @@ export const migrations = (options?: {
       const oneExitIndex = `${repliesTable}_one_exit`
       const sequenceIndex = `${repliesTable}_sequence`
 
-      // SQL Server UNIQUE constraints treat NULLs as equal, so replace them
-      // with filtered unique indexes. Parameterized lookups cannot use a
-      // filtered index, so message_id also gets a plain index. TEXT columns
-      // reject the BIT-typed NULL parameters the client sends, so convert
-      // them to NVARCHAR(MAX).
+      // mssql UNIQUE constraints treat NULLs as equal, so replace them with
+      // filtered unique indexes. Parameterized lookups cannot use a filtered
+      // index, so message_id also gets a plain one. TEXT columns reject NULL
+      // parameters, so convert them to NVARCHAR(MAX).
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
