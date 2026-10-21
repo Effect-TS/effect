@@ -67,6 +67,24 @@ describe("BunHttpClient", () => {
       })
     }))
 
+  it.effect("layerOptions keeps native options when an ambient RequestInit is provided", () =>
+    Effect.gen(function*() {
+      const unix = yield* echoServer("server")
+      const response = yield* HttpClient.HttpClient.use((client) =>
+        send(client).pipe(
+          Effect.provideService(BunHttpClient.RequestInit, { headers: { "x-default": "ambient" } })
+        )
+      ).pipe(
+        Effect.provide(BunHttpClient.layerOptions({ unix }))
+      )
+      assert.deepStrictEqual(response, {
+        name: "server",
+        method: "GET",
+        body: "",
+        headers: { default: "ambient", request: null }
+      })
+    }))
+
   it.effect("layerOptions layers built together keep their own options", () =>
     Effect.gen(function*() {
       const a = yield* echoServer("a")

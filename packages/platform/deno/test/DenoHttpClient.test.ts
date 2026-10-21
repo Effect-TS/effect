@@ -16,7 +16,10 @@ const echoServer = Effect.acquireRelease(
       Response.json({
         method: request.method,
         body: await request.text(),
-        header: request.headers.get("x-request")
+        headers: {
+          default: request.headers.get("x-default"),
+          request: request.headers.get("x-request")
+        }
       }))
     return { directory, path, server }
   }),
@@ -44,7 +47,25 @@ describe("DenoHttpClient", () => {
       const response = yield* HttpClient.HttpClient.use(post).pipe(
         Effect.provide(DenoHttpClient.layerOptions({ proxy: { transport: "unix", path } }))
       )
-      assert.deepStrictEqual(response, { method: "POST", body: "hello", header: "request" })
+      assert.deepStrictEqual(response, {
+        method: "POST",
+        body: "hello",
+        headers: { default: null, request: "request" }
+      })
+    }))
+
+  it.effect("layerOptions keeps the native client when an ambient RequestInit is provided", () =>
+    Effect.gen(function*() {
+      const path = yield* echoServer
+      const response = yield* HttpClient.HttpClient.use(post).pipe(
+        Effect.provideService(DenoHttpClient.RequestInit, { headers: { "x-default": "ambient" } }),
+        Effect.provide(DenoHttpClient.layerOptions({ proxy: { transport: "unix", path } }))
+      )
+      assert.deepStrictEqual(response, {
+        method: "POST",
+        body: "hello",
+        headers: { default: "ambient", request: "request" }
+      })
     }))
 
   it.effect("layerOptions closes the native client when the layer scope closes", () =>
