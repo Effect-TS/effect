@@ -273,11 +273,41 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    */
   runTasks() {
     const buckets = this.tasks.drain()
-    for (let i = 0; i < buckets.length; i++) {
-      const toRun = buckets[i][1]
-      for (let j = 0; j < toRun.length; j++) {
-        toRun[j]()
+    let i = 0
+    let j = 0
+    try {
+      for (; i < buckets.length; i++) {
+        const toRun = buckets[i][1]
+        for (j = 0; j < toRun.length; j++) {
+          toRun[j]()
+        }
       }
+    } catch (error) {
+      // Tasks from other fibers can share this batch, so keep the ones after
+      // the failing task instead of dropping them, then report the error.
+      this.requeue(buckets, i, j + 1)
+      throw error
+    }
+  }
+
+  private requeue(buckets: Array<[priority: number, tasks: Array<() => void>]>, i: number, j: number) {
+    // The remaining tasks were scheduled first, so they run before any task
+    // scheduled while the batch was running.
+    const scheduled = this.tasks.drain()
+    for (; i < buckets.length; i++, j = 0) {
+      const [priority, toRun] = buckets[i]
+      for (; j < toRun.length; j++) {
+        this.tasks.scheduleTask(toRun[j], priority)
+      }
+    }
+    for (let k = 0; k < scheduled.length; k++) {
+      const [priority, toRun] = scheduled[k]
+      for (let l = 0; l < toRun.length; l++) {
+        this.tasks.scheduleTask(toRun[l], priority)
+      }
+    }
+    if (this.running === undefined && this.tasks.buckets.length > 0) {
+      this.running = this.setImmediate(this.afterScheduled)
     }
   }
 
