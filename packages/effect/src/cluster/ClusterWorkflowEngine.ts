@@ -492,16 +492,18 @@ export const make = Effect.gen(function*() {
               // Activity awaits must wake the run after suspension without preempting it.
               readonly activityAwaits: Map<string, number>
             } | undefined
-            // Concurrent wakes share one wait for the current run to publish its reply.
-            // Explicit wakes cannot be dropped: operator resume bypasses the gate;
-            // InterruptSignal enters it only on a fresh entity, with no run to wait for.
+            // Concurrent automatic wakes share one wait for the current run to
+            // publish its reply. Explicit wakes cannot be dropped, because an
+            // automatic wake skips the reset of a failure suspension, so they
+            // wait outside the gate. Operator resume does not use the gate.
             const resumeGate = Semaphore.makeUnsafe(1)
             const resumeCurrentRun = (mode: WakeMode) =>
-              Effect.suspend(() =>
-                resumeGate.withPermitsIfAvailable(1)(
-                  currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
-                )
-              ).pipe(
+              Effect.suspend(() => {
+                const waitForReply = currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
+                return mode === "explicit"
+                  ? Effect.asSome(waitForReply)
+                  : resumeGate.withPermitsIfAvailable(1)(waitForReply)
+              }).pipe(
                 // Release the gate before reset can start another run, so later
                 // completions can wake that replay.
                 Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId, mode) : Effect.void),
@@ -617,8 +619,10 @@ export const make = Effect.gen(function*() {
                 // a later await would require waiting for its reply before reset.
                 // A run completing its own deferred also reads it from the cache
                 // when it awaits later, unless an activity is already parked on it.
+                // A run only reads InterruptSignal while suspending, so an interrupt
+                // always waits for the current run's reply before it resets the run.
                 const wake = Effect.suspend(() =>
-                  currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
+                  currentRun && mode === "automatic" && !currentRun.instance.awaitedDeferreds.has(payload.name)
                     ? currentRun.activityAwaits.has(payload.name)
                       // Hold an activity wake until the run has published its reply.
                       ? resumeCurrentRun(mode)
