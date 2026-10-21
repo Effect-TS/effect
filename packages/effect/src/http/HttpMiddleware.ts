@@ -76,6 +76,56 @@ export declare namespace HttpMiddleware {
 /**
  * Defines an `HttpMiddleware` while preserving its precise type.
  *
+ * **Gotchas**
+ *
+ * TypeScript cannot infer the `app` parameter of an `Effect.fn` or
+ * `Effect.fnUntraced` generator passed directly to `make`, so `app` becomes
+ * `any` and the middleware loses the app's error and service types. Prefer an
+ * arrow function, as in the first example. To use `Effect.fn`, declare `E`
+ * and `R` type parameters and annotate `app` with them.
+ *
+ * **Example** (Defining middleware)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpMiddleware, HttpServerResponse } from "effect/http"
+ *
+ * const withHeader = HttpMiddleware.make((app) =>
+ *   Effect.gen(function*() {
+ *     const response = yield* app
+ *     return HttpServerResponse.setHeader(response, "x-service", "example")
+ *   })
+ * )
+ *
+ * const app: Effect.Effect<HttpServerResponse.HttpServerResponse, "Unauthorized"> =
+ *   Effect.fail("Unauthorized")
+ *
+ * // Effect<HttpServerResponse, "Unauthorized", HttpServerRequest>
+ * const withHeaderApp = withHeader(app)
+ * ```
+ *
+ * **Example** (Defining middleware with Effect.fn)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpMiddleware, HttpServerResponse } from "effect/http"
+ *
+ * const withHeader = HttpMiddleware.make(
+ *   Effect.fn("withHeader")(function*<E, R>(
+ *     app: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
+ *   ) {
+ *     const response = yield* app
+ *     return HttpServerResponse.setHeader(response, "x-service", "example")
+ *   })
+ * )
+ *
+ * const app: Effect.Effect<HttpServerResponse.HttpServerResponse, "Unauthorized"> =
+ *   Effect.fail("Unauthorized")
+ *
+ * // Effect<HttpServerResponse, "Unauthorized", never>
+ * const withHeaderApp = withHeader(app)
+ * ```
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
