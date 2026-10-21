@@ -1668,8 +1668,8 @@ export const withScope = <E, R>(
  * **Details**
  *
  * Follows `3xx` responses that include a `Location` header, up to
- * `maxRedirects` (default `10`) times. When the limit is reached, the last
- * redirect response is returned.
+ * `maxRedirects` (default `10`) times. When the limit is reached or the
+ * `Location` header is not a valid URL, the last redirect response is returned.
  *
  * **Gotchas**
  *
