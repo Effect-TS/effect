@@ -133,6 +133,10 @@ export const fromWeb = (request: HttpClientRequest.HttpClientRequest, source: Re
  * The Web body can only be read once. After converting, read the body from
  * the returned `Response` instead of from the `HttpClientResponse`.
  *
+ * When the request streams its body, reading or cancelling the returned body
+ * does not stop the upload. To stop it, execute the request with
+ * `HttpClient.withScope` and close the scope.
+ *
  * @stability unstable
  * @category converting
  * @since 4.0.0
@@ -145,6 +149,17 @@ export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Respon
     }
     const headers = new globalThis.Headers(self.headers)
     headers.delete("set-cookie")
+    // Clients parse `cookies` from this header, which can join several cookies
+    // into one value, so it is kept only when `cookies` does not repeat it.
+    const setCookie = self.headers["set-cookie"]
+    if (
+      setCookie !== undefined &&
+      Object.keys(Cookies.fromSetCookie(setCookie).cookies).every((name) =>
+        Option.isNone(Cookies.get(self.cookies, name))
+      )
+    ) {
+      headers.append("set-cookie", setCookie)
+    }
     for (const header of Cookies.toSetCookieHeaders(self.cookies)) {
       headers.append("set-cookie", header)
     }
