@@ -5623,6 +5623,16 @@ export const awaitAllChildren = <A, E, R>(
     )
   })
 
+// Interrupts a fiber attached to a scope, unless the fiber is closing the scope
+// itself. The closing fiber invokes the finalizer, so it is checked there, as
+// parallel scopes run the returned effect in another fiber. A close effect from
+// `Scope.closeUnsafe` can be invoked outside the fiber that later runs it, so
+// that fiber is checked again when the effect runs.
+const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
+  getCurrentFiber() === fiber
+    ? void_
+    : withFiberId((fiberId) => fiberId === fiber.id ? void_ : fiberInterrupt(fiber))
+
 /** @internal */
 export const forkIn: {
   (
@@ -5660,11 +5670,7 @@ export const forkIn: {
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
           const key = {}
-          const finalizer = () =>
-            getCurrentFiber() === fiber
-              ? void_
-              : withFiberId((interruptor) => interruptor === fiber.id ? void_ : fiberInterrupt(fiber))
-          scopeAddFinalizerUnsafe(scope, key, finalizer)
+          scopeAddFinalizerUnsafe(scope, key, fiberScopeFinalizer(fiber))
           fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
         } else {
           fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
@@ -5751,14 +5757,7 @@ export const fiberRunIn: {
     return self
   }
   scopeRemoveFinalizerUnsafe(scope, self)
-  scopeAddFinalizerUnsafe(
-    scope,
-    self,
-    () =>
-      getCurrentFiber() === self
-        ? void_
-        : withFiberId((interruptor) => interruptor === self.id ? void_ : fiberInterrupt(self))
-  )
+  scopeAddFinalizerUnsafe(scope, self, fiberScopeFinalizer(self))
   self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, self))
   return self
 })
