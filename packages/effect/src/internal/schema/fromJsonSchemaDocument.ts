@@ -118,6 +118,32 @@ const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
 const unsupportedStructuredValue = "Only primitive values are supported in \"const\" and \"enum\"."
 const jsonSchemaPatternFlags = "u"
 
+const subschemaKeywords = new Set([
+  "not",
+  "items",
+  "contains",
+  "if",
+  "then",
+  "else",
+  "additionalProperties",
+  "propertyNames",
+  "unevaluatedItems",
+  "unevaluatedProperties",
+  "contentSchema"
+])
+
+// Keywords whose value is a map or an array of subschemas
+const subschemaContainerKeywords = new Set([
+  "$defs",
+  "properties",
+  "patternProperties",
+  "dependentSchemas",
+  "allOf",
+  "anyOf",
+  "oneOf",
+  "prefixItems"
+])
+
 function isObject(input: unknown): input is Record<string, unknown> {
   return typeof input === "object" && input !== null && !Array.isArray(input)
 }
@@ -430,10 +456,24 @@ function translateJsonSchemaMultiDocument(
       throw errorWithPath(`Unsupported $ref ${JSON.stringify($ref)}. Use "#/$defs/Name".`, [...path, "$ref"])
     }
     const tokens = pointer.slice(1)
+    // Ancestor schemas are replaced by their onEnter results, as when they are translated
     let node: unknown = document.definitions
+    let kind: "schema" | "container" | undefined = "container"
     let crossesResource = false
     for (const token of tokens) {
-      crossesResource ||= isObject(node) && typeof node.$id === "string"
+      if (kind === "schema" && isObject(node)) {
+        if (options?.onEnter !== undefined) node = options.onEnter(node as JsonSchema.JsonSchema)
+        crossesResource ||= isObject(node) && typeof node.$id === "string"
+      }
+      kind = kind === "container"
+        ? "schema"
+        : kind === undefined
+        ? undefined
+        : subschemaKeywords.has(token)
+        ? "schema"
+        : subschemaContainerKeywords.has(token)
+        ? "container"
+        : undefined
       node = typeof node === "object" && node !== null && Object.hasOwn(node, token)
         ? (node as Record<string, unknown>)[token]
         : undefined
