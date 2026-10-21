@@ -5623,11 +5623,9 @@ export const awaitAllChildren = <A, E, R>(
     )
   })
 
-// Interrupts a fiber attached to a scope, unless the fiber is closing the scope
-// itself. The closing fiber invokes the finalizer, so it is checked there, as
-// parallel scopes run the returned effect in another fiber. A close effect from
-// `Scope.closeUnsafe` can be invoked outside the fiber that later runs it, so
-// that fiber is checked again when the effect runs.
+// Skips the fiber that is closing the scope, which would otherwise wait on itself.
+// Checked when invoked, as parallel scopes run the effect in another fiber, and
+// when run, as a `Scope.closeUnsafe` effect may be invoked on a different fiber.
 const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
   getCurrentFiber() === fiber ? void_ : withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
 
