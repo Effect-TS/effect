@@ -51,12 +51,12 @@ const makeRemote = Effect.gen(function*() {
     if (method === "execute") {
       return Effect.map(statement.raw, (header) => ({ rows: [header] }))
     }
-    let effect: Effect.Effect<any, SqlError> = method === "all" || method === "values"
+    if (method === "get") {
+      return Effect.map(statement.values, (rows) => ({ rows: rows[0] }))
+    }
+    const effect: Effect.Effect<any, SqlError> = method === "all" || method === "values"
       ? statement.values
       : statement.withoutTransform
-    if (method === "get") {
-      effect = Effect.map(effect, (rows) => rows[0] ?? [])
-    }
     return Effect.map(effect, (rows) => ({ rows }))
   }
   const runPromise = <A>(effect: Effect.Effect<A, SqlError>): Promise<A> =>
