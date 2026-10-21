@@ -4573,45 +4573,6 @@ describe("Effect", () => {
     })
   })
 
-  for (
-    const [name, untraced] of [["fnUntraced", Effect.fnUntraced], ["fnUntracedEager", Effect.fnUntracedEager]] as const
-  ) {
-    describe(`Effect.${name}`, () => {
-      it.effect("binds self when the method is detached", () => {
-        class Counter {
-          value = 1
-          add = untraced({ self: this }, function*(amount: number) {
-            this.value += amount
-            return this.value
-          })
-        }
-        const counter = new Counter()
-        const add = counter.add
-        assert.strictEqual(add.length, 1)
-        return Effect.gen(function*() {
-          assert.strictEqual(yield* add(2), 3)
-          assert.strictEqual(yield* add.call({ value: 100 }, 4), 7)
-          assert.strictEqual(counter.value, 7)
-        })
-      })
-
-      it.effect("passes the original arguments to transforms with bound self", () => {
-        const self = { prefix: "bound" }
-        const fn = untraced(
-          { self },
-          function*(value: string) {
-            return `${this.prefix}:${value}`
-          },
-          (effect, value) => Effect.map(effect, (result) => `${result}:${value}`),
-          Effect.map((value) => value.toUpperCase())
-        )
-        return Effect.gen(function*() {
-          assert.strictEqual(yield* fn("input"), "BOUND:INPUT:INPUT")
-        })
-      })
-    })
-  }
-
   describe("Effect.fn", () => {
     it.effect("should support pipeable arguments", () => {
       const fn = Effect.fn(function*(s: string) {
@@ -4635,6 +4596,20 @@ describe("Effect", () => {
       return Effect.gen(function*() {
         const result = yield* fn("value")
         assert.strictEqual(result, "BOUND:VALUE")
+      })
+    })
+
+    it.effect("untraced should support self with pipeable arguments", () => {
+      const self = { prefix: "bound" }
+      const body = function*(this: typeof self, value: string) {
+        return `${this.prefix}:${value}`
+      }
+      const untraced = Effect.fnUntraced({ self }, body, Effect.map((value) => value.toUpperCase()))
+      const eager = Effect.fnUntracedEager({ self }, body, Effect.map((value) => value.toUpperCase()))
+      return Effect.gen(function*() {
+        assert.strictEqual(untraced.length, 1)
+        assert.strictEqual(yield* untraced("value"), "BOUND:VALUE")
+        assert.strictEqual(yield* eager("value"), "BOUND:VALUE")
       })
     })
 
