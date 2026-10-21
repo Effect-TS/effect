@@ -88,6 +88,9 @@ export type DurationInput =
 
 const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)$/
 
+const parseNanos = (input: string, scale: number): bigint =>
+  input.includes(".") ? BigInt(Math.round(Number(input) * scale)) : BigInt(input) * BigInt(scale)
+
 /**
  * @since 2.0.0
  */
@@ -113,14 +116,13 @@ export const decode = (input: DurationInput): Duration => {
     if (match) {
       const [_, valueStr, unit] = match
       const value = Number(valueStr)
-      const isFractional = valueStr.includes(".")
       switch (unit) {
         case "nano":
         case "nanos":
-          return isFractional ? make(BigInt(Math.round(value))) : nanos(BigInt(valueStr))
+          return nanos(parseNanos(valueStr, 1))
         case "micro":
         case "micros":
-          return isFractional ? make(BigInt(Math.round(value * 1_000))) : micros(BigInt(valueStr))
+          return nanos(parseNanos(valueStr, 1_000))
         case "milli":
         case "millis":
           return millis(value)
@@ -652,10 +654,13 @@ export const times: {
   (self: DurationInput, times: number): Duration =>
     match(self, {
       onMillis: (millis) => make(millis * times),
-      onNanos: (nanos) =>
-        Number.isInteger(times)
-          ? make(nanos * BigInt(times))
-          : make(BigInt(Math.round(Number(nanos) * times)))
+      onNanos: (nanos) => {
+        if (Number.isInteger(times)) {
+          return make(nanos * BigInt(times))
+        }
+        const result = Number(nanos) * times
+        return make(Number.isFinite(result) ? BigInt(Math.round(result)) : result)
+      }
     })
 )
 
