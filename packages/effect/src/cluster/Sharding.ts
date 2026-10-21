@@ -1018,20 +1018,18 @@ const make = Effect.gen(function*() {
           }
           removableNotifications.clear()
         }
-        if (MutableHashSet.size(resetAddresses) > 0) {
-          for (const address of resetAddresses) {
-            yield* Effect.logWarning("Could not find entity manager for address, retrying").pipe(
-              Effect.annotateLogs({ address })
-            )
-            yield* Effect.forkIn(storage.resetAddress(address), shardingScope)
-          }
-          MutableHashSet.clear(resetAddresses)
+        for (const address of resetAddresses) {
+          yield* Effect.logWarning("Could not find entity manager for address, retrying").pipe(
+            Effect.annotateLogs({ address })
+          )
         }
-        // Capture claims skipped because of the entity cap. They are reset in
-        // one storage operation after releasing the read lock.
-        let cappedAddressesToReset: Array<EntityAddress> | undefined
-        if (MutableHashSet.size(cappedAddresses) > 0) {
-          cappedAddressesToReset = Arr.fromIterable(cappedAddresses)
+        // Capture claims for unregistered entity types, and claims skipped
+        // because of the entity cap. They are reset in one storage operation
+        // after releasing the read lock, and before the next read starts.
+        let addressesToReset: Array<EntityAddress> | undefined
+        if (MutableHashSet.size(resetAddresses) > 0 || MutableHashSet.size(cappedAddresses) > 0) {
+          addressesToReset = [...resetAddresses, ...cappedAddresses]
+          MutableHashSet.clear(resetAddresses)
           MutableHashSet.clear(cappedAddresses)
         }
 
@@ -1043,8 +1041,8 @@ const make = Effect.gen(function*() {
           resetRequestIds.length = 0
         }
 
-        if (cappedAddressesToReset !== undefined) {
-          yield* Effect.ignore(storage.resetAddresses(cappedAddressesToReset))
+        if (addressesToReset !== undefined) {
+          yield* Effect.ignore(storage.resetAddresses(addressesToReset))
         }
 
         // A full batch means more messages could be waiting; start the next
@@ -1930,6 +1928,9 @@ const make = Effect.gen(function*() {
       yield* withStorageReadLock(Effect.sync(() => {
         entityRegistrationStartMillis ??= clock.currentTimeMillisUnsafe()
         entityManagers.set(entity.type, state)
+        // persisted messages read before this registration were reset, so
+        // read storage again instead of waiting for the next poll interval
+        storageReadLatch.openUnsafe()
         if (entityManagerLatches.has(entity.type)) {
           entityManagerLatches.get(entity.type)!.openUnsafe()
           entityManagerLatches.delete(entity.type)
