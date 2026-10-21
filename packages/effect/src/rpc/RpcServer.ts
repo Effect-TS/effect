@@ -31,6 +31,7 @@ import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import * as Queue from "../Queue.ts"
+import { UnhandledLogLevel } from "../References.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
@@ -642,8 +643,8 @@ const applyMiddleware = <A, E, R>(
  *
  * Each callback runs in its own fiber, so a slow callback does not delay
  * cleanup for other clients, and callbacks may run concurrently. Pending
- * callbacks are interrupted when the server stops. Failures are logged and
- * ignored.
+ * callbacks are interrupted when the server stops. Failures are ignored and
+ * logged at `References.UnhandledLogLevel`.
  *
  * @stability unstable
  * @category running
@@ -741,10 +742,13 @@ export const make: <Rpcs extends Rpc.Any>(
     ? (clientId: number) =>
       Effect.andThen(
         server.disconnect(clientId),
-        Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
-          log: true,
-          message: "RpcServer onDisconnect hook failed"
-        }).pipe(Effect.forkIn(scope))
+        Effect.catchCause(Effect.suspend(() => onDisconnect(clientId)), (cause) =>
+          Effect.withFiber((fiber) => {
+            const level = fiber.getRef(UnhandledLogLevel)
+            return level === undefined
+              ? Effect.void
+              : Effect.logWithLevel(level)("RpcServer onDisconnect hook failed", cause)
+          })).pipe(Effect.forkIn(scope))
       )
     : server.disconnect
   yield* Effect.forkChild(
