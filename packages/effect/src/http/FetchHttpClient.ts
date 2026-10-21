@@ -48,13 +48,7 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
  *
  * Request-specific method, headers, body, and abort signal are supplied by the client when a request is executed.
  *
- * **Gotchas**
- *
- * `fetch` follows redirects itself unless `redirect` is set. Use
- * `{ redirect: "manual" }` when `HttpClient.followRedirects` should handle
- * them. In browsers, manual redirects are opaque and cannot be followed.
- *
- * @see {@link HttpClient.followRedirects} for following redirects in the client
+ * @see {@link HttpClient.followRedirects} for following redirects in the client, which needs `{ redirect: "manual" }` here
  *
  * @stability unstable
  * @category services
