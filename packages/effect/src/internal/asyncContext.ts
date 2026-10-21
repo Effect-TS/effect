@@ -1,6 +1,7 @@
 /** @internal */
 export interface AsyncContext {
   runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
+  emitDestroy(): void
 }
 
 /** @internal */

@@ -30,7 +30,7 @@ import {
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
-import { AsyncLocalStorage } from "node:async_hooks"
+import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
@@ -5351,5 +5351,46 @@ describe("Effect", () => {
         })
       })
     }
+
+    it("does not leave async resources open after the effect completes", async () => {
+      // Mirrors vitest's detectAsyncLeaks: track every resource descended from a root scope
+      // and report the ones that are still pending once the effect has completed.
+      const root = new AsyncResource("test-root")
+      const tracked = new Set([root.asyncId()])
+      const pending = new Map<number, { type: string; resource: any }>()
+      let tracking = true
+      const hook = createHook({
+        init(asyncId, type, triggerAsyncId, resource) {
+          if (!tracking || !tracked.has(triggerAsyncId)) return
+          tracked.add(asyncId)
+          pending.set(asyncId, { type, resource })
+        },
+        destroy(asyncId) {
+          if (pending.get(asyncId)?.type !== "PROMISE") pending.delete(asyncId)
+        },
+        promiseResolve(asyncId) {
+          pending.delete(asyncId)
+        }
+      })
+      hook.enable()
+      try {
+        await root.runInAsyncScope(() =>
+          Effect.runPromise(Effect.gen(function*() {
+            yield* Effect.yieldNow
+            const fiber = yield* Effect.forkChild(Effect.yieldNow)
+            yield* Fiber.join(fiber)
+          }))
+        )
+        tracking = false
+        await new Promise((resolve) => setImmediate(resolve))
+      } finally {
+        hook.disable()
+        root.emitDestroy()
+      }
+      const leaks = Array.from(pending.values())
+        .filter(({ resource }) => !("hasRef" in resource) || resource.hasRef())
+        .map(({ type }) => type)
+      assert.deepStrictEqual(leaks, [])
+    })
   })
 })

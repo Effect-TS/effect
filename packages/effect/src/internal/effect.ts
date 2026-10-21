@@ -599,7 +599,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
-      return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      try {
+        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      } finally {
+        // Each captured context is resumed once, so release it for async_hooks
+        // consumers like vitest's detectAsyncLeaks.
+        asyncContext.emitDestroy()
+      }
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
