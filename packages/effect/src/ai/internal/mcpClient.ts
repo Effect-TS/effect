@@ -279,25 +279,61 @@ interface HeaderParameter {
   readonly type: string
 }
 
-// Collects `x-mcp-header` annotations on (nested) object properties, or returns
-// undefined when an annotation is invalid and the tool must not be called.
+// JSON Schema keywords whose values are schemas, maps of schemas or arrays of schemas.
+const SCHEMA_KEYWORDS = new Set([
+  "additionalProperties",
+  "unevaluatedProperties",
+  "propertyNames",
+  "items",
+  "additionalItems",
+  "unevaluatedItems",
+  "contains",
+  "not",
+  "if",
+  "then",
+  "else",
+  "contentSchema"
+])
+const SCHEMA_MAP_KEYWORDS = new Set([
+  "properties",
+  "patternProperties",
+  "$defs",
+  "definitions",
+  "dependentSchemas",
+  "dependencies"
+])
+const SCHEMA_ARRAY_KEYWORDS = new Set(["allOf", "anyOf", "oneOf", "prefixItems", "items"])
+
+// Collects `x-mcp-header` annotations along chains of `properties` keys, or
+// returns undefined when an annotation is invalid or found anywhere else.
+// https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#schema-extension
 const headerParameters = (tool: McpSchema.Tool): ReadonlyArray<HeaderParameter> | undefined => {
   const parameters: Array<HeaderParameter> = []
   const names = new Set<string>()
 
-  const visit = (schema: unknown, path: ReadonlyArray<string>): boolean => {
+  // `path` is undefined once the traversal leaves a properties-only chain.
+  const visit = (schema: unknown, path: ReadonlyArray<string> | undefined): boolean => {
     if (!isRecord(schema)) return true
     const name = schema["x-mcp-header"]
     if (name !== undefined) {
       if (
-        path.length === 0 || typeof name !== "string" || !HEADER_TOKEN.test(name) ||
+        path === undefined || path.length === 0 || typeof name !== "string" || !HEADER_TOKEN.test(name) ||
         names.has(name.toLowerCase()) || !["string", "integer", "boolean"].includes(schema.type as string)
       ) return false
       names.add(name.toLowerCase())
       parameters.push({ path, header: `mcp-param-${name.toLowerCase()}`, type: schema.type as string })
     }
-    return !isRecord(schema.properties) ||
-      Object.entries(schema.properties).every(([key, property]) => visit(property, [...path, key]))
+    return Object.entries(schema).every(([keyword, value]) => {
+      if (SCHEMA_MAP_KEYWORDS.has(keyword) && isRecord(value)) {
+        return Object.entries(value).every(([key, child]) =>
+          visit(child, keyword === "properties" && path !== undefined ? [...path, key] : undefined)
+        )
+      }
+      if (Array.isArray(value)) {
+        return !SCHEMA_ARRAY_KEYWORDS.has(keyword) || value.every((child) => visit(child, undefined))
+      }
+      return !SCHEMA_KEYWORDS.has(keyword) || visit(value, undefined)
+    })
   }
 
   return visit(tool.inputSchema, []) ? parameters : undefined
