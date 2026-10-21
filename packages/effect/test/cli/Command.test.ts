@@ -2389,7 +2389,7 @@ describe("Command", () => {
     it.effect("should resolve examples from the command path", () =>
       Effect.gen(function*() {
         const deploy = Command.make("deploy").pipe(
-          Command.withExamples((commandPath) => [
+          Command.withExamples(({ commandPath }) => [
             { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
           ]),
           Command.withSubcommands([Command.make("status")]),
