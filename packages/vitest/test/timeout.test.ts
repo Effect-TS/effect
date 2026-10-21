@@ -1,4 +1,4 @@
-import { afterAll, assert, beforeEach, describe, it } from "@effect/vitest"
+import { afterAll, assert, beforeAll, beforeEach, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 
 const pendingReleases: Array<Promise<void>> = []
@@ -62,6 +62,62 @@ describe("beforeEach timeout finalizers", { concurrent: false }, () => {
   it("awaits the finalizer before starting the next test", () => {
     events.push("next:start")
     assert.deepStrictEqual(events, ["hook:acquired", "hook:release:start", "hook:release:end", "next:start"])
+  })
+})
+
+describe("beforeEach teardown timeout finalizers", { concurrent: false }, () => {
+  const events: Array<string> = []
+
+  describe("hook", () => {
+    beforeEach(() => resource(events, "hook"), 75)
+
+    it.fails("times out while releasing the resource", () => {})
+  })
+
+  it("awaits the finalizer before starting the next test", () => {
+    events.push("next:start")
+    assert.deepStrictEqual(events, ["hook:acquired", "hook:release:start", "hook:release:end", "next:start"])
+  })
+})
+
+// Vitest fails a suite whose beforeAll fails, so accept the expected error.
+// The suite is the second argument; Vitest requires the first to be destructured.
+const expectBeforeAllFailure = (message: string) =>
+  // oxlint-disable-next-line no-empty-pattern
+  afterAll(({}, suite) => {
+    assert.include(suite.result?.errors?.map((error) => error.message).join("\n"), message)
+    suite.result!.state = "pass"
+    suite.result!.errors = []
+  })
+
+describe("beforeAll failure finalizers", { concurrent: false }, () => {
+  const events: Array<string> = []
+
+  describe("failing hook", () => {
+    beforeAll(() => resource(events, "failed").pipe(Effect.andThen(Effect.fail(new Error("boom")))))
+    expectBeforeAllFailure("boom")
+
+    it("is skipped", () => {})
+  })
+
+  describe("hook succeeding after its timeout", () => {
+    beforeAll(() => resource(events, "late").pipe(Effect.andThen(Effect.sleep(150))), 75)
+    expectBeforeAllFailure("timed out")
+
+    it("is skipped", () => {})
+  })
+
+  it("awaits the finalizers before starting the next test", () => {
+    events.push("next:start")
+    assert.deepStrictEqual(events, [
+      "failed:acquired",
+      "failed:release:start",
+      "failed:release:end",
+      "late:acquired",
+      "late:release:start",
+      "late:release:end",
+      "next:start"
+    ])
   })
 })
 
