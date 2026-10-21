@@ -37,7 +37,7 @@ import {
 import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
 import * as Crypto from "node:crypto"
-import type { Readable } from "node:stream"
+import { pipeline, type Readable, Transform } from "node:stream"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const ATTR_DB_NAMESPACE = "db.namespace"
@@ -129,6 +129,44 @@ const rowEventKeys = ["row", "totals", "min", "max"] as const
 const isExceptionEvent = (value: unknown): value is { exception: string } =>
   typeof value === "object" && value !== null && "exception" in value &&
   typeof (value as { exception: unknown }).exception === "string"
+
+// Since ClickHouse 25.11, a query that fails after the response has started
+// ends the body with an exception block opened by `__exception__\r\n<tag>\r\n`,
+// where the tag comes from the `x-clickhouse-exception-tag` response header.
+// Bytes before the block pass through untouched and the block fails the stream.
+// The last `marker.length - 1` bytes are held back so a marker split across
+// chunks is still found.
+const failOnExceptionBlock = (tag: string) => {
+  const marker = Buffer.from(`__exception__\r\n${tag}\r\n`)
+  let pending: Buffer = Buffer.alloc(0)
+  let block: Array<Buffer> | undefined
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      if (block) {
+        block.push(chunk)
+        return callback()
+      }
+      const data = pending.length > 0 ? Buffer.concat([pending, chunk]) : chunk
+      const index = data.indexOf(marker)
+      if (index !== -1) {
+        block = [data.subarray(index)]
+        if (index > 0) this.push(data.subarray(0, index))
+        return callback()
+      }
+      const keep = Math.min(data.length, marker.length - 1)
+      pending = data.subarray(data.length - keep)
+      if (data.length > keep) this.push(data.subarray(0, data.length - keep))
+      callback()
+    },
+    flush(callback) {
+      if (block) {
+        return callback(Clickhouse.extractErrorAtTheEndOfChunk(Buffer.concat(block), tag))
+      }
+      if (pending.length > 0) this.push(pending)
+      callback()
+    }
+  })
+}
 
 const exceptionEventError = (event: { exception: string }) => {
   // exception text starts with "Code: <n>. DB::Exception: ..."
@@ -252,8 +290,8 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
  * **Gotchas**
  *
  * In other formats a failure after streaming has started still fails the
- * stream, but it may surface as an `UnknownError` instead of a classified
- * reason.
+ * stream. Before ClickHouse 25.11 it may surface as an `UnknownError` instead
+ * of a classified reason.
  *
  * @category utility types
  * @since 4.0.0
@@ -470,7 +508,8 @@ export const make = (
           yield* Effect.addFinalizer(() => {
             if (settled) return Effect.void
             controller.abort()
-            return killQuery(this.conn, queryId)
+            // the original failure or interruption must not be replaced
+            return Effect.catchDefect(killQuery(this.conn, queryId), () => Effect.void)
           })
           const result = yield* Effect.callback<Result, SqlError>((resume) => {
             run({
@@ -480,7 +519,9 @@ export const make = (
             }).then(
               (result) => resume(Effect.succeed(result)),
               (cause) => {
-                settled = true
+                // An error response from the server means the query has ended.
+                // After a transport failure it may still be running.
+                settled = cause instanceof Clickhouse.ClickHouseError
                 resume(
                   Effect.fail(
                     new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
@@ -514,7 +555,12 @@ export const make = (
             }),
           (result) =>
             NodeStream.fromReadable<Uint8Array, SqlError>({
-              evaluate: () => result.stream,
+              evaluate: () => {
+                const tag = result.response_headers?.[Clickhouse.EXCEPTION_TAG_HEADER_NAME]
+                return typeof tag === "string"
+                  ? pipeline(result.stream, failOnExceptionBlock(tag), () => {})
+                  : result.stream
+              },
               onError: streamError
             })
         )
