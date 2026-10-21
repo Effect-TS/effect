@@ -1691,6 +1691,19 @@ describe("OpenApi", () => {
     })
 
     describe("HttpApiEndpoint.post", () => {
+      it("setPayload with members sharing a content type", () => {
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.post("post", "/")
+              .setPayload(Schema.Union(Schema.String, Schema.Number, Schema.Boolean))
+          )
+        )
+        const spec = OpenApi.fromApi(api)
+        deepStrictEqual(spec.paths["/"].post?.requestBody?.content["application/json"]?.schema, {
+          anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }]
+        })
+      })
+
       it("setPayload", () => {
         const api = HttpApi.make("api").add(
           HttpApiGroup.make("group").add(
