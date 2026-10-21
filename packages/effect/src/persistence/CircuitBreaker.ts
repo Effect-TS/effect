@@ -156,11 +156,16 @@ export const make: (options: Options) => Effect.Effect<CircuitBreaker, never, Ci
     const publish = (transition: Transition | undefined) =>
       transition === undefined ? Effect.void : PubSub.publish(pubsub, [transition])
 
-    const openFor = (outcome: Outcome.Failure, consecutiveOpenings: number) =>
-      Effect.map(openDurationFor(consecutiveOpenings), (delay) =>
-        outcome.retryAfter === undefined
-          ? delay
-          : Duration.max(delay, Duration.min(outcome.retryAfter, maxOpenDuration)))
+    // A rate policy can trip on a Success, so every recorded outcome needs the
+    // base open duration. Only a Failure carries a hint.
+    const openFor = (outcome: Outcome, consecutiveOpenings: number) =>
+      Effect.map(
+        openDurationFor(consecutiveOpenings),
+        (delay) =>
+          outcome._tag === "Failure" && outcome.retryAfter !== undefined
+            ? Duration.max(delay, Duration.min(outcome.retryAfter, maxOpenDuration))
+            : delay
+      )
 
     const execute = <A, E, R, R2>(
       self: Effect.Effect<A, E, R>,
@@ -194,9 +199,9 @@ export const make: (options: Options) => Effect.Effect<CircuitBreaker, never, Ci
                   generation: admission.generation,
                   outcome: outcome._tag,
                   tripPolicy: options.tripPolicy,
-                  openFor: outcome._tag === "Failure"
-                    ? yield* openFor(outcome, admission.consecutiveOpenings + 1)
-                    : Duration.zero
+                  openFor: outcome._tag === "Ignored"
+                    ? Duration.zero
+                    : yield* openFor(outcome, admission.consecutiveOpenings + 1)
                 }).pipe(
                   Effect.flatMap(publish),
                   Effect.catch((error) => Effect.logWarning("CircuitBreaker failed to record an outcome", error))
