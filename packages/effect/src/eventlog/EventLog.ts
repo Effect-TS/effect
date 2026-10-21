@@ -7,6 +7,45 @@
  * committed only after the handler succeeds. This module also contains the
  * layers and helpers needed to assemble that runtime.
  *
+ * **Remote compaction**
+ *
+ * An encrypted remote whose server sets `HelloResponse.compaction` can store a
+ * compacted snapshot of its history, so a new device replays the snapshot and
+ * a recent tail instead of every write. Clients build the snapshots because
+ * only they can decrypt the entries.
+ *
+ * Only a client with a `remote: true` compactor, on a remote not built with
+ * `compaction: false`, calls the compaction RPCs. It polls the status on
+ * connect and about hourly. When the server wants compaction and the journal
+ * has caught up, it starts a background run after a random delay of a few
+ * minutes. The run reads the input, taking entries from the journal where it
+ * can and fetching the rest, runs the opted-in compactors and uploads the
+ * entries they keep. The server lets one run per store hold a stage and
+ * answers the others `Busy`, so devices that start together download the
+ * input once. `EventLog.compact` starts a run immediately, for example from
+ * a worker holding the identity.
+ *
+ * An operator can roll back a bad snapshot on the server. The server then
+ * re-appends the snapshot's input at the head, so every client, including
+ * ones from before remote compaction, receives the dropped entries through
+ * `changes` and skips the ones it already holds.
+ *
+ * Known limitations:
+ *
+ * - A run holds every kept entry in memory. A device with a large store can
+ *   opt out with `compaction: false` and leave compaction to a device or
+ *   worker with more memory.
+ * - The library can't check that a compactor keeps the `remote` contract (see
+ *   `groupCompaction`). The drop-only and idempotence checks catch common
+ *   mistakes. A snapshot that drops too much can only be undone by a rollback
+ *   before the server prunes the history.
+ * - Changes to a field's meaning between schema versions aren't detected.
+ *   Strict decoding only catches unknown fields.
+ * - A new device still replays the newest day or so of writes, because the
+ *   server only compacts data older than its lag.
+ * - A client that stops partway through a run holds the server's busy claim
+ *   until its stage expires.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -14,15 +53,20 @@ import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as Equal from "../Equal.ts"
+import * as FiberHandle from "../FiberHandle.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, identity } from "../Function.ts"
 import * as InternalRecord from "../internal/record.ts"
+import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as PubSub from "../PubSub.ts"
 import * as Queue from "../Queue.ts"
+import * as Random from "../Random.ts"
 import { Reactivity } from "../reactivity/Reactivity.ts"
 import * as ReactivityLayer from "../reactivity/Reactivity.ts"
 import type * as Record from "../Record.ts"
@@ -33,14 +77,22 @@ import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Scope from "../Scope.ts"
+import * as Stream from "../Stream.ts"
 import type { Covariant } from "../Types.ts"
 import type * as Event from "./Event.ts"
 import type * as EventGroup from "./EventGroup.ts"
 import { Entry, EventJournal, type EventJournalError, makeEntryIdUnsafe, type RemoteId } from "./EventJournal.ts"
 import * as EventLogEncryption from "./EventLogEncryption.ts"
-import { StoreId } from "./EventLogMessage.ts"
-import type { EventLogRemote } from "./EventLogRemote.ts"
+import { type CompactionInputHeader, EventLogProtocolError, StoreId } from "./EventLogMessage.ts"
+import type {
+  CompactionStage,
+  EventLogRemote,
+  EventLogRemoteCompaction,
+  EventLogRemoteError
+} from "./EventLogRemote.ts"
+import { maxBatchEntries } from "./internal/batches.ts"
 import { setAnchor } from "./internal/conflicts.ts"
+import * as RemoteCompaction from "./internal/remoteCompaction.ts"
 
 /**
  * Service for writing typed event-log events through registered handlers.
@@ -87,6 +139,30 @@ export class EventLog extends Context.Service<EventLog, {
   >
   readonly entries: Effect.Effect<ReadonlyArray<Entry>, EventJournalError>
   readonly destroy: Effect.Effect<void, EventJournalError>
+  /**
+   * Runs one remote compaction now, on every registered remote that offers
+   * compaction or only on `remoteId`.
+   *
+   * Unlike the background trigger, it doesn't wait for the journal to catch
+   * up, and it works from an empty journal. Remotes built with
+   * `compaction: false` are skipped, and nothing runs when no compactor is
+   * registered with `remote: true`.
+   *
+   * `Committed` and `Superseded` mean a snapshot was uploaded, `NoOp` that
+   * nothing was dropped, and `NotWanted` and `Busy` come from the server.
+   * `Aborted` means nothing was uploaded and the stage was released, because
+   * a compactor died, the idempotence check failed, every entry was dropped
+   * or the input was pruned during the run.
+   */
+  readonly compact: (options?: {
+    readonly remoteId?: RemoteId | undefined
+  }) => Effect.Effect<
+    ReadonlyArray<{
+      readonly remoteId: RemoteId
+      readonly result: "Committed" | "Superseded" | "NoOp" | "NotWanted" | "Busy" | "Aborted"
+    }>,
+    EventJournalError | EventLogRemoteError
+  >
 }>()("effect/eventlog/EventLog") {}
 
 /**
@@ -107,8 +183,18 @@ export class Registry extends Context.Service<Registry, {
 
   readonly registerCompaction: (options: {
     readonly events: ReadonlyArray<string>
+    /**
+     * Also run this compactor over a remote's history to build snapshots. The
+     * kept entries must depend only on the set of input entries and compose:
+     * `drop(drop(a) ++ b)` keeps the same entries as `drop(a ++ b)`, even when
+     * `b` holds entries older than `a`. A call that writes an entry it wasn't
+     * given keeps its whole input.
+     */
+    readonly remote?: boolean | undefined
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
+      /** True during a remote compaction, which only drops entries. */
+      readonly remote?: boolean | undefined
       // Pass an input entry as source to anchor replacements during remote replay.
       // Without it, matching IDs retain their position; new IDs use the group start.
       readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
@@ -117,13 +203,16 @@ export class Registry extends Context.Service<Registry, {
 
   readonly compactors: ReadonlyMap<string, {
     readonly events: ReadonlySet<string>
+    readonly remote: boolean
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
+      readonly remote?: boolean | undefined
       readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }>
 
   readonly registerRemote: (remote: EventLogRemote["Service"]) => Effect.Effect<void, never, Scope.Scope>
+  readonly remotes: ReadonlyMap<RemoteId, EventLogRemote["Service"]>
   readonly handleRemote: (handler: (remote: EventLogRemote["Service"]) => Effect.Effect<void>) => Effect.Effect<void>
 
   readonly registerReactivity: (keys: Record<string, ReadonlyArray<string>>) => Effect.Effect<void, never, Scope.Scope>
@@ -145,8 +234,10 @@ export const layerRegistry = Layer.effect(
     const handlers = new Map<string, Handlers.Item<any>>()
     const compactors = new Map<string, {
       readonly events: ReadonlySet<string>
+      readonly remote: boolean
       readonly effect: (options: {
         readonly entries: ReadonlyArray<Entry>
+        readonly remote?: boolean | undefined
         readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
       }) => Effect.Effect<void>
     }>()
@@ -166,6 +257,7 @@ export const layerRegistry = Layer.effect(
           const events = new Set(options.events)
           const compactor = {
             events,
+            remote: options.remote ?? false,
             effect: options.effect
           }
           for (const event of options.events) {
@@ -184,6 +276,7 @@ export const layerRegistry = Layer.effect(
             return FiberMap.remove(remoteFiberMap, remote.id)
           }
         ),
+      remotes,
       handleRemote(handler) {
         remoteHandler = handler
         return Effect.forEach(remotes, ([id, remote]) => FiberMap.run(remoteFiberMap, id, handler(remote)), {
@@ -684,7 +777,8 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
     readonly forward: (entry: Entry) => Effect.Effect<void>
-  }) => Effect.Effect<void, never, R>
+  }) => Effect.Effect<void, never, R>,
+  options: { readonly remote?: boolean | undefined } | undefined
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   Layer.effectDiscard(
     Effect.gen(function*() {
@@ -693,10 +787,15 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
 
       yield* registry.registerCompaction({
         events: Object.keys(group.events),
-        effect: Effect.fnUntraced(function*({ entries, write }): Effect.fn.Return<void> {
+        remote: options?.remote,
+        effect: Effect.fnUntraced(function*({ entries, remote = false, write }): Effect.fn.Return<void> {
+          // In a remote compaction, unknown fields make an entry undecodable,
+          // and undecodable entries are always kept.
           const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
-            Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
+            Schema.decodeUnknownEffect(
+              remote ? SchemaBinary.toCodecStrict(group.events[tag].payload) : group.events[tag].payloadSchemaBinary
+            )(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input))
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
           const writeFrom = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
@@ -726,6 +825,7 @@ const registerBatchCompaction = <Events extends Event.Any, R>(
               continue
             }
             const payload = yield* Effect.result(decodePayload(entry.event, entry.payload))
+            if (remote && Result.isFailure(payload)) yield* forward(entry)
             batch.push({
               entry,
               event: Result.isFailure(payload)
@@ -794,14 +894,36 @@ export const groupBatchCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
     readonly forward: (entry: Entry) => Effect.Effect<void>
-  }) => Effect.Effect<void, never, R>
+  }) => Effect.Effect<void, never, R>,
+  options?: {
+    /**
+     * Also run this compactor over a remote's history to build snapshots.
+     *
+     * Opting in promises a contract the library can't check. The kept entries
+     * depend only on the set of input entries, never on services, the clock
+     * or input order, and compaction composes: `drop(drop(a) ++ b)` keeps the
+     * same entries as `drop(a ++ b)`, even when `b` holds entries older than
+     * `a`.
+     *
+     * Remote compaction only drops entries. A call that uses `write` keeps its
+     * whole input, and entries that fail to decode, including ones with fields
+     * the schema doesn't know, are always kept. Before uploading, a run passes
+     * the kept entries through the compactors again and uploads nothing if
+     * that drops more or a compactor dies.
+     *
+     * A snapshot that drops too much can be rolled back on the server until
+     * the history it replaced is pruned. The module docs cover when runs start
+     * and other limitations.
+     */
+    readonly remote?: boolean | undefined
+  }
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   registerBatchCompaction(group, ({ entries, writeFrom, forward }) =>
     effect({
       entries,
       write: (tag, payload) => writeFrom(entries[0].entry, tag, payload),
       forward
-    }))
+    }), options)
 
 /**
  * Registers a compaction handler for an event group.
@@ -848,7 +970,29 @@ export const groupCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]>
     readonly forward: (entry: Entry) => Effect.Effect<void>
-  }) => Effect.Effect<void, never, R>
+  }) => Effect.Effect<void, never, R>,
+  options?: {
+    /**
+     * Also run this compactor over a remote's history to build snapshots.
+     *
+     * Opting in promises a contract the library can't check. The kept entries
+     * depend only on the set of input entries, never on services, the clock
+     * or input order, and compaction composes: `drop(drop(a) ++ b)` keeps the
+     * same entries as `drop(a ++ b)`, even when `b` holds entries older than
+     * `a`.
+     *
+     * Remote compaction only drops entries. A call that uses `write` keeps its
+     * whole input, and entries that fail to decode, including ones with fields
+     * the schema doesn't know, are always kept. Before uploading, a run passes
+     * the kept entries through the compactors again and uploads nothing if
+     * that drops more or a compactor dies.
+     *
+     * A snapshot that drops too much can be rolled back on the server until
+     * the history it replaced is pruned. The module docs cover when runs start
+     * and other limitations.
+     */
+    readonly remote?: boolean | undefined
+  }
 ): Layer.Layer<never, never, R | Event.PayloadSchema<Events>["DecodingServices"] | Registry> =>
   registerBatchCompaction(
     group,
@@ -883,7 +1027,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
           forward
         })
       }
-    })
+    }),
+    options
   )
 
 type ReactivityKeyName = [keyof ReactivityLayer.Keys] extends [never] ? string : keyof ReactivityLayer.Keys
@@ -1074,6 +1219,20 @@ const remoteRetrySchedule = Schedule.min([
   Schedule.spaced({ seconds: 10 })
 ])
 
+type CompactionResult = Effect.Success<ReturnType<EventLog["Service"]["compact"]>>[number]["result"]
+
+// Status is polled on each connect and then hourly, jittered.
+const compactionPollMillis = 60 * 60 * 1000
+
+// Spreads out devices that see `wanted` at the same time.
+const compactionDelayMillis = { min: 60 * 1000, max: 5 * 60 * 1000 }
+
+// How many input batch headers share one journal lookup and one fetch.
+const compactionLookupBatches = 16
+
+const isNotFound = (error: EventLogRemoteError): boolean =>
+  EventLogProtocolError.is(error.cause) && error.cause.code === "NotFound"
+
 const make = Effect.gen(function*() {
   const storeId = yield* CurrentStoreId
   const identity = yield* Identity
@@ -1097,13 +1256,160 @@ const make = Effect.gen(function*() {
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
     Effect.forEach(entries, (entry) => invalidateEntry(reactivity, registry.reactivityKeys, entry), { discard: true })
 
+  const hasRemoteCompactor = () => {
+    for (const compactor of registry.compactors.values()) {
+      if (compactor.remote) return true
+    }
+    return false
+  }
+
+  // Resolves input headers to entries in input order, skipping ids seen at a
+  // lower input sequence. Only batches with an id the journal lacks are
+  // fetched.
+  const resolveInput = Effect.fnUntraced(function*(
+    compaction: EventLogRemoteCompaction,
+    stage: CompactionStage,
+    headers: ReadonlyArray<CompactionInputHeader>,
+    seen: Set<string>
+  ) {
+    const known = yield* journal.entriesById(headers.flatMap((header) => header.entryIds)).pipe(
+      journal.withLock(storeId)
+    )
+    const missing: Array<number> = []
+    let offset = 0
+    for (const header of headers) {
+      for (let i = 0; i < header.entryIds.length; i++) {
+        if (known[offset + i] === undefined) {
+          missing.push(header.sequence)
+          break
+        }
+      }
+      offset += header.entryIds.length
+    }
+    const fetched = new Map<number, Entry>()
+    if (missing.length > 0) {
+      yield* Stream.runForEach(compaction.fetch(stage, missing), (remoteEntry) =>
+        Effect.sync(() => {
+          fetched.set(remoteEntry.remoteSequence, remoteEntry.entry)
+        }))
+    }
+    const entries: Array<Entry> = []
+    offset = 0
+    for (const header of headers) {
+      for (let i = 0; i < header.entryIds.length; i++) {
+        const entry = known[offset + i] ?? fetched.get(header.sequence + i)
+        if (entry === undefined) {
+          return yield* Effect.die(new Error(`Compaction input sequence ${header.sequence + i} was not fetched`))
+        }
+        if (seen.has(entry.idString)) continue
+        seen.add(entry.idString)
+        entries.push(entry)
+      }
+      offset += header.entryIds.length
+    }
+    return entries
+  })
+
+  const runStage = Effect.fnUntraced(function*(compaction: EventLogRemoteCompaction, stage: CompactionStage) {
+    const seen = new Set<string>()
+    const kept = yield* RemoteCompaction.run({
+      compactors: registry.compactors,
+      entries: compaction.input(stage).pipe(
+        Stream.grouped(compactionLookupBatches),
+        Stream.mapEffect((headers) => resolveInput(compaction, stage, headers, seen)),
+        Stream.flattenIterable
+      ),
+      chunkSize: maxBatchEntries
+    })
+    if (kept.length === seen.size) {
+      const result = yield* compaction.commit(stage, { _tag: "NoOp" })
+      return result === "Committed" ? "NoOp" : result
+    }
+    if (kept.length === 0) {
+      yield* Effect.logWarning("Remote compaction dropped every entry, so nothing is uploaded")
+      yield* compaction.abort(stage)
+      return "Aborted"
+    }
+    const { segmentCount } = yield* compaction.upload(stage, kept)
+    const result = yield* compaction.commit(stage, { _tag: "Snapshot", segmentCount })
+    yield* Effect.logDebug(`Remote compaction kept ${kept.length} of ${seen.size} entries: ${result}`)
+    return result
+  })
+
+  // Shared by the background trigger and `compact`. The server's busy claim
+  // keeps runs on a store apart, so the journal lock is held only for id
+  // lookups.
+  const runCompaction = (
+    remote: EventLogRemote["Service"],
+    compaction: EventLogRemoteCompaction
+  ): Effect.Effect<CompactionResult, EventJournalError | EventLogRemoteError> =>
+    Effect.gen(function*() {
+      const begin = yield* compaction.begin({ identity, storeId })
+      if (begin._tag !== "Started") return begin._tag
+      const stage: CompactionStage = { identity, storeId, stageId: begin.stageId }
+      return yield* runStage(compaction, stage).pipe(
+        Effect.onError(() => compaction.abort(stage)),
+        Effect.catchTag("IdempotenceError", (error) =>
+          Effect.as(
+            Effect.logError(
+              `A remote compactor dropped ${error.entries.length} more entries from its own output, so nothing is uploaded`
+            ),
+            "Aborted" as const
+          )),
+        Effect.catchIf(
+          (error): error is EventLogRemoteError => error._tag === "EventLogRemoteError" && isNotFound(error),
+          (error) =>
+            Effect.as(
+              Effect.logWarning("The compaction input was pruned during the run", error),
+              "Aborted" as const
+            )
+        ),
+        Effect.catchDefect((defect) =>
+          Effect.as(Effect.logError("Remote compaction died, so nothing is uploaded", defect), "Aborted" as const)
+        )
+      )
+    }).pipe(
+      Effect.annotateLogs({
+        service: "EventLog",
+        effect: "compact",
+        remoteId: Uuid.stringify(remote.id)
+      })
+    )
+
   const runRemote = Effect.fnUntraced(
     function*(remote: EventLogRemote["Service"]) {
-      yield* Effect.gen(function*() {
-        const startSequence = yield* journal.nextRemoteSequence(remote.id)
+      const compaction = remote.compaction
+      const trigger = yield* FiberHandle.make()
+
+      // Caught up means the journal holds the remote up to the status head.
+      const pollStatus = Effect.fnUntraced(
+        function*(compaction: EventLogRemoteCompaction) {
+          if (!hasRemoteCompactor()) return
+          const status = yield* compaction.status({ identity, storeId })
+          if (!status.wanted || (yield* journal.nextRemoteSequence(remote.id)) <= status.head) return
+          yield* FiberHandle.run(
+            trigger,
+            Random.nextIntBetween(compactionDelayMillis.min, compactionDelayMillis.max).pipe(
+              Effect.flatMap((millis) => Effect.sleep(millis)),
+              Effect.andThen(runCompaction(remote, compaction)),
+              Effect.flatMap((result) => Effect.logDebug(`Remote compaction finished: ${result}`)),
+              Effect.catchCause(Effect.logWarning)
+            ),
+            { onlyIfMissing: true }
+          )
+        },
+        Effect.catchCause(Effect.logWarning),
+        Effect.annotateLogs({
+          service: "EventLog",
+          effect: "runRemote compaction status"
+        })
+      )
+
+      const consume: Effect.Effect<unknown> = Effect.gen(function*() {
+        if (compaction !== undefined) yield* pollStatus(compaction)
         const changes = yield* remote.changes({
           identity,
-          startSequence,
+          startSequence: yield* journal.nextRemoteSequence(remote.id),
           storeId,
           knownEntries: journal.entriesById
         })
@@ -1178,9 +1484,16 @@ const make = Effect.gen(function*() {
         Effect.annotateLogs({
           service: "EventLog",
           effect: "runRemote consume"
-        }),
-        Effect.forkScoped
+        })
       )
+      yield* Effect.forkScoped(consume)
+
+      if (compaction !== undefined) {
+        yield* pollStatus(compaction).pipe(
+          Effect.schedule(Schedule.jittered(Schedule.spaced(compactionPollMillis))),
+          Effect.forkScoped
+        )
+      }
 
       const write = journal.withRemoteUncommited(
         remote.id,
@@ -1263,7 +1576,19 @@ const make = Effect.gen(function*() {
     writeMany: ((options: { readonly events: Arr.NonEmptyReadonlyArray<any> }) =>
       writeEvents(options.events)) as EventLog["Service"]["writeMany"],
     entries: journal.entries,
-    destroy: journal.destroy
+    destroy: journal.destroy,
+    compact: (options) =>
+      Effect.suspend(() => {
+        if (!hasRemoteCompactor()) {
+          return Effect.succeed([])
+        }
+        const remoteId = options?.remoteId
+        const remotes = Array.from(registry.remotes.values()).filter((remote) =>
+          remote.compaction !== undefined && (remoteId === undefined || Equal.equals(remote.id, remoteId))
+        )
+        return Effect.forEach(remotes, (remote) =>
+          Effect.map(runCompaction(remote, remote.compaction!), (result) => ({ remoteId: remote.id, result })))
+      })
   })
 })
 
