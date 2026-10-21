@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as McpTest from "effect/ai/McpTest"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Context from "effect/Context"
@@ -18,19 +19,6 @@ class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
   code: Schema.tag(-32001)
 }) {}
 
-const client = McpSchema.McpServerClient.of({
-  clientId: 1,
-  protocolVersion: "2025-06-18",
-  clientCapabilities: {},
-  clientInfo: { name: "client", version: "1" },
-  initializePayload: {
-    protocolVersion: "2025-06-18",
-    capabilities: {},
-    clientInfo: { name: "client", version: "1" }
-  },
-  getClient: Effect.die("not used")
-})
-
 const WhoAmI = Toolkit.make(Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] }))
 const WhoAmIHandlers = WhoAmI.toLayer({ WhoAmI: () => Effect.map(CurrentUser, (user) => user) })
 
@@ -40,20 +28,16 @@ describe("McpServer request-level dependencies", () => {
       const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
         Effect.provideService(effect, CurrentUser, "request")
       )
-      const TestServer = McpServer.toolkit(WhoAmI).pipe(
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
         Layer.provide(Auth.layer),
         Layer.provide(WhoAmIHandlers),
-        Layer.provide(Layer.succeed(CurrentUser, "registration")),
-        Layer.provideMerge(McpServer.McpServer.layer)
+        Layer.provide(Layer.succeed(CurrentUser, "registration"))
       )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
 
-      const result = yield* McpServer.McpServer.use((server) => server.callTool({ name: "WhoAmI", arguments: {} }))
-        .pipe(
-          Effect.provideService(McpSchema.McpServerClient, client),
-          Effect.provide(TestServer)
-        )
+      const result = yield* client.callTool({ name: "WhoAmI", arguments: {} })
 
-      assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("request") }])
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "request" }])
     }))
 
   it.effect("sends middleware failures as JSON-RPC errors", () =>
@@ -81,24 +65,19 @@ describe("McpServer request-level dependencies", () => {
       const Local = McpServer.middleware()(record("local"))
       const Global = McpServer.middleware()(record("global"), { global: true })
       // Local is provided around the global middleware, but must only run for the registration it is provided to.
-      const TestServer = Layer.mergeAll(
+      const registrations = Layer.mergeAll(
         Layer.mergeAll(
           McpServer.resource({ uri: "test://local", name: "local", content: Effect.succeed("local") }),
           Global
         ).pipe(Layer.provide(Local.layer)),
         McpServer.resource({ uri: "test://other", name: "other", content: Effect.succeed("other") })
-      ).pipe(Layer.provideMerge(McpServer.McpServer.layer))
-
-      const { localCalls, otherCalls } = yield* Effect.gen(function*() {
-        const server = yield* McpServer.McpServer
-        yield* server.findResource("test://local")
-        const localCalls = calls.splice(0)
-        yield* server.findResource("test://other")
-        return { localCalls, otherCalls: calls.splice(0) }
-      }).pipe(
-        Effect.provideService(McpSchema.McpServerClient, client),
-        Effect.provide(TestServer)
       )
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      yield* client.readResource({ uri: "test://local" })
+      const localCalls = calls.splice(0)
+      yield* client.readResource({ uri: "test://other" })
+      const otherCalls = calls.splice(0)
 
       assert.deepStrictEqual(localCalls, ["global", "local"])
       assert.deepStrictEqual(otherCalls, ["global"])
