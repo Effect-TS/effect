@@ -38,6 +38,7 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type { HttpPlatform } from "./HttpPlatform.ts"
 import * as headersInternal from "./internal/headers.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
+import { SetCookieTypeId } from "./internal/webResponse.ts"
 import * as Template from "./Template.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -1229,6 +1230,12 @@ class ServerHttpClientResponse extends Inspectable.Class implements HttpClientRe
 
   get cookies(): Cookies.Cookies {
     return this.response.cookies
+  }
+
+  [SetCookieTypeId](): ReadonlyArray<string> {
+    const setCookie = this.response.headers["set-cookie"]
+    const cookies = Cookies.toSetCookieHeaders(this.response.cookies)
+    return setCookie === undefined ? cookies : [setCookie, ...cookies]
   }
 
   get remoteAddress(): Option.Option<string> {

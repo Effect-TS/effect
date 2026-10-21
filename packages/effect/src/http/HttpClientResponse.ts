@@ -25,7 +25,7 @@ import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
-import { getWebSource, WebSourceTypeId } from "./internal/webResponse.ts"
+import { getSetCookie, getWebSource, WebSourceTypeId } from "./internal/webResponse.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -149,18 +149,7 @@ export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Respon
     }
     const headers = new globalThis.Headers(self.headers)
     headers.delete("set-cookie")
-    // Clients parse `cookies` from this header, which can join several cookies
-    // into one value, so it is kept only when `cookies` does not repeat it.
-    const setCookie = self.headers["set-cookie"]
-    if (
-      setCookie !== undefined &&
-      Object.keys(Cookies.fromSetCookie(setCookie).cookies).every((name) =>
-        Option.isNone(Cookies.get(self.cookies, name))
-      )
-    ) {
-      headers.append("set-cookie", setCookie)
-    }
-    for (const header of Cookies.toSetCookieHeaders(self.cookies)) {
+    for (const header of getSetCookie(self) ?? clientSetCookie(self)) {
       headers.append("set-cookie", header)
     }
     const init: ResponseInit = { status: self.status, headers }
@@ -171,6 +160,22 @@ export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Respon
   })
 
 const nullBodyStatuses = new Set([101, 204, 205, 304])
+
+// Clients parse `cookies` from the `set-cookie` header, which can join several
+// cookies into one value, so it is kept only when `cookies` does not repeat it.
+const clientSetCookie = (self: HttpClientResponse): Array<string> => {
+  const setCookie = self.headers["set-cookie"]
+  const cookies = Cookies.toSetCookieHeaders(self.cookies)
+  if (
+    setCookie !== undefined &&
+    Object.keys(Cookies.fromSetCookie(setCookie).cookies).every((name) =>
+      Option.isNone(Cookies.get(self.cookies, name))
+    )
+  ) {
+    cookies.unshift(setCookie)
+  }
+  return cookies
+}
 
 /**
  * Creates a decoder for a response's status, headers, and JSON body using the supplied schema.
