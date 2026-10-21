@@ -1387,6 +1387,44 @@ describe("HttpServer", () => {
       yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
     }))
 
+  it.live("closes HTTP/2 sessions whose TLS handshake finishes during shutdown", () =>
+    Effect.gen(function*() {
+      const server = Http2.createSecureServer({ cert: tlsCert, key: tlsKey })
+      const scope = yield* Scope.make()
+      yield* HttpServer.serve(Effect.succeed(HttpServerResponse.text("ok"))).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0, gracefulShutdownTimeout: "10 seconds" })),
+        Layer.buildWithScope(scope)
+      )
+      const port = tcpPort(server)
+      const socket = yield* Effect.acquireRelease(
+        Effect.sync(() => Net.connect(port, "127.0.0.1")),
+        (socket) => Effect.sync(() => socket.destroy())
+      )
+      yield* Effect.callback<void>((resume) => {
+        server.once("connection", () => resume(Effect.void))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      // Finalizers are uninterruptible, so the timeout applies to the join
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Effect.callback<void>((resume) => {
+        const timer = setInterval(() => {
+          if (!server.listening) resume(Effect.void)
+        }, 1)
+        return Effect.sync(() => clearInterval(timer))
+      }).pipe(Effect.timeout("2 seconds"))
+      const session = Http2.connect(`https://127.0.0.1:${port}`, {
+        createConnection: () => Tls.connect({ socket, ca: tlsCert, ALPNProtocols: ["h2"] })
+      })
+      yield* Effect.addFinalizer(() => Effect.sync(() => session.destroy()))
+      session.on("error", constVoid)
+      // The server sends its settings once the session exists
+      yield* Effect.callback<void>((resume) => {
+        session.once("remoteSettings", () => resume(Effect.void))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+    }))
+
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
     const upstream = Http.createServer(() => {
