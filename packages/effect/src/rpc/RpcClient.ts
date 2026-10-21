@@ -705,7 +705,6 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     onFromClient({ message }) {
       switch (message._tag) {
         case "Request": {
-          if (isClosing) return Effect.interrupt
           const rpc = group.requests.get(message.tag)! as any as Rpc.AnyWithProps
           const collector = supportsTransferables ? Transferable.makeCollectorUnsafe() : undefined
 
@@ -721,14 +720,20 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           return entry.schemas.encodePayload(message.payload).pipe(
             Effect.provideContext(entry.context),
             Effect.orDie,
-            Effect.flatMap((payload) =>
-              send(clientId, {
+            Effect.flatMap((payload) => {
+              // Checked after encoding, which can suspend while the client
+              // starts shutting down.
+              if (isClosing) {
+                entries.delete(message.id)
+                return Effect.interrupt
+              }
+              return send(clientId, {
                 ...message,
                 id: message.id,
                 payload,
                 headers: Object.entries(message.headers)
               }, collector && collector.readUnsafe())
-            ),
+            }),
             // An interrupted request keeps its entry until the interrupt is sent.
             Effect.onError((cause) =>
               Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.sync(() => entries.delete(message.id))
