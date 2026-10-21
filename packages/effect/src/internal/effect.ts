@@ -4019,13 +4019,15 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
 ) {
   let exits: Array<Exit.Exit<any, never>> = []
   const fibers: Array<Fiber.Fiber<any, never>> = []
-  const arr = Array.from(finalizers.values())
+  const arr = Array.from(finalizers)
   const parent = getCurrentFiber()!
   for (let i = arr.length - 1; i >= 0; i--) {
-    const finalizer = arr[i]
+    const [key, finalizer] = arr[i]
     if (self.strategy === "sequential") {
       exits.push(yield* exit(runFinalizer(finalizer, exit_)))
-    } else {
+    } else if (key !== parent) {
+      // Skip the closing fiber's own `forkIn` / `Fiber.runIn` finalizer, as
+      // running it in another fiber would wait for the closing fiber to exit.
       fibers.push(forkUnsafe(parent, runFinalizer(finalizer, exit_), true, true, "inherit"))
     }
   }
@@ -5623,11 +5625,10 @@ export const awaitAllChildren = <A, E, R>(
     )
   })
 
-// Skips the fiber that is closing the scope, which would otherwise wait on itself.
-// Checked when invoked, as parallel scopes run the effect in another fiber, and
-// when run, as a `Scope.closeUnsafe` effect may be invoked on a different fiber.
+// Interrupts the attached fiber, unless it is the fiber running the close. It is
+// keyed by the fiber, so that parallel scopes can skip it on the closing fiber.
 const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
-  getCurrentFiber() === fiber ? void_ : withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
+  withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
 
 /** @internal */
 export const forkIn: {
@@ -5665,9 +5666,8 @@ export const forkIn: {
         : forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
-          const key = {}
-          scopeAddFinalizerUnsafe(scope, key, fiberScopeFinalizer(fiber))
-          fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
+          scopeAddFinalizerUnsafe(scope, fiber, fiberScopeFinalizer(fiber))
+          fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, fiber))
         } else {
           fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
         }
