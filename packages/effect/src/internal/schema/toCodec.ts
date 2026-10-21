@@ -21,12 +21,14 @@ export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent(
   return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
 })
 
-// Derives a context-only copy from its owner, so both derivations share one body
+// Derives a context-only copy from its owner, so both derivations share one body.
+// Encoded results already share their last link, so they derive from the copy itself.
 function toCodecJsonASTFromOwner(ast: SchemaAST.AST): SchemaAST.AST | undefined {
   const owner = SchemaAST.getContextOwner(ast)
-  if (owner === ast || owner.context !== undefined) return undefined
+  if (owner === ast) return undefined
   const out = toCodecJsonAST(owner)
-  return out === owner ? ast : SchemaAST.replaceContext(out, ast.context)
+  if (out === owner) return ast
+  return out.encoding === undefined ? SchemaAST.replaceContext(out, ast.context) : undefined
 }
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
