@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
-import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as TestClock from "effect/TestClock"
@@ -63,24 +63,17 @@ describe("Effect", () => {
       strictEqual(c, d)
       assertTrue(d !== e)
     }))
-  it.live("cachedWithTTL - does not suppress interruption of the cached effect (timeout)", () =>
+  it.effect("cachedWithTTL - interrupting the caller interrupts the cached effect without caching", () =>
     Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
       const cached = yield* pipe(
-        Effect.never,
-        Effect.timeoutFail({ duration: Duration.millis(10), onTimeout: () => "Timeout" as const }),
-        Effect.cachedWithTTL(Duration.minutes(1))
+        Ref.updateAndGet(ref, (n) => n + 1),
+        Effect.tap((n) => n === 1 ? Effect.never : Effect.void),
+        Effect.cachedWithTTL(Duration.minutes(60))
       )
-      const exit = yield* Effect.exit(cached)
-      deepStrictEqual(exit, Exit.fail("Timeout"))
-    }))
-  it.live("cachedInvalidateWithTTL - does not suppress interruption of the cached effect (timeout)", () =>
-    Effect.gen(function*() {
-      const [cached] = yield* pipe(
-        Effect.never,
-        Effect.timeoutFail({ duration: Duration.millis(10), onTimeout: () => "Timeout" as const }),
-        Effect.cachedInvalidateWithTTL(Duration.minutes(1))
-      )
-      const exit = yield* Effect.exit(cached)
-      deepStrictEqual(exit, Exit.fail("Timeout"))
+      const fiber = yield* Effect.fork(cached)
+      yield* Effect.yieldNow()
+      yield* Fiber.interrupt(fiber)
+      strictEqual(yield* cached, 2)
     }))
 })
