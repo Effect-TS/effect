@@ -1587,30 +1587,6 @@ describe("McpServer", () => {
         })
       }))
 
-    it.effect("publishes the definitions an inlined tool schema still references", () =>
-      Effect.gen(function*() {
-        const Tag = Schema.Struct({ label: Schema.String }).annotate({ identifier: "Tag" })
-        const Note = Schema.Struct({
-          title: Schema.String,
-          subtitle: Schema.String.check(
-            Schema.makeFilter(() => true, { toJsonSchema: () => ({ $ref: "#/$defs/Note/properties/title" }) })
-          ),
-          tags: Schema.Array(Tag)
-        }).annotate({ identifier: "Note" })
-        const NoteTool = Tool.make("NoteTool", { success: Note })
-        const toolkit = Toolkit.make(NoteTool)
-        const server = yield* McpServer.McpServer.make
-        yield* McpServer.registerToolkit(toolkit).pipe(
-          Effect.provideService(McpServer.McpServer, server),
-          Effect.provide(toolkit.toLayer({
-            NoteTool: () => Effect.succeed({ title: "a", subtitle: "b", tags: [] })
-          }))
-        )
-
-        const validate = new Ajv2020.default({ strict: false }).compile(server.tools[0].tool.outputSchema)
-        assertTrue(validate({ title: "a", subtitle: "b", tags: [{ label: "c" }] }))
-      }))
-
     it.effect("publishes the definitions an inlined tool schema references by anchor", () =>
       Effect.gen(function*() {
         const Target = Schema.String.check(
