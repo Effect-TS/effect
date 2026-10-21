@@ -1,4 +1,3 @@
-/** @internal */
 import * as ByteSize from "../../ByteSize.ts"
 import type * as Cause from "../../Cause.ts"
 import * as Deferred from "../../Deferred.ts"
