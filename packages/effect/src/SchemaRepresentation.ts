@@ -3192,9 +3192,10 @@ export function fromRepresentations(
  * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
  *   literal sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
  * - Unknown extension keywords are ignored and their semantics are not enforced.
- * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
- *   references, external references, and pointers below a definition are rejected with the supported reference format.
- *   Missing definitions are reported by name. References reached inside nested schema
+ * - Only local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported, optionally
+ *   followed by a pointer below the definition, which is inlined at the use site. Root references and external references
+ *   are rejected with the supported reference format, and an inlined pointer cannot lead back to itself. Missing
+ *   definitions are reported by name. References reached inside nested schema
  *   resources introduced by `$id` are rejected instead of resolved against the top-level definitions.
  * - Built-in declarations and checks are reconstructed with importer-owned revivers.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
@@ -3238,9 +3239,10 @@ export function fromJsonSchemaDocument(
  *   are supported.
  * - Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf`
  *   literal sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
- * - Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
- *   references, external references, and pointers below a definition are rejected with the supported reference format.
- *   Missing definitions are reported by name. References reached inside nested schema
+ * - Only local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported, optionally
+ *   followed by a pointer below the definition, which is inlined at the use site. Root references and external references
+ *   are rejected with the supported reference format, and an inlined pointer cannot lead back to itself. Missing
+ *   definitions are reported by name. References reached inside nested schema
  *   resources introduced by `$id` are rejected instead of resolved against the top-level definitions.
  * - Pattern constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted
  *   documents, or `patterns: "ignore"` to skip them. Ignoring patterns can both admit invalid values and reject valid
