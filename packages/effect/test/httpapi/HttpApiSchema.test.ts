@@ -310,5 +310,19 @@ describe("HttpApiSchema", () => {
       const annotated = Schema.String.annotate({ httpApiStatus: 404 })
       assert.strictEqual(HttpApiSchema.getStatusError(annotated.pipe(HttpApiSchema.status(409)).ast), 409)
     })
+
+    it("keeps the status only when set after the last check", () => {
+      const check = Schema.isMinLength(1)
+      const created = Schema.String.pipe(HttpApiSchema.status(201))
+      assert.strictEqual(
+        HttpApiSchema.getStatusSuccess(Schema.String.check(check).pipe(HttpApiSchema.status(201)).ast),
+        201
+      )
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(created.check(check).ast), 200)
+      assert.strictEqual(
+        HttpApiSchema.getStatusSuccess(created.annotate({ httpApiStatus: undefined }).check(check).ast),
+        200
+      )
+    })
   })
 })
