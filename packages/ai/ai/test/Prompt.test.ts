@@ -73,6 +73,7 @@ describe("Prompt", () => {
         Response.makePart("text-start", { id: "2" }),
         Response.makePart("text-delta", { id: "2", delta: "Hello" }),
         Response.makePart("text-delta", { id: "2", delta: "!", metadata }),
+        Response.makePart("text-delta", { id: "2", delta: "?", metadata: { google: { thoughtSignature: undefined } } }),
         Response.makePart("text-end", { id: "2" })
       ]
       const prompt = Prompt.fromResponseParts(parts)
@@ -81,7 +82,7 @@ describe("Prompt", () => {
           role: "assistant",
           content: [
             { type: "reasoning", text: "Thinking", options: metadata },
-            { type: "text", text: "Hello!", options: metadata }
+            { type: "text", text: "Hello!?", options: metadata }
           ]
         }
       ])
