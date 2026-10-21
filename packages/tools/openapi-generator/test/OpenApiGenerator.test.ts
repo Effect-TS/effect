@@ -704,7 +704,7 @@ function attachmentSpec(paths: Record<string, OpenAPISpecPathItem>): OpenAPISpec
 }
 
 const cookieParameterSpec: OpenAPISpec = {
-  openapi: "3.0.3",
+  openapi: "3.1.0",
   info: { title: "Cookie parameter API", version: "1.0.0" },
   paths: {
     "/greeting": {
@@ -3463,7 +3463,11 @@ export const withoutLocale = client.getGreeting({ params: {} })
         )
         const path = join(directory, "Client.ts")
         writeFileSync(path, source)
-        const { make } = yield* Effect.promise(() => import(path))
+        const { make }: {
+          make: (client: HttpClient.HttpClient) => {
+            getGreeting: (options: { params: { locale: string } }) => Effect.Effect<unknown, unknown>
+          }
+        } = yield* Effect.promise(() => import(path))
         const requests: Array<HttpClientRequest.HttpClientRequest> = []
         const client = make(
           HttpClient.make((request) => {
