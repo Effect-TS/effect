@@ -1207,21 +1207,18 @@ export const hasProperty: {
  */
 export const isTagged: {
   <K extends string>(tag: K): <T>(self: T) => self is Tagged<T, K>
-  <K extends string, T>(self: T, tag: K): self is Tagged<T, K>
+  <K extends string>(self: unknown, tag: K): self is { _tag: K }
 } = dual(
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
 
-// `any` and `unknown` narrow to `{ _tag: K }`. Otherwise keep the members whose
-// tag can be `K`, or add `{ _tag: K }` to every object member when there are none.
+// Mirrors TypeScript's own narrowing by `{ _tag: K }`, so callbacks such as
+// `Array.filter` narrow the same way an `if` check does.
 type Tagged<T, K extends string> = unknown extends T ? Extract<{ _tag: K }, T>
-  : [TagOverlap<T, K>] extends [never] ? Extract<T, object> & { _tag: K }
-  : TagOverlap<T, K>
-
-type TagOverlap<T, K extends string> = T extends { readonly _tag: K } ? T
-  : T extends { readonly _tag: infer U } ? [U & K] extends [never] ? never : T & { _tag: K }
-  : never
+  : [Extract<T, { readonly _tag: K }>] extends [never] ?
+    T extends unknown ? { _tag: K } extends T ? Extract<{ _tag: K }, T> : T & { _tag: K } : never
+  : Extract<T, { readonly _tag: K }>
 
 /**
  * Checks whether a value is an `Error`.
