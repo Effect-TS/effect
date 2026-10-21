@@ -1206,8 +1206,12 @@ export const hasProperty: {
  * @since 2.0.0
  */
 export const isTagged: {
-  <K extends string>(tag: K): <T>(self: T) => self is T extends {} ? Extract<T, { _tag: K }> : T & { _tag: K }
-  <K extends string, T>(self: T, tag: K): self is T extends {} ? Extract<T, { _tag: K }> : T & { _tag: K }
+  <K extends string>(tag: K): <T>(self: T) => self is unknown extends T ? Extract<{ _tag: K }, T>
+    : [Extract<T, { readonly _tag: K }>] extends [never] ? Extract<T, object> & { _tag: K }
+    : Extract<T, { readonly _tag: K }>
+  <K extends string, T>(self: T, tag: K): self is unknown extends T ? Extract<{ _tag: K }, T>
+    : [Extract<T, { readonly _tag: K }>] extends [never] ? Extract<T, object> & { _tag: K }
+    : Extract<T, { readonly _tag: K }>
 } = dual(
   2,
   <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
