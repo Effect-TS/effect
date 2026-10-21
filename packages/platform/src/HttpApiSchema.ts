@@ -208,18 +208,12 @@ export const getStatusErrorAST = (ast: AST.AST): number => getStatus(ast, 500)
 export const getStatusError = <A extends Schema.Schema.All>(self: A): number => getStatusErrorAST(self.ast)
 
 /**
- * Extracts all individual types from a union type recursively.
+ * Extracts the member types of a union recursively, preserving their order.
  *
- * **Details**
- *
- * This function traverses an AST and collects all the types within a union,
- * even if they are nested. The returned array preserves the order in which the
- * types appear.
- *
- * An annotated union is kept intact, so its annotations are not lost, unless
- * one of its members needs its own response status or encoding. In that case
- * the union's response annotations are applied to members that do not
- * override them.
+ * An annotated union is kept intact so its annotations are not lost, unless a
+ * member needs its own response (status, encoding or void). The union is then
+ * split and its response annotations are inherited by the members that do not
+ * define them.
  *
  * @internal
  */
@@ -228,23 +222,25 @@ export const extractUnionTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => {
     return [ast]
   }
   const types = ast.types.flatMap(extractUnionTypes)
-  if (!types.some(hasResponseAnnotations)) {
+  if (!types.some(needsOwnResponse)) {
     return Reflect.ownKeys(ast.annotations).length > 0 ? [ast] : types
   }
   const annotations = extractAnnotations(ast.annotations)
-  if (Reflect.ownKeys(annotations).length === 0) {
+  const keys = Reflect.ownKeys(annotations)
+  if (keys.length === 0) {
     return types
   }
-  return types.map((type) =>
-    AST.annotations(type, {
+  return types.map((type) => {
+    const merged = mergedAnnotations(type)
+    return keys.every((key) => key in merged) ? type : AST.annotations(type, {
       ...annotations,
-      ...extractAnnotations(mergedAnnotations(type)),
+      ...extractAnnotations(merged),
       ...type.annotations
     })
-  )
+  })
 }
 
-const hasResponseAnnotations = (ast: AST.AST): boolean =>
+const needsOwnResponse = (ast: AST.AST): boolean =>
   isVoid(ast) || Reflect.ownKeys(extractAnnotations(mergedAnnotations(ast))).length > 0
 
 /** @internal */

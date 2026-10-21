@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-Fix HttpApi discarding annotations from Union and Literal schemas
+Preserve annotations on `Union` and multi-value `Literal` schemas in `HttpApi`, and stop a `Union` response status set on one endpoint from leaking into other endpoints that reuse the same schema.
