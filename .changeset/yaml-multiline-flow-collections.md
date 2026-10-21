@@ -15,3 +15,5 @@ Resolve recursive aliases, which yield cyclic values.
 Parse a document whose content starts on the `---` line, such as `--- text`, `--- |` or `--- !!map`, which was read as a plain scalar including the marker. A block scalar ends at a `---` or `...` marker, and a quoted scalar cannot contain one.
 
 Allow tabs as separation after the indentation, after the `-`, `?` and `:` indicators, and as a `\`-escaped character in double-quoted scalars. Tabs still cannot indent a block collection.
+
+Validate directives: they must precede a `---` marker, `%YAML` takes one version and may appear once, and `%TAG` takes a handle and a prefix. Other directives are ignored, and a `%` line inside a document is no longer skipped. A plain scalar cannot start with an indicator such as `|`, `>`, `@` or a backtick, so malformed block scalar headers like `|0` or `> text` fail with a `SyntaxError` instead of becoming strings.

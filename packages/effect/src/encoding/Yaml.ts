@@ -121,6 +121,9 @@ const startsWithIndicator = (text: string, indicator: "-" | "?" | ":"): boolean 
 
 const isSequenceEntry = (text: string): boolean => startsWithIndicator(text, "-")
 
+// Indicators that cannot start a plain scalar, besides those that start other nodes.
+const reservedPlainStart = /^[,[\]{}#|>%@`]/
+
 const isDocumentMarker = (line: Line): boolean => line.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(line.raw)
 
 // Whether a flow indicator character is followed by a separator rather than scalar content.
@@ -488,6 +491,7 @@ class FlowParser {
     }
     const text = foldFlowLines(this.input.slice(start, this.index)).trim()
     if (isSequenceEntry(text)) this.fail("Block sequences are not allowed in flow collections")
+    if (reservedPlainStart.test(text)) this.fail(`A plain scalar cannot start with '${text[0]}'`)
     return text
   }
 
@@ -551,6 +555,8 @@ class YamlParser {
   private documentStarted = false
   private readonly anchors = new Map<string, unknown>()
   private readonly handles = new Map([["!", "!"], ["!!", coreTag]])
+  private hasDirectives = false
+  private hasYamlDirective = false
 
   constructor(lines: Array<Line>) {
     this.lines = lines
@@ -558,6 +564,9 @@ class YamlParser {
 
   parse(): unknown {
     this.skipIgnored()
+    if (this.hasDirectives && !this.documentStarted) {
+      throw new SyntaxError("YAML directives must be followed by a '---' document start marker")
+    }
     if (this.index >= this.lines.length) return null
     this.documentStarted = true
     const line = this.lines[this.index]
@@ -637,7 +646,7 @@ class YamlParser {
 
   // A `? key` entry, optionally followed by a `: value` line at the same indentation.
   private parseExplicitEntry(output: YamlRecord, line: Line, indent: number): void {
-    const key = scalarKey(this.parseCompactNode(line, indent))
+    const key = scalarKey(this.parseCompactNode(line, indent, true))
     this.skipIgnored()
     const next = this.lines[this.index]
     const value = next !== undefined && next.indent === indent && startsWithIndicator(next.text, ":")
@@ -768,7 +777,9 @@ class YamlParser {
     const first = this.lines[this.index - 1]
     if (/:(?:\s|$)/.test(value)) this.fail(first, "Invalid colon in plain scalar")
     // A plain scalar cannot start with an indicator, such as a block sequence entry after a key or property.
-    if (/^[-?:](?:\s|$)/.test(value)) this.fail(first, "Invalid indicator at the start of a plain scalar")
+    if (/^[-?:](?:\s|$)/.test(value) || reservedPlainStart.test(value)) {
+      this.fail(first, "Invalid indicator at the start of a plain scalar")
+    }
     let output = value
     let terminated = findIndicator(first.raw, "#") !== -1
     while (!terminated) {
@@ -902,9 +913,10 @@ class YamlParser {
     while (this.index < this.lines.length) {
       const line = this.lines[this.index]
       const text = line.text.trimEnd()
-      if (text.length === 0 || text.startsWith("%")) {
-        const directive = /^%TAG\s+(\S+)\s+(\S+)$/.exec(text)
-        if (directive !== null) this.handles.set(directive[1], directive[2])
+      if (text.length === 0) {
+        this.index++
+      } else if (!this.documentStarted && line.indent === 0 && text.startsWith("%")) {
+        this.parseDirective(line, text)
         this.index++
       } else if (line.indent === 0 && /^---(?:\s|$)/.test(text)) {
         if (this.documentStarted) this.fail(line, "Multiple YAML documents are not supported")
@@ -921,6 +933,20 @@ class YamlParser {
       } else {
         return
       }
+    }
+  }
+
+  // Other directives than `%YAML` and `%TAG` are reserved and ignored.
+  private parseDirective(line: Line, text: string): void {
+    this.hasDirectives = true
+    if (/^%YAML(?:\s|$)/.test(text)) {
+      if (this.hasYamlDirective) this.fail(line, "Duplicate %YAML directive")
+      if (!/^%YAML\s+\d+\.\d+$/.test(text)) this.fail(line, "Invalid %YAML directive")
+      this.hasYamlDirective = true
+    } else if (/^%TAG(?:\s|$)/.test(text)) {
+      const directive = /^%TAG\s+(!(?:[\w-]*!)?)\s+(\S+)$/.exec(text)
+      if (directive === null) this.fail(line, "Invalid %TAG directive")
+      this.handles.set(directive[1], directive[2])
     }
   }
 

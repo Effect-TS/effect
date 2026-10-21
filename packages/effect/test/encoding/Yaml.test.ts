@@ -428,7 +428,8 @@ development:
       ["sequence key", "? [a]\n: v\n"],
       ["mapping key", "? a: 1\n: v\n"],
       ["flow collection key", "{[a]: v}\n"],
-      ["flow sequence pair collection key", "[[a]: v]\n"]
+      ["flow sequence pair collection key", "[[a]: v]\n"],
+      ["sequence key without indentation", "?\n- a\n:\n- c\n"]
     ])("rejects a %s", (_, source) => {
       assert.throws(() => Yaml.parse(source), /YAML collection keys are not supported/)
     })
@@ -559,7 +560,18 @@ development:
       ["content after closing double quote", "description: \"Deploy\n  it\" extra\n"],
       ["content after closing single quote", "description: 'Deploy\n  it' extra\n"],
       ["tab-indented scalar", "description:\n\tDeploy\n"],
-      ["duplicate key", "description: first\ndescription: second\n"]
+      ["duplicate key", "description: first\ndescription: second\n"],
+      ["closing bracket", "a: ]\n"],
+      ["comma", "a: ,b\n"],
+      ["reserved @", "a: @x\n"],
+      ["reserved backtick", "a: `x\n"],
+      ["zero indentation indicator", "a: |0\n"],
+      ["two-digit indentation indicator", "a: |10\n"],
+      ["text after a block scalar indicator", "a: > text\n"],
+      ["comment without whitespace after a block scalar indicator", "a: >#c\n  x\n"],
+      ["block scalar indicator in a flow collection", "[a, |b]\n"],
+      ["reserved @ in a flow collection", "[@a]\n"],
+      ["comment without whitespace in a flow collection", "[a,#b\n]\n"]
     ])("rejects %s", (_, source) => {
       assert.throws(() => Yaml.parse(source), SyntaxError)
     })
@@ -660,6 +672,33 @@ development:
       ["empty first document", "---\n---\nb: 2\n"],
       ["empty trailing document", "a: 1\n---\n"]
     ])("rejects a document stream containing %s", (_, source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    // YAML 1.2.2 §§6.8, 9.2: directives precede a `---` marker; unknown directives are ignored.
+    // Checked with yaml 2.9.1, which accepts a duplicate %YAML directive.
+    it.each(
+      [
+        ["%YAML directive", "%YAML 1.2\n---\na: 1\n", { a: 1 }],
+        ["%YAML directive with spacing and a comment", "%YAML  1.1 # comment\n---\na\n", "a"],
+        ["reserved directive", "%FOO bar baz\n---\na\n", "a"],
+        ["percent sign in a plain continuation", "a: b\n  %c\n", { a: "b %c" }],
+        ["directive-like line in a plain continuation", "---\nscalar\n%YAML 1.2\n", "scalar %YAML 1.2"]
+      ] as const
+    )("parses a %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
+    it.each([
+      ["directive without a document", "%YAML 1.2\n"],
+      ["directive before a document end marker", "%YAML 1.2\n...\n"],
+      ["directive without a document start marker", "%YAML 1.2\na: 1\n"],
+      ["%YAML directive with an extra parameter", "%YAML 1.2 foo\n---\n"],
+      ["comment without whitespace after %YAML", "%YAML 1.1#...\n---\n"],
+      ["duplicate %YAML directive", "%YAML 1.2\n%YAML 1.2\n---\n"],
+      ["%TAG directive without a prefix", "%TAG !e!\n---\na\n"],
+      ["percent sign starting a value", "a:\n  %c\n"]
+    ])("rejects a %s", (_, source) => {
       assert.throws(() => Yaml.parse(source), SyntaxError)
     })
 
