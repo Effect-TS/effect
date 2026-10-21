@@ -124,7 +124,7 @@ export type RequestId = typeof RequestId.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const JsonRpcRequest = Schema.Struct({
   jsonrpc: Schema.Literal("2.0"),
@@ -138,7 +138,7 @@ export const JsonRpcRequest = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export type JsonRpcRequest = typeof JsonRpcRequest.Type
 
@@ -147,7 +147,7 @@ export type JsonRpcRequest = typeof JsonRpcRequest.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const JsonRpcNotification = Schema.Struct({
   jsonrpc: Schema.Literal("2.0"),
@@ -160,7 +160,7 @@ export const JsonRpcNotification = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export type JsonRpcNotification = typeof JsonRpcNotification.Type & { readonly id?: never }
 
@@ -169,7 +169,7 @@ export type JsonRpcNotification = typeof JsonRpcNotification.Type & { readonly i
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const JsonRpcResponse = Schema.Union([
   Schema.Struct({
@@ -193,7 +193,7 @@ export const JsonRpcResponse = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export type JsonRpcResponse =
   | (typeof JsonRpcResponse.members[0]["Type"] & { readonly error?: never })
@@ -204,7 +204,7 @@ export type JsonRpcResponse =
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const JsonRpcMessage = Schema.Union([JsonRpcRequest, JsonRpcNotification, JsonRpcResponse])
 
@@ -213,7 +213,7 @@ export const JsonRpcMessage = Schema.Union([JsonRpcRequest, JsonRpcNotification,
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcResponse
 
@@ -727,7 +727,7 @@ export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
  *
  * @stability unstable
  * @category constants
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022 as const
 

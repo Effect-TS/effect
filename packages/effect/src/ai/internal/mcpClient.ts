@@ -19,19 +19,13 @@ import type * as Rpc from "../../rpc/Rpc.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
-import type {
-  CallOptions,
-  CallToolParams,
-  Client,
-  McpClientErrorReason,
-  Options,
-  ProtocolVersion
-} from "../McpClient.ts"
+import type { CallToolParams, Client, ProtocolVersion } from "../McpClient.ts"
+import { McpClientError, type McpClientErrorReason } from "../McpClientError.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as Tool from "../Tool.ts"
 import * as Toolkit from "../Toolkit.ts"
-import { McpClient, McpClientError, Transport, TransportTypeId } from "./mcpClientModels.ts"
+import { McpClient, Transport, TransportTypeId } from "./mcpClientModels.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./mcpProtocol.ts"
 
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
@@ -45,6 +39,20 @@ const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
 type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
+
+interface Options {
+  readonly name: string
+  readonly version: string
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly timeout?: Duration.Input | undefined
+}
+
+interface CallOptions {
+  readonly timeout?: Duration.Input | undefined
+}
 
 type TransportService = Transport["Service"] & {
   readonly protocol: Protocol
@@ -216,18 +224,16 @@ export const stdio = Effect.fnUntraced(function*(options: {
 
   // Close stdin, then escalate to SIGTERM and SIGKILL if the server does not exit.
   // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#stdio
-  yield* Effect.addFinalizer(() =>
-    Effect.gen(function*() {
-      yield* close(fail({ _tag: "ClosedError", message: "MCP transport closed" }))
-      yield* Queue.end(input)
-      const exited = yield* process.exitCode.pipe(Effect.timeoutOption(CLOSE_TIMEOUT), Effect.option)
-      if (Option.isNone(exited) || Option.isNone(exited.value)) {
-        yield* process.kill({ killSignal: "SIGTERM", forceKillAfter: Duration.toMillis(CLOSE_TIMEOUT) }).pipe(
-          Effect.ignore
-        )
-      }
-    })
-  )
+  yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
+    yield* close(fail({ _tag: "ClosedError", message: "MCP transport closed" }))
+    yield* Queue.end(input)
+    const exited = yield* process.exitCode.pipe(Effect.timeoutOption(CLOSE_TIMEOUT), Effect.option)
+    if (Option.isNone(exited) || Option.isNone(exited.value)) {
+      yield* process.kill({ killSignal: "SIGTERM", forceKillAfter: Duration.toMillis(CLOSE_TIMEOUT) }).pipe(
+        Effect.ignore
+      )
+    }
+  }))
 
   return {
     [TransportTypeId]: TransportTypeId,
@@ -511,20 +517,18 @@ export const http = Effect.fnUntraced(function*(options: {
     return yield* fail({ _tag: "TransportError", message: "MCP response ended before the terminal response" })
   })
 
-  yield* Effect.addFinalizer(() =>
-    Effect.gen(function*() {
-      failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP transport closed" })
-      yield* Deferred.fail(closed, failed)
-      if (session === undefined || failed.reason._tag !== "ClosedError" || failed.reason.sessionExpired) return
-      // Explicitly terminate a legacy session.
-      // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
-      yield* client.execute(HttpClientRequest.delete(options.url).pipe(HttpClientRequest.setHeaders(headers()))).pipe(
-        Effect.scoped,
-        Effect.timeoutOption(CLOSE_TIMEOUT),
-        Effect.ignore
-      )
-    })
-  )
+  yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
+    failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP transport closed" })
+    yield* Deferred.fail(closed, failed)
+    if (session === undefined || failed.reason._tag !== "ClosedError" || failed.reason.sessionExpired) return
+    // Explicitly terminate a legacy session.
+    // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
+    yield* client.execute(HttpClientRequest.delete(options.url).pipe(HttpClientRequest.setHeaders(headers()))).pipe(
+      Effect.scoped,
+      Effect.timeoutOption(CLOSE_TIMEOUT),
+      Effect.ignore
+    )
+  }))
 
   return {
     [TransportTypeId]: TransportTypeId,
@@ -733,9 +737,9 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
       ? Effect.fail(fail({ _tag: "UnsupportedError", message: `Server does not advertise ${kind}` }))
       : Effect.void
 
-  const list = <K extends "tools" | "prompts" | "resources", A>(kind: K) => (callOptions?: CallOptions) =>
-    withDeadline(
-      Effect.gen(function*() {
+  const list = <K extends "tools" | "prompts" | "resources", A>(kind: K) =>
+    Effect.fnUntraced(
+      function*(_options?: CallOptions) {
         if (capabilities[kind] === undefined) return []
         const items: Array<A> = []
         const cursors = new Set<string>()
@@ -753,39 +757,32 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
           cursors.add(cursor = result.nextCursor)
         }
         return yield* limitError(`MCP ${kind} discovery exceeded its page limit`)
-      }),
-      `${kind} discovery`,
-      callOptions?.timeout ?? timeout
+      },
+      (effect, callOptions) => withDeadline(effect, `${kind} discovery`, callOptions?.timeout ?? timeout)
     )
 
   const listTools = list<"tools", McpSchema.Tool>("tools")
 
-  function callTool<S extends Schema.Top>(
-    params: CallToolParams<S>,
-    callOptions?: CallOptions
-  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]> {
-    return withDeadline(
-      Effect.gen(function*() {
-        yield* requireCapability("tools")
-        const result = yield* request<McpSchema.CallToolResult>(
-          "tools/call",
-          { name: params.tool.name, ...(params.arguments === undefined ? {} : { arguments: params.arguments }) },
-          params.tool
+  const callTool = Effect.fnUntraced(
+    function*<S extends Schema.Top>(params: CallToolParams<S>, _options?: CallOptions) {
+      yield* requireCapability("tools")
+      const result = yield* request<McpSchema.CallToolResult>(
+        "tools/call",
+        { name: params.tool.name, ...(params.arguments === undefined ? {} : { arguments: params.arguments }) },
+        params.tool
+      )
+      if (params.schema === undefined) return result
+      if (result.isError === true) {
+        return yield* fail({ _tag: "ToolError", message: "MCP tool reported an execution error", result })
+      }
+      return yield* Schema.decodeUnknownEffect(params.schema)(result.structuredContent).pipe(
+        Effect.mapError((cause) =>
+          fail({ _tag: "ValidationError", message: "MCP structured result validation failed", cause })
         )
-        if (params.schema === undefined) return result
-        if (result.isError === true) {
-          return yield* fail({ _tag: "ToolError", message: "MCP tool reported an execution error", result })
-        }
-        return yield* Schema.decodeUnknownEffect(params.schema)(result.structuredContent).pipe(
-          Effect.mapError((cause) =>
-            fail({ _tag: "ValidationError", message: "MCP structured result validation failed", cause })
-          )
-        )
-      }),
-      "tools/call",
-      callOptions?.timeout
-    )
-  }
+      )
+    },
+    (effect, _params, callOptions) => withDeadline(effect, "tools/call", callOptions?.timeout)
+  )
 
   return {
     [TypeId]: TypeId,

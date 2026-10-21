@@ -377,7 +377,8 @@ Layer.launch(ServerLayer).pipe(NodeRuntime.runMain)
 ## Connecting to an MCP server
 
 `McpClient` connects to an MCP server, discovers its tools, prompts and resources, and calls them.
-It supports the `2025-11-25` and `2026-07-28` protocol revisions over stdio and Streamable HTTP.
+The client and its `McpClientError` module are experimental, so their API may change in minor
+releases. It supports the `2025-11-25` and `2026-07-28` protocol revisions over stdio and Streamable HTTP.
 The transport selects the revision explicitly; the client does not negotiate one.
 
 The client covers discovery, tool calls, prompt retrieval, resource reads and Toolkit adaptation.
@@ -458,7 +459,7 @@ and a tool-reported failure fails with reason `ToolError` carrying the original 
 
 ```typescript
 import { Effect, Schema } from "effect"
-import { McpClient } from "effect/ai"
+import { McpClient, McpClientError } from "effect/ai"
 
 const Report = Schema.Struct({ count: Schema.Number })
 
@@ -467,7 +468,7 @@ export const readReport = Effect.fn("readReport")(function*(reportId: string) {
   const tools = yield* client.listTools()
   const tool = tools.find((tool) => tool.name === "read_report")
   if (tool === undefined) {
-    return yield* new McpClient.McpClientError({
+    return yield* new McpClientError.McpClientError({
       reason: { _tag: "UnsupportedError", message: "Server does not expose read_report" }
     })
   }
@@ -483,7 +484,7 @@ arguments against them; define the argument contract in your application or in a
 
 ### Handling failures
 
-Every failure is an `McpClientError` whose `reason` is a tagged union: `TransportError`,
+Every failure is an `McpClientError.McpClientError` whose `reason` is a tagged union: `TransportError`,
 `ProtocolError` (with the JSON-RPC `code` and `data`), `HttpError` (with `status` and the
 `www-authenticate` and `retry-after` headers), `ClosedError` (with `sessionExpired`), `TimeoutError`,
 `LimitError`, `UnsupportedError`, `ValidationError`, `ConfigurationError` and `ToolError`.
@@ -508,8 +509,8 @@ says nothing about whether the server completed the call.
 ### Limits and deadlines
 
 Initialization and each complete discovery run under a single deadline, 60 seconds by default and
-configurable per client with `timeout` or per call with `CallOptions`. Tool calls, prompts and
-resource reads have no deadline unless you pass `CallOptions.timeout` or compose `Effect.timeout`.
+configurable per client with `timeout` or per call with the `timeout` option. Tool calls, prompts and
+resource reads have no deadline unless you pass their `timeout` option or compose `Effect.timeout`.
 Discovery follows pagination until the server stops returning a cursor and fails with `LimitError`
 after 100 pages, 10,000 items or a repeated cursor. A missing server capability makes the list
 operations return an empty array and the retrieval operations fail with `UnsupportedError`.

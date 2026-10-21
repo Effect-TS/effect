@@ -7,11 +7,10 @@
  * protocol failures fail the Effect. Interactive server requests, subscriptions, OAuth
  * and retries are not included.
  *
- * @stability unstable
- * @since 4.0.0
+ * @stability experimental
+ * @since 4.0.6
  */
 import type * as ByteSize from "../ByteSize.ts"
-import type * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
@@ -25,80 +24,18 @@ import type * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as internal from "./internal/mcpClient.ts"
 import * as models from "./internal/mcpClientModels.ts"
+import type { McpClientError } from "./McpClientError.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import type * as McpSchema from "./McpSchema.ts"
 import type * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
 /**
- * Schema for the tagged reasons carried by an `McpClientError`.
- *
- * @stability unstable
- * @category schemas
- * @since 4.0.0
- */
-export const McpClientErrorReason = models.McpClientErrorReason
-/**
- * Union of MCP client and transport failure reasons.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export type McpClientErrorReason = typeof McpClientErrorReason.Type
-
-/**
- * Error wrapping a tagged MCP client or transport failure reason.
- *
- * **Details**
- *
- * Use `Effect.catchReason` or `Effect.catchReasons` to recover from selected
- * reasons. A `ToolError` reason retains the complete tool result.
- *
- * **Example** (Recovering from a deadline failure)
- *
- * ```ts import.meta.vitest
- * import { Effect } from "effect"
- * import { McpClient } from "effect/ai"
- *
- * const operation = Effect.fail(new McpClient.McpClientError({
- *   reason: { _tag: "TimeoutError", message: "MCP operation deadline exceeded" }
- * }))
- * const recovered = operation.pipe(
- *   Effect.catchReason("McpClientError", "TimeoutError", () => Effect.succeed("deferred"))
- * )
- *
- * await Effect.runPromise(recovered) // => "deferred"
- * ```
- *
- * @stability unstable
- * @category errors
- * @since 4.0.0
- */
-export const McpClientError: Schema.Class<
-  McpClientError,
-  Schema.TaggedStruct<"McpClientError", { readonly reason: typeof McpClientErrorReason }>,
-  McpClientError
-> = models.McpClientError
-
-/**
- * Error carrying a tagged MCP client or transport failure reason.
- *
- * @stability unstable
- * @category errors
- * @since 4.0.0
- */
-export interface McpClientError extends Cause.YieldableError {
-  readonly _tag: "McpClientError"
-  readonly reason: McpClientErrorReason
-  readonly cause: McpClientErrorReason
-}
-/**
  * Supported MCP wire protocol revisions.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export type ProtocolVersion = "2025-11-25" | "2026-07-28"
 
@@ -109,9 +46,9 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
  *
  * Transport construction owns cleanup through its Effect scope.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const Transport: Context.ServiceClass<Transport, "effect/ai/McpClient/Transport", Transport["Service"]> =
   models.Transport
@@ -119,9 +56,9 @@ export const Transport: Context.ServiceClass<Transport, "effect/ai/McpClient/Tra
 /**
  * Type of the Transport service tag.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
- * @since 4.0.0
+ * @since 4.0.6
  */
 export interface Transport extends
   Context.ServiceClass.Shape<"effect/ai/McpClient/Transport", {
@@ -131,9 +68,9 @@ export interface Transport extends
 /**
  * Starts a scoped subprocess using newline-delimited JSON-RPC.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const stdio: (options: {
   readonly command: ChildProcess.Command
@@ -144,9 +81,9 @@ export const stdio: (options: {
 /**
  * Creates a Streamable HTTP transport with request-owned JSON or SSE responses.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const http: (options: {
   readonly url: string | URL
@@ -160,15 +97,30 @@ export const http: (options: {
  *
  * **Details**
  *
- * The layer scope owns the client and subprocess. Supply the client identity and
- * optional `timeout` together with the stdio transport options.
+ * The layer scope owns the client and subprocess.
+ * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
+ * `icons` identify the client to the server. `timeout` defaults to 60 seconds
+ * and bounds initialization and each complete `listTools`, `listPrompts` or
+ * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
+ * deadline unless their own `timeout` option is supplied.
  *
  * @see {@link layerHttp}
- * @stability unstable
+ * @stability experimental
  * @category layers
- * @since 4.0.0
+ * @since 4.0.6
  */
-export const layerStdio: (options: Options & Parameters<typeof stdio>[0]) => Layer.Layer<
+export const layerStdio: (options: {
+  readonly name: string
+  readonly version: string
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly timeout?: Duration.Input | undefined
+  readonly command: ChildProcess.Command
+  readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
+  readonly maxMessageBytes?: ByteSize.Input | undefined
+}) => Layer.Layer<
   McpClient,
   McpClientError,
   ChildProcessSpawner
@@ -179,8 +131,12 @@ export const layerStdio: (options: Options & Parameters<typeof stdio>[0]) => Lay
  *
  * **Details**
  *
- * The layer scope owns the client and connection. Supply the client identity and
- * optional `timeout` together with the HTTP transport options.
+ * The layer scope owns the client and connection.
+ * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
+ * `icons` identify the client to the server. `timeout` defaults to 60 seconds
+ * and bounds initialization and each complete `listTools`, `listPrompts` or
+ * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
+ * deadline unless their own `timeout` option is supplied.
  *
  * **Example** (Providing an HTTP client connection)
  *
@@ -198,11 +154,23 @@ export const layerStdio: (options: Options & Parameters<typeof stdio>[0]) => Lay
  * ```
  *
  * @see {@link layerStdio}
- * @stability unstable
+ * @stability experimental
  * @category layers
- * @since 4.0.0
+ * @since 4.0.6
  */
-export const layerHttp: (options: Options & Parameters<typeof http>[0]) => Layer.Layer<
+export const layerHttp: (options: {
+  readonly name: string
+  readonly version: string
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly timeout?: Duration.Input | undefined
+  readonly url: string | URL
+  readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
+  readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly maxMessageBytes?: ByteSize.Input | undefined
+}) => Layer.Layer<
   McpClient,
   McpClientError,
   HttpClient.HttpClient
@@ -219,9 +187,9 @@ export const layerHttp: (options: Options & Parameters<typeof http>[0]) => Layer
  * or `Tool.dynamic` with `Toolkit.make` for custom validation, approval or results.
  * Build a new toolkit to discover changes between model turns.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
   Toolkit.WithHandler<
@@ -241,54 +209,19 @@ export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
 /**
  * Returns whether a value is an MCP client.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const isClient: (value: unknown) => value is Client = internal.isClient
-
-/**
- * Client identity sent to the server, and the deadline for initialization and discovery.
- *
- * **Details**
- *
- * `timeout` defaults to 60 seconds and bounds the handshake and each complete
- * `listTools`, `listPrompts` or `listResources` scan. It does not apply to
- * `callTool`, `getPrompt` or `readResource`.
- *
- * @stability unstable
- * @category configuration
- * @since 4.0.0
- */
-export interface Options {
-  readonly name: string
-  readonly version: string
-  readonly title?: string | undefined
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly timeout?: Duration.Input | undefined
-}
-
-/**
- * Per-operation deadline. Discovery defaults to `Options.timeout`; tool calls,
- * prompts and resource reads have no deadline unless one is supplied.
- *
- * @stability unstable
- * @category configuration
- * @since 4.0.0
- */
-export interface CallOptions {
-  readonly timeout?: Duration.Input
-}
 
 /**
  * Tool invocation carrying the discovered definition, which supplies the
  * request name and, over modern HTTP, the header routing annotations.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export interface CallToolParams<S extends Schema.Top = never> {
   readonly tool: McpSchema.Tool
@@ -299,9 +232,9 @@ export interface CallToolParams<S extends Schema.Top = never> {
 /**
  * Prompt invocation carrying its discovered definition and string arguments.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export interface GetPromptParams {
   readonly prompt: McpSchema.Prompt
@@ -311,9 +244,9 @@ export interface GetPromptParams {
 /**
  * Resource URI to read from the server.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export interface ReadResourceParams {
   readonly uri: string
@@ -322,41 +255,56 @@ export interface ReadResourceParams {
 /**
  * A scoped connection to one MCP server.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
- * @since 4.0.0
+ * @since 4.0.6
  */
 export interface Client extends Pipeable {
   readonly [internal.TypeId]: typeof internal.TypeId
   readonly protocolVersion: ProtocolVersion
   readonly serverInfo: McpSchema.Implementation | undefined
   readonly instructions?: string | undefined
-  /** Returns every tool page as one snapshot, bounded by the deadline, 100 pages and 10,000 tools. */
-  readonly listTools: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
+  /**
+   * Returns every tool page as one snapshot, bounded by the deadline, 100 pages and 10,000 tools.
+   * `timeout` overrides the client's discovery deadline.
+   */
+  readonly listTools: (
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
   /** Returns every prompt page as one snapshot with the same bounds as `listTools`. */
-  readonly listPrompts: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
-  /** Gets the messages for a discovered prompt. */
+  readonly listPrompts: (
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+  /** Gets the messages for a discovered prompt. Unbounded unless `timeout` is supplied. */
   readonly getPrompt: (
     params: GetPromptParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   /** Returns every resource page as one snapshot with the same bounds as `listTools`. */
-  readonly listResources: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
-  /** Reads the complete contents of a resource URI. */
+  readonly listResources: (
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  /** Reads the complete contents of a resource URI. Unbounded unless `timeout` is supplied. */
   readonly readResource: (
     params: ReadResourceParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
-  /** Calls a discovered tool, optionally decoding with a schema. Errors retain the full result. */
+  /**
+   * Calls a discovered tool, optionally decoding with a schema. Errors retain the full result.
+   * Unbounded unless `timeout` is supplied.
+   */
   readonly callTool: {
-    (params: CallToolParams, options?: CallOptions): Effect.Effect<McpSchema.CallToolResult, McpClientError>
+    (
+      params: CallToolParams,
+      options?: { readonly timeout?: Duration.Input | undefined }
+    ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
     <S extends Schema.Top>(
       params: CallToolParams<S> & { readonly schema: S },
-      options?: CallOptions
+      options?: { readonly timeout?: Duration.Input | undefined }
     ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
     <S extends Schema.Top = never>(
       params: CallToolParams<S>,
-      options?: CallOptions
+      options?: { readonly timeout?: Duration.Input | undefined }
     ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
   }
 }
@@ -366,123 +314,148 @@ export interface Client extends Pipeable {
  * using the optional schema. With a schema, tool-reported errors fail before decoding
  * and retain the full result. Decoder services are required by the caller.
  *
- * @stability unstable
+ * @stability experimental
  * @category operations
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const callTool: {
   (
     params: CallToolParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: Client) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
-  (self: Client, params: CallToolParams, options?: CallOptions): Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  (
+    self: Client,
+    params: CallToolParams,
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
   <S extends Schema.Top>(
     params: CallToolParams<S> & { readonly schema: S },
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: Client) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top = never>(
     params: CallToolParams<S>,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: Client) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top>(
     self: Client,
     params: CallToolParams<S> & { readonly schema: S },
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top = never>(
     self: Client,
     params: CallToolParams<S>,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
 } = dual(
   (args) => isClient(args[0]),
-  <S extends Schema.Top>(self: Client, params: CallToolParams<S>, options?: CallOptions) =>
-    self.callTool(params, options)
+  <S extends Schema.Top>(
+    self: Client,
+    params: CallToolParams<S>,
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => self.callTool(params, options)
 )
 
 /**
  * Returns every prompt page as one snapshot with the same bounds as `listTools`.
  *
- * @stability unstable
+ * @stability experimental
  * @category operations
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const listPrompts: {
-  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
-  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
-} = dual((args) => isClient(args[0]), (self: Client, options?: CallOptions) => self.listPrompts(options))
+  (
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+  (
+    self: Client,
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+} = dual(
+  (args) => isClient(args[0]),
+  (self: Client, options?: { readonly timeout?: Duration.Input | undefined }) => self.listPrompts(options)
+)
 
 /**
  * Gets the messages for a discovered prompt.
  *
- * @stability unstable
+ * @stability experimental
  * @category operations
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const getPrompt: {
   (
     params: GetPromptParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: Client) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   (
     self: Client,
     params: GetPromptParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
 } = dual(
   (args) => isClient(args[0]),
-  (self: Client, params: GetPromptParams, options?: CallOptions) => self.getPrompt(params, options)
+  (self: Client, params: GetPromptParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
+    self.getPrompt(params, options)
 )
 
 /**
  * Returns every resource page as one snapshot with the same bounds as `listTools`.
  *
- * @stability unstable
+ * @stability experimental
  * @category operations
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const listResources: {
-  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
-  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
-} = dual((args) => isClient(args[0]), (self: Client, options?: CallOptions) => self.listResources(options))
+  (
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  (
+    self: Client,
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+} = dual(
+  (args) => isClient(args[0]),
+  (self: Client, options?: { readonly timeout?: Duration.Input | undefined }) => self.listResources(options)
+)
 
 /**
  * Reads the complete contents of a resource URI.
  *
- * @stability unstable
+ * @stability experimental
  * @category operations
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const readResource: {
   (
     params: ReadResourceParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: Client) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   (
     self: Client,
     params: ReadResourceParams,
-    options?: CallOptions
+    options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
 } = dual(
   (args) => isClient(args[0]),
-  (self: Client, params: ReadResourceParams, options?: CallOptions) => self.readResource(params, options)
+  (self: Client, params: ReadResourceParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
+    self.readResource(params, options)
 )
 
 /**
  * Service tag for applications that provide one default MCP connection.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const McpClient: Context.ServiceClass<McpClient, "effect/ai/McpClient", Client> = models.McpClient
 
 /**
  * Type of the McpClient service tag.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
- * @since 4.0.0
+ * @since 4.0.6
  */
 export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClient", Client> {}
 /**
@@ -490,16 +463,26 @@ export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClie
  *
  * **Details**
  *
- * Initialization and each complete discovery run under `Options.timeout`, which
- * defaults to 60 seconds. Tool calls, prompts and resource reads run until they
- * complete unless `CallOptions.timeout` is supplied. Schema decoding requires the
- * schema's services from the caller.
+ * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
+ * `icons` identify the client to the server. `timeout` defaults to 60 seconds
+ * and bounds initialization and each complete `listTools`, `listPrompts` or
+ * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
+ * deadline unless their own `timeout` option is supplied.
+ * Schema decoding requires the schema's services from the caller.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
- * @since 4.0.0
+ * @since 4.0.6
  */
-export const make: (options: Options) => Effect.Effect<
+export const make: (options: {
+  readonly name: string
+  readonly version: string
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly timeout?: Duration.Input | undefined
+}) => Effect.Effect<
   Client,
   McpClientError,
   Scope.Scope | Transport
