@@ -107,6 +107,15 @@ describe("beforeAll failure finalizers", { concurrent: false }, () => {
     it("is skipped", () => {})
   })
 
+  describe("hook succeeding after its timeout, before the cleanups", () => {
+    // Delays the cleanups until the setup has succeeded and Vitest has dropped its cleanup.
+    afterAll(() => new Promise((resolve) => setTimeout(resolve, 150)))
+    beforeAll(() => resource(events, "dropped").pipe(Effect.andThen(Effect.sleep(100))), 50)
+    expectBeforeAllFailure("timed out")
+
+    it("is skipped", () => {})
+  })
+
   it("awaits the finalizers before starting the next test", () => {
     events.push("next:start")
     assert.deepStrictEqual(events, [
@@ -116,6 +125,9 @@ describe("beforeAll failure finalizers", { concurrent: false }, () => {
       "late:acquired",
       "late:release:start",
       "late:release:end",
+      "dropped:acquired",
+      "dropped:release:start",
+      "dropped:release:end",
       "next:start"
     ])
   })
