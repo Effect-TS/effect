@@ -10,6 +10,7 @@ export interface Recorded {
   readonly url: URL
   readonly headers: Readonly<Record<string, string>>
   readonly body: string | undefined
+  readonly bytes: Uint8Array | undefined
 }
 
 /** What the stub answers. */
@@ -113,7 +114,7 @@ export const makeStubEngine = (
         )
         : undefined
       const body = bytes === undefined ? undefined : new TextDecoder().decode(bytes)
-      const recorded: Recorded = { method: request.method, url, headers: request.headers, body }
+      const recorded: Recorded = { method: request.method, url, headers: request.headers, body, bytes }
       requests.push(recorded)
       const answer = reply(recorded)
       if (answer.fail === true) {
