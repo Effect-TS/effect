@@ -1523,12 +1523,34 @@ export const make = (input: RawInput): Prompt => {
  */
 export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePrompt(messages)
 
+const mergeOptions = (left: ProviderOptions, right: ProviderOptions): ProviderOptions => {
+  const result: Record<string, ProviderOptions[string]> = { ...left }
+  for (const [provider, options] of Object.entries(right)) {
+    if (Predicate.isUndefined(options)) {
+      continue
+    }
+    const merged: Record<string, unknown> = { ...result[provider] }
+    for (const [key, value] of Object.entries(options)) {
+      // Later chunks may omit values (e.g. `thoughtSignature: undefined`), so
+      // avoid overwriting values received from earlier chunks
+      if (Predicate.isNotUndefined(value)) {
+        merged[key] = value
+      }
+    }
+    result[provider] = merged
+  }
+  return result
+}
+
 /**
  * Creates a Prompt from the response parts of a previous interaction with a
  * large language model.
  *
  * Converts streaming or non-streaming AI response parts into a structured
  * prompt, typically for use in conversation history or further processing.
+ *
+ * Provider-specific metadata attached to response parts is preserved as the
+ * provider-specific options of the corresponding prompt parts.
  *
  * @example
  * ```ts
@@ -1570,55 +1592,67 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
   const assistantParts: Array<AssistantMessagePart> = []
   const toolParts: Array<ToolMessagePart> = []
 
-  const activeTextDeltas = new Map<string, { text: string }>()
-  const activeReasoningDeltas = new Map<string, { text: string }>()
+  const activeTextDeltas = new Map<string, { text: string; options: ProviderOptions }>()
+  const activeReasoningDeltas = new Map<string, { text: string; options: ProviderOptions }>()
 
   for (const part of parts) {
     switch (part.type) {
       // Text Parts
       case "text": {
-        assistantParts.push(makePart("text", { text: part.text }))
+        assistantParts.push(makePart("text", { text: part.text, options: part.metadata }))
         break
       }
 
       // Text Parts (streaming)
       case "text-start": {
-        activeTextDeltas.set(part.id, { text: "" })
+        activeTextDeltas.set(part.id, { text: "", options: part.metadata })
         break
       }
       case "text-delta": {
         if (activeTextDeltas.has(part.id)) {
-          activeTextDeltas.get(part.id)!.text += part.delta
+          const active = activeTextDeltas.get(part.id)!
+          active.text += part.delta
+          active.options = mergeOptions(active.options, part.metadata)
         }
         break
       }
       case "text-end": {
         if (activeTextDeltas.has(part.id)) {
-          assistantParts.push(makePart("text", activeTextDeltas.get(part.id)!))
+          const active = activeTextDeltas.get(part.id)!
+          assistantParts.push(makePart("text", {
+            text: active.text,
+            options: mergeOptions(active.options, part.metadata)
+          }))
         }
         break
       }
 
       // Reasoning Parts
       case "reasoning": {
-        assistantParts.push(makePart("reasoning", { text: part.text }))
+        assistantParts.push(makePart("reasoning", { text: part.text, options: part.metadata }))
         break
       }
 
       // Reasoning Parts (streaming)
       case "reasoning-start": {
-        activeReasoningDeltas.set(part.id, { text: "" })
+        activeReasoningDeltas.set(part.id, { text: "", options: part.metadata })
         break
       }
       case "reasoning-delta": {
         if (activeReasoningDeltas.has(part.id)) {
-          activeReasoningDeltas.get(part.id)!.text += part.delta
+          const active = activeReasoningDeltas.get(part.id)!
+          active.text += part.delta
+          active.options = mergeOptions(active.options, part.metadata)
         }
         break
       }
       case "reasoning-end": {
         if (activeReasoningDeltas.has(part.id)) {
-          assistantParts.push(makePart("reasoning", activeReasoningDeltas.get(part.id)!))
+          const active = activeReasoningDeltas.get(part.id)!
+          assistantParts.push(makePart("reasoning", {
+            text: active.text,
+            options: mergeOptions(active.options, part.metadata)
+          }))
         }
         break
       }
@@ -1629,7 +1663,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           id: part.id,
           name: part.providerName ?? part.name,
           params: part.params,
-          providerExecuted: part.providerExecuted ?? false
+          providerExecuted: part.providerExecuted ?? false,
+          options: part.metadata
         }))
         break
       }
@@ -1641,7 +1676,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           name: part.providerName ?? part.name,
           isFailure: part.isFailure,
           result: part.encodedResult,
-          providerExecuted: part.providerExecuted ?? false
+          providerExecuted: part.providerExecuted ?? false,
+          options: part.metadata
         })
         if (part.providerExecuted) {
           assistantParts.push(toolPart)
