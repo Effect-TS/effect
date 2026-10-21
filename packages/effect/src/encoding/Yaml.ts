@@ -1,12 +1,12 @@
 /**
  * Parses YAML configuration files.
  *
- * Supports YAML 1.2 block and flow collections, indentless sequence values,
- * multiline plain and quoted scalars, block scalars, anchors, and aliases.
+ * Supports YAML 1.2 block and flow collections, indentless and compact
+ * sequence values, multiline plain and quoted scalars, block scalars, anchors,
+ * and aliases.
  *
- * Unsupported: compact nested block sequences (`- - value` on one line),
- * explicit complex keys, tag/directive processing, recursive aliases, and
- * document streams. Mapping keys are JavaScript strings.
+ * Unsupported: explicit complex keys, tag/directive processing, recursive
+ * aliases, and document streams. Mapping keys are JavaScript strings.
  *
  * @stability unstable
  * @since 4.0.0
@@ -387,12 +387,12 @@ class FlowParser {
 }
 
 class YamlParser {
-  private readonly lines: ReadonlyArray<Line>
+  private readonly lines: Array<Line>
   private index = 0
   private documentStarted = false
   private readonly anchors = new Map<string, unknown>()
 
-  constructor(lines: ReadonlyArray<Line>) {
+  constructor(lines: Array<Line>) {
     this.lines = lines
   }
 
@@ -454,18 +454,32 @@ class YamlParser {
       if (line === undefined || line.indent < indent) return output
       if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
       if (!isSequenceEntry(line.text)) return output
-      this.index++
-      const item = line.text.slice(1).trimStart()
-      if (isSequenceEntry(item)) this.fail(line, "Compact nested block sequences are not supported")
-      const separator = mappingSeparator(item)
-      if (separator === -1) {
-        output.push(this.parseNodeValue(item, indent))
-      } else {
-        const mapping: YamlRecord = {}
-        this.parseMappingEntry(mapping, item, separator, indent + 2, line)
-        output.push(this.parseMapping(indent + 2, mapping))
-      }
+      output.push(this.parseCompactNode(line, indent))
     }
+  }
+
+  // Parses the node after a `-` indicator, which may start on the indicator's line.
+  private parseCompactNode(line: Line, indent: number): unknown {
+    const content = line.text.slice(1).trimStart()
+    if (content.length === 0) {
+      this.index++
+      return this.parseNodeValue("", indent)
+    }
+    // Re-read the content as a line of its own, indented to its column.
+    const column = indent + line.text.length - content.length
+    if (
+      /\t/.test(line.text.slice(1, column - indent)) && (isSequenceEntry(content) || mappingSeparator(content) !== -1)
+    ) {
+      this.fail(line, "Tabs cannot be used for YAML indentation")
+    }
+    this.lines[this.index] = {
+      ...line,
+      raw: " ".repeat(column) + line.raw.slice(column),
+      text: content,
+      indent: column,
+      tabIndent: false
+    }
+    return this.parseNode(column, indent)
   }
 
   private parseNodeValue(rawValue: string, parentIndent: number, allowIndentless = false): unknown {

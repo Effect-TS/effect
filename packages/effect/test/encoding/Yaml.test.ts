@@ -404,19 +404,39 @@ development:
     })
   })
 
-  describe("unsupported compact nested block sequences", () => {
-    // Valid YAML, deliberately rejected as unsupported.
+  // YAML 1.2.2 §8.2.1: a block sequence entry may start with a compact nested node.
+  // Expected values and rejection fixtures were checked with yaml 2.9.1.
+  describe("compact nested block sequences", () => {
+    it.each(
+      [
+        ["indentless mapping value", "a:\n- - 1\n  - 2\n", { a: [[1, 2]] }],
+        ["indented mapping value", "a:\n  - - 1\n    - 2\n", { a: [[1, 2]] }],
+        ["root sequence", "- - 1\n  - 2\n", [[1, 2]]],
+        ["blank line between nested entries", "- - 1\n\n  - 2\n", [[1, 2]]],
+        ["nested entry after a scalar item", "a:\n- 1\n- - 2\n", { a: [1, [2]] }],
+        ["nested mapping item", "- - a: 1\n    b: 2\n  - c\n", [[{ a: 1, b: 2 }, "c"]]],
+        ["empty nested entry", "- -\n", [[null]]],
+        ["three levels", "- - - 1\n    - 2\n  - 3\n- 4\n", [[[1, 2], 3], 4]],
+        ["wide separation after the indicator", "-   - 1\n    - 2\n", [[1, 2]]],
+        ["mapping after a wide separation", "-   a: 1\n    b: 2\n", [{ a: 1, b: 2 }]],
+        ["block scalar entry", "- - |\n    x\n  - y\n", [["x\n", "y"]]],
+        ["multiline plain entry", "- - a\n    b\n", [["a b"]]],
+        ["multiline quoted entry", "- - \"a\n    b\"\n", [["a b"]]]
+      ] as const
+    )("parses %s", (_, source, expected) => {
+      assert.deepStrictEqual(Yaml.parse(source), expected)
+    })
+
     it.each([
-      ["indentless mapping value", "a:\n- - 1\n  - 2\n"],
-      ["indented mapping value", "a:\n  - - 1\n    - 2\n"],
-      ["root sequence", "- - 1\n  - 2\n"],
-      ["blank line between nested entries", "- - 1\n\n  - 2\n"],
-      ["nested entry after a scalar item", "a:\n- 1\n- - 2\n"],
-      ["nested mapping item", "a:\n- - b: 1\n"],
-      ["single-line nested sequence", "- - 1\n"],
-      ["empty nested entry", "- -\n"]
+      ["compact mapping sibling at the wrong indentation", "-  a: 1\n  b: 2\n"],
+      ["tab before a nested sequence", "- \t- x\n"],
+      ["tab before a nested mapping", "- \ta: 1\n"]
     ])("rejects %s", (_, source) => {
       assert.throws(() => Yaml.parse(source), SyntaxError)
+    })
+
+    it("allows a tab before a scalar entry", () => {
+      assert.deepStrictEqual(Yaml.parse("- \tfoo\n"), ["foo"])
     })
 
     it.each(
