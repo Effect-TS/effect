@@ -29,6 +29,65 @@ describe("Prompt", () => {
       ])
       assert.deepStrictEqual(prompt, expected)
     })
+
+    it("should preserve provider metadata as part options", () => {
+      const metadata = { google: { thoughtSignature: "signature" } }
+      const parts = [
+        Response.makePart("text", { text: "Hello", metadata }),
+        Response.makePart("reasoning", { text: "Thinking", metadata }),
+        Response.makePart("tool-call", {
+          id: "call_1",
+          name: "get_time",
+          params: {},
+          providerExecuted: false,
+          metadata
+        })
+      ]
+      const prompt = Prompt.fromResponseParts(parts)
+      const expected = Prompt.make([
+        {
+          role: "assistant",
+          content: [
+            { type: "text", text: "Hello", options: metadata },
+            { type: "reasoning", text: "Thinking", options: metadata },
+            {
+              type: "tool-call",
+              id: "call_1",
+              name: "get_time",
+              params: {},
+              providerExecuted: false,
+              options: metadata
+            }
+          ]
+        }
+      ])
+      assert.deepStrictEqual(prompt, expected)
+    })
+
+    it("should preserve provider metadata from streamed parts as part options", () => {
+      const metadata = { google: { thoughtSignature: "signature" } }
+      const parts = [
+        Response.makePart("reasoning-start", { id: "1", metadata }),
+        Response.makePart("reasoning-delta", { id: "1", delta: "Thinking", metadata }),
+        Response.makePart("reasoning-end", { id: "1" }),
+        Response.makePart("text-start", { id: "2" }),
+        Response.makePart("text-delta", { id: "2", delta: "Hello" }),
+        Response.makePart("text-delta", { id: "2", delta: "!", metadata }),
+        Response.makePart("text-delta", { id: "2", delta: "?", metadata: { google: { thoughtSignature: undefined } } }),
+        Response.makePart("text-end", { id: "2" })
+      ]
+      const prompt = Prompt.fromResponseParts(parts)
+      const expected = Prompt.make([
+        {
+          role: "assistant",
+          content: [
+            { type: "reasoning", text: "Thinking", options: metadata },
+            { type: "text", text: "Hello!?", options: metadata }
+          ]
+        }
+      ])
+      assert.deepStrictEqual(prompt, expected)
+    })
   })
 
   describe("merge", () => {
