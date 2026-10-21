@@ -824,13 +824,15 @@ const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
       return entry
     }
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    const parseOptions = Context.get(rpc.annotations, Rpc.ParseOptions)
     entry = {
       decodeChunk: Option.map(
         streamSchemas,
-        (streamSchemas) => Schema.decodeUnknownEffect(codecFor(Schema.NonEmptyArray(streamSchemas.success)))
+        (streamSchemas) =>
+          Schema.decodeUnknownEffect(codecFor(Schema.NonEmptyArray(streamSchemas.success)), parseOptions)
       ),
-      encodePayload: Schema.encodeEffect(codecFor(rpc.payloadSchema)),
-      decodeExit: Schema.decodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)))
+      encodePayload: Schema.encodeEffect(codecFor(rpc.payloadSchema), parseOptions),
+      decodeExit: Schema.decodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)), parseOptions)
     }
     cache.set(rpc, entry)
     return entry
