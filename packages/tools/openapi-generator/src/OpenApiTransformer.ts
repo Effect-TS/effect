@@ -934,9 +934,8 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
 
 const cookieHeaderSource = `const __cookieHeader = (cookies: Record<string, unknown>) => {
     const header = Object.entries(cookies)
-      .flatMap(([name, value]) =>
-        value === undefined || value === null ? [] : [\`\${name}=\${encodeURIComponent(String(value))}\`]
-      )
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([name, value]) => \`\${name}=\${encodeURIComponent(String(value))}\`)
       .join("; ")
     return header === "" ? undefined : header
   }`

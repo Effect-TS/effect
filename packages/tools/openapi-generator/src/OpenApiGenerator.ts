@@ -329,19 +329,16 @@ const parseOpenApi = (
           }
           case "cookie": {
             op.parameters.cookie.push(parsedParameter)
-            if (isHttpApi) {
+            const dropReason = isHttpApi
+              ? "non-security cookie parameters are not supported"
+              : isPrimitiveSchema(parameter.schema, resolveRef)
+              ? undefined
+              : "only primitive cookie parameter schemas are supported"
+            if (dropReason !== undefined) {
               droppedCookies.add(parameter)
               warnForOperation(emitWarning, op, {
                 code: "cookie-parameter-dropped",
-                message:
-                  `Cookie parameter "${parameter.name}" was dropped because non-security cookie parameters are not supported.`
-              })
-            } else if (!isPrimitiveSchema(parameter.schema, resolveRef)) {
-              droppedCookies.add(parameter)
-              warnForOperation(emitWarning, op, {
-                code: "cookie-parameter-dropped",
-                message:
-                  `Cookie parameter "${parameter.name}" was dropped because only primitive cookie parameter schemas are supported.`
+                message: `Cookie parameter "${parameter.name}" was dropped because ${dropReason}.`
               })
             }
             break
