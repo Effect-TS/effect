@@ -1,5 +1,5 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
-import { NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
+import { NodeHttpClient, NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { ByteSize, Effect, Exit, Formatter, Logger, Option, References } from "effect"
@@ -31,6 +31,7 @@ import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Schema from "effect/Schema"
+import * as Scope from "effect/Scope"
 import { Socket } from "effect/socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
@@ -45,6 +46,12 @@ import * as Net from "node:net"
 import { Readable } from "node:stream"
 import * as Tls from "node:tls"
 import * as Zlib from "node:zlib"
+import {
+  describeHttpServerProtocol,
+  http2Get,
+  layerHttp2Client,
+  layerTestClient
+} from "../../node-shared/test/HttpServerHttp2.test-utils.ts"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -408,10 +415,10 @@ describe("HttpServer", () => {
           ))
         )
       ).pipe(
-        Layer.provide(NodeHttpServer.layer(() => server as unknown as Http.Server, { port: 0 })),
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
         Layer.build
       )
-      const port = tcpPort(server as unknown as Http.Server)
+      const port = tcpPort(server)
 
       for (const host of [undefined, "client.test"]) {
         assert.strictEqual(
@@ -419,6 +426,33 @@ describe("HttpServer", () => {
           "example.test:4573 http://example.test:4573/info"
         )
       }
+    }))
+
+  it.live("acknowledges Expect: 100-continue over HTTP/2", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer()
+      yield* HttpServer.serve(
+        HttpServerRequest.HttpServerRequest.use((request) => Effect.map(request.text, HttpServerResponse.text))
+      ).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+        Layer.build
+      )
+      const session = yield* Effect.acquireRelease(
+        Effect.sync(() => Http2.connect(`http://127.0.0.1:${tcpPort(server)}`)),
+        (session) => Effect.sync(() => session.destroy())
+      )
+      const body = yield* Effect.callback<string, Error>((resume) => {
+        const stream = session.request({ ":method": "POST", ":path": "/", expect: "100-continue" })
+        let body = ""
+        stream.setEncoding("utf8")
+        stream.on("continue", () => stream.end("hello"))
+        stream.on("data", (chunk: string) => {
+          body += chunk
+        })
+        stream.on("end", () => resume(Effect.succeed(body)))
+        stream.on("error", (error) => resume(Effect.fail(error)))
+      }).pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(body, "hello")
     }))
 
   it.effect("schema", () =>
@@ -1236,25 +1270,6 @@ describe("HttpServer", () => {
         assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(NodeHttpServer.layerTest)))
 
-    it.live("closes an h2c stream whose headers HTTP/2 forbids and reports the failure", () =>
-      Effect.gen(function*() {
-        const server = Http2.createServer()
-        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-        yield* HttpServer.serve(
-          Effect.succeed(HttpServerResponse.text("ok", { headers: { "keep-alive": "timeout=5" } })),
-          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-        ).pipe(
-          Layer.provide(NodeHttpServer.layer(() => server as any, { port: 0 })),
-          Layer.build
-        )
-
-        const address = server.address()
-        assert(address !== null && typeof address !== "string")
-        const answer = yield* h2Request(address.port).pipe(Effect.timeout("2 seconds"))
-        assert.deepStrictEqual(answer, { _tag: "Closed" })
-        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
-      }))
-
     it.live.each(
       [
         { method: "GET", status: 103 },
@@ -1349,6 +1364,28 @@ describe("HttpServer", () => {
       )
     )
   })
+
+  it.live("closes idle HTTP/2 sessions on shutdown", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer()
+      const scope = yield* Scope.make()
+      yield* HttpServer.serve(Effect.succeed(HttpServerResponse.text("ok"))).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0, gracefulShutdownTimeout: "10 seconds" })),
+        Layer.buildWithScope(scope)
+      )
+      const session = yield* Effect.acquireRelease(
+        Effect.sync(() => Http2.connect(`http://127.0.0.1:${tcpPort(server)}`)),
+        (session) => Effect.sync(() => session.destroy())
+      )
+      session.on("error", constVoid)
+      yield* Effect.callback<void>((resume) => {
+        session.once("connect", () => resume(Effect.void))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      // Finalizers are uninterruptible, so the timeout applies to the join
+      const closed = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+      yield* Fiber.join(closed).pipe(Effect.timeout("2 seconds"))
+    }))
 
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
@@ -1913,6 +1950,39 @@ describe("HttpServer", () => {
 const tlsCert = readFileSync(new URL("./fixtures/tls/cert.pem", import.meta.url))
 const tlsKey = readFileSync(new URL("./fixtures/tls/key.pem", import.meta.url))
 
+const layerHttp2Secure = (
+  client: Layer.Layer<HttpClient.HttpClient>,
+  options?: Http2.SecureServerOptions
+) =>
+  layerTestClient("https").pipe(
+    Layer.provide(client),
+    Layer.provideMerge(
+      NodeHttpServer.layerServer(() => Http2.createSecureServer({ cert: tlsCert, key: tlsKey, ...options }), {
+        port: 0
+      })
+    )
+  )
+
+describeHttpServerProtocol("HTTP/1.1", NodeHttpServer.layerTest)
+describeHttpServerProtocol(
+  "h2c",
+  layerTestClient("http").pipe(
+    Layer.provide(layerHttp2Client()),
+    Layer.provideMerge(NodeHttpServer.layerServer(() => Http2.createServer(), { port: 0 }))
+  )
+)
+describeHttpServerProtocol("HTTP/2 over TLS", layerHttp2Secure(layerHttp2Client({ ca: tlsCert })))
+describeHttpServerProtocol(
+  "HTTP/2 on an allowHTTP1 server",
+  layerHttp2Secure(layerHttp2Client({ ca: tlsCert }), { allowHTTP1: true })
+)
+describeHttpServerProtocol(
+  "HTTP/1.1 on an allowHTTP1 server",
+  layerHttp2Secure(NodeHttpClient.layerUndiciOptions({ allowH2: false, connect: { ca: tlsCert } }), {
+    allowHTTP1: true
+  })
+)
+
 const serveUrlEcho = Effect.fnUntraced(function*(server: Http.Server) {
   yield* HttpRouter.add(
     "GET",
@@ -1968,21 +2038,7 @@ const getStatusText = (port: number) =>
     return Effect.sync(() => request.destroy())
   })
 
-const h2Request = (port: number) =>
-  Effect.callback<{ readonly _tag: "Status"; readonly status: unknown } | { readonly _tag: "Closed" }>(
-    (resume) => {
-      const session = Http2.connect(`http://127.0.0.1:${port}`)
-      session.on("error", constVoid)
-      const stream = session.request({ ":path": "/" })
-      stream.on("error", constVoid)
-      stream.on("response", (headers) => resume(Effect.succeed({ _tag: "Status", status: headers[":status"] })))
-      stream.on("close", () => resume(Effect.succeed({ _tag: "Closed" })))
-      stream.end()
-      return Effect.sync(() => session.destroy())
-    }
-  )
-
-const tcpPort = (server: Http.Server): number => {
+const tcpPort = (server: Net.Server): number => {
   const address = server.address()
   assert(address !== null && typeof address !== "string")
   return address.port
@@ -2188,20 +2244,3 @@ const expectContinueRequest = (port: number, payload: string, headers: Http.Outg
     request.flushHeaders()
     return Effect.sync(() => request.destroy())
   })
-
-const http2Get = (port: number, headers: Http2.OutgoingHttpHeaders) =>
-  Effect.acquireUseRelease(
-    Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
-    (session) =>
-      Effect.callback<string, Error>((resume) => {
-        const stream = session.request(headers)
-        let body = ""
-        stream.setEncoding("utf8")
-        stream.on("data", (chunk: string) => {
-          body += chunk
-        })
-        stream.on("end", () => resume(Effect.succeed(body)))
-        stream.on("error", (error) => resume(Effect.fail(error)))
-      }),
-    (session) => Effect.callback<void>((resume) => session.close(() => resume(Effect.void)))
-  )
