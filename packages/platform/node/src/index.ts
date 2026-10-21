@@ -49,6 +49,12 @@ export * as NodeDns from "./NodeDns.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.6
+ */
+export * as NodeDocker from "./NodeDocker.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as NodeFileSystem from "./NodeFileSystem.ts"

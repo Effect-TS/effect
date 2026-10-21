@@ -1,5 +1,13 @@
 ---
 "effect": patch
+"@effect/platform-node": patch
 ---
 
-Add `effect/docker`, an Effect-native client for the Docker Engine API. `DockerSchema` holds Schemas for the Engine's request and response definitions, generated from moby's API document (API 1.56, decoding every version from 1.44).
+Add `effect/docker`, an Effect-native client for the Docker Engine API, and `NodeDocker` in `@effect/platform-node`.
+
+- `DockerSchema` holds Schemas for the Engine's request and response definitions, generated from moby's API document (API 1.56, decoding every version from 1.44).
+- `DockerConfig` is the client's configuration as plain data: `layer` takes static values, and `layerFromEnv` reads it as the Docker CLI does (`DOCKER_HOST`, contexts, TLS material, `config.json`).
+- `DockerEngine` is the connection to one Engine: an `HttpClient` that negotiates the API version.
+- `DockerApi` defines the Engine API as `HttpApi` endpoint groups, one per area, which the services are clients of, and the models they take and return where those differ from `DockerSchema`'s, such as secrets as `Redacted`. Every group declares the Engine's error responses, which the services fail with as `DockerError` reasons naming the operation.
+- `DockerSystem` covers ping, version, info, events, disk usage, registry login and build-cache pruning.
+- `NodeDocker.layer` and `NodeDocker.layerFromEnv` provide them on Node.js, over a unix socket or TCP with TLS.
