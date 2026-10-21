@@ -1,5 +1,13 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertSome, assertTrue, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
+import {
+  assertFalse,
+  assertNone,
+  assertSome,
+  assertTrue,
+  deepStrictEqual,
+  doesNotThrow,
+  strictEqual
+} from "@effect/vitest/utils"
 import { DateTime, Duration, Redacted, Result, Schema } from "effect"
 import { Headers } from "effect/http"
 import { assertSuccess, throws } from "../utils/assert.ts"
@@ -180,9 +188,9 @@ describe("HttpDate", () => {
 describe("RetryAfter", () => {
   it("parses whole seconds", () => {
     const value = Result.getOrThrow(Headers.parseRetryAfter("120"))
-    strictEqual(value._tag, "Seconds")
-    if (value._tag === "Seconds") {
-      strictEqual(value.seconds, 120)
+    strictEqual(value._tag, "Duration")
+    if (value._tag === "Duration") {
+      strictEqual(Duration.toMillis(value.duration), 120_000)
     }
     strictEqual(Headers.formatRetryAfter(value), "120")
   })
@@ -203,18 +211,25 @@ describe("RetryAfter", () => {
     }
   })
 
-  it("accepts seconds up to the largest safe integer and rejects larger ones", () => {
-    const max = String(Number.MAX_SAFE_INTEGER)
-    const value = Result.getOrThrow(Headers.parseRetryAfter(max))
-    strictEqual(Headers.formatRetryAfter(value), max)
+  it("parses and formats seconds beyond the safe integer range exactly", () => {
+    const input = "1000000000000000000000"
+    const value = Result.getOrThrow(Headers.parseRetryAfter(input))
+    strictEqual(Duration.toNanosUnsafe(Headers.retryAfterDelay(value, 0)), 10n ** 30n)
+    strictEqual(Headers.formatRetryAfter(value), input)
     strictEqual(
-      Schema.encodeSync(Schema.RetryAfterFromString)(Schema.decodeSync(Schema.RetryAfterFromString)(max)),
-      max
+      Schema.encodeSync(Schema.RetryAfterFromString)(Schema.decodeSync(Schema.RetryAfterFromString)(input)),
+      input
     )
-    for (const input of ["9007199254740992", "1000000000000000000000"]) {
-      const result = Headers.parseRetryAfter(input)
-      assertTrue(Result.isFailure(result) && result.failure.reason._tag === "InvalidRetryAfter", input)
-    }
+  })
+
+  it("retryAfterDuration rounds fractions up on the wire, clamps negatives and rejects infinity", () => {
+    const fractional = Headers.retryAfterDuration(Duration.millis(1500))
+    strictEqual(Headers.formatRetryAfter(fractional), "2")
+    strictEqual(Duration.toMillis(Headers.retryAfterDelay(fractional, 0)), 1500)
+    const negative = Headers.retryAfterDuration(Duration.seconds(-5))
+    strictEqual(Headers.formatRetryAfter(negative), "0")
+    strictEqual(Duration.toMillis(Headers.retryAfterDelay(negative, 0)), 0)
+    throws(() => Headers.retryAfterDuration(Duration.infinity))
   })
 
   it("delay is measured from now and never negative", () => {
@@ -227,8 +242,15 @@ describe("RetryAfter", () => {
 
   it("Schema.RetryAfterFromString round trips and rejects invalid values", () => {
     const decoded = Schema.decodeSync(Schema.RetryAfterFromString)("120")
-    strictEqual(decoded._tag, "Seconds")
+    strictEqual(decoded._tag, "Duration")
     strictEqual(Schema.encodeSync(Schema.RetryAfterFromString)(decoded), "120")
     throws(() => Schema.decodeSync(Schema.RetryAfterFromString)("-5"))
+  })
+
+  it("Schema.RetryAfter accepts only finite, non-negative durations", () => {
+    const is = Schema.is(Schema.RetryAfter)
+    assertTrue(is({ _tag: "Duration", duration: Duration.seconds(5) }))
+    assertFalse(is({ _tag: "Duration", duration: Duration.seconds(-5) }))
+    assertFalse(is({ _tag: "Duration", duration: Duration.infinity }))
   })
 })
