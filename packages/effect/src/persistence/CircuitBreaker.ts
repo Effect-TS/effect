@@ -174,9 +174,10 @@ export const make: (options: {
       transition === undefined ? Effect.void : PubSub.publish(pubsub, [transition])
 
     // A rate policy can trip on a Success, so every recorded outcome needs the
-    // base open duration. Only a Failure carries a hint.
-    const openFor = (outcome: Outcome, consecutiveOpenings: number) =>
-      Effect.map(
+    // base open duration. Only a Failure carries a hint, and an Ignored
+    // outcome never opens the circuit.
+    const openFor = (outcome: Outcome, consecutiveOpenings: number): Effect.Effect<Duration.Duration> =>
+      outcome._tag === "Ignored" ? Effect.succeed(Duration.zero) : Effect.map(
         openDurationFor(consecutiveOpenings),
         (delay) =>
           outcome._tag === "Failure" && outcome.retryAfter !== undefined
@@ -192,7 +193,7 @@ export const make: (options: {
       }
     ): Effect.Effect<A, E | CircuitBreakerError, R | R2> =>
       Effect.uninterruptibleMask((restore) =>
-        Effect.flatMap(Scope.make(), (admitScope) =>
+        Effect.scopedWith((admitScope) =>
           store.admit(key).pipe(
             Scope.provide(admitScope),
             Effect.matchCauseEffect({
@@ -219,9 +220,7 @@ export const make: (options: {
                   generation: admission.generation,
                   outcome: outcome._tag,
                   tripPolicy: options.tripPolicy,
-                  openFor: outcome._tag === "Ignored"
-                    ? Duration.zero
-                    : yield* openFor(outcome, admission.consecutiveOpenings + 1)
+                  openFor: yield* openFor(outcome, admission.consecutiveOpenings + 1)
                 }).pipe(
                   Effect.flatMap(publish),
                   Effect.catch((error) => Effect.logWarning("CircuitBreaker failed to record an outcome", error))
@@ -231,9 +230,9 @@ export const make: (options: {
                   Exit.isFailure(exit) ? Cause.combine(exit.cause, classified.cause) : classified.cause
                 )
               })
-            }),
-            Effect.onExit((exit) => Scope.close(admitScope, exit))
-          ))
+            })
+          )
+        )
       )
 
     return CircuitBreaker.of({
