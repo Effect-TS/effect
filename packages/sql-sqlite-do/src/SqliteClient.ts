@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { SqlStorage } from "@cloudflare/workers-types"
+import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
@@ -12,6 +12,7 @@ import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
@@ -55,6 +56,11 @@ export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite
  */
 export interface SqliteClientConfig {
   readonly db: SqlStorage
+  /**
+   * The Durable Object storage (`ctx.storage`). When provided, transactions
+   * use `storage.transaction()`, as workerd rejects transaction statements.
+   */
+  readonly storage?: DurableObjectStorage | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined
@@ -171,23 +177,92 @@ export const make = (
       )
     )
 
+    const spanAttributes: Array<[string, unknown]> = [
+      ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+      [ATTR_DB_SYSTEM_NAME, "sqlite"]
+    ]
+
     return Object.assign(
       (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
-        spanAttributes: [
-          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [ATTR_DB_SYSTEM_NAME, "sqlite"]
-        ],
+        spanAttributes,
         transformRows
       })) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
         config: options
-      }
+      },
+      options.storage ?
+        {
+          withTransaction: makeStorageWithTransaction(options.storage, connection, semaphore, spanAttributes)
+        } :
+        {}
     )
   })
+
+const makeStorageWithTransaction = (
+  storage: DurableObjectStorage,
+  connection: Connection,
+  semaphore: Effect.Semaphore,
+  spanAttributes: ReadonlyArray<[string, unknown]>
+): Client.SqlClient["withTransaction"] =>
+<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
+  Effect.flatMap(Effect.serviceOption(Client.TransactionConnection), (outer) => {
+    if (outer._tag === "Some" && outer.value[0] !== connection) {
+      return Effect.fail(
+        new SqlError({ message: "Transactions cannot use a connection from a different SQL client" })
+      )
+    }
+    const depth = outer._tag === "Some" ? outer.value[1] + 1 : 0
+    const body = Effect.provideService(effect, Client.TransactionConnection, [connection, depth])
+
+    const transaction = Effect.async<A, E | SqlError, R>((resume) => {
+      let interrupted = false
+      let complete: (() => void) | undefined
+      const result: Promise<Exit.Exit<void, SqlError>> = storage.transaction((txn) =>
+        new Promise<void>((resolve) => {
+          complete = resolve
+          if (interrupted) return resolve()
+          resume(Effect.uninterruptibleMask((restore) =>
+            Effect.flatMap(Effect.exit(restore(body)), (exit) => {
+              if (Exit.isFailure(exit)) {
+                txn.rollback()
+              }
+              // Rejecting would also abort the parent of a nested transaction
+              resolve()
+              return Effect.zipRight(Effect.flatten(Effect.promise(() => result)), exit)
+            })
+          ))
+        })
+      ).then(
+        () => Exit.void,
+        (cause) => {
+          const exit = Exit.fail(new SqlError({ cause, message: "Failed to execute transaction" }))
+          // Only reaches the fiber if the transaction failed before running the body
+          resume(exit)
+          return exit
+        }
+      )
+      return Effect.suspend(() => {
+        interrupted = true
+        complete?.()
+        return Effect.asVoid(Effect.promise(() => result))
+      })
+    })
+
+    return depth === 0 ? semaphore.withPermits(1)(transaction) : transaction
+  }).pipe(
+    Effect.withSpan("sql.transaction", {
+      kind: "client",
+      captureStackTrace: false,
+      attributes: Object.fromEntries(spanAttributes)
+    }),
+    // The storage transaction closes the input gate, which blocks scheduler
+    // tasks until it completes
+    Effect.withMaxOpsBeforeYield(Infinity)
+  )
 
 /**
  * @category layers
