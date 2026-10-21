@@ -1567,24 +1567,57 @@ describe("McpServer", () => {
 
     it.effect("registers tools with identified output schemas", () =>
       Effect.gen(function*() {
+        class Event extends Schema.Class<Event>("Event")({ at: Schema.Date }) {}
+        interface Tree {
+          readonly children: ReadonlyArray<Tree>
+        }
+        const Tree: Schema.Codec<Tree> = Schema.Struct({
+          children: Schema.Array(Schema.suspend(() => Tree))
+        }).annotate({ identifier: "Tree" })
         const IdentifiedResultTool = Tool.make("IdentifiedResultTool", {
           success: Schema.Struct({ value: Schema.String }).annotate({ identifier: "IdentifiedResult" })
         })
-        const toolkit = Toolkit.make(IdentifiedResultTool)
+        const EventTool = Tool.make("EventTool", { success: Event })
+        const TreeTool = Tool.make("TreeTool", { success: Tree })
+        const toolkit = Toolkit.make(IdentifiedResultTool, EventTool, TreeTool)
         const server = yield* McpServer.McpServer.make
         yield* McpServer.registerToolkit(toolkit).pipe(
           Effect.provideService(McpServer.McpServer, server),
           Effect.provide(toolkit.toLayer({
-            IdentifiedResultTool: () => Effect.succeed({ value: "ok" })
+            IdentifiedResultTool: () => Effect.succeed({ value: "ok" }),
+            EventTool: () => Effect.succeed(new Event({ at: new Date(0) })),
+            TreeTool: () => Effect.succeed({ children: [] })
           }))
         )
 
-        assert.deepStrictEqual(server.tools[0].tool.outputSchema, {
-          type: "object",
-          properties: { value: { type: "string" } },
-          required: ["value"],
-          additionalProperties: true
-        })
+        assert.deepStrictEqual(server.tools.map(({ tool }) => tool.outputSchema), [
+          {
+            type: "object",
+            properties: { value: { type: "string" } },
+            required: ["value"],
+            additionalProperties: true
+          },
+          {
+            type: "object",
+            properties: { at: { type: "string" } },
+            required: ["at"],
+            additionalProperties: true
+          },
+          {
+            type: "object",
+            properties: { children: { type: "array", items: { $ref: "#/$defs/Tree" } } },
+            required: ["children"],
+            additionalProperties: true,
+            $defs: {
+              Tree: {
+                type: "object",
+                properties: { children: { type: "array", items: { $ref: "#/$defs/Tree" } } },
+                required: ["children"],
+                additionalProperties: true
+              }
+            }
+          }
+        ])
       }))
 
     it.effect("publishes the definitions an inlined tool schema references by anchor", () =>
