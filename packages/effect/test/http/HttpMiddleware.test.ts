@@ -630,6 +630,40 @@ describe("HttpMiddleware", () => {
         )
       }))
 
+    it.effect.each([
+      {
+        name: "stops at an element with an unescaped quote inside a quoted value",
+        forwarded: "for=6.6.6.6, for=10.0.0.2;ext=\"a\"b\"\"",
+        expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "accepts escaped quotes inside a quoted value",
+        forwarded: "for=198.51.100.7;ext=\"say \\\"hi\\\" now\";proto=https, for=10.0.0.2",
+        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "https://app.test/a" }
+      }
+    ])("forwardedHeader $name", ({ expected, forwarded }) =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* observe(HttpMiddleware.forwardedHeader({ trustedProxies }), "10.0.0.1", { forwarded }),
+          expected
+        )
+      }))
+
+    it.effect("authorizes against the transport peer, not an address resolved by earlier middleware", () =>
+      Effect.gen(function*() {
+        const outer = HttpMiddleware.xForwardedHeaders({ trustedProxies })
+        const inner = HttpMiddleware.forwardedHeader({
+          trustedProxies: [IpNetwork.fromStringUnsafe("198.51.100.0/24")]
+        })
+        assert.deepStrictEqual(
+          yield* observe((app) => outer(inner(app)), "10.0.0.1", {
+            "x-forwarded-for": "198.51.100.7",
+            forwarded: "for=6.6.6.6;host=evil.test;proto=https"
+          }),
+          { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
+        )
+      }))
+
     it.effect("forwardedHeader parses RFC 7239 and ignores X-Forwarded-*", () =>
       Effect.gen(function*() {
         assert.deepStrictEqual(
