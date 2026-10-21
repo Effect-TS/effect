@@ -15,6 +15,7 @@ import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
@@ -47,7 +48,14 @@ import * as RpcTracing from "./internal/tracing.ts"
 import * as Rpc from "./Rpc.ts"
 import { RpcClientDefect, RpcClientError } from "./RpcClientError.ts"
 import type * as RpcGroup from "./RpcGroup.ts"
-import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, Request } from "./RpcMessage.ts"
+import type {
+  FromClient,
+  FromClientEncoded,
+  FromServer,
+  FromServerEncoded,
+  Request,
+  RequestEncoded
+} from "./RpcMessage.ts"
 import { constPing, isTerminalResponse, RequestId } from "./RpcMessage.ts"
 import type * as RpcMiddleware from "./RpcMiddleware.ts"
 import * as RpcSchema from "./RpcSchema.ts"
@@ -912,118 +920,236 @@ export class Protocol extends Context.Service<Protocol, {
 }
 
 /**
- * Creates a client `Protocol` that sends each RPC request through the supplied
+ * Options for sending concurrent RPC requests from one client in a single
+ * HTTP request.
+ *
+ * **Details**
+ *
+ * The first request for a client opens a batch. Requests from the same client
+ * made before `window` elapses join it, and the batch is sent once the window
+ * elapses or it reaches `maxSize` requests, whichever comes first.
+ *
+ * @stability unstable
+ * @category protocols
+ * @since 4.0.6
+ */
+export interface HttpBatchOptions {
+  readonly window: Duration.Input
+  readonly maxSize?: number | undefined
+}
+
+/**
+ * Creates a client `Protocol` that sends RPC requests through the supplied
  * `HttpClient` and decodes responses with the current `RpcSerialization`.
+ *
+ * **Details**
+ *
+ * Each request is sent as its own HTTP request unless `batch` is set. See
+ * {@link HttpBatchOptions}.
  *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
-export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
+export const makeProtocolHttp = (client: HttpClient.HttpClient, options?: {
+  readonly batch?: HttpBatchOptions | undefined
+}): Effect.Effect<
   Protocol["Service"],
   never,
   RpcSerialization.RpcSerialization
 > =>
-  Protocol.make(Effect.fnUntraced(function*(writeResponse) {
-    const serialization = yield* RpcSerialization.RpcSerialization
-    const isFramed = serialization.includesFraming
-    const httpClientError = (cause: any) =>
-      new RpcClientError({
-        reason: HttpClientErrorSchema.fromHttpClientError(cause)
-      })
-    const protocolDefect = (message: string, cause: unknown) =>
-      new RpcClientError({
-        reason: new RpcClientDefect({ message, cause })
-      })
-    const emptyResponseError = (request: FromClientEncoded) =>
-      protocolDefect("Received empty HTTP response from RPC server", request)
-    const incompleteResponseError = (request: FromClientEncoded) =>
-      protocolDefect("HTTP response ended before RPC request completed", request)
-
-    const send = Effect.fnUntraced(function*(clientId: number, request: FromClientEncoded) {
-      if (request._tag !== "Request") {
-        return
-      }
-
-      const parser = serialization.makeUnsafe()
-
-      const encoded = parser.encode(request)!
-      const body = typeof encoded === "string" ?
-        HttpBody.text(encoded, serialization.contentType) :
-        HttpBody.uint8Array(encoded, serialization.contentType)
-
-      const response = yield* client.post("", { body }).pipe(Effect.mapError(httpClientError))
-
-      if (!isFramed) {
-        const text = yield* response.text.pipe(Effect.mapError(httpClientError))
-        const responses = yield* Effect.try({
-          try: () => parser.decode(text),
-          catch: (cause) => protocolDefect("Error decoding HTTP response", cause)
-        })
-        if (!Array.isArray(responses)) {
-          return yield* protocolDefect("Expected an array of responses", responses)
-        }
-        if (responses.length === 0) {
-          return yield* emptyResponseError(request)
-        }
-        let completed = false
-        for (let i = 0; i < responses.length; i++) {
-          const response = responses[i]
-          if (isTerminalResponse(response)) {
-            completed = true
-          }
-          yield* writeResponse(clientId, response)
-        }
-        if (!completed) {
-          return yield* incompleteResponseError(request)
-        }
-        return
-      }
-
-      let hasResponse = false
-      let completed = false
-      yield* Stream.runForEachArray(response.stream, (chunk) =>
-        Effect.try({
-          try: () => chunk.flatMap(parser.decode) as Array<FromServerEncoded>,
-          catch: (cause) => protocolDefect("Error decoding HTTP response", cause)
-        }).pipe(
-          Effect.flatMap((responses) => {
-            if (responses.length === 0) return Effect.void
-            hasResponse = true
-            let i = 0
-            return Effect.whileLoop({
-              while: () => i < responses.length,
-              body: () => {
-                const response = responses[i++]
-                if (isTerminalResponse(response)) {
-                  completed = true
-                }
-                return writeResponse(clientId, response)
-              },
-              step: constVoid
-            })
-          })
-        )).pipe(
-          Effect.mapError((cause) => isRpcClientError(cause) ? cause : httpClientError(cause))
-        )
-      if (!hasResponse) {
-        return yield* emptyResponseError(request)
-      } else if (!completed) {
-        return yield* incompleteResponseError(request)
-      }
-    })
-
-    return {
-      send,
-      supportsAck: false,
-      supportsTransferables: false,
-      codecFor: serialization.codecFor
+  Effect.suspend(() => {
+    // Batches of a client run in its own scope, which is closed when the
+    // client stops running.
+    const scopes = new Map<number, Scope.Closeable>()
+    const closeScope = (clientId: number) => {
+      const scope = scopes.get(clientId)
+      if (scope === undefined) return Effect.void
+      scopes.delete(clientId)
+      return Scope.close(scope, Exit.void)
     }
-  }))
+    const protocol = Protocol.make(Effect.fnUntraced(function*(writeResponse) {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      const isFramed = serialization.includesFraming
+      const httpClientError = (cause: any) =>
+        new RpcClientError({
+          reason: HttpClientErrorSchema.fromHttpClientError(cause)
+        })
+      const protocolDefect = (message: string, cause: unknown) =>
+        new RpcClientError({
+          reason: new RpcClientDefect({ message, cause })
+        })
+      const emptyResponseError = (request: RequestEncoded) =>
+        protocolDefect("Received empty HTTP response from RPC server", request)
+      const incompleteResponseError = (request: RequestEncoded) =>
+        protocolDefect("HTTP response ended before RPC request completed", request)
+
+      // Sends the requests in one HTTP request and writes each response as it is
+      // decoded. Returns the ids of the requests left without a terminal
+      // response, or `undefined` when the server sent no responses.
+      const sendRequests = Effect.fnUntraced(function*(
+        clientId: number,
+        requests: ReadonlyArray<RequestEncoded>
+      ) {
+        const parser = serialization.makeUnsafe()
+
+        const encoded = parser.encode(requests.length === 1 ? requests[0] : requests)!
+        const body = typeof encoded === "string" ?
+          HttpBody.text(encoded, serialization.contentType) :
+          HttpBody.uint8Array(encoded, serialization.contentType)
+
+        const response = yield* client.post("", { body }).pipe(Effect.mapError(httpClientError))
+
+        const pending = new Set<string>()
+        for (let i = 0; i < requests.length; i++) {
+          pending.add(String(requests[i].id))
+        }
+        const onResponse = (response: FromServerEncoded) => {
+          if (response._tag === "Exit") {
+            pending.delete(String(response.requestId))
+          } else if (isTerminalResponse(response)) {
+            // defects and protocol errors end every request of the client
+            pending.clear()
+          }
+          return writeResponse(clientId, response)
+        }
+
+        if (!isFramed) {
+          const text = yield* response.text.pipe(Effect.mapError(httpClientError))
+          const responses = yield* Effect.try({
+            try: () => parser.decode(text),
+            catch: (cause) => protocolDefect("Error decoding HTTP response", cause)
+          })
+          if (!Array.isArray(responses)) {
+            return yield* protocolDefect("Expected an array of responses", responses)
+          }
+          if (responses.length === 0) {
+            return undefined
+          }
+          for (let i = 0; i < responses.length; i++) {
+            yield* onResponse(responses[i])
+          }
+          return pending
+        }
+
+        let hasResponse = false
+        yield* Stream.runForEachArray(response.stream, (chunk) =>
+          Effect.try({
+            try: () => chunk.flatMap(parser.decode) as Array<FromServerEncoded>,
+            catch: (cause) => protocolDefect("Error decoding HTTP response", cause)
+          }).pipe(
+            Effect.flatMap((responses) => {
+              if (responses.length === 0) return Effect.void
+              hasResponse = true
+              let i = 0
+              return Effect.whileLoop({
+                while: () => i < responses.length,
+                body: () => onResponse(responses[i++]),
+                step: constVoid
+              })
+            })
+          )).pipe(
+            Effect.mapError((cause) => isRpcClientError(cause) ? cause : httpClientError(cause))
+          )
+        return hasResponse ? pending : undefined
+      })
+
+      const requestExit = (
+        request: RequestEncoded,
+        exit: Exit.Exit<ReadonlySet<string> | undefined, RpcClientError>
+      ): Exit.Exit<void, RpcClientError> => {
+        if (Exit.isFailure(exit)) {
+          return Exit.asVoid(exit)
+        } else if (exit.value === undefined) {
+          return Exit.fail(emptyResponseError(request))
+        } else if (exit.value.has(String(request.id))) {
+          return Exit.fail(incompleteResponseError(request))
+        }
+        return Exit.void
+      }
+
+      let send: (clientId: number, request: RequestEncoded) => Effect.Effect<void, RpcClientError> = (
+        clientId,
+        request
+      ) => Effect.flatMap(Effect.exit(sendRequests(clientId, [request])), (exit) => requestExit(request, exit))
+
+      if (options?.batch) {
+        const { maxSize, window } = options.batch
+        interface Batch {
+          readonly entries: Array<{
+            readonly request: RequestEncoded
+            readonly deferred: Deferred.Deferred<void, RpcClientError>
+          }>
+          readonly full: Latch.Latch
+        }
+        const batches = new Map<number, Batch>()
+        const closeBatch = (clientId: number, batch: Batch) => {
+          if (batches.get(clientId) === batch) {
+            batches.delete(clientId)
+          }
+        }
+        // Runs in the client scope rather than in a caller, so interrupting one
+        // caller does not cancel the HTTP request for the rest of the batch.
+        const runBatch = (clientId: number, batch: Batch) =>
+          Effect.raceFirst(Effect.sleep(window), batch.full.await).pipe(
+            Effect.andThen(Effect.suspend(() => {
+              closeBatch(clientId, batch)
+              return sendRequests(clientId, batch.entries.map((entry) => entry.request))
+            })),
+            Effect.onExit((exit) =>
+              Effect.sync(() => {
+                closeBatch(clientId, batch)
+                for (const { deferred, request } of batch.entries) {
+                  Deferred.doneUnsafe(deferred, requestExit(request, exit))
+                }
+              })
+            )
+          )
+        send = Effect.fnUntraced(function*(clientId, request) {
+          const deferred = Deferred.makeUnsafe<void, RpcClientError>()
+          let batch = batches.get(clientId)
+          if (batch === undefined) {
+            batch = { entries: [{ request, deferred }], full: Latch.makeUnsafe() }
+            batches.set(clientId, batch)
+            let scope = scopes.get(clientId)
+            if (scope === undefined) {
+              scope = Scope.makeUnsafe()
+              scopes.set(clientId, scope)
+            }
+            yield* Effect.forkIn(runBatch(clientId, batch), scope, { startImmediately: true })
+          } else {
+            batch.entries.push({ request, deferred })
+          }
+          if (batch.entries.length === maxSize) {
+            closeBatch(clientId, batch)
+            batch.full.openUnsafe()
+          }
+          return yield* Deferred.await(deferred)
+        })
+      }
+
+      return {
+        send: (clientId, request) => request._tag === "Request" ? send(clientId, request) : Effect.void,
+        supportsAck: false,
+        supportsTransferables: false,
+        codecFor: serialization.codecFor
+      }
+    }))
+    if (!options?.batch) return protocol
+    return Effect.map(protocol, (protocol): Protocol["Service"] => ({
+      ...protocol,
+      run: (clientId, f) => Effect.onExit(protocol.run(clientId, f), () => closeScope(clientId))
+    }))
+  })
 
 /**
  * Provides a client `Protocol` backed by `HttpClient`, targeting the configured
  * URL and optionally transforming the client before use.
+ *
+ * **Details**
+ *
+ * Set `batch` to send concurrent requests from the same client in a single
+ * HTTP request. See {@link HttpBatchOptions}.
  *
  * @stability unstable
  * @category layers
@@ -1032,13 +1158,16 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
 export const layerProtocolHttp = (options: {
   readonly url: string
   readonly transformClient?: <E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>
+  readonly batch?: HttpBatchOptions | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpClient.HttpClient> =>
   Layer.effect(Protocol)(
     Effect.flatMap(
       HttpClient.HttpClient,
       (client) => {
         client = HttpClient.mapRequest(client, HttpClientRequest.prependUrl(options.url))
-        return makeProtocolHttp(options.transformClient ? options.transformClient(client) : client)
+        return makeProtocolHttp(options.transformClient ? options.transformClient(client) : client, {
+          batch: options.batch
+        })
       }
     )
   )
