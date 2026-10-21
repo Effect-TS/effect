@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add an opt-in `TerminalCapabilities` service and layer to `effect/cli`, so built-in `Command` help, version, and error output follows detected color support when it is installed.
+Add a `TerminalCapabilities` reference and layer to `effect/cli`; built-in `Command` help, version, and error output now follows it, so `FORCE_COLOR` enables color off a TTY and `TERM=dumb` disables it.

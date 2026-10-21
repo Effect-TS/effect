@@ -1,11 +1,11 @@
 /**
- * Opt-in detection of whether a CLI can color, animate, or prompt.
+ * Detection of whether a CLI can color, animate, or prompt.
  *
- * The detecting layer reads `NO_COLOR`, `FORCE_COLOR`, and `TERM` through
- * `ConfigProvider`, plus the TTY state of `Stdio`. When the service is
- * installed and no `CliOutput.Formatter` is provided, the built-in help,
- * version, and error output of `Command` follows `canColor`. CLIs that never
- * install the layer keep the existing formatter behavior.
+ * The default reads `NO_COLOR`, `FORCE_COLOR`, `TERM`, and the TTY state of
+ * the current process. The layer reads the same variables through
+ * `ConfigProvider`, plus the TTY state of `Stdio`. Unless a
+ * `CliOutput.Formatter` is provided, the built-in help, version, and error
+ * output of `Command` follows `canColor`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -17,15 +17,20 @@ import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Stdio from "../Stdio.ts"
 
+interface Capabilities {
+  readonly canColor: boolean
+  readonly canAnimate: boolean
+  readonly canPrompt: boolean
+}
+
 /**
- * Service tag for terminal capability detection.
+ * Reference to the terminal capabilities of the current process.
  *
  * **When to use**
  *
- * Use when a CLI should detect its terminal from the environment and `Stdio`,
- * and when application output should share that answer with the built-in
- * help, version, and error output. Leave it out and `CliOutput` keeps its
- * built-in TTY check.
+ * Read it when application output should share the built-in help, version,
+ * and error output's answer. Provide `layer` to detect through
+ * `ConfigProvider` and `Stdio`, or provide a value to override detection.
  *
  * **Details**
  *
@@ -35,15 +40,17 @@ import * as Stdio from "../Stdio.ts"
  * Only `canColor` is read by the built-in `Command` output; the other two are
  * for application code that renders its own output.
  *
+ * The default is detected from the current process the first time it is
+ * read, so later changes to the environment do not affect it. Without a
+ * `process` global, every flag is `false`.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export class TerminalCapabilities extends Context.Service<TerminalCapabilities, {
-  readonly canColor: boolean
-  readonly canAnimate: boolean
-  readonly canPrompt: boolean
-}>()("effect/cli/TerminalCapabilities") {}
+export class TerminalCapabilities extends Context.Reference<Capabilities>("effect/cli/TerminalCapabilities", {
+  defaultValue: () => fromProcess()
+}) {}
 
 const isPresent = (value: string | undefined): value is string => value !== undefined && value.length > 0
 
@@ -56,7 +63,7 @@ const detect = (input: {
   readonly term: string | undefined
   readonly stdinIsTerminal: boolean
   readonly stdoutIsTerminal: boolean
-}): TerminalCapabilities["Service"] => {
+}): Capabilities => {
   if (input.term === "dumb") {
     return { canColor: false, canAnimate: false, canPrompt: false }
   }
@@ -66,6 +73,17 @@ const detect = (input: {
     canAnimate: input.stdoutIsTerminal,
     canPrompt: input.stdinIsTerminal && input.stdoutIsTerminal
   }
+}
+
+const fromProcess = (): Capabilities => {
+  const process = (globalThis as any).process
+  return detect({
+    noColor: process?.env?.NO_COLOR,
+    forceColor: process?.env?.FORCE_COLOR,
+    term: process?.env?.TERM,
+    stdinIsTerminal: process?.stdin?.isTTY === true,
+    stdoutIsTerminal: process?.stdout?.isTTY === true
+  })
 }
 
 const environment = Config.all({
@@ -113,7 +131,7 @@ const environment = Config.all({
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<TerminalCapabilities, never, Stdio.Stdio> = Layer.effect(
+export const layer: Layer.Layer<never, never, Stdio.Stdio> = Layer.effect(
   TerminalCapabilities
 )(Effect.gen(function*() {
   const stdio = yield* Stdio.Stdio
