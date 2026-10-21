@@ -1336,6 +1336,26 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("determines the resource scope of a pointer below a definition from onEnter results", () => {
+      const schema = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/Outer/properties/value",
+          $defs: {
+            X: { type: "string" },
+            Outer: {
+              $id: "https://example.com/child",
+              type: "object",
+              properties: { value: { $ref: "#/$defs/X" } }
+            }
+          }
+        }),
+        { onEnter: (schema) => ({ ...schema, $id: undefined }) }
+      )
+      const is = Schema.is(schema)
+      assert.isTrue(is("a"))
+      assert.isFalse(is(1))
+    })
+
     it("rejects an empty reference", () => {
       throws(
         () => toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({ $ref: "" })),
