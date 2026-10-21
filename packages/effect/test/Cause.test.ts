@@ -631,6 +631,23 @@ describe("Cause", () => {
       assert.throws(() => Cause.prettyErrors(Cause.fail(error)), /stack getter/)
       assert.strictEqual(Error.stackTraceLimit, limit)
     })
+
+    it("stops at a cyclic Error cause", () => {
+      const self = new Error("self")
+      self.cause = self
+      const [selfError] = Cause.prettyErrors(Cause.die(self))
+      assert.strictEqual(selfError.message, "self")
+      assert.strictEqual(selfError.cause, undefined)
+
+      const a = new Error("a")
+      const b = new Error("b", { cause: a })
+      a.cause = b
+      const [error] = Cause.prettyErrors(Cause.fail(a))
+      assert.strictEqual(error.message, "a")
+      assert.ok(error.cause instanceof Error)
+      assert.strictEqual(error.cause.message, "b")
+      assert.strictEqual(error.cause.cause, undefined)
+    })
   })
 
   describe("pretty", () => {
@@ -651,6 +668,19 @@ describe("Cause", () => {
     it("returns a string for empty cause", () => {
       const rendered = Cause.pretty(Cause.empty)
       assert.strictEqual(typeof rendered, "string")
+    })
+
+    it("renders a cyclic Error cause", () => {
+      const self = new Error("self")
+      self.cause = self
+      assert.ok(Cause.pretty(Cause.fail(self)).startsWith("Error: self"))
+
+      const a = new Error("a")
+      const b = new Error("b", { cause: a })
+      a.cause = b
+      const rendered = Cause.pretty(Cause.fail(a))
+      assert.ok(rendered.startsWith("Error: a"))
+      assert.ok(rendered.includes("[cause]: Error: b"))
     })
 
     it("cuts the stack of a defect at the internal frame that called user code", async () => {
