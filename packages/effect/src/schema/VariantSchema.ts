@@ -298,8 +298,11 @@ export interface Class<
   Fields extends Struct.Fields,
   S extends Schema.Top & {
     readonly fields: Schema.Struct.Fields
-  }
-> extends Schema.Class<Self, S, {}>, Struct<Struct_.Simplify<Fields>> {
+  },
+  Variants extends string = never,
+  Default extends string = never,
+  Inherited = {}
+> extends Omit<Schema.Class<Self, S, Inherited>, "extend">, Struct<Struct_.Simplify<Fields>> {
   readonly "Type": Self
   readonly "Encoded": S["Encoded"]
   readonly "DecodingServices": S["DecodingServices"]
@@ -313,7 +316,7 @@ export interface Class<
     options?: {
       readonly disableChecks?: boolean
     } | undefined
-  ): S["Type"]
+  ): S["Type"] & Inherited
 
   make<Args extends Array<any>, X>(
     this: { new(...args: Args): X },
@@ -321,6 +324,61 @@ export interface Class<
   ): X
 
   readonly fields: S["fields"]
+
+  /**
+   * Returns a function that creates a variant schema subclass with this
+   * class's fields plus additional fields, regenerating every variant schema
+   * from the merged fields.
+   */
+  extend<Extended = never, Static = {}, Brand = {}>(
+    identifier: string
+  ): {
+    <const NewFields extends Struct.Fields>(
+      fields: NewFields & Struct.Validate<NewFields, Variants>,
+      annotations?:
+        | Schema.Annotations.Declaration<
+          Extended,
+          readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, NewFields>, true>>]
+        >
+        | undefined
+    ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, NewFields>, Variants, Default>
+    <Extension extends Schema.Struct<Schema.Struct.Fields>>(
+      schema: Extension,
+      annotations?:
+        | Schema.Annotations.Declaration<
+          Extended,
+          readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, Extension["fields"]>, true>>]
+        >
+        | undefined
+    ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, Extension["fields"]>, Variants, Default>
+  }
+}
+
+/**
+ * Type-level helpers for variant schema classes.
+ *
+ * @stability unstable
+ * @since 4.0.0
+ */
+export declare namespace Class {
+  /**
+   * Computes the class type returned by `Class.extend`.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.0
+   */
+  export type Extend<
+    Self,
+    Static,
+    Inherited,
+    Fields extends Struct.Fields,
+    Variants extends string,
+    Default extends string
+  > = [Self] extends [never] ? "Missing `Self` generic - use `class Self extends Base.extend<Self>(...)`" :
+    & Class<Self, Fields, Schema.Struct<ExtractFields<Default, Fields, true>>, Variants, Default, Inherited>
+    & { readonly [V in Variants]: Extract<V, Struct<Fields>> }
+    & Pick<Static, Exclude<keyof Static, keyof Class<any, any, any> | Variants>>
 }
 
 type MissingSelfGeneric<Params extends string = ""> =
@@ -444,7 +502,9 @@ export const make = <
       & Class<
         Self,
         Fields,
-        Schema.Struct<ExtractFields<Default, Fields, true>>
+        Schema.Struct<ExtractFields<Default, Fields, true>>,
+        Variants[number],
+        Default
       >
       & {
         readonly [V in Variants[number]]: Extract<V, Struct<Fields>>
@@ -470,24 +530,46 @@ export const make = <
         readonly [Schema.Struct<ExtractFields<Default, typeof fields, true>>]
       >
     ) {
-      const variantStruct = Struct(fields)
-      const schema = extract(variantStruct, options.defaultVariant, {
-        isDefault: true
-      })
       const SClass = Schema.Class as any
-      class Base extends SClass(identifier)(schema.fields, annotations) {
-        static [TypeId] = fields
-      }
-      for (const variant of options.variants) {
-        Object.defineProperty(Base, variant, {
-          value: extract(variantStruct, variant).annotate({
-            id: `${identifier}.${variant}`,
-            title: `${identifier}.${variant}`
-          })
-        })
-      }
-      return Base
+      return makeClass(identifier, fields, (schemaFields) => SClass(identifier)(schemaFields, annotations))
     }
+  }
+  function makeClass(
+    identifier: string,
+    fields: Struct.Fields,
+    makeSchemaClass: (fields: Schema.Struct.Fields) => any
+  ) {
+    const variantStruct = Struct(fields)
+    const schema = extract(variantStruct, options.defaultVariant, {
+      isDefault: true
+    })
+    const SchemaClass = makeSchemaClass(schema.fields)
+    class Base extends SchemaClass {
+      static [TypeId] = fields
+      static extend(identifier: string) {
+        const extend = super.extend(identifier)
+        return (
+          extension: Struct.Fields | Schema.Struct<Schema.Struct.Fields>,
+          annotations?: Schema.Annotations.Declaration<any, readonly [any]>
+        ) => {
+          const isSchemaStruct = Schema.isSchema(extension)
+          return makeClass(
+            identifier,
+            { ...fields, ...(isSchemaStruct ? extension.fields as Struct.Fields : extension) },
+            (schemaFields) => extend(isSchemaStruct ? extension : schemaFields, annotations)
+          )
+        }
+      }
+    }
+    for (const variant of options.variants) {
+      Object.defineProperty(Base, variant, {
+        value: extract(variantStruct, variant).annotate({
+          id: `${identifier}.${variant}`,
+          title: `${identifier}.${variant}`
+        })
+      })
+    }
+    return Base
   }
   function FieldOnly<const Keys extends ReadonlyArray<Variants[number]>>(keys: Keys) {
     return function<S extends Schema.Top>(schema: S) {
