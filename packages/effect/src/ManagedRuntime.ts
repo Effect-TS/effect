@@ -365,7 +365,7 @@ export const make = <R, ER>(
           Layer.buildWithMemoMap(layer, memoMap, layerScope),
           (context) =>
             Effect.sync(() => {
-              self.cachedContext = context
+              if (disposed === undefined) self.cachedContext = context
             })
         ),
         { ...defaultRunOptions, scheduler: fiber.cache.scheduler }

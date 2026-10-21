@@ -132,6 +132,21 @@ describe("ManagedRuntime", () => {
     strictEqual(released, true)
   })
 
+  test("a layer build that disposes the runtime does not cache its context", async () => {
+    const built = Promise.withResolvers<void>()
+    const runtime: ManagedRuntime.ManagedRuntime<never, never> = ManagedRuntime.make(Layer.effectDiscard(
+      Effect.suspend(() => runtime.disposeEffect).pipe(
+        Effect.andThen(Effect.yieldNow),
+        Effect.ensuring(Effect.sync(() => built.resolve()))
+      )
+    ))
+    await runtime.runPromiseExit(Effect.void)
+    await built.promise
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    strictEqual(runtime.cachedContext, undefined)
+    assert.isTrue(Exit.isFailure(await runtime.runPromiseExit(Effect.void)))
+  })
+
   test("detached-fiber disposal still interrupts and awaits its former request", async () => {
     const events: Array<string> = []
     const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
