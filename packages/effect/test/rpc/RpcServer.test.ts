@@ -171,7 +171,7 @@ describe("RpcServer", () => {
     }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
 
-  it.effect("decodes payloads with the configured parse options", () =>
+  it.effect("decodes payloads with the ParseOptions annotation", () =>
     Effect.gen(function*() {
       const batches: Array<ReadonlyArray<number>> = []
       const resolver = RequestResolver.make<GetUser>((entries) =>
@@ -190,9 +190,9 @@ describe("RpcServer", () => {
       const group = RpcGroup.make(Rpc.make("getUsers", {
         payload: { users: Schema.Array(User) },
         success: Schema.Array(Schema.String)
-      }))
+      }).annotate(Rpc.ParseOptions, { concurrency: "unbounded" }))
       const handler = HttpEffect.toWebHandler(
-        yield* RpcServer.toHttpEffect(group, { parseOptions: { concurrency: "unbounded" } }).pipe(
+        yield* RpcServer.toHttpEffect(group).pipe(
           Effect.provide(Layer.mergeAll(
             group.toLayer({ getUsers: ({ users }) => Effect.succeed(users) }),
             RpcSerialization.layerNdjson

@@ -288,7 +288,7 @@ describe("RpcClient", () => {
       }
     }))
 
-  it.effect("decodes responses with the configured parse options", () =>
+  it.effect("decodes responses with the ParseOptions annotation", () =>
     Effect.gen(function*() {
       const batches: Array<ReadonlyArray<number>> = []
       const resolver = RequestResolver.make<GetUser>((entries) =>
@@ -306,9 +306,9 @@ describe("RpcClient", () => {
       ))
       const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
       const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
-      const client = yield* RpcClient.make(RpcGroup.make(Rpc.make("GetUsers", { success: Schema.Array(User) })), {
-        parseOptions: { concurrency: "unbounded" }
-      }).pipe(Effect.provideService(
+      const client = yield* RpcClient.make(RpcGroup.make(
+        Rpc.make("GetUsers", { success: Schema.Array(User) }).annotate(Rpc.ParseOptions, { concurrency: "unbounded" })
+      )).pipe(Effect.provideService(
         RpcClient.Protocol,
         RpcClient.Protocol.of({
           codecFor: RpcSerialization.json.codecFor,
