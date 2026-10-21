@@ -241,9 +241,9 @@ const extract: {
     if (options?.isDefault === true && Schema.isSchema(self)) {
       return self as any
     }
-    const cache = options?.isDefault === true
-      ? self[defaultCacheSymbol] ?? (self[defaultCacheSymbol] = Object.create(null))
-      : self[cacheSymbol] ?? (self[cacheSymbol] = Object.create(null))
+    // own caches only, so extended classes never reuse their parent's variants
+    const cacheKey = options?.isDefault === true ? defaultCacheSymbol : cacheSymbol
+    const cache = Object.hasOwn(self, cacheKey) ? self[cacheKey]! : (self[cacheKey] = Object.create(null))
     if (Object.hasOwn(cache, variant)) {
       return cache[variant] as any
     }
@@ -302,7 +302,7 @@ export interface Class<
   Variants extends string = never,
   Default extends string = never,
   Inherited = {}
-> extends Omit<Schema.Class<Self, S, Inherited>, "extend">, Struct<Struct_.Simplify<Fields>> {
+> extends Schema.Class<Self, S, Inherited>, Struct<Struct_.Simplify<Fields>> {
   readonly "Type": Self
   readonly "Encoded": S["Encoded"]
   readonly "DecodingServices": S["DecodingServices"]
@@ -329,29 +329,38 @@ export interface Class<
    * Returns a function that creates a variant schema subclass with this
    * class's fields plus additional fields, regenerating every variant schema
    * from the merged fields.
+   *
+   * **Gotchas**
+   *
+   * Fields with the same name replace inherited fields in every variant. A
+   * replacement that omits an inherited field from the default variant does
+   * not remove it from the class schema; the caller must ensure replacements
+   * preserve the base class contract.
    */
-  extend<Extended = never, Static = {}, Brand = {}>(
-    identifier: string
-  ): {
-    <const NewFields extends Struct.Fields>(
-      fields: NewFields & Struct.Validate<NewFields, Variants>,
-      annotations?:
-        | Schema.Annotations.Declaration<
-          Extended,
-          readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, NewFields>, true>>]
-        >
-        | undefined
-    ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, NewFields>, Variants, Default>
-    <Extension extends Schema.Struct<Schema.Struct.Fields>>(
-      schema: Extension,
-      annotations?:
-        | Schema.Annotations.Declaration<
-          Extended,
-          readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, Extension["fields"]>, true>>]
-        >
-        | undefined
-    ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, Extension["fields"]>, Variants, Default>
-  }
+  readonly extend:
+    & (<Extended = never, Static = {}, Brand = {}>(
+      identifier: string
+    ) => {
+      <const NewFields extends Struct.Fields>(
+        fields: NewFields & Struct.Validate<NewFields, Variants>,
+        annotations?:
+          | Schema.Annotations.Declaration<
+            Extended,
+            readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, NewFields>, true>>]
+          >
+          | undefined
+      ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, NewFields>, Variants, Default>
+      <Extension extends Schema.Struct<Schema.Struct.Fields>>(
+        schema: Extension,
+        annotations?:
+          | Schema.Annotations.Declaration<
+            Extended,
+            readonly [Schema.Struct<ExtractFields<Default, Struct_.Assign<Fields, Extension["fields"]>, true>>]
+          >
+          | undefined
+      ): Class.Extend<Extended, Static, Self & Brand, Struct_.Assign<Fields, Extension["fields"]>, Variants, Default>
+    })
+    & Schema.Class<Self, S, Inherited>["extend"]
 }
 
 /**
