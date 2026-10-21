@@ -458,6 +458,12 @@ describe("toCodeDocument", () => {
       })
     })
 
+    it("Int", () => {
+      assertSchema({ schema: Schema.Int }, {
+        codes: makeCode("Schema.Int", "number")
+      })
+    })
+
     it("Number & non-canonical finite check", () => {
       const expectRuntime = (schema: Schema.Constraint, runtime: string) =>
         assertSchema({ schema }, { codes: makeCode(runtime, "number") })

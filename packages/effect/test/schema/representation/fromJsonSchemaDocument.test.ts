@@ -480,7 +480,7 @@ describe("fromJsonSchemaDocument", () => {
     it("type only", () => {
       assertFromJsonSchema(
         { schema: { type: "integer" } },
-        { codes: makeCode(`Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" }))`, `number`) }
+        { codes: makeCode(`Schema.Int`, `number`) }
       )
     })
 
