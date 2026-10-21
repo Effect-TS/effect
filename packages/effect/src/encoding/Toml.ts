@@ -41,6 +41,17 @@ const hasOwn = Object.prototype.hasOwnProperty
 const makeTable = (): Table => Object.create(null)
 const isTable = (value: unknown): value is Table =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date)
+const isValidDateTime = (token: string): boolean => {
+  const date = /^(\d{4})-(\d{2})-(\d{2})/.exec(token)
+  if (date !== null) {
+    const year = Number(date[1])
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][Number(date[2]) - 1]
+    if (days === undefined || Number(date[3]) < 1 || Number(date[3]) > days) return false
+  }
+  const time = /(\d{2}):(\d{2}):(\d{2})/.exec(token)
+  return time === null || (Number(time[1]) <= 23 && Number(time[2]) <= 59 && Number(time[3]) <= 59)
+}
 
 class TomlParser {
   readonly root = makeTable()
@@ -242,6 +253,9 @@ class TomlParser {
   }
 
   private parseDate(token: string): Date | string | undefined {
+    if (!isValidDateTime(token)) {
+      this.fail(`Invalid date-time '${token}'`)
+    }
     const date = "\\d{4}-\\d{2}-\\d{2}"
     const time = "\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?"
     if (new RegExp(`^${date}[Tt]${time}(?:[Zz]|[+-]\\d{2}:\\d{2})$`).test(token)) {
