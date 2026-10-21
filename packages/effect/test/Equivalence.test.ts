@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
-import { Equivalence, pipe } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { Array as Arr, Equivalence, pipe } from "effect"
 
 describe("Equivalence", () => {
   it("String", () => {
@@ -62,6 +62,20 @@ describe("Equivalence", () => {
     assertFalse(eqE0E1E2(["a", 1, true], ["b", 1, true]))
     assertFalse(eqE0E1E2(["a", 1, true], ["a", 2, true]))
     assertFalse(eqE0E1E2(["a", 1, true], ["a", 1, false]))
+  })
+
+  it("combineAll reuses finite criteria across comparisons", () => {
+    const fromGenerator = Equivalence.combineAll((function*() {
+      yield Equivalence.Number
+    })())
+    const fromIterator = Equivalence.combineAll([Equivalence.Number].values())
+    const fromReducer = Equivalence.makeReducer<number>().combineAll([Equivalence.Number].values())
+    for (const eq of [fromGenerator, fromIterator, fromReducer]) {
+      assertFalse(eq(1, 2))
+      assertFalse(eq(1, 2))
+      assertFalse(eq(2, 1))
+    }
+    deepStrictEqual(Arr.dedupeWith([1, 2, 3], Equivalence.combineAll([Equivalence.Number].values())), [1, 2, 3])
   })
 
   it("Tuple", () => {
