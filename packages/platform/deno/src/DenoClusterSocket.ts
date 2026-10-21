@@ -181,27 +181,16 @@ export const layer = <
  * @since 4.0.0
  */
 export const layerK8sHttpClient: Layer.Layer<K8sHttpClient.K8sHttpClient> = K8sHttpClient.layer.pipe(
-  Layer.provide(
-    Layer.fresh(DenoHttpClient.layer).pipe(
-      Layer.provide(Layer.effect(
-        DenoHttpClient.Fetch,
-        Effect.gen(function*() {
-          const fs = yield* FileSystem.FileSystem
-          const caCertOption = yield* fs.readFileString("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt").pipe(
-            Effect.option
-          )
-          if (Option.isNone(caCertOption)) {
-            return globalThis.fetch
-          }
-
-          const client = yield* Effect.acquireRelease(
-            Effect.sync(() => Deno.createHttpClient({ caCerts: [caCertOption.value] })),
-            (client) => Effect.sync(() => client.close())
-          )
-          return ((input, init) => globalThis.fetch(input, { ...init, client } as any)) as typeof globalThis.fetch
-        })
-      ))
+  Layer.provide(Layer.unwrap(Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const caCertOption = yield* fs.readFileString("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt").pipe(
+      Effect.option
     )
-  ),
+    if (Option.isNone(caCertOption)) {
+      return DenoHttpClient.layer
+    }
+
+    return DenoHttpClient.layerOptions({ caCerts: [caCertOption.value] })
+  }))),
   Layer.provide(DenoFileSystem.layer)
 )
