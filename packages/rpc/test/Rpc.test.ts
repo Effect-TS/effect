@@ -1,6 +1,6 @@
 import { Headers } from "@effect/platform"
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Cause, Effect, Exit, Schema } from "effect"
 
 const TestGroup = RpcGroup.make(
@@ -40,5 +40,19 @@ describe("Rpc", () => {
     assert.isTrue(Exit.isFailure(roundTripped))
     const defect = Cause.squash((roundTripped as Exit.Failure<any, any>).cause)
     assert.deepStrictEqual(defect, error)
+  })
+
+  it.sequential("RpcMiddleware.Tag supports a non-writable Error.stackTraceLimit", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")!
+    Object.defineProperty(Error, "stackTraceLimit", { ...descriptor, writable: false })
+    vi.resetModules()
+    try {
+      const { RpcMiddleware } = await import("@effect/rpc")
+      class M extends RpcMiddleware.Tag<M>()("M") {}
+      assert.strictEqual(M.key, "M")
+    } finally {
+      Object.defineProperty(Error, "stackTraceLimit", descriptor)
+      vi.resetModules()
+    }
   })
 })

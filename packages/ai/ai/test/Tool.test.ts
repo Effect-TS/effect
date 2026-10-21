@@ -2,7 +2,7 @@ import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as Response from "@effect/ai/Response"
 import * as Tool from "@effect/ai/Tool"
 import * as Toolkit from "@effect/ai/Toolkit"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as TestUtils from "./utilities.js"
@@ -498,5 +498,18 @@ describe("Tool", () => {
           "Failed to decode tool call parameters for tool 'HandlerRequired' from:\n'{}'"
         )
       }))
+  })
+
+  it.sequential("unsafeSecureJsonParse supports a non-writable Error.stackTraceLimit", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")!
+    Object.defineProperty(Error, "stackTraceLimit", { ...descriptor, writable: false })
+    vi.resetModules()
+    try {
+      const { unsafeSecureJsonParse } = await import("@effect/ai/Tool")
+      assert.deepStrictEqual(unsafeSecureJsonParse(`{"a":1}`), { a: 1 })
+    } finally {
+      Object.defineProperty(Error, "stackTraceLimit", descriptor)
+      vi.resetModules()
+    }
   })
 })

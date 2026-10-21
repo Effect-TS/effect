@@ -1,6 +1,6 @@
 import type { HttpApiEndpoint } from "@effect/platform"
 import { HttpApiBuilder } from "@effect/platform"
-import { describe, it } from "@effect/vitest"
+import { describe, it, vi } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import { identity, Schema } from "effect"
 
@@ -280,5 +280,20 @@ describe("HttpApiBuilder", () => {
       assertNormalizedUrlParams(schema, { a: "a" }, { a: ["a"] })
       assertNormalizedUrlParams(schema, { a: ["a"] }, { a: ["a"] })
     })
+  })
+
+  it.sequential("middleware and router tags support a non-writable Error.stackTraceLimit", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")!
+    Object.defineProperty(Error, "stackTraceLimit", { ...descriptor, writable: false })
+    vi.resetModules()
+    try {
+      const { HttpApiMiddleware, HttpRouter } = await import("@effect/platform")
+      class M extends HttpApiMiddleware.Tag<M>()("M") {}
+      class R extends HttpRouter.Tag("R")<R>() {}
+      deepStrictEqual([M.key, R.key], ["M", "R"])
+    } finally {
+      Object.defineProperty(Error, "stackTraceLimit", descriptor)
+      vi.resetModules()
+    }
   })
 })

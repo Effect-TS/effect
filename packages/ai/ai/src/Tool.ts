@@ -38,6 +38,7 @@ import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { Covariant } from "effect/Types"
 import type * as AiError from "./AiError.js"
+import * as StackTraceLimit from "./internal/stackTraceLimit.js"
 
 // =============================================================================
 // Type Ids
@@ -1515,12 +1516,12 @@ function filter(obj: any) {
  */
 export const unsafeSecureJsonParse = (text: string): unknown => {
   // Performance optimization, see https://github.com/fastify/secure-json-parse/pull/90
-  const { stackTraceLimit } = Error
-  Error.stackTraceLimit = 0
+  const prevLimit = StackTraceLimit.getStackTraceLimit()
+  StackTraceLimit.setStackTraceLimit(0)
   try {
     return _parse(text)
   } finally {
-    Error.stackTraceLimit = stackTraceLimit
+    StackTraceLimit.setStackTraceLimit(prevLimit)
   }
 }
 

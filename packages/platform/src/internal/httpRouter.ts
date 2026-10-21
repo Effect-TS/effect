@@ -23,6 +23,7 @@ import * as Error from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
 import * as Respondable from "../HttpServerRespondable.js"
 import type * as ServerResponse from "../HttpServerResponse.js"
+import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.js"
 
 /** @internal */
 export const TypeId: Router.TypeId = Symbol.for("@effect/platform/HttpRouter") as Router.TypeId
@@ -831,10 +832,10 @@ export const Tag =
     R | Router.HttpRouter.DefaultServices
   > => {
     const Err = globalThis.Error as any
-    const limit = Err.stackTraceLimit
-    Err.stackTraceLimit = 2
+    const limit = getStackTraceLimit()
+    setStackTraceLimit(2)
     const creationError = new Err()
-    Err.stackTraceLimit = limit
+    setStackTraceLimit(limit)
 
     function TagClass() {}
     const TagClass_ = TagClass as any as Mutable<Router.HttpRouter.TagClass<Self, Name, E, R>>
