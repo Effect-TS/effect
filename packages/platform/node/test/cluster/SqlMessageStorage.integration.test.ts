@@ -22,6 +22,7 @@ import {
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, Statement } from "effect/sql"
 import { TestClock } from "effect/testing"
+import { MssqlContainer } from "../fixtures/mssql-utils.ts"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
@@ -106,6 +107,7 @@ describe("SqlMessageStorage", () => {
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
+    ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
     // Tests truncate this backend's shared tables.
