@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, assertTrue, deepStrictEqual, doesNotThrow, strictEqual } from "@effect/vitest/utils"
-import { Redacted, Schema } from "effect"
+import { DateTime, Duration, Redacted, Result, Schema } from "effect"
 import { Headers } from "effect/http"
-import { assertSuccess } from "../utils/assert.ts"
+import { assertSuccess, throws } from "../utils/assert.ts"
 
 describe("Headers", () => {
   describe("Schema.Headers", () => {
@@ -103,5 +103,99 @@ describe("Headers", () => {
 
     strictEqual(redactPattern.lastIndex, 3)
     strictEqual(namePattern.lastIndex, 4)
+  })
+})
+
+// 1994-11-06T08:49:37Z, the example date of RFC 9110 §5.6.7
+const httpDateMillis = 784_111_777_000
+
+const withTimeZone = <A>(timeZone: string, body: () => A): A => {
+  const previous = process.env.TZ
+  process.env.TZ = timeZone
+  try {
+    return body()
+  } finally {
+    if (previous === undefined) {
+      delete process.env.TZ
+    } else {
+      process.env.TZ = previous
+    }
+  }
+}
+
+describe("HttpDate", () => {
+  it("parses every RFC 9110 format as UTC, whatever the process time zone", () => {
+    withTimeZone("America/New_York", () => {
+      for (
+        const input of [
+          "Sun, 06 Nov 1994 08:49:37 GMT",
+          "Sunday, 06-Nov-94 08:49:37 GMT",
+          "Sun Nov  6 08:49:37 1994"
+        ]
+      ) {
+        const date = Result.getOrThrow(Headers.parseHttpDate(input))
+        strictEqual(DateTime.toEpochMillis(date), httpDateMillis, input)
+      }
+    })
+  })
+
+  it("rejects values that are not HTTP dates", () => {
+    for (const input of ["1994-11-06T08:49:37Z", "120", "", "Sun, 06 Nov 1994 08:49:37 PST"]) {
+      const result = Headers.parseHttpDate(input)
+      assertTrue(Result.isFailure(result) && result.failure.reason._tag === "InvalidHttpDate", input)
+    }
+  })
+
+  it("formats as IMF-fixdate", () => {
+    strictEqual(Headers.formatHttpDate(DateTime.makeUnsafe(httpDateMillis)), "Sun, 06 Nov 1994 08:49:37 GMT")
+  })
+
+  it("HttpDateSchema decodes any format and encodes IMF-fixdate", () => {
+    const decoded = Schema.decodeSync(Headers.HttpDateSchema)("Sun Nov  6 08:49:37 1994")
+    strictEqual(DateTime.toEpochMillis(decoded), httpDateMillis)
+    strictEqual(Schema.encodeSync(Headers.HttpDateSchema)(decoded), "Sun, 06 Nov 1994 08:49:37 GMT")
+    throws(() => Schema.decodeSync(Headers.HttpDateSchema)("tomorrow"))
+  })
+})
+
+describe("RetryAfter", () => {
+  it("parses whole seconds", () => {
+    const value = Result.getOrThrow(Headers.parseRetryAfter("120"))
+    strictEqual(value._tag, "Seconds")
+    if (value._tag === "Seconds") {
+      strictEqual(value.seconds, 120)
+    }
+    strictEqual(Headers.formatRetryAfter(value), "120")
+  })
+
+  it("parses an HTTP date", () => {
+    const value = Result.getOrThrow(Headers.parseRetryAfter("Sun Nov  6 08:49:37 1994"))
+    strictEqual(value._tag, "Date")
+    if (value._tag === "Date") {
+      strictEqual(DateTime.toEpochMillis(value.date), httpDateMillis)
+    }
+    strictEqual(Headers.formatRetryAfter(value), "Sun, 06 Nov 1994 08:49:37 GMT")
+  })
+
+  it("rejects negative, fractional, exponent and non-finite seconds", () => {
+    for (const input of ["-5", "1.5", "1e3", "Infinity", "", "soon"]) {
+      const result = Headers.parseRetryAfter(input)
+      assertTrue(Result.isFailure(result) && result.failure.reason._tag === "InvalidRetryAfter", input)
+    }
+  })
+
+  it("delay is measured from now and never negative", () => {
+    const seconds = Result.getOrThrow(Headers.parseRetryAfter("120"))
+    strictEqual(Duration.toMillis(Headers.retryAfterDelay(seconds, httpDateMillis)), 120_000)
+    const date = Result.getOrThrow(Headers.parseRetryAfter("Sun, 06 Nov 1994 08:49:37 GMT"))
+    strictEqual(Duration.toMillis(Headers.retryAfterDelay(date, httpDateMillis - 30_000)), 30_000)
+    strictEqual(Duration.toMillis(Headers.retryAfterDelay(date, httpDateMillis + 30_000)), 0)
+  })
+
+  it("RetryAfterSchema round trips and rejects invalid values", () => {
+    const decoded = Schema.decodeSync(Headers.RetryAfterSchema)("120")
+    strictEqual(decoded._tag, "Seconds")
+    strictEqual(Schema.encodeSync(Headers.RetryAfterSchema)(decoded), "120")
+    throws(() => Schema.decodeSync(Headers.RetryAfterSchema)("-5"))
   })
 })
