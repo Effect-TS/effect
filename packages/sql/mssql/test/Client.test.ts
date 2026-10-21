@@ -22,7 +22,8 @@ const state = vi.hoisted(() => ({
   connections: [] as Array<MockConnection>,
   pendingStarted: undefined as Deferred.Deferred<void> | undefined,
   errorAfterConnect: false,
-  emissionError: undefined as unknown
+  emissionError: undefined as unknown,
+  cancelTimesOut: false
 }))
 
 vi.mock("tedious", async (importOriginal) => {
@@ -31,6 +32,7 @@ vi.mock("tedious", async (importOriginal) => {
 
   class MockRequest {
     readonly listeners: Record<string, (...args: Array<any>) => void> = {}
+    canceled = false
 
     constructor(
       readonly sql: string,
@@ -76,18 +78,31 @@ vi.mock("tedious", async (importOriginal) => {
     close() {
       if (!this.closed) {
         this.closed = true
+        // Like tedious, fail the in-flight request when the connection closes.
+        const pending = this.pending
+        this.pending = undefined
+        pending?.callback(new Error("Connection closed before request completed."), 0, [])
         this.emit("end")
       }
       Effect.runSync(Deferred.succeed(this.closedSignal, undefined))
     }
 
     cancel() {
-      // MssqlClient also calls cancel before each request. Count only an actual
-      // in-flight cancellation, so that cannot satisfy the interruption assertion.
       state.cancelCalls++
-      if (this.pending) {
+      const pending = this.pending
+      if (pending && !pending.canceled) {
         this.cancellations++
-        this.pending = undefined
+        pending.canceled = true
+        // Like tedious, the canceled request stays in flight until the server
+        // acknowledges the attention, unless the cancel timeout closes the
+        // connection first.
+        if (!state.cancelTimesOut) {
+          setTimeout(() => {
+            if (this.pending !== pending) return
+            this.pending = undefined
+            pending.callback(Object.assign(new Error("Canceled."), { code: "ECANCEL" }), 0, [])
+          }, 0)
+        }
       }
     }
 
@@ -95,6 +110,12 @@ vi.mock("tedious", async (importOriginal) => {
       this.queries.push(request.sql)
       if (this.closed) {
         request.callback(new Error("Requests can only be made in the LoggedIn state, not the Final state"), 0, [])
+      } else if (this.pending) {
+        request.callback(
+          new Error("Requests can only be made in the LoggedIn state, not the SentClientRequest state"),
+          0,
+          []
+        )
       } else if (request.sql === "SELECT pending" || !state.completeRequests) {
         this.pending = request
         if (state.pendingStarted) {
@@ -305,6 +326,7 @@ const reset = () => {
   state.pendingStarted = Deferred.makeUnsafe<void>()
   state.errorAfterConnect = false
   state.emissionError = undefined
+  state.cancelTimesOut = false
 }
 
 const makeClient = MssqlClient.make({
@@ -358,7 +380,7 @@ describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
       assert.deepStrictEqual(rows, [{ value: 42 }])
     }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
 
-  it.live("replaces a connection that ends without error after query cancellation", () =>
+  it.live("reuses a connection only after an interrupted query's cancellation completes", () =>
     Effect.gen(function*() {
       reset()
       const client = yield* bounded(makeClient)
@@ -368,9 +390,26 @@ describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
       yield* bounded(Fiber.interrupt(query))
       assert.strictEqual(connection.cancellations, 1)
 
+      const rows = yield* bounded(client.unsafe("SELECT recovered"))
+      assert.deepStrictEqual(rows, [{ value: 42 }])
+      assert.strictEqual(state.connections.length, 1)
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
+
+  it.live("replaces a connection that ends without error after query cancellation", () =>
+    Effect.gen(function*() {
+      reset()
+      state.cancelTimesOut = true
+      const client = yield* bounded(makeClient)
+      const connection = state.connections[0]
+      const query = yield* Effect.forkScoped(client.unsafe("SELECT pending"))
+      yield* bounded(Deferred.await(state.pendingStarted!))
+      const interrupted = yield* Effect.forkScoped(Fiber.interrupt(query))
+      yield* Effect.yieldNow
+      assert.strictEqual(connection.cancellations, 1)
+
       // Model tedious' cancel timeout: Final state and end, with no error event.
       connection.close()
-      yield* Effect.yieldNow
+      yield* bounded(Fiber.join(interrupted))
       const rows = yield* bounded(client.unsafe("SELECT recovered"))
       assert.deepStrictEqual(rows, [{ value: 42 }])
       assert.strictEqual(state.connections.length, 2)

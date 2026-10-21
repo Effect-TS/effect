@@ -390,13 +390,26 @@ export const make = (
         })
       })
 
+      // Tedious cancels asynchronously: the connection stays in its request
+      // state until the server acknowledges the cancellation, or the cancel
+      // timeout closes the connection, and only then runs the request callback.
+      // Wait for that callback on interruption, so the connection is not
+      // released or reused while the canceled request is still in flight.
+      const cancelRequest = (completed: Deferred.Deferred<void>) =>
+        Effect.suspend(() => {
+          conn.cancel()
+          return Deferred.await(completed)
+        })
+
       const run = (
         sql: string,
         values?: ReadonlyArray<any>,
         rowsAsArray = false
       ) =>
         Effect.callback<any, SqlError>((resume) => {
+          const completed = Deferred.makeUnsafe<void>()
           const req = new Tedious.Request(sql, (cause, _rowCount, result) => {
+            Deferred.doneUnsafe(completed, Effect.void)
             if (cause) {
               resume(
                 Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") }))
@@ -428,9 +441,8 @@ export const make = (
             }
           }
 
-          conn.cancel()
           conn.execSql(req)
-          return Effect.sync(() => conn.cancel())
+          return cancelRequest(completed)
         })
 
       const runProcedure = (
@@ -439,10 +451,12 @@ export const make = (
       ) =>
         Effect.callback<any, SqlError>((resume) => {
           const result: Record<string, any> = {}
+          const completed = Deferred.makeUnsafe<void>()
 
           const req = new Tedious.Request(
             escape(procedure.name),
             (cause, _, rows) => {
+              Deferred.doneUnsafe(completed, Effect.void)
               if (cause) {
                 resume(
                   Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") }))
@@ -477,9 +491,8 @@ export const make = (
             Rec.assignProperty(result, name, value)
           })
 
-          conn.cancel()
           conn.callProcedure(req)
-          return Effect.sync(() => conn.cancel())
+          return cancelRequest(completed)
         })
 
       const connection = identity<MssqlConnection>({
