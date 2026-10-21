@@ -364,13 +364,19 @@ export const make = <R, ER>(
         Effect.tap(
           Layer.buildWithMemoMap(layer, memoMap, layerScope),
           (context) =>
-            Effect.suspend(() => {
-              if (disposed !== undefined) return Effect.die("ManagedRuntime disposed")
+            Effect.sync(() => {
               self.cachedContext = context
-              return Effect.void
             })
         ),
-        { ...defaultRunOptions, scheduler: fiber.cache.scheduler }
+        {
+          scheduler: fiber.cache.scheduler,
+          // Unlike requests, the build joins the fiber scope even if it disposed
+          // the runtime, so disposal still interrupts it.
+          onFiberStart(fiber) {
+            managedFibers.add(fiber)
+            Fiber.runIn(fiber, fiberScope)
+          }
+        }
       )
     }
     return Effect.flatten(Fiber.await(buildFiber))
