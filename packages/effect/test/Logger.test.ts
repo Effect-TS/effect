@@ -506,6 +506,68 @@ describe("jsonLogger", () => {
     )
   })
 
+  it("errors in multiple messages keep enumerable properties", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const error = Object.assign(new TypeError("boom"), { code: "E1" })
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: ["ctx", error],
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: ["ctx", { code: "E1", name: "TypeError", message: "boom" }],
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
+  })
+
+  it("errors with a custom toJSON", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    class CustomError extends Error {
+      toJSON(key: string) {
+        return { custom: true, key }
+      }
+    }
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: new CustomError("private"),
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: { custom: true, key: "message" },
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
+  })
+
   it("circular objects", () => {
     const date = new Date()
     vi.setSystemTime(date)
