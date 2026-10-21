@@ -1,4 +1,4 @@
-import { afterAll, assert, describe, describeWrapped, expect, it, layer } from "@effect/vitest"
+import { afterAll, assert, beforeAll, beforeEach, describe, describeWrapped, expect, it, layer } from "@effect/vitest"
 import * as testAssert from "@effect/vitest/utils"
 import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import * as Arbitrary from "effect/Arbitrary"
@@ -248,6 +248,19 @@ describeWrapped("describeWrapped", (it) => {
         assert.isTrue(task.suite?.tasks.includes(task))
         assert.strictEqual(yield* Foo, "foo")
       }))
+  })
+})
+
+describe("Effect hooks", () => {
+  let beforeAllRan = false
+  let beforeEachRan = false
+
+  beforeAll(() => Effect.sync(() => (beforeAllRan = true)))
+  beforeEach(() => Effect.sync(() => (beforeEachRan = true)))
+
+  it("runs Effects returned by beforeAll and beforeEach", () => {
+    assert.isTrue(beforeAllRan)
+    assert.isTrue(beforeEachRan)
   })
 })
 
