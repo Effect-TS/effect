@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { HttpMiddleware, type HttpServerResponse } from "effect/http"
+import { HttpMiddleware, type HttpServerRequest, type HttpServerResponse } from "effect/http"
 import { describe, expect, it } from "tstyche"
 
 declare const app: Effect.Effect<HttpServerResponse.HttpServerResponse, "app-error", "app-service">
@@ -15,6 +15,26 @@ describe("HttpMiddleware", () => {
 
       expect(middleware(app)).type.toBe<
         Effect.Effect<HttpServerResponse.HttpServerResponse, "app-error", "app-service">
+      >()
+    })
+
+    it("preserves app types and adds middleware failures with an arrow function", () => {
+      const middleware = HttpMiddleware.make((app) =>
+        Effect.gen(function*() {
+          const response = yield* app
+          if (response.status >= 500) {
+            return yield* Effect.fail("middleware-error" as const)
+          }
+          return response
+        })
+      )
+
+      expect(middleware(app)).type.toBe<
+        Effect.Effect<
+          HttpServerResponse.HttpServerResponse,
+          "app-error" | "middleware-error",
+          "app-service" | HttpServerRequest.HttpServerRequest
+        >
       >()
     })
   })
