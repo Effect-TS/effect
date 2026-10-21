@@ -376,6 +376,7 @@ development:
         ],
         ["nested collections", "a: {\n  b: [\n    1\n  ],\n  c: {d: 2}\n  }\n", { a: { b: [1], c: { d: 2 } } }],
         ["multiline scalars and comments", "a: [b\n  c, # one\n  \"d\n  e\"]\n", { a: ["b c", "d e"] }],
+        ["trailing commas", "a: [\n  1,\n  {b: 2,},\n  ]\n", { a: [1, { b: 2 }] }],
         // The spec requires the closing bracket past the parent indentation; common parsers accept it at the parent column.
         ["closing bracket at the mapping indentation", "a: [\n  1,\n  2\n]\n", { a: [1, 2] }],
         ["closing bracket at the sequence indentation", "- [\n  1\n]\n", [[1]]]
@@ -415,17 +416,24 @@ development:
   describe("tags", () => {
     it("resolves core schema tags and keeps unknown tags as strings", () => {
       assert.deepStrictEqual(
-        Yaml.parse("a: !!int \"7\"\nb: !!str 1\nc: !Ref 123\nd: &x !!int \"1\"\ne: !!int &y \"2\"\n"),
-        { a: 7, b: "1", c: "123", d: 1, e: 2 }
+        Yaml.parse(
+          "a: !!int \"7\"\nb: !!str 1\nc: !Ref 123\nd: &x !!int \"1\"\ne: !!int &y \"2\"\nf: !!int \"012\"\ng: !!float \"1.\"\n"
+        ),
+        { a: 7, b: "1", c: "123", d: 1, e: 2, f: 12, g: 1 }
       )
     })
 
     it("resolves %TAG handles", () => {
       assert.deepStrictEqual(Yaml.parse("%TAG !e! tag:example.com,2000:\n---\na: !e!foo 1\n"), { a: "1" })
+      assert.deepStrictEqual(Yaml.parse("%TAG !! tag:example.com:\n---\na: !!int 1\n"), { a: "1" })
     })
 
-    it("rejects a core tag that does not match its scalar", () => {
-      assert.throws(() => Yaml.parse("a: !!int abc\n"), SyntaxError)
+    it("rejects a repeated %TAG handle", () => {
+      assert.throws(() => Yaml.parse("%TAG !e! tag:a:\n%TAG !e! tag:a:\n---\na: !e!x 1\n"), SyntaxError)
+    })
+
+    it.each(["!!int abc", "!!float 0x10"])("rejects a core tag that does not match its scalar: %s", (value) => {
+      assert.throws(() => Yaml.parse(`a: ${value}\n`), SyntaxError)
     })
   })
 
@@ -533,6 +541,11 @@ development:
       ["block", "a: &x\n  b: *x\n"]
     ])("rejects a recursive alias in a %s collection", (_, source) => {
       assert.throws(() => Yaml.parse(source), /recursive/i)
+    })
+
+    // YAML 1.2.2 §7.1: an alias refers to the most recent preceding anchor.
+    it("resolves an alias after a collection to an anchor redefined inside it", () => {
+      assert.deepStrictEqual(Yaml.parse("first: &x [&x 1, *x]\nlast: *x\n"), { first: [1, 1], last: 1 })
     })
 
     it("preserves hashes in JSON-style flow strings without colon spacing", () => {
