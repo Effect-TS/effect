@@ -243,10 +243,10 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  * @since 1.0.0
  * @category Models
  */
-export type Part<Tools extends Record<string, Tool.Any>> =
+export type Part<Tools extends Record<string, Tool.Any>, EncodedToolParameters extends boolean = false> =
   | TextPart
   | ReasoningPart
-  | ToolCallParts<Tools>
+  | ToolCallParts<Tools, EncodedToolParameters>
   | ToolResultParts<Tools>
   | FilePart
   | DocumentSourcePart
@@ -313,7 +313,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  * @since 1.0.0
  * @category Models
  */
-export type StreamPart<Tools extends Record<string, Tool.Any>> =
+export type StreamPart<Tools extends Record<string, Tool.Any>, EncodedToolParameters extends boolean = false> =
   | TextStartPart
   | TextDeltaPart
   | TextEndPart
@@ -323,7 +323,7 @@ export type StreamPart<Tools extends Record<string, Tool.Any>> =
   | ToolParamsStartPart
   | ToolParamsDeltaPart
   | ToolParamsEndPart
-  | ToolCallParts<Tools>
+  | ToolCallParts<Tools, EncodedToolParameters>
   | ToolResultParts<Tools>
   | FilePart
   | DocumentSourcePart
@@ -410,8 +410,11 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  * @since 1.0.0
  * @category Utility Types
  */
-export type ToolCallParts<Tools extends Record<string, Tool.Any>> = {
-  [Name in keyof Tools]: Name extends string ? ToolCallPart<Name, Tool.Parameters<Tools[Name]>>
+export type ToolCallParts<Tools extends Record<string, Tool.Any>, EncodedParameters extends boolean = false> = {
+  [Name in keyof Tools]: Name extends string ? ToolCallPart<
+      Name,
+      EncodedParameters extends true ? Tool.ParametersEncoded<Tools[Name]> : Tool.Parameters<Tools[Name]>
+    >
     : never
 }[keyof Tools]
 

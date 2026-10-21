@@ -232,9 +232,9 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
      */
     name: Name,
     /**
-     * Parameters to pass to the tool handler.
+     * Encoded parameters to decode and pass to the tool handler.
      */
-    params: Tool.Parameters<Tools[Name]>
+    params: Tool.ParametersEncoded<Tools[Name]>
   ) => Effect.Effect<
     Tool.HandlerResult<Tools[Name]>,
     Tool.Failure<Tools[Name]>,

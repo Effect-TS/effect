@@ -3,7 +3,9 @@ import * as Response from "@effect/ai/Response"
 import * as Tool from "@effect/ai/Tool"
 import * as Toolkit from "@effect/ai/Toolkit"
 import { assert, describe, it } from "@effect/vitest"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
@@ -23,7 +25,42 @@ const MyToolkitLayer = MyToolkit.toLayer({
     )
 })
 
+const TransformTool = Tool.make("TransformTool", {
+  parameters: { count: Schema.NumberFromString },
+  success: Schema.Number
+})
+
+const TransformToolkit = Toolkit.make(TransformTool)
+
+const TransformToolkitLayer = TransformToolkit.toLayer({
+  TransformTool: ({ count }) => Effect.succeed(count * 2)
+})
+
+const transformToolCall = {
+  type: "tool-call",
+  id: "tool-abc123",
+  name: "TransformTool",
+  params: { count: "42" }
+} as const
+
 describe("LanguageModel", () => {
+  describe("generateText", () => {
+    it.effect("disableToolCallResolution returns tool call params that toolkit.handle accepts", () =>
+      Effect.gen(function*() {
+        const toolkit = yield* TransformToolkit
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(TestUtils.withLanguageModel({ generateText: [transformToolCall] }))
+
+        const toolCall = response.toolCalls[0]!
+        assert.deepStrictEqual(toolCall.params, { count: "42" })
+        const { result } = yield* toolkit.handle(toolCall.name, toolCall.params)
+        assert.strictEqual(result, 84)
+      }).pipe(Effect.provide(TransformToolkitLayer)))
+  })
+
   describe("streamText", () => {
     it.effect("should emit tool calls before executing tool handlers", () =>
       Effect.gen(function*() {
@@ -82,5 +119,23 @@ describe("LanguageModel", () => {
 
         assert.deepStrictEqual(parts, [toolCallPart, toolResultPart])
       }))
+
+    it.effect("disableToolCallResolution emits tool call params that toolkit.handle accepts", () =>
+      Effect.gen(function*() {
+        const toolkit = yield* TransformToolkit
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({ streamText: [transformToolCall] })
+        )
+
+        const toolCall = Chunk.findFirst(parts, (part) => part.type === "tool-call").pipe(Option.getOrThrow)
+        assert.deepStrictEqual(toolCall.params, { count: "42" })
+        const { result } = yield* toolkit.handle(toolCall.name, toolCall.params)
+        assert.strictEqual(result, 84)
+      }).pipe(Effect.provide(TransformToolkitLayer)))
   })
 })

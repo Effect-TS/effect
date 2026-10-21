@@ -207,7 +207,7 @@ export interface Service {
     Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Effect.Effect<
-    LanguageModel.GenerateTextResponse<Tools>,
+    LanguageModel.GenerateTextResponse<Tools, LanguageModel.ExtractEncodedToolParameters<Options>>,
     LanguageModel.ExtractError<Options>,
     LanguageModel.LanguageModel | LanguageModel.ExtractContext<Options>
   >
@@ -242,7 +242,7 @@ export interface Service {
     Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Stream.Stream<
-    Response.StreamPart<Tools>,
+    Response.StreamPart<Tools, LanguageModel.ExtractEncodedToolParameters<Options>>,
     LanguageModel.ExtractError<Options>,
     LanguageModel.LanguageModel | LanguageModel.ExtractContext<Options>
   >
@@ -287,7 +287,7 @@ export interface Service {
     Options extends NoExcessProperties<LanguageModel.GenerateObjectOptions<any, A, I, R>, Options>,
     Tools extends Record<string, Tool.Any> = {}
   >(options: Options & LanguageModel.GenerateObjectOptions<Tools, A, I, R>) => Effect.Effect<
-    LanguageModel.GenerateObjectResponse<Tools, A>,
+    LanguageModel.GenerateObjectResponse<Tools, A, LanguageModel.ExtractEncodedToolParameters<Options>>,
     LanguageModel.ExtractError<Options>,
     LanguageModel.LanguageModel | R | LanguageModel.ExtractContext<Options>
   >
