@@ -3,7 +3,9 @@ import type * as HttpServer from "@effect/platform/HttpServer"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import { assert, describe, it } from "@effect/vitest"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
 import * as Net from "node:net"
 
 const connect = (port: number) =>
@@ -62,5 +64,28 @@ describe.skipIf(typeof Bun === "undefined")("HttpServer", () => {
       assert.match(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
       assert.strictEqual(firstByte & 0x0f, 1)
       assert.strictEqual(firstByte & 0x40, 0x40, "outbound text frame should set RSV1")
+    }))
+
+  it.scoped("does not interrupt an upgraded request when the client disconnects", () =>
+    Effect.gen(function*() {
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
+      const result = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+      yield* server.serve(
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* socket.runRaw(() => {})
+          return HttpServerResponse.empty()
+        }).pipe(
+          Effect.scoped,
+          Effect.interruptible,
+          Effect.onExit((exit) => Deferred.succeed(result, exit))
+        )
+      )
+      const ws = new WebSocket(`ws://127.0.0.1:${(server.address as HttpServer.TcpAddress).port}`)
+      ws.onopen = () => ws.close(1000)
+
+      const exit = yield* Deferred.await(result)
+      assert.strictEqual(exit._tag, "Success")
     }))
 })
