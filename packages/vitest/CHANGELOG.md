@@ -1,5 +1,14 @@
 # @effect/vitest
 
+## 0.30.1
+
+### Patch Changes
+
+- [#5980](https://github.com/Effect-TS/effect/pull/5980) [`b5e7f6c`](https://github.com/Effect-TS/effect/commit/b5e7f6c5337d2590ca3470695b1355e13b969a0b) Thanks @bxff! - Allow Vitest 4 in the `vitest` peer dependency range.
+
+- Updated dependencies [[`23e019c`](https://github.com/Effect-TS/effect/commit/23e019c1282135f337d5d622160d570c1644fe79), [`c2ea45c`](https://github.com/Effect-TS/effect/commit/c2ea45c7c72fb6e00bb98cd4183558a90f2ed2a5), [`3120364`](https://github.com/Effect-TS/effect/commit/312036412db345332b79ccb4f827b6ad28edb195), [`358ac3f`](https://github.com/Effect-TS/effect/commit/358ac3f844ccae4af846a7acfe84c08c023f4088), [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b), [`19f6f3d`](https://github.com/Effect-TS/effect/commit/19f6f3d45cfebccc6937f676e47bf60ff31b397d), [`8c46c75`](https://github.com/Effect-TS/effect/commit/8c46c75565ea062e9cfee49b4dcfcf8dcc8e7019), [`9895b61`](https://github.com/Effect-TS/effect/commit/9895b61ff7bea168211315c775e94ee85812acc1)]:
+  - effect@3.22.4
+
 ## 0.30.0
 
 ### Patch Changes

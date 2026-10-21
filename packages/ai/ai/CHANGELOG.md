@@ -1,5 +1,21 @@
 # @effect/ai
 
+## 0.37.1
+
+### Patch Changes
+
+- [#9691](https://github.com/Effect-TS/effect/pull/9691) [`0792107`](https://github.com/Effect-TS/effect/commit/0792107474f0256ad43195981b7f6d3b12da7064) Thanks @effect-bot! - Preserve provider metadata as part options in `Prompt.fromResponseParts`, so provider data such as Google `thoughtSignature` is sent back in multi-turn conversations.
+
+- [#6120](https://github.com/Effect-TS/effect/pull/6120) [`8f6ee7b`](https://github.com/Effect-TS/effect/commit/8f6ee7b197f753fa9160bc5dbc0cbb1761528f86) Thanks @MaxwellCalkin! - Keep tool call parameters encoded when `disableToolCallResolution` is set, and type `Toolkit.handle` to accept the encoded parameters it decodes.
+
+- [#6279](https://github.com/Effect-TS/effect/pull/6279) [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b) Thanks @bweis! - Avoid throwing when `Error.stackTraceLimit` is non-writable (frozen intrinsics / SES / deterministic sandboxes such as Temporal).
+
+- Updated dependencies [[`23e019c`](https://github.com/Effect-TS/effect/commit/23e019c1282135f337d5d622160d570c1644fe79), [`579c4a9`](https://github.com/Effect-TS/effect/commit/579c4a9f96418f9898282f9e7112fe2cd2686272), [`c2ea45c`](https://github.com/Effect-TS/effect/commit/c2ea45c7c72fb6e00bb98cd4183558a90f2ed2a5), [`3120364`](https://github.com/Effect-TS/effect/commit/312036412db345332b79ccb4f827b6ad28edb195), [`ea8c9db`](https://github.com/Effect-TS/effect/commit/ea8c9db34e5bd44a8f29302bfd89a6d5f6e13df7), [`358ac3f`](https://github.com/Effect-TS/effect/commit/358ac3f844ccae4af846a7acfe84c08c023f4088), [`ee6d1ad`](https://github.com/Effect-TS/effect/commit/ee6d1adc356c1847f208211bc8ae4b868c6e0fc0), [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b), [`486d67b`](https://github.com/Effect-TS/effect/commit/486d67ba3fe4cce226159e71c84fca3bb221eac7), [`1137a3e`](https://github.com/Effect-TS/effect/commit/1137a3e9c0274bff1828ce91e35b413b1ce26003), [`cab7f2e`](https://github.com/Effect-TS/effect/commit/cab7f2e3493e4a3dceda27cb1b6d28c4599cb939), [`19f6f3d`](https://github.com/Effect-TS/effect/commit/19f6f3d45cfebccc6937f676e47bf60ff31b397d), [`57b747f`](https://github.com/Effect-TS/effect/commit/57b747f0cf4ddec47f23c08553c9e7011e31f8a4), [`5aed0d3`](https://github.com/Effect-TS/effect/commit/5aed0d37260eff91d370bb27e2a955af28e05744), [`81b9d3a`](https://github.com/Effect-TS/effect/commit/81b9d3ad602132d7535086359b19f672fafbf1f2), [`8c46c75`](https://github.com/Effect-TS/effect/commit/8c46c75565ea062e9cfee49b4dcfcf8dcc8e7019), [`fb8c80c`](https://github.com/Effect-TS/effect/commit/fb8c80cddaa649f7b6f714f3092c9ff6a5108946), [`9895b61`](https://github.com/Effect-TS/effect/commit/9895b61ff7bea168211315c775e94ee85812acc1)]:
+  - effect@3.22.4
+  - @effect/platform@0.97.3
+  - @effect/rpc@0.76.4
+  - @effect/experimental@0.61.2
+
 ## 0.37.0
 
 ### Patch Changes

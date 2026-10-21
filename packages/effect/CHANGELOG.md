@@ -1,5 +1,29 @@
 # effect
 
+## 3.22.4
+
+### Patch Changes
+
+- [#6469](https://github.com/Effect-TS/effect/pull/6469) [`23e019c`](https://github.com/Effect-TS/effect/commit/23e019c1282135f337d5d622160d570c1644fe79) Thanks @coyaSONG! - Serialize `Cause.Fail` under `error` instead of `failure`, matching its `error` property.
+
+  This changes the output of `toJSON`, `JSON.stringify` and Node inspection for causes, including nested `Sequential` / `Parallel` causes and `Exit.Failure`, as well as log messages that contain a `Cause` or `Exit` value. The `cause` field of built-in loggers is rendered with `Cause.pretty` and is unaffected. Code that reads `failure` from serialized causes should read `error` instead.
+
+- [#6316](https://github.com/Effect-TS/effect/pull/6316) [`c2ea45c`](https://github.com/Effect-TS/effect/commit/c2ea45c7c72fb6e00bb98cd4183558a90f2ed2a5) Thanks @xianjianlf2! - Allow interrupting `Effect.cachedWithTTL` and `Effect.cachedInvalidateWithTTL` while the cached effect is running. Interrupting the caller now interrupts that run and leaves nothing cached, so the next call runs the effect again.
+
+- [#6270](https://github.com/Effect-TS/effect/pull/6270) [`3120364`](https://github.com/Effect-TS/effect/commit/312036412db345332b79ccb4f827b6ad28edb195) Thanks @chatman-media! - Fix `Duration.decode` and `Duration.times` throwing on fractional values.
+
+  `Duration.decode` threw on fractional `nanos` and `micros` inputs such as `"1.5 micros"`, and `Duration.times` threw when a nanosecond-backed `Duration` was multiplied by a non-integer. Both now round to whole nanoseconds, so `Duration.decode("1.5 micros")` is 1500 nanos and `Duration.times(Duration.nanos(2n), 2.5)` is 5 nanos.
+
+- [#6254](https://github.com/Effect-TS/effect/pull/6254) [`358ac3f`](https://github.com/Effect-TS/effect/commit/358ac3f844ccae4af846a7acfe84c08c023f4088) Thanks @markgdawson! - Support `Effect.fn` bodies whose generators were transpiled into functions that return an iterator, such as `babel-preset-expo` output.
+
+- [#6279](https://github.com/Effect-TS/effect/pull/6279) [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b) Thanks @bweis! - Avoid throwing when `Error.stackTraceLimit` is non-writable (frozen intrinsics / SES / deterministic sandboxes such as Temporal).
+
+- [#4888](https://github.com/Effect-TS/effect/pull/4888) [`19f6f3d`](https://github.com/Effect-TS/effect/commit/19f6f3d45cfebccc6937f676e47bf60ff31b397d) Thanks @paolopiaggio! - `Logger.jsonLogger` now includes `name` and `message` when logging an `Error`, instead of `{}`.
+
+- [#9658](https://github.com/Effect-TS/effect/pull/9658) [`8c46c75`](https://github.com/Effect-TS/effect/commit/8c46c75565ea062e9cfee49b4dcfcf8dcc8e7019) Thanks @effect-bot! - Remove the `AbortSignal` listener added by `Effect.runPromise` / `Runtime.runPromiseExit` once the fiber completes, fixing `MaxListenersExceededWarning` when a signal is reused across runs (e.g. `it.effect.prop`).
+
+- [#6264](https://github.com/Effect-TS/effect/pull/6264) [`9895b61`](https://github.com/Effect-TS/effect/commit/9895b61ff7bea168211315c775e94ee85812acc1) Thanks @Hoishin! - Return `self` from `BigDecimal.normalize` for already-normalized values
+
 ## 3.22.3
 
 ### Patch Changes
