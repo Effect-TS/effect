@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Context, Effect, Exit, Fiber, Layer, Logger, Stream } from "effect"
+import { Context, Duration, Effect, Exit, Fiber, Layer, Logger, Stream } from "effect"
 import { CircuitBreaker, Redis } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import { fail, held, rejection } from "./CircuitBreakerTest.ts"
@@ -176,5 +176,34 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
         yield* fail(breaker, key)
         assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
       }).pipe(TestClock.withLive))
+
+    it.effect("a duration Redis cannot represent is rejected before the script writes anything", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const unrepresentable = Duration.millis(1e20)
+
+        // admit never creates the key.
+        const idleStore = yield* storeOn(redis, { idleTimeToLive: unrepresentable })
+        const idle = yield* CircuitBreaker.make({ ...options, onStoreError: "fail" }).pipe(
+          Effect.provideService(CircuitBreaker.CircuitBreakerStore, idleStore)
+        )
+        const error = yield* Effect.flip(Effect.void.pipe(idle.execute({ key: "unrepresentable-idle" })))
+        assert.strictEqual(error.reason._tag, "CircuitBreakerStoreError")
+        assert.strictEqual(yield* redis.send<number>("EXISTS", "circuitbreaker:unrepresentable-idle"), 0)
+
+        // record leaves the hash and its TTL as they were.
+        const key = "unrepresentable-open"
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: unrepresentable
+        })
+        yield* Effect.void.pipe(breaker.execute({ key }))
+        const before = yield* redis.send("HGETALL", `circuitbreaker:${key}`)
+        yield* fail(breaker, key)
+
+        assert.deepStrictEqual(yield* redis.send("HGETALL", `circuitbreaker:${key}`), before)
+        assert.isAbove(yield* redis.send<number>("PTTL", `circuitbreaker:${key}`), 0)
+        assert.deepStrictEqual(yield* breaker.state(key), { _tag: "Closed", key })
+      }))
   })
 }
