@@ -135,10 +135,10 @@ describe("Statement", () => {
       })
       const acquired = yield* makeClient(Effect.void, false, Effect.sleep("30 millis"))
       const borrowed = yield* makeClient(Effect.void, true, Effect.sleep("30 millis"))
-      const run = (sql: SqlClient.SqlClient, propagate: boolean) =>
+      const run = (statement: Effect.Effect<unknown, unknown>, propagate: boolean) =>
         Effect.gen(function*() {
           const fiber = yield* Effect.forkChild(
-            sql`select 1`.pipe(
+            statement.pipe(
               Effect.withTracer(tracer),
               Effect.provideService(Statement.SpanPropagationEnabled, propagate)
             )
@@ -147,13 +147,14 @@ describe("Statement", () => {
           yield* Fiber.join(fiber)
         })
 
-      yield* run(acquired, true)
-      yield* run(borrowed, true)
-      yield* run(acquired, false)
-      yield* run(borrowed, false)
+      for (const propagate of [true, false]) {
+        yield* run(acquired`select 1`, propagate)
+        yield* run(borrowed`select 1`, propagate)
+        yield* run(Stream.runDrain(acquired`select 1`.stream), propagate)
+      }
       assert.deepStrictEqual(
         spans.map((span) => span.attributes.get("db.client.connection.wait_time_ms")),
-        [30, 30, undefined, undefined]
+        [30, 30, 30, undefined, undefined, undefined]
       )
     }).pipe(Effect.provide(Reactivity.layer)))
 
