@@ -23,7 +23,6 @@ import type { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
 import type * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as internal from "./internal/mcpClient.ts"
-import * as models from "./internal/mcpClientModels.ts"
 import type { McpClientError } from "./McpClientError.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import type * as McpSchema from "./McpSchema.ts"
@@ -51,7 +50,7 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
  * @since 4.0.6
  */
 export const Transport: Context.ServiceClass<Transport, "effect/ai/McpClient/Transport", Transport["Service"]> =
-  models.Transport
+  internal.Transport
 
 /**
  * Type of the Transport service tag.
@@ -448,7 +447,7 @@ export const readResource: {
  * @category services
  * @since 4.0.6
  */
-export const McpClient: Context.ServiceClass<McpClient, "effect/ai/McpClient", Client> = models.McpClient
+export const McpClient: Context.ServiceClass<McpClient, "effect/ai/McpClient", Client> = internal.McpClient
 
 /**
  * Type of the McpClient service tag.

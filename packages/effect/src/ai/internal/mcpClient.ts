@@ -1,5 +1,6 @@
 import * as ByteSize from "../../ByteSize.ts"
 import type * as Cause from "../../Cause.ts"
+import * as Context from "../../Context.ts"
 import * as Deferred from "../../Deferred.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
@@ -19,11 +20,13 @@ import type * as Rpc from "../../rpc/Rpc.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
+import type * as Api from "../McpClient.ts"
 import type { CallToolParams, Client, ProtocolVersion } from "../McpClient.ts"
 import {
   ClosedError,
   ConfigurationError,
   HttpError,
+  isMcpClientError,
   LimitError,
   McpClientError,
   type McpClientErrorReason,
@@ -38,7 +41,6 @@ import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as Tool from "../Tool.ts"
 import * as Toolkit from "../Toolkit.ts"
-import { McpClient, Transport, TransportTypeId } from "./mcpClientModels.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./mcpProtocol.ts"
 
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
@@ -52,6 +54,12 @@ const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
 type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
+
+const TransportTypeId = "~effect/ai/McpClient/Transport" as const
+
+export const Transport = Context.Service<Api.Transport, Api.Transport["Service"]>()("effect/ai/McpClient/Transport")
+
+export const McpClient = Context.Service<Api.McpClient, Client>()("effect/ai/McpClient")
 
 interface Options {
   readonly name: string
@@ -67,7 +75,7 @@ interface CallOptions {
   readonly timeout?: Duration.Input | undefined
 }
 
-type TransportService = Transport["Service"] & {
+type TransportService = Api.Transport["Service"] & {
   readonly protocol: Protocol
   readonly request: (
     message: McpSchema.JsonRpcRequest,
@@ -89,7 +97,8 @@ const decodeVersionRejection = Schema.decodeUnknownOption(Schema.Struct({
 const decodeServerCapabilities = Schema.decodeUnknownEffect(McpSchema.ServerCapabilities)
 const decodeImplementation = Schema.decodeUnknownEffect(McpSchema.Implementation)
 const encodeImplementation = Schema.encodeSync(McpSchema.Implementation)
-const decodeToolArguments = Schema.decodeUnknownEffect(Schema.JsonObject)
+// The protocol payload codec validates argument values; the toolkit only checks for an object.
+const decodeToolArguments = Schema.decodeUnknownEffect(Schema.Record(Schema.String, Schema.Unknown))
 
 const messageLimit = (input: ByteSize.Input | undefined) => {
   const size = input === undefined ? DEFAULT_MAX_MESSAGE_BYTES : Option.getOrUndefined(ByteSize.fromInput(input))
@@ -217,7 +226,7 @@ export const stdio = Effect.fnUntraced(function*(options: {
       }
     })),
     Effect.mapError((cause) =>
-      cause instanceof McpClientError
+      isMcpClientError(cause)
         ? cause
         : fail(new TransportError({ description: "MCP stdout failed", cause }))
     ),
@@ -464,7 +473,7 @@ export const http = Effect.fnUntraced(function*(options: {
   const exchange = <A>(effect: Effect.Effect<A, unknown, Scope.Scope>) =>
     effect.pipe(
       Effect.mapError((cause) =>
-        cause instanceof McpClientError
+        isMcpClientError(cause)
           ? cause
           : fail(new TransportError({ description: "Cannot read MCP response", cause }))
       ),
@@ -567,13 +576,13 @@ export const http = Effect.fnUntraced(function*(options: {
 })
 
 export const layerStdio = (options: Options & Parameters<typeof stdio>[0]): Layer.Layer<
-  McpClient,
+  Api.McpClient,
   McpClientError,
   ChildProcessSpawner
 > => Layer.effect(McpClient)(make(options)).pipe(Layer.provide(Layer.effect(Transport)(stdio(options))))
 
 export const layerHttp = (options: Options & Parameters<typeof http>[0]): Layer.Layer<
-  McpClient,
+  Api.McpClient,
   McpClientError,
   HttpClient.HttpClient
 > => Layer.effect(McpClient)(make(options)).pipe(Layer.provide(Layer.effect(Transport)(http(options))))
@@ -615,7 +624,7 @@ type ListResult<K extends string, A> = Record<K, ReadonlyArray<A>> & { readonly 
 export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Return<
   Client,
   McpClientError,
-  Scope.Scope | Transport
+  Scope.Scope | Api.Transport
 > {
   const transport = (yield* Transport) as TransportService
   const protocol = transport.protocol

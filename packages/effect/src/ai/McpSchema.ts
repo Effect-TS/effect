@@ -130,7 +130,7 @@ export const JsonRpcRequest = Schema.Struct({
   jsonrpc: Schema.Literal("2.0"),
   id: RequestId,
   method: Schema.String,
-  params: Schema.optional(Schema.JsonObject)
+  params: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
 })
 
 /**
@@ -152,7 +152,7 @@ export type JsonRpcRequest = typeof JsonRpcRequest.Type
 export const JsonRpcNotification = Schema.Struct({
   jsonrpc: Schema.Literal("2.0"),
   method: Schema.String,
-  params: Schema.optional(Schema.JsonObject)
+  params: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
 })
 
 /**
@@ -175,7 +175,7 @@ export const JsonRpcResponse = Schema.Union([
   Schema.Struct({
     jsonrpc: Schema.Literal("2.0"),
     id: RequestId,
-    result: Schema.Json
+    result: Schema.Unknown
   }),
   Schema.Struct({
     jsonrpc: Schema.Literal("2.0"),
@@ -183,7 +183,7 @@ export const JsonRpcResponse = Schema.Union([
     error: Schema.Struct({
       code: Schema.Int,
       message: Schema.String,
-      data: Schema.optional(Schema.Json)
+      data: Schema.optional(Schema.Unknown)
     })
   })
 ])
@@ -201,6 +201,11 @@ export type JsonRpcResponse =
 
 /**
  * Schema for JSON-RPC messages exchanged by MCP peers.
+ *
+ * **Details**
+ *
+ * Only the envelope is validated. `params`, `result` and error `data` are left
+ * for the method's own schema to decode.
  *
  * @stability unstable
  * @category schemas
