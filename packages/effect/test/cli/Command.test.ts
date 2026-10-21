@@ -1,6 +1,16 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
-import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag, Prompt } from "effect/cli"
+import {
+  Argument,
+  CliConfig,
+  CliError,
+  CliOutput,
+  Command,
+  Flag,
+  GlobalFlag,
+  Prompt,
+  TerminalCapabilities
+} from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
@@ -955,6 +965,22 @@ describe("Command", () => {
 
         assert.deepStrictEqual(yield* TestConsole.errorLines, ["CUSTOM ERROR: Deployment failed"])
       }))
+
+    it.effect("should color built-in output from TerminalCapabilities", () =>
+      Effect.gen(function*() {
+        const capabilities = { canColor: true, canAnimate: false, canPrompt: false }
+        const run = Command.runWith(Command.make("tool"), { version: "1.2.3" })(["--version"])
+
+        yield* run.pipe(Effect.provideService(TerminalCapabilities.TerminalCapabilities, capabilities))
+        yield* run.pipe(
+          Effect.provideService(TerminalCapabilities.TerminalCapabilities, capabilities),
+          Effect.provideService(CliOutput.Formatter, CliOutput.defaultFormatter({ colors: false }))
+        )
+
+        const [colored, custom] = yield* TestConsole.logLines
+        assert.include(String(colored), "\x1b[1mtool")
+        assert.strictEqual(String(custom), "tool v1.2.3")
+      }).pipe(Effect.provide(TestLayerWithoutFormatter)))
 
     it.effect("should render UserError once when running wizard-generated arguments", () =>
       Effect.gen(function*() {
