@@ -429,9 +429,9 @@ const Uint8ArrayFromArrayBuffer = Schema.transform(
       return new Uint8Array(fromA)
     },
     encode(arr) {
-      return arr.byteLength === arr.buffer.byteLength ?
+      return (arr.byteLength === arr.buffer.byteLength ?
         arr.buffer :
-        arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength)
+        arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength)) as ArrayBuffer
     }
   }
 )

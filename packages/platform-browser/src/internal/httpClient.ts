@@ -91,7 +91,7 @@ const sendBody = (
     case "Raw":
       return Effect.sync(() => xhr.send(body.body as any))
     case "Uint8Array":
-      return Effect.sync(() => xhr.send(body.body))
+      return Effect.sync(() => xhr.send(body.body as Uint8Array<ArrayBuffer>))
     case "FormData":
       return Effect.sync(() => xhr.send(body.formData))
     case "Stream":
