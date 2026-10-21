@@ -302,6 +302,8 @@ export type PartEncoded =
 /**
  * Creates a Schema for non-streaming response parts based on a toolkit.
  *
+ * **Details**
+ *
  * When no toolkit is provided, tool call and tool result parts accept any tool
  * name, with parameters and results decoded as JSON.
  *
@@ -393,6 +395,8 @@ export type StreamPartEncoded =
 
 /**
  * Creates a Schema for streaming response parts based on a toolkit.
+ *
+ * **Details**
  *
  * When no toolkit is provided, tool call and tool result parts accept any tool
  * name, with parameters and results decoded as JSON.
