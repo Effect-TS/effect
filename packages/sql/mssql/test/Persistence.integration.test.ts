@@ -31,17 +31,15 @@ PersistedQueueTest.suiteWith(
   "90 seconds"
 )
 
-// Records deadlock graphs until the returned effect reads them. The built-in
-// system_health session can buffer events for minutes, so a dedicated session
-// dispatches them within a second.
+// Records deadlock graphs in a dedicated session, since system_health can
+// buffer events for minutes
 const captureDeadlocks = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
   const name = `effect_deadlocks_${crypto.randomUUID().replaceAll("-", "")}`
   const session = sql(name)
   const drop = sql`IF EXISTS (SELECT 1 FROM sys.server_event_sessions WHERE name = ${name})
     DROP EVENT SESSION ${session} ON SERVER`
-  // The reader drops the session before the test scope interrupts any queue
-  // statements; this only covers a test that fails before reading.
+  // only runs if the test fails before reading
   yield* Effect.acquireRelease(
     sql`CREATE EVENT SESSION ${session} ON SERVER
       ADD EVENT sqlserver.xml_deadlock_report
@@ -51,8 +49,7 @@ const captureDeadlocks = Effect.gen(function*() {
     () => Effect.ignore(drop)
   )
   return Effect.gen(function*() {
-    // every statement has returned, so any deadlock was already detected and
-    // only waits on the session's dispatch latency
+    // wait out the session's dispatch latency
     yield* Effect.sleep("2 seconds")
     const rows = yield* sql<{ readonly graph: string }>`
       SELECT CAST(x.e.query('.') AS NVARCHAR(MAX)) AS graph
@@ -77,8 +74,7 @@ const summarizeDeadlock = (graph: string) => {
   return `${transactions.join(" vs ")} on ${Array.from(new Set(locks)).join(", ")}`
 }
 
-// Declares statement parameters as variables, for a client that sends every
-// statement as a plain batch instead of through sp_executesql
+// Declares statement parameters as variables for plain batches
 const declareParameter = (value: unknown, i: number): string => {
   const name = `@${i + 1}`
   if (typeof value === "string") return `DECLARE ${name} NVARCHAR(MAX) = N'${value.replaceAll("'", "''")}';`
@@ -90,11 +86,9 @@ const declareParameter = (value: unknown, i: number): string => {
   throw new Error(`unsupported parameter ${String(value)}`)
 }
 
-// A third-party mssql-dialect client built from the public SqlClient
-// constructor, whose sessions run with XACT_ABORT ON: any error inside a
-// transaction dooms it. With rawBatch, statements run as plain batches with
-// their parameters declared inline. Interruption sends an attention and waits
-// for the request to settle.
+// A third-party mssql-dialect client whose sessions run with XACT_ABORT ON.
+// With rawBatch, statements run as plain batches. Interruption waits for the
+// request to settle.
 const makeXactAbortClient = Effect.fnUntraced(function*(
   database: string,
   options?: { readonly rawBatch?: boolean; readonly size?: number }

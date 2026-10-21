@@ -1490,19 +1490,16 @@ export const makeStoreSql: (
         INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
         VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `,
-    // A duplicate offer is skipped, also when another writer, such as an older
-    // release of this store, inserts the id between the check and the insert.
-    // XACT_ABORT is off while the offer runs, so the unique index error ends
-    // just the insert instead of dooming a caller transaction whose session
-    // runs with XACT_ABORT ON. The caller's setting is restored before any
-    // other error is rethrown, so that error still aborts the transaction. The
-    // offer runs in a nested sp_executesql, whose exit restores the setting
-    // however the batch ends, including an attention from a client that sends
-    // plain batches. The locking read waits for an uncommitted duplicate even
-    // under read committed snapshot.
+    // Avoids MERGE WITH (HOLDLOCK), whose range locks deadlock concurrent offers.
+    // - READCOMMITTEDLOCK makes the check wait for an uncommitted duplicate, even
+    //   under read committed snapshot.
+    // - A duplicate inserted after the check raises 2601/2627. XACT_ABORT is off
+    //   so that error doesn't doom the caller's transaction; it is restored
+    //   before rethrowing any other error.
+    // - The nested sp_executesql restores XACT_ABORT on exit, including on
+    //   cancellation.
     mssql: () => {
-      // the nested statement is plain text, so identifiers are escaped here
-      // the way the SQL Server compiler escapes them; values stay parameters
+      // matches the SQL Server compiler's identifier escaping
       const escape = (name: string) => `[${name.replace(/\]/g, "]]").replace(/\./g, "].[")}]`
       const table = escape(tableName)
       const offerSql = `
@@ -1726,10 +1723,8 @@ export const makeStoreSql: (
             }),
             sql.withTransaction
           ),
-        // UPDLOCK holds the candidate rows until the update claims them, and
-        // READPAST skips candidate rows another claim or a settlement has
-        // locked instead of waiting on them. The update itself can still wait
-        // on page locks or on secondary index maintenance.
+        // READPAST skips rows locked by another claim or a settlement instead
+        // of deadlocking with them
         mssql: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
