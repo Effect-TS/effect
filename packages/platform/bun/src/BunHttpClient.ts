@@ -1,10 +1,91 @@
 /**
+ * Bun HTTP client built on the fetch-based `HttpClient`.
+ *
+ * This module re-exports `effect/http/FetchHttpClient` and adds
+ * `layerOptions`, which applies Bun's native fetch options, such as Unix
+ * domain sockets and custom TLS settings, to every request.
+ *
  * @stability unstable
  * @since 4.0.0
  */
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import type * as HttpClient from "effect/http/HttpClient"
+import * as Layer from "effect/Layer"
 
 /**
  * @category re-exports
  * @since 4.0.0
  */
 export * from "effect/http/FetchHttpClient"
+
+/**
+ * Bun fetch options applied to every request sent by `layerOptions`.
+ *
+ * **Details**
+ *
+ * This is Bun's `BunFetchRequestInit` without the fields the client sets per
+ * request: `method`, `body`, `signal` and `duplex`. `headers` are merged with
+ * the request headers, with request headers taking precedence.
+ *
+ * Bun-specific fields include `unix` for a Unix domain socket path, `tls` for
+ * `ca`, `cert`, `key`, `rejectUnauthorized` and `checkServerIdentity`, `proxy`,
+ * `decompress` and `verbose`. Standard `RequestInit` fields such as
+ * `credentials` or `redirect` are accepted too.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type Options = Omit<BunFetchRequestInit, "method" | "body" | "signal" | "duplex">
+
+/**
+ * Layer that provides an `HttpClient` sending every request through Bun's
+ * `fetch` with the supplied native options.
+ *
+ * **When to use**
+ *
+ * Use to send every request over a Unix domain socket with `{ unix: path }`,
+ * or over TLS with a custom CA and client certificate with
+ * `{ tls: { ca, cert, key } }`.
+ *
+ * **Details**
+ *
+ * The options are provided as the `RequestInit` service of a fresh
+ * `FetchHttpClient.layer`, so they replace any `RequestInit` supplied from
+ * outside. Request-specific method, body, abort signal and duplex mode are
+ * still set per request, and request headers override the same keys in
+ * `options.headers`.
+ *
+ * Bun also offers `session` for sharing a connection pool across requests;
+ * pass it through these options if your Bun version supports it.
+ *
+ * **Example** (Sending requests over a Unix domain socket)
+ *
+ * ```ts
+ * import { BunHttpClient } from "@effect/platform-bun"
+ *
+ * const DockerClient = BunHttpClient.layerOptions({ unix: "/var/run/docker.sock" })
+ * ```
+ *
+ * **Example** (Mutual TLS with a private CA)
+ *
+ * ```ts
+ * import { BunHttpClient } from "@effect/platform-bun"
+ *
+ * declare const ca: string
+ * declare const cert: string
+ * declare const key: string
+ *
+ * const MtlsClient = BunHttpClient.layerOptions({ tls: { ca, cert, key } })
+ * ```
+ *
+ * @see {@link Options} for the accepted fields
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.6
+ */
+export const layerOptions = (options: Options): Layer.Layer<HttpClient.HttpClient> =>
+  Layer.fresh(FetchHttpClient.layer).pipe(
+    Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, options))
+  )
