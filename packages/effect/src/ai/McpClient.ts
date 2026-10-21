@@ -1,11 +1,11 @@
 /**
  * Connects to MCP servers with scoped Effect clients.
  *
- * Clients discover tools, prompts and resources using the protocol revision selected by their transport.
- * `callTool` preserves tool-reported errors as results; supplying a schema fails with
- * reason `ToolError` and retains the original result. Transport and protocol failures
- * fail the Effect. Initial discovery can retry one rejection of the selected revision.
- * Interactive server requests, subscriptions, OAuth, and general retries are not included.
+ * Clients discover tools, prompts and resources using the protocol revision selected by
+ * their transport. `callTool` returns tool-reported errors as results; supplying a schema
+ * turns them into a `ToolError` reason that retains the original result. Transport and
+ * protocol failures fail the Effect. Interactive server requests, subscriptions, OAuth
+ * and retries are not included.
  *
  * @stability unstable
  * @since 4.0.0
@@ -15,6 +15,7 @@ import type * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
+import { dual } from "../Function.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
 import type * as Layer from "../Layer.ts"
 import type { Pipeable } from "../Pipeable.ts"
@@ -52,9 +53,7 @@ export type McpClientErrorReason = typeof McpClientErrorReason.Type
  * **Details**
  *
  * Use `Effect.catchReason` or `Effect.catchReasons` to recover from selected
- * reasons. The constructor accepts plain tagged reason objects.
- * `Effect.unwrapReason` promotes the reason into the error channel.
- * `ToolError.result` retains the complete decoded tool result.
+ * reasons. A `ToolError` reason retains the complete tool result.
  *
  * **Example** (Recovering from a deadline failure)
  *
@@ -260,7 +259,7 @@ export interface Options {
 }
 
 /**
- * Per-operation deadline override covering admission and result decoding.
+ * Per-operation deadline override. Defaults to `Options.timeout`.
  *
  * @stability unstable
  * @category configuration
@@ -271,7 +270,8 @@ export interface CallOptions {
 }
 
 /**
- * Tool invocation carrying its discovered definition for HTTP routing.
+ * Tool invocation carrying the discovered definition, which supplies the
+ * request name and, over modern HTTP, the header routing annotations.
  *
  * @stability unstable
  * @category models
@@ -320,14 +320,14 @@ export interface Client extends Pipeable {
   readonly instructions?: string | undefined
   /** Returns every tool page as one snapshot, bounded by the deadline, 100 pages and 10,000 tools. */
   readonly listTools: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
-  /** Returns all prompt pages as one bounded snapshot. */
+  /** Returns every prompt page as one snapshot with the same bounds as `listTools`. */
   readonly listPrompts: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
   /** Gets the messages for a discovered prompt. */
   readonly getPrompt: (
     params: GetPromptParams,
     options?: CallOptions
   ) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
-  /** Returns all resource pages as one bounded snapshot. */
+  /** Returns every resource page as one snapshot with the same bounds as `listTools`. */
   readonly listResources: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   /** Reads the complete contents of a resource URI. */
   readonly readResource: (
@@ -381,10 +381,14 @@ export const callTool: {
     params: CallToolParams<S>,
     options?: CallOptions
   ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
-} = internal.callTool
+} = dual(
+  (args) => isClient(args[0]),
+  <S extends Schema.Top>(self: Client, params: CallToolParams<S>, options?: CallOptions) =>
+    self.callTool(params, options)
+)
 
 /**
- * Returns all prompt pages as one bounded snapshot.
+ * Returns every prompt page as one snapshot with the same bounds as `listTools`.
  *
  * @stability unstable
  * @category operations
@@ -393,7 +397,7 @@ export const callTool: {
 export const listPrompts: {
   (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
   (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
-} = internal.listPrompts
+} = dual((args) => isClient(args[0]), (self: Client, options?: CallOptions) => self.listPrompts(options))
 
 /**
  * Gets the messages for a discovered prompt.
@@ -412,10 +416,13 @@ export const getPrompt: {
     params: GetPromptParams,
     options?: CallOptions
   ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
-} = internal.getPrompt
+} = dual(
+  (args) => isClient(args[0]),
+  (self: Client, params: GetPromptParams, options?: CallOptions) => self.getPrompt(params, options)
+)
 
 /**
- * Returns all resource pages as one bounded snapshot.
+ * Returns every resource page as one snapshot with the same bounds as `listTools`.
  *
  * @stability unstable
  * @category operations
@@ -424,7 +431,7 @@ export const getPrompt: {
 export const listResources: {
   (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
-} = internal.listResources
+} = dual((args) => isClient(args[0]), (self: Client, options?: CallOptions) => self.listResources(options))
 
 /**
  * Reads the complete contents of a resource URI.
@@ -443,7 +450,10 @@ export const readResource: {
     params: ReadResourceParams,
     options?: CallOptions
   ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
-} = internal.readResource
+} = dual(
+  (args) => isClient(args[0]),
+  (self: Client, params: ReadResourceParams, options?: CallOptions) => self.readResource(params, options)
+)
 
 /**
  * Service tag for applications that provide one default MCP connection.
@@ -467,9 +477,9 @@ export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClie
  *
  * **Details**
  *
- * Operations default to a 60-second deadline. The initialization handshake
- * and each complete discovery share a single deadline. Structured result
- * decoding uses the caller's services and deadline.
+ * Every operation, including initialization and each complete discovery, runs
+ * under one deadline that defaults to 60 seconds and can be overridden per call.
+ * Schema decoding requires the schema's services from the caller.
  *
  * @stability unstable
  * @category constructors

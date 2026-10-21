@@ -19,8 +19,10 @@ import * as PublicMcpSchema from "../McpSchema.ts"
 import * as McpCore from "./mcpCore.ts"
 
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
-const BASE64_SENTINEL_PREFIX = "=?base64?"
-const BASE64_SENTINEL_SUFFIX = "?="
+/** @internal */
+export const BASE64_SENTINEL_PREFIX = "=?base64?"
+/** @internal */
+export const BASE64_SENTINEL_SUFFIX = "?="
 // A leading U+FEFF belongs to the header value and must survive comparison with the JSON body.
 const routingHeaderDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 

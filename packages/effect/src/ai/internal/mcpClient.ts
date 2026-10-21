@@ -6,7 +6,6 @@ import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Base64 from "../../encoding/Base64.ts"
 import * as Sse from "../../encoding/Sse.ts"
-import { dual } from "../../Function.ts"
 import * as HttpClient from "../../http/HttpClient.ts"
 import * as HttpClientRequest from "../../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../../http/HttpClientResponse.ts"
@@ -25,39 +24,36 @@ import type {
   CallOptions,
   CallToolParams,
   Client,
-  GetPromptParams,
   McpClientErrorReason,
   Options,
-  ProtocolVersion,
-  ReadResourceParams
+  ProtocolVersion
 } from "../McpClient.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as Tool from "../Tool.ts"
 import * as Toolkit from "../Toolkit.ts"
 import { McpClient, McpClientError, Transport, TransportTypeId } from "./mcpClientModels.ts"
-
-export { TransportTypeId } from "./mcpClientModels.ts"
+import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./mcpProtocol.ts"
 
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 const CLOSE_TIMEOUT = Duration.seconds(5)
 const MAX_DISCOVERY_PAGES = 100
 const MAX_DISCOVERY_ITEMS = 10_000
-const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
 const HEADER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
 
 type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
 
 type TransportService = Transport["Service"] & {
   readonly protocol: Protocol
-  /** Sends a request and resolves with its JSON-RPC response. */
   readonly request: (
     message: McpSchema.JsonRpcRequest,
     tool?: McpSchema.Tool
   ) => Effect.Effect<McpSchema.JsonRpcResponse, McpClientError>
   readonly notify: (message: McpSchema.JsonRpcNotification) => Effect.Effect<void, McpClientError>
-  /** Whether a discovered tool can be called over this transport. */
   readonly isCallable: (tool: McpSchema.Tool) => boolean
 }
 
@@ -74,8 +70,6 @@ const decodeServerCapabilities = Schema.decodeUnknownEffect(McpSchema.ServerCapa
 const decodeImplementation = Schema.decodeUnknownEffect(McpSchema.Implementation)
 const decodeToolArguments = Schema.decodeUnknownEffect(Schema.JsonObject)
 
-const byteLength = (text: string) => new TextEncoder().encode(text).length
-
 const messageLimit = (input: ByteSize.Input | undefined) => {
   const size = input === undefined ? DEFAULT_MAX_MESSAGE_BYTES : Option.getOrUndefined(ByteSize.fromInput(input))
   const bytes = size === undefined ? undefined : Option.getOrUndefined(ByteSize.toNumber(size))
@@ -85,29 +79,27 @@ const messageLimit = (input: ByteSize.Input | undefined) => {
     : Effect.fail(fail({ _tag: "ConfigurationError", message: "maxMessageBytes must be a positive safe integer" }))
 }
 
+const limitError = (message: string) => fail({ _tag: "LimitError", message })
+
 const encodeMessage = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMessage, maxBytes: number) {
   const json = yield* Effect.try({
     try: () => JSON.stringify(message),
     catch: (cause) => fail({ _tag: "TransportError", message: "Cannot encode MCP message", cause })
   })
-
-  if (byteLength(json) > maxBytes) {
-    return yield* fail({ _tag: "LimitError", message: "MCP message exceeds maxMessageBytes" })
+  if (encoder.encode(json).length > maxBytes) {
+    return yield* limitError("MCP message exceeds maxMessageBytes")
   }
-
   return json
 })
 
 const parseMessage = Effect.fnUntraced(function*(text: string, maxBytes: number) {
-  if (byteLength(text) > maxBytes) {
-    return yield* fail({ _tag: "LimitError", message: "MCP message exceeds maxMessageBytes" })
+  if (encoder.encode(text).length > maxBytes) {
+    return yield* limitError("MCP message exceeds maxMessageBytes")
   }
-
   const json = yield* Effect.try({
     try: () => JSON.parse(text) as unknown,
     catch: (cause) => fail({ _tag: "ProtocolError", message: "Invalid MCP JSON", cause })
   })
-
   return yield* decodeMessage(json).pipe(
     Effect.mapError((cause) => fail({ _tag: "ProtocolError", message: "Invalid JSON-RPC message", cause }))
   )
@@ -159,12 +151,12 @@ export const stdio = Effect.fnUntraced(function*(options: {
       return Deferred.fail(failure, failed)
     })
 
-  const input = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+  const input = yield* Queue.unbounded<string, Cause.Done>()
 
   const write = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMessage) {
     if (failed !== undefined) return yield* failed
     const json = yield* encodeMessage(message, maxBytes)
-    yield* Queue.offer(input, new TextEncoder().encode(json + "\n"))
+    yield* Queue.offer(input, json + "\n")
   })
 
   const receive = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMessage) {
@@ -179,6 +171,7 @@ export const stdio = Effect.fnUntraced(function*(options: {
   })
 
   yield* Stream.fromQueue(input).pipe(
+    Stream.encodeText,
     Stream.run(process.stdin),
     Effect.catch((cause) => close(fail({ _tag: "TransportError", message: "MCP stdin failed", cause }))),
     Effect.forkScoped
@@ -190,14 +183,16 @@ export const stdio = Effect.fnUntraced(function*(options: {
     Stream.decodeText(),
     Stream.runForEach(Effect.fnUntraced(function*(chunk) {
       buffer += chunk
+      let start = 0
       let index: number
-      while ((index = buffer.indexOf("\n")) >= 0) {
-        const line = buffer.slice(0, index)
-        buffer = buffer.slice(index + 1)
+      while ((index = buffer.indexOf("\n", start)) >= 0) {
+        const line = buffer.slice(start, index)
+        start = index + 1
         if (line.trim() !== "") yield* receive(yield* parseMessage(line, maxBytes))
       }
+      buffer = buffer.slice(start)
       if (buffer.length > maxBytes) {
-        return yield* fail({ _tag: "LimitError", message: "MCP message exceeds maxMessageBytes" })
+        return yield* limitError("MCP message exceeds maxMessageBytes")
       }
     })),
     Effect.mapError((cause) =>
@@ -238,7 +233,7 @@ export const stdio = Effect.fnUntraced(function*(options: {
     [TransportTypeId]: TransportTypeId,
     protocol: options.protocol,
     isCallable: () => true,
-    notify: (message) => write(message),
+    notify: write,
     request: Effect.fnUntraced(function*(message) {
       const response = yield* Deferred.make<McpSchema.JsonRpcResponse>()
       pending.set(message.id, response)
@@ -269,9 +264,10 @@ const mediaType = (response: HttpClientResponse.HttpClientResponse) =>
 // Values that are not plain visible ASCII are sent Base64 encoded.
 // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#custom-headers-from-tool-parameters
 const headerValue = (value: string) =>
-  /^[\x20-\x7e]*$/.test(value) && value.trim() === value && !(value.startsWith("=?base64?") && value.endsWith("?="))
+  /^[\x20-\x7e]*$/.test(value) && value.trim() === value &&
+    !(value.startsWith(BASE64_SENTINEL_PREFIX) && value.endsWith(BASE64_SENTINEL_SUFFIX))
     ? value
-    : `=?base64?${Base64.encode(value)}?=`
+    : `${BASE64_SENTINEL_PREFIX}${Base64.encode(value)}${BASE64_SENTINEL_SUFFIX}`
 
 interface HeaderParameter {
   readonly path: ReadonlyArray<string>
@@ -368,25 +364,13 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
   return headers
 })
 
-const readBody = Effect.fnUntraced(function*(response: HttpClientResponse.HttpClientResponse, maxBytes: number) {
-  const chunks: Array<Uint8Array> = []
-  let size = 0
-  yield* Stream.runForEach(response.stream, (chunk) => {
-    size += chunk.length
-    if (size > maxBytes) {
-      return Effect.fail(fail({ _tag: "LimitError", message: "MCP response exceeds maxMessageBytes" }))
-    }
-    chunks.push(chunk)
-    return Effect.void
-  })
-  const body = new Uint8Array(size)
-  let offset = 0
-  for (const chunk of chunks) {
-    body.set(chunk, offset)
-    offset += chunk.length
-  }
-  return new TextDecoder().decode(body)
-})
+const readBody = (response: HttpClientResponse.HttpClientResponse, maxBytes: number) =>
+  response.stream.pipe(
+    Stream.mapError((cause) => fail({ _tag: "TransportError", message: "Cannot read MCP response", cause })),
+    Stream.limitBytes(maxBytes, () => Stream.fail(limitError("MCP response exceeds maxMessageBytes"))),
+    Stream.mkUint8Array,
+    Effect.map((bytes) => decoder.decode(bytes))
+  )
 
 export const http = Effect.fnUntraced(function*(options: {
   readonly url: string | URL
@@ -402,12 +386,13 @@ export const http = Effect.fnUntraced(function*(options: {
   // Legacy servers may assign a session during initialization.
   let session: string | undefined
 
-  const headers = (): Record<string, string> => ({
+  const baseHeaders = {
     ...options.headers,
     accept: "application/json, text/event-stream",
-    "mcp-protocol-version": options.protocol.protocolVersion,
-    ...(session === undefined ? {} : { "mcp-session-id": session })
-  })
+    "mcp-protocol-version": options.protocol.protocolVersion
+  }
+  const headers = (): Record<string, string> =>
+    session === undefined ? baseHeaders : { ...baseHeaders, "mcp-session-id": session }
 
   const httpError = Effect.fnUntraced(function*(response: HttpClientResponse.HttpClientResponse) {
     // Error bodies may carry a JSON-RPC error without an ID, e.g. an unsupported protocol version.
@@ -432,13 +417,54 @@ export const http = Effect.fnUntraced(function*(options: {
     })
   })
 
+  // Posts one message and returns the successful response, tracking legacy sessions.
+  const send = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMessage, tool?: McpSchema.Tool) {
+    if (failed !== undefined) return yield* failed
+    const body = yield* encodeMessage(message, maxBytes)
+    const request = HttpClientRequest.post(options.url).pipe(
+      HttpClientRequest.setHeaders({ ...headers(), ...(modern ? yield* routingHeaders(message, tool) : {}) }),
+      HttpClientRequest.bodyText(body, "application/json")
+    )
+    const response = yield* client.execute(request).pipe(
+      // Clients using `filterStatusOk` surface error responses as failures.
+      Effect.catch((cause) =>
+        cause.response === undefined
+          ? Effect.fail(fail({ _tag: "TransportError", message: "MCP HTTP request failed", cause }))
+          : Effect.succeed(cause.response)
+      )
+    )
+
+    // A legacy session ends when the server no longer recognizes its ID.
+    if (session !== undefined && response.status === 404) {
+      failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP session expired", sessionExpired: true })
+      return yield* failed
+    }
+    if (response.status < 200 || response.status >= 300) return yield* httpError(response)
+    if (!modern) session = response.headers["mcp-session-id"] ?? session
+    return response
+  })
+
+  const exchange = <A>(effect: Effect.Effect<A, unknown, Scope.Scope>) =>
+    effect.pipe(
+      Effect.mapError((cause) =>
+        cause instanceof McpClientError
+          ? cause
+          : fail({ _tag: "TransportError", message: "Cannot read MCP response", cause })
+      ),
+      Effect.raceFirst(Deferred.await(closed)),
+      Effect.scoped
+    )
+
+  const notify = (message: McpSchema.JsonRpcNotification | McpSchema.JsonRpcResponse) =>
+    exchange(Effect.asVoid(send(message)))
+
   const readResponse = Effect.fnUntraced(function*(
     response: HttpClientResponse.HttpClientResponse,
     request: McpSchema.JsonRpcRequest
   ) {
     const match = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMessage) {
       if (isRequest(message)) {
-        yield* post(replyToServer(message))
+        yield* notify(replyToServer(message))
         return undefined
       }
       if (!isResponse(message)) return undefined
@@ -468,7 +494,7 @@ export const http = Effect.fnUntraced(function*(options: {
             const parsed = Stream.fromIterable(events.splice(0))
             // Events before an oversized one can still complete the request.
             return error === undefined ? parsed : parsed.pipe(
-              Stream.concat(Stream.fail(fail({ _tag: "LimitError", message: "MCP SSE event exceeds maxMessageBytes" })))
+              Stream.concat(Stream.fail(limitError("MCP SSE event exceeds maxMessageBytes")))
             )
           }),
           Stream.mapEffect((data) => parseMessage(data, maxBytes).pipe(Effect.flatMap(match))),
@@ -485,64 +511,18 @@ export const http = Effect.fnUntraced(function*(options: {
     return yield* fail({ _tag: "TransportError", message: "MCP response ended before the terminal response" })
   })
 
-  function post(message: McpSchema.JsonRpcRequest, tool?: McpSchema.Tool): Effect.Effect<
-    McpSchema.JsonRpcResponse,
-    McpClientError
-  >
-  function post(message: McpSchema.JsonRpcMessage): Effect.Effect<void, McpClientError>
-  function post(message: McpSchema.JsonRpcMessage, tool?: McpSchema.Tool) {
-    return Effect.gen(function*() {
-      if (failed !== undefined) return yield* failed
-      const body = yield* encodeMessage(message, maxBytes)
-      const request = HttpClientRequest.post(options.url).pipe(
-        HttpClientRequest.setHeaders({ ...headers(), ...(modern ? yield* routingHeaders(message, tool) : {}) }),
-        HttpClientRequest.bodyText(body, "application/json")
-      )
-      const response = yield* client.execute(request).pipe(
-        // Clients using `filterStatusOk` surface error responses as failures.
-        Effect.catch((cause) =>
-          cause.response === undefined
-            ? Effect.fail(fail({ _tag: "TransportError", message: "MCP HTTP request failed", cause }))
-            : Effect.succeed(cause.response)
-        )
-      )
-
-      // A legacy session ends when the server no longer recognizes its ID.
-      if (session !== undefined && response.status === 404) {
-        failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP session expired", sessionExpired: true })
-        return yield* failed
-      }
-      if (response.status < 200 || response.status >= 300) return yield* httpError(response)
-      if (!modern) session = response.headers["mcp-session-id"] ?? session
-      if (!isRequest(message)) return
-      if (response.status === 202 || response.status === 204) {
-        return yield* fail({ _tag: "ProtocolError", message: "MCP request received no response" })
-      }
-      return yield* readResponse(response, message)
-    }).pipe(
-      Effect.mapError((cause) =>
-        cause instanceof McpClientError
-          ? cause
-          : fail({ _tag: "TransportError", message: "Cannot read MCP response", cause })
-      ),
-      Effect.raceFirst(Deferred.await(closed)),
-      Effect.scoped
-    )
-  }
-
   yield* Effect.addFinalizer(() =>
     Effect.gen(function*() {
-      const current = session
       failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP transport closed" })
       yield* Deferred.fail(closed, failed)
-      if (current === undefined || failed.reason._tag !== "ClosedError" || failed.reason.sessionExpired) return
+      if (session === undefined || failed.reason._tag !== "ClosedError" || failed.reason.sessionExpired) return
       // Explicitly terminate a legacy session.
       // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
-      yield* client.execute(
-        HttpClientRequest.delete(options.url).pipe(
-          HttpClientRequest.setHeaders({ ...options.headers, ...headers(), "mcp-session-id": current })
-        )
-      ).pipe(Effect.scoped, Effect.timeoutOption(CLOSE_TIMEOUT), Effect.ignore)
+      yield* client.execute(HttpClientRequest.delete(options.url).pipe(HttpClientRequest.setHeaders(headers()))).pipe(
+        Effect.scoped,
+        Effect.timeoutOption(CLOSE_TIMEOUT),
+        Effect.ignore
+      )
     })
   )
 
@@ -550,14 +530,22 @@ export const http = Effect.fnUntraced(function*(options: {
     [TransportTypeId]: TransportTypeId,
     protocol: options.protocol,
     isCallable: (tool) => !modern || headerParameters(tool) !== undefined,
-    notify: (message) => post(message),
+    notify,
     request: (message, tool) =>
-      post(message, tool).pipe(
+      exchange(
+        send(message, tool).pipe(
+          Effect.flatMap((response) =>
+            response.status === 202 || response.status === 204
+              ? fail({ _tag: "ProtocolError", message: "MCP request received no response" })
+              : readResponse(response, message)
+          )
+        )
+      ).pipe(
         // Modern servers treat a closed response stream as cancellation.
         Effect.onInterrupt(() =>
           modern || message.method === "initialize"
             ? Effect.void
-            : post(cancelled(message.id)).pipe(Effect.timeoutOption(CLOSE_TIMEOUT), Effect.ignore)
+            : notify(cancelled(message.id)).pipe(Effect.timeoutOption(CLOSE_TIMEOUT), Effect.ignore)
         )
       )
   }
@@ -598,6 +586,17 @@ const publicRpcs: ReadonlyMap<string, { readonly successSchema: Schema.Constrain
 const requiresTasks = (tool: unknown) =>
   isRecord(tool) && isRecord(tool.execution) && tool.execution.taskSupport === "required"
 
+interface InitializeResult {
+  readonly protocolVersion?: string
+  readonly supportedVersions?: ReadonlyArray<string>
+  readonly capabilities: unknown
+  readonly serverInfo?: unknown
+  readonly instructions?: string
+  readonly _meta?: Record<string, unknown>
+}
+
+type ListResult<K extends string, A> = Record<K, ReadonlyArray<A>> & { readonly nextCursor?: string }
+
 export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Return<
   Client,
   McpClientError,
@@ -614,26 +613,29 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
   )
   let nextId = 1
 
-  const request = Effect.fnUntraced(function*(method: string, params: Record<string, unknown>, tool?: McpSchema.Tool) {
+  // Modern requests carry the client identity in every request.
+  // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
+  const meta = {
+    "io.modelcontextprotocol/protocolVersion": version,
+    "io.modelcontextprotocol/clientInfo": options.clientInfo,
+    "io.modelcontextprotocol/clientCapabilities": {}
+  }
+
+  const request = Effect.fnUntraced(function*<A>(
+    method: string,
+    params: Record<string, unknown>,
+    tool?: McpSchema.Tool
+  ): Effect.fn.Return<A, McpClientError> {
     const rpc = protocol.clientRpcs.requests.get(method) as Rpc.AnyWithProps | undefined
     if (rpc === undefined) {
       return yield* fail({ _tag: "UnsupportedError", message: `Unsupported MCP method: ${method}` })
     }
 
-    // Modern requests carry the client identity in every request.
-    // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
-    const input = modern
-      ? {
-        ...params,
-        _meta: {
-          "io.modelcontextprotocol/protocolVersion": version,
-          "io.modelcontextprotocol/clientInfo": options.clientInfo,
-          "io.modelcontextprotocol/clientCapabilities": {}
-        }
-      }
-      : params
     const codecs = protocol.payloadCodecs(rpc)
-    const payload = yield* codecs.decode(input).pipe(Effect.flatMap(codecs.encode), Effect.mapError(validationError))
+    const payload = yield* codecs.decode(modern ? { ...params, _meta: meta } : params).pipe(
+      Effect.flatMap(codecs.encode),
+      Effect.mapError(validationError)
+    )
 
     const response = yield* transport.request(
       { jsonrpc: "2.0", id: nextId++, method, params: payload as Schema.JsonObject },
@@ -650,58 +652,45 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
       result = { ...result, tools: result.tools.filter((tool) => !requiresTasks(tool)) }
     }
 
-    // Validate against the selected revision, then decode into the public model.
     const validated = yield* decodeUnknown(rpc.successSchema, result)
     if (isRecord(result) && result.resultType === "input_required") {
       return yield* fail({ _tag: "UnsupportedError", message: "MCP input continuation is not supported" })
     }
     const publicRpc = publicRpcs.get(method)
-    return publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)
+    return (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
   })
 
-  const withDeadline = <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-    duration: Duration.Input,
-    operation: string
-  ) =>
+  const withDeadline = <A, E, R>(effect: Effect.Effect<A, E, R>, operation: string, callOptions?: CallOptions) =>
     effect.pipe(
       Effect.raceFirst(Deferred.await(closed)),
       Effect.timeoutOrElse({
-        duration,
+        duration: callOptions?.timeout ?? timeout,
         orElse: () => Effect.fail(fail({ _tag: "TimeoutError", message: `MCP ${operation} deadline exceeded` }))
       })
     )
 
   const initialize = Effect.gen(function*() {
     if (!modern) {
-      return yield* request("initialize", {
+      return yield* request<InitializeResult>("initialize", {
         protocolVersion: version,
         capabilities: {},
         clientInfo: options.clientInfo
       })
     }
-    const discover = request("server/discover", {})
+    const discover = request<InitializeResult>("server/discover", {})
     // Retry once when the server rejects a version that it reports as supported.
     return yield* discover.pipe(Effect.catchIf((error) => {
       const reason = error.reason
       if (reason._tag !== "ProtocolError" && reason._tag !== "HttpError") return false
       const rejection = Option.getOrUndefined(decodeVersionRejection(reason.data))
-      return reason.code === UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE && rejection?.requested === version &&
+      return reason.code === McpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE && rejection?.requested === version &&
         rejection.supported.includes(version)
     }, () => discover))
   })
 
   const { capabilities, instructions, serverInfo } = yield* withDeadline(
     Effect.gen(function*() {
-      // The selected revision has validated the initialization result.
-      const result = (yield* initialize) as {
-        readonly protocolVersion?: string
-        readonly supportedVersions?: ReadonlyArray<string>
-        readonly capabilities: unknown
-        readonly serverInfo?: unknown
-        readonly instructions?: string
-        readonly _meta?: Record<string, unknown>
-      }
+      const result = yield* initialize
       if (modern ? !result.supportedVersions?.includes(version) : result.protocolVersion !== version) {
         return yield* fail({
           _tag: "UnsupportedError",
@@ -710,7 +699,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
       }
       const identity = modern ? result._meta?.["io.modelcontextprotocol/serverInfo"] : result.serverInfo
       const capabilities = yield* decodeServerCapabilities(result.capabilities)
-      const serverInfo = identity === undefined && modern ? undefined : yield* decodeImplementation(identity)
+      const serverInfo = identity === undefined ? undefined : yield* decodeImplementation(identity)
       if (!modern) yield* transport.notify({ jsonrpc: "2.0", method: "notifications/initialized" })
       return { capabilities, instructions: result.instructions, serverInfo }
     }).pipe(
@@ -720,7 +709,6 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
           : cause
       )
     ),
-    timeout,
     "initialization"
   )
 
@@ -737,23 +725,21 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
         const cursors = new Set<string>()
         let cursor: string | undefined
         for (let page = 0; page < MAX_DISCOVERY_PAGES; page++) {
-          const result = (yield* request(`${kind}/list`, cursor === undefined ? {} : { cursor })) as
-            & Record<K, ReadonlyArray<A>>
-            & { readonly nextCursor?: string }
+          const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
           items.push(...result[kind])
           if (items.length > MAX_DISCOVERY_ITEMS) {
-            return yield* fail({ _tag: "LimitError", message: `MCP ${kind} discovery exceeded its item limit` })
+            return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
           }
           if (result.nextCursor === undefined) return items
           if (cursors.has(result.nextCursor)) {
-            return yield* fail({ _tag: "LimitError", message: `MCP ${kind} discovery repeated a cursor` })
+            return yield* limitError(`MCP ${kind} discovery repeated a cursor`)
           }
           cursors.add(cursor = result.nextCursor)
         }
-        return yield* fail({ _tag: "LimitError", message: `MCP ${kind} discovery exceeded its page limit` })
+        return yield* limitError(`MCP ${kind} discovery exceeded its page limit`)
       }),
-      callOptions?.timeout ?? timeout,
-      `${kind} discovery`
+      `${kind} discovery`,
+      callOptions
     )
 
   const listTools = list<"tools", McpSchema.Tool>("tools")
@@ -765,11 +751,11 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     return withDeadline(
       Effect.gen(function*() {
         yield* requireCapability("tools")
-        const result = (yield* request(
+        const result = yield* request<McpSchema.CallToolResult>(
           "tools/call",
           { name: params.tool.name, ...(params.arguments === undefined ? {} : { arguments: params.arguments }) },
           params.tool
-        )) as McpSchema.CallToolResult
+        )
         if (params.schema === undefined) return result
         if (result.isError === true) {
           return yield* fail({ _tag: "ToolError", message: "MCP tool reported an execution error", result })
@@ -780,8 +766,8 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
           )
         )
       }),
-      callOptions?.timeout ?? timeout,
-      "tools/call"
+      "tools/call",
+      callOptions
     )
   }
 
@@ -799,96 +785,24 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     listResources: list("resources"),
     getPrompt: (params, callOptions) =>
       withDeadline(
-        requireCapability("prompts").pipe(Effect.andThen(request("prompts/get", {
+        requireCapability("prompts").pipe(Effect.andThen(request<McpSchema.GetPromptResult>("prompts/get", {
           name: params.prompt.name,
           ...(params.arguments === undefined ? {} : { arguments: params.arguments })
         }))),
-        callOptions?.timeout ?? timeout,
-        "prompts/get"
-      ) as Effect.Effect<McpSchema.GetPromptResult, McpClientError>,
+        "prompts/get",
+        callOptions
+      ),
     readResource: (params, callOptions) =>
       withDeadline(
-        requireCapability("resources").pipe(Effect.andThen(request("resources/read", { uri: params.uri }))),
-        callOptions?.timeout ?? timeout,
-        "resources/read"
-      ) as Effect.Effect<McpSchema.ReadResourceResult, McpClientError>,
+        requireCapability("resources").pipe(
+          Effect.andThen(request<McpSchema.ReadResourceResult>("resources/read", { uri: params.uri }))
+        ),
+        "resources/read",
+        callOptions
+      ),
     callTool: callTool as Client["callTool"]
   }
 })
-
-// -----------------------------------------------------------------------------
-// Operations
-// -----------------------------------------------------------------------------
-
-export const callTool: {
-  (
-    params: CallToolParams,
-    options?: CallOptions
-  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
-  (self: Client, params: CallToolParams, options?: CallOptions): Effect.Effect<McpSchema.CallToolResult, McpClientError>
-  <S extends Schema.Top>(
-    params: CallToolParams<S> & { readonly schema: S },
-    options?: CallOptions
-  ): (self: Client) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
-  <S extends Schema.Top = never>(
-    params: CallToolParams<S>,
-    options?: CallOptions
-  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
-  <S extends Schema.Top>(
-    self: Client,
-    params: CallToolParams<S> & { readonly schema: S },
-    options?: CallOptions
-  ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
-  <S extends Schema.Top = never>(
-    self: Client,
-    params: CallToolParams<S>,
-    options?: CallOptions
-  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
-} = dual(
-  (args) => isClient(args[0]),
-  <S extends Schema.Top>(self: Client, params: CallToolParams<S>, options?: CallOptions) =>
-    self.callTool(params, options)
-)
-
-export const listPrompts: {
-  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
-  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
-} = dual((args) => isClient(args[0]), (self: Client, options?: CallOptions) => self.listPrompts(options))
-
-export const getPrompt: {
-  (
-    params: GetPromptParams,
-    options?: CallOptions
-  ): (self: Client) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
-  (
-    self: Client,
-    params: GetPromptParams,
-    options?: CallOptions
-  ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
-} = dual(
-  (args) => isClient(args[0]),
-  (self: Client, params: GetPromptParams, options?: CallOptions) => self.getPrompt(params, options)
-)
-
-export const listResources: {
-  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
-  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
-} = dual((args) => isClient(args[0]), (self: Client, options?: CallOptions) => self.listResources(options))
-
-export const readResource: {
-  (
-    params: ReadResourceParams,
-    options?: CallOptions
-  ): (self: Client) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
-  (
-    self: Client,
-    params: ReadResourceParams,
-    options?: CallOptions
-  ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
-} = dual(
-  (args) => isClient(args[0]),
-  (self: Client, params: ReadResourceParams, options?: CallOptions) => self.readResource(params, options)
-)
 
 // -----------------------------------------------------------------------------
 // Toolkit

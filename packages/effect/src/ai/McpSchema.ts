@@ -722,6 +722,16 @@ export const PARSE_ERROR_CODE = -32700 as const
 export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
 
 /**
+ * Represents the MCP error code returned when a server does not support the
+ * protocol version requested by a client.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.0.0
+ */
+export const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022 as const
+
+/**
  * Represents an MCP/JSON-RPC error for invalid JSON that could not be parsed.
  *
  * **When to use**
