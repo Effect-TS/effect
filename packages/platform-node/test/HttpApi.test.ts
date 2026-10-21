@@ -92,6 +92,28 @@ describe("HttpApi", () => {
         })
       }).pipe(Effect.provide(HttpLive)))
 
+    it.live("multipart with +json boundary", () =>
+      Effect.gen(function*() {
+        const body = [
+          "--upload+json",
+          "Content-Disposition: form-data; name=\"file\"; filename=\"hello.txt\"",
+          "Content-Type: text/plain",
+          "",
+          "hello",
+          "--upload+json--",
+          ""
+        ].join("\r\n")
+        const result = yield* HttpClientRequest.post("/users/upload").pipe(
+          HttpClientRequest.bodyText(body, "multipart/form-data; boundary=upload+json"),
+          HttpClient.execute,
+          Effect.flatMap((response) => response.json)
+        )
+        assert.deepStrictEqual(result, {
+          contentType: "text/plain",
+          length: 5
+        })
+      }).pipe(Effect.provide(HttpLive)))
+
     it.effect("+json content type", () => {
       const Api = HttpApi.make("api").add(
         HttpApiGroup.make("group").add(
