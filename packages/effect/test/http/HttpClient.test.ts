@@ -145,6 +145,46 @@ describe("HttpClient", () => {
     }
   })
 
+  // Stubbing globals and resetting modules would race with the concurrent tests.
+  describe("toWeb", { concurrent: false }, () => {
+    it("keeps unread response cleanup when toWeb finds no Web response", async () => {
+      const cleanups = new Map<object, () => void>()
+      vi.stubGlobal(
+        "FinalizationRegistry",
+        class<T> {
+          constructor(readonly cleanup: (value: T) => void) {}
+          register(_target: object, value: T, token: object) {
+            cleanups.set(token, () => this.cleanup(value))
+          }
+          unregister(token: object) {
+            return cleanups.delete(token)
+          }
+        }
+      )
+      try {
+        // Select the runtime registry on import, then drive GC cleanup deterministically.
+        vi.resetModules()
+        const { Effect, Option } = await import("effect")
+        const { HttpClient, HttpClientResponse, HttpServerResponse } = await import("effect/http")
+        let signal: AbortSignal | undefined
+        const client = HttpClient.make((request, _url, requestSignal) =>
+          Effect.sync(() => {
+            signal = requestSignal
+            return HttpServerResponse.toClientResponse(HttpServerResponse.text("unread"), { request })
+          })
+        )
+        const response = await Effect.runPromise(client.get("https://example.test/"))
+
+        assert.isTrue(Option.isNone(HttpClientResponse.toWeb(response)))
+        for (const cleanup of cleanups.values()) cleanup()
+        assert.isTrue(signal!.aborted)
+      } finally {
+        vi.unstubAllGlobals()
+        vi.resetModules()
+      }
+    })
+  })
+
   it.effect("applies JSON revivers to response schema decoders", () =>
     Effect.gen(function*() {
       const makeResponse = () =>
