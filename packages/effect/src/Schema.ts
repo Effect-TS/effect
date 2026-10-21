@@ -7121,15 +7121,14 @@ const ASCII_REGEXP = /^[\x00-\x7F]*$/
  *
  * **When to use**
  *
- * Use when a value must be restricted to the 7-bit ASCII range, for example
- * identifiers, protocol tokens, or data destined for systems that do not
- * accept non-ASCII input.
+ * Use when a value must stay within the 7-bit ASCII range, for example
+ * identifiers, protocol tokens, or data sent to systems that reject
+ * non-ASCII input.
  *
  * **Details**
  *
- * This check accepts strings whose every character has a code point in the
- * range `U+0000` to `U+007F`, including control characters. The empty string
- * is accepted.
+ * This check accepts strings whose characters are all in the range `U+0000`
+ * to `U+007F`, including control characters and the empty string.
  *
  * JSON Schema:
  *
