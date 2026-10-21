@@ -12,6 +12,8 @@ declare const wideTags: ReadonlyArray<{ _tag: string; value: number }>
 declare const records: ReadonlyArray<Record<string, unknown>>
 declare const taggedOrUntagged: ReadonlyArray<{ _tag: "a"; a: string } | { b: string }>
 declare const exactOrBroad: { _tag: "a"; a: string } | { _tag: "a" | "b"; b: number }
+declare const crossingTags: { _tag: "ab"; a: string } | { _tag: `${string}b`; b: number }
+declare const prefixedTag: `a${string}`
 
 describe("Predicate", () => {
   it("isString", () => {
@@ -72,6 +74,14 @@ describe("Predicate", () => {
     >()
     if (Predicate.isTagged(exactOrBroad, "a")) {
       expect(exactOrBroad).type.toBe<{ _tag: "a"; a: string } | ({ _tag: "a" | "b"; b: number } & { _tag: "a" })>()
+    }
+    expect([crossingTags].filter(Predicate.isTagged(prefixedTag))).type.toBe<
+      Array<{ _tag: "ab"; a: string } | ({ _tag: `${string}b`; b: number } & { _tag: `a${string}` })>
+    >()
+    if (Predicate.isTagged(crossingTags, prefixedTag)) {
+      expect(crossingTags).type.toBe<
+        { _tag: "ab"; a: string } | ({ _tag: `${string}b`; b: number } & { _tag: `a${string}` })
+      >()
     }
     const value = tagged[0]
     if (Predicate.isTagged(value, "a")) {
