@@ -575,6 +575,70 @@ describe.concurrent("Sharding", () => {
       Layer.merge(TestEntityState.Default)
     ))))
 
+  it.scoped("holds durable messages while entity layers are still building", () =>
+    Effect.gen(function*() {
+      const config = ShardingConfig.layer({
+        entityMailboxCapacity: 10,
+        entityRegistrationTimeout: 6000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 1000,
+        sendRetryInterval: 100
+      })
+      const EnvLayer = TestShardingWithoutState.pipe(
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const DelayedEnvLayer = TestEntityNoState.pipe(
+        Layer.provide(Layer.effectDiscard(Effect.sleep(10_000))),
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        yield* Effect.fork(client.RequestWithKey({ key: "slow-registration" }))
+        yield* TestClock.adjust(1)
+      }).pipe(
+        Effect.provide(EnvLayer),
+        Effect.scoped
+      )
+
+      expect(driver.journal.length).toEqual(1)
+      expect(driver.replyIds.size).toEqual(0)
+      expect(driver.unprocessed.size).toEqual(1)
+
+      // restart while the entity layer takes longer than the registration
+      // timeout to build
+      const fiber = yield* Effect.never.pipe(
+        Effect.provide(DelayedEnvLayer),
+        Effect.scoped,
+        Effect.fork
+      )
+
+      yield* TestClock.adjust(7500)
+      expect(driver.replyIds.size).toEqual(0)
+      expect(driver.unprocessed.size).toEqual(1)
+
+      // the entity registers and the held message is delivered
+      yield* TestClock.adjust(2500)
+      yield* state.messages.offer(void 0)
+      yield* TestClock.adjust(1000)
+
+      expect(driver.replyIds.size).toEqual(1)
+      expect(driver.unprocessed.size).toEqual(0)
+      yield* Fiber.interrupt(fiber)
+    }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
+      Layer.provide(TestShardingConfig),
+      Layer.merge(TestEntityState.Default)
+    ))))
+
   it.scoped("durable streams are resumed on restart", () =>
     Effect.gen(function*() {
       const EnvLayer = TestShardingWithoutState.pipe(
