@@ -66,25 +66,20 @@ it.effect.skipIf(false)("effect skipIf (false)", () => Effect.sync(() => expect(
 it.effect.runIf(true)("effect runIf (true)", () => Effect.sync(() => expect(1).toEqual(1)))
 it.effect.runIf(false)("effect runIf (false)", () => Effect.die("not run anyway"))
 
-// The following test is expected to fail because it simulates a test timeout.
-// Be aware that eventual "failure" of the test is only logged out.
-it.scopedLive.fails("interrupts on timeout", (ctx) =>
-  Effect.gen(function*() {
-    let acquired = false
+describe.sequential("interrupts on timeout", () => {
+  let interrupted = false
 
-    ctx.onTestFailed(() => {
-      if (acquired) {
-        // eslint-disable-next-line no-console
-        console.error("'effect is interrupted on timeout' @effect/vitest test failed")
-      }
-    })
+  // expected to fail because it simulates a test timeout
+  it.scopedLive.fails("times out", () =>
+    Effect.gen(function*() {
+      yield* Effect.addFinalizer(() => Effect.sleep(100).pipe(Effect.andThen(() => interrupted = true)))
+      yield* Effect.never
+    }), 1)
 
-    yield* Effect.acquireRelease(
-      Effect.sync(() => acquired = true),
-      () => Effect.sync(() => acquired = false)
-    )
-    yield* Effect.sleep(1000)
-  }), 1)
+  it("runs finalizers", () => {
+    expect(interrupted).toBe(true)
+  })
+})
 
 class Foo extends Context.Tag("Foo")<Foo, "foo">() {
   static Live = Layer.succeed(Foo, "foo")
