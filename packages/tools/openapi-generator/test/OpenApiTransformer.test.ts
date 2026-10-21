@@ -125,60 +125,81 @@ describe("OpenApiTransformer", () => {
       }
     }))
 
-  it.effect("joins non-exploded form query arrays and repeats exploded ones", () =>
-    Effect.gen(function*() {
-      const spec = {
-        openapi: "3.1.0",
-        info: { title: "Items", version: "1.0.0" },
-        paths: {
-          "/items": {
-            get: {
-              operationId: "list",
-              parameters: [
-                { name: "tags", in: "query", style: "form", explode: false, schema: { type: "array" } },
-                { name: "ids", in: "query", schema: { type: "array" } }
-              ],
-              responses: {
-                "200": {
-                  description: "Items",
-                  content: { "application/octet-stream": { schema: { type: "string" } } }
-                }
+  describe("form query arrays", () => {
+    const spec = {
+      openapi: "3.1.0",
+      info: { title: "Items", version: "1.0.0" },
+      paths: {
+        "/items": {
+          get: {
+            operationId: "list",
+            parameters: [
+              { name: "tags", in: "query", style: "form", explode: false, schema: { type: "array" } },
+              { name: "ids", in: "query", schema: { type: "array" } }
+            ],
+            responses: {
+              "200": {
+                description: "Items",
+                content: { "application/octet-stream": { schema: { type: "string" } } }
               }
             }
           }
         }
-      } as unknown as OpenAPISpec
-      for (const format of ["httpclient", "httpclient-type-only"] as const) {
-        const source = yield* Effect.gen(function*() {
-          const generator = yield* OpenApiGenerator.OpenApiGenerator
-          return yield* generator.generate(spec, { name: "TestClient", format })
-        }).pipe(Effect.provide(
-          format === "httpclient"
-            ? OpenApiGenerator.layerTransformerSchema
-            : OpenApiGenerator.layerTransformerTs
-        ))
-        type Options = {
-          readonly params: { readonly tags: ReadonlyArray<string>; readonly ids: ReadonlyArray<number> }
-        }
-        const make = yield* Effect.promise(() =>
-          loadClient<{
-            list: (options: Options) => Effect.Effect<unknown, HttpClientError.HttpClientError>
-            listStream: (options: Options) => Stream.Stream<unknown, HttpClientError.HttpClientError>
-          }>(source)
-        )
-        const urls: Array<string> = []
-        const client = make(
-          HttpClient.make((request, url) => {
-            urls.push(url.search)
-            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response("")))
-          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
-        )
-        const options = { params: { tags: ["a,b", "c"], ids: [1, 2] } }
-        yield* client.list(options)
-        yield* Stream.runDrain(client.listStream(options))
-        assert.deepStrictEqual(urls, ["?tags=a%2Cb,c&ids=1&ids=2", "?tags=a%2Cb,c&ids=1&ids=2"])
       }
-    }))
+    } as unknown as OpenAPISpec
+    type Options = {
+      readonly params: { readonly tags: ReadonlyArray<string>; readonly ids: ReadonlyArray<number> }
+    }
+    const options: Options = { params: { tags: ["a,b", "c"], ids: [1, 2] } }
+
+    // Sends one request through each generated request path and returns the query strings.
+    const requestSearches = Effect.fnUntraced(function*(
+      format: "httpclient" | "httpclient-type-only",
+      middleware: (request: HttpClientRequest.HttpClientRequest) => HttpClientRequest.HttpClientRequest
+    ) {
+      const source = yield* Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        return yield* generator.generate(spec, { name: "TestClient", format })
+      }).pipe(Effect.provide(
+        format === "httpclient"
+          ? OpenApiGenerator.layerTransformerSchema
+          : OpenApiGenerator.layerTransformerTs
+      ))
+      const make = yield* Effect.promise(() =>
+        loadClient<{
+          list: (options: Options) => Effect.Effect<unknown, HttpClientError.HttpClientError>
+          listStream: (options: Options) => Stream.Stream<unknown, HttpClientError.HttpClientError>
+        }>(source)
+      )
+      const searches: Array<string> = []
+      const client = make(
+        HttpClient.make((request, url) => {
+          searches.push(url.search)
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response("")))
+        }).pipe(
+          HttpClient.mapRequest(middleware),
+          HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com"))
+        )
+      )
+      yield* client.list(options)
+      yield* Stream.runDrain(client.listStream(options))
+      return searches
+    })
+
+    for (const format of ["httpclient", "httpclient-type-only"] as const) {
+      it.effect(`joins non-exploded arrays and repeats exploded ones (${format})`, () =>
+        Effect.gen(function*() {
+          const searches = yield* requestSearches(format, (request) => request)
+          assert.deepStrictEqual(searches, ["?tags=a%2Cb,c&ids=1&ids=2", "?tags=a%2Cb,c&ids=1&ids=2"])
+        }))
+
+      it.effect(`lets middleware replace a non-exploded array (${format})`, () =>
+        Effect.gen(function*() {
+          const searches = yield* requestSearches(format, HttpClientRequest.setUrlParam("tags", "x"))
+          assert.deepStrictEqual(searches.map((search) => new URLSearchParams(search).getAll("tags")), [["x"], ["x"]])
+        }))
+    }
+  })
 
   describe("path parameters", () => {
     const generate = Effect.gen(function*() {
