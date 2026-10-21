@@ -41,8 +41,8 @@ import * as Singleton from "./Singleton.ts"
  *
  * **When to use**
  *
- * Use inside the `execute` effect of `make` to read the time the current run
- * was scheduled for.
+ * Use to read the time the current run was scheduled for, inside the
+ * `execute` effect of `make`.
  *
  * @stability unstable
  * @category services
