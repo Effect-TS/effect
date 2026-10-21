@@ -622,15 +622,20 @@ export const formatHttpDate = (self: DateTime.DateTime): string => DateTime.toDa
 // -----------------------------------------------------------------------------
 
 /**
- * A `Retry-After` value given as a number of whole seconds.
+ * A `Retry-After` value given as a delay.
+ *
+ * **Details**
+ *
+ * The duration is always finite and non-negative. On the wire it is written
+ * as whole seconds, rounded up.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface RetryAfterSeconds {
-  readonly _tag: "Seconds"
-  readonly seconds: number
+export interface RetryAfterDuration {
+  readonly _tag: "Duration"
+  readonly duration: Duration.Duration
 }
 
 /**
@@ -658,16 +663,32 @@ export interface RetryAfterDate {
  * @category models
  * @since 4.0.0
  */
-export type RetryAfter = RetryAfterSeconds | RetryAfterDate
+export type RetryAfter = RetryAfterDuration | RetryAfterDate
 
 /**
- * Creates a `Retry-After` value from a number of whole, non-negative seconds.
+ * Creates a `Retry-After` value from a delay.
+ *
+ * **Details**
+ *
+ * Infinite durations, positive or negative, have no header form and throw.
+ * That check runs first; a finite negative duration then becomes zero.
+ * Fractional seconds are kept, and {@link formatRetryAfter} rounds them up so
+ * the header never asks for a shorter wait.
+ *
+ * A plain number is read as milliseconds, as everywhere in `Duration`: pass
+ * `"120 seconds"` or `Duration.seconds(120)` for a two-minute delay.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const retryAfterSeconds = (seconds: number): RetryAfter => ({ _tag: "Seconds", seconds })
+export const retryAfterDuration = (input: Duration.Input): RetryAfter => {
+  const duration = Duration.fromInputUnsafe(input)
+  if (!Duration.isFinite(duration)) {
+    throw new Error("Cannot create a Retry-After value from an infinite duration")
+  }
+  return { _tag: "Duration", duration: Duration.isNegative(duration) ? Duration.zero : duration }
+}
 
 /**
  * Creates a `Retry-After` value from an HTTP date.
@@ -679,16 +700,17 @@ export const retryAfterSeconds = (seconds: number): RetryAfter => ({ _tag: "Seco
 export const retryAfterDate = (date: DateTime.Utc): RetryAfter => ({ _tag: "Date", date })
 
 const wholeSeconds = /^\d+$/
+const nanosPerSecond = BigInt(1_000_000_000)
 
 /**
  * Parses a `Retry-After` header value.
  *
  * **Details**
  *
- * Accepts whole non-negative seconds (`120`) up to `Number.MAX_SAFE_INTEGER`,
- * or an HTTP date in any of the formats {@link parseHttpDate} accepts.
- * Fractional, negative, exponent and non-finite numbers and numbers beyond
- * the safe integer range are rejected, as are dates in other formats.
+ * Accepts whole non-negative seconds (`120`) of any size, read exactly, or an
+ * HTTP date in any of the formats {@link parseHttpDate} accepts. Fractional,
+ * negative, exponent and non-finite numbers are rejected, as are dates in
+ * other formats.
  *
  * @stability unstable
  * @category header values
@@ -698,9 +720,11 @@ export const parseRetryAfter = (input: string): Result.Result<RetryAfter, Header
   const trimmed = input.trim()
   if (wholeSeconds.test(trimmed)) {
     const seconds = Number(trimmed)
-    return Number.isSafeInteger(seconds)
-      ? Result.succeed(retryAfterSeconds(seconds))
-      : Result.fail(HeaderParseError.fromReason("InvalidRetryAfter", input))
+    // Keep the millisecond form while it is exact; beyond that, count nanos.
+    const duration = Number.isSafeInteger(seconds * 1000)
+      ? Duration.seconds(seconds)
+      : Duration.nanos(BigInt(trimmed) * nanosPerSecond)
+    return Result.succeed({ _tag: "Duration", duration })
   }
   const millis = httpDateToMillis(trimmed)
   return millis === undefined
@@ -709,15 +733,22 @@ export const parseRetryAfter = (input: string): Result.Result<RetryAfter, Header
 }
 
 /**
- * Formats a `Retry-After` value as a header value: the seconds as a decimal
- * integer, or the date as an IMF-fixdate.
+ * Formats a `Retry-After` value as a header value: the delay as whole
+ * seconds, or the date as an IMF-fixdate.
+ *
+ * **Details**
+ *
+ * A delay with a fractional second is rounded up, since `Retry-After` is the
+ * least time to wait. Large delays are written as exact decimal digits.
  *
  * @stability unstable
  * @category header values
  * @since 4.0.0
  */
 export const formatRetryAfter = (self: RetryAfter): string =>
-  self._tag === "Seconds" ? String(self.seconds) : formatHttpDate(self.date)
+  self._tag === "Duration"
+    ? String((Duration.toNanosUnsafe(self.duration) + nanosPerSecond - BigInt(1)) / nanosPerSecond)
+    : formatHttpDate(self.date)
 
 /**
  * Computes how long to wait for a `Retry-After` value, measured from `now`
@@ -734,8 +765,8 @@ export const formatRetryAfter = (self: RetryAfter): string =>
  * @since 4.0.0
  */
 export const retryAfterDelay = (self: RetryAfter, now: number): Duration.Duration =>
-  self._tag === "Seconds"
-    ? Duration.seconds(self.seconds)
+  self._tag === "Duration"
+    ? self.duration
     : Duration.millis(Math.max(0, DateTime.toEpochMillis(self.date) - now))
 
 /**
@@ -746,6 +777,6 @@ export const retryAfterDelay = (self: RetryAfter, now: number): Duration.Duratio
  * @since 4.0.0
  */
 export const RetryAfterEquivalence: Equ.Equivalence<RetryAfter> = (self, that) =>
-  self._tag === "Seconds"
-    ? that._tag === "Seconds" && self.seconds === that.seconds
+  self._tag === "Duration"
+    ? that._tag === "Duration" && Duration.Equivalence(self.duration, that.duration)
     : that._tag === "Date" && DateTime.Equivalence(self.date, that.date)

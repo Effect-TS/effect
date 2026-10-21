@@ -15267,7 +15267,7 @@ export const Headers: Headers = declare(
 export interface RetryAfter extends
   Union<
     readonly [
-      Struct<{ readonly _tag: tag<"Seconds">; readonly seconds: Natural }>,
+      Struct<{ readonly _tag: tag<"Duration">; readonly duration: Duration }>,
       Struct<{ readonly _tag: tag<"Date">; readonly date: DateTimeUtc }>
     ]
   >
@@ -15280,16 +15280,23 @@ export interface RetryAfter extends
  *
  * **Details**
  *
- * Matches `Headers.RetryAfter`: either `{ _tag: "Seconds", seconds }` or
- * `{ _tag: "Date", date }`. Use {@link RetryAfterFromString} for the header
- * string form.
+ * Matches `Headers.RetryAfter`: either `{ _tag: "Duration", duration }` or
+ * `{ _tag: "Date", date }`. The duration must be finite and non-negative. Use
+ * {@link RetryAfterFromString} for the header string form.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const RetryAfter: RetryAfter = Union([
-  Struct({ _tag: tag("Seconds"), seconds: Natural }),
+  Struct({
+    _tag: tag("Duration"),
+    duration: Duration.check(
+      makeFilter((d) => Duration_.isFinite(d) && !Duration_.isNegative(d), {
+        expected: "a finite, non-negative duration"
+      })
+    )
+  }),
   Struct({ _tag: tag("Date"), date: DateTimeUtc })
 ])
 
@@ -15329,8 +15336,8 @@ export interface RetryAfterFromString extends decodeTo<RetryAfter, String> {
  *
  * Use with HTTP API header schemas that carry `Retry-After`. Decoding accepts
  * whole non-negative seconds or an HTTP date and rejects anything else;
- * encoding emits the seconds as a decimal integer or the date as an
- * IMF-fixdate.
+ * encoding emits the delay as whole seconds, rounding a fractional second up,
+ * or the date as an IMF-fixdate.
  *
  * **Example** (Decoding a Retry-After header)
  *
@@ -15338,7 +15345,7 @@ export interface RetryAfterFromString extends decodeTo<RetryAfter, String> {
  * import { Schema } from "effect"
  *
  * const value = Schema.decodeSync(Schema.RetryAfterFromString)("120")
- * // => { _tag: "Seconds", seconds: 120 }
+ * // => { _tag: "Duration", duration: Duration.seconds(120) }
  * ```
  *
  * @stability unstable
