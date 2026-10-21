@@ -233,6 +233,46 @@ describe("OpenAiLanguageModel", () => {
           }])
         }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
 
+      it.effect("forwards image and file breakpoints", () =>
+        Effect.gen(function*() {
+          const breakpoint = { mode: "explicit" } as const
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              Prompt.userMessage({
+                content: [
+                  Prompt.filePart({
+                    mediaType: "image/png",
+                    data: new URL("https://example.com/image.png"),
+                    options: { openai: { promptCacheBreakpoint: breakpoint } }
+                  }),
+                  Prompt.filePart({
+                    mediaType: "application/pdf",
+                    data: new URL("https://example.com/document.pdf"),
+                    options: { openai: { promptCacheBreakpoint: breakpoint } }
+                  })
+                ]
+              })
+            ])
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.input, [{
+            role: "user",
+            content: [{
+              type: "input_image",
+              image_url: "https://example.com/image.png",
+              detail: "auto",
+              prompt_cache_breakpoint: breakpoint
+            }, {
+              type: "input_file",
+              file_url: "https://example.com/document.pdf",
+              prompt_cache_breakpoint: breakpoint
+            }]
+          }])
+        }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
+
       it.effect("forwards implicit prompt cache mode without text breakpoints", () =>
         Effect.gen(function*() {
           yield* LanguageModel.generateText({ prompt: "Stable context" }).pipe(
