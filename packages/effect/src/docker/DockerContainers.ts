@@ -45,7 +45,14 @@ import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import { withProxyEnv } from "./DockerConfig.ts"
-import { apiClient, DockerEngine, filterStatus, toDockerError, withOperation } from "./DockerEngine.ts"
+import {
+  apiClient,
+  DockerEngine,
+  filterStatus,
+  toDockerError,
+  withOperation,
+  withStreamOperation
+} from "./DockerEngine.ts"
 import { DockerError, InvalidResponse, StreamFailed } from "./DockerError.ts"
 import { frames, type Framing, fromContentType, type Handle, makeHandle, releaseOnFailure } from "./DockerExec.ts"
 import * as DockerSchema from "./DockerSchema.ts"
@@ -630,13 +637,10 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
           query: logsQuery(options)
         }).pipe(
           Effect.flatMap(({ body, headers }) =>
-            Effect.map(
-              framingOf(id, headers["content-type"]),
-              (framing) => frames(body, framing).pipe(Stream.mapError(toDockerError(engine, "docker.Containers.logs")))
-            )
+            Effect.map(framingOf(id, headers["content-type"]), (framing) => frames(body, framing))
           )
         )
-      )
+      ).pipe(withStreamOperation(engine, "docker.Containers.logs", id))
     },
     stats: (id, options) => api.stats({ params: { id }, query: { stream: false, oneShot: options?.oneShot } }),
     statsStream: (id) => api.statsStream({ params: { id }, query: { stream: true } }),
@@ -676,7 +680,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
           exitCode: () => Fiber.join(exitCode),
           resize: (size) => resize(id, size)
         })
-      })).pipe(withOperation(engine, "docker.Containers.attach")),
+      })).pipe(withOperation(engine, "docker.Containers.attach", id)),
     statPath: (id, containerPath) => api.statPath({ params: { id }, query: { path: containerPath } }),
     getArchive,
     putArchive,
@@ -689,7 +693,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
           Stream.mapError((cause) => new DockerError({ reason: new StreamFailed({ message: cause.message, cause }) }))
         ),
         options
-      ),
+      ).pipe(withOperation(engine, "docker.Containers.copyTo", id)),
     copyFrom: (id, containerPath) =>
       Stream.unwrap(Effect.map(getArchive(id, containerPath), ({ bytes }) => {
         const fromTar = (error: DockerError | Tar.TarError): DockerError =>
@@ -710,7 +714,7 @@ export const make: Effect.Effect<DockerContainers["Service"], never, DockerEngin
           })),
           Stream.mapError(fromTar)
         )
-      }))
+      })).pipe(withStreamOperation(engine, "docker.Containers.copyFrom", id))
   })
 })
 

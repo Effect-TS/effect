@@ -687,19 +687,38 @@ export const toDockerError =
         })
       })
 
+/** The span options of an operation: the resource it acts on, as `docker.resource_id`. */
+const spanOptions = (resource: string | undefined) =>
+  resource === undefined ? undefined : { attributes: { "docker.resource_id": resource } }
+
 /**
- * Runs an effect as the operation `name`: in a span of that name, and its
- * failures as `DockerError` naming the operation. For methods that aren't one
- * HttpApi request.
+ * Runs an effect as the operation `name`: in a span of that name, with the
+ * `resource` it acts on as `docker.resource_id`, and its failures as
+ * `DockerError` naming the operation. For methods that aren't one HttpApi
+ * request.
  *
  * @internal
  */
 export const withOperation =
-  (engine: DockerEngine["Service"], name: string) =>
+  (engine: DockerEngine["Service"], name: string, resource?: string) =>
   <A, R>(self: Effect.Effect<A, MethodError, R>): Effect.Effect<A, DockerError, R> =>
     self.pipe(
       Effect.mapError(toDockerError(engine, name)),
-      Effect.withSpan(name)
+      Effect.withSpan(name, spanOptions(resource))
+    )
+
+/**
+ * Runs a stream as the operation `name`, as {@link withOperation} runs an
+ * effect: its span lasts until the stream ends.
+ *
+ * @internal
+ */
+export const withStreamOperation =
+  (engine: DockerEngine["Service"], name: string, resource?: string) =>
+  <A, R>(self: Stream.Stream<A, MethodError, R>): Stream.Stream<A, DockerError, R> =>
+    self.pipe(
+      Stream.mapError(toDockerError(engine, name)),
+      Stream.withSpan(name, spanOptions(resource))
     )
 
 // -----------------------------------------------------------------------------
@@ -760,6 +779,12 @@ const checkGates = (negotiated: string, gates: ReadonlyArray<Gate>): Effect.Effe
 // HttpApi
 // -----------------------------------------------------------------------------
 
+/** What {@link apiClient} reads of a request: the resource in its path, and its response mode. */
+interface ClientRequest {
+  readonly params?: { readonly id?: string; readonly name?: string } | undefined
+  readonly responseMode?: HttpApiClient.Client.ResponseMode | undefined
+}
+
 type Success<Endpoint extends HttpApiEndpoint.ConstraintRequest> = HttpApiClient.SuccessType<Endpoint["~Success"]>
 
 type DockerValue<A> = A extends Stream.Stream<infer X, infer _E, infer R> ? Stream.Stream<X, DockerError, R>
@@ -800,9 +825,11 @@ export type ApiClient<Group extends HttpApiGroup.Constraint> = Group["endpoints"
 /**
  * The client of an endpoint group over the engine's `HttpClient`. Each method
  * checks the endpoint's {@link ApiVersions}, runs in a span named
- * `<operations>.<endpoint>` (e.g. `docker.System.info`), and fails only with
+ * `<operations>.<endpoint>` (e.g. `docker.System.info`) with the `id` or
+ * `name` path parameter as `docker.resource_id`, and fails only with
  * `DockerError`, naming that operation. A streamed success is returned as the
- * `Stream`, and its failures are mapped too, also for a stream with headers.
+ * `Stream`, whose span lasts until it ends, and its failures are mapped too,
+ * also for a stream with headers.
  *
  * @internal
  */
@@ -829,13 +856,13 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
           const versions = Context.getOrUndefined(endpoint.annotations as Context.Context<ApiVersions>, ApiVersions)
           const streamed = Array.from(endpoint.success).some(HttpApiSchema.isStreamSchema)
           // an error status `DockerApi` doesn't declare, with the message of its body
-          const send = (request: unknown) =>
+          const send = (request: ClientRequest | undefined) =>
             Effect.catchIf(
               method(request),
               (error) => isUnexpectedStatus(error) && error.reason.response.status >= 400,
               (error) => filterStatus(name)((error as UnexpectedStatusError).reason.response)
             )
-          return [id, (request: unknown) => {
+          return [id, (request: ClientRequest | undefined) => {
             const gates = gatesOf(versions, name, request)
             const response = (gates.length === 0 ? send(request) : Effect.andThen(
               Effect.flatMap(engine.apiVersion, (negotiated) => checkGates(negotiated, gates)),
@@ -848,15 +875,15 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
                   ? { ...value, body: Stream.mapError(value.body as Stream.Stream<unknown, MethodError>, mapError) }
                   : value
               ),
-              Effect.mapError(mapError),
-              Effect.withSpan(name)
+              Effect.mapError(mapError)
             )
-            const mode = typeof request === "object" && request !== null && "responseMode" in request
-              ? request.responseMode
-              : undefined
-            return streamed && (mode === undefined || mode === "decoded-only")
-              ? Stream.unwrap(response as Effect.Effect<Stream.Stream<unknown, DockerError>, DockerError>)
-              : response
+            const options = spanOptions(request?.params?.id ?? request?.params?.name)
+            // a decoded stream's span lasts until the stream ends
+            return streamed && (request?.responseMode === undefined || request.responseMode === "decoded-only")
+              ? Stream.unwrap(response as Effect.Effect<Stream.Stream<unknown, DockerError>, DockerError>).pipe(
+                Stream.withSpan(name, options)
+              )
+              : Effect.withSpan(response, name, options)
           }]
         })
       ) as ApiClient<Group>

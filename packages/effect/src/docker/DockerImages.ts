@@ -48,7 +48,14 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
-import { apiClient, authConfig, DockerEngine, registryAuth } from "./DockerEngine.ts"
+import {
+  apiClient,
+  authConfig,
+  DockerEngine,
+  registryAuth,
+  withOperation,
+  withStreamOperation
+} from "./DockerEngine.ts"
 import { DockerError, InvalidReference, InvalidResponse, StreamFailed } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -244,6 +251,10 @@ export const parseReference = (input: string): Result.Result<ImageReference, Doc
 /** A reference given as a string or an {@link ImageReference}. */
 const referenceOf = (input: string | ImageReference): Effect.Effect<ImageReference, DockerError> =>
   typeof input === "string" ? Effect.fromResult(parseReference(input)) : Effect.succeed(input)
+
+/** A reference as a span's `docker.resource_id`: as given, when it is a string. */
+const resourceOf = (input: string | ImageReference): string =>
+  typeof input === "string" ? input : formatReference(input)
 
 /**
  * What a push reports about the pushed manifest, in the Engine's own field
@@ -853,7 +864,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
         },
         headers: { "x-registry-auth": auth }
       }))
-    }))
+    })).pipe(withStreamOperation(engine, "docker.Images.pull", resourceOf(input)))
 
   const pushStream: DockerImages["Service"]["pushStream"] = (input, options) =>
     Stream.unwrap(Effect.gen(function*() {
@@ -864,7 +875,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
         query: { tag: reference.tag, platform: options?.platform },
         headers: { "x-registry-auth": auth }
       }))
-    }))
+    })).pipe(withStreamOperation(engine, "docker.Images.pushStream", resourceOf(input)))
 
   const importImage: DockerImages["Service"]["import"] = (source, options) => {
     const query = { ...options, platform: options?.platform ?? config.platform }
@@ -935,23 +946,29 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
       ),
     remove: (name, options) => api.remove({ params: { name }, query: options ?? {} }),
     prune: (options) => api.prune({ query: options ?? {} }),
-    search: Effect.fnUntraced(function*(term, options) {
-      const { auth: own, ...query } = options ?? {}
-      const auth = yield* registryAuthOf(searchRegistry(term), own)
-      return yield* api.search({ query: { ...query, term }, headers: { "x-registry-auth": auth } })
-    }),
+    search: Effect.fnUntraced(
+      function*(term, options) {
+        const { auth: own, ...query } = options ?? {}
+        const auth = yield* registryAuthOf(searchRegistry(term), own)
+        return yield* api.search({ query: { ...query, term }, headers: { "x-registry-auth": auth } })
+      },
+      (effect) => withOperation(engine, "docker.Images.search")(effect)
+    ),
     commit: (container, options) => {
       const { config, ...query } = options ?? {}
       return api.commit({ query: { ...query, container }, payload: config ?? {} })
     },
-    distribution: Effect.fnUntraced(function*(input, options) {
-      const reference = yield* referenceOf(input)
-      const auth = yield* registryAuthOf(reference.registry, options?.auth)
-      return yield* api.distribution({
-        params: { name: formatReference(reference) },
-        headers: { "x-registry-auth": auth }
-      })
-    }),
+    distribution: Effect.fnUntraced(
+      function*(input, options) {
+        const reference = yield* referenceOf(input)
+        const auth = yield* registryAuthOf(reference.registry, options?.auth)
+        return yield* api.distribution({
+          params: { name: formatReference(reference) },
+          headers: { "x-registry-auth": auth }
+        })
+      },
+      (effect, input) => withOperation(engine, "docker.Images.distribution", resourceOf(input))(effect)
+    ),
     save: (names, options) =>
       typeof names === "string"
         ? api.save({ params: { name: names }, query: options ?? {} })
@@ -974,10 +991,14 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
             new DockerError({
               reason: new InvalidResponse({ issue: cause.message, operation: "docker.Images.push", cause })
             }))
-        )
+        ),
+        withOperation(engine, "docker.Images.push", resourceOf(reference))
       ),
     import: importImage,
-    buildStream: (context, options) => Stream.suspend(() => buildWith(context, options, { id: undefined })),
+    buildStream: (context, options) =>
+      Stream.suspend(() => buildWith(context, options, { id: undefined })).pipe(
+        withStreamOperation(engine, "docker.Images.buildStream")
+      ),
     build: (context, options) =>
       Effect.suspend(() => {
         const state: { id: string | undefined } = { id: undefined }
@@ -994,7 +1015,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
             )
           )
         )
-      })
+      }).pipe(withOperation(engine, "docker.Images.build"))
   })
 })
 
