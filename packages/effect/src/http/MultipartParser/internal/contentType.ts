@@ -19,6 +19,13 @@ const paramRE =
   /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u{10ffff}]|\\[\v\u0020-\u{10ffff}])*"|[!#$%&'*+.^\w`|~-]+) */gu
 
 /**
+ * RegExp to match *( ";" disposition-parm ) in RFC 6266 sec 4.1, which allows
+ * optional whitespace around separators
+ */
+const dispositionParamRE =
+  /;[ \t]*([!#$%&'*+.^\w`|~-]+)[ \t]*=[ \t]*("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u{10ffff}]|\\[\v\u0020-\u{10ffff}])*"|[!#$%&'*+.^\w`|~-]+)[ \t]*/gu
+
+/**
  * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
  *
  * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
@@ -34,14 +41,13 @@ const quotedPairRE = /\\([\v\u0020-\u{10ffff}])/gu
  * subtype    = token
  */
 const mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/u
-const mediaTypeRENoSlash = /^[!#$%&'*+.^\w|~-]+$/u
+const dispositionTypeRE = /^[!#$%&'*+.^\w|~-]+$/u
 
 // default ContentType to prevent repeated object creation
 const defaultContentType = { value: "", parameters: Object.create(null) }
 
 export function parse(
-  header: string | undefined,
-  withoutSlash = false
+  header: string | undefined
 ): {
   readonly value: string
   readonly parameters: Record<string, string>
@@ -52,9 +58,8 @@ export function parse(
 
   let index = header.indexOf(";")
   const type = index !== -1 ? header.slice(0, index).trim() : header.trim()
-  const mediaRE = withoutSlash ? mediaTypeRENoSlash : mediaTypeRE
 
-  if (mediaRE.test(type) === false) {
+  if (mediaTypeRE.test(type) === false) {
     return defaultContentType
   }
 
@@ -87,7 +92,7 @@ export function parse(
       // remove quotes and escapes
       value = value.slice(1, value.length - 1)
 
-      if (!withoutSlash && quotedPairRE.test(value)) {
+      if (quotedPairRE.test(value)) {
         value = value.replace(quotedPairRE, "$1")
       }
     }
@@ -97,6 +102,72 @@ export function parse(
 
   if (index !== header.length) {
     return defaultContentType
+  }
+
+  return result
+}
+
+/**
+ * Parses a Content-Disposition header according to RFC 6266, returning
+ * `undefined` when it is malformed or repeats a parameter.
+ *
+ * Quoted-pairs are left as-is, so unescaped backslashes in file paths survive.
+ */
+export function parseDisposition(
+  header: string | ReadonlyArray<string> | undefined
+):
+  | {
+    readonly value: string
+    readonly parameters: Record<string, string>
+  }
+  | undefined
+{
+  if (header === undefined) {
+    return defaultContentType
+  } else if (typeof header !== "string") {
+    return undefined
+  }
+
+  let index = header.indexOf(";")
+  const type = index !== -1 ? header.slice(0, index).trim() : header.trim()
+
+  if (dispositionTypeRE.test(type) === false) {
+    return undefined
+  }
+
+  const result = {
+    value: type.toLowerCase(),
+    parameters: Object.create(null) as Record<string, string>
+  }
+
+  if (index === -1) {
+    return result
+  }
+
+  let key: string
+  let match: RegExpExecArray | null
+  let value: string
+
+  dispositionParamRE.lastIndex = index
+
+  while ((match = dispositionParamRE.exec(header))) {
+    if (match.index !== index) {
+      return undefined
+    }
+
+    index += match[0].length
+    key = match[1].toLowerCase()
+    value = match[2]
+
+    if (key in result.parameters) {
+      return undefined
+    }
+
+    result.parameters[key] = value[0] === "\"" ? value.slice(1, value.length - 1) : value
+  }
+
+  if (index !== header.length) {
+    return undefined
   }
 
   return result

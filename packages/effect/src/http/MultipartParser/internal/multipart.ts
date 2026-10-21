@@ -179,15 +179,17 @@ export function make({
         }
 
         const contentType = CT.parse(result.headers["content-type"] as string)
-        const dispositionHeader = result.headers["content-disposition"]
-        const contentDisposition = CT.parse(dispositionHeader as string, true)
+        const contentDisposition = CT.parseDisposition(result.headers["content-disposition"])
+        if (contentDisposition === undefined) {
+          skipBody()
+          return onError(errInvalidDisposition)
+        }
         const hasExtFilename = "filename*" in contentDisposition.parameters
         const filename = hasExtFilename
           ? decodeExtValue(contentDisposition.parameters["filename*"])
           : contentDisposition.parameters.filename
 
         if (
-          (dispositionHeader !== undefined && contentDisposition.value === "") ||
           ("form-data" === contentDisposition.value && !("name" in contentDisposition.parameters)) ||
           (hasExtFilename && filename === undefined)
         ) {
