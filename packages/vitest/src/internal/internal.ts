@@ -163,29 +163,35 @@ const closeHookScope = (scope: Scope.Closeable) => runPromise(Scope.close(scope,
 
 /** @internal */
 export const beforeAll: typeof V.beforeAll = (fn, timeout) => {
-  let dispose: (() => Promise<void>) | undefined
+  let abandon: (() => Promise<void> | undefined) | undefined
   // Vitest drops the cleanup of a setup that outlives its timeout, so a hook
-  // registered just before this one disposes the scope too. Its cleanup runs
-  // right after the hook's own under the default `sequence.hooks: "stack"`
-  // and shares the same disposal, bounded by the default hook timeout. A
-  // successful setup keeps Vitest's native cleanup order and timeout.
+  // registered alongside this one disposes the scope in that case, bounded by
+  // the default hook timeout. Otherwise Vitest runs the hook's own cleanup
+  // with its native order and timeout, whatever `sequence.hooks` is.
   V.beforeAll(() => {
-    dispose = undefined
-    return () => dispose?.()
+    abandon = undefined
+    return () => abandon?.()
   })
   V.beforeAll(
-    runHook(fn, (_, effect, scope) => {
+    runHook(fn, ([, suite], effect, scope) => {
       const fiber = Effect.runFork(effect)
       let disposal: Promise<void> | undefined
       // Interrupting a setup that Vitest stopped waiting for awaits its release.
-      const disposeOnce = () =>
+      const dispose = () =>
         disposal ??= runPromise(Effect.andThen(Fiber.interrupt(fiber), Scope.close(scope, Exit.void)))
-      dispose = disposeOnce
-      return runPromise(Fiber.join(fiber)).then(() => disposeOnce)
+      // Tests only run once every `beforeAll` has succeeded in time, so Vitest
+      // has received the cleanup below.
+      abandon = () => hasRunTests(suite) ? undefined : dispose()
+      return runPromise(Fiber.join(fiber)).then(() => dispose)
     }),
     timeout
   )
 }
+
+const hasRunTests = (suite: Readonly<V.RunnerTestSuite>): boolean =>
+  suite.tasks.some((task) =>
+    task.type === "suite" ? hasRunTests(task) : task.result?.state === "pass" || task.result?.state === "fail"
+  )
 
 /** @internal */
 export const beforeEach: typeof V.beforeEach = (fn, timeout) =>

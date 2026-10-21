@@ -226,7 +226,7 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
  * **Details**
  *
  * If Vitest stops waiting for the setup, the `Effect` is interrupted and the
- * `Scope` closed by a cleanup that runs after the hook's own, within the
+ * `Scope` closed by an extra cleanup registered with the hook, within the
  * default hook timeout. As with any `beforeAll` cleanup, Vitest reports one
  * that exceeds the hook's timeout and does not wait for it.
  *
