@@ -207,6 +207,35 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(result).toEqual("Activity3")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll replays an external signal winner", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+
+      const executionId = yield* SignalRaceWorkflow.execute({ id: "signal-race" }, { discard: true })
+      yield* TestClock.adjust(1)
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(1)
+      expect(yield* SignalRaceWorkflow.poll(executionId)).toEqual(new Workflow.Suspended())
+
+      yield* DurableDeferred.succeed(SignalRaceSignal, {
+        token: DurableDeferred.tokenFromExecutionId(SignalRaceSignal, {
+          workflow: SignalRaceWorkflow,
+          executionId
+        }),
+        value: "signal"
+      })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(5000)
+      // resume after the post-race clock, replaying the persisted race winner
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(5000)
+
+      expect(yield* SignalRaceWorkflow.poll(executionId)).toEqual(
+        new Workflow.Complete({ exit: Exit.succeed("signal") })
+      )
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -653,6 +682,41 @@ const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(f
   return result
 }))
 
+const SignalRaceWorkflow = Workflow.make({
+  name: "SignalRaceWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const SignalRaceSignal = DurableDeferred.make("SignalRaceSignal", {
+  success: Schema.String
+})
+
+const SignalRaceWorkflowLayer = SignalRaceWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const result = yield* DurableDeferred.raceAll({
+    name: "SignalRace",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableClock.sleep({
+        name: "SignalRaceTick",
+        duration: "1 hour",
+        inMemoryThreshold: Duration.zero
+      }).pipe(Effect.as("tick")),
+      DurableDeferred.await(SignalRaceSignal)
+    ]
+  })
+  yield* DurableClock.sleep({
+    name: "SignalRaceAfter",
+    duration: 1000,
+    inMemoryThreshold: Duration.zero
+  })
+  return result
+}))
+
 const ParentWorkflow = Workflow.make({
   name: "ParentWorkflow",
   payload: {
@@ -833,6 +897,7 @@ const makeBatchRequestError = () => {
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
+  Layer.merge(SignalRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(ShardedClockWorkflowLayer),
