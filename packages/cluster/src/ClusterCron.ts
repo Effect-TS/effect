@@ -6,7 +6,6 @@ import * as Cron from "effect/Cron"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -106,15 +105,9 @@ export const make = <E, R>(options: {
           if (address.entityId === "initial") {
             return yield* schedule(dateTime)
           }
-          const exit = yield* Effect.exit(effect(dateTime))
-          if (Exit.isFailure(exit)) {
-            yield* Effect.logWarning(exit.cause)
-          }
-          const now = yield* DateTime.now
-          return yield* schedule(DateTime.unsafeFromDate(Cron.next(
-            options.cron,
-            options.calculateNextRunFromPrevious ? dateTime : now
-          )))
+          yield* effect(dateTime).pipe(Effect.catchAllCause((cause) => Effect.logWarning(cause)))
+          const from = options.calculateNextRunFromPrevious ? dateTime : yield* DateTime.now
+          return yield* schedule(DateTime.unsafeFromDate(Cron.next(options.cron, from)))
         }).pipe(
           Effect.annotateLogs({
             module: "ClusterCron",
