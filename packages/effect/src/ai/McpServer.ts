@@ -1919,7 +1919,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
               (requestContext?.clientId === clientId ? requestHeaders : undefined) ??
                 clientStates.get(clientId)?.sessionHeaders ?? Headers.empty,
               notification,
-              defaultLogLevel
+              defaultLogLevel,
+              listChangeRevision
             )
           ) {
             return
