@@ -107,6 +107,31 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("a request that disposes the runtime before its first async step keeps running", async () => {
+    const runtime = ManagedRuntime.make(Layer.empty)
+    await runtime.runPromise(Effect.void)
+    const result = await runtime.runPromise(Effect.gen(function*() {
+      yield* runtime.disposeEffect
+      yield* Effect.yieldNow
+      return "finished"
+    }))
+    strictEqual(result, "finished")
+  })
+
+  test("runPromise(disposeEffect) resolves when a layer finalizer is async", async () => {
+    let released = false
+    const runtime = ManagedRuntime.make(
+      Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.yieldNow.pipe(Effect.andThen(Effect.sync(() => {
+          released = true
+        })))
+      ))
+    )
+    await runtime.runPromise(Effect.void)
+    await runtime.runPromise(runtime.disposeEffect)
+    strictEqual(released, true)
+  })
+
   test("detached-fiber disposal still interrupts and awaits its former request", async () => {
     const events: Array<string> = []
     const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>

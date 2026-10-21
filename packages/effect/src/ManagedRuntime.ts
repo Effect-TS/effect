@@ -336,9 +336,11 @@ export const make = <R, ER>(
   // and awaited by its disposal, so they and their child fibers must not wait
   // for it.
   const managedFibers = new WeakSet<Fiber.Fiber<any, any>>()
+  const disposingFibers = new WeakSet<Fiber.Fiber<any, any>>()
   const defaultRunOptions: Effect.RunOptions = {
     onFiberStart(fiber) {
       managedFibers.add(fiber)
+      if (disposingFibers.has(fiber)) return
       Fiber.runIn(fiber, fiberScope)
     }
   }
@@ -402,6 +404,7 @@ export const make = <R, ER>(
       // Closing fiberScope interrupts and awaits every managed fiber. Skip the
       // disposing fiber and its ancestors, which would otherwise await themselves.
       for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
+        disposingFibers.add(current)
         scopeRemoveFinalizerUnsafe(fiberScope, current)
       }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
