@@ -24,6 +24,11 @@
  *   it runs. A successful probe closes the circuit, and a failed one opens it
  *   again for the next `openDuration` delay. An interrupted or `Ignored` probe
  *   frees the slot for the next caller.
+ * - Closing the circuit does not reset the backoff. `consecutiveOpenings`
+ *   counts the openings since the backoff last reset, and resets once the
+ *   circuit has stayed closed at least as long as it was last open. A
+ *   dependency that recovers only briefly therefore gets longer and longer
+ *   open windows, not the shortest one after every close.
  *
  * One policy per key: keys are global within a store, and a circuit's state
  * does not record which policy wrote it. Two breakers with different policies
@@ -70,6 +75,10 @@
  * - On Redis, a probe holds a lease that is renewed while it runs. If renewals
  *   cannot reach Redis, the lease lapses and another caller can start a second
  *   probe.
+ * - An uncapped exponential `openDuration` keeps growing for a dependency that
+ *   flaps as well as for one that is down. Cap it with `Schedule.upTo` or
+ *   `Schedule.either` with `Schedule.spaced`. The cap also bounds how long the
+ *   circuit must stay closed before the backoff resets.
  *
  * **Example** (Rejecting calls once a circuit opens)
  *
@@ -478,6 +487,17 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  *   are not supported. When the schedule ends, the last delay it produced
  *   repeats; a schedule that ends before producing any delay opens the
  *   circuit for zero time.
+ * - The backoff count survives a close. Every opening remembers its open
+ *   time, including any `Retry-After` hint. The first call admitted once the
+ *   circuit has stayed closed that long resets `consecutiveOpenings` to 0, so
+ *   a hint lengthens the reset window too. Under a schedule, a long hint moves
+ *   the next opening one step along the schedule, not to the hint's length.
+ *   Idle expiry is separate: a key dropped by the store starts again at 0.
+ * - An uncapped exponential schedule keeps growing for a dependency that
+ *   flaps as well as for one that is down. Cap it with `Schedule.upTo` or
+ *   `Schedule.either` with `Schedule.spaced`. The cap bounds both the open
+ *   window and the reset window, since the reset window is the last open
+ *   window. With a fixed duration, the count never changes the delay.
  * - `maxOpenDuration` caps a `Retry-After` hint from `failure`, and defaults
  *   to one hour. It never caps `openDuration`.
  * - `onStoreError` decides what a call does when the store cannot admit it:
@@ -498,7 +518,8 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  *
  * // Openings last 1, 2, 4, 8, 16 and 32 seconds. The seventh replay sees 63
  * // seconds of earlier open time, so the schedule ends and every later
- * // opening lasts 32 seconds, until a successful probe closes the circuit.
+ * // opening lasts 32 seconds, until the circuit stays closed for 32 seconds
+ * // and the backoff resets.
  * const program = Effect.gen(function*() {
  *   const breaker = yield* CircuitBreaker.make({
  *     tripPolicy: CircuitBreaker.consecutive(5),
@@ -842,6 +863,8 @@ export const failure = (options?: { readonly retryAfter?: Duration.Input | undef
  *   past its open time reads as Open until the next call moves it to
  *   HalfOpen.
  * - `HalfOpen.probing` is `false` when no probe currently holds the slot.
+ * - `consecutiveOpenings` on Open and HalfOpen counts the openings since the
+ *   backoff last reset, not since the circuit last closed.
  *
  * @stability experimental
  * @category models
@@ -863,7 +886,8 @@ export type State =
  * **Details**
  *
  * Only the legal edges appear. `from` tells a failed probe (`"HalfOpen"`)
- * apart from a fresh trip (`"Closed"`).
+ * apart from a fresh trip (`"Closed"`). On an opening, `consecutiveOpenings`
+ * counts the openings since the backoff last reset, including this one.
  *
  * @stability experimental
  * @category models
@@ -1036,6 +1060,20 @@ export class CircuitBreakerError extends Schema.Error<CircuitBreakerError>(Error
  *
  * Each operation reads "now" inside the store.
  *
+ * Backoff reset rule:
+ *
+ * - Every opening stores its `openFor`. HalfOpen to Closed keeps
+ *   `consecutiveOpenings` and sets a reset deadline of the close time plus
+ *   the last opening's `openFor`.
+ * - The first `admit` of a Closed key at or after the deadline sets
+ *   `consecutiveOpenings` to 0 before returning the admission.
+ * - `record` never reads the deadline. It only increments the count when it
+ *   opens the circuit. A call admitted before the deadline that trips after a
+ *   later admit reset the count opens with the `openFor` it computed from its
+ *   older count, and the stored count restarts at 1.
+ * - An expired key starts again as Closed with a count of 0, even before its
+ *   deadline.
+ *
  * @stability experimental
  * @category services
  * @since 4.0.6
@@ -1059,7 +1097,7 @@ export class CircuitBreakerStore extends Context.Service<CircuitBreakerStore, {
  *
  * - `generation` is an opaque fencing token to pass back to `record`.
  * - `probe` is `true` when this call is the HalfOpen probe.
- * - `consecutiveOpenings` counts the openings since the circuit last closed.
+ * - `consecutiveOpenings` counts the openings since the backoff last reset.
  * - `transition` is the Open to HalfOpen transition this admission made, if
  *   any.
  *
@@ -1083,6 +1121,8 @@ interface MemoryEntry {
   ringFailures: number
   openUntil: number
   consecutiveOpenings: number
+  lastOpenFor: number
+  resetAt: number
   probing: boolean
 }
 
@@ -1094,7 +1134,8 @@ interface MemoryEntry {
  * State is local to the layer and uses `Clock`. `idleTimeToLive` (default
  * one hour) drops idle keys: a Closed key once it has been idle that long, an
  * Open key that long after its open time ends, and a HalfOpen key only when
- * no probe is running. A dropped key starts again as Closed.
+ * no probe is running. A dropped key starts again as Closed with a backoff
+ * count of 0, even if its backoff reset window has not ended.
  *
  * @stability experimental
  * @category layers
@@ -1148,7 +1189,8 @@ export const layerStoreMemory = (options?: {
     ): Transition => {
       entry.state = "Open"
       entry.generation = nextGeneration++
-      entry.openUntil = now + Duration.toMillis(openFor)
+      entry.lastOpenFor = Duration.toMillis(openFor)
+      entry.openUntil = now + entry.lastOpenFor
       entry.consecutiveOpenings++
       entry.probing = false
       resetCounters(entry)
@@ -1176,12 +1218,23 @@ export const layerStoreMemory = (options?: {
               ringFailures: 0,
               openUntil: 0,
               consecutiveOpenings: 0,
+              lastOpenFor: 0,
+              resetAt: 0,
               probing: false
             }
             entries.set(key, entry)
           }
           let transition: Transition | undefined
           switch (entry.state) {
+            case "Closed": {
+              // A call admitted before this reset can still trip the circuit.
+              // It opens with the openFor it computed from its older count,
+              // and the stored count restarts at 1.
+              if (entry.consecutiveOpenings > 0 && now >= entry.resetAt) {
+                entry.consecutiveOpenings = 0
+              }
+              break
+            }
             case "Open": {
               if (now < entry.openUntil) {
                 return Effect.fail(
@@ -1229,7 +1282,7 @@ export const layerStoreMemory = (options?: {
               case "Success": {
                 entry.state = "Closed"
                 entry.generation = nextGeneration++
-                entry.consecutiveOpenings = 0
+                entry.resetAt = now + entry.lastOpenFor
                 entry.probing = false
                 resetCounters(entry)
                 return { key, from: "HalfOpen", to: "Closed" }
@@ -1291,7 +1344,8 @@ export const layerStoreMemory = (options?: {
  *   renewals succeed never loses its key. Freeing the slot (an Ignored or
  *   interrupted probe) returns the key to `idleTimeToLive`. An Open key
  *   expires that long after its open time ends, so expiry never resets the
- *   backoff count early. An expired key starts again as Closed.
+ *   backoff count early. An expired key starts again as Closed with a
+ *   backoff count of 0, even if its backoff reset window has not ended.
  *
  * **Gotchas**
  *
@@ -1489,7 +1543,7 @@ if not lease or not idle then
   return redis.error_reply("CircuitBreaker admit: invalid arguments")
 end
 
-local fields = redis.call("HMGET", key, "state", "generation", "openUntil", "openings", "leaseUntil")
+local fields = redis.call("HMGET", key, "state", "generation", "openUntil", "openings", "leaseUntil", "resetAt")
 local state = fields[1]
 local generation = fields[2]
 local openings = tonumber(fields[4]) or 0
@@ -1502,6 +1556,13 @@ if not state then
 end
 
 if state == "Closed" then
+  -- A call admitted before this reset can still trip the circuit. It opens
+  -- with the openFor it computed from its older count, and the stored count
+  -- restarts at 1.
+  if openings > 0 and now >= (tonumber(fields[6]) or 0) then
+    openings = 0
+    redis.call("HSET", key, "openings", 0)
+  end
   redis.call("PEXPIRE", key, int(idle))
   return { "ok", generation, 0, openings, 0 }
 end
@@ -1573,7 +1634,7 @@ if not valid then
   return redis.error_reply("CircuitBreaker record: invalid arguments")
 end
 
-local fields = redis.call("HMGET", key, "state", "generation", "streak", "ring", "failures", "openings")
+local fields = redis.call("HMGET", key, "state", "generation", "streak", "ring", "failures", "openings", "lastOpenFor")
 local state = fields[1]
 if not state or fields[2] ~= expected then
   return { "none", 0 }
@@ -1588,6 +1649,7 @@ local function open()
     "generation", nextGeneration(fields[2]),
     "openUntil", int(now + openFor),
     "openings", openings,
+    "lastOpenFor", int(openFor),
     "streak", 0,
     "ring", "",
     "failures", 0,
@@ -1612,14 +1674,14 @@ if state == "HalfOpen" then
     "HSET", key,
     "state", "Closed",
     "generation", nextGeneration(fields[2]),
-    "openings", 0,
+    "resetAt", int(now + (tonumber(fields[7]) or 0)),
     "streak", 0,
     "ring", "",
     "failures", 0,
     "leaseUntil", 0
   )
   redis.call("PEXPIRE", key, int(idle))
-  return { "halfopen-closed", 0 }
+  return { "halfopen-closed", openings }
 end
 
 if state ~= "Closed" then
