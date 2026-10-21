@@ -136,8 +136,9 @@ export const make = <E, R>(options: {
       ? Effect.flatMap(CronEntity.client, (makeClient) => makeClient(executorId).start()).pipe(
         withRetry("Failed to start cron job, retrying")
       )
-      : Effect.flatMap(DateTime.now, (now) => send(nextRun(now))).pipe(
-        withRetry("Failed to schedule initial run, retrying")
+      : Effect.flatMap(
+        DateTime.now,
+        (now) => send(nextRun(now)).pipe(withRetry("Failed to schedule initial run, retrying"))
       ),
     { shardGroup: options.shardGroup }
   )
