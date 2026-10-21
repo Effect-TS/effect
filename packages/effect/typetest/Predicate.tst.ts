@@ -11,6 +11,7 @@ declare const tagged: ReadonlyArray<{ _tag: "a"; a: string } | { _tag: "b"; b: s
 declare const wideTags: ReadonlyArray<{ _tag: string; value: number }>
 declare const records: ReadonlyArray<Record<string, unknown>>
 declare const taggedOrUntagged: ReadonlyArray<{ _tag: "a"; a: string } | { b: string }>
+declare const exactOrBroad: { _tag: "a"; a: string } | { _tag: "a" | "b"; b: number }
 
 describe("Predicate", () => {
   it("isString", () => {
@@ -66,6 +67,12 @@ describe("Predicate", () => {
     expect(wideTags.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: string; value: number } & { _tag: "a" }>>()
     expect(records.filter(Predicate.isTagged("a"))).type.toBe<Array<Record<string, unknown> & { _tag: "a" }>>()
     expect(taggedOrUntagged.filter(Predicate.isTagged("a"))).type.toBe<Array<{ _tag: "a"; a: string }>>()
+    expect([exactOrBroad].filter(Predicate.isTagged("a"))).type.toBe<
+      Array<{ _tag: "a"; a: string } | ({ _tag: "a" | "b"; b: number } & { _tag: "a" })>
+    >()
+    if (Predicate.isTagged(exactOrBroad, "a")) {
+      expect(exactOrBroad).type.toBe<{ _tag: "a"; a: string } | ({ _tag: "a" | "b"; b: number } & { _tag: "a" })>()
+    }
     const value = tagged[0]
     if (Predicate.isTagged(value, "a")) {
       expect(value).type.toBe<{ _tag: "a"; a: string }>()
