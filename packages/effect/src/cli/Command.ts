@@ -735,6 +735,113 @@ export const withHandler: {
 ): Command<Name, A, ContextInput, E, Exclude<R, BuiltInSettingContext>> =>
   makeCommand({ ...toImpl(self), handle: handler } as any))
 
+/**
+ * Adds a validation step that runs on the parsed input of a command.
+ *
+ * **Details**
+ *
+ * Use this for rules that involve several flags or arguments at once, such as
+ * mutually exclusive flags, a flag that requires another one, or a range whose
+ * bounds must be ordered. Individual values are still validated where they
+ * are declared, with `Flag.mapEffect` and friends.
+ *
+ * The validation receives the same input the handler would receive: it runs
+ * after every flag and argument has been parsed, including defaults, fallback
+ * configuration, prompts and the wizard, and before the handler. A failure is
+ * reported like a parse error: the command help is rendered together with the
+ * error and the handler does not run. Fail with `CliError.ValidationError` to
+ * report a message of your own, or with any other `CliError` to reuse its
+ * standard message.
+ *
+ * Several validations run in the order they were added and stop at the first
+ * failure. The validation is kept when a handler is added later with
+ * `withHandler`.
+ *
+ * The validation only sees the input that exists at the point in the pipeline
+ * where it is applied. Apply it after `withSharedFlags` to see the shared
+ * flags. Applied before `withSubcommands`, it runs only when the command
+ * itself is selected; applied after, it also runs when a subcommand is
+ * selected, and then receives the parent's shared flags.
+ *
+ * **Example** (Rejecting mutually exclusive flags)
+ *
+ * ```ts import.meta.vitest
+ * import { Console, Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
+ * import { CliError, Command, Flag } from "effect/cli"
+ * import { ChildProcessSpawner } from "effect/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
+ * const silentConsole: Console.Console = Object.assign(Object.create(console), {
+ *   log: () => {},
+ *   error: () => {}
+ * })
+ *
+ * const download = Command.make("download", {
+ *   useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
+ *   useDocker: Flag.Boolean("use-docker").pipe(Flag.withDefault(false))
+ * }, () => Effect.void).pipe(
+ *   Command.validate(({ useApi, useDocker }) =>
+ *     useApi && useDocker
+ *       ? Effect.fail(
+ *         new CliError.ValidationError({
+ *           message: "--use-api and --use-docker are mutually exclusive"
+ *         })
+ *       )
+ *       : Effect.void
+ *   )
+ * )
+ *
+ * const error = await Effect.runPromise(
+ *   Command.runWith(download, { version: "1.0.0" })(["--use-api", "--use-docker"]).pipe(
+ *     Effect.flip,
+ *     Effect.provideService(Console.Console, silentConsole),
+ *     Effect.provide(CliTestLayer)
+ *   )
+ * )
+ * error._tag // => "ShowHelp"
+ * error.errors.map((e) => e.message) // => ["--use-api and --use-docker are mutually exclusive"]
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const validate: {
+  <Input>(
+    f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
+  ): <Name extends string, ContextInput, E, R>(
+    self: Command<Name, Input, ContextInput, E, R>
+  ) => Command<Name, Input, ContextInput, E, R>
+  <Name extends string, Input, ContextInput, E, R>(
+    self: Command<Name, Input, ContextInput, E, R>,
+    f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
+  ): Command<Name, Input, ContextInput, E, R>
+} = dual(2, <Name extends string, Input, ContextInput, E, R>(
+  self: Command<Name, Input, ContextInput, E, R>,
+  f: (input: Input) => Effect.Effect<void, CliError.CliError, Environment>
+): Command<Name, Input, ContextInput, E, R> => {
+  const impl = toImpl(self)
+  return makeCommand({
+    ...impl,
+    parse: (raw) => Effect.tap(impl.parse(raw), f)
+  }) as any
+})
+
 interface SubcommandGroupInternal {
   readonly group: string | undefined
   readonly commands: NonEmptyReadonlyArray<Command.Any>
