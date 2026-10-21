@@ -3043,23 +3043,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
   const registry = yield* McpServer
-  const registrations = yield* makeToolkitRegistrations(toolkit)
-  for (const registration of registrations) yield* registry.addTool(registration)
-})
-
-/** @internal */
-export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.Toolkit<Tools>
-) {
-  const built = yield* (toolkit as unknown as Effect.Effect<
-    Toolkit.WithHandler<Record<string, Tool.Any>>,
-    never,
-    Exclude<Tool.HandlersFor<Tools>, McpRequestContext>
-  >).pipe(Effect.updateContext((context: Context.Context<Exclude<Tool.HandlersFor<Tools>, McpRequestContext>>) => {
-    // Toolkit handlers also retain the context in which their layer was built.
+  const built = yield* toolkit.pipe(Effect.updateContext((context: Context.Context<Tool.HandlersFor<Tools>>) => {
+    // Discard request services retained when handler layers were built.
     const services = new Map(context.mapUnsafe)
     for (const tool of Object.values(toolkit.tools)) {
-      // Toolkit.toLayer stores each handler under this tool ID; mapUnsafe erases the entry type.
       const handler = services.get(tool.id) as Tool.Handler<string> | undefined
       if (handler !== undefined) {
         services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
@@ -3068,6 +3055,19 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extend
     return Context.makeUnsafe(services)
   }))
   const services = yield* Effect.context<never>()
+  const registrations = yield* makeToolkitRegistrations(built)
+  for (const registration of registrations) {
+    yield* registry.addTool({ ...registration, services })
+  }
+})
+
+/** @internal */
+export const makeToolkitRegistrations = Effect.fnUntraced(function*<
+  Tools extends Record<string, Tool.Any>,
+  R
+>(built: Toolkit.WithHandler<Tools, R>) {
+  const services = omitRequestServices(yield* Effect.context<never>())
+  const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
     const failure = Cause.findFail(cause)
@@ -3078,7 +3078,15 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extend
         Effect.as(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
       )
   }
-  const registrations: Array<Parameters<McpServer["Service"]["addTool"]>[0]> = []
+  const registrations: Array<{
+    readonly tool: McpTool
+    readonly annotations: Context.Context<never>
+    readonly handle: (payload: unknown) => Effect.Effect<
+      CallToolResult | McpSchema.InputRequired,
+      InternalError | InvalidParams,
+      Tool.HandlerServices<Tools[keyof Tools]> | R
+    >
+  }> = []
   for (const tool of Object.values(built.tools)) {
     const descriptor = yield* makeToolDescriptor(tool)
     const decodeOptions: SchemaAST.ParseOptions = {
@@ -3113,7 +3121,13 @@ export const makeToolkitRegistrations = Effect.fnUntraced(function*<Tools extend
     registrations.push({
       ...descriptor,
       handle: Effect.fnUntraced(function*(payload) {
-        return yield* built.handle(tool.name, payload ?? {}, undefined, decodeOptions).pipe(
+        // Toolkit validates raw MCP arguments before invoking the typed handler.
+        return yield* built.handle(
+          tool.name,
+          (payload ?? {}) as Tool.ParametersEncoded<Tools[typeof tool.name]>,
+          undefined,
+          decodeOptions
+        ).pipe(
           Stream.unwrap,
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),

@@ -603,21 +603,26 @@ it.effect("should cancel active memory tasks when cancellation is requested", ()
 
 it.effect("should preserve decoded parameters and request metadata when a memory handler executes", () =>
   Effect.gen(function*() {
+    class Prefix extends Context.Service<Prefix, string>()("test/MemoryTaskPrefix") {}
     const tools = Toolkit.make(Tool.make("report", {
       parameters: Schema.Struct({ rows: Schema.NumberFromString }),
       success: Schema.String
     }))
     const layer = McpTasks.toolkit(tools, { owner: "shared" }).pipe(
       Layer.provide(McpTasks.layerMemory(tools, {
-        report: ({ rows }) =>
-          McpSchema.McpRequestContext.useSync((request) => `${request.requestMetadata?.tenant}:${rows + 1}`)
+        report: Effect.fnUntraced(function*({ rows }) {
+          const prefix = yield* Prefix
+          const request = yield* McpSchema.McpRequestContext
+          return `${prefix}:${request.requestMetadata?.tenant}:${rows + 1}`
+        })
       })),
+      Layer.provide(Layer.succeed(Prefix, "memory")),
       Layer.provideMerge(serverLayer)
     )
     const harness = yield* makeHttpHarness(layer)
     const completed = yield* terminal(harness, (yield* create(harness, "report", { rows: "2" })).taskId)
     assert.strictEqual(completed.status, "completed")
-    if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "acme:3")
+    if (completed.status === "completed") assert.strictEqual(completed.result.structuredContent, "memory:acme:3")
   }))
 
 it.effect("should interrupt memory handlers and discard records when the execution layer closes", () =>
