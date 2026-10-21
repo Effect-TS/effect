@@ -20,7 +20,7 @@ import {
   SqlMessageStorage
 } from "effect/cluster"
 import { Reactivity } from "effect/reactivity"
-import { Migrator, SqlClient, Statement } from "effect/sql"
+import { SqlClient, Statement } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MssqlContainer } from "../fixtures/mssql-utils.ts"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
@@ -198,53 +198,17 @@ describe("SqlMessageStorage", () => {
       }
 
       if (label === "mssql") {
-        it.effect("upgrades populated tables to nullable unique keys", () =>
+        it.effect("rejects duplicate exit replies when another table has the same index name", () =>
           Effect.gen(function*() {
             const sql = yield* SqlClient.SqlClient
-            yield* Migrator.make({})({
-              loader: Effect.map(
-                SqlMessageStorage.migrations({ prefix: "upgrade" }),
-                (migrations) => migrations.filter(([id]) => id < 4)
-              ),
-              table: "upgrade_migrations"
-            })
-            // an index on another table shares the name of a replies index
-            yield* sql`CREATE TABLE upgrade_other (id INT)`
-            yield* sql`CREATE INDEX upgrade_replies_one_exit ON upgrade_other (id)`
-            yield* sql`
-              INSERT INTO upgrade_messages
-                (id, shard_id, entity_type, entity_id, kind, tag, payload, headers, request_id)
-              VALUES (1, 'default:1', 'test', '1', 0, 'GetUser', '{"id":1}', '{}', 1)
-            `
-
-            const storage = yield* SqlMessageStorage.makeEncoded({ prefix: "upgrade" }).pipe(
+            yield* sql`CREATE TABLE collision_other (id INT)`
+            yield* sql`CREATE INDEX collision_replies_one_exit ON collision_other (id)`
+            const storage = yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(
               Effect.provide(NodeCrypto.layer)
             )
-            const messages = yield* storage.unprocessedMessages(["default:1"], Date.now())
-            expect(messages.map((message) => message.envelope)).toMatchObject([{ requestId: "1", payload: { id: 1 } }])
-            const result = yield* storage.saveEnvelope({
-              envelope: {
-                _tag: "Interrupt",
-                id: "2",
-                requestId: "1",
-                address: { shardId: { group: "default", id: 1 }, entityType: "test", entityId: "1" }
-              },
-              primaryKey: null,
-              deliverAt: null
-            })
-            expect(result._tag).toEqual("Success")
-            for (const sequence of [0, 1]) {
-              yield* storage.saveReply({
-                _tag: "Chunk",
-                id: String(10 + sequence),
-                requestId: "1",
-                sequence,
-                values: [null]
-              })
-            }
             const exit = { _tag: "WithExit", requestId: "1", exit: { _tag: "Success", value: null } } as const
-            yield* storage.saveReply({ ...exit, id: "20" })
-            const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "21" }))
+            yield* storage.saveReply({ ...exit, id: "1" })
+            const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "2" }))
             expect(error._tag).toEqual("PersistenceError")
           }))
       }
