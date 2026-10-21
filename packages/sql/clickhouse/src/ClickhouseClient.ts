@@ -84,19 +84,10 @@ const classifyError = (
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
 }
 
-const rawDataFormats = {
-  CSV: true,
-  CSVWithNames: true,
-  CSVWithNamesAndTypes: true,
-  TabSeparated: true,
-  TabSeparatedRaw: true,
-  TabSeparatedWithNames: true,
-  TabSeparatedWithNamesAndTypes: true,
-  CustomSeparated: true,
-  CustomSeparatedWithNames: true,
-  CustomSeparatedWithNamesAndTypes: true,
-  Parquet: true
-} satisfies Record<Clickhouse.RawDataFormat, true>
+const rawFormats = new Set<string>(Clickhouse.SupportedRawFormats)
+
+const isRawFormat = (format: Clickhouse.StreamableDataFormat): format is Clickhouse.RawDataFormat =>
+  rawFormats.has(format)
 
 // The compiler renders placeholders as `{p1: Type}`, `{p2: Type}`, ...
 const toQueryParams = (params: ReadonlyArray<unknown>) => {
@@ -115,61 +106,15 @@ const killQuery = (client: Clickhouse.ClickHouseClient, queryId: string) =>
     })
   )
 
-const isRawFormat = (format: Clickhouse.StreamableDataFormat): format is Clickhouse.RawDataFormat =>
-  format in rawDataFormats
-
 const streamError = (cause: unknown) =>
   new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
 
-// `JSONEachRowWithProgress` events whose payload is a result row
-const rowEventKeys = ["row", "totals", "min", "max"] as const
+const parseRowError = (cause: unknown) =>
+  new SqlError({ reason: classifyError(cause, "Failed to parse row", "parseRow") })
 
-// In `JSONEachRowWithProgress` streams the server reports mid-stream failures
-// as a `{exception: string}` event instead of an HTTP error.
-const isExceptionEvent = (value: unknown): value is { exception: string } =>
-  typeof value === "object" && value !== null && "exception" in value &&
-  typeof (value as { exception: unknown }).exception === "string"
-
-// Since ClickHouse 25.11, a query that fails after the response has started
-// ends the body with an exception block opened by `__exception__\r\n<tag>\r\n`,
-// where the tag comes from the `x-clickhouse-exception-tag` response header.
-// Bytes before the block pass through untouched and the block fails the stream.
-// The last `marker.length - 1` bytes are held back so a marker split across
-// chunks is still found.
-const failOnExceptionBlock = (tag: string) => {
-  const marker = Buffer.from(`__exception__\r\n${tag}\r\n`)
-  let pending: Buffer = Buffer.alloc(0)
-  let block: Array<Buffer> | undefined
-  return new Transform({
-    transform(chunk: Buffer, _encoding, callback) {
-      if (block) {
-        block.push(chunk)
-        return callback()
-      }
-      const data = pending.length > 0 ? Buffer.concat([pending, chunk]) : chunk
-      const index = data.indexOf(marker)
-      if (index !== -1) {
-        block = [data.subarray(index)]
-        if (index > 0) this.push(data.subarray(0, index))
-        return callback()
-      }
-      const keep = Math.min(data.length, marker.length - 1)
-      pending = data.subarray(data.length - keep)
-      if (data.length > keep) this.push(data.subarray(0, data.length - keep))
-      callback()
-    },
-    flush(callback) {
-      if (block) {
-        return callback(Clickhouse.extractErrorAtTheEndOfChunk(Buffer.concat(block), tag))
-      }
-      if (pending.length > 0) this.push(pending)
-      callback()
-    }
-  })
-}
-
+// `JSONEachRowWithProgress` reports a failure after the response has started
+// as a final `{exception: "Code: <n>. DB::Exception: ..."}` event.
 const exceptionEventError = (event: { exception: string }) => {
-  // exception text starts with "Code: <n>. DB::Exception: ..."
   const code = /^Code: (\d+)\./.exec(event.exception)
   return new SqlError({
     reason: classifyError(
@@ -177,6 +122,41 @@ const exceptionEventError = (event: { exception: string }) => {
       "Query failed while streaming",
       "stream"
     )
+  })
+}
+
+// `JSONEachRowWithProgress` events whose payload is a result row
+const rowEventKeys = ["row", "totals", "min", "max"] as const
+
+// Since ClickHouse 25.11, a query that fails after the response has started
+// ends the body with an exception block opened by `__exception__\r\n<tag>\r\n`,
+// where `<tag>` is the `x-clickhouse-exception-tag` response header. Bytes
+// before the block pass through untouched and the block fails the stream. The
+// last `marker.length - 1` bytes are held back so a marker split across chunks
+// is still found.
+const failOnExceptionBlock = (tag: string) => {
+  const marker = Buffer.from(`__exception__\r\n${tag}\r\n`)
+  let buffered = Buffer.alloc(0)
+  let inBlock = false
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      buffered = Buffer.concat([buffered, chunk])
+      if (!inBlock) {
+        const index = buffered.indexOf(marker)
+        const end = index === -1 ? Math.max(0, buffered.length - marker.length + 1) : index
+        if (end > 0) this.push(buffered.subarray(0, end))
+        buffered = buffered.subarray(end)
+        inBlock = index !== -1
+      }
+      callback()
+    },
+    flush(callback) {
+      if (inBlock) {
+        return callback(Clickhouse.extractErrorAtTheEndOfChunk(buffered, tag))
+      }
+      if (buffered.length > 0) this.push(buffered)
+      callback()
+    }
   })
 }
 
@@ -269,29 +249,28 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 }
 
 /**
- * Element type emitted by `ClickhouseClient.queryStream` for a given streamable
+ * Element type emitted by `ClickhouseClient.queryStream` for a streamable
  * format: decoded rows for streamable JSON formats, rows interleaved with
  * progress events for `JSONEachRowWithProgress`, and raw `Uint8Array` chunks
- * for raw formats such as `CSV`, `TabSeparated` (TSV), or `Parquet`.
+ * for raw formats such as `CSV`, `TabSeparated`, or `Parquet`.
  *
  * **Details**
  *
  * `transformResultNames` is applied to decoded rows, including the `row`,
- * `totals`, `min`, and `max` payloads of `JSONEachRowWithProgress` events; raw
+ * `totals`, `min`, and `max` payloads of `JSONEachRowWithProgress` events. Raw
  * chunks are emitted untouched.
  *
- * `{exception: string}` events reported by the server in
- * `JSONEachRowWithProgress` streams are never emitted; they fail the stream
- * with a classified `SqlError` instead. These streams enable the
- * `http_write_exception_in_output_format` setting unless it is set in the
- * client config or per request, so failures after streaming has started are
- * reliably classified.
+ * `{exception: string}` events in `JSONEachRowWithProgress` streams are never
+ * emitted; they fail the stream with a classified `SqlError`. These streams
+ * enable the `http_write_exception_in_output_format` setting unless it is set
+ * in the client config or per request, so failures after streaming has started
+ * are reliably classified.
  *
  * **Gotchas**
  *
  * In other formats a failure after streaming has started still fails the
- * stream. Before ClickHouse 25.11 it may surface as an `UnknownError` instead
- * of a classified reason.
+ * stream, but before ClickHouse 25.11 it may surface as an `UnknownError`
+ * instead of a classified reason.
  *
  * @category utility types
  * @since 4.0.0
@@ -319,6 +298,12 @@ export const make = (
       ? Statement.defaultTransforms(options.transformResultNames)
       : undefined
     const transformRows = transforms?.array
+    const transformEvent = transforms && ((event: Record<string, any>) => {
+      for (const key of rowEventKeys) {
+        if (key in event) return { [key]: transforms.object(event[key]) }
+      }
+      return event
+    })
     const clientSettings = options.clickhouse_settings
 
     const client = yield* Effect.acquireRelease(
@@ -476,31 +461,27 @@ export const make = (
           Stream.flattenIterable
         )
       }
-      queryStream<A, Format extends Clickhouse.StreamableDataFormat = "JSONEachRow">(
-        sql: string,
-        params: ReadonlyArray<unknown>,
-        format: Format
-      ): Stream.Stream<QueryStreamRow<A, Format>, SqlError> {
+      queryStream(sql: string, params: ReadonlyArray<unknown>, format: Clickhouse.StreamableDataFormat) {
         const query_params = toQueryParams(params)
-        const stream = isRawFormat(format)
+        return isRawFormat(format)
           ? this.rawQueryStream({ query: sql, format, query_params })
           : this.jsonQueryStream({ query: sql, format, query_params })
-        return stream as Stream.Stream<QueryStreamRow<A, Format>, SqlError>
       }
-      // Runs the request and streams its response. Unless the response is read
-      // to the end (or the server rejected the request), closing the stream
+      // Runs the request and streams its response. Unless the response was
+      // read to the end or the server rejected the request, closing the stream
       // aborts the request and kills the query: this covers interruption, early
-      // termination such as `Stream.take`, and downstream failures. Closing the
-      // socket alone does not stop a query that is still computing.
+      // termination such as `Stream.take`, and failures. Closing the socket
+      // alone does not stop a query the server is still computing.
       private streamResponse<Result, A>(
         run: (params: {
           readonly abort_signal: AbortSignal
           readonly query_id: string
-          readonly clickhouse_settings: NonNullable<Clickhouse.BaseQueryParams["clickhouse_settings"]>
+          readonly clickhouse_settings: Clickhouse.ClickHouseSettings
         }) => Promise<Result>,
         toStream: (result: Result) => Stream.Stream<A, SqlError>
       ): Stream.Stream<A, SqlError> {
-        return Stream.unwrap(Effect.gen({ self: this }, function*() {
+        const conn = this.conn
+        return Stream.unwrap(Effect.gen(function*() {
           const queryId = (yield* QueryId) ?? Crypto.randomUUID()
           const settings = yield* ClickhouseSettings
           const controller = new AbortController()
@@ -508,19 +489,14 @@ export const make = (
           yield* Effect.addFinalizer(() => {
             if (settled) return Effect.void
             controller.abort()
-            // the original failure or interruption must not be replaced
-            return Effect.catchDefect(killQuery(this.conn, queryId), () => Effect.void)
+            return Effect.ignoreCause(killQuery(conn, queryId))
           })
           const result = yield* Effect.callback<Result, SqlError>((resume) => {
-            run({
-              abort_signal: controller.signal,
-              query_id: queryId,
-              clickhouse_settings: settings
-            }).then(
+            run({ abort_signal: controller.signal, query_id: queryId, clickhouse_settings: settings }).then(
               (result) => resume(Effect.succeed(result)),
               (cause) => {
-                // An error response from the server means the query has ended.
-                // After a transport failure it may still be running.
+                // the query has ended when the server answered with an error,
+                // but may still be running after a transport failure
                 settled = cause instanceof Clickhouse.ClickHouseError
                 resume(
                   Effect.fail(
@@ -530,17 +506,19 @@ export const make = (
               }
             )
           })
-          return toStream(result).pipe(Stream.onEnd(Effect.sync(() => {
-            settled = true
-          })))
+          return Stream.onEnd(
+            toStream(result),
+            Effect.sync(() => {
+              settled = true
+            })
+          )
         }))
       }
       // Raw formats go through `exec` with an explicit FORMAT clause and stream
-      // the response body untouched: `ResultSet.stream()` splits rows on newline
-      // bytes, which corrupts binary formats such as Parquet. Trailing
-      // semicolons are stripped so the appended clause stays in one statement,
-      // and the clause starts on a new line so a trailing `--` comment cannot
-      // swallow it.
+      // the body untouched, since `ResultSet.stream()` splits rows on newline
+      // bytes and corrupts binary formats such as Parquet. Trailing semicolons
+      // are stripped, and the clause starts on a new line so a trailing `--`
+      // comment cannot swallow it.
       private rawQueryStream(options: {
         readonly query: string
         readonly format: Clickhouse.RawDataFormat
@@ -570,6 +548,7 @@ export const make = (
         readonly format: Clickhouse.StreamableJSONDataFormat
         readonly query_params: Record<string, unknown>
       }): Stream.Stream<unknown, SqlError> {
+        const withProgress = options.format === "JSONEachRowWithProgress"
         return this.streamResponse(
           (params) =>
             this.conn.query({
@@ -577,17 +556,13 @@ export const make = (
               query_params: options.query_params,
               format: options.format,
               ...params,
-              // Without this setting a mid-stream failure is sent as a tagged
-              // trailer that is lost when the connection resets before a slow
+              // Without this setting a mid-stream failure arrives as a tagged
+              // trailer, which is lost when the connection resets before a slow
               // consumer reads it. With it, the failure arrives as a final
-              // `{exception}` event that is classified below. Client-level and
-              // per-request settings still take precedence.
-              clickhouse_settings: options.format === "JSONEachRowWithProgress"
-                ? {
-                  http_write_exception_in_output_format: 1,
-                  ...clientSettings,
-                  ...params.clickhouse_settings
-                }
+              // `{exception}` event. Client-level and per-request settings take
+              // precedence.
+              clickhouse_settings: withProgress
+                ? { http_write_exception_in_output_format: 1, ...clientSettings, ...params.clickhouse_settings }
                 : params.clickhouse_settings
             }),
           (result) =>
@@ -605,26 +580,16 @@ export const make = (
               try {
                 parsed = rows.map((row) => row.json())
               } catch (cause) {
-                return Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to parse row", "parseRow") }))
+                return Effect.fail(parseRowError(cause))
               }
-              if (options.format !== "JSONEachRowWithProgress") {
+              if (!withProgress) {
                 return Effect.succeed(transformRows ? transformRows(parsed) : parsed)
               }
-              for (let i = 0; i < parsed.length; i++) {
-                const value = parsed[i]
-                if (isExceptionEvent(value)) {
-                  return Effect.fail(exceptionEventError(value))
-                }
-                if (transforms) {
-                  for (const key of rowEventKeys) {
-                    if (key in value) {
-                      parsed[i] = { [key]: transforms.object(value[key]) }
-                      break
-                    }
-                  }
-                }
+              const exception = parsed.find(Clickhouse.isException)
+              if (exception) {
+                return Effect.fail(exceptionEventError(exception))
               }
-              return Effect.succeed(parsed)
+              return Effect.succeed(transformEvent ? parsed.map(transformEvent) : parsed)
             })
           ),
           Stream.flattenIterable
@@ -692,7 +657,10 @@ export const make = (
         ): Stream.Stream<QueryStreamRow<A, Format>, SqlError> {
           return Stream.suspend(() => {
             const [sql, params] = statement.compile()
-            return connection.queryStream<A, Format>(sql, params, options?.format ?? "JSONEachRow" as Format)
+            return connection.queryStream(sql, params, options?.format ?? "JSONEachRow") as Stream.Stream<
+              QueryStreamRow<A, Format>,
+              SqlError
+            >
           })
         },
         withQueryId: dual(
