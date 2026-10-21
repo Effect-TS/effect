@@ -32,6 +32,18 @@ const waitFor = (predicate: () => boolean) =>
     assert.ok(predicate(), "background acquisition did not start")
   })
 
+// Cold socket startup can outlast acquireTimeout, so let a background
+// connection open before the timed scenario starts.
+const waitForIdleConnection = (sql: PgClient.PgClient) =>
+  Effect.gen(function*() {
+    let stats = yield* sql.poolStats
+    for (let i = 0; i < 500 && stats.idle === 0; i++) {
+      yield* Effect.sleep(10)
+      stats = yield* sql.poolStats
+    }
+    assert.ok(stats.idle > 0, `no idle connection opened: ${JSON.stringify(stats)}`)
+  })
+
 describe("PgPool failed startup", () => {
   it.live(
     "retries a stale background acquisition rather than failing an unrelated checkout",
@@ -107,6 +119,7 @@ describe("PgPool acquireTimeout", () => {
     Effect.gen(function*() {
       const sql = yield* PgClient.make({
         username: "test",
+        minConnections: 1,
         maxConnections: 1,
         acquireTimeout: "100 millis",
         stream: () => {
@@ -120,6 +133,7 @@ describe("PgPool acquireTimeout", () => {
           return socket
         }
       })
+      yield* waitForIdleConnection(sql)
       yield* sql.reserve
 
       const statement = yield* Effect.flip(sql`SELECT 1`)
@@ -141,6 +155,7 @@ describe("PgPool acquireTimeout", () => {
         let writes = 0
         const sql = yield* PgClient.make({
           username: "test",
+          minConnections: 1,
           maxConnections: 1,
           multiplex: true,
           acquireTimeout: "100 millis",
@@ -155,6 +170,7 @@ describe("PgPool acquireTimeout", () => {
             return socket
           }
         })
+        yield* waitForIdleConnection(sql)
         // The shared statement stays on the wire until the backend answers it.
         const busy = yield* Effect.forkChild(sql`SELECT 1`)
         yield* waitFor(() => writes === 2)
