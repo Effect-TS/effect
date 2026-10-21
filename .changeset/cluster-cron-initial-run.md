@@ -2,4 +2,6 @@
 "effect": patch
 ---
 
-Fix `ClusterCron` with `calculateNextRunFromPrevious: true` not resuming after its pending run was lost, by seeding the initial run at the next run's time instead of a fixed `initial` entity id.
+Fix `ClusterCron` with `calculateNextRunFromPrevious: true` not resuming after its pending run was lost.
+
+In this mode every run is now processed by a single `executor` entity per cron job, so a restart no longer starts a second chain: runs never overlap and missed runs are caught up in order. Pending runs scheduled by earlier releases join the executor's chain. As a result, `Entity.CurrentAddress` inside `execute` no longer identifies the scheduled time; use the new `ClusterCron.CurrentScheduledTime` service instead, which is available in both modes.
