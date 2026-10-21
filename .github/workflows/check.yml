@@ -158,22 +158,6 @@ jobs:
         with:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
-      # The CLI completion tests replay the generated PowerShell script.
-      - name: Install PowerShell
-        shell: bash
-        env:
-          PWSH_VERSION: 7.6.7
-          PWSH_SHA256: 6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431
-        run: |
-          archive="$RUNNER_TEMP/powershell.tar.gz"
-          curl -fsSL -o "$archive" "https://github.com/PowerShell/PowerShell/releases/download/v$PWSH_VERSION/powershell-$PWSH_VERSION-linux-x64.tar.gz"
-          echo "$PWSH_SHA256  $archive" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/powershell"
-          tar -xzf "$archive" -C "$RUNNER_TEMP/powershell"
-          chmod +x "$RUNNER_TEMP/powershell/pwsh"
-          # Fail here if pwsh cannot start, since the tests skip without it.
-          "$RUNNER_TEMP/powershell/pwsh" -NoProfile -NonInteractive -Command "exit 0"
-          echo "$RUNNER_TEMP/powershell" >> "$GITHUB_PATH"
       - name: Test
         if: matrix.runtime != 'Deno'
         run: ${{ matrix.command }}
