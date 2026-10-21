@@ -47,8 +47,9 @@ import * as Snowflake from "./Snowflake.ts"
 
 const withTracerDisabled = Effect.withTracerEnabled(false)
 
-// PostgreSQL truncates identifiers longer than 63 characters
-const maxIdentifierLength = 63
+// PostgreSQL truncates identifiers longer than 63 bytes
+const maxIdentifierBytes = 63
+const identifierEncoder = new TextEncoder()
 
 const makeTableName = (
   options: {
@@ -58,11 +59,13 @@ const makeTableName = (
 ) =>
 (name: string): string => {
   const identifier = `${options?.prefix ?? "cluster"}_${name}`
-  if (options?.limitIdentifiers !== true || identifier.length <= maxIdentifierLength) {
+  if (options?.limitIdentifiers !== true || identifierEncoder.encode(identifier).length <= maxIdentifierBytes) {
     return identifier
   }
   const hash = (hashString(identifier) >>> 0).toString(36)
-  return `${identifier.slice(0, maxIdentifierLength - hash.length - 1)}_${hash}`
+  // encodeInto only writes whole characters, so `read` never splits one
+  const { read } = identifierEncoder.encodeInto(identifier, new Uint8Array(maxIdentifierBytes - hash.length - 1))
+  return `${identifier.slice(0, read)}_${hash}`
 }
 
 /**
