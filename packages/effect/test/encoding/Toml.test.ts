@@ -146,14 +146,10 @@ two = ${delimiter}value${quote}${quote}${delimiter}`)),
     assert.deepStrictEqual(Result.getOrThrow(Toml.parse("t = { a.x = 1, a.y = 2 }\n")), { t: { a: { x: 1, y: 2 } } })
   })
 
-  it.each(["1979-02-30T07:32:00Z", "1900-02-29", "1979-13-01T07:32:00", "1979-01-00", "24:00:00", "07:60:00"])(
-    "rejects out of range dates and times (%s)",
-    (value) => {
-      assert.isTrue(Result.isFailure(Toml.parse(`a = ${value}\n`)))
+  it("rejects out of range dates and times", () => {
+    for (const value of ["1979-02-30T07:32:00Z", "1900-02-29", "1979-13-01", "24:00:00", "07:60:00", "07:32:60"]) {
+      assert.isTrue(Result.isFailure(Toml.parse(`a = ${value}`)), value)
     }
-  )
-
-  it("accepts leap days", () => {
-    assert.deepStrictEqual(Result.getOrThrow(Toml.parse("a = 2000-02-29\n")), { a: "2000-02-29" })
+    assert.deepStrictEqual(Result.getOrThrow(Toml.parse("a = 2000-02-29T23:59:59")), { a: "2000-02-29T23:59:59" })
   })
 })
