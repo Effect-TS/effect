@@ -6,7 +6,6 @@ import * as Cron from "effect/Cron"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -68,8 +67,7 @@ export const make = <E, R>(options: {
     Effect.gen(function*() {
       const now = yield* DateTime.now
       const next = DateTime.unsafeFromDate(Cron.next(options.cron, now))
-      const entityId = options.calculateNextRunFromPrevious ? "initial" : DateTime.formatIso(next)
-      const client = (yield* CronEntity.client)(entityId)
+      const client = (yield* CronEntity.client)(DateTime.formatIso(next))
       yield* client.run({ dateTime: next }, { discard: true })
     }),
     { shardGroup: options.shardGroup }
@@ -90,27 +88,27 @@ export const make = <E, R>(options: {
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const makeClient = yield* CronEntity.client
+    const address = yield* Entity.CurrentAddress
+    const schedule = (dateTime: DateTime.Utc) =>
+      makeClient(DateTime.formatIso(dateTime)).run({ dateTime }, { discard: true }).pipe(
+        Effect.tapErrorCause((cause) => Effect.logWarning("Failed to schedule next run, retrying", cause)),
+        Effect.sandbox,
+        Effect.retry(retryPolicy),
+        Effect.orDie
+      )
     return {
       run: (request) =>
-        effect(request.payload.dateTime).pipe(
-          Effect.exit,
-          Effect.flatMap(Effect.fnUntraced(function*(exit) {
-            if (Exit.isFailure(exit)) {
-              yield* Effect.logWarning(exit.cause)
-            }
-            const now = yield* DateTime.now
-            const next = DateTime.unsafeFromDate(Cron.next(
-              options.cron,
-              options.calculateNextRunFromPrevious ? request.payload.dateTime : now
-            ))
-            const client = makeClient(DateTime.formatIso(next))
-            return yield* client.run({ dateTime: next }, { discard: true }).pipe(
-              Effect.tapErrorCause((cause) => Effect.logWarning("Failed to schedule next run, retrying", cause)),
-              Effect.sandbox,
-              Effect.retry(retryPolicy),
-              Effect.orDie
-            )
-          })),
+        Effect.gen(function*() {
+          const dateTime = request.payload.dateTime
+          // runs seeded at the legacy "initial" entity id are forwarded to the
+          // run's own entity id, so they deduplicate with the current seed
+          if (address.entityId === "initial") {
+            return yield* schedule(dateTime)
+          }
+          yield* effect(dateTime).pipe(Effect.catchAllCause((cause) => Effect.logWarning(cause)))
+          const from = options.calculateNextRunFromPrevious ? dateTime : yield* DateTime.now
+          return yield* schedule(DateTime.unsafeFromDate(Cron.next(options.cron, from)))
+        }).pipe(
           Effect.annotateLogs({
             module: "ClusterCron",
             name: options.name,
