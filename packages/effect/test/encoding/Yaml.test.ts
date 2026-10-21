@@ -472,9 +472,13 @@ development:
 
     it("resolves anchors defined inside flow collections", () => {
       assert.deepStrictEqual(
-        Yaml.parse("mapping: {a: &value 1, b: *value}\nsequence: [&item one, *item]\nalias: *value\n"),
-        { mapping: { a: 1, b: 1 }, sequence: ["one", "one"], alias: 1 }
+        Yaml.parse("mapping: {a: &value 1, b: *value}\nsequence: [&item one, *item, &empty, *empty]\nalias: *value\n"),
+        { mapping: { a: 1, b: 1 }, sequence: ["one", "one", null, null], alias: 1 }
       )
+    })
+
+    it.each(["{a: &}", "[&item[1]]", "[&first &second 1]"])("rejects invalid flow anchor %s", (source) => {
+      assert.throws(() => Yaml.parse(source), SyntaxError)
     })
 
     it("preserves hashes in JSON-style flow strings without colon spacing", () => {
