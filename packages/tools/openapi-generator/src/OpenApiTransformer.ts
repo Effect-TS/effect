@@ -127,8 +127,8 @@ export const makeTransformerSchema = () => {
         methods.push(operationToBinaryMethod(name, op))
       }
     }
-    return `export interface ${name} {
-  readonly httpClient: HttpClient.HttpClient
+    return `export interface ${name}<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   ${methods.join("\n  ")}
 }
 
@@ -163,7 +163,7 @@ ${clientErrorSource(name)}`
       successTypes.add("void")
     }
     const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
-    const errors = ["HttpClientError.HttpClientError", "SchemaError"]
+    const errors = ["E", "HttpClientError.HttpClientError", "SchemaError"]
     if (responses.errorSchemas.size > 0) {
       Utils.spreadElementsInto(
         Array.from(responses.errorSchemas.values()).map(
@@ -212,7 +212,7 @@ ${clientErrorSource(name)}`
       ? responses.sseSchema
       : `{ readonly event: string; readonly id: string | undefined; readonly data: ${responses.sseSchema} }`
     const returnType =
-      `Stream.Stream<${value}, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ${responses.sseSchema}.DecodingServices>`
+      `Stream.Stream<${value}, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, R | typeof ${responses.sseSchema}.DecodingServices>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -242,7 +242,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Stream"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -307,12 +307,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig | undefined> 
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
   : A | [A, HttpClientResponse.HttpClientResponse]
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): ${name} => {
+): ${name}<E, R> => {
   ${helpers.join("\n  ")}
   const decodeSuccess =
     <Schema extends ${importName}.Constraint>(schema: Schema) =>
@@ -560,8 +560,8 @@ export const makeTransformerTs = () => {
         methods.push(operationToBinaryMethod(op))
       }
     }
-    return `export interface ${name} {
-  readonly httpClient: HttpClient.HttpClient
+    return `export interface ${name}<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   ${methods.join("\n  ")}
 }
 
@@ -595,7 +595,7 @@ ${clientErrorSource(name)}`
     }
     const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
 
-    const errors = ["HttpClientError.HttpClientError"]
+    const errors = ["E", "HttpClientError.HttpClientError"]
     if (responses.errorSchemas.size > 0) {
       for (const schema of responses.errorSchemas.values()) {
         errors.push(`${name}Error<"${schema}", ${schema}>`)
@@ -637,7 +637,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Sse"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<${responses.sseSchema}, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<${responses.sseSchema}, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -667,7 +667,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Stream"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -731,12 +731,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig | undefined> 
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
   : A | [A, HttpClientResponse.HttpClientResponse]
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): ${name} => {
+): ${name}<E, R> => {
   ${helpers.join("\n  ")}
   const decodeSuccess = <A>(response: HttpClientResponse.HttpClientResponse) =>
     response.json as Effect.Effect<A, HttpClientError.HttpClientError>
@@ -1001,7 +1001,7 @@ const commonSource = `const unexpectedStatus = (response: HttpClientResponse.Htt
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -1086,8 +1086,8 @@ const sseRequestSource = (_importName: string) =>
       request: HttpClientRequest.HttpClientRequest
     ): Stream.Stream<
       { readonly event: string; readonly id: string | undefined; readonly data: Type },
-      HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
-      DecodingServices
+      E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
+      R | DecodingServices
     > =>
       executeStreamRequest(request).pipe(
         Effect.map((response) => response.stream),
@@ -1101,8 +1101,8 @@ const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec
       request: HttpClientRequest.HttpClientRequest
     ): Stream.Stream<
       S["Type"],
-      HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
-      S["DecodingServices"]
+      E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
+      R | S["DecodingServices"]
     > =>
       executeStreamRequest(request).pipe(
         Effect.map((response) => response.stream),
@@ -1112,7 +1112,7 @@ const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec
       )`
 
 const binaryRequestSource =
-  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
+  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap
@@ -1120,7 +1120,7 @@ const binaryRequestSource =
 
 // Type-only mode helpers (no schema decoding)
 const sseRequestSourceTs =
-  `const sseRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<unknown, HttpClientError.HttpClientError> =>
+  `const sseRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<unknown, E | HttpClientError.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap,
@@ -1131,7 +1131,7 @@ const sseRequestSourceTs =
     )`
 
 const binaryRequestSourceTs =
-  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
+  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap
@@ -1179,7 +1179,7 @@ const operationSignatures = (
     const parameters = [...args, `options: { ${fields} }${configOptional && !optionsRequired ? " | undefined" : ""}`]
     return `    <Config extends OperationConfig | undefined = undefined>(${
       parameters.join(", ")
-    }): Effect.Effect<WithOptionalResponse<${success}, ${config}>, ${errors.join(" | ")}>;`
+    }): Effect.Effect<WithOptionalResponse<${success}, ${config}>, ${errors.join(" | ")}, R>;`
   }
   // Infer the whole config from a required property before allowing omitted config.
   // An optional property would otherwise discard undefined during inference.
