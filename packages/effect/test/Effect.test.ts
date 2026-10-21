@@ -2996,6 +2996,40 @@ describe("Effect", () => {
         yield* Scope.close(scope, Exit.void)
         assert.isTrue(interrupted)
       }))
+
+    it.effect("does not wait for the fiber that closes a parallel scope", () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make("parallel")
+        const latch = yield* Latch.make()
+        const closer = yield* latch.await.pipe(
+          Effect.andThen(Scope.close(scope, Exit.void)),
+          Effect.as("closed"),
+          Effect.forkIn(scope)
+        )
+        const sibling = yield* Effect.forkIn(Effect.never, scope)
+        yield* latch.open
+        assert.deepStrictEqual(yield* Fiber.await(closer), Exit.succeed("closed"))
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(sibling)))
+      }), { timeout: 1000 })
+
+    it.effect(
+      "does not wait for the fiber that runs a close effect obtained outside a fiber",
+      () =>
+        Effect.gen(function*() {
+          const scope = yield* Scope.make()
+          const latch = yield* Latch.make()
+          const fiber = yield* latch.await.pipe(
+            Effect.andThen(Effect.promise(() => Promise.resolve().then(() => Scope.closeUnsafe(scope, Exit.void)))),
+            Effect.flatMap((close) => close ?? Effect.void),
+            Effect.uninterruptible,
+            Effect.as("closed"),
+            Effect.forkIn(scope)
+          )
+          yield* latch.open
+          assert.deepStrictEqual(yield* Fiber.await(fiber), Exit.succeed("closed"))
+        }),
+      { timeout: 1000 }
+    )
   })
 
   describe("forkScoped", () => {

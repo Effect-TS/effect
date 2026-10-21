@@ -5660,7 +5660,10 @@ export const forkIn: {
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
           const key = {}
-          const finalizer = () => withFiberId((interruptor) => interruptor === fiber.id ? void_ : fiberInterrupt(fiber))
+          const finalizer = () =>
+            getCurrentFiber() === fiber
+              ? void_
+              : withFiberId((interruptor) => interruptor === fiber.id ? void_ : fiberInterrupt(fiber))
           scopeAddFinalizerUnsafe(scope, key, finalizer)
           fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
         } else {
@@ -5748,7 +5751,14 @@ export const fiberRunIn: {
     return self
   }
   scopeRemoveFinalizerUnsafe(scope, self)
-  scopeAddFinalizerUnsafe(scope, self, () => fiberInterrupt(self))
+  scopeAddFinalizerUnsafe(
+    scope,
+    self,
+    () =>
+      getCurrentFiber() === self
+        ? void_
+        : withFiberId((interruptor) => interruptor === self.id ? void_ : fiberInterrupt(self))
+  )
   self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, self))
   return self
 })
