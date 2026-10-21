@@ -1,13 +1,8 @@
 /**
- * Schema for the WebSocket sub-protocol list carried by the
+ * Schema for the comma-separated WebSocket sub-protocol list carried by the
  * `Sec-WebSocket-Protocol` header.
  *
- * Clients advertise the sub-protocols they understand through the
- * `Sec-WebSocket-Protocol` request header as a comma-separated list. This
- * module exposes a schema for converting between the header string and an
- * array of protocol names.
- *
- * To read the negotiated protocols from the current server request, see
+ * To read the protocols requested by the current server request, see
  * `HttpSocketProtocols` in `effect/http`.
  *
  * @stability unstable
@@ -21,10 +16,9 @@ import * as SchemaGetter from "../SchemaGetter.ts"
  *
  * **Details**
  *
- * Decoding splits the comma-separated header into an array of trimmed
- * protocol names, dropping empty tokens (so `"a,,b"` and `"a, ,b"` both
- * decode to `["a", "b"]`). Encoding joins the array back into a single header
- * value.
+ * Decoding splits the header on commas, trims each protocol name and drops
+ * empty tokens, so `"a, ,b"` decodes to `["a", "b"]`. Encoding joins the
+ * protocol names with commas.
  *
  * @stability unstable
  * @category schemas
@@ -32,9 +26,9 @@ import * as SchemaGetter from "../SchemaGetter.ts"
  */
 export const Schema = S.String.pipe(
   S.decodeTo(S.Array(S.String), {
-    decode: SchemaGetter.split({ separator: "," }).pipe(
-      SchemaGetter.map((tokens) => tokens.map((token) => token.trim()).filter((token) => token !== ""))
+    decode: SchemaGetter.transform((header) =>
+      header.split(",").map((protocol) => protocol.trim()).filter((protocol) => protocol !== "")
     ),
-    encode: SchemaGetter.transform((arr) => arr.join(","))
+    encode: SchemaGetter.transform((protocols) => protocols.join(","))
   })
 )
