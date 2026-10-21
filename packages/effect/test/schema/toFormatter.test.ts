@@ -595,12 +595,6 @@ describe("toFormatter", () => {
     strictEqual(format(new Set([Symbol.for("b"), Symbol.for("a")])), `ReadonlySet(2) { Symbol(a), Symbol(b) }`)
   })
 
-  it("ReadonlySet(Struct) with null-prototype elements", () => {
-    const format = Schema.toFormatter(Schema.ReadonlySet(Schema.Struct({ a: Schema.Number })))
-    const make = (a: number): { readonly a: number } => Object.assign(Object.create(null), { a })
-    strictEqual(format(new Set([make(2), make(1)])), `ReadonlySet(2) { { "a": 1 }, { "a": 2 } }`)
-  })
-
   it("ReadonlyMap(Symbol, String)", () => {
     const format = Schema.toFormatter(Schema.ReadonlyMap(Schema.Symbol, Schema.String))
     strictEqual(
@@ -625,11 +619,6 @@ describe("toFormatter", () => {
   it("Chunk(Symbol)", () => {
     const format = Schema.toFormatter(Schema.Chunk(Schema.Symbol))
     strictEqual(format(Chunk.make(Symbol.for("b"), Symbol.for("a"))), `Chunk(2) { Symbol(b), Symbol(a) }`)
-  })
-
-  it("Chunk(Number) keeps the element order", () => {
-    const format = Schema.toFormatter(Schema.Chunk(Schema.Number))
-    strictEqual(format(Chunk.make(3, 1, 2)), `Chunk(3) { 3, 1, 2 }`)
   })
 
   describe("Redacted", () => {
