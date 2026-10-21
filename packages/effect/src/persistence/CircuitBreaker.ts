@@ -12,6 +12,7 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
+import * as Config from "../Config.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -24,6 +25,7 @@ import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type * as Take from "../Take.ts"
+import * as Redis from "./Redis.ts"
 
 /**
  * Runtime type identifier for `CircuitBreaker` values.
@@ -906,3 +908,423 @@ export const layerStoreMemory = (options?: {
         })
     })
   })
+
+/**
+ * Creates a Redis-backed `CircuitBreakerStore` layer.
+ *
+ * **Details**
+ *
+ * - Each circuit is one hash at `${prefix}${key}`. `prefix` defaults to
+ *   `"circuitbreaker:"`; give each deployable unit whose policies differ its
+ *   own prefix.
+ * - Every timestamp comes from Redis `TIME`, so client clock skew never
+ *   affects a circuit. Requires Redis 5 or later.
+ * - A HalfOpen probe holds a lease of `probeLease` (default 10 seconds),
+ *   renewed every third of the lease while the call runs. A failed renewal is
+ *   logged and retried on the next tick, and never fails the call. If the
+ *   lease lapses, another caller takes over as the probe and the old probe's
+ *   outcome is discarded.
+ * - `idleTimeToLive` (default one hour) expires idle keys. An Open key
+ *   expires that long after its open time ends, so expiry never resets the
+ *   backoff count early. An expired key starts again as Closed.
+ *
+ * **Gotchas**
+ *
+ * If renewals cannot reach Redis, a probe cannot outlast its lease, so a
+ * second caller may start a duplicate probe.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.6
+ */
+export const layerStoreRedis = (options?: {
+  readonly prefix?: string | undefined
+  readonly probeLease?: Duration.Input | undefined
+  readonly idleTimeToLive?: Duration.Input | undefined
+}): Layer.Layer<CircuitBreakerStore, never, Redis.Redis> => Layer.effect(CircuitBreakerStore, makeStoreRedis(options))
+
+/**
+ * Creates a Redis-backed `CircuitBreakerStore` layer from wrapped
+ * configuration options.
+ *
+ * **Details**
+ *
+ * Takes the same options as `layerStoreRedis`.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.6
+ */
+export const layerStoreRedisConfig = (
+  options: Config.Wrap<{
+    readonly prefix?: string | undefined
+    readonly probeLease?: Duration.Input | undefined
+    readonly idleTimeToLive?: Duration.Input | undefined
+  }>
+): Layer.Layer<CircuitBreakerStore, Config.ConfigError, Redis.Redis> =>
+  Layer.effect(CircuitBreakerStore, Effect.flatMap(Config.unwrap(options), makeStoreRedis))
+
+const makeStoreRedis = Effect.fnUntraced(function*(options?: {
+  readonly prefix?: string | undefined
+  readonly probeLease?: Duration.Input | undefined
+  readonly idleTimeToLive?: Duration.Input | undefined
+}) {
+  const redis = yield* Redis.Redis
+  const prefix = options?.prefix ?? "circuitbreaker:"
+  const leaseMillis = toRedisMillis(options?.probeLease ?? "10 seconds")
+  const idleMillis = toRedisMillis(options?.idleTimeToLive ?? "1 hour")
+  const renewInterval = Duration.millis(leaseMillis / 3)
+
+  const admitRedis = redis.eval(admitScript)
+  const recordRedis = redis.eval(recordScript)
+  const stateRedis = redis.eval(stateScript)
+  const renewRedis = redis.eval(renewScript)
+
+  const storeError = (message: string) => (error: Redis.RedisError) =>
+    new CircuitBreakerError({ reason: new CircuitBreakerStoreError({ message, cause: error.cause }) })
+
+  // Stops once the lease is gone, because a renewal can never win it back.
+  const renew = Effect.fnUntraced(function*(redisKey: string, generation: string) {
+    while (true) {
+      yield* Effect.sleep(renewInterval)
+      const renewed = yield* renewRedis(redisKey, generation, leaseMillis, idleMillis).pipe(
+        Effect.catch((error) =>
+          Effect.as(Effect.logWarning("CircuitBreaker failed to renew a probe lease, retrying", error), 1)
+        )
+      )
+      if (renewed !== 1) return
+    }
+  })
+
+  return CircuitBreakerStore.of({
+    admit: Effect.fnUntraced(function*(key) {
+      const redisKey = `${prefix}${key}`
+      const result = yield* admitRedis(redisKey, leaseMillis, idleMillis).pipe(
+        Effect.mapError(storeError("Failed to admit a call through the circuit"))
+      )
+      switch (result[0]) {
+        case "open":
+          return yield* new CircuitBreakerError({
+            reason: new CircuitOpen({ key, retryAfter: Duration.millis(Math.max(0, Number(result[1]))) })
+          })
+        case "halfopen":
+          return yield* new CircuitBreakerError({ reason: new CircuitHalfOpen({ key }) })
+      }
+      const [, generation, probe, consecutiveOpenings, moved] = result
+      if (probe === 1) {
+        yield* renew(redisKey, generation).pipe(Effect.interruptible, Effect.forkScoped)
+      }
+      return {
+        generation: Number(generation),
+        probe: probe === 1,
+        consecutiveOpenings: Number(consecutiveOpenings),
+        transition: moved === 1 ? { key, from: "Open", to: "HalfOpen" } : undefined
+      } satisfies Admission
+    }),
+    record: ({ generation, key, openFor, outcome, tripPolicy }) =>
+      recordRedis(
+        `${prefix}${key}`,
+        String(generation),
+        outcome,
+        tripPolicy._tag,
+        tripPolicy._tag === "Consecutive" ? tripPolicy.failures : tripPolicy.threshold,
+        tripPolicy._tag === "Consecutive" ? 0 : tripPolicy.minimumCalls,
+        tripPolicy._tag === "Consecutive" ? 0 : tripPolicy.size,
+        Math.max(0, Math.ceil(Duration.toMillis(openFor))),
+        idleMillis
+      ).pipe(
+        Effect.mapError(storeError("Failed to record an outcome")),
+        Effect.map(([moved, consecutiveOpenings]): Transition | undefined => {
+          switch (moved) {
+            case "closed-open":
+            case "halfopen-open":
+              return {
+                key,
+                from: moved === "closed-open" ? "Closed" : "HalfOpen",
+                to: "Open",
+                retryAfter: openFor,
+                consecutiveOpenings: Number(consecutiveOpenings)
+              }
+            case "halfopen-closed":
+              return { key, from: "HalfOpen", to: "Closed" }
+            default:
+              return undefined
+          }
+        })
+      ),
+    state: (key) =>
+      stateRedis(`${prefix}${key}`).pipe(
+        Effect.mapError(storeError("Failed to read the circuit state")),
+        Effect.map(([state, remaining, consecutiveOpenings, probing]): State => {
+          switch (state) {
+            case "Open":
+              return {
+                _tag: "Open",
+                key,
+                retryAfter: Duration.millis(Math.max(0, Number(remaining))),
+                consecutiveOpenings: Number(consecutiveOpenings)
+              }
+            case "HalfOpen":
+              return { _tag: "HalfOpen", key, probing: probing === 1, consecutiveOpenings: Number(consecutiveOpenings) }
+            default:
+              return { _tag: "Closed", key }
+          }
+        })
+      )
+  })
+})
+
+const toRedisMillis = (input: Duration.Input) =>
+  Math.max(1, Math.ceil(Duration.toMillis(Duration.fromInputUnsafe(input))))
+
+// Shared Lua prelude. Generations are the larger of the previous generation
+// plus one and the current Redis time in microseconds, so a key that expired
+// and was recreated never reissues a generation an old permit still holds.
+// They are kept as integer strings so they never pass through a float format.
+const luaPrelude = `
+local function positive(value)
+  local n = tonumber(value)
+  if n == nil or n ~= n or n < 1 or n == math.huge then return nil end
+  return n
+end
+local function nonNegative(value)
+  local n = tonumber(value)
+  if n == nil or n ~= n or n < 0 or n == math.huge then return nil end
+  return n
+end
+local time = redis.call("TIME")
+local nowMicros = tonumber(time[1]) * 1000000 + tonumber(time[2])
+local now = math.floor(nowMicros / 1000)
+local function nextGeneration(current)
+  return string.format("%.0f", math.max((tonumber(current) or 0) + 1, nowMicros))
+end
+`
+
+// Returns { "ok", generation, probe, consecutiveOpenings, movedToHalfOpen },
+// { "open", remainingMillis } or { "halfopen" }.
+const admitScript = Redis.script(
+  (key: string, leaseMillis: number, idleMillis: number) => [key, leaseMillis, idleMillis],
+  {
+    numberOfKeys: 1,
+    lua: `${luaPrelude}
+local key = KEYS[1]
+local lease = positive(ARGV[1])
+local idle = positive(ARGV[2])
+if not lease or not idle then
+  return redis.error_reply("CircuitBreaker admit: invalid arguments")
+end
+
+local fields = redis.call("HMGET", key, "state", "generation", "openUntil", "openings", "leaseUntil")
+local state = fields[1]
+local generation = fields[2]
+local openings = tonumber(fields[4]) or 0
+
+if not state then
+  generation = nextGeneration(0)
+  redis.call("HSET", key, "state", "Closed", "generation", generation)
+  redis.call("PEXPIRE", key, idle)
+  return { "ok", generation, 0, 0, 0 }
+end
+
+if state == "Closed" then
+  redis.call("PEXPIRE", key, idle)
+  return { "ok", generation, 0, openings, 0 }
+end
+
+local moved = 0
+if state == "Open" then
+  local openUntil = tonumber(fields[3]) or 0
+  if now < openUntil then
+    return { "open", openUntil - now }
+  end
+  moved = 1
+elseif (tonumber(fields[5]) or 0) > now then
+  return { "halfopen" }
+end
+
+-- Every probe admission, including a takeover of a lapsed lease, starts a
+-- new generation.
+generation = nextGeneration(generation)
+redis.call("HSET", key, "state", "HalfOpen", "generation", generation, "leaseUntil", string.format("%.0f", now + lease))
+redis.call("PEXPIRE", key, lease + idle)
+return { "ok", generation, 1, openings, moved }
+`
+  }
+).withReturnType<
+  | readonly [tag: "ok", generation: string, probe: number, consecutiveOpenings: number, moved: number]
+  | readonly [tag: "open", remainingMillis: number]
+  | readonly [tag: "halfopen"]
+>()
+
+// Returns { transition, consecutiveOpenings }, where transition is "none",
+// "closed-open", "halfopen-open" or "halfopen-closed".
+const recordScript = Redis.script(
+  (
+    key: string,
+    generation: string,
+    outcome: "Success" | "Failure" | "Ignored",
+    policy: TripPolicy["_tag"],
+    failuresOrThreshold: number,
+    minimumCalls: number,
+    size: number,
+    openForMillis: number,
+    idleMillis: number
+  ) => [key, generation, outcome, policy, failuresOrThreshold, minimumCalls, size, openForMillis, idleMillis],
+  {
+    numberOfKeys: 1,
+    lua: `${luaPrelude}
+local key = KEYS[1]
+local expected = ARGV[1]
+local outcome = ARGV[2]
+local policy = ARGV[3]
+local openFor = nonNegative(ARGV[7])
+local idle = positive(ARGV[8])
+local valid = openFor ~= nil and idle ~= nil and
+  (outcome == "Success" or outcome == "Failure" or outcome == "Ignored")
+local failuresNeeded, threshold, minimumCalls, size
+if policy == "Consecutive" then
+  failuresNeeded = positive(ARGV[4])
+  valid = valid and failuresNeeded ~= nil
+elseif policy == "Rate" then
+  threshold = nonNegative(ARGV[4])
+  minimumCalls = positive(ARGV[5])
+  size = positive(ARGV[6])
+  valid = valid and threshold ~= nil and threshold <= 1 and minimumCalls ~= nil and size ~= nil and
+    minimumCalls <= size
+else
+  valid = false
+end
+if not valid then
+  return redis.error_reply("CircuitBreaker record: invalid arguments")
+end
+
+local fields = redis.call("HMGET", key, "state", "generation", "streak", "ring", "failures", "openings")
+local state = fields[1]
+if not state or fields[2] ~= expected then
+  return { "none", 0 }
+end
+local openings = tonumber(fields[6]) or 0
+
+local function open()
+  openings = openings + 1
+  redis.call(
+    "HSET", key,
+    "state", "Open",
+    "generation", nextGeneration(fields[2]),
+    "openUntil", string.format("%.0f", now + openFor),
+    "openings", openings,
+    "streak", 0,
+    "ring", "",
+    "failures", 0,
+    "leaseUntil", 0
+  )
+  redis.call("PEXPIRE", key, openFor + idle)
+end
+
+if state == "HalfOpen" then
+  if outcome == "Ignored" then
+    redis.call("HSET", key, "leaseUntil", 0)
+    redis.call("PEXPIRE", key, idle)
+    return { "none", openings }
+  end
+  if outcome == "Failure" then
+    open()
+    return { "halfopen-open", openings }
+  end
+  redis.call(
+    "HSET", key,
+    "state", "Closed",
+    "generation", nextGeneration(fields[2]),
+    "openings", 0,
+    "streak", 0,
+    "ring", "",
+    "failures", 0,
+    "leaseUntil", 0
+  )
+  redis.call("PEXPIRE", key, idle)
+  return { "halfopen-closed", 0 }
+end
+
+if state ~= "Closed" then
+  return { "none", openings }
+end
+if outcome == "Ignored" then
+  redis.call("PEXPIRE", key, idle)
+  return { "none", openings }
+end
+
+local failed = outcome == "Failure"
+local streak = failed and (tonumber(fields[3]) or 0) + 1 or 0
+local trips
+local ring = fields[4] or ""
+local failures = tonumber(fields[5]) or 0
+if policy == "Consecutive" then
+  trips = streak >= failuresNeeded
+else
+  ring = ring .. (failed and "1" or "0")
+  if failed then failures = failures + 1 end
+  if #ring > size then
+    local _, dropped = string.gsub(string.sub(ring, 1, #ring - size), "1", "")
+    failures = failures - dropped
+    ring = string.sub(ring, #ring - size + 1)
+  end
+  trips = #ring >= minimumCalls and failures > 0 and failures / #ring >= threshold
+end
+
+if trips then
+  open()
+  return { "closed-open", openings }
+end
+redis.call("HSET", key, "streak", streak, "ring", ring, "failures", failures)
+redis.call("PEXPIRE", key, idle)
+return { "none", openings }
+`
+  }
+).withReturnType<readonly [transition: string, consecutiveOpenings: number]>()
+
+// Read-only. Returns { state, remainingOpenMillis, consecutiveOpenings, probing }.
+const stateScript = Redis.script(
+  (key: string) => [key],
+  {
+    numberOfKeys: 1,
+    lua: `${luaPrelude}
+local fields = redis.call("HMGET", KEYS[1], "state", "openUntil", "openings", "leaseUntil")
+local state = fields[1]
+if not state then
+  return { "Closed", 0, 0, 0 }
+end
+local remaining = math.max(0, (tonumber(fields[2]) or 0) - now)
+local probing = (tonumber(fields[4]) or 0) > now and 1 or 0
+return { state, remaining, tonumber(fields[3]) or 0, probing }
+`
+  }
+).withReturnType<readonly [state: string, remainingMillis: number, consecutiveOpenings: number, probing: number]>()
+
+// Extends the probe lease only while the generation still holds it. Returns 1
+// when renewed, 0 when the lease is gone.
+const renewScript = Redis.script(
+  (key: string, generation: string, leaseMillis: number, idleMillis: number) => [
+    key,
+    generation,
+    leaseMillis,
+    idleMillis
+  ],
+  {
+    numberOfKeys: 1,
+    lua: `${luaPrelude}
+local key = KEYS[1]
+local lease = positive(ARGV[2])
+local idle = positive(ARGV[3])
+if not lease or not idle then
+  return redis.error_reply("CircuitBreaker renew: invalid arguments")
+end
+local fields = redis.call("HMGET", key, "state", "generation")
+if fields[1] ~= "HalfOpen" or fields[2] ~= ARGV[1] then
+  return 0
+end
+redis.call("HSET", key, "leaseUntil", string.format("%.0f", now + lease))
+redis.call("PEXPIRE", key, lease + idle)
+return 1
+`
+  }
+).withReturnType<number>()
