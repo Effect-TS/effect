@@ -2184,45 +2184,46 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// MCP requires an object root, so a top-level `$ref` is inlined, and only the
-// definitions the inlined schema still reaches are published.
+// MCP requires an object root, so a top-level `$ref` is inlined.
 const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
-  const document = InternalStructuredOutput.resolveTopLevelReference(
+  const document = pruneDefinitions(InternalStructuredOutput.resolveTopLevelReference(
     Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
-  )
-  const reached = reachableDefinitions(document.schema, document.definitions)
-  const definitions = reached === undefined
-    ? document.definitions
-    : Object.fromEntries(Object.entries(document.definitions).filter(([key]) => reached.has(key)))
-  return Object.keys(definitions).length === 0
+  ))
+  return Object.keys(document.definitions).length === 0
     ? document.schema
-    : { ...document.schema, $defs: definitions }
+    : { ...document.schema, $defs: document.definitions }
 }
 
-// Returns `undefined`, so every definition is kept, when a reference is not a
-// local JSON Pointer (e.g. `#anchor`) and cannot be resolved to a definition.
-const reachableDefinitions = (
-  schema: JsonSchema.JsonSchema,
-  definitions: JsonSchema.Definitions
-): Set<string> | undefined => {
+// Keeps only the definitions reached from the root schema through `#/$defs/<key>`
+// pointers. A reference that cannot be resolved that way, such as an `$anchor`,
+// keeps every definition.
+const pruneDefinitions = (document: JsonSchema.Document<"draft-2020-12">): JsonSchema.Document<"draft-2020-12"> => {
   const reached = new Set<string>()
   let resolvable = true
   const visit = (schema: JsonSchema.JsonSchema): void => {
     JsonSchema.rewriteRefs(schema, ($ref) => {
-      // A `$ref` may point inside a definition, e.g. `#/$defs/A/properties/b`.
       const path = $ref.startsWith("#") ? JsonPointer.parseUriFragment($ref) : undefined
-      const key = path?.[0] === "$defs" ? path[1] : undefined
-      if (path === undefined || (path[0] === "$defs" && key === undefined)) {
+      if (path === undefined) {
         resolvable = false
-      } else if (key !== undefined && !reached.has(key) && Object.hasOwn(definitions, key)) {
-        reached.add(key)
-        visit(definitions[key])
+      } else if (path[0] === "$defs") {
+        const key = path[1]
+        if (key === undefined) {
+          resolvable = false
+        } else if (!reached.has(key) && Object.hasOwn(document.definitions, key)) {
+          reached.add(key)
+          visit(document.definitions[key])
+        }
       }
       return $ref
     })
   }
-  visit(schema)
-  return resolvable ? reached : undefined
+  visit(document.schema)
+  return resolvable
+    ? {
+      ...document,
+      definitions: Object.fromEntries(Object.entries(document.definitions).filter(([key]) => reached.has(key)))
+    }
+    : document
 }
 
 /**
