@@ -34,15 +34,14 @@ const waitFor = (predicate: () => boolean) =>
 
 // Cold socket startup can outlast acquireTimeout, so let a background
 // connection open before the timed scenario starts.
-const waitForIdleConnection = (sql: PgClient.PgClient) =>
-  Effect.gen(function*() {
-    let stats = yield* sql.poolStats
-    for (let i = 0; i < 500 && stats.idle === 0; i++) {
-      yield* Effect.sleep(10)
-      stats = yield* sql.poolStats
-    }
-    assert.ok(stats.idle > 0, `no idle connection opened: ${JSON.stringify(stats)}`)
-  })
+const waitForIdleConnection = Effect.fnUntraced(function*(sql: PgClient.PgClient) {
+  let stats = yield* sql.poolStats
+  for (let i = 0; i < 500 && stats.idle === 0; i++) {
+    yield* Effect.sleep(10)
+    stats = yield* sql.poolStats
+  }
+  assert.ok(stats.idle > 0, `no idle connection opened: ${JSON.stringify(stats)}`)
+})
 
 describe("PgPool failed startup", () => {
   it.live(
