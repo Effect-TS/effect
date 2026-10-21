@@ -255,21 +255,6 @@ export function asNoContent<S extends Schema.Constraint>(options: {
 }
 
 /**
- * The encoded body produced by `asProblem`.
- *
- * @stability unstable
- * @category schemas
- * @since 4.0.6
- */
-export interface ProblemBody extends
-  Schema.Struct<{
-    readonly type: Schema.tag<string>
-    readonly status: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<number>>, never>
-    readonly title: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
-  }>
-{}
-
-/**
  * Schema type returned by `asProblem`, encoding as a problem details body
  * while decoding to the original schema type.
  *
@@ -277,7 +262,16 @@ export interface ProblemBody extends
  * @category schemas
  * @since 4.0.6
  */
-export interface asProblem<S extends Schema.Constraint> extends Schema.decodeTo<Schema.toType<S>, ProblemBody> {}
+export interface asProblem<S extends Schema.Constraint> extends
+  Schema.decodeTo<
+    Schema.toType<S>,
+    Schema.Struct<{
+      readonly type: Schema.tag<string>
+      readonly status: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<number>>, never>
+      readonly title: Schema.middlewareDecoding<Schema.withDecodingDefaultKey<Schema.tag<string>>, never>
+    }>
+  >
+{}
 
 /**
  * Renders an error class as an RFC 9457 problem.
@@ -321,7 +315,7 @@ export function asProblem<S extends Schema.Constraint & (new() => S["Type"])>(op
     const type = options.type ?? ProblemDetails.blankType
     const body = { type, status, title: options.title }
     const decode = options.decode ?? (() => new self())
-    const problem: ProblemBody = Schema.Struct({
+    const problem = Schema.Struct({
       type: Schema.tag(type),
       status: ProblemDetails.fixedMember(status),
       title: ProblemDetails.fixedMember(options.title)

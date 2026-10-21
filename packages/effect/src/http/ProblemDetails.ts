@@ -79,34 +79,21 @@ export interface ProblemDetailsEncoded {
 export const optionalMember = <S extends Schema_.Constraint>(schema: S) =>
   Schema_.optionalKey(schema).pipe(Schema_.catchDecoding(() => Effect.succeedNone))
 
+const withFallback = <S extends Schema_.Constraint>(
+  schema: S,
+  value: S["Encoded"] & S["Type"]
+): Schema_.middlewareDecoding<Schema_.withDecodingDefaultKey<S>, S["DecodingServices"]> =>
+  Schema_.withDecodingDefaultKey<S>(Effect.succeed(value))(schema).pipe(
+    Schema_.catchDecoding(() => Effect.succeedSome(value))
+  )
+
 /**
  * A required member that decodes to a fixed value when it is missing or has
  * the wrong JSON type. The value is also the constructor default.
  *
  * @internal
  */
-export const fixedMember = <const L extends string | number>(value: L) =>
-  Schema_.tag(value).pipe(
-    Schema_.withDecodingDefaultKey(Effect.succeed(value)),
-    Schema_.catchDecoding(() => Effect.succeedSome(value))
-  )
-
-/**
- * The standard members of a problem details object with the RFC 9457 parsing
- * rules applied.
- *
- * @internal
- */
-export const members = {
-  type: Schema_.String.pipe(
-    Schema_.withDecodingDefaultKey(Effect.succeed(blankType)),
-    Schema_.catchDecoding(() => Effect.succeedSome(blankType))
-  ),
-  status: optionalMember(Schema_.Number),
-  title: optionalMember(Schema_.String),
-  detail: optionalMember(Schema_.String),
-  instance: optionalMember(Schema_.String)
-}
+export const fixedMember = <const L extends string | number>(value: L) => withFallback(Schema_.tag(value), value)
 
 /**
  * The lenient codec for problem details objects.
@@ -136,7 +123,13 @@ export const members = {
  * @since 4.0.6
  */
 export const Schema: Schema_.Codec<ProblemDetails, ProblemDetailsEncoded> = Schema_.StructWithRest(
-  Schema_.Struct(members),
+  Schema_.Struct({
+    type: withFallback(Schema_.String, blankType),
+    status: optionalMember(Schema_.Number),
+    title: optionalMember(Schema_.String),
+    detail: optionalMember(Schema_.String),
+    instance: optionalMember(Schema_.String)
+  }),
   [Schema_.Record(Schema_.String, Schema_.Unknown)]
 )
 

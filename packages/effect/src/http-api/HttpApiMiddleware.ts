@@ -588,8 +588,9 @@ const toProblemIssues = (error: HttpApiSchemaError) => {
  */
 export const layerProblemDetails = (options?: {
   readonly includeDetails?: boolean | undefined
-}): Layer.Layer<ProblemDetails> =>
-  layerSchemaErrorTransform(ProblemDetails, (error) => {
+}): Layer.Layer<ProblemDetails> => {
+  const includeDetails = options?.includeDetails === true
+  return layerSchemaErrorTransform(ProblemDetails, (error) => {
     if (error.kind === "Body" || error.kind === "ResponseHeaders") {
       return Effect.andThen(
         ErrorReporter.report(Cause.fail(error)),
@@ -598,12 +599,13 @@ export const layerProblemDetails = (options?: {
     }
     return Effect.fail(
       new BadRequestProblem(
-        options?.includeDetails === true
-          ? { detail: "Request validation failed", errors: toProblemIssues(error) }
-          : { detail: "Request validation failed" }
+        includeDetails ? { ...requestValidationFailed, errors: toProblemIssues(error) } : requestValidationFailed
       )
     )
   })
+}
+
+const requestValidationFailed = { detail: "Request validation failed" }
 
 /**
  * Provides a client-side middleware implementation for a middleware that is required by generated clients.
