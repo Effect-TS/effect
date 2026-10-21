@@ -25,7 +25,7 @@ import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
-import { getSetCookie, getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
+import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -115,63 +115,40 @@ export const fromWeb = (request: HttpClientRequest.HttpClientRequest, source: Re
   new WebHttpClientResponse(request, source)
 
 /**
- * Converts an `HttpClientResponse` into a Web `Response`.
+ * Returns the original Web `Response` of a fetch-backed `HttpClientResponse`.
  *
  * **When to use**
  *
  * Use to hand a response body to a Web API without copying it, such as
- * writing a fetched file to Cloudflare R2.
+ * writing a fetched file to Cloudflare R2. The original body keeps runtime
+ * capabilities, such as workerd's known length, that a stream converted from
+ * `stream` does not.
  *
  * **Details**
  *
- * A response from `fetch` is returned as the original Web `Response`, so its
- * body keeps runtime capabilities such as workerd's known length. Any other
- * response is rebuilt from its status, headers, cookies and `stream`.
+ * Returns `Some` for responses created with `fromWeb`, which includes every
+ * response from `FetchHttpClient`, and `None` for other backends.
+ *
+ * Calling `toWeb` hands the body over: the response is no longer aborted when
+ * the `HttpClientResponse` is garbage collected, so read or cancel the body
+ * through the returned `Response`.
  *
  * **Gotchas**
  *
  * The body can be read once. After converting, read it from the returned
  * `Response`, not from the `HttpClientResponse`.
  *
- * When the request streams its body, finishing or cancelling the returned
- * body does not stop the upload. To stop it, execute the request with
- * `HttpClient.withScope` and close the scope.
+ * After the hand-off, Effect aborts the request only when the scope of
+ * `HttpClient.withScope` closes. When the request streams its body, finishing
+ * or cancelling the returned body does not stop the upload; execute the
+ * request with `HttpClient.withScope` and close the scope to stop it.
  *
  * @stability unstable
  * @category converting
  * @since 4.0.0
  */
-export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Response> =>
-  Effect.suspend(() => {
-    const source = getWebSource(self)
-    if (source !== undefined) {
-      return Effect.succeed(source)
-    }
-    const headers = new globalThis.Headers(Headers.remove(self.headers, "set-cookie"))
-    for (const header of getSetCookie(self) ?? clientSetCookie(self)) {
-      headers.append("set-cookie", header)
-    }
-    const init: ResponseInit = { status: self.status, headers }
-    if (self.request.method === "HEAD" || nullBodyStatuses.has(self.status)) {
-      return Effect.succeed(new Response(null, init))
-    }
-    return Effect.map(Stream.toReadableStreamEffect(self.stream), (body) => new Response(body, init))
-  })
-
-const nullBodyStatuses = new Set([101, 204, 205, 304])
-
-// Clients parse `cookies` from the `set-cookie` header, which may join several
-// cookies into one value. The header is kept only when `cookies` has none of
-// them, so a cookie is never sent twice.
-const clientSetCookie = (self: HttpClientResponse): Array<string> => {
-  const header = self.headers["set-cookie"]
-  const cookies = Cookies.toSetCookieHeaders(self.cookies)
-  if (header === undefined) return cookies
-  const repeated = Object.keys(Cookies.fromSetCookie(header).cookies).some((name) =>
-    Option.isSome(Cookies.get(self.cookies, name))
-  )
-  return repeated ? cookies : [header, ...cookies]
-}
+export const toWeb = (self: HttpClientResponse): Option.Option<globalThis.Response> =>
+  Option.fromUndefinedOr(getWebSource(self))
 
 /**
  * Creates a decoder for a response's status, headers, and JSON body using the supplied schema.

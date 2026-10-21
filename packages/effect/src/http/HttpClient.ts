@@ -46,7 +46,7 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as tracing from "./internal/tracing.ts"
-import { getSetCookie, getWebSource, SetCookieSymbol, WebSourceSymbol } from "./internal/webResponse.ts"
+import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -1931,10 +1931,6 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
     // The Web body outlives this wrapper, so collecting it must not abort the request.
     responseRegistry.unregister(this.original)
     return getWebSource(this.original)
-  }
-
-  [SetCookieSymbol]() {
-    return getSetCookie(this.original)
   }
 
   get stream() {
