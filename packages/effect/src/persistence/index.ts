@@ -9,6 +9,12 @@
  * @stability unstable
  * @since 4.0.0
  */
+export * as AppDirectories from "./AppDirectories.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as KeyValueStore from "./KeyValueStore.ts"
 
 /**
