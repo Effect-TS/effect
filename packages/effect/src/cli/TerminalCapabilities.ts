@@ -16,28 +16,6 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Stdio from "../Stdio.ts"
-import { detect } from "./internal/terminal-capabilities.ts"
-
-/**
- * Terminal rendering flags for one process.
- *
- * **Details**
- *
- * `canColor` says whether styling will be rendered rather than stored as
- * bytes. `canAnimate` says whether output is being watched, so pacing means
- * something. `canPrompt` says whether a question can be asked and answered.
- * Only `canColor` is read by the built-in `Command` output; the other two are
- * for application code that renders its own output.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface Service {
-  readonly canColor: boolean
-  readonly canAnimate: boolean
-  readonly canPrompt: boolean
-}
 
 /**
  * Service tag for terminal capability detection.
@@ -49,13 +27,46 @@ export interface Service {
  * help, version, and error output. Leave it out and `CliOutput` keeps its
  * built-in TTY check.
  *
+ * **Details**
+ *
+ * `canColor` says whether styling will be rendered rather than stored as
+ * bytes. `canAnimate` says whether output is being watched, so pacing means
+ * something. `canPrompt` says whether a question can be asked and answered.
+ * Only `canColor` is read by the built-in `Command` output; the other two are
+ * for application code that renders its own output.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export class TerminalCapabilities extends Context.Service<TerminalCapabilities, Service>()(
-  "effect/cli/TerminalCapabilities"
-) {}
+export class TerminalCapabilities extends Context.Service<TerminalCapabilities, {
+  readonly canColor: boolean
+  readonly canAnimate: boolean
+  readonly canPrompt: boolean
+}>()("effect/cli/TerminalCapabilities") {}
+
+const isPresent = (value: string | undefined): value is string => value !== undefined && value.length > 0
+
+const isForcingColor = (value: string | undefined): boolean =>
+  isPresent(value) && value !== "0" && value.toLowerCase() !== "false"
+
+const detect = (input: {
+  readonly noColor: string | undefined
+  readonly forceColor: string | undefined
+  readonly term: string | undefined
+  readonly stdinIsTerminal: boolean
+  readonly stdoutIsTerminal: boolean
+}): TerminalCapabilities["Service"] => {
+  if (input.term === "dumb") {
+    return { canColor: false, canAnimate: false, canPrompt: false }
+  }
+
+  return {
+    canColor: !isPresent(input.noColor) && (isForcingColor(input.forceColor) || input.stdoutIsTerminal),
+    canAnimate: input.stdoutIsTerminal,
+    canPrompt: input.stdinIsTerminal && input.stdoutIsTerminal
+  }
+}
 
 const environment = Config.all({
   noColor: Config.option(Config.String("NO_COLOR")),
