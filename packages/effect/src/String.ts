@@ -1077,31 +1077,19 @@ export const stripMarginWith: {
 export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 
 /**
- * Joins a tagged template like the global `String.raw` and strips the `|`
- * margin from every line that starts inside the template.
+ * Joins a tagged template like `String.raw` and strips the `|` margin from
+ * every line that starts inside the template.
  *
  * **Details**
  *
- * The template parts are joined using their raw text, so escape sequences such
- * as `\n` are kept as written, exactly as with the global `String.raw`.
- *
- * On every line that begins inside the template, leading spaces and tabs
- * followed by `|` are removed. A single space directly after the `|` is
- * treated as part of the margin, so `| text` yields `text` and `|   text`
- * yields `  text`. Lines without a margin are kept as written.
- *
- * Substituted values are inserted verbatim. A `|` inside a substituted value,
- * or on a line that a substituted value started, is never treated as a margin,
- * so multi-line values such as Markdown tables survive interpolation.
- *
- * Leading and trailing lines that contain only template whitespace and no
- * margin are dropped. This removes the newline after the opening backtick and
- * the indentation before the closing backtick. Add an empty `|` line to keep a
- * blank line at either end, for example to end the result with a newline.
- *
- * When called with a plain string instead of a template, the string is
- * returned unchanged. This makes it easy to build APIs that accept either a
- * string or a tagged template.
+ * - The margin is leading spaces or tabs, a `|`, and one optional space.
+ *   Lines without a margin are kept as written.
+ * - Substituted values are inserted verbatim. A `|` inside a value, or on a
+ *   line that a value starts, is not treated as a margin.
+ * - Whitespace-only lines at either end are dropped. Use an empty `|` line to
+ *   keep a blank line there.
+ * - A plain string is returned unchanged, so APIs can accept either a string
+ *   or a tagged template.
  *
  * **Example** (Writing a multi-line text block)
  *
@@ -1149,8 +1137,7 @@ export const stripMarginRaw: {
 
   const parts = template.raw.slice()
   const last = parts.length - 1
-  // Drop whitespace-only edge lines before stripping margins, so that lines
-  // with an explicit margin or a substitution are kept.
+  // Trim edge lines before stripping margins so that empty `|` lines are kept
   parts[0] = parts[0].replace(/^(?:[ \t]*\n)+/, "")
   parts[last] = parts[last].replace(last === 0 ? /^[ \t]*$|(?:\n[ \t]*)+$/ : /(?:\n[ \t]*)+$/, "")
   // Only lines that start inside the template can have a margin.
