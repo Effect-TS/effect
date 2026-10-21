@@ -5287,6 +5287,20 @@ describe("Effect", () => {
 
     const expected = (store: string) => ({ resumed: store, promise: store, timer: store, afterSleep: store })
 
+    it("fibers yielding in the same tick each resume in their own context", async () => {
+      const program = Effect.gen(function*() {
+        yield* Effect.yieldNow
+        const afterYield = current()
+        const promise = yield* Effect.promise(async () => current())
+        yield* Effect.sleep(0)
+        const afterSleep = current()
+        return { afterYield, promise, afterSleep }
+      })
+      const [a, b] = await Promise.all([runWithStore("a", program), runWithStore("b", program)])
+      assert.deepStrictEqual(a, { afterYield: "a", promise: "a", afterSleep: "a" })
+      assert.deepStrictEqual(b, { afterYield: "b", promise: "b", afterSleep: "b" })
+    })
+
     for (const waiterStore of [undefined, "waiter"]) {
       const label = waiterStore === undefined ? "without a store" : "with its own store"
 
