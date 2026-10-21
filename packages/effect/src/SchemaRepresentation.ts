@@ -931,8 +931,9 @@ export const isULIDReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isAscii} for creating the corresponding check
  *
+ * @stability unstable
  * @category validation
- * @since 4.0.0
+ * @since 4.0.6
  */
 export const isAsciiReviver: FilterReviver<null> = makeReviverFilter(
   "effect/schema/isAscii",

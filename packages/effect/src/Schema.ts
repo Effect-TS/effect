@@ -7141,8 +7141,9 @@ const ASCII_REGEXP = /^[\x00-\x7F]*$/
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the ASCII pattern.
  *
+ * @stability unstable
  * @category validation
- * @since 4.0.0
+ * @since 4.0.6
  */
 export function isAscii(annotations?: Annotations.Filter) {
   return isPattern(
