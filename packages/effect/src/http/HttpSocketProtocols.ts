@@ -17,8 +17,8 @@ import * as HttpServerRequest from "./HttpServerRequest.ts"
  *
  * **When to use**
  *
- * Use inside WebSocket upgrade handlers to pick a sub-protocol supported by
- * both the client and the server.
+ * Use when a WebSocket upgrade handler needs to pick a sub-protocol supported
+ * by both the client and the server.
  *
  * **Details**
  *
