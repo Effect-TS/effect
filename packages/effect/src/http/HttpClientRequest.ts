@@ -13,6 +13,7 @@
 import type * as ByteSize from "../ByteSize.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import type * as FileSystem from "../FileSystem.ts"
 import { dual } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
@@ -401,6 +402,8 @@ export const removeHeader: {
 /**
  * Sets the `Authorization` header using HTTP Basic authentication credentials.
  *
+ * The credentials are encoded as UTF-8 before base64 encoding.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -422,7 +425,11 @@ export const basicAuth: {
     username: string | Redacted.Redacted,
     password: string | Redacted.Redacted
   ): HttpClientRequest =>
-    setHeader(self, "Authorization", `Basic ${btoa(`${stringOrRedacted(username)}:${stringOrRedacted(password)}`)}`)
+    setHeader(
+      self,
+      "Authorization",
+      `Basic ${Base64.encode(`${stringOrRedacted(username)}:${stringOrRedacted(password)}`)}`
+    )
 )
 
 /**
