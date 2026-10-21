@@ -469,7 +469,7 @@ export const readReport = Effect.fn("readReport")(function*(reportId: string) {
   const tool = tools.find((tool) => tool.name === "read_report")
   if (tool === undefined) {
     return yield* new McpClientError.McpClientError({
-      reason: { _tag: "UnsupportedError", message: "Server does not expose read_report" }
+      reason: new McpClientError.UnsupportedError({ description: "Server does not expose read_report" })
     })
   }
   return yield* client.callTool({ tool, arguments: { reportId }, schema: Report }, { timeout: "2 seconds" })
@@ -484,10 +484,13 @@ arguments against them; define the argument contract in your application or in a
 
 ### Handling failures
 
-Every failure is an `McpClientError.McpClientError` whose `reason` is a tagged union: `TransportError`,
-`ProtocolError` (with the JSON-RPC `code` and `data`), `HttpError` (with `status` and the
-`www-authenticate` and `retry-after` headers), `ClosedError` (with `sessionExpired`), `TimeoutError`,
-`LimitError`, `UnsupportedError`, `ValidationError`, `ConfigurationError` and `ToolError`.
+Every failure is an `McpClientError.McpClientError` whose `reason` is one of the reason classes
+exported by `McpClientError`: `TransportError`, `ProtocolError` (with the JSON-RPC `code` and
+`data`), `HttpError` (with `status` and the `www-authenticate` and `retry-after` headers),
+`ClosedError` (with `sessionExpired`), `TimeoutError` (with `operation`), `LimitError`,
+`UnsupportedError`, `ValidationError`, `ConfigurationError` and `ToolError` (with the tool
+`result`). Each reason derives its `message` from these fields and an optional `description`.
+`McpClientError.isMcpClientError` and `McpClientError.isMcpClientErrorReason` identify them.
 
 ```typescript
 import { Effect, Schema } from "effect"

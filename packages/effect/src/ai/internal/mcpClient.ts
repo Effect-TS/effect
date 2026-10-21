@@ -20,7 +20,20 @@ import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import type { CallToolParams, Client, ProtocolVersion } from "../McpClient.ts"
-import { McpClientError, type McpClientErrorReason } from "../McpClientError.ts"
+import {
+  ClosedError,
+  ConfigurationError,
+  HttpError,
+  LimitError,
+  McpClientError,
+  type McpClientErrorReason,
+  ProtocolError,
+  TimeoutError,
+  ToolError,
+  TransportError,
+  UnsupportedError,
+  ValidationError
+} from "../McpClientError.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as Tool from "../Tool.ts"
@@ -84,15 +97,15 @@ const messageLimit = (input: ByteSize.Input | undefined) => {
 
   return bytes !== undefined && Number.isSafeInteger(bytes) && bytes > 0
     ? Effect.succeed(bytes)
-    : Effect.fail(fail({ _tag: "ConfigurationError", message: "maxMessageBytes must be a positive safe integer" }))
+    : Effect.fail(fail(new ConfigurationError({ description: "maxMessageBytes must be a positive safe integer" })))
 }
 
-const limitError = (message: string) => fail({ _tag: "LimitError", message })
+const limitError = (description: string) => fail(new LimitError({ description }))
 
 const encodeMessage = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMessage, maxBytes: number) {
   const json = yield* Effect.try({
     try: () => JSON.stringify(message),
-    catch: (cause) => fail({ _tag: "TransportError", message: "Cannot encode MCP message", cause })
+    catch: (cause) => fail(new TransportError({ description: "Cannot encode MCP message", cause }))
   })
   if (encoder.encode(json).length > maxBytes) {
     return yield* limitError("MCP message exceeds maxMessageBytes")
@@ -106,10 +119,10 @@ const parseMessage = Effect.fnUntraced(function*(text: string, maxBytes: number)
   }
   const json = yield* Effect.try({
     try: () => JSON.parse(text) as unknown,
-    catch: (cause) => fail({ _tag: "ProtocolError", message: "Invalid MCP JSON", cause })
+    catch: (cause) => fail(new ProtocolError({ description: "Invalid MCP JSON", cause }))
   })
   return yield* decodeMessage(json).pipe(
-    Effect.mapError((cause) => fail({ _tag: "ProtocolError", message: "Invalid JSON-RPC message", cause }))
+    Effect.mapError((cause) => fail(new ProtocolError({ description: "Invalid JSON-RPC message", cause })))
   )
 })
 
@@ -146,7 +159,7 @@ export const stdio = Effect.fnUntraced(function*(options: {
   const maxBytes = yield* messageLimit(options.maxMessageBytes)
   const spawner = yield* ChildProcessSpawner
   const process = yield* spawner.spawn(options.command).pipe(
-    Effect.mapError((cause) => fail({ _tag: "TransportError", message: "Cannot spawn MCP server", cause }))
+    Effect.mapError((cause) => fail(new TransportError({ description: "Cannot spawn MCP server", cause })))
   )
 
   const pending = new Map<McpSchema.RequestId, Deferred.Deferred<McpSchema.JsonRpcResponse>>()
@@ -172,7 +185,7 @@ export const stdio = Effect.fnUntraced(function*(options: {
     if (!isResponse(message)) return
     // Without an ID the error cannot be correlated, so no pending request can be trusted.
     if (message.id === undefined || message.id === null) {
-      return yield* fail({ _tag: "ProtocolError", message: "Server returned an uncorrelated JSON-RPC error" })
+      return yield* fail(new ProtocolError({ description: "Server returned an uncorrelated JSON-RPC error" }))
     }
     const response = pending.get(message.id)
     if (response !== undefined) yield* Deferred.succeed(response, message)
@@ -181,7 +194,7 @@ export const stdio = Effect.fnUntraced(function*(options: {
   yield* Stream.fromQueue(input).pipe(
     Stream.encodeText,
     Stream.run(process.stdin),
-    Effect.catch((cause) => close(fail({ _tag: "TransportError", message: "MCP stdin failed", cause }))),
+    Effect.catch((cause) => close(fail(new TransportError({ description: "MCP stdin failed", cause })))),
     Effect.forkScoped
   )
   yield* Stream.runDrain(process.stderr).pipe(Effect.ignore, Effect.forkScoped)
@@ -206,9 +219,9 @@ export const stdio = Effect.fnUntraced(function*(options: {
     Effect.mapError((cause) =>
       cause instanceof McpClientError
         ? cause
-        : fail({ _tag: "TransportError", message: "MCP stdout failed", cause })
+        : fail(new TransportError({ description: "MCP stdout failed", cause }))
     ),
-    Effect.andThen(Effect.fail(fail({ _tag: "TransportError", message: "MCP server closed stdout" }))),
+    Effect.andThen(Effect.fail(fail(new TransportError({ description: "MCP server closed stdout" })))),
     Effect.catch(close),
     Effect.ensuring(Deferred.succeed(drained, undefined)),
     Effect.forkScoped
@@ -218,14 +231,14 @@ export const stdio = Effect.fnUntraced(function*(options: {
     Effect.map((code) => `MCP process exited (${code})`),
     Effect.orElseSucceed(() => "MCP process exited"),
     Effect.tap(() => Deferred.await(drained).pipe(Effect.timeoutOption(CLOSE_TIMEOUT))),
-    Effect.flatMap((message) => close(fail({ _tag: "TransportError", message }))),
+    Effect.flatMap((description) => close(fail(new TransportError({ description })))),
     Effect.forkScoped
   )
 
   // Close stdin, then escalate to SIGTERM and SIGKILL if the server does not exit.
   // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#stdio
   yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
-    yield* close(fail({ _tag: "ClosedError", message: "MCP transport closed" }))
+    yield* close(fail(new ClosedError({ description: "MCP transport closed" })))
     yield* Queue.end(input)
     const exited = yield* process.exitCode.pipe(Effect.timeoutOption(CLOSE_TIMEOUT), Effect.option)
     if (Option.isNone(exited) || Option.isNone(exited.value)) {
@@ -356,14 +369,14 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 
   const parameters = tool === undefined ? undefined : headerParameters(tool)
   if (parameters === undefined) {
-    return yield* fail({ _tag: "UnsupportedError", message: "Tool has invalid x-mcp-header annotations" })
+    return yield* fail(new UnsupportedError({ description: "Tool has invalid x-mcp-header annotations" }))
   }
   for (const { header, path, type } of parameters) {
     let value: unknown = params.arguments
     for (const key of path) value = isRecord(value) && Object.hasOwn(value, key) ? value[key] : undefined
     if (value === undefined || value === null) continue
     if (type === "integer" ? !Number.isSafeInteger(value) : typeof value !== type) {
-      return yield* fail({ _tag: "ValidationError", message: `Invalid value for MCP header parameter ${header}` })
+      return yield* fail(new ValidationError({ description: `Invalid value for MCP header parameter ${header}` }))
     }
     headers[header] = headerValue(String(value))
   }
@@ -372,7 +385,7 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 
 const readBody = (response: HttpClientResponse.HttpClientResponse, maxBytes: number) =>
   response.stream.pipe(
-    Stream.mapError((cause) => fail({ _tag: "TransportError", message: "Cannot read MCP response", cause })),
+    Stream.mapError((cause) => fail(new TransportError({ description: "Cannot read MCP response", cause }))),
     Stream.limitBytes(maxBytes, () => Stream.fail(limitError("MCP response exceeds maxMessageBytes"))),
     Stream.mkUint8Array,
     Effect.map((bytes) => decoder.decode(bytes))
@@ -409,18 +422,16 @@ export const http = Effect.fnUntraced(function*(options: {
         Effect.orElseSucceed(() => undefined)
       )
       : undefined
-    const wwwAuthenticate = response.headers["www-authenticate"]
-    const retryAfter = response.headers["retry-after"]
-
-    return yield* fail({
-      _tag: "HttpError",
-      message: remote?.message ?? `MCP HTTP status ${response.status}`,
-      status: response.status,
-      ...(wwwAuthenticate === undefined ? {} : { wwwAuthenticate }),
-      ...(retryAfter === undefined ? {} : { retryAfter }),
-      ...(remote?.code === undefined ? {} : { code: remote.code }),
-      ...(remote?.data === undefined ? {} : { data: remote.data })
-    })
+    return yield* fail(
+      new HttpError({
+        status: response.status,
+        code: remote?.code,
+        data: remote?.data,
+        description: remote?.message,
+        wwwAuthenticate: response.headers["www-authenticate"],
+        retryAfter: response.headers["retry-after"]
+      })
+    )
   })
 
   // Posts one message and returns the successful response, tracking legacy sessions.
@@ -435,14 +446,14 @@ export const http = Effect.fnUntraced(function*(options: {
       // Clients using `filterStatusOk` surface error responses as failures.
       Effect.catch((cause) =>
         cause.response === undefined
-          ? Effect.fail(fail({ _tag: "TransportError", message: "MCP HTTP request failed", cause }))
+          ? Effect.fail(fail(new TransportError({ description: "MCP HTTP request failed", cause })))
           : Effect.succeed(cause.response)
       )
     )
 
     // A legacy session ends when the server no longer recognizes its ID.
     if (session !== undefined && response.status === 404) {
-      failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP session expired", sessionExpired: true })
+      failed ??= fail(new ClosedError({ sessionExpired: true }))
       return yield* failed
     }
     if (response.status < 200 || response.status >= 300) return yield* httpError(response)
@@ -455,7 +466,7 @@ export const http = Effect.fnUntraced(function*(options: {
       Effect.mapError((cause) =>
         cause instanceof McpClientError
           ? cause
-          : fail({ _tag: "TransportError", message: "Cannot read MCP response", cause })
+          : fail(new TransportError({ description: "Cannot read MCP response", cause }))
       ),
       Effect.raceFirst(Deferred.await(closed)),
       Effect.scoped
@@ -476,7 +487,7 @@ export const http = Effect.fnUntraced(function*(options: {
       if (!isResponse(message)) return undefined
       // A response on this exchange belongs to its request; an error may omit the ID.
       if (message.id !== request.id && !("error" in message && message.id == null)) {
-        return yield* fail({ _tag: "ProtocolError", message: "HTTP MCP response id does not match its request" })
+        return yield* fail(new ProtocolError({ description: "HTTP MCP response id does not match its request" }))
       }
       return message
     })
@@ -511,14 +522,14 @@ export const http = Effect.fnUntraced(function*(options: {
         return message.value
       }
       default: {
-        return yield* fail({ _tag: "ProtocolError", message: "Unsupported MCP response Content-Type" })
+        return yield* fail(new ProtocolError({ description: "Unsupported MCP response Content-Type" }))
       }
     }
-    return yield* fail({ _tag: "TransportError", message: "MCP response ended before the terminal response" })
+    return yield* fail(new TransportError({ description: "MCP response ended before the terminal response" }))
   })
 
   yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
-    failed ??= fail({ _tag: "ClosedError", message: "MCP HTTP transport closed" })
+    failed ??= fail(new ClosedError({ description: "MCP HTTP transport closed" }))
     yield* Deferred.fail(closed, failed)
     if (session === undefined || failed.reason._tag !== "ClosedError" || failed.reason.sessionExpired) return
     // Explicitly terminate a legacy session.
@@ -540,7 +551,7 @@ export const http = Effect.fnUntraced(function*(options: {
         send(message, tool).pipe(
           Effect.flatMap((response) =>
             response.status === 202 || response.status === 204
-              ? fail({ _tag: "ProtocolError", message: "MCP request received no response" })
+              ? fail(new ProtocolError({ description: "MCP request received no response" }))
               : readResponse(response, message)
           )
         )
@@ -576,7 +587,7 @@ export const TypeId = "~effect/ai/McpClient" as const
 export const isClient = (value: unknown): value is Client => Predicate.hasProperty(value, TypeId)
 
 const validationError = (cause: Schema.SchemaError) =>
-  fail({ _tag: "ValidationError", message: "Invalid MCP payload", cause })
+  fail(new ValidationError({ description: "Invalid MCP payload", cause }))
 
 const decodeUnknown = (schema: Schema.Constraint, value: unknown) =>
   Schema.decodeUnknownEffect(schema as Schema.ConstraintCodec<unknown, unknown>)(value).pipe(
@@ -613,7 +624,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
   const timeout = options.timeout ?? DEFAULT_TIMEOUT
   const closed = yield* Deferred.make<never, McpClientError>()
   yield* Effect.addFinalizer(() =>
-    Deferred.fail(closed, fail({ _tag: "ClosedError", message: "MCP client scope closed" }))
+    Deferred.fail(closed, fail(new ClosedError({ description: "MCP client scope closed" })))
   )
   let nextId = 1
 
@@ -641,7 +652,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
   ): Effect.fn.Return<A, McpClientError> {
     const rpc = protocol.clientRpcs.requests.get(method) as Rpc.AnyWithProps | undefined
     if (rpc === undefined) {
-      return yield* fail({ _tag: "UnsupportedError", message: `Unsupported MCP method: ${method}` })
+      return yield* fail(new UnsupportedError({ description: `Unsupported MCP method: ${method}` }))
     }
 
     const codecs = protocol.payloadCodecs(rpc)
@@ -655,7 +666,13 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
       tool
     )
     if ("error" in response) {
-      return yield* fail({ _tag: "ProtocolError", ...response.error })
+      return yield* fail(
+        new ProtocolError({
+          code: response.error.code,
+          data: response.error.data,
+          description: response.error.message
+        })
+      )
     }
 
     let result: unknown = response.result
@@ -667,7 +684,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
 
     const validated = yield* decodeUnknown(rpc.successSchema, result)
     if (isRecord(result) && result.resultType === "input_required") {
-      return yield* fail({ _tag: "UnsupportedError", message: "MCP input continuation is not supported" })
+      return yield* fail(new UnsupportedError({ description: "MCP input continuation is not supported" }))
     }
     const publicRpc = publicRpcs.get(method)
     return (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
@@ -683,7 +700,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     return duration === undefined ? open : open.pipe(
       Effect.timeoutOrElse({
         duration,
-        orElse: () => Effect.fail(fail({ _tag: "TimeoutError", message: `MCP ${operation} deadline exceeded` }))
+        orElse: () => Effect.fail(fail(new TimeoutError({ operation })))
       })
     )
   }
@@ -711,10 +728,9 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     Effect.gen(function*() {
       const result = yield* initialize
       if (modern ? !result.supportedVersions?.includes(version) : result.protocolVersion !== version) {
-        return yield* fail({
-          _tag: "UnsupportedError",
-          message: "Server does not support the explicitly selected protocol version"
-        })
+        return yield* fail(
+          new UnsupportedError({ description: "Server does not support the explicitly selected protocol version" })
+        )
       }
       const identity = modern ? result._meta?.["io.modelcontextprotocol/serverInfo"] : result.serverInfo
       const capabilities = yield* decodeServerCapabilities(result.capabilities)
@@ -724,7 +740,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     }).pipe(
       Effect.mapError((cause) =>
         Schema.isSchemaError(cause)
-          ? fail({ _tag: "ProtocolError", message: "Invalid MCP initialization result", cause })
+          ? fail(new ProtocolError({ description: "Invalid MCP initialization result", cause }))
           : cause
       )
     ),
@@ -734,7 +750,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
 
   const requireCapability = (kind: "tools" | "prompts" | "resources") =>
     capabilities[kind] === undefined
-      ? Effect.fail(fail({ _tag: "UnsupportedError", message: `Server does not advertise ${kind}` }))
+      ? Effect.fail(fail(new UnsupportedError({ description: `Server does not advertise ${kind}` })))
       : Effect.void
 
   const list = <K extends "tools" | "prompts" | "resources", A>(kind: K) =>
@@ -773,11 +789,11 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
       )
       if (params.schema === undefined) return result
       if (result.isError === true) {
-        return yield* fail({ _tag: "ToolError", message: "MCP tool reported an execution error", result })
+        return yield* fail(new ToolError({ result }))
       }
       return yield* Schema.decodeUnknownEffect(params.schema)(result.structuredContent).pipe(
         Effect.mapError((cause) =>
-          fail({ _tag: "ValidationError", message: "MCP structured result validation failed", cause })
+          fail(new ValidationError({ description: "MCP structured result validation failed", cause }))
         )
       )
     },
@@ -837,21 +853,27 @@ const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClie
       }
       case "resource": {
         if (!("text" in block.resource)) {
-          return Effect.fail(fail({
-            _tag: "UnsupportedError",
-            message: "MCP binary resources require an application text converter",
-            result
-          }))
+          return Effect.fail(
+            fail(
+              new UnsupportedError({
+                description: "MCP binary resources require an application text converter",
+                result
+              })
+            )
+          )
         }
         parts.push(block.resource.text)
         break
       }
       default: {
-        return Effect.fail(fail({
-          _tag: "UnsupportedError",
-          message: `MCP ${block.type} content requires an application text converter`,
-          result
-        }))
+        return Effect.fail(
+          fail(
+            new UnsupportedError({
+              description: `MCP ${block.type} content requires an application text converter`,
+              result
+            })
+          )
+        )
       }
     }
   }
@@ -877,7 +899,7 @@ export const toolkit = Effect.fnUntraced(function*(client: Client, prefix = "") 
   for (const descriptor of descriptors) {
     const name = `${prefix}${descriptor.name}`
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || Object.hasOwn(handlers, name)) {
-      return yield* fail({ _tag: "ConfigurationError", message: `Invalid or duplicate MCP model tool name: ${name}` })
+      return yield* fail(new ConfigurationError({ description: `Invalid or duplicate MCP model tool name: ${name}` }))
     }
     tools.push(
       Tool.dynamic(name, {
@@ -890,12 +912,12 @@ export const toolkit = Effect.fnUntraced(function*(client: Client, prefix = "") 
     handlers[name] = Effect.fnUntraced(function*(params: unknown) {
       const args = yield* decodeToolArguments(params).pipe(
         Effect.mapError((cause) =>
-          fail({ _tag: "ValidationError", message: "MCP tool arguments must be a JSON object", cause })
+          fail(new ValidationError({ description: "MCP tool arguments must be a JSON object", cause }))
         )
       )
       const result = yield* client.callTool({ tool: descriptor, arguments: args })
       if (result.isError === true) {
-        return yield* fail({ _tag: "ToolError", message: "MCP tool reported an execution error", result })
+        return yield* fail(new ToolError({ result }))
       }
       return yield* toText(result)
     })
