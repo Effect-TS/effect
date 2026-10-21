@@ -150,11 +150,11 @@ describe("HttpDate", () => {
     strictEqual(Headers.formatHttpDate(DateTime.makeUnsafe(httpDateMillis)), "Sun, 06 Nov 1994 08:49:37 GMT")
   })
 
-  it("HttpDateSchema decodes any format and encodes IMF-fixdate", () => {
-    const decoded = Schema.decodeSync(Headers.HttpDateSchema)("Sun Nov  6 08:49:37 1994")
+  it("Schema.DateTimeUtcFromHttpDate decodes any format and encodes IMF-fixdate", () => {
+    const decoded = Schema.decodeSync(Schema.DateTimeUtcFromHttpDate)("Sun Nov  6 08:49:37 1994")
     strictEqual(DateTime.toEpochMillis(decoded), httpDateMillis)
-    strictEqual(Schema.encodeSync(Headers.HttpDateSchema)(decoded), "Sun, 06 Nov 1994 08:49:37 GMT")
-    throws(() => Schema.decodeSync(Headers.HttpDateSchema)("tomorrow"))
+    strictEqual(Schema.encodeSync(Schema.DateTimeUtcFromHttpDate)(decoded), "Sun, 06 Nov 1994 08:49:37 GMT")
+    throws(() => Schema.decodeSync(Schema.DateTimeUtcFromHttpDate)("tomorrow"))
   })
 })
 
@@ -192,10 +192,10 @@ describe("RetryAfter", () => {
     strictEqual(Duration.toMillis(Headers.retryAfterDelay(date, httpDateMillis + 30_000)), 0)
   })
 
-  it("RetryAfterSchema round trips and rejects invalid values", () => {
-    const decoded = Schema.decodeSync(Headers.RetryAfterSchema)("120")
+  it("Schema.RetryAfterFromString round trips and rejects invalid values", () => {
+    const decoded = Schema.decodeSync(Schema.RetryAfterFromString)("120")
     strictEqual(decoded._tag, "Seconds")
-    strictEqual(Schema.encodeSync(Headers.RetryAfterSchema)(decoded), "120")
-    throws(() => Schema.decodeSync(Headers.RetryAfterSchema)("-5"))
+    strictEqual(Schema.encodeSync(Schema.RetryAfterFromString)(decoded), "120")
+    throws(() => Schema.decodeSync(Schema.RetryAfterFromString)("-5"))
   })
 })

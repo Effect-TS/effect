@@ -1,16 +1,18 @@
 import * as AiError from "effect/ai/AiError"
 import type * as Response from "effect/ai/Response"
 import * as Arr from "effect/Array"
-import * as Duration from "effect/Duration"
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import type * as Sse from "effect/encoding/Sse"
 import { dual } from "effect/Function"
+import * as Headers from "effect/http/Headers"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as SchemaTransformation from "effect/SchemaTransformation"
 import * as String from "effect/String"
@@ -140,7 +142,9 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
   )
   const decoded = OpenAiErrorBodyJson(body)
 
+  const now = yield* Clock.currentTimeMillis
   const reason = mapStatusCodeToReason({
+    now,
     status,
     headers,
     message: Option.isSome(decoded) ? decoded.value.error.message : undefined,
@@ -160,15 +164,14 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
 })
 
 /** @internal */
-export const parseRateLimitHeaders = (headers: Record<string, string>) => {
+export const parseRateLimitHeaders = (headers: Record<string, string>, now: number) => {
   const retryAfterRaw = headers["retry-after"]
-  let retryAfter: Duration.Duration | undefined
-  if (retryAfterRaw !== undefined) {
-    const parsed = Number.parse(retryAfterRaw)
-    if (Option.isSome(parsed)) {
-      retryAfter = Duration.seconds(parsed.value)
-    }
-  }
+  // an invalid Retry-After is treated as absent
+  const retryAfter = retryAfterRaw === undefined
+    ? undefined
+    : Result.getOrUndefined(
+      Result.map(Headers.parseRetryAfter(retryAfterRaw), (value) => Headers.retryAfterDelay(value, now))
+    )
   const remainingRaw = headers["x-ratelimit-remaining-requests"]
   const remaining = remainingRaw !== undefined ? Option.getOrNull(Number.parse(remainingRaw)) : null
   return {
@@ -208,8 +211,10 @@ export const buildHttpContext = (params: {
 })
 
 /** @internal */
-export const mapStatusCodeToReason = ({ status, headers, message, metadata, http }: {
+export const mapStatusCodeToReason = ({ status, headers, message, metadata, http, now }: {
   readonly status: number
+  /** Current time in epoch milliseconds, used to measure a Retry-After date. */
+  readonly now: number
   readonly headers: Record<string, string>
   readonly message: string | undefined
   readonly metadata: OpenAiErrorMetadata
@@ -272,7 +277,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
           http
         })
       }
-      const { retryAfter, ...rateLimitMetadata } = parseRateLimitHeaders(headers)
+      const { retryAfter, ...rateLimitMetadata } = parseRateLimitHeaders(headers, now)
       return new AiError.RateLimitError({
         retryAfter,
         metadata: {

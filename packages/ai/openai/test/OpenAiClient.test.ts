@@ -309,6 +309,7 @@ describe("OpenAiClient", () => {
     it("preserves and truncates a fallback HTTP response", () => {
       const body = `${"a".repeat(200)}b`
       const reason = Errors.mapStatusCodeToReason({
+        now: 0,
         status: 400,
         headers: {},
         message: undefined,
@@ -439,6 +440,7 @@ describe("OpenAiClient", () => {
         }
       }
       const reason = Errors.mapStatusCodeToReason({
+        now: 0,
         status: 429,
         headers: {},
         message: "You exceeded your current quota",

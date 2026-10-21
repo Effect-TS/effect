@@ -10,12 +10,15 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
 import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
 import type { PlatformError } from "../PlatformError.ts"
+import * as Result from "../Result.ts"
+import * as Headers from "./Headers.ts"
 import * as HttpPlatform from "./HttpPlatform.ts"
 import * as HttpRouter from "./HttpRouter.ts"
 import * as HttpServerError from "./HttpServerError.ts"
@@ -460,19 +463,15 @@ const matchesIfNoneMatch = (ifNoneMatch: string, etag: string | undefined): bool
   return false
 }
 
+// An invalid date on either side disables the precondition (RFC 9110 §13.1.3).
 const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | undefined): boolean => {
   if (lastModified === undefined) {
     return false
   }
-  const ifModifiedSinceMs = Date.parse(ifModifiedSince)
-  if (Number.isNaN(ifModifiedSinceMs)) {
-    return false
-  }
-  const lastModifiedMs = Date.parse(lastModified)
-  if (Number.isNaN(lastModifiedMs)) {
-    return false
-  }
-  return lastModifiedMs <= ifModifiedSinceMs
+  const ifModifiedSinceDate = Headers.parseHttpDate(ifModifiedSince)
+  const lastModifiedDate = Headers.parseHttpDate(lastModified)
+  return Result.isSuccess(ifModifiedSinceDate) && Result.isSuccess(lastModifiedDate) &&
+    DateTime.toEpochMillis(lastModifiedDate.success) <= DateTime.toEpochMillis(ifModifiedSinceDate.success)
 }
 
 // Only a strong entity-tag can match (RFC 9110 §13.1.5). Weak tags start

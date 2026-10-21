@@ -1,9 +1,10 @@
 import * as AiError from "effect/ai/AiError"
 import type * as Response from "effect/ai/Response"
-import * as Duration from "effect/Duration"
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import type * as Sse from "effect/encoding/Sse"
 import { dual } from "effect/Function"
+import * as Headers from "effect/http/Headers"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
@@ -11,6 +12,7 @@ import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import type { AnthropicErrorMetadata } from "../AnthropicError.ts"
 import type * as Generated from "../Generated.ts"
@@ -66,26 +68,35 @@ export const mapSseError = dual<
 
 /** @internal */
 export const mapClientError = dual<
-  (method: string) => (error: Generated.AnthropicClientError<string, AnthropicClientErrorBody>) => AiError.AiError,
-  (error: Generated.AnthropicClientError<string, AnthropicClientErrorBody>, method: string) => AiError.AiError
->(2, (error, method) => {
-  const { request, response, cause } = error
-  const status = response.status
-  const headers = response.headers as Record<string, string>
-  const metadata: AnthropicErrorMetadata = {
-    errorType: cause.error.type,
-    requestId: cause.request_id
-  }
-  const http = buildHttpContext({ request, response, body: JSON.stringify(cause) })
-  const reason = mapStatusCodeToReason({
-    status,
-    headers,
-    message: cause.error.message,
-    metadata,
-    http
-  })
-  return AiError.make({ module: "AnthropicClient", method, reason })
-})
+  (
+    method: string
+  ) => (
+    error: Generated.AnthropicClientError<string, AnthropicClientErrorBody>
+  ) => Effect.Effect<never, AiError.AiError>,
+  (
+    error: Generated.AnthropicClientError<string, AnthropicClientErrorBody>,
+    method: string
+  ) => Effect.Effect<never, AiError.AiError>
+>(2, (error, method) =>
+  Effect.flatMap(Clock.currentTimeMillis, (now) => {
+    const { request, response, cause } = error
+    const status = response.status
+    const headers = response.headers as Record<string, string>
+    const metadata: AnthropicErrorMetadata = {
+      errorType: cause.error.type,
+      requestId: cause.request_id
+    }
+    const http = buildHttpContext({ request, response, body: JSON.stringify(cause) })
+    const reason = mapStatusCodeToReason({
+      now,
+      status,
+      headers,
+      message: cause.error.message,
+      metadata,
+      http
+    })
+    return Effect.fail(AiError.make({ module: "AnthropicClient", method, reason }))
+  }))
 
 /** @internal */
 export const mapHttpClientError = dual<
@@ -178,7 +189,9 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
   }
   const decoded = Schema.decodeUnknownOption(AnthropicErrorBody)(json)
 
+  const now = yield* Clock.currentTimeMillis
   const reason = mapStatusCodeToReason({
+    now,
     status,
     headers,
     message: Option.isSome(decoded) ? decoded.value.error.message : undefined,
@@ -197,15 +210,14 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
 // =============================================================================
 
 /** @internal */
-export const parseRateLimitHeaders = (headers: Record<string, string>) => {
+export const parseRateLimitHeaders = (headers: Record<string, string>, now: number) => {
   const retryAfterRaw = headers["retry-after"]
-  let retryAfter: Duration.Duration | undefined
-  if (Predicate.isNotUndefined(retryAfterRaw)) {
-    const parsed = Number.parse(retryAfterRaw)
-    if (Option.isSome(parsed)) {
-      retryAfter = Duration.seconds(parsed.value)
-    }
-  }
+  // an invalid Retry-After is treated as absent
+  const retryAfter = retryAfterRaw === undefined
+    ? undefined
+    : Result.getOrUndefined(
+      Result.map(Headers.parseRetryAfter(retryAfterRaw), (value) => Headers.retryAfterDelay(value, now))
+    )
   const requestsLimitRaw = headers["anthropic-ratelimit-requests-limit"]
   const requestsRemainingRaw = headers["anthropic-ratelimit-requests-remaining"]
   const tokensLimitRaw = headers["anthropic-ratelimit-tokens-limit"]
@@ -261,8 +273,10 @@ export const buildHttpContext = (params: {
 // =============================================================================
 
 /** @internal */
-export const mapStatusCodeToReason = ({ status, headers, message, metadata, http }: {
+export const mapStatusCodeToReason = ({ status, headers, message, metadata, http, now }: {
   readonly status: number
+  /** Current time in epoch milliseconds, used to measure a Retry-After date. */
+  readonly now: number
   readonly headers: Record<string, string>
   readonly message: string | undefined
   readonly metadata: AnthropicErrorMetadata
@@ -312,7 +326,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
         http
       })
     case 429: {
-      const { retryAfter, ...rateLimitMetadata } = parseRateLimitHeaders(headers)
+      const { retryAfter, ...rateLimitMetadata } = parseRateLimitHeaders(headers, now)
       return new AiError.RateLimitError({
         retryAfter,
         metadata: {

@@ -6,10 +6,18 @@
  * reading and updating header values, and redacts configured sensitive headers
  * when values are inspected.
  *
+ * It also parses and formats the values of standard headers, such as HTTP
+ * dates and `Retry-After`, with the tolerance the RFCs allow and nothing more.
+ * The string codecs for those values live in `Schema`, for example
+ * `Schema.DateTimeUtcFromHttpDate` and `Schema.RetryAfterFromString`.
+ *
  * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
+import * as Data from "../Data.ts"
+import * as DateTime from "../DateTime.ts"
+import * as Duration from "../Duration.ts"
 import * as Equal from "../Equal.ts"
 import * as Equ from "../Equivalence.ts"
 import { dual } from "../Function.ts"
@@ -20,6 +28,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Record from "../Record.ts"
 import * as Redactable from "../Redactable.ts"
 import * as Redacted from "../Redacted.ts"
+import * as Result from "../Result.ts"
 import type { Mutable } from "../Types.ts"
 
 /**
@@ -443,3 +452,333 @@ export const CurrentRedactedNames = Context.Reference<
     "x-api-key"
   ]
 })
+
+// -----------------------------------------------------------------------------
+// Header values
+// -----------------------------------------------------------------------------
+
+const HeaderValueErrorTypeId = "~effect/http/Headers/HeaderValueError"
+
+/**
+ * Error reason describing which header value failed to parse.
+ *
+ * **Details**
+ *
+ * `input` is the raw header value that was rejected.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class HeaderValueErrorReason extends Data.Error<{
+  readonly _tag: "InvalidHttpDate" | "InvalidRetryAfter"
+  readonly input: string
+}> {}
+
+/**
+ * Error returned when a header value does not match its grammar.
+ *
+ * **Details**
+ *
+ * Inspect `reason` to find the header that failed and the rejected input.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export class HeaderValueError extends Data.TaggedError("HeaderValueError")<{
+  readonly reason: HeaderValueErrorReason
+}> {
+  /**
+   * Creates a header value error from a reason tag and the rejected input.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  static fromReason(reason: HeaderValueError["reason"]["_tag"], input: string): HeaderValueError {
+    return new HeaderValueError({ reason: new HeaderValueErrorReason({ _tag: reason, input }) })
+  }
+
+  /**
+   * Marks this value as a header value error for runtime guards.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  readonly [HeaderValueErrorTypeId] = HeaderValueErrorTypeId
+
+  /**
+   * Names the failed header and the rejected input.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  override get message() {
+    return `${this.reason._tag}: ${JSON.stringify(this.reason.input)}`
+  }
+}
+
+/**
+ * Checks whether a value is a `HeaderValueError`.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isHeaderValueError = (u: unknown): u is HeaderValueError =>
+  Predicate.hasProperty(u, HeaderValueErrorTypeId)
+
+// -----------------------------------------------------------------------------
+// HTTP dates (RFC 9110 §5.6.7)
+// -----------------------------------------------------------------------------
+
+const monthIndexes: Record.ReadonlyRecord<string, number> = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11
+}
+
+// Sun, 06 Nov 1994 08:49:37 GMT
+const imfFixdate = /^(?:mon|tue|wed|thu|fri|sat|sun), (\d{2}) ([a-z]{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) gmt$/i
+// Sunday, 06-Nov-94 08:49:37 GMT
+const rfc850Date =
+  /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday), (\d{2})-([a-z]{3})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) gmt$/i
+// Sun Nov  6 08:49:37 1994
+const asctimeDate = /^(?:mon|tue|wed|thu|fri|sat|sun) ([a-z]{3}) ( \d|\d{2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})$/i
+
+const utcMillis = (
+  year: number,
+  monthName: string,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number
+): number | undefined => {
+  const month = monthIndexes[monthName.toLowerCase()]
+  if (month === undefined || hour > 23 || minute > 59 || second > 59) {
+    return undefined
+  }
+  // setUTCFullYear keeps years below 100 as-is, unlike Date.UTC
+  const date = new Date(0)
+  date.setUTCFullYear(year, month, day)
+  date.setUTCHours(hour, minute, second, 0)
+  // an impossible day such as 31 Feb rolls over into the next month
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day
+    ? date.getTime()
+    : undefined
+}
+
+const httpDateToMillis = (input: string): number | undefined => {
+  let match = imfFixdate.exec(input)
+  if (match !== null) {
+    return utcMillis(
+      Number(match[3]),
+      match[2],
+      Number(match[1]),
+      Number(match[4]),
+      Number(match[5]),
+      Number(match[6])
+    )
+  }
+  match = rfc850Date.exec(input)
+  if (match !== null) {
+    // RFC 9110 reads a two-digit year as the most recent matching year that
+    // is not more than 50 years ahead; the POSIX pivot approximates that
+    // without needing the current time.
+    const shortYear = Number(match[3])
+    return utcMillis(
+      shortYear < 70 ? 2000 + shortYear : 1900 + shortYear,
+      match[2],
+      Number(match[1]),
+      Number(match[4]),
+      Number(match[5]),
+      Number(match[6])
+    )
+  }
+  match = asctimeDate.exec(input)
+  if (match !== null) {
+    return utcMillis(
+      Number(match[6]),
+      match[1],
+      Number(match[2].trim()),
+      Number(match[3]),
+      Number(match[4]),
+      Number(match[5])
+    )
+  }
+  return undefined
+}
+
+/**
+ * Parses an HTTP date header value into a UTC `DateTime`.
+ *
+ * **Details**
+ *
+ * Accepts the three formats of RFC 9110 §5.6.7: the preferred IMF-fixdate
+ * (`Sun, 06 Nov 1994 08:49:37 GMT`), the obsolete RFC 850 format
+ * (`Sunday, 06-Nov-94 08:49:37 GMT`) and the asctime format
+ * (`Sun Nov  6 08:49:37 1994`). All three are read as UTC regardless of the
+ * process time zone. Day and month names are case-insensitive, and the day
+ * name is not checked against the date.
+ *
+ * @stability unstable
+ * @category header values
+ * @since 4.0.0
+ */
+export const parseHttpDate = (input: string): Result.Result<DateTime.Utc, HeaderValueError> => {
+  const millis = httpDateToMillis(input.trim())
+  return millis === undefined
+    ? Result.fail(HeaderValueError.fromReason("InvalidHttpDate", input))
+    : Result.succeed(DateTime.makeUnsafe(millis))
+}
+
+/**
+ * Formats a `DateTime` as an IMF-fixdate HTTP date, such as
+ * `Sun, 06 Nov 1994 08:49:37 GMT`.
+ *
+ * @stability unstable
+ * @category header values
+ * @since 4.0.0
+ */
+export const formatHttpDate = (self: DateTime.DateTime): string => DateTime.toDateUtc(self).toUTCString()
+
+// -----------------------------------------------------------------------------
+// Retry-After (RFC 9110 §10.2.3)
+// -----------------------------------------------------------------------------
+
+/**
+ * A `Retry-After` value given as a number of whole seconds.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface RetryAfterSeconds {
+  readonly _tag: "Seconds"
+  readonly seconds: number
+}
+
+/**
+ * A `Retry-After` value given as an HTTP date.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface RetryAfterDate {
+  readonly _tag: "Date"
+  readonly date: DateTime.Utc
+}
+
+/**
+ * Represents a parsed `Retry-After` header value.
+ *
+ * **Details**
+ *
+ * The header carries either a delay in whole seconds or an absolute HTTP
+ * date. Use {@link retryAfterDelay} to turn either form into a `Duration`
+ * measured from a given instant.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type RetryAfter = RetryAfterSeconds | RetryAfterDate
+
+/**
+ * Creates a `Retry-After` value from a number of whole, non-negative seconds.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const retryAfterSeconds = (seconds: number): RetryAfter => ({ _tag: "Seconds", seconds })
+
+/**
+ * Creates a `Retry-After` value from an HTTP date.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const retryAfterDate = (date: DateTime.Utc): RetryAfter => ({ _tag: "Date", date })
+
+const wholeSeconds = /^\d+$/
+
+/**
+ * Parses a `Retry-After` header value.
+ *
+ * **Details**
+ *
+ * Accepts whole non-negative seconds (`120`) or an HTTP date in any of the
+ * formats {@link parseHttpDate} accepts. Fractional, negative, exponent and
+ * non-finite numbers are rejected, as are dates in other formats.
+ *
+ * @stability unstable
+ * @category header values
+ * @since 4.0.0
+ */
+export const parseRetryAfter = (input: string): Result.Result<RetryAfter, HeaderValueError> => {
+  const trimmed = input.trim()
+  if (wholeSeconds.test(trimmed)) {
+    const seconds = Number(trimmed)
+    return Number.isFinite(seconds)
+      ? Result.succeed(retryAfterSeconds(seconds))
+      : Result.fail(HeaderValueError.fromReason("InvalidRetryAfter", input))
+  }
+  const millis = httpDateToMillis(trimmed)
+  return millis === undefined
+    ? Result.fail(HeaderValueError.fromReason("InvalidRetryAfter", input))
+    : Result.succeed(retryAfterDate(DateTime.makeUnsafe(millis)))
+}
+
+/**
+ * Formats a `Retry-After` value as a header value: the seconds as a decimal
+ * integer, or the date as an IMF-fixdate.
+ *
+ * @stability unstable
+ * @category header values
+ * @since 4.0.0
+ */
+export const formatRetryAfter = (self: RetryAfter): string =>
+  self._tag === "Seconds" ? String(self.seconds) : formatHttpDate(self.date)
+
+/**
+ * Computes how long to wait for a `Retry-After` value, measured from `now`
+ * in epoch milliseconds.
+ *
+ * **Details**
+ *
+ * A date that is already in the past yields a zero duration, never a
+ * negative one. Compute the delay when the retry is scheduled rather than
+ * when the header is parsed, so the wait reflects the time already spent.
+ *
+ * @stability unstable
+ * @category header values
+ * @since 4.0.0
+ */
+export const retryAfterDelay = (self: RetryAfter, now: number): Duration.Duration =>
+  self._tag === "Seconds"
+    ? Duration.seconds(self.seconds)
+    : Duration.millis(Math.max(0, DateTime.toEpochMillis(self.date) - now))
+
+/**
+ * Provides an `Equivalence` instance for `Retry-After` values.
+ *
+ * @stability unstable
+ * @category instances
+ * @since 4.0.0
+ */
+export const RetryAfterEquivalence: Equ.Equivalence<RetryAfter> = (self, that) =>
+  self._tag === "Seconds"
+    ? that._tag === "Seconds" && self.seconds === that.seconds
+    : that._tag === "Date" && DateTime.Equivalence(self.date, that.date)
