@@ -6536,9 +6536,9 @@ export const mergeAll: {
               if (fibers.size === 0) yield* doneLatch.open
               yield* Fiber.interrupt(fiber)
               // A worker interrupted before it starts never closes its own
-              // scope. Like a started worker, failures from closing a replaced
-              // worker's scope are discarded.
-              yield* Effect.exit(Scope.close(fiberScope, Exit.interrupt()))
+              // scope. Finalizer failures of replaced workers are discarded
+              // either way.
+              yield* Effect.ignoreCause(Scope.close(fiberScope, Exit.interrupt()))
             }
 
             const fiber = yield* childPull.pipe(
