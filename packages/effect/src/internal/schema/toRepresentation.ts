@@ -117,9 +117,14 @@ export function toRepresentations(
       if (last.to.encoding === undefined && last.to._tag === "String") {
         const metadata = InternalContent.getContent(last.transformation.encode)
         if (metadata !== undefined) {
+          const annotations = last.to.annotations
+          const annotatedMediaType = annotations?.contentMediaType
+          const preserveSchema = metadata.preserveSchema &&
+            !SchemaAST.isJson(annotations?.contentSchema) &&
+            (typeof annotatedMediaType !== "string" || annotatedMediaType === metadata.mediaType)
           content = {
             mediaType: metadata.mediaType,
-            schema: metadata.preserveSchema ? getCandidate(ast, encodingLength - 1) : undefined
+            schema: preserveSchema ? getCandidate(ast, encodingLength - 1) : undefined
           }
         }
       }

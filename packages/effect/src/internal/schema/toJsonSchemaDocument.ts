@@ -430,11 +430,15 @@ function compileJsonSchema(
         return { not: {} }
       case "String": {
         const content = representation.content
+        const annotatedMediaType = representation.annotations?.contentMediaType
+        const preserveContentSchema = content !== undefined &&
+          !InternalAST.isJson(representation.annotations?.contentSchema) &&
+          (typeof annotatedMediaType !== "string" || annotatedMediaType === content.mediaType)
         return {
           type: "string",
           ...(content === undefined ? undefined : {
             contentMediaType: content.mediaType,
-            ...(content.schema === undefined ? undefined : {
+            ...(!preserveContentSchema || content.schema === undefined ? undefined : {
               contentSchema: recur(content.schema, [...path, "content", "schema"], [])
             })
           })

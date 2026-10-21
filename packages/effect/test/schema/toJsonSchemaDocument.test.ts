@@ -4367,27 +4367,68 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("prefers an explicit contentSchema annotation", () => {
-      const schema = Schema.flip(
-        Schema.flip(Schema.fromJsonString(Schema.Boolean)).annotate({
-          contentSchema: { type: "string", format: "custom" }
-        })
-      )
-
-      assertJsonSchemaDocument(
-        schema,
+    const GeneratedContent = Schema.Struct({ value: Schema.Boolean }).annotate({ identifier: "GeneratedContent" })
+    const generatedContentDefinition: JsonSchema.JsonSchema = {
+      type: "object",
+      properties: { value: { type: "boolean" } },
+      required: ["value"],
+      additionalProperties: false
+    }
+    const explicitContentCases: ReadonlyArray<
+      readonly [
+        name: string,
+        annotations: Schema.Annotations.Annotations,
+        expected: JsonSchema.JsonSchema,
+        preservesGeneratedSchema: boolean
+      ]
+    > = [
+      [
+        "prefers an explicit contentSchema annotation",
+        { contentSchema: { type: "string", format: "custom" } },
         {
-          schema: {
-            "type": "string",
-            "contentMediaType": "application/json",
-            "contentSchema": {
-              "type": "string",
-              "format": "custom"
-            }
+          contentMediaType: "application/json",
+          contentSchema: { type: "string", format: "custom" }
+        },
+        false
+      ],
+      [
+        "preserves the generated schema for a matching explicit contentMediaType annotation",
+        { contentMediaType: "application/json" },
+        {
+          contentMediaType: "application/json",
+          contentSchema: { $ref: "#/$defs/GeneratedContent" }
+        },
+        true
+      ],
+      [
+        "drops the generated schema for a different explicit contentMediaType annotation",
+        { contentMediaType: "text/plain" },
+        { contentMediaType: "text/plain" },
+        false
+      ],
+      [
+        "prefers explicit contentMediaType and contentSchema annotations",
+        { contentMediaType: "text/plain", contentSchema: { type: "string" } },
+        { contentMediaType: "text/plain", contentSchema: { type: "string" } },
+        false
+      ]
+    ]
+
+    for (const [name, annotations, expected, preservesGeneratedSchema] of explicitContentCases) {
+      it(name, () => {
+        const schema = Schema.flip(
+          Schema.flip(Schema.fromJsonString(GeneratedContent)).annotate(annotations)
+        )
+
+        assertJsonSchemaDocument(schema, {
+          schema: { $ref: "#/$defs/GeneratedContentEncoded" },
+          definitions: {
+            ...(preservesGeneratedSchema ? { GeneratedContent: generatedContentDefinition } : undefined),
+            GeneratedContentEncoded: { type: "string", ...expected }
           }
-        }
-      )
-    })
+        })
+      })
+    }
 
     it("toEncoded removes the content relationship", () => {
       assertJsonSchemaDocument(
