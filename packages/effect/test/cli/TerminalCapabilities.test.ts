@@ -18,6 +18,14 @@ const detect = (
   )
 
 describe("TerminalCapabilities", () => {
+  it.effect("has a default when nothing is provided", () =>
+    Effect.gen(function*() {
+      const capabilities = yield* TerminalCapabilities.TerminalCapabilities
+      assert.isBoolean(capabilities.canColor)
+      assert.isBoolean(capabilities.canAnimate)
+      assert.isBoolean(capabilities.canPrompt)
+    }))
+
   describe("layer", () => {
     it.effect("follows the terminals when no overrides are set", () =>
       Effect.gen(function*() {
