@@ -184,7 +184,7 @@ describe("OpenAiLanguageModel", () => {
 
   describe("generateText", () => {
     describe("message preparation", () => {
-      it.effect("forwards prompt cache configuration and text breakpoints", () =>
+      it.effect("forwards prompt cache, safety configuration and text breakpoints", () =>
         Effect.gen(function*() {
           const breakpoint = { mode: "explicit" } as const
           yield* LanguageModel.generateText({
@@ -203,7 +203,9 @@ describe("OpenAiLanguageModel", () => {
           }).pipe(
             Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
               prompt_cache_key: "assistant:v1",
-              prompt_cache_options: { mode: "explicit", ttl: "30m", comparison_response_id: "resp_baseline" }
+              prompt_cache_options: { mode: "explicit", ttl: "30m", comparison_response_id: "resp_baseline" },
+              prompt_cache_retention: "24h",
+              safety_identifier: "user-hash-123"
             }))
           )
 
@@ -211,6 +213,8 @@ describe("OpenAiLanguageModel", () => {
           const body = yield* getRequestBody(requests[0])
 
           strictEqual(body.prompt_cache_key, "assistant:v1")
+          strictEqual(body.prompt_cache_retention, "24h")
+          strictEqual(body.safety_identifier, "user-hash-123")
           deepStrictEqual(body.prompt_cache_options, {
             mode: "explicit",
             ttl: "30m",
