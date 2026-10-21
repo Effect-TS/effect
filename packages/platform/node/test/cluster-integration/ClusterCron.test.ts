@@ -97,9 +97,13 @@ describe("cluster cron integration", () => {
         const previousTicks: Array<Tick> = []
         const currentTicks: Array<Tick> = []
         const gate = Latch.makeUnsafe()
+        // Hold an execution only once the assignments are stable, as a held
+        // execution on a moving shard would keep that shard from being released.
+        let armed = false
         let entered = 0
         const blockedExecution = Effect.fnUntraced(
           function*(ticks: Array<Tick>) {
+            if (!armed) return
             if (yield* recordTick(ticks)) {
               entered++
               yield* gate.await
@@ -125,6 +129,7 @@ describe("cluster cron integration", () => {
         })
         yield* cluster.start(3)
         yield* cluster.waitForStableAssignments()
+        armed = true
         yield* cluster.waitUntil(
           "Both cron executions did not enter their first run",
           Effect.sync(() => entered === 2)
@@ -144,7 +149,13 @@ describe("cluster cron integration", () => {
 
         const previousSecond = DateTime.toEpochMillis(DateTime.makeUnsafe(previousTicks[1].scheduled))
         const currentSecond = DateTime.toEpochMillis(DateTime.makeUnsafe(currentTicks[1].scheduled))
-        assertScheduledFromPrevious(everySecond, previousTicks)
+        // The first recorded execution may be the initial run, so compare from the second.
+        for (let index = 2; index < previousTicks.length; index++) {
+          assert.strictEqual(
+            previousTicks[index].scheduled,
+            nextScheduled(everySecond, previousTicks[index - 1].scheduled)
+          )
+        }
         assertScheduledFromExecutionTime(everySecond, currentTicks, 2)
         assert.isAtLeast(previousTicks[1].at - previousSecond, 2_000)
         assert.isAtMost(currentTicks[1].at - currentSecond, 1_000)
