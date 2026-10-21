@@ -1,6 +1,6 @@
 import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, beforeEach, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
@@ -17,6 +17,7 @@ const insertCalls: Array<Record<string, unknown>> = []
 let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let execImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
+let commandImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", async (importOriginal) => ({
   ...await importOriginal<Record<string, unknown>>(),
@@ -36,7 +37,7 @@ vi.mock("@clickhouse/client", async (importOriginal) => ({
     },
     command: (options: Record<string, unknown>) => {
       commandCalls.push(options)
-      return Promise.resolve({})
+      return commandImpl ? commandImpl(options) : Promise.resolve({})
     },
     close: () => {
       closeCalls++
@@ -89,6 +90,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
     queryImpl = undefined
     execImpl = undefined
     insertImpl = undefined
+    commandImpl = undefined
   })
 
   it("infers DateTime parameters without empty parentheses", () => {
@@ -356,17 +358,29 @@ describe("ClickhouseClient", { concurrent: false }, () => {
         assert.strictEqual(error.reason._tag, "StatementTimeoutError")
       }).pipe(Effect.provide(Reactivity.layer)))
 
-    it.effect("kills the query when the request fails in transport", () =>
+    it.effect("kills the query when the request fails in transport, keeping the original error if KILL fails", () =>
       Effect.gen(function*() {
         connectImmediately = true
-        queryImpl = () => Promise.reject(Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }))
+        const transportError = Object.assign(new Error("socket hang up"), { code: "ECONNRESET" })
+        queryImpl = () => Promise.reject(transportError)
+        commandImpl = () => Promise.reject(new Error("KILL failed"))
         const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
 
-        yield* Effect.flip(Stream.runCollect(client.queryStream(client`SELECT a FROM t`))).pipe(
-          client.withQueryId("transport-id")
+        const exit = yield* Stream.runCollect(client.queryStream(client`SELECT a FROM t`)).pipe(
+          client.withQueryId("transport-id"),
+          Effect.exit
         )
 
         assert.deepStrictEqual(commandCalls, [killCommand("transport-id")])
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.strictEqual(exit.cause.reasons.length, 1)
+          const reason = exit.cause.reasons[0]
+          assert.isTrue(Cause.isFailReason(reason))
+          if (Cause.isFailReason(reason)) {
+            assert.strictEqual(reason.error.reason.cause, transportError)
+          }
+        }
       }).pipe(Effect.provide(Reactivity.layer)))
   })
 })
