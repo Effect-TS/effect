@@ -132,7 +132,7 @@ export const projectLegacyToolInputSchema = (inputSchema: PublicMcpSchema.ToolJs
   ...inputSchema,
   properties: inputSchema.properties === undefined
     ? undefined
-    : Object.fromEntries<Schema.JsonObject>(
+    : Object.fromEntries<Readonly<Record<string, unknown>>>(
       Object.entries(inputSchema.properties).map(([name, schema]) => [
         name,
         typeof schema === "boolean" ? schema ? {} : { not: {} } : schema

@@ -671,7 +671,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     )
 
     const response = yield* transport.request(
-      { jsonrpc: "2.0", id: nextId++, method, params: payload as Schema.JsonObject },
+      { jsonrpc: "2.0", id: nextId++, method, params: payload as Readonly<Record<string, unknown>> },
       tool
     )
     if ("error" in response) {
