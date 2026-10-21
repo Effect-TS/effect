@@ -1049,3 +1049,26 @@ describe("Flags with an optional value", () => {
     assert.include(PowerShell.generate("app", descriptor), "optionalValue = $true;")
   })
 })
+
+describe("Boolean flags with a custom or disabled negation", () => {
+  it("advertise the configured negation name and never the default --no-<flag> form", () => {
+    const descriptor = fromCommand(Command.make("app", {
+      unsafe: Flag.Boolean("unsafe").pipe(
+        Flag.withDescription("Allow unsafe operations"),
+        Flag.withoutNegation
+      ),
+      validate: Flag.Boolean("validate").pipe(
+        Flag.withDescription("Validate functions"),
+        Flag.withNegation("skip-validate")
+      )
+    }))
+
+    for (const shell of ["bash", "zsh", "fish", "powershell"] as const) {
+      const script = Completions.generate("app", shell, descriptor)
+      assert.include(script, "--unsafe", shell)
+      assert.notInclude(script, "no-unsafe", shell)
+      assert.include(script, "skip-validate", shell)
+      assert.notInclude(script, "no-validate", shell)
+    }
+  })
+})

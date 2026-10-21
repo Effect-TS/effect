@@ -1755,6 +1755,51 @@ describe("Command", () => {
         ])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should not accept --no-<flag> for boolean flags without negation", () =>
+      Effect.gen(function*() {
+        const captured: Array<boolean> = []
+
+        const cmd = Command.make("tool", {
+          unsafe: Flag.Boolean("unsafe").pipe(
+            Flag.withDefault(false),
+            Flag.withoutNegation
+          )
+        }, (config) => Effect.sync(() => captured.push(config.unsafe)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd(["--unsafe"])
+        yield* runCmd(["--no-unsafe"]).pipe(Effect.catchTag("ShowHelp", () => Effect.void))
+
+        assert.deepStrictEqual(captured, [true])
+
+        const stderr = yield* TestConsole.errorLines
+        assert.isTrue(stderr.join("\n").includes("Unrecognized flag: --no-unsafe"))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should negate boolean flags through a custom negation name", () =>
+      Effect.gen(function*() {
+        const captured: Array<boolean> = []
+
+        const cmd = Command.make("tool", {
+          validate: Flag.Boolean("validate").pipe(
+            Flag.withDefault(true),
+            Flag.withNegation("skip-validate")
+          )
+        }, (config) => Effect.sync(() => captured.push(config.validate)))
+
+        const runCmd = Command.runWith(cmd, { version: "1.0.0" })
+
+        yield* runCmd([])
+        yield* runCmd(["--skip-validate"])
+        yield* runCmd(["--no-validate"]).pipe(Effect.catchTag("ShowHelp", () => Effect.void))
+
+        assert.deepStrictEqual(captured, [true, false])
+
+        const stderr = yield* TestConsole.errorLines
+        assert.isTrue(stderr.join("\n").includes("Unrecognized flag: --no-validate"))
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should prefer canonical negation over conflicting aliases", () =>
       Effect.gen(function*() {
         const captured: Array<readonly [boolean, boolean]> = []
