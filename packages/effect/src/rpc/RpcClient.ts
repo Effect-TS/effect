@@ -689,6 +689,9 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly schemas: RpcSchemas
   }
   const entries = new Map<RequestId, ClientEntry>()
+  // Set before the protocol stops running this client, so requests made while
+  // it shuts down are not handed to a transport that is being torn down.
+  let isClosing = false
 
   const interruptRequest = (requestId: RequestId): Effect.Effect<void, RpcClientError> => {
     if (!entries.has(requestId)) return Effect.void
@@ -702,6 +705,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     onFromClient({ message }) {
       switch (message._tag) {
         case "Request": {
+          if (isClosing) return Effect.interrupt
           const rpc = group.requests.get(message.tag)! as any as Rpc.AnyWithProps
           const collector = supportsTransferables ? Transferable.makeCollectorUnsafe() : undefined
 
@@ -810,6 +814,12 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     Effect.catchCause(Effect.logError),
     Effect.interruptible,
     Effect.forkScoped
+  )
+  // Finalizers run in reverse order, so this runs before `run` is interrupted.
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      isClosing = true
+    })
   )
 
   return client
