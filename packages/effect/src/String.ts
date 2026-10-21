@@ -1146,77 +1146,17 @@ export const stripMarginRaw: {
     return template
   }
 
-  const parts = template.raw
-  const lines: Array<string> = []
-  // Whether each line contains only template whitespace: no margin and no
-  // substitution. Only such lines are dropped at either end of the result.
-  const blank: Array<boolean> = []
-
-  let text = ""
-  let hasMargin = false
-  let hasSubstitution = false
-
-  const flush = () => {
-    lines.push(text)
-    blank.push(!hasMargin && !hasSubstitution && isBlank(text))
-    text = ""
-    hasMargin = false
-    hasSubstitution = false
-  }
-
-  for (let i = 0; i < parts.length; i++) {
-    const segments = parts[i].split("\n")
-    for (let j = 0; j < segments.length; j++) {
-      if (j > 0) {
-        flush()
-      }
-      const segment = segments[j]
-      // A line starts inside the template when it follows a newline in a
-      // template part, or when it is the very start of the template.
-      if (j > 0 || i === 0) {
-        let index = 0
-        while (index < segment.length && (segment[index] === " " || segment[index] === "\t")) {
-          index++
-        }
-        if (index < segment.length && segment[index] === "|") {
-          hasMargin = true
-          index++
-          if (index < segment.length && segment[index] === " ") {
-            index++
-          }
-          text += segment.slice(index)
-          continue
-        }
-      }
-      text += segment
-    }
-    // Like `String.raw`, substitutions beyond the last gap are ignored.
-    if (i < parts.length - 1 && i < substitutions.length) {
-      text += String(substitutions[i])
-      hasSubstitution = true
-    }
-  }
-  flush()
-
-  let start = 0
-  while (start < lines.length && blank[start]) {
-    start++
-  }
-  let end = lines.length
-  while (end > start && blank[end - 1]) {
-    end--
-  }
-
-  return lines.slice(start, end).join("\n")
-}
-
-const isBlank = (line: string): boolean => {
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] !== " " && line[i] !== "\t") {
-      return false
-    }
-  }
-  return true
+  const parts = template.raw.slice()
+  const last = parts.length - 1
+  // Drop whitespace-only edge lines before stripping margins, so that lines
+  // with an explicit margin or a substitution are kept.
+  parts[0] = parts[0].replace(/^(?:[ \t]*\n)+/, "")
+  parts[last] = parts[last].replace(last === 0 ? /^[ \t]*$|(?:\n[ \t]*)+$/ : /(?:\n[ \t]*)+$/, "")
+  // Only lines that start inside the template can have a margin.
+  return globalThis.String.raw(
+    { raw: parts.map((part, i) => part.replace(i === 0 ? /(^|\n)[ \t]*\| ?/g : /(\n)[ \t]*\| ?/g, "$1")) },
+    ...substitutions
+  )
 }
 
 /**
