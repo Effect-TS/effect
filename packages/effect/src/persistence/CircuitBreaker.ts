@@ -1238,7 +1238,9 @@ end
 
 if state == "HalfOpen" then
   if outcome == "Ignored" then
-    redis.call("HSET", key, "leaseUntil", 0)
+    -- A new generation fences a renewal already on its way, so the freed slot
+    -- stays free.
+    redis.call("HSET", key, "generation", nextGeneration(fields[2]), "leaseUntil", 0)
     redis.call("PEXPIRE", key, int(idle))
     return { "none", openings }
   end
