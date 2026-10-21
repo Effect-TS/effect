@@ -22,11 +22,12 @@ import { constant, constFalse } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
-import type * as IpNetwork from "../net/IpNetwork.ts"
-import type * as NetAddress from "../net/NetAddress.ts"
+import * as IpNetwork from "../net/IpNetwork.ts"
+import * as NetAddress from "../net/NetAddress.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import * as Result from "../Result.ts"
 import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import { hasBody } from "./HttpMethod.ts"
@@ -40,7 +41,6 @@ import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
 import * as decompressionInternal from "./internal/decompression.ts"
-import * as forwarded from "./internal/forwarded.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
@@ -312,7 +312,7 @@ export const tracer: <E, R>(
 )
 
 /**
- * Options for `xForwardedHeaders` and `forwardedHeader`.
+ * Options for `xForwardedHeaders`.
  *
  * **Details**
  *
@@ -335,9 +335,7 @@ export interface TrustedProxyOptions {
  * **When to use**
  *
  * Use when the app runs behind proxies that append to `X-Forwarded-For`, such
- * as most load balancers and TLS terminators. Use `forwardedHeader` for proxies
- * that send the RFC 7239 `Forwarded` header instead; the two header families
- * are never combined.
+ * as most load balancers and TLS terminators.
  *
  * **Details**
  *
@@ -386,43 +384,59 @@ export interface TrustedProxyOptions {
  * @category proxying
  * @since 4.0.0
  */
-export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware =>
-  forwardingMiddleware(options, forwarded.xForwardedHops)
-
-/**
- * Creates middleware that applies the RFC 7239 `Forwarded` header sent by
- * trusted proxies.
- *
- * **Details**
- *
- * Headers are ignored unless the original transport peer
- * (`request.peerAddress`) is trusted. The `for` parameters are then walked
- * from the right, skipping trusted proxies. The first untrusted address becomes
- * `remoteAddress`, and the `host` and `proto` parameters of the same element
- * replace the `host` header and set `protocol`. When every address is trusted,
- * the leftmost element is used. An element that is malformed, lacks `for`, or
- * uses an `unknown` or obfuscated identifier stops the walk and leaves the
- * request unchanged. `X-Forwarded-*` headers are ignored.
- *
- * `request.peerAddress` keeps the transport peer after `remoteAddress` is
- * replaced.
- *
- * @stability unstable
- * @category proxying
- * @since 4.0.0
- */
-export const forwardedHeader = (options: TrustedProxyOptions): HttpMiddleware =>
-  forwardingMiddleware(options, forwarded.forwardedHops)
-
-const forwardingMiddleware = (
-  options: TrustedProxyOptions,
-  getHops: (headers: Headers.Headers) => ReadonlyArray<forwarded.Hop>
-): HttpMiddleware => {
-  const isTrusted = forwarded.makeIsTrusted(options.trustedProxies)
+export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware => {
+  const { trustedProxies } = options
+  const isTrusted: Predicate<NetAddress.IpAddress> = typeof trustedProxies === "function"
+    ? trustedProxies
+    : (address) => trustedProxies.some((network) => IpNetwork.contains(network, address))
   return make((httpApp) =>
-    Effect.updateService(httpApp, HttpServerRequest, (request) => forwarded.apply(request, isTrusted, getHops))
+    Effect.updateService(httpApp, HttpServerRequest, (request) => applyXForwarded(request, isTrusted))
   )
 }
+
+const applyXForwarded = (request: HttpServerRequest, isTrusted: Predicate<NetAddress.IpAddress>): HttpServerRequest => {
+  const peer = parseForwardedAddress(Option.getOrUndefined(request.peerAddress))
+  if (peer === undefined || !isTrusted(peer)) return request
+  const addresses = splitList(request.headers["x-forwarded-for"])
+  if (addresses === undefined) return request
+  for (let index = addresses.length - 1; index >= 0; index--) {
+    const address = parseForwardedAddress(addresses[index])
+    if (address === undefined) return request
+    if (index > 0 && isTrusted(address)) continue
+    const host = alignedValue(request.headers["x-forwarded-host"], addresses.length, index)
+    const protocol = alignedValue(request.headers["x-forwarded-proto"], addresses.length, index)?.toLowerCase()
+    return request.modify({
+      remoteAddress: Option.some(NetAddress.formatIp(address)),
+      peerAddress: request.peerAddress,
+      ...(host !== undefined && isValidHost(host) ? { headers: Headers.set(request.headers, "host", host) } : {}),
+      ...(protocol === "http" || protocol === "https" ? { protocol } : {})
+    })
+  }
+  return request
+}
+
+const splitList = (value: string | undefined): Array<string> | undefined => value?.split(",").map((_) => _.trim())
+
+// Host and proto lists are only associated with a hop when they have one value
+// per `X-Forwarded-For` entry.
+const alignedValue = (header: string | undefined, length: number, index: number): string | undefined => {
+  const values = splitList(header)
+  return values?.length === length ? values[index] : undefined
+}
+
+const parseForwardedAddress = (input: string | undefined): NetAddress.IpAddress | undefined => {
+  if (input === undefined) return undefined
+  const ip = NetAddress.ipFromString(input.startsWith("[") && input.endsWith("]") ? input.slice(1, -1) : input)
+  if (Result.isSuccess(ip)) return NetAddress.toCanonical(ip.success)
+  const inet = NetAddress.inetAddressFromString(input)
+  return Result.isSuccess(inet) ? NetAddress.toCanonical(inet.success.address) : undefined
+}
+
+const hostShape = /^(?:\[[0-9a-f:.]+\]|[a-z0-9._-]+)(?::\d{1,5})?$/i
+
+// The shape check rules out paths, userinfo and lists; the URL parser rejects
+// invalid IP literals and out-of-range ports, matching what `toURL` accepts.
+const isValidHost = (host: string): boolean => hostShape.test(host) && URL.canParse(`http://${host}`)
 
 /**
  * Middleware that parses the current request URL's search parameters and provides them as `ParsedSearchParams`.

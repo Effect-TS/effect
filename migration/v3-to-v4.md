@@ -7234,7 +7234,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpMiddleware.withTracerDisabledWhenEffect` -> `Effect.provideService(effect, HttpMiddleware.TracerDisabledWhen, predicate)`: Provide the TracerDisabledWhen reference locally to the effect.
 
-- `HttpMiddleware.xForwardedHeaders` -> `HttpMiddleware.xForwardedHeaders({ trustedProxies })`: Now requires a trusted proxy policy; headers from untrusted peers are ignored and X-Forwarded-For is read from the right. Use HttpMiddleware.forwardedHeader for RFC 7239 Forwarded. HttpServerRequest.toURL no longer reads x-forwarded-proto directly.
+- `HttpMiddleware.xForwardedHeaders` -> `HttpMiddleware.xForwardedHeaders({ trustedProxies })`: Now requires a trusted proxy policy; headers from untrusted peers are ignored and X-Forwarded-For is read from the right. HttpServerRequest.toURL no longer reads x-forwarded-proto directly.
 
 ### `@effect/platform/HttpPlatform`
 

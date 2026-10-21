@@ -1089,9 +1089,9 @@ const textDecoder = new TextDecoder()
  * trusted proxy middleware. Otherwise, infers HTTPS from a case-insensitive
  * `https:` prefix in `originalUrl`, defaulting to HTTP. Forwarding headers such
  * as `x-forwarded-proto` are never read directly; use
- * `HttpMiddleware.xForwardedHeaders` or `HttpMiddleware.forwardedHeader` behind
- * a TLS-terminating proxy. An absolute `url` keeps its own protocol and host.
- * Invalid URLs return `Option.none`.
+ * `HttpMiddleware.xForwardedHeaders` behind a TLS-terminating proxy. An
+ * absolute `url` keeps its own protocol and host. Invalid URLs return
+ * `Option.none`.
  *
  * @stability unstable
  * @category converting

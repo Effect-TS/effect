@@ -7,7 +7,7 @@
 
 Require an explicit trusted proxy policy before applying forwarded headers.
 
-`HttpMiddleware.xForwardedHeaders` now takes `{ trustedProxies }` and only applies `X-Forwarded-*` headers when the connecting peer is trusted. `X-Forwarded-For` is read from the right, skipping trusted proxies, and `X-Forwarded-Host` / `X-Forwarded-Proto` are only used when they line up with it. The new `HttpMiddleware.forwardedHeader` does the same for the RFC 7239 `Forwarded` header.
+`HttpMiddleware.xForwardedHeaders` now takes `{ trustedProxies }` and only applies `X-Forwarded-*` headers when the connecting peer is trusted. `X-Forwarded-For` is read from the right, skipping trusted proxies, and `X-Forwarded-Host` / `X-Forwarded-Proto` are only used when they line up with it.
 
 `HttpServerRequest.toURL` no longer reads `x-forwarded-proto` directly. It uses the new `request.protocol`, set by the trusted proxy middleware, before the transport scheme. The connecting peer stays available as `request.peerAddress`.
 
