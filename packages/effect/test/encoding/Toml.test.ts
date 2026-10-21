@@ -153,7 +153,8 @@ two = ${delimiter}value${quote}${quote}${delimiter}`)),
       "1979-13-01",
       "24:00:00",
       "07:60:00",
-      "07:32:60",
+      "07:32:61",
+      "1990-12-31T23:59:60Z",
       "1979-05-27T07:32:00+24:00",
       "1979-05-27T07:32:00+00:60"
     ]
@@ -161,8 +162,10 @@ two = ${delimiter}value${quote}${quote}${delimiter}`)),
       assert.isTrue(Result.isFailure(Toml.parse(`a = ${value}`)), value)
     }
     assert.deepStrictEqual(
-      Result.getOrThrow(Toml.parse("a = 2000-02-29T23:59:59\nb = 1979-05-27T07:32:00+23:59")),
-      { a: "2000-02-29T23:59:59", b: new Date("1979-05-26T07:33:00Z") }
+      Result.getOrThrow(
+        Toml.parse("a = 2000-02-29T23:59:59\nb = 1979-05-27T07:32:00+23:59\nc = 1990-12-31T23:59:60\nd = 23:59:60")
+      ),
+      { a: "2000-02-29T23:59:59", b: new Date("1979-05-26T07:33:00Z"), c: "1990-12-31T23:59:60", d: "23:59:60" }
     )
   })
 })
