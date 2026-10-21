@@ -591,6 +591,16 @@ Missing key
         assert.strictEqual(redirected.headers.authorization, "Bearer secret")
       }))
 
+    it.effect("returns the redirect response when the location is invalid", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(302, "http://exa mple.com/")
+        const response = yield* client.get("https://origin.test/start")
+
+        assert.strictEqual(response.status, 302)
+        assert.strictEqual(response.headers.location, "http://exa mple.com/")
+        assert.strictEqual((yield* Ref.get(requests)).length, 1)
+      }))
+
     it.effect("switches 303 requests to GET and drops the body", () =>
       Effect.gen(function*() {
         const { client, requests } = yield* makeRedirectClient(303, "/destination")

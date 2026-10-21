@@ -1727,7 +1727,11 @@ export const followRedirects: {
               ) {
                 return Effect.succeed(response)
               }
-              const url = new URL(response.headers.location, response.request.url)
+              const urlResult = Url.fromString(response.headers.location, response.request.url)
+              if (Result.isFailure(urlResult)) {
+                return Effect.succeed(response)
+              }
+              const url = urlResult.success
               const request = currentRequest ?? response.request
               let nextRequest = request
               if (
