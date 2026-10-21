@@ -187,10 +187,12 @@ describe("RpcServer", () => {
           encode: (name) => Effect.succeed(Number(name.slice("user-".length)))
         })
       ))
-      const group = RpcGroup.make(Rpc.make("getUsers", {
-        payload: { users: Schema.Array(User) },
-        success: Schema.Array(Schema.String)
-      }).annotate(Rpc.ParseOptions, { concurrency: "unbounded" }))
+      const group = RpcGroup.make(
+        Rpc.make("getUsers", {
+          payload: { users: Schema.Array(User) },
+          success: Schema.Array(Schema.String)
+        }).annotate(Rpc.ParseOptions, { concurrency: "unbounded" })
+      )
       const handler = HttpEffect.toWebHandler(
         yield* RpcServer.toHttpEffect(group).pipe(
           Effect.provide(Layer.mergeAll(
