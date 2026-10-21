@@ -37,6 +37,7 @@ import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as Http from "node:http"
+import * as Http2 from "node:http2"
 import {
   describeHttpServerProtocol,
   http2Get,
@@ -882,6 +883,43 @@ describe("DenoHttpServer", () => {
         )
       }
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  // Deno 2.8.3 to 2.9.2 panic when a cancelled HTTP/2 request is answered (denoland/deno#36053).
+  it.live("keeps serving after an HTTP/2 client cancels a request in flight", () =>
+    Effect.gen(function*() {
+      const started = Latch.makeUnsafe()
+      const interrupted = Latch.makeUnsafe()
+      yield* HttpRouter.use((router) =>
+        Effect.andThen(
+          router.add(
+            "GET",
+            "/slow",
+            Effect.andThen(started.open, Effect.never).pipe(Effect.onInterrupt(() => interrupted.open))
+          ),
+          router.add("GET", "/", Effect.succeed(HttpServerResponse.text("ok")))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+
+      yield* Effect.acquireUseRelease(
+        Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
+        (session) =>
+          Effect.gen(function*() {
+            const stream = session.request({ ":path": "/slow" }).end()
+            stream.on("error", () => {})
+            yield* started.await
+            stream.close(Http2.constants.NGHTTP2_CANCEL)
+            yield* interrupted.await
+          }),
+        (session) => Effect.sync(() => session.destroy())
+      )
+
+      assert.strictEqual(yield* http2Get(port, { ":path": "/" }), "ok")
+    }).pipe(
+      Effect.timeout("2 seconds"),
+      Effect.provide(DenoHttpServer.layerTest)
+    ), 5000)
 
   it.effect("excludes a query from the host of an absolute-form HTTP/1.1 target", () =>
     Effect.gen(function*() {

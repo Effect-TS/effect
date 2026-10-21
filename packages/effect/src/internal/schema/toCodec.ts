@@ -15,6 +15,14 @@ export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): Publi
 
 /** @internal */
 export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const owner = SchemaAST.getContextOwner(ast)
+  if (owner !== ast) {
+    // A context-only copy reuses the owner's rebuilt body, so both keep one identity.
+    // Encoded derivations already share their body and take the regular step.
+    const fromOwner = toCodecJsonAST(owner)
+    if (fromOwner === owner) return ast
+    if (fromOwner.encoding === undefined) return SchemaAST.replaceContext(fromOwner, ast.context)
+  }
   const out = toCodecJsonASTStep(ast, toCodecJsonAST)
   const context = ast.context
   if (out === ast || context === undefined) return out

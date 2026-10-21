@@ -2183,10 +2183,16 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// MCP requires an object root, so a top-level `$ref` is inlined.
+// MCP requires an object root. A non-recursive root is compiled inline rather
+// than as a definition; a recursive root keeps its definition and the top-level
+// `$ref` is inlined.
 const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
+  const root = SchemaAST.getContextOwner(SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast))
   const document = InternalStructuredOutput.resolveTopLevelReference(
-    Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
+    Schema.toJsonSchemaDocument(schema, {
+      onExcessProperty: strict ? "error" : "ignore",
+      referencePolicy: ({ ast, identifier, occurrences }) => ast === root && occurrences === 1 ? undefined : identifier
+    })
   )
   return Object.keys(document.definitions).length === 0
     ? document.schema

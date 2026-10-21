@@ -116,6 +116,11 @@ describe("SchemaGetter", () => {
     await decoding("Tue, 27 Jan 2026 17:14:06 GMT", DateTime.makeUnsafe("2026-01-27T17:14:06.000Z"))
   })
 
+  it("encodeBase64Url with padding", async () => {
+    const encoding = makeAsserts(SchemaGetter.encodeBase64Url<string>({ padding: true }))
+    await encoding("f", "Zg==")
+  })
+
   describe("makeTreeRecord", () => {
     it("preserves array-valued leaves at duplicate paths", () => {
       deepStrictEqual(

@@ -1,3 +1,4 @@
+import * as Clickhouse from "@clickhouse/client"
 import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Stream } from "effect"
@@ -16,7 +17,7 @@ let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undef
 let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", () => ({
-  createClient: () => ({
+  createClient: vi.fn(() => ({
     ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
     query: (options: Record<string, unknown>) => queryImpl ? queryImpl(options) : new Promise(() => {}),
     insert: (options: Record<string, unknown>) => {
@@ -31,7 +32,7 @@ vi.mock("@clickhouse/client", () => ({
       closeCalls++
       return Promise.resolve()
     }
-  })
+  }))
 }))
 
 describe("ClickhouseClient", { concurrent: false }, () => {
@@ -74,6 +75,17 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       "clickhouse"
     )
   })
+
+  it.effect("exposes the underlying ClickHouse client", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      const createClient = vi.mocked(Clickhouse.createClient)
+      createClient.mockClear()
+      const sql = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+      assert.strictEqual(createClient.mock.results.length, 1)
+      assert.strictEqual(sql.client, createClient.mock.results[0].value)
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("closes the client when the connection check times out", () =>
     Effect.gen(function*() {

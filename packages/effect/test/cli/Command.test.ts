@@ -1,6 +1,16 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
-import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag, Prompt } from "effect/cli"
+import {
+  Argument,
+  CliConfig,
+  CliError,
+  CliOutput,
+  Command,
+  Flag,
+  GlobalFlag,
+  Prompt,
+  TerminalCapabilities
+} from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
@@ -955,6 +965,22 @@ describe("Command", () => {
 
         assert.deepStrictEqual(yield* TestConsole.errorLines, ["CUSTOM ERROR: Deployment failed"])
       }))
+
+    it.effect("should color built-in output from TerminalCapabilities", () =>
+      Effect.gen(function*() {
+        const capabilities = { canColor: true, canAnimate: false, canPrompt: false }
+        const run = Command.runWith(Command.make("tool"), { version: "1.2.3" })(["--version"])
+
+        yield* run.pipe(Effect.provideService(TerminalCapabilities.TerminalCapabilities, capabilities))
+        yield* run.pipe(
+          Effect.provideService(TerminalCapabilities.TerminalCapabilities, capabilities),
+          Effect.provideService(CliOutput.Formatter, CliOutput.defaultFormatter({ colors: false }))
+        )
+
+        const [colored, custom] = yield* TestConsole.logLines
+        assert.include(String(colored), "\x1b[1mtool")
+        assert.strictEqual(String(custom), "tool v1.2.3")
+      }).pipe(Effect.provide(TestLayerWithoutFormatter)))
 
     it.effect("should render UserError once when running wizard-generated arguments", () =>
       Effect.gen(function*() {
@@ -2569,6 +2595,27 @@ describe("Command", () => {
           { command: "myapp root", description: "Run root command" }
         ])
       }))
+
+    it.effect("should resolve examples from the command path", () =>
+      Effect.gen(function*() {
+        const deploy = Command.make("deploy").pipe(
+          Command.withExamples(({ commandPath }) => [
+            { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
+          ]),
+          Command.withSubcommands([Command.make("status")]),
+          Command.withSharedFlags({ verbose: Flag.Boolean("verbose") })
+        )
+        const tool = Command.make("tool").pipe(Command.withSubcommands([deploy]))
+
+        yield* Command.runWith(deploy, { version: "1.0.0" })(["--help"])
+        const standalone = (yield* TestConsole.logLines).join("\n").split("\n").map((line) => line.trim())
+        assert.include(standalone, "deploy --yes")
+        assert.notInclude(standalone, "tool deploy --yes")
+
+        yield* Command.runWith(tool, { version: "1.0.0" })(["deploy", "--help"])
+        const mounted = (yield* TestConsole.logLines).join("\n").split("\n").map((line) => line.trim())
+        assert.include(mounted, "tool deploy --yes")
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("help docs", () => {

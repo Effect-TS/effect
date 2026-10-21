@@ -30,10 +30,10 @@ import * as Terminal from "../Terminal.ts"
 import type { Contravariant, Covariant, NoInfer, Simplify } from "../Types.ts"
 import * as CliConfig from "./CliConfig.ts"
 import * as CliError from "./CliError.ts"
-import * as CliOutput from "./CliOutput.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
 import { checkForDuplicateFlags, makeCommand, makeParser, toImpl, TypeId } from "./internal/command.ts"
 import { mergeConfig, parseConfig } from "./internal/config.ts"
+import { resolveFormatter } from "./internal/formatter.ts"
 import { getGlobalFlagsForCommandPath, getGlobalFlagsForCommandTree, getHelpForCommandPath } from "./internal/help.ts"
 import * as Lexer from "./internal/lexer.ts"
 import * as Parser from "./internal/parser.ts"
@@ -1049,7 +1049,7 @@ export const withSubcommands: {
     unlisted: impl.unlisted,
     annotations: impl.annotations,
     globalFlags: impl.globalFlags,
-    examples: impl.examples,
+    resolveExamples: impl.resolveExamples,
     service: impl.service,
     subcommands: normalized.groups,
     parse,
@@ -1150,7 +1150,7 @@ export const withSharedFlags: {
       unlisted: impl.unlisted,
       annotations: impl.annotations,
       globalFlags: impl.globalFlags,
-      examples: impl.examples,
+      resolveExamples: impl.resolveExamples,
       service: impl.service as Context.Key<CommandContext<Name>, NextContextInput>,
       subcommands: impl.subcommands,
       parse,
@@ -1465,6 +1465,10 @@ export const annotateMerge: {
  * Examples are exposed in structured `HelpDoc` data and rendered by the
  * default formatter in an `EXAMPLES` section.
  *
+ * Pass a function to build examples from the `commandPath` shown in help, so
+ * they stay correct wherever the command is mounted. The `examples` field
+ * resolves the function with the command's own name as the path.
+ *
  * **Example** (Adding usage examples)
  *
  * ```ts import.meta.vitest
@@ -1480,22 +1484,48 @@ export const annotateMerge: {
  * login.examples.map((example) => example.command) // => ["myapp login", "myapp login --token sbp_abc123"]
  * ```
  *
+ * **Example** (Deriving examples from the command path)
+ *
+ * ```ts import.meta.vitest
+ * import { Command } from "effect/cli"
+ *
+ * const deploy = Command.make("deploy").pipe(
+ *   Command.withExamples(({ commandPath }) => [
+ *     { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
+ *   ])
+ * )
+ *
+ * deploy.examples.map((example) => example.command) // => ["deploy --yes"]
+ * ```
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
 export const withExamples: {
-  (examples: ReadonlyArray<Command.Example>): <const Name extends string, Input, E, R, ContextInput>(
+  (
+    examples:
+      | ReadonlyArray<Command.Example>
+      | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
+  ): <const Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>
   ) => Command<Name, Input, ContextInput, E, R>
   <const Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>,
-    examples: ReadonlyArray<Command.Example>
+    examples:
+      | ReadonlyArray<Command.Example>
+      | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
   ): Command<Name, Input, ContextInput, E, R>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
-  examples: ReadonlyArray<Command.Example>
-) => makeCommand({ ...toImpl(self), examples }))
+  examples:
+    | ReadonlyArray<Command.Example>
+    | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
+) =>
+  makeCommand({
+    ...toImpl(self),
+    resolveExamples: Predicate.isFunction(examples) ? (commandPath) => examples({ commandPath }) : () => examples
+  }))
 
 /* ========================================================================== */
 /* Providing Services                                                         */
@@ -1806,7 +1836,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
     const { builtIns } = yield* CliConfig.CliConfig
-    const formatter = yield* CliOutput.Formatter
+    const formatter = yield* resolveFormatter
     const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
     yield* Console.log(formatter.formatHelpDoc(helpDoc))
     if (renderErrors && error.errors.length > 0) {
@@ -1816,7 +1846,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 
 const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
   Effect.gen(function*() {
-    const formatter = yield* CliOutput.Formatter
+    const formatter = yield* resolveFormatter
     yield* Console.error(formatter.formatError(error))
     error[Runtime.errorReported] = false
   })

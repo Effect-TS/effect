@@ -514,14 +514,16 @@ const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps): 
   let codecs = shared ? sharedRpcCodecs.get(rpc) : undefined
   if (codecs === undefined) {
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    const parseOptions = Context.get(rpc.annotations, Rpc.ParseOptions)
     codecs = {
-      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
+      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema), parseOptions) as any,
       encodeChunk: Schema.encodeUnknownEffect(
         codecFor(
           Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
-        )
+        ),
+        parseOptions
       ) as any,
-      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
+      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)), parseOptions) as any
     }
     if (shared) sharedRpcCodecs.set(rpc, codecs)
   }

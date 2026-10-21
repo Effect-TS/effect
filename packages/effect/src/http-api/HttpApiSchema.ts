@@ -122,8 +122,12 @@ export type StatusLiteral = HttpStatus.Literal
  *
  * **Details**
  *
- * This is equivalent to calling `.annotate({ httpApiStatus: code })` on the
- * schema. You can pass either a numeric status code (for example, `201`) or a
+ * The status is stored with `.annotateKey({ httpApiStatus: code })`, so a named
+ * schema reused with different statuses still emits a single OpenAPI component.
+ * If the schema has checks or already has an `httpApiStatus` annotation, it is
+ * stored with `.annotate({ httpApiStatus: code })` instead. A later
+ * `.annotate({ httpApiStatus })` takes precedence, and a later check drops the
+ * status. You can pass either a numeric status code (for example, `201`) or a
  * common literal name (for example, `"Created"`).
  *
  * @stability unstable
@@ -144,7 +148,10 @@ export function status(code: StatusLiteral): {
  */
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? HttpStatus.fromLiteral(code) : code
-  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotate({ httpApiStatus: statusCode })
+  return <S extends Schema.Top>(self: S): S["Rebuild"] =>
+    self.ast.checks !== undefined || hasStatusAnnotation(self.ast)
+      ? self.annotate({ httpApiStatus: statusCode })
+      : self.annotateKey({ httpApiStatus: statusCode })
 }
 
 /**
@@ -1266,7 +1273,19 @@ const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
  */
 export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
-const resolveHttpApiStatus = SchemaAST.resolveAt<number>("httpApiStatus")
+const resolveHttpApiStatusAnnotation = SchemaAST.resolveAt<number>("httpApiStatus")
+
+function hasStatusAnnotation(ast: SchemaAST.AST): boolean {
+  const annotations = SchemaAST.resolve(ast)
+  return annotations !== undefined && "httpApiStatus" in annotations
+}
+
+// An `httpApiStatus` annotation, even `undefined`, overrides the key context set by
+// `status`, which a later check drops, matching annotations
+function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
+  if (hasStatusAnnotation(ast)) return resolveHttpApiStatusAnnotation(ast)
+  return ast.checks === undefined ? ast.context?.annotations?.httpApiStatus : undefined
+}
 
 const defaultJsonEncoding: Encoding = {
   _tag: "Json",

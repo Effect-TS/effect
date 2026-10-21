@@ -344,13 +344,18 @@ export const causePrettyError = (
   annotations?: ReadonlyMap<string, unknown>,
   options?: {
     readonly includeCauseInStack?: boolean | undefined
-  }
+  },
+  seen: Set<unknown> = new Set()
 ): Error => {
   const kind = typeof original
   let error: Error
   if (original && kind === "object") {
+    seen.add(original)
+    const cause = original.cause
     error = new globalThis.Error(causePrettyMessage(original), {
-      cause: original.cause !== undefined ? causePrettyError(original.cause as any) : undefined
+      cause: cause !== undefined && !seen.has(cause)
+        ? causePrettyError(cause as any, undefined, undefined, seen)
+        : undefined
     })
     if (typeof original.name === "string") {
       error.name = original.name
