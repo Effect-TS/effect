@@ -935,39 +935,25 @@ export class Protocol extends Context.Service<Protocol, {
 }
 
 /**
- * Options for sending concurrent RPC requests from one client in a single
- * HTTP request.
- *
- * **Details**
- *
- * The first request for a client opens a batch. Requests from the same client
- * made before `window` elapses join it, and the batch is sent once the window
- * elapses or it reaches `maxSize` requests, whichever comes first.
- *
- * @stability unstable
- * @category protocols
- * @since 4.0.6
- */
-export interface HttpBatchOptions {
-  readonly window: Duration.Input
-  readonly maxSize?: number | undefined
-}
-
-/**
  * Creates a client `Protocol` that sends RPC requests through the supplied
  * `HttpClient` and decodes responses with the current `RpcSerialization`.
  *
  * **Details**
  *
- * Each request is sent as its own HTTP request unless `batch` is set. See
- * {@link HttpBatchOptions}.
+ * Each request is sent as its own HTTP request unless `batch` is set. With
+ * `batch`, the first request for a client opens a batch. Requests from the
+ * same client made before `window` elapses join it, and the batch is sent once
+ * the window elapses or it reaches `maxSize` requests, whichever comes first.
  *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
 export const makeProtocolHttp = (client: HttpClient.HttpClient, options?: {
-  readonly batch?: HttpBatchOptions | undefined
+  readonly batch?: {
+    readonly window: Duration.Input
+    readonly maxSize?: number | undefined
+  } | undefined
 }): Effect.Effect<
   Protocol["Service"],
   never,
@@ -989,7 +975,10 @@ const makeProtocolHttpUnbatched = (client: HttpClient.HttpClient) =>
     }
   }))
 
-const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.HttpClient, options: HttpBatchOptions) {
+const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.HttpClient, options: {
+  readonly window: Duration.Input
+  readonly maxSize?: number | undefined
+}) {
   const { maxSize, window } = options
 
   // Batches of a client run in its own scope, which is closed when the client
@@ -1175,7 +1164,10 @@ const makeHttpExchange = (
  * **Details**
  *
  * Set `batch` to send concurrent requests from the same client in a single
- * HTTP request. See {@link HttpBatchOptions}.
+ * HTTP request. The first request for a client opens a batch. Requests from
+ * the same client made before `window` elapses join it, and the batch is sent
+ * once the window elapses or it reaches `maxSize` requests, whichever comes
+ * first.
  *
  * @stability unstable
  * @category layers
@@ -1184,7 +1176,10 @@ const makeHttpExchange = (
 export const layerProtocolHttp = (options: {
   readonly url: string
   readonly transformClient?: <E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>
-  readonly batch?: HttpBatchOptions | undefined
+  readonly batch?: {
+    readonly window: Duration.Input
+    readonly maxSize?: number | undefined
+  } | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpClient.HttpClient> =>
   Layer.effect(Protocol)(
     Effect.flatMap(
