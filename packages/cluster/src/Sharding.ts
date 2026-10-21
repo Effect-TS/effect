@@ -220,6 +220,8 @@ const make = Effect.gen(function*() {
   const runnerStorage = yield* RunnerStorage
 
   const entityManagers = new Map<string, EntityManagerState>()
+  let entityRegistrationStartMillis: number | undefined
+  let entityRegistrationFallbackStartMillis: number | undefined
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -627,15 +629,20 @@ const make = Effect.gen(function*() {
   const storageReadLatch = yield* Effect.makeLatch(true)
   const openStorageReadLatch = constant(storageReadLatch.open)
 
+  type PendingNotification = {
+    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
+    readonly message: Message.IncomingRequest<any>
+  }
+  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
+
   const storageReadLock = Effect.unsafeMakeSemaphore(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
 
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
     const entityRegistrationTimeoutMillis = Duration.toMillis(config.entityRegistrationTimeout)
-    const storageStartMillis = clock.unsafeCurrentTimeMillis()
 
-    yield* Effect.gen(function*() {
+    const storageReadLoop = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
 
@@ -659,8 +666,15 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            const sinceStart = clock.unsafeCurrentTimeMillis() - storageStartMillis
-            if (sinceStart < entityRegistrationTimeoutMillis) {
+            const now = clock.unsafeCurrentTimeMillis()
+            const registrationStarted = entityRegistrationStartMillis !== undefined
+            const timeoutStartMillis = entityRegistrationStartMillis ??
+              (entityRegistrationFallbackStartMillis ??= now)
+            // If registration never starts, allow two intervals from the first missing read before failing.
+            const timeoutMillis = registrationStarted
+              ? entityRegistrationTimeoutMillis
+              : entityRegistrationTimeoutMillis * 2
+            if (now - timeoutStartMillis < timeoutMillis) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
@@ -775,9 +789,7 @@ const make = Effect.gen(function*() {
         fiber: "Storage read loop",
         runner: selfAddress
       }),
-      Effect.withUnhandledErrorLogLevel(Option.none()),
-      Effect.forkIn(shardingScope),
-      Effect.interruptible
+      Effect.withUnhandledErrorLogLevel(Option.none())
     )
 
     // open the storage latch every poll interval
@@ -908,6 +920,12 @@ const make = Effect.gen(function*() {
       Effect.forkIn(shardingScope),
       Effect.interruptible
     )
+
+    // fork after the state the loop reads has been initialized
+    yield* storageReadLoop.pipe(
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
+    )
   }
 
   // --- Sending messages ---
@@ -944,11 +962,6 @@ const make = Effect.gen(function*() {
         }) as any
     })
 
-  type PendingNotification = {
-    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
-    readonly message: Message.IncomingRequest<any>
-  }
-  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
   const notifyLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(
     message: M,
     discard: boolean,
@@ -1572,6 +1585,7 @@ const make = Effect.gen(function*() {
       // register entities while storage is idle
       // this ensures message order is preserved
       yield* withStorageReadLock(Effect.sync(() => {
+        entityRegistrationStartMillis ??= clock.unsafeCurrentTimeMillis()
         entityManagers.set(entity.type, state)
         if (entityManagerLatches.has(entity.type)) {
           entityManagerLatches.get(entity.type)!.unsafeOpen()
