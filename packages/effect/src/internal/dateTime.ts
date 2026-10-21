@@ -432,13 +432,13 @@ export const zoneMakeNamedEffect = (zoneId: string): Effect.Effect<DateTime.Time
 export const zoneMakeLocal = (): DateTime.TimeZone.Named =>
   zoneMakeIntl(new Intl.DateTimeFormat("en-US", formatOptions))
 
-const offsetZoneRegExp = /^(?:GMT|[+-])/
+const offsetZoneRegExp = /^(?:GMT)?[+-]/
 
 /** @internal */
 export const zoneFromString = (zone: string): Option.Option<DateTime.TimeZone> => {
   if (offsetZoneRegExp.test(zone)) {
     const offset = parseOffset(zone)
-    if (offset !== null) return Option.some(zoneMakeOffset(offset))
+    return offset === null ? Option.none() : Option.some(zoneMakeOffset(offset))
   }
   return zoneMakeNamed(zone)
 }
