@@ -467,10 +467,9 @@ export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClie
  *
  * **Details**
  *
- * Operations default to a 60-second total deadline and 64 concurrent calls.
- * The initialization handshake and complete tools discovery each share the
- * configured timeout. Structured result decoding uses the caller's services
- * and deadline, after releasing the call permit.
+ * Operations default to a 60-second deadline. The initialization handshake
+ * and each complete discovery share a single deadline. Structured result
+ * decoding uses the caller's services and deadline.
  *
  * @stability unstable
  * @category constructors

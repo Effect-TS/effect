@@ -725,13 +725,13 @@ application wants to disclose.
 `client.listTools(options?)` returns every page as one tool array. Each call performs a fresh scan.
 Discovery shares one total deadline, defaults to 60 seconds, and fails on cursor cycles, more than
 100 pages, or more than 10,000 advertised tools. It never presents a partial scan as complete. A
-server without the tools capability produces an empty array. Modern HTTP discovery omits tools
-whose header routing cannot be represented.
+server without the tools capability produces an empty array. Discovery omits tools that require
+task-augmented execution, and modern HTTP discovery omits tools whose header routing cannot be
+represented.
 
-Operations default to a 60-second deadline and admit up to 64 concurrent calls. Set `timeout` on the
-client or an individual call to override the deadline. The deadline includes waiting for an admission
-permit and structured result decoding. Decoding releases the permit first, so a decoder can call the
-same client. The connection handshake has its own total deadline using the configured timeout.
+Operations default to a 60-second deadline. Set `timeout` on the client or an individual call to
+override it. The deadline includes structured result decoding. The connection handshake has its own
+total deadline using the configured timeout.
 
 Applications own tracing. Wrap calls with `Effect.withSpan` or `Effect.fn` to choose span names and
 attributes. The client creates no operation spans. HTTP tracing follows the supplied HTTP client.

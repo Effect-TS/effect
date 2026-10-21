@@ -3486,29 +3486,3 @@ export class EnabledWhen extends Context.Service<
 >()(
   "effect/ai/McpSchema/EnabledWhen"
 ) {}
-
-/**
- * Filters for notifications delivered by a subscription.
- *
- * @stability unstable
- * @category schemas
- * @since 4.0.0
- */
-export const SubscriptionFilter = Schema.Struct({
-  toolsListChanged: optional(Schema.Boolean),
-  promptsListChanged: optional(Schema.Boolean),
-  resourcesListChanged: optional(Schema.Boolean),
-  resourceSubscriptions: optional(Schema.Array(Schema.String))
-})
-
-/**
- * Acknowledges the notification types accepted by a subscription.
- *
- * @stability unstable
- * @category rpcs
- * @since 4.0.0
- */
-export class SubscriptionsAcknowledgedNotification extends Rpc.make(
-  "notifications/subscriptions/acknowledged",
-  { payload: { ...NotificationMeta.fields, notifications: SubscriptionFilter } }
-) {}
