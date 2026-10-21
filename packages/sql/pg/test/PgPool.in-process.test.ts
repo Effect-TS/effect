@@ -159,7 +159,8 @@ describe("PgPool acquireTimeout", () => {
         const busy = yield* Effect.forkChild(sql`SELECT 1`)
         yield* waitFor(() => writes === 2)
 
-        const error = yield* Effect.flip(Effect.scoped(sql.reserve))
+        // The failed reservation shares the test scope, which stays open.
+        const error = yield* Effect.flip(sql.reserve)
         assert.strictEqual(error.reason._tag, "ConnectionError")
         assert.strictEqual(error.reason.operation, "acquireConnection")
 
