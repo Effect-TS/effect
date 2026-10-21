@@ -14713,9 +14713,19 @@ function fnApply(options: {
   } else {
     try {
       const result = options.body.apply(options.self, options.args)
-      effect = core.isEffect(result)
-        ? result
-        : core.fromIterator(() => options.body.apply(options.self, options.args))
+      if (core.isEffect(result)) {
+        effect = result
+      } else {
+        // transpiled generator bodies return an iterator; reuse it for the first run
+        let first = true
+        effect = core.fromIterator(() => {
+          if (first) {
+            first = false
+            return result
+          }
+          return options.body.apply(options.self, options.args)
+        })
+      }
     } catch (error) {
       fnError = error
       effect = die(error)
