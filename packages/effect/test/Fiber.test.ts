@@ -41,6 +41,31 @@ describe("Fiber", () => {
       assert.deepStrictEqual(yield* Fiber.await(fiber), Exit.succeed("closed"))
     }))
 
+  it.effect(
+    "runIn finalizer interrupts when the fiber hands its closeUnsafe effect to another fiber",
+    () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make()
+        const attached = yield* Latch.make()
+        const handed = yield* Latch.make()
+        let close: Effect.Effect<void> | undefined
+        const fiber = yield* attached.await.pipe(
+          Effect.andThen(Effect.sync(() => {
+            close = Scope.closeUnsafe(scope, Exit.void)
+          })),
+          Effect.andThen(handed.open),
+          Effect.andThen(Effect.never),
+          Effect.forkDetach
+        )
+        Fiber.runIn(fiber, scope)
+        yield* attached.open
+        yield* handed.await
+        yield* Effect.uninterruptible(close ?? Effect.void)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+      }),
+    { timeout: 1000 }
+  )
+
   it("notifies all observers when an observer cancels during exit", () => {
     const fiber = Effect.runFork(Effect.never)
     const observed: Array<number> = []

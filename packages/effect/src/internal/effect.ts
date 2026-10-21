@@ -4012,6 +4012,11 @@ const combineFinalizerCause = <A, E, XE, XR>(
     ? finalizer
     : catchCause(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
 
+// Set while finalizer effects are produced for parallel dispatch, where they run
+// on daemon fibers forked from the closing fiber. `fiberScopeFinalizer` uses it to
+// tell that dispatch apart from a `Scope.closeUnsafe` effect handed to another fiber.
+let parallelFinalizerDispatch = false
+
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
   finalizers: NonNullable<Scope.State.Open["finalizers"]>,
@@ -4026,7 +4031,15 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
     if (self.strategy === "sequential") {
       exits.push(yield* exit(runFinalizer(finalizer, exit_)))
     } else {
-      fibers.push(forkUnsafe(parent, runFinalizer(finalizer, exit_), true, true, "inherit"))
+      const previous = parallelFinalizerDispatch
+      parallelFinalizerDispatch = true
+      let effect: Effect.Effect<unknown>
+      try {
+        effect = runFinalizer(finalizer, exit_)
+      } finally {
+        parallelFinalizerDispatch = previous
+      }
+      fibers.push(forkUnsafe(parent, effect, true, true, "inherit"))
     }
   }
   if (fibers.length > 0) {
@@ -5624,10 +5637,13 @@ export const awaitAllChildren = <A, E, R>(
   })
 
 // Skips the fiber that is closing the scope, which would otherwise wait on itself.
-// Checked when invoked, as parallel scopes run the effect in another fiber, and
-// when run, as a `Scope.closeUnsafe` effect may be invoked on a different fiber.
+// The parallel dispatch forks a daemon fiber to run this effect, so that case is
+// decided when the effect is produced. Otherwise the run-time check decides, as a
+// `Scope.closeUnsafe` effect produced by the fiber may be run by a different fiber.
 const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
-  getCurrentFiber() === fiber ? void_ : withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
+  parallelFinalizerDispatch && getCurrentFiber() === fiber
+    ? void_
+    : withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
 
 /** @internal */
 export const forkIn: {
