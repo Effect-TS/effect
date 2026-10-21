@@ -974,42 +974,15 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
   })`
 
 const urlParamsToImpl = (operation: ParsedOperation, paramsAccessor: string): string => {
-  const props = operation.urlParams.map(
-    (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-  )
-  if (operation.commaUrlParams.length === 0) {
-    return `HttpClientRequest.setUrlParams({ ${props.join(", ")} })`
-  }
-  return `__setUrlParams({ ${props.join(", ")} }, ${JSON.stringify(operation.commaUrlParams)})`
+  const props = operation.urlParams.map((param) => {
+    const value = `${paramsAccessor}["${param}"]`
+    return `"${param}": ${operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value} as any`
+  })
+  return `HttpClientRequest.setUrlParams({ ${props.join(", ")} })`
 }
 
-// Comma-separated values are appended to the request URL already encoded, as
-// UrlParams would encode the delimiters together with commas in the elements.
-const commaUrlParamsSource = `const __setUrlParams = (
-    params: Record<string, unknown>,
-    commaNames: ReadonlyArray<string>,
-  ) => (request: HttpClientRequest.HttpClientRequest): HttpClientRequest.HttpClientRequest => {
-    const encode = (value: unknown) => new URLSearchParams([["", String(value)]]).toString().slice(1)
-    const urlParams: Record<string, unknown> = {}
-    const query: Array<string> = []
-    for (const [name, value] of Object.entries(params)) {
-      if (
-        commaNames.includes(name) && Array.isArray(value) &&
-        value.every((item) => item === null || typeof item !== "object")
-      ) {
-        const items = value.filter((item) => item !== undefined)
-        if (items.length > 0) {
-          query.push(\`\${encode(name)}=\${items.map(encode).join(",")}\`)
-        }
-      } else {
-        urlParams[name] = value
-      }
-    }
-    const url = query.length === 0
-      ? request.url
-      : \`\${request.url}\${request.url.includes("?") ? "&" : "?"}\${query.join("&")}\`
-    return HttpClientRequest.setUrlParams(HttpClientRequest.setUrl(request, url), urlParams as any)
-  }`
+const commaUrlParamsSource =
+  `const __joinComma = (value: unknown) => Array.isArray(value) && value.length > 0 ? value.join(",") : value`
 
 const commonSource = `const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(

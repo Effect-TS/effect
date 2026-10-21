@@ -47,17 +47,11 @@ export const make = (
   Result.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      const search = new URLSearchParams()
       for (let i = 0; i < params.params.length; i++) {
         const [key, value] = params.params[i]
         if (value !== undefined) {
-          search.append(key, internal.unwrap(value))
+          urlInstance.searchParams.append(key, internal.unwrap(value))
         }
-      }
-      const query = search.toString()
-      if (query !== "") {
-        // Appending through searchParams would re-encode the existing query
-        urlInstance.search += (urlInstance.search === "" ? "" : "&") + query
       }
       if (hash !== undefined) {
         urlInstance.hash = hash
