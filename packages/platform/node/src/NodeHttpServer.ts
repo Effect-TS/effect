@@ -137,8 +137,14 @@ export const make = Effect.fnUntraced(function*(
   // The members used here exist on every server kind, with listener types that differ per kind.
   const server = evaluate() as Http.Server
 
+  // Node 22 `close` waits for idle HTTP/2 sessions, and no version closes a session whose TLS
+  // handshake finishes after `close`. Closing them still lets open streams finish.
+  let closing = false
   const sessions = new Set<Http2.ServerHttp2Session>()
   server.on("session", (session: Http2.ServerHttp2Session) => {
+    if (closing) {
+      return session.close()
+    }
     sessions.add(session)
     session.once("close", () => sessions.delete(session))
   })
@@ -154,7 +160,7 @@ export const make = Effect.fnUntraced(function*(
         resume(Effect.void)
       }
     })
-    // Node 22 `close` waits for idle HTTP/2 sessions. Closing them still lets open streams finish.
+    closing = true
     for (const session of sessions) {
       session.close()
     }
