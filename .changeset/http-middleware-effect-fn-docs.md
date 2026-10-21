@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Document how to preserve app error and service types when passing `Effect.fn` to `HttpMiddleware.make`.
+Document how to define `HttpMiddleware.make` middleware that preserves app error and service types, including with `Effect.fn`.
