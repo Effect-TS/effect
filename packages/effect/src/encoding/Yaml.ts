@@ -763,10 +763,8 @@ class YamlParser {
     return new FlowParser(text, this.anchors, this.handles, () => {
       const next = this.lines[this.index]
       if (next === undefined || isDocumentMarker(next)) return undefined
-      // Continuation lines are more indented than the parent; a closing bracket may sit at its indentation.
-      const content = next.text.trim().length > 0
-      if (content && next.indent < parentIndent) return undefined
-      if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
+      // Continuation lines, including the closing bracket, are more indented than the parent node.
+      if (next.text.trim().length > 0 && next.indent <= parentIndent) return undefined
       this.index++
       // The flow parser skips comments itself, since quoted scalars may span lines.
       return next.raw.slice(next.indent)
