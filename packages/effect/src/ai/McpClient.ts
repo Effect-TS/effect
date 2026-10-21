@@ -160,8 +160,8 @@ export const http: (options: {
  *
  * **Details**
  *
- * The layer scope owns the client and subprocess. Supply `clientInfo` and optional
- * `timeout` together with the stdio transport options.
+ * The layer scope owns the client and subprocess. Supply the client identity and
+ * optional `timeout` together with the stdio transport options.
  *
  * @see {@link layerHttp}
  * @stability unstable
@@ -179,8 +179,8 @@ export const layerStdio: (options: Options & Parameters<typeof stdio>[0]) => Lay
  *
  * **Details**
  *
- * The layer scope owns the client and connection. Supply `clientInfo` and optional
- * `timeout` together with the HTTP transport options.
+ * The layer scope owns the client and connection. Supply the client identity and
+ * optional `timeout` together with the HTTP transport options.
  *
  * **Example** (Providing an HTTP client connection)
  *
@@ -190,7 +190,8 @@ export const layerStdio: (options: Options & Parameters<typeof stdio>[0]) => Lay
  * import { FetchHttpClient } from "effect/http"
  *
  * const ClientLayer = McpClient.layerHttp({
- *   clientInfo: { name: "report-workflow", version: "1.0.0" },
+ *   name: "report-workflow",
+ *   version: "1.0.0",
  *   protocol: McpProtocol.v2026_07_28,
  *   url: "http://localhost:3000/mcp"
  * }).pipe(Layer.provide(FetchHttpClient.layer))
@@ -247,19 +248,31 @@ export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
 export const isClient: (value: unknown) => value is Client = internal.isClient
 
 /**
- * Identity and default deadline for a scoped tool client.
+ * Client identity sent to the server, and the deadline for initialization and discovery.
+ *
+ * **Details**
+ *
+ * `timeout` defaults to 60 seconds and bounds the handshake and each complete
+ * `listTools`, `listPrompts` or `listResources` scan. It does not apply to
+ * `callTool`, `getPrompt` or `readResource`.
  *
  * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
 export interface Options {
-  readonly clientInfo: McpSchema.Implementation
-  readonly timeout?: Duration.Input
+  readonly name: string
+  readonly version: string
+  readonly title?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly timeout?: Duration.Input | undefined
 }
 
 /**
- * Per-operation deadline override. Defaults to `Options.timeout`.
+ * Per-operation deadline. Discovery defaults to `Options.timeout`; tool calls,
+ * prompts and resource reads have no deadline unless one is supplied.
  *
  * @stability unstable
  * @category configuration
@@ -477,9 +490,10 @@ export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClie
  *
  * **Details**
  *
- * Every operation, including initialization and each complete discovery, runs
- * under one deadline that defaults to 60 seconds and can be overridden per call.
- * Schema decoding requires the schema's services from the caller.
+ * Initialization and each complete discovery run under `Options.timeout`, which
+ * defaults to 60 seconds. Tool calls, prompts and resource reads run until they
+ * complete unless `CallOptions.timeout` is supplied. Schema decoding requires the
+ * schema's services from the caller.
  *
  * @stability unstable
  * @category constructors

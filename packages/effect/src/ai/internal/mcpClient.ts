@@ -67,6 +67,7 @@ const decodeVersionRejection = Schema.decodeUnknownOption(Schema.Struct({
 }))
 const decodeServerCapabilities = Schema.decodeUnknownEffect(McpSchema.ServerCapabilities)
 const decodeImplementation = Schema.decodeUnknownEffect(McpSchema.Implementation)
+const encodeImplementation = Schema.encodeSync(McpSchema.Implementation)
 const decodeToolArguments = Schema.decodeUnknownEffect(Schema.JsonObject)
 
 const messageLimit = (input: ByteSize.Input | undefined) => {
@@ -612,11 +613,20 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
   )
   let nextId = 1
 
+  const clientInfo = encodeImplementation({
+    name: options.name,
+    title: options.title,
+    version: options.version,
+    description: options.description,
+    websiteUrl: options.websiteUrl,
+    icons: options.icons
+  })
+
   // Modern requests carry the client identity in every request.
   // https://modelcontextprotocol.io/specification/2026-07-28/basic/index
   const meta = {
     "io.modelcontextprotocol/protocolVersion": version,
-    "io.modelcontextprotocol/clientInfo": options.clientInfo,
+    "io.modelcontextprotocol/clientInfo": clientInfo,
     "io.modelcontextprotocol/clientCapabilities": {}
   }
 
@@ -659,21 +669,27 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
     return (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
   })
 
-  const withDeadline = <A, E, R>(effect: Effect.Effect<A, E, R>, operation: string, callOptions?: CallOptions) =>
-    effect.pipe(
-      Effect.raceFirst(Deferred.await(closed)),
+  // Initialization and discovery default to `timeout`; other operations are bounded only on request.
+  const withDeadline = <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    operation: string,
+    duration: Duration.Input | undefined
+  ) => {
+    const open = Effect.raceFirst(effect, Deferred.await(closed))
+    return duration === undefined ? open : open.pipe(
       Effect.timeoutOrElse({
-        duration: callOptions?.timeout ?? timeout,
+        duration,
         orElse: () => Effect.fail(fail({ _tag: "TimeoutError", message: `MCP ${operation} deadline exceeded` }))
       })
     )
+  }
 
   const initialize = Effect.gen(function*() {
     if (!modern) {
       return yield* request<InitializeResult>("initialize", {
         protocolVersion: version,
         capabilities: {},
-        clientInfo: options.clientInfo
+        clientInfo
       })
     }
     const discover = request<InitializeResult>("server/discover", {})
@@ -708,7 +724,8 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
           : cause
       )
     ),
-    "initialization"
+    "initialization",
+    timeout
   )
 
   const requireCapability = (kind: "tools" | "prompts" | "resources") =>
@@ -738,7 +755,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
         return yield* limitError(`MCP ${kind} discovery exceeded its page limit`)
       }),
       `${kind} discovery`,
-      callOptions
+      callOptions?.timeout ?? timeout
     )
 
   const listTools = list<"tools", McpSchema.Tool>("tools")
@@ -766,7 +783,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
         )
       }),
       "tools/call",
-      callOptions
+      callOptions?.timeout
     )
   }
 
@@ -789,7 +806,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
           ...(params.arguments === undefined ? {} : { arguments: params.arguments })
         }))),
         "prompts/get",
-        callOptions
+        callOptions?.timeout
       ),
     readResource: (params, callOptions) =>
       withDeadline(
@@ -797,7 +814,7 @@ export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Ret
           Effect.andThen(request<McpSchema.ReadResourceResult>("resources/read", { uri: params.uri }))
         ),
         "resources/read",
-        callOptions
+        callOptions?.timeout
       ),
     callTool: callTool as Client["callTool"]
   }

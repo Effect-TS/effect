@@ -396,7 +396,8 @@ import { McpClient, McpProtocol } from "effect/ai"
 import { FetchHttpClient } from "effect/http"
 
 const ClientLayer = McpClient.layerHttp({
-  clientInfo: { name: "report-workflow", version: "1.0.0" },
+  name: "report-workflow",
+  version: "1.0.0",
   protocol: McpProtocol.v2026_07_28,
   url: "http://localhost:3000/mcp"
 }).pipe(Layer.provide(FetchHttpClient.layer))
@@ -425,7 +426,8 @@ import { McpClient, McpProtocol } from "effect/ai"
 import { ChildProcess } from "effect/process"
 
 const ClientLayer = McpClient.layerStdio({
-  clientInfo: { name: "report-workflow", version: "1.0.0" },
+  name: "report-workflow",
+  version: "1.0.0",
   protocol: McpProtocol.v2025_11_25,
   command: ChildProcess.make("node", ["./mcp-server.mjs"])
 }).pipe(Layer.provide(NodeServices.layer))
@@ -505,8 +507,9 @@ says nothing about whether the server completed the call.
 
 ### Limits and deadlines
 
-Operations default to a 60 second deadline, configurable per client with `timeout` and per call
-with `CallOptions`. Initialization and each complete discovery run under a single deadline.
+Initialization and each complete discovery run under a single deadline, 60 seconds by default and
+configurable per client with `timeout` or per call with `CallOptions`. Tool calls, prompts and
+resource reads have no deadline unless you pass `CallOptions.timeout` or compose `Effect.timeout`.
 Discovery follows pagination until the server stops returning a cursor and fails with `LimitError`
 after 100 pages, 10,000 items or a repeated cursor. A missing server capability makes the list
 operations return an empty array and the retrieval operations fail with `UnsupportedError`.
