@@ -506,6 +506,7 @@ export const map: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
@@ -569,6 +570,7 @@ export const mapEffect: {
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
+ *     size: Effect.die("unused"),
  *     readInput: Effect.die("unused"),
  *     readLine: Effect.die("unused"),
  *     display: () => Effect.void
