@@ -67,7 +67,7 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 const classifiedRequest = HttpClientRequest.get("http://test/")
-const classifiedResponse = (status: number, headers?: Record<string, string>) =>
+const classifiedResponse = (status: number, headers: Record<string, string> = {}) =>
   HttpClientResponse.fromWeb(classifiedRequest, new Response(null, { status, headers }))
 const statusCodeError = (status: number, headers?: Record<string, string>) =>
   new HttpClientError.HttpClientError({
