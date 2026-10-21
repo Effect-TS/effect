@@ -220,8 +220,8 @@ const make = Effect.gen(function*() {
   const runnerStorage = yield* RunnerStorage
 
   const entityManagers = new Map<string, EntityManagerState>()
+  // set by the first entity registration, which starts the registration window
   let entityRegistrationStartMillis: number | undefined
-  let entityRegistrationFallbackStartMillis: number | undefined
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -641,6 +641,9 @@ const make = Effect.gen(function*() {
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
     const entityRegistrationTimeoutMillis = Duration.toMillis(config.entityRegistrationTimeout)
+    // set by the first message read with no entity manager, in case no entity
+    // ever registers
+    let entityRegistrationFallbackStartMillis: number | undefined
 
     const storageReadLoop = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -667,14 +670,13 @@ const make = Effect.gen(function*() {
           const state = entityManagers.get(address.entityType)
           if (!state) {
             const now = clock.unsafeCurrentTimeMillis()
-            const registrationStarted = entityRegistrationStartMillis !== undefined
-            const timeoutStartMillis = entityRegistrationStartMillis ??
-              (entityRegistrationFallbackStartMillis ??= now)
-            // If registration never starts, allow two intervals from the first missing read before failing.
-            const timeoutMillis = registrationStarted
-              ? entityRegistrationTimeoutMillis
-              : entityRegistrationTimeoutMillis * 2
-            if (now - timeoutStartMillis < timeoutMillis) {
+            // the registration window starts at the first entity registration;
+            // if no entity ever registers, allow two intervals from the first
+            // missing read before failing
+            const deadlineMillis = entityRegistrationStartMillis !== undefined
+              ? entityRegistrationStartMillis + entityRegistrationTimeoutMillis
+              : (entityRegistrationFallbackStartMillis ??= now) + entityRegistrationTimeoutMillis * 2
+            if (now < deadlineMillis) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
