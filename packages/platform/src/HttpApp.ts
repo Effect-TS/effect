@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as FiberRef from "effect/FiberRef"
+import { constVoid } from "effect/Function"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -275,25 +276,25 @@ export const toWebHandlerLayerWith = <E, R, RE, EX>(
   const dispose = () => Effect.runPromise(Scope.close(scope, Exit.void))
 
   let handlerCache: ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>) | undefined
-  let handlerPromise:
-    | Promise<(request: Request, context?: Context.Context<never> | undefined) => Promise<Response>>
-    | undefined
+  // build eagerly so the layer is not tied to the lifetime of the first request
+  const handlerPromise = Effect.gen(function*() {
+    const runtime = yield* (options.memoMap
+      ? Layer.toRuntimeWithMemoMap(layer, options.memoMap)
+      : Layer.toRuntime(layer))
+    return handlerCache = toWebHandlerRuntime(runtime)(
+      yield* options.toHandler(runtime),
+      options.middleware
+    )
+  }).pipe(
+    Scope.extend(scope),
+    Effect.runPromise
+  )
+  // avoid an unhandled rejection, requests will still observe the failure
+  handlerPromise.catch(constVoid)
   function handler(request: Request, context?: Context.Context<never> | undefined): Promise<Response> {
     if (handlerCache) {
       return handlerCache(request, context)
     }
-    handlerPromise ??= Effect.gen(function*() {
-      const runtime = yield* (options.memoMap
-        ? Layer.toRuntimeWithMemoMap(layer, options.memoMap)
-        : Layer.toRuntime(layer))
-      return handlerCache = toWebHandlerRuntime(runtime)(
-        yield* options.toHandler(runtime),
-        options.middleware
-      )
-    }).pipe(
-      Scope.extend(scope),
-      Effect.runPromise
-    )
     return handlerPromise.then((f) => f(request, context))
   }
   return { dispose, handler } as const
