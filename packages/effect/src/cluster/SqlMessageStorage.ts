@@ -342,37 +342,12 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
         ON target.message_id = source.message_id
         WHEN NOT MATCHED THEN
           INSERT ${sql.insert(row)}
-        OUTPUT
-          inserted.id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.id, r.kind, r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.kind
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_kind,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_payload,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.sequence
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_sequence;
-      `,
+        OUTPUT inserted.id;
+      `.pipe(Effect.flatMap((rows) => {
+        // inserted a new row
+        if (rows.length > 0) return Effect.succeed([])
+        return selectByMessageId(message_id)
+      })),
     orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
@@ -400,8 +375,14 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     orElse: () => (s: string) => `'${s}'`
   })
   const forUpdate = sql.onDialectOrElse({
+    mssql: () => sql.literal(""),
     sqlite: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE")
+  })
+  // mssql has no FOR UPDATE, so lock the claimed rows with a table hint
+  const updateLock = sql.onDialectOrElse({
+    mssql: () => sql.literal("WITH (UPDLOCK)"),
+    orElse: () => sql.literal("")
   })
 
   const emptyFragment = sql.literal("")
@@ -486,7 +467,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     orElse: () => (shardIds: ReadonlyArray<string>, now: number, filters: UnprocessedFilters) =>
       sql<MessageJoinRow>`
         SELECT ${messageJoinColumns}
-        FROM ${messagesTableSql} m
+        FROM ${messagesTableSql} m ${updateLock}
         LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
         WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
         ${filters.addressFilter}
@@ -1138,6 +1119,63 @@ export const migrations = (options?: {
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(rowIdIndex)}
             ON ${messagesTableSql} (rowid)
+          `,
+        orElse: () => Effect.void
+      })
+    }),
+    "0004_mssql_nullable_keys": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const repliesTableSql = sql(repliesTable)
+      const messageIdIndex = `${messagesTable}_message_id_idx`
+      const messageIdLookupIndex = `${messagesTable}_message_id_lookup_idx`
+      const oneExitIndex = `${repliesTable}_one_exit`
+      const sequenceIndex = `${repliesTable}_sequence`
+
+      // SQL Server UNIQUE constraints treat NULLs as equal, so replace them
+      // with filtered unique indexes. Parameterized lookups cannot use a
+      // filtered index, so message_id also gets a plain index. TEXT columns
+      // reject the BIT-typed NULL parameters the client sends, so convert
+      // them to NVARCHAR(MAX).
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            DECLARE @message_id_constraint sysname = (
+              SELECT TOP 1 kc.name
+              FROM sys.key_constraints kc
+              JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id
+              JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+              WHERE kc.parent_object_id = OBJECT_ID(N'${messagesTableSql}') AND kc.type = 'UQ' AND c.name = 'message_id'
+            );
+            IF @message_id_constraint IS NOT NULL
+            BEGIN
+              DECLARE @drop_message_id nvarchar(max) =
+                N'ALTER TABLE ${messagesTableSql} DROP CONSTRAINT ' + QUOTENAME(@message_id_constraint);
+              EXEC sp_executesql @drop_message_id;
+            END;
+
+            ALTER TABLE ${repliesTableSql} DROP CONSTRAINT IF EXISTS ${sql(oneExitIndex)};
+            ALTER TABLE ${repliesTableSql} DROP CONSTRAINT IF EXISTS ${sql(sequenceIndex)};
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdIndex})
+            CREATE UNIQUE INDEX ${sql(messageIdIndex)}
+            ON ${messagesTableSql} (message_id) WHERE message_id IS NOT NULL;
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdLookupIndex})
+            CREATE INDEX ${sql(messageIdLookupIndex)}
+            ON ${messagesTableSql} (message_id);
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${oneExitIndex})
+            CREATE UNIQUE INDEX ${sql(oneExitIndex)}
+            ON ${repliesTableSql} (request_id, kind) WHERE kind IS NOT NULL;
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${sequenceIndex})
+            CREATE UNIQUE INDEX ${sql(sequenceIndex)}
+            ON ${repliesTableSql} (request_id, sequence) WHERE sequence IS NOT NULL;
+
+            ALTER TABLE ${messagesTableSql} ALTER COLUMN payload NVARCHAR(MAX);
+            ALTER TABLE ${messagesTableSql} ALTER COLUMN headers NVARCHAR(MAX);
+            ALTER TABLE ${repliesTableSql} ALTER COLUMN payload NVARCHAR(MAX) NOT NULL;
           `,
         orElse: () => Effect.void
       })
