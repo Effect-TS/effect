@@ -232,12 +232,19 @@ const completer = (dataName: string): string =>
       foreach ($form in $forms) {
         $pending = $null
         $flag = $lookup[$form]
-        if ($null -eq $flag) {
-          foreach ($negated in $context.flags) {
-            if ($negated.negation -ceq $form) { $used[$negated.name] = $true }
+        # As in the CLI parser, a negation wins over an alias but not over a
+        # canonical name.
+        if ($null -eq $flag -or $form -cne ('--' + $flag.name)) {
+          $negated = $null
+          foreach ($candidate in $context.flags) {
+            if ($candidate.negation -ceq $form) { $negated = $candidate }
           }
-          continue
+          if ($null -ne $negated) {
+            $used[$negated.name] = $true
+            continue
+          }
         }
+        if ($null -eq $flag) { continue }
         $used[$flag.name] = $true
         # A flag with an optional value only takes a value attached with '='.
         if (-not $hasValue -and -not $flag.optionalValue) { $pending = $flag }

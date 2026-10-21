@@ -265,6 +265,11 @@ export const createFlagRegistry = (params: ReadonlyArray<FlagParam>): FlagRegist
 
     const negation = negatedName(param)
     if (negation !== undefined) {
+      if (negations.has(negation)) {
+        throw new Error(
+          `Duplicate negation "${negation}" in command definition (conflicts with "${negations.get(negation)!.name}")`
+        )
+      }
       negations.set(negation, param)
     }
   }
