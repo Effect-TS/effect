@@ -5,9 +5,15 @@ import * as Base64Url from "../../encoding/Base64Url.ts"
 import { memoize } from "../../Function.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
-import type * as McpSchema from "../McpSchema.ts"
+import * as McpSchema from "../McpSchema.ts"
 import type * as McpTasks from "../McpTasks.ts"
 import * as McpCore from "./mcpCore.ts"
+import { MISSING_REQUIRED_CLIENT_CAPABILITY, protocolVersion } from "./mcpSchema/v2026_07_28.ts"
+
+const decodeTaskHandle = Schema.decodeUnknownEffect(Schema.StringFromBase64Url)
+const decodeTaskHandleContents = Schema.decodeUnknownEffect(
+  Schema.Tuple([Schema.String, Schema.String]).pipe(Schema.fromJsonString)
+)
 
 /**
  * Failure to create, read, update, or cancel a task.
@@ -22,18 +28,18 @@ export type TaskRecord = McpTasks.Task
 
 /** @internal */
 export const supportsTasks = (invocation: McpCore.McpInvocation): boolean =>
-  invocation.protocol.protocolVersion === "2026-07-28" &&
+  invocation.protocol.protocolVersion === protocolVersion &&
   Predicate.isReadonlyObject(invocation.protocol.clientCapabilities.extensions?.["io.modelcontextprotocol/tasks"])
 
 /** @internal */
 export const requireTasks = (invocation: McpCore.McpInvocation) =>
-  supportsTasks(invocation) ? Effect.void : Effect.fail(
+  supportsTasks(invocation) ?
+    Effect.void :
     new TaskError({
-      code: -32021,
+      code: MISSING_REQUIRED_CLIENT_CAPABILITY,
       message: "Client does not support the Tasks extension",
       data: { requiredCapabilities: { extensions: { "io.modelcontextprotocol/tasks": {} } } }
     })
-  )
 
 /** @internal */
 export type TaskCallOutcome =
@@ -60,13 +66,15 @@ export const get = memoize((core: McpCore.McpCore) => {
   }>()
   const operationsByTool = new Map<string, Operations>()
   const resolve = Effect.fnUntraced(function*(id: string) {
-    const [name, taskId] = yield* Schema.decodeUnknownEffect(Schema.StringFromBase64Url)(id).pipe(
-      Effect.flatMap(
-        Schema.decodeUnknownEffect(Schema.Tuple([Schema.String, Schema.String]).pipe(Schema.fromJsonString))
-      )
-    ).pipe(Effect.mapError(() => new TaskError({ code: -32602, message: "Unknown taskId" })))
+    const [name, taskId] = yield* decodeTaskHandle(id).pipe(
+      Effect.flatMap(decodeTaskHandleContents)
+    ).pipe(
+      Effect.mapError(() => new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" }))
+    )
     const operations = operationsByTool.get(name)
-    if (!operations) return yield* new TaskError({ code: -32602, message: "Unknown taskId" })
+    if (!operations) {
+      return yield* new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" })
+    }
     return { taskId, operations }
   })
   return {
@@ -88,8 +96,8 @@ export const get = memoize((core: McpCore.McpCore) => {
       core.tools.decorate(name, (registration) => {
         const decorated: McpCore.ToolRegistration = {
           ...registration,
-          isVisible: (profile) => profile.protocolVersion === "2026-07-28" && registration.isVisible(profile),
-          handle: () => Effect.fail(new McpCore.ToolExecutionError({ name, message: "Tool requires MCP Tasks" }))
+          isVisible: (profile) => profile.protocolVersion === protocolVersion && registration.isVisible(profile),
+          handle: () => new McpCore.ToolExecutionError({ name, message: "Tool requires MCP Tasks" })
         }
         registrations.set(decorated, {
           call: (payload, invocation) =>
@@ -102,7 +110,7 @@ export const get = memoize((core: McpCore.McpCore) => {
                   }
                   : outcome
               )) :
-              Effect.fail(new McpCore.ToolNotFound({ name }))
+              new McpCore.ToolNotFound({ name })
         })
         return decorated
       }),
