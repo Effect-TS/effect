@@ -272,6 +272,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
  * stream, but before ClickHouse 25.11 it may surface as an `UnknownError`
  * instead of a classified reason.
  *
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
