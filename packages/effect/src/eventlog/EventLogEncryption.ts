@@ -23,6 +23,7 @@ import * as Schema from "../Schema.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import { type Entry, EntryFields, entryFromFields, EntryId, RemoteEntry } from "./EventJournal.ts"
 import type { Identity } from "./EventLog.ts"
+import { toBatches } from "./internal/batches.ts"
 import { cachedByIdentity, deriveEncryptionKey } from "./internal/identityRootSecretDerivation.ts"
 
 /**
@@ -80,29 +81,6 @@ export const EncryptedRemoteBatch = Schema.Struct({
   sequence: Schema.Natural,
   ...EncryptedBatch.fields
 })
-
-const maxBatchEntries = 100
-const maxBatchPayloadBytes = 256 * 1024
-
-// A batch holds at most `maxBatchEntries` entries or `maxBatchPayloadBytes` of
-// payload, whichever comes first. A single larger entry is a batch on its own.
-const toBatches = (entries: ReadonlyArray<Entry>): Array<NonEmptyArray<Entry>> => {
-  const batches: Array<NonEmptyArray<Entry>> = []
-  let current: Array<Entry> = []
-  let bytes = 0
-  for (const entry of entries) {
-    const size = entry.payload.byteLength
-    if (current.length > 0 && (current.length === maxBatchEntries || bytes + size > maxBatchPayloadBytes)) {
-      batches.push(current as NonEmptyArray<Entry>)
-      current = []
-      bytes = 0
-    }
-    current.push(entry)
-    bytes += size
-  }
-  if (current.length > 0) batches.push(current as NonEmptyArray<Entry>)
-  return batches
-}
 
 const textEncoder = new TextEncoder()
 
