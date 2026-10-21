@@ -438,7 +438,7 @@ const offsetZoneRegExp = /^(?:GMT|[+-])/
 export const zoneFromString = (zone: string): Option.Option<DateTime.TimeZone> => {
   if (offsetZoneRegExp.test(zone)) {
     const offset = parseOffset(zone)
-    return offset === null ? Option.none() : Option.some(zoneMakeOffset(offset))
+    if (offset !== null) return Option.some(zoneMakeOffset(offset))
   }
   return zoneMakeNamed(zone)
 }
@@ -818,7 +818,7 @@ const makeZonedFromAdjusted = (
   return makeZonedProto(adjustedMillis - afterOffset, zone)
 }
 
-const offsetRegExp = /([+-])(\d{2}):(\d{2})$/
+const offsetRegExp = /([+-])(\d{2}):?(\d{2})$/
 const parseOffset = (offset: string): number | null => {
   const match = offsetRegExp.exec(offset)
   if (match === null) {

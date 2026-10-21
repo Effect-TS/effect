@@ -490,6 +490,13 @@ describe("DateTime", () => {
         assertSome(Option.map(dt, (value) => DateTime.zoneToString(value.zone)), "Pacific/Auckland")
         assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T08:12:34.112Z")
       }))
+
+    it.effect("parses a compact offset without colon", () =>
+      Effect.gen(function*() {
+        const dt = DateTime.makeZonedFromString("2024-07-21T20:12:34.112+0530")
+        assertSome(Option.map(dt, (value) => value.zone._tag), "Offset")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T14:42:34.112Z")
+      }))
   })
 
   it("parts equality", () => {
@@ -506,6 +513,12 @@ describe("DateTime", () => {
     ;(date as any).getTimezoneOffset = () => -60
     const dt = DateTime.makeZonedUnsafe(date)
     deepStrictEqual(dt.zone, DateTime.zoneMakeOffset(60 * 60 * 1000))
+  })
+
+  it("accepts GMT as a named timezone", () => {
+    const dt = DateTime.makeZonedUnsafe("2024-01-01T00:00:00Z", { timeZone: "GMT" })
+    strictEqual(dt.toJSON(), "2024-01-01T00:00:00.000Z")
+    strictEqual(dt.zone._tag, "Named")
   })
 
   describe("toUtc", () => {
