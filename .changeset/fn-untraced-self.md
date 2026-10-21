@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add `{ self }` binding to `Effect.fnUntraced` and `Effect.fnUntracedEager` so detached methods retain their receiver.
+Accept `{ self }` before the generator body in `Effect.fnUntraced` and `Effect.fnUntracedEager` to bind `this`, matching `Effect.fn`.

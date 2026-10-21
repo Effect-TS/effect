@@ -1272,7 +1272,7 @@ export const gen = <
   return suspend(() => fromIteratorUnsafe(body.call(options.self) as any))
 }
 
-// With `{ self }` the body is `pipeables[0]`; remove it so only transforms remain.
+// With `{ self }` the body is `pipeables[0]`, so take it out and bind it.
 const fnBody = (bodyOrOptions: Function | { readonly self: any }, pipeables: Array<Function>): Function =>
   typeof bodyOrOptions === "function" ? bodyOrOptions : pipeables.shift()!.bind(bodyOrOptions.self)
 
