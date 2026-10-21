@@ -1764,7 +1764,7 @@ describe("toCodeDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isGreaterThan(0).annotate({ "expected": "a value greater than 0" }))`,
+            `Schema.Int.check(Schema.isGreaterThan(0).annotate({ "expected": "a value greater than 0" }))`,
             `number`
           )
         }
