@@ -171,6 +171,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/powershell"
           tar -xzf "$archive" -C "$RUNNER_TEMP/powershell"
           chmod +x "$RUNNER_TEMP/powershell/pwsh"
+          # Fail here if pwsh cannot start, since the tests skip without it.
+          "$RUNNER_TEMP/powershell/pwsh" -NoProfile -NonInteractive -Command "exit 0"
           echo "$RUNNER_TEMP/powershell" >> "$GITHUB_PATH"
       - name: Test
         if: matrix.runtime != 'Deno'
