@@ -1370,7 +1370,7 @@ export const annotateMerge: {
  * Examples are exposed in structured `HelpDoc` data and rendered by the
  * default formatter in an `EXAMPLES` section.
  *
- * Pass a function to build examples from the command path shown in help, so
+ * Pass a function to build examples from the `commandPath` shown in help, so
  * they stay correct wherever the command is mounted. The `examples` field
  * resolves the function with the command's own name as the path.
  *
@@ -1395,7 +1395,7 @@ export const annotateMerge: {
  * import { Command } from "effect/cli"
  *
  * const deploy = Command.make("deploy").pipe(
- *   Command.withExamples((commandPath) => [
+ *   Command.withExamples(({ commandPath }) => [
  *     { command: `${commandPath.join(" ")} --yes`, description: "Take every default" }
  *   ])
  * )
@@ -1409,21 +1409,27 @@ export const annotateMerge: {
  */
 export const withExamples: {
   (
-    examples: ReadonlyArray<Command.Example> | ((commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>)
+    examples:
+      | ReadonlyArray<Command.Example>
+      | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
   ): <const Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>
   ) => Command<Name, Input, ContextInput, E, R>
   <const Name extends string, Input, E, R, ContextInput>(
     self: Command<Name, Input, ContextInput, E, R>,
-    examples: ReadonlyArray<Command.Example> | ((commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>)
+    examples:
+      | ReadonlyArray<Command.Example>
+      | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
   ): Command<Name, Input, ContextInput, E, R>
 } = dual(2, <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>,
-  examples: ReadonlyArray<Command.Example> | ((commandPath: ReadonlyArray<string>) => ReadonlyArray<Command.Example>)
+  examples:
+    | ReadonlyArray<Command.Example>
+    | ((context: { readonly commandPath: ReadonlyArray<string> }) => ReadonlyArray<Command.Example>)
 ) =>
   makeCommand({
     ...toImpl(self),
-    resolveExamples: Predicate.isFunction(examples) ? examples : () => examples
+    resolveExamples: Predicate.isFunction(examples) ? (commandPath) => examples({ commandPath }) : () => examples
   }))
 
 /* ========================================================================== */
