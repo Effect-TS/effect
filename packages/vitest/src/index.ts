@@ -218,6 +218,36 @@ export declare namespace Vitest {
 export const addEqualityTesters: () => void = internal.addEqualityTesters
 
 /**
+ * Registers a callback to run once before all tests in the current suite. If
+ * the callback returns an `Effect`, it is run and awaited with a `Scope` that
+ * closes in a cleanup after the suite's `afterAll` hooks, within the hook's
+ * timeout. The `Effect` must not require any other services.
+ *
+ * **Details**
+ *
+ * If Vitest stops waiting for the setup, the setup is interrupted before the
+ * `Scope` closes. As with any `beforeAll` cleanup, Vitest reports a closing
+ * that exceeds the hook's timeout and does not wait for it.
+ *
+ * @stability unstable
+ * @category hooks
+ * @since 4.0.0
+ */
+export const beforeAll: typeof V.beforeAll = internal.beforeAll
+
+/**
+ * Registers a callback to run before each test in the current suite. If the
+ * callback returns an `Effect`, it is run and awaited with a `Scope` that
+ * closes when the test finishes, and interrupted if the hook times out. The
+ * `Effect` must not require any other services.
+ *
+ * @stability unstable
+ * @category hooks
+ * @since 4.0.0
+ */
+export const beforeEach: typeof V.beforeEach = internal.beforeEach
+
+/**
  * Runs a scoped Effect test with test clock and console services.
  *
  * @stability unstable
