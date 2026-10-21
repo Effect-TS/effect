@@ -219,22 +219,28 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
         : Effect.succeed(connection))
   )
 
-  const get = acquireTimeout === undefined ? checkout : Effect.timeoutOrElse(checkout, {
-    duration: acquireTimeout,
-    orElse: () =>
-      Effect.fail(
-        new SqlError({
-          reason: new ConnectionError({
-            cause: new Error("Timed out waiting for a pooled connection"),
-            message: "PgPool: Timed out waiting for a pooled connection",
-            operation: "acquireConnection"
+  const withAcquireTimeout = <A>(
+    effect: Effect.Effect<A, SqlError, Scope.Scope>
+  ): Effect.Effect<A, SqlError, Scope.Scope> =>
+    acquireTimeout === undefined ? effect : Effect.timeoutOrElse(effect, {
+      duration: acquireTimeout,
+      orElse: () =>
+        Effect.fail(
+          new SqlError({
+            reason: new ConnectionError({
+              cause: new Error("Timed out waiting for a pooled connection"),
+              message: "PgPool: Timed out waiting for a pooled connection",
+              operation: "acquireConnection"
+            })
           })
-        })
-      )
-  })
+        )
+    })
 
-  // `pin` reserves the pool item itself, so this needs no help.
-  const reserve = Effect.flatMap(get, (connection) => connection.pin)
+  const get = withAcquireTimeout(checkout)
+
+  // `pin` reserves the pool item itself. On a multiplexed pool it also waits
+  // for shared statements to drain, so the acquire timeout covers it too.
+  const reserve = withAcquireTimeout(Effect.flatMap(checkout, (connection) => connection.pin))
 
   // `Pool.use` cannot pre-check a session or bound its wait. Use it only when
   // no TTL or acquire timeout applies and no connection awaits retirement.
