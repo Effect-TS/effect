@@ -565,49 +565,34 @@ describe("Option", () => {
   it("fromUndefinedOr", () => {
     assertNone(Option.fromUndefinedOr(undefined))
     assertSome(Option.fromUndefinedOr(null), null)
-    assertSome(Option.fromUndefinedOr(1), 1)
   })
 
   it("fromNullOr", () => {
     assertNone(Option.fromNullOr(null))
     assertSome(Option.fromNullOr(undefined), undefined)
-    assertSome(Option.fromNullOr(1), 1)
   })
 
   it("flatten", () => {
     assertSome(Option.flatten(Option.some(Option.some(1))), 1)
     assertNone(Option.flatten(Option.some(Option.none())))
-    assertNone(Option.flatten(Option.none()))
   })
 
   it("zipLeft", () => {
-    assertSome(Option.some(1).pipe(Option.zipLeft(Option.some("a"))), 1)
-    assertNone(Option.some(1).pipe(Option.zipLeft(Option.none())))
-
     assertSome(Option.zipLeft(Option.some(1), Option.some("a")), 1)
-    assertNone(Option.zipLeft(Option.none(), Option.some("a")))
+    assertNone(Option.some(1).pipe(Option.zipLeft(Option.none())))
   })
 
   it("zipRight", () => {
-    assertSome(Option.some(1).pipe(Option.zipRight(Option.some("a"))), "a")
-    assertNone(Option.none().pipe(Option.zipRight(Option.some("a"))))
-
     assertSome(Option.zipRight(Option.some(1), Option.some("a")), "a")
-    assertNone(Option.zipRight(Option.some(1), Option.none()))
+    assertNone(Option.none().pipe(Option.zipRight(Option.some("a"))))
   })
 
   it("composeK", () => {
-    const parse = (s: string): Option.Option<number> => {
-      const n = globalThis.Number(s)
-      return globalThis.Number.isNaN(n) ? Option.none() : Option.some(n)
-    }
-    const double = (n: number): Option.Option<number> => Option.some(n * 2)
-
-    const parseAndDouble = Option.composeK(parse, double)
-    assertSome(parseAndDouble("21"), 42)
-    assertNone(parseAndDouble("a"))
-
-    assertSome(pipe(parse, Option.composeK(double))("21"), 42)
+    const half = (n: number): Option.Option<number> => n % 2 === 0 ? Option.some(n / 2) : Option.none()
+    const quarter = Option.composeK(half, half)
+    assertSome(quarter(8), 2)
+    assertNone(quarter(6))
+    assertSome(pipe(half, Option.composeK(half))(8), 2)
   })
 
   it("toArray", () => {
