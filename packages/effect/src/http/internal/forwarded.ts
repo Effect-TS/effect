@@ -34,13 +34,24 @@ const parseNode = (node: string | undefined): NetAddress.IpAddress | undefined =
   return Result.isSuccess(inet) ? NetAddress.toCanonical(inet.success.address) : undefined
 }
 
-const validHost = /^(?:\[[0-9a-f:.]+\]|[a-z0-9._-]+)(?::\d{1,5})?$/i
+const hostShape = /^(?:\[[0-9a-f:.]+\]|[a-z0-9._-]+)(?::\d{1,5})?$/i
+
+// The shape check rules out paths, userinfo and lists; the URL parser rejects
+// invalid IP literals and out-of-range ports, matching what `toURL` accepts.
+const isValidHost = (host: string): boolean => {
+  if (!hostShape.test(host)) return false
+  try {
+    return new URL(`http://${host}`).host !== ""
+  } catch {
+    return false
+  }
+}
 
 /**
- * Applies the hop selected by walking the chain from the right. The transport
- * peer must be trusted; trusted hops are skipped and the first untrusted one is
- * the client. If every hop is trusted, the leftmost one is the client. An
- * unparseable hop leaves the request unchanged.
+ * Applies the hop selected by walking the chain from the right. The current
+ * `remoteAddress` must be trusted; trusted hops are skipped and the first
+ * untrusted one is the client. If every hop is trusted, the leftmost one is the
+ * client. An unparseable hop leaves the request unchanged.
  *
  * @internal
  */
@@ -65,7 +76,7 @@ export const apply = (
   return request.modify({
     remoteAddress: Option.some(NetAddress.formatIp(address)),
     peerAddress: request.peerAddress,
-    ...(host !== undefined && validHost.test(host) ? { headers: Headers.set(request.headers, "host", host) } : {}),
+    ...(host !== undefined && isValidHost(host) ? { headers: Headers.set(request.headers, "host", host) } : {}),
     ...(protocol === "http" || protocol === "https" ? { protocol } : {})
   })
 }
@@ -95,6 +106,7 @@ const addPair = (params: Map<string, string> | undefined, text: string): Map<str
   const separator = text.indexOf("=")
   if (separator <= 0) return undefined
   const name = text.slice(0, separator).trim().toLowerCase()
+  if (!token.test(name)) return undefined
   let value = text.slice(separator + 1).trim()
   if (value.startsWith("\"")) {
     if (value.length < 2 || !value.endsWith("\"")) return undefined

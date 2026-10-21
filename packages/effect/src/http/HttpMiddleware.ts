@@ -341,7 +341,9 @@ export interface TrustedProxyOptions {
  *
  * **Details**
  *
- * Headers are ignored unless the request's current `remoteAddress` is trusted.
+ * Headers are ignored unless the request's `remoteAddress` is trusted. This is
+ * the address resolved by any earlier forwarding middleware, not necessarily the
+ * transport peer.
  * `X-Forwarded-For` is then walked from the right, skipping trusted proxies.
  * The first untrusted address becomes `remoteAddress`. When every address is
  * trusted, the leftmost one is used. An entry that is not an IP address, such
@@ -353,6 +355,15 @@ export interface TrustedProxyOptions {
  * `HttpServerRequest.toURL` uses. Otherwise the transport values are kept.
  *
  * The previous remote address stays available as `request.peerAddress`.
+ *
+ * Middlewares can be stacked when proxy tiers use different headers. For a CDN
+ * sending `Forwarded` behind a load balancer appending `X-Forwarded-For`, apply
+ * `xForwardedHeaders({ trustedProxies: loadBalancers })` first (outermost) and
+ * `forwardedHeader({ trustedProxies: cdnEdges })` inside it. The inner
+ * middleware then only reads `Forwarded` when the load balancer reported a CDN
+ * edge as its client. Do not add the load balancer to the inner policy: a client
+ * connecting to it directly could then supply any `Forwarded` value.
+ * `request.peerAddress` keeps the original transport peer throughout.
  *
  * **Example** (Reading the client address behind a load balancer)
  *
@@ -393,7 +404,9 @@ export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware 
  *
  * **Details**
  *
- * Headers are ignored unless the request's current `remoteAddress` is trusted.
+ * Headers are ignored unless the request's `remoteAddress` is trusted. This is
+ * the address resolved by any earlier forwarding middleware, not necessarily the
+ * transport peer.
  * The `for` parameters are then walked from the right, skipping trusted
  * proxies. The first untrusted address becomes `remoteAddress`, and the `host`
  * and `proto` parameters of the same element replace the `host` header and set
@@ -403,6 +416,8 @@ export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware 
  * `X-Forwarded-*` headers are ignored.
  *
  * The previous remote address stays available as `request.peerAddress`.
+ *
+ * See `xForwardedHeaders` for stacking with `X-Forwarded-*` middleware.
  *
  * @stability unstable
  * @category proxying
