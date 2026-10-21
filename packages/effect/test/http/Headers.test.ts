@@ -197,9 +197,9 @@ describe("RetryAfter", () => {
 
   it("parses an HTTP date", () => {
     const value = Result.getOrThrow(Headers.parseRetryAfter("Sun Nov  6 08:49:37 1994"))
-    strictEqual(value._tag, "Date")
-    if (value._tag === "Date") {
-      strictEqual(DateTime.toEpochMillis(value.date), httpDateMillis)
+    strictEqual(value._tag, "DateTime")
+    if (value._tag === "DateTime") {
+      strictEqual(DateTime.toEpochMillis(value.dateTime), httpDateMillis)
     }
     strictEqual(Headers.formatRetryAfter(value), "Sun, 06 Nov 1994 08:49:37 GMT")
   })
