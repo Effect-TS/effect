@@ -152,10 +152,10 @@ describe("HttpApiMiddleware.ProblemDetails", () => {
       "/list"
     )
     assert.strictEqual(response.status, 400)
-    const body = await response.json()
+    const body = Schema.decodeUnknownSync(HttpApiError.BadRequestProblem)(await response.json())
     assert.isArray(body.errors)
-    assert.strictEqual(body.errors[0].path[0], "query")
-    assert.isString(body.errors[0].message)
+    assert.strictEqual(body.errors?.[0]?.path[0], "query")
+    assert.isString(body.errors?.[0]?.message)
   })
 
   it("adds a problem+json 400 to the OpenAPI spec", () => {
