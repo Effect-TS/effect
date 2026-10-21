@@ -192,8 +192,8 @@ export class MixedScheduler implements Scheduler {
     this.setImmediate = setImmediateFn ?? (executionMode === "sync" ? setMicrotask : setImmediate)
     // A custom setImmediate may drop callbacks, which would stall every fiber
     // sharing the dispatcher, so only share with the built-in dispatch. Cloudflare
-    // Workers throws when a fiber resumes in an async context captured by an
-    // earlier request, which would abort the other fibers' tasks in the drain.
+    // Workers keeps per-fiber dispatchers until sharing has been validated on
+    // workerd.
     this.shareDispatcher = setImmediateFn === undefined && AsyncResource !== undefined && !isCloudflareWorkers
   }
 
