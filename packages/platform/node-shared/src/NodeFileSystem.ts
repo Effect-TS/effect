@@ -615,26 +615,16 @@ const makeFileInfo = (
     }),
     catch: handleBadArgument(method)
   })
-const lstat = (() => {
-  const nodeLstat = effectify(
-    NFS.lstat,
-    handleErrnoException("FileSystem", "lstat"),
-    handleBadArgument("lstat")
-  )
-  return (path: string) =>
-    Effect.flatMap(
-      nodeLstat(path, { bigint: true }),
-      (stat) => makeFileInfo(stat, "lstat")
-    )
-})()
-const stat = (() => {
+const statFactory = (method: string, nodeStatFn: typeof NFS.stat) => {
   const nodeStat = effectify(
-    NFS.stat,
-    handleErrnoException("FileSystem", "stat"),
-    handleBadArgument("stat")
+    nodeStatFn,
+    handleErrnoException("FileSystem", method),
+    handleBadArgument(method)
   )
-  return (path: string) => Effect.flatMap(nodeStat(path, { bigint: true }), makeFileInfo)
-})()
+  return (path: string) => Effect.flatMap(nodeStat(path, { bigint: true }), (stat) => makeFileInfo(stat, method))
+}
+const stat = statFactory("stat", NFS.stat)
+const lstat = statFactory("lstat", NFS.lstat)
 
 // == symlink
 
