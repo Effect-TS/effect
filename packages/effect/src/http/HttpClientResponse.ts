@@ -25,7 +25,7 @@ import * as Headers from "./Headers.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
-import { getSetCookie, getWebSource, WebSourceTypeId } from "./internal/webResponse.ts"
+import { getSetCookie, getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -119,22 +119,22 @@ export const fromWeb = (request: HttpClientRequest.HttpClientRequest, source: Re
  *
  * **When to use**
  *
- * Use to pass a response body to a Web API without copying it, such as
+ * Use to hand a response body to a Web API without copying it, such as
  * writing a fetched file to Cloudflare R2.
  *
  * **Details**
  *
  * A response from `fetch` is returned as the original Web `Response`, so its
- * body keeps runtime capabilities such as workerd's known length. Other
- * responses are rebuilt from the status, headers, cookies, and `stream`.
+ * body keeps runtime capabilities such as workerd's known length. Any other
+ * response is rebuilt from its status, headers, cookies and `stream`.
  *
  * **Gotchas**
  *
- * The Web body can only be read once. After converting, read the body from
- * the returned `Response` instead of from the `HttpClientResponse`.
+ * The body can be read once. After converting, read it from the returned
+ * `Response`, not from the `HttpClientResponse`.
  *
- * When the request streams its body, reading or cancelling the returned body
- * does not stop the upload. To stop it, execute the request with
+ * When the request streams its body, finishing or cancelling the returned
+ * body does not stop the upload. To stop it, execute the request with
  * `HttpClient.withScope` and close the scope.
  *
  * @stability unstable
@@ -147,8 +147,7 @@ export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Respon
     if (source !== undefined) {
       return Effect.succeed(source)
     }
-    const headers = new globalThis.Headers(self.headers)
-    headers.delete("set-cookie")
+    const headers = new globalThis.Headers(Headers.remove(self.headers, "set-cookie"))
     for (const header of getSetCookie(self) ?? clientSetCookie(self)) {
       headers.append("set-cookie", header)
     }
@@ -161,20 +160,17 @@ export const toWeb = (self: HttpClientResponse): Effect.Effect<globalThis.Respon
 
 const nullBodyStatuses = new Set([101, 204, 205, 304])
 
-// Clients parse `cookies` from the `set-cookie` header, which can join several
-// cookies into one value, so it is kept only when `cookies` does not repeat it.
+// Clients parse `cookies` from the `set-cookie` header, which may join several
+// cookies into one value. The header is kept only when `cookies` has none of
+// them, so a cookie is never sent twice.
 const clientSetCookie = (self: HttpClientResponse): Array<string> => {
-  const setCookie = self.headers["set-cookie"]
+  const header = self.headers["set-cookie"]
   const cookies = Cookies.toSetCookieHeaders(self.cookies)
-  if (
-    setCookie !== undefined &&
-    Object.keys(Cookies.fromSetCookie(setCookie).cookies).every((name) =>
-      Option.isNone(Cookies.get(self.cookies, name))
-    )
-  ) {
-    cookies.unshift(setCookie)
-  }
-  return cookies
+  if (header === undefined) return cookies
+  const repeated = Object.keys(Cookies.fromSetCookie(header).cookies).some((name) =>
+    Option.isSome(Cookies.get(self.cookies, name))
+  )
+  return repeated ? cookies : [header, ...cookies]
 }
 
 /**
@@ -406,7 +402,7 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
     return Option.none()
   }
 
-  [WebSourceTypeId](): globalThis.Response {
+  [WebSourceSymbol](): globalThis.Response {
     return this.source
   }
 
