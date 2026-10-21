@@ -166,6 +166,27 @@ describe("ClusterCron", () => {
       assert.isAbove(scheduled.length, 1)
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
+  it.effect("replays an interrupted run with calculateNextRunFromPrevious when its finalizer fails", () =>
+    Effect.gen(function*() {
+      const attempts: Array<string> = []
+      const cron = ClusterCron.make({
+        name: "test",
+        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+        calculateNextRunFromPrevious: true,
+        execute: Effect.gen(function*() {
+          attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+          if (attempts.length === 1) {
+            return yield* Effect.interrupt.pipe(Effect.ensuring(Effect.die("cleanup failed")))
+          }
+        })
+      })
+
+      yield* deploy(cron, 3500)
+
+      assert.isAbove(attempts.length, 2)
+      assert.strictEqual(attempts[1], attempts[0])
+    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+
   it.effect("runs each instant once across a legacy pending run and a redeploy", () =>
     Effect.gen(function*() {
       const everySecond = Cron.parseUnsafe("* * * * * *", "UTC")
