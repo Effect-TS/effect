@@ -158,60 +158,49 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const createdAt = new WeakMap<PgConnection.PgConnection, number>()
   const checkedOut = new WeakSet<PgConnection.PgConnection>()
 
-  // The pool opens sessions on its own fiber, so a connect span made there has
-  // no parent. Record when each session opened, and on its first checkout report
-  // the part of the connect that statement waited for, under its span. A session
-  // that was ready before the statement began cost it nothing. `unreported`
-  // keeps checkouts on their plain path once every open has been reported.
-  const openedDuring = new WeakMap<
-    PgConnection.PgConnection,
-    { readonly startTime: bigint; readonly endTime: bigint }
-  >()
-  let unreported = 0
+  // The pool opens sessions on its own fiber, so a span made there would have no
+  // statement parent. Record each connect instead, and report it on the session's
+  // first checkout under the statement span, covering only the part the statement
+  // waited for.
+  const connects = new WeakMap<PgConnection.PgConnection, readonly [startTime: bigint, endTime: bigint]>()
   const connect = Effect.suspend(() => {
     const startTime = clock.currentTimeNanosUnsafe()
-    return Effect.tap(PgConnection.make(options), (connection) =>
-      Effect.sync(() => {
-        openedDuring.set(connection, { startTime, endTime: clock.currentTimeNanosUnsafe() })
-        unreported++
-      }))
+    return Effect.tap(
+      PgConnection.make(options),
+      (connection) => Effect.sync(() => connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()]))
+    )
   })
-  const forgetOpen = (connection: PgConnection.PgConnection) => {
-    if (openedDuring.delete(connection)) unreported--
-  }
 
   const reportConnect = (connection: PgConnection.PgConnection): Effect.Effect<void> =>
     Effect.withFiber((fiber) => {
-      const opened = openedDuring.get(connection)
+      const opened = connects.get(connection)
       if (opened === undefined) return Effect.void
-      forgetOpen(connection)
+      connects.delete(connection)
       const statement = fiber.cache.span
-      if (!fiber.cache.tracerEnabled || !fiber.getRef(SpanPropagationEnabled) || statement?._tag !== "Span") {
+      if (!fiber.cache.tracerEnabled || statement?._tag !== "Span" || !fiber.getRef(SpanPropagationEnabled)) {
         return Effect.void
       }
+      const [startTime, endTime] = opened
       const waitedFrom = statement.status.startTime
-      if (opened.endTime < waitedFrom) return Effect.void
+      if (endTime < waitedFrom) return Effect.void
       const span = fiber.getRef(Tracer.Tracer).span({
         name: "db.connect",
         parent: Option.some(statement),
         annotations: Context.empty(),
         links: [],
-        startTime: opened.startTime > waitedFrom ? opened.startTime : waitedFrom,
+        startTime: startTime > waitedFrom ? startTime : waitedFrom,
         kind: "client",
         root: false,
         sampled: statement.sampled
       })
       span.attribute("db.system.name", "postgresql")
-      if (options.applicationName !== undefined) {
-        span.attribute("db.client.connection.pool.name", options.applicationName)
-      }
-      span.attribute("db.client.connection.connect_time_ms", Number(opened.endTime - opened.startTime) / 1e6)
-      span.end(opened.endTime, Exit.void)
+      span.attribute("db.client.connection.connect_time_ms", Number(endTime - startTime) / 1e6)
+      span.end(endTime, Exit.void)
       return Effect.void
     })
 
   const handOut = (connection: PgConnection.PgConnection) =>
-    unreported === 0 ? Effect.succeed(connection) : Effect.as(reportConnect(connection), connection)
+    connects.has(connection) ? Effect.as(reportConnect(connection), connection) : Effect.succeed(connection)
 
   // Assigned below, once the pool exists. `acquire` only runs when the pool
   // opens a connection, which is always after that.
@@ -221,7 +210,6 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       createdAt.set(connection, clock.currentTimeMillisUnsafe())
       const internals = connectionInternals(connection)
       internals.retireHooks.add(() => {
-        forgetOpen(connection)
         deadConnections.add(connection)
         // `deadConnections` is only read by the next checkout, and a checkout
         // already waiting for this connection would never get that far. Tell
@@ -276,12 +264,10 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   })
 
   const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
-    deadConnections.size > 0 ?
-      Effect.flatMap(retry, handOut) :
-      Effect.flatMap(Pool.get(pool), (connection) =>
-        expired(connection)
-          ? Effect.andThen(Pool.invalidate(pool, connection), Effect.flatMap(retry, handOut))
-          : handOut(connection))
+    deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
+      expired(connection)
+        ? Effect.andThen(Pool.invalidate(pool, connection), retry)
+        : Effect.succeed(connection))
   )
 
   const acquireTimedOut = () =>
@@ -315,11 +301,12 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
             )))
       )
 
-  const get = withAcquireTimeout(checkout)
+  const handedOut = Effect.flatMap(checkout, handOut)
+  const get = withAcquireTimeout(handedOut)
 
   // `pin` reserves the pool item itself. On a multiplexed pool it also waits
   // for shared statements to drain, so the acquire timeout covers it too.
-  const reserve = withAcquireTimeout(Effect.flatMap(checkout, (connection) => connection.pin))
+  const reserve = withAcquireTimeout(Effect.flatMap(handedOut, (connection) => connection.pin))
 
   // `Pool.use` cannot pre-check a session or bound its wait. Use it only when
   // no TTL or acquire timeout applies and no connection awaits retirement.
@@ -332,8 +319,8 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       connectionTTL === undefined && acquireTimeout === undefined && deadConnections.size === 0
         ? Pool.use(
           pool,
-          // Checked at hand-off: a checkout that has to wait sees the open it waited for.
-          (connection) => unreported === 0 ? f(connection) : Effect.andThen(reportConnect(connection), f(connection))
+          (connection) =>
+            connects.has(connection) ? Effect.andThen(reportConnect(connection), f(connection)) : f(connection)
         )
         : Effect.scoped(Effect.flatMap(get, f))
     )

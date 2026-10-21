@@ -16,7 +16,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import type * as Fiber from "../Fiber.ts"
-import { constUndefined, constVoid } from "../Function.ts"
+import { constUndefined } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -1423,12 +1423,12 @@ const StatementProto: Omit<
       span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-      const recordWait = propagate ? connectionWaitRecorder(span, fiber) : undefined
-      const run = recordWait === undefined
+      const clock = propagate ? waitClock(fiber) : undefined
+      const run = clock === undefined
         ? (connection: Connection) => f(connection, sql, params)
         : (connection: Connection) =>
           Effect.suspend(() => {
-            recordWait()
+            recordConnectionWait(span, clock)
             return f(connection, sql, params)
           })
       const execute = this.borrower === undefined
@@ -1467,9 +1467,9 @@ const StatementProto: Omit<
           span.attribute(ATTR_SQL_METHOD, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
           const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-          const recordWait = propagate ? connectionWaitRecorder(span, fiber) : constVoid
+          const clock = propagate ? waitClock(fiber) : undefined
           const acquire = Effect.map(self.acquirer, (connection) => {
-            recordWait()
+            if (clock !== undefined) recordConnectionWait(span, clock)
             return connection.executeStream(sql, params, self.transformRows)
           })
           return propagate
@@ -1539,17 +1539,17 @@ const StatementProto: Omit<
   }
 }
 
+// Without span timing, the span has no start time to measure from.
+const waitClock = (fiber: Fiber.Fiber<unknown, unknown>): Clock | undefined =>
+  fiber.getRef(TracerTimingEnabled) ? fiber.getRef(Clock) : undefined
+
 // The statement's span starts just before it asks for a connection, so the time
 // from that start to the hand-off is how long it waited for one.
-const connectionWaitRecorder = (span: Tracer.Span, fiber: Fiber.Fiber<unknown, unknown>): () => void => {
-  if (!fiber.getRef(TracerTimingEnabled)) return constVoid
-  const clock = fiber.getRef(Clock)
-  return () =>
-    span.attribute(
-      ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
-      Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
-    )
-}
+const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
+  span.attribute(
+    ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
+    Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
+  )
 
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,
