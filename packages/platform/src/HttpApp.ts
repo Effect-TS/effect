@@ -58,6 +58,14 @@ export const toHandled = <E, R, _, EH, RH>(
   ) => Effect.Effect<_, EH, RH>,
   middleware?: HttpMiddleware | undefined
 ): Effect.Effect<void, never, Exclude<R | RH | ServerRequest.HttpServerRequest, Scope.Scope>> => {
+  const send = (request: ServerRequest.HttpServerRequest, response: ServerResponse.HttpServerResponse) => {
+    ;(request as any)[handledSymbol] = true
+    return Effect.map(
+      handleResponse(request, response),
+      (sent) => ServerResponse.isServerResponse(sent) ? sent : response
+    )
+  }
+
   const responded = Effect.withFiberRuntime<
     ServerResponse.HttpServerResponse,
     E | EH | ServerError.ResponseError,
@@ -66,20 +74,9 @@ export const toHandled = <E, R, _, EH, RH>(
     Effect.flatMap(self, (response) => {
       const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
       const handler = fiber.getFiberRef(currentPreResponseHandlers)
-      if (handler._tag === "None") {
-        ;(request as any)[handledSymbol] = true
-        return Effect.map(
-          handleResponse(request, response),
-          (sent) => ServerResponse.isServerResponse(sent) ? sent : response
-        )
-      }
-      return Effect.flatMap(handler.value(request, response), (response) => {
-        ;(request as any)[handledSymbol] = true
-        return Effect.map(
-          handleResponse(request, response),
-          (sent) => ServerResponse.isServerResponse(sent) ? sent : response
-        )
-      })
+      return handler._tag === "None"
+        ? send(request, response)
+        : Effect.flatMap(handler.value(request, response), (response) => send(request, response))
     })
   )
 
