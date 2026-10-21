@@ -80,31 +80,25 @@ export const run: <R2 = never>(
   | R2
 > = Migrator.make({
   dumpSchema(path, table) {
-    const pgDump = Effect.fnUntraced(
-      function*(connection: DumpConnection, args: Array<string>) {
-        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-        const dump = yield* ChildProcess.make("pg_dump", [
-          ...args,
-          "--no-owner",
-          "--no-privileges",
-          "--no-password",
-          `--dbname=${connection.conninfo}`
-        ], {
-          env: {
-            PATH: (globalThis as any).process?.env.PATH,
-            PGPASSWORD: connection.password
-          },
-          extendEnv: false
-        }).pipe(spawner.string)
+    const pgDump = Effect.fnUntraced(function*(connection: DumpConnection, args: Array<string>) {
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+      const dump = yield* ChildProcess.make("pg_dump", [
+        ...args,
+        "--no-owner",
+        "--no-privileges",
+        "--no-password",
+        `--dbname=${connection.conninfo}`
+      ], {
+        env: { PATH: process.env.PATH, PGPASSWORD: connection.password },
+        extendEnv: false
+      }).pipe(spawner.string)
 
-        return dump.replace(/^--.*$/gm, "")
-          .replace(/^SET .*$/gm, "")
-          .replace(/^SELECT pg_catalog\..*$/gm, "")
-          .replace(/\n{2,}/gm, "\n\n")
-          .trim()
-      },
-      Effect.mapError((error) => new Migrator.MigrationError({ kind: "Failed", message: error.message, cause: error }))
-    )
+      return dump.replace(/^--.*$/gm, "")
+        .replace(/^SET .*$/gm, "")
+        .replace(/^SELECT pg_catalog\..*$/gm, "")
+        .replace(/\n{2,}/gm, "\n\n")
+        .trim()
+    })
 
     const pgDumpAll = Effect.gen(function*() {
       const sql = yield* PgClient
@@ -230,23 +224,29 @@ const tlsParameters = Effect.fnUntraced(function*(config: ResolvedConfig) {
     }),
     (directory) => Effect.promise(() => NodeFs.rm(directory, { recursive: true, force: true }))
   )
-  const write = (name: string, pem: string) =>
-    Effect.tryPromise({
-      try: () => NodeFs.writeFile(NodePath.join(directory, name), pem, { mode: 0o600 }),
+  // Without a PEM the parameter points at a missing file, so libpq does not
+  // fall back to ~/.postgresql
+  const file = (name: string, pem: Pem | undefined) => {
+    const path = NodePath.join(directory, pem === undefined ? "none" : name)
+    if (pem === undefined) return Effect.succeed(path)
+    return Effect.tryPromise({
+      try: () => NodeFs.writeFile(path, toPem(pem), { mode: 0o600 }),
       catch: (cause) => new Migrator.MigrationError({ kind: "Failed", message: `Could not write ${name}`, cause })
-    }).pipe(Effect.as(NodePath.join(directory, name)))
-  const missing = NodePath.join(directory, "none")
+    }).pipe(Effect.as(path))
+  }
   return {
     sslmode: verify ? "verify-full" : "require",
     // Node replaces its default trust store when `ca` is set. The default
     // store includes NODE_EXTRA_CA_CERTS and --use-system-ca.
-    sslrootcert: verify ? yield* write("root.crt", toPem(ssl.ca ?? Tls.getCACertificates("default"))) : missing,
-    sslcert: ssl.cert !== undefined ? yield* write("client.crt", toPem(ssl.cert)) : missing,
-    sslkey: ssl.key !== undefined ? yield* write("client.key", toPem(ssl.key)) : missing
+    sslrootcert: yield* file("root.crt", verify ? ssl.ca ?? Tls.getCACertificates("default") : undefined),
+    sslcert: yield* file("client.crt", ssl.cert),
+    sslkey: yield* file("client.key", ssl.key)
   }
 })
 
-const toPem = (value: string | Uint8Array | ReadonlyArray<string | Uint8Array>): string =>
+type Pem = string | Uint8Array | ReadonlyArray<string | Uint8Array>
+
+const toPem = (value: Pem): string =>
   (Array.isArray(value) ? value : [value]).map((pem) => Buffer.from(pem).toString().trim()).join("\n") + "\n"
 
 /**

@@ -24,7 +24,7 @@ export interface ResolvedConfig {
   readonly maxMessageSize: number | undefined
 }
 
-export const configError = (message: string, cause?: unknown): SqlError =>
+const configError = (message: string, cause?: unknown): SqlError =>
   new SqlError({
     reason: new ConnectionError({
       cause: cause ?? new Error(message),
