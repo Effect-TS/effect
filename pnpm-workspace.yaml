@@ -18,6 +18,7 @@ enableGlobalVirtualStore: false
 fetchTimeout: 180000
 
 allowBuilds:
+  electron: false
   core-js: false
   cpu-features: false
   dprint: false
@@ -31,6 +32,7 @@ allowBuilds:
   workerd: false
 
 patchedDependencies:
+  'drizzle-orm@1.0.0-rc.4': packages/drizzle-effect-v4-patch/patches/drizzle-orm@1.0.0-rc.4.patch
   '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
 
 overrides:

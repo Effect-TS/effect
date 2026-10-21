@@ -2,7 +2,7 @@
  * Node.js layers for the `effect/crypto` modules, also used by Bun.
  *
  * {@link layerDigest} runs MD5 and SHA on `node:crypto`, {@link layerMac} runs
- * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id, {@link layerAead}
+ * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id and scrypt, {@link layerAead}
  * runs ChaCha20-Poly1305 on `node:crypto`, and {@link layerSecureRandom},
  * {@link layerCipher}, {@link layerSignature}, {@link layerKeyAgreement}, and
  * {@link layerKeyWrap} run the core WebCrypto layers. Each Node.js layer
@@ -153,26 +153,103 @@ const argon2id = (algorithm: Kdf.Argon2id, secret: Uint8Array, options: DeriveOp
         memory: algorithm.memory,
         passes: algorithm.passes,
         parallelism: algorithm.parallelism,
-        tagLength: options.length
+        tagLength: options.length,
+        ...(options.secret === undefined ? {} : { secret: options.secret }),
+        ...(options.associatedData === undefined ? {} : { associatedData: options.associatedData })
       }, (cause, key) => {
         if (cause) resume(argon2Failure(cause))
-        else resume(Effect.succeed(new Uint8Array(key.buffer, key.byteOffset, key.length)))
+        else {
+          const output = new Uint8Array(key)
+          key.fill(0)
+          resume(Effect.succeed(output))
+        }
       })
     } catch (cause) {
       resume(argon2Failure(cause))
     }
   }).pipe(Effect.uninterruptible)
 
+const scrypt = (algorithm: Kdf.Scrypt, secret: Uint8Array, options: DeriveOptions) =>
+  Effect.callback<Uint8Array, CryptoError.CryptoError>((resume) => {
+    const invalid = (description: string) => resume(kdfFailure(new CryptoError.InvalidArgument({ description })))
+    if (options.info !== undefined) return invalid("info only applies to HKDF")
+    if (options.secret !== undefined || options.associatedData !== undefined) {
+      return invalid("secret and associatedData only apply to Argon2id")
+    }
+    if (!isIntegerIn(algorithm.cost, 2, 0x8000_0000) || !Number.isInteger(Math.log2(algorithm.cost))) {
+      return invalid("cost must be a power of two between 2 and 2^31")
+    }
+    if (
+      !isIntegerIn(algorithm.blockSize, 1, 0xffff_ffff) || !isIntegerIn(algorithm.parallelism, 1, 0xffff_ffff) ||
+      Math.log2(algorithm.cost) >= 16 * algorithm.blockSize || algorithm.blockSize * algorithm.parallelism >= 2 ** 30
+    ) {
+      return invalid("invalid scrypt blockSize or parallelism")
+    }
+    if (!isIntegerIn(options.length, 1, 0x7fff_ffff)) return invalid("length must be between 1 and 2^31 - 1 bytes")
+    const maxmem = 128 * algorithm.blockSize * (algorithm.cost + algorithm.parallelism + 2)
+    if (!Number.isSafeInteger(maxmem)) return invalid("scrypt memory exceeds the runtime's addressable range")
+    if (typeof NodeCrypto.scrypt !== "function") {
+      return resume(
+        kdfFailure(
+          new CryptoError.Unsupported({ description: "NodeCrypto.layerKdf does not provide scrypt on this runtime" })
+        )
+      )
+    }
+    try {
+      NodeCrypto.scrypt(secret, options.salt, options.length, {
+        N: algorithm.cost,
+        r: algorithm.blockSize,
+        p: algorithm.parallelism,
+        maxmem
+      }, (cause, key) => {
+        if (cause) resume(Effect.die(cause))
+        else {
+          const output = new Uint8Array(key)
+          key.fill(0)
+          resume(Effect.succeed(output))
+        }
+      })
+    } catch (cause) {
+      resume(Effect.die(cause))
+    }
+  }).pipe(Effect.uninterruptible)
+
+// Native calls cannot be aborted. Own input copies until the callback settles,
+// then wipe passwords and optional Argon2 secrets before releasing admission.
+const nativeKdf = (algorithm: Kdf.Argon2id | Kdf.Scrypt, secret: Uint8Array, options: DeriveOptions) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => ({
+      password: new Uint8Array(secret),
+      options: {
+        ...options,
+        salt: new Uint8Array(options.salt),
+        secret: options.secret === undefined ? undefined : new Uint8Array(options.secret),
+        associatedData: options.associatedData === undefined ? undefined : new Uint8Array(options.associatedData)
+      }
+    })),
+    (owned) =>
+      algorithm._tag === "Argon2id"
+        ? argon2id(algorithm, owned.password, owned.options)
+        : scrypt(algorithm, owned.password, owned.options),
+    (owned) =>
+      Effect.sync(() => {
+        owned.password.fill(0)
+        owned.options.secret?.fill(0)
+      })
+  )
+
 /**
- * Layer that provides `Kdf`, adding Argon2id from `node:crypto`.
+ * Layer that provides `Kdf`, adding Argon2id and scrypt from `node:crypto`.
  *
  * **Details**
  *
  * Argon2id runs on `argon2` from `node:crypto`, which needs Node.js 24.7 or
  * later linked against OpenSSL 3.2, or Bun 1.4. Support is checked at call
  * time: on other runtimes, deriving with Argon2id fails with an `Unsupported`
- * reason. HKDF and PBKDF2 go through `Kdf.layerWebCrypto`, which keeps them
- * off the event loop.
+ * reason. Scrypt uses the native callback API. HKDF and PBKDF2 go through
+ * `Kdf.layerWebCrypto`. Native work retains borrowed resources until it settles,
+ * including when its caller is interrupted. Use `Kdf.withLimits` to bound
+ * resources and `KdfAdmission` to bound concurrent work.
  *
  * @stability unstable
  * @category layers
@@ -184,7 +261,9 @@ export const layerKdf: Layer.Layer<Kdf.Kdf> = Layer.effect(
     const core = yield* Kdf.Kdf
     return Kdf.Kdf.of({
       derive: (algorithm, secret, options) =>
-        algorithm._tag === "Argon2id" ? argon2id(algorithm, secret, options) : core.derive(algorithm, secret, options)
+        (algorithm._tag === "Argon2id" || algorithm._tag === "Scrypt")
+          ? nativeKdf(algorithm, secret, options)
+          : core.derive(algorithm, secret, options)
     })
   })
 ).pipe(Layer.provide(Kdf.layerWebCrypto))

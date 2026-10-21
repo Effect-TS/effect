@@ -1,0 +1,69 @@
+{
+  "name": "@effect/auth-simplewebauthn",
+  "version": "4.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "SimpleWebAuthn browser ceremonies and server verification for Effect Auth.",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/auth-simplewebauthn"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    "./Browser": "./src/Browser.ts",
+    "./Server": "./src/Server.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      "./Browser": "./dist/Browser.js",
+      "./Server": "./dist/Server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/auth": "workspace:^",
+    "tldts": "7.4.11"
+  },
+  "devDependencies": {
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.0.1",
+    "effect": "workspace:^"
+  },
+  "peerDependencies": {
+    "@simplewebauthn/browser": ">=14.0.0 <15",
+    "@simplewebauthn/server": ">=14.0.1 <15",
+    "effect": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@simplewebauthn/browser": {
+      "optional": true
+    },
+    "@simplewebauthn/server": {
+      "optional": true
+    }
+  }
+}

@@ -336,6 +336,17 @@ Apache License
    limitations under the License.
 ```
 
+## Yielded Auth workflows
+
+Authentication composition, identity, sessions, passwords, proofs, passkeys, TOTP,
+HTTP and Atom clients, durable OAuth workflows, OAuth/OpenID servers, callback
+proxying, and native browser login are adapted from
+[yielded-dev/auth](https://github.com/yielded-dev/auth/tree/1b946d32), commit
+`1b946d32`, under the MIT license reproduced below. The port replaces the source
+crypto services with native Effect crypto capabilities and retains stored data
+formats and explicit scoped ownership. The associated regression fixtures are
+adapted from the same snapshot.
+
 ## Yielded Auth provider integrations
 
 Provider configuration, profile schemas, receipt handling, client-secret signing,

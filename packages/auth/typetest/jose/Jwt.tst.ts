@@ -28,7 +28,7 @@ describe("grouped JOSE exports", () => {
   })
 
   it("exports capabilities through the root namespace", () => {
-    expect<keyof typeof Auth>().type.toBe<
+    expect<Extract<keyof typeof Auth, "Jose" | "OAuth">>().type.toBe<
       "Jose" | "OAuth"
     >()
     expect<keyof typeof Auth.Jose>().type.toBe<"JoseError" | "Jwe" | "Jwk" | "Jwks" | "Jws" | "Jwt">()

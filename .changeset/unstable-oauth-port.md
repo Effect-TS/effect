@@ -1,5 +1,17 @@
 ---
+"effect": minor
 "@effect/auth": minor
+"@effect/auth-electron": minor
+"@effect/auth-persistence": minor
+"@effect/auth-persistence-drizzle": minor
+"@effect/auth-react-native": minor
+"@effect/auth-simplewebauthn": minor
+"@effect/drizzle-effect-v4-patch": minor
+"@effect/platform-bun": minor
+"@effect/platform-node": minor
+"@effect/platform-node-shared": minor
 ---
 
-Add the unstable `@effect/auth` package with JOSE keys and tokens, scoped OAuth 2.0 clients, PKCE, and signed OpenID Connect verification. Group APIs under `@effect/auth/jose` and `@effect/auth/oauth`, with 25 provider clients for initial sign-in under `@effect/auth/oauth/providers`.
+Add `@effect/auth` with JOSE, OAuth, sessions, passwords, passkeys, proofs, native app adapters, SQL persistence, and portable password hashing.
+
+Custom KDF implementations must handle the `Scrypt` algorithm; exhaustive crypto error handlers must account for the `Busy` reason.

@@ -134,6 +134,12 @@ export default defineConfig({
         }
       }),
       ...project("@effect/auth", "packages/auth"),
+      ...project("@effect/auth-persistence", "packages/auth-persistence"),
+      ...project("@effect/auth-persistence-drizzle", "packages/auth-persistence-drizzle"),
+      ...project("@effect/auth-simplewebauthn", "packages/auth-simplewebauthn"),
+      ...project("@effect/auth-react-native", "packages/auth-react-native"),
+      ...project("@effect/auth-electron", "packages/auth-electron"),
+      ...project("@effect/drizzle-effect-v4-patch", "packages/drizzle-effect-v4-patch"),
       ...project("@effect/opentelemetry", "packages/opentelemetry"),
       ...project("@effect/platform-browser", "packages/platform/browser", true, {
         test: {

@@ -69,7 +69,11 @@
     "./workflow/internal/*": null,
     "./internal/*": null,
     "./index": null,
-    "./*/index": null
+    "./*/index": null,
+    "./crypto/argon2.wasm": {
+      "types": "./src/crypto/internal/argon2Asset.d.ts",
+      "default": "./src/crypto/argon2.wasm"
+    }
   },
   "files": [
     "src/**/*.ts",
@@ -79,7 +83,10 @@
     "dist/**/*.d.ts.map",
     "AGENTS.md",
     "CLAUDE.md",
-    "ai-docs/**/*"
+    "ai-docs/**/*",
+    "src/crypto/argon2.wasm",
+    "src/crypto/NOTICE.md",
+    "src/crypto/internal/argon2Block.c"
   ],
   "publishConfig": {
     "access": "public",
@@ -124,7 +131,11 @@
       "./rpc/internal/*": null,
       "./workflow/internal/*": null,
       "./index": null,
-      "./*/index": null
+      "./*/index": null,
+      "./crypto/argon2.wasm": {
+        "types": "./src/crypto/internal/argon2Asset.d.ts",
+        "default": "./src/crypto/argon2.wasm"
+      }
     }
   },
   "scripts": {

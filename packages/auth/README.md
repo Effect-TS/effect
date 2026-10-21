@@ -1,14 +1,59 @@
 # @effect/auth
 
-JOSE keys, signatures, encryption, schema-typed JWTs, OAuth client protocols and
-provider integrations, PKCE S256, and signed OpenID Connect verification for Effect. All public APIs are
-unstable and may change in minor releases.
+Composable authentication for Effect: identities, sessions, passwords, passkeys,
+email and phone proofs, TOTP, OAuth workflows and providers, authorization servers,
+and the underlying JOSE and OAuth/OIDC protocols. All public APIs are unstable
+and may change in minor releases.
 
 ```sh
 pnpm add @effect/auth effect
 ```
 
-Public modules are grouped by capability:
+Applications own account policy, persistence, keys, private delivery, and runtime
+services. Authentication definitions combine those capabilities into typed
+operations, HTTP handlers, and clients. Resources belong to the caller's Scope;
+credentials stay outside public results and telemetry.
+
+## Authentication workflows
+
+```ts
+import { Atom, Auth, Email, Http, OAuth, Passkey, Password, PhoneOtp, Sessions, Totp } from "@effect/auth"
+```
+
+| Modules                                   | Capabilities                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `Auth`, `Identity`, `Operations`, `Hooks` | Typed authentication definitions, subject authority, operations, and commit-aware lifecycle hooks                 |
+| `Sessions`                                | Stateful, stateless, and state-assisted sessions, revocation, renewal, and additional authentication requirements |
+| `Password`, `Email`, `PhoneOtp`, `Proofs` | Registration, sign-in, credential management, private delivery, and single-use email/SMS proofs                   |
+| `Passkey`, `Totp`                         | WebAuthn ceremonies, TOTP enrollment and verification, and recovery codes                                         |
+| `OAuth` and provider modules              | Durable sign-in, registration, account linking, retained grants, refresh, revocation, and credential generations  |
+| `OAuthServer`, `OAuthScope`, `OAuthProxy` | Authorization and OpenID Connect servers, typed scopes, and encrypted callback forwarding                         |
+| `Http`, `Client`, `Atom`                  | HTTP transport, typed clients, subject-scoped state, and foreground session renewal                               |
+| `BrowserLogin`                            | Single-use native-app browser login handoffs                                                                      |
+
+Provider modules such as `@effect/auth/GitHub` and `@effect/auth/Google` compose
+the durable workflows. Keep the provider's construction Scope open during use
+and retain retired credential generations while flows or grants reference them.
+An uncertain exchange or refresh result does not authorize replaying it.
+
+Companion packages supply optional adapters:
+
+| Package                                                                     | Integration                                                                |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [`@effect/auth-persistence`](../auth-persistence/README.md)                 | Managed SQL storage, table mappings, and opt-in in-memory test services    |
+| [`@effect/auth-persistence-drizzle`](../auth-persistence-drizzle/README.md) | Drizzle mappings and SQL dialect adapters                                  |
+| [`@effect/auth-simplewebauthn`](../auth-simplewebauthn/README.md)           | Browser WebAuthn ceremonies and server verification                        |
+| [`@effect/auth-react-native`](../auth-react-native/README.md)               | iOS passkeys, Expo browser login, secure storage, and application activity |
+| [`@effect/auth-electron`](../auth-electron/README.md)                       | Main-process browser handoff and encrypted session storage                 |
+
+Complete compositions are exercised in the
+[managed password sign-in example](../auth-persistence/test/PasswordSignIn.test.ts),
+[OAuth workflow examples](../auth-persistence/test/OAuthFlows.test.ts), and
+[in-memory example](../auth-persistence/test/Testing.test.ts).
+
+## Protocol modules
+
+The lower-level protocols are also available independently:
 
 ```ts
 import { Jwk, Jwt } from "@effect/auth/jose"
@@ -18,22 +63,39 @@ import { GitHub, Google, Microsoft } from "@effect/auth/oauth/providers"
 
 Individual modules are also available at paths such as
 `@effect/auth/oauth/providers/GitHub` and `@effect/auth/jose/Jwt`.
-The package root exports only the `Jose` and `OAuth` capability namespaces;
-provider names live in the provider entrypoint. Implementation helpers are private.
+The root's `Jose` namespace and `OAuth.OAuth`, `OAuth.Oidc`, `OAuth.Pkce`,
+`OAuth.OAuthProvider`, and `OAuth.OAuthError` remain available. Prefer the explicit
+`@effect/auth/oauth` entrypoint when using only the protocol clients.
+Implementation helpers are private.
 
 ## Native Effect services
 
 Cryptographic operations use Effect's `Mac` service for HS256, `Signature` for
 RS256/PS256, ES256, and EdDSA, and `Aead` for direct A256GCM encryption.
 `SecureRandom` supplies JWE nonces and PKCE entropy; `Digest` supplies PKCE
-challenges and OIDC hash bindings, including SHA-512 for EdDSA. There are no
-runtime dependencies other than the application's Effect peer.
+challenges and OIDC hash bindings, including SHA-512 for EdDSA. Password hashing
+uses `Kdf` and shared `KdfAdmission`; no Yielded crypto compatibility service is
+required. The platform-node-shared dependency supplies the optional Workers
+entrypoint's native scrypt implementation.
 
 On Node.js, compose the individual layers from
 `@effect/platform-node/NodeCrypto`: `layerMac`, `layerSignature`, `layerAead`,
 `layerDigest`, and `layerSecureRandom`. These platform layers provide their own
 SecureRandom. For other runtimes, compose the corresponding `layerWebCrypto`
 layers from `effect/crypto`, providing SecureRandom to Mac, Signature, and Aead.
+For passwords, provide `KdfAdmission.layer()` alongside a KDF implementation.
+`Kdf.layerPortable` supplies portable Argon2id; `NodeCrypto.layerKdf` supplies
+native scrypt and Argon2id where supported by the runtime. Existing stored hashes
+remain byte-compatible and successful verification reports whether rehashing is
+needed.
+
+On Cloudflare Workers, use
+`@effect/auth/WorkerdPasswordlessServices` for crypto and HTTP without Wasm or
+Node compatibility. `@effect/auth/WorkerdServices` additionally supplies Wasm
+Argon2id, native scrypt, password hashing, and bounded admission; bundle it with
+Wrangler and enable `nodejs_compat`. Keep the built layer alive across requests
+to share admission. Supply application keys and storage separately.
+
 Key import/export uses `KeyFormat` and the
 `WebCrypto.WebCrypto` reference, which defaults to `globalThis.crypto`. When
 injecting a different backend with `WebCrypto.layer(crypto)`, provide it both to

@@ -3023,7 +3023,13 @@ function functionSignature(
   for (const signature of representativeSignatures(signatures, checker, location)) {
     const text = normalizeSignature(
       cwd,
-      checker.signatureToString(signature, location, signatureTypeFormatFlags, ts.SignatureKind.Call)
+      // Resolve private helpers and aliases where this signature was declared.
+      checker.signatureToString(
+        signature,
+        signature.declaration ?? location,
+        signatureTypeFormatFlags,
+        ts.SignatureKind.Call
+      )
     )
     if (text === null) return null
     callSignatures.push(text)

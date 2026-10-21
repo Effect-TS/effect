@@ -1,0 +1,124 @@
+{
+  "name": "@effect/auth-persistence-drizzle",
+  "version": "4.0.5",
+  "type": "module",
+  "license": "MIT",
+  "description": "Drizzle persistence, table mappings, and migration adapters for Effect Auth.",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/auth-persistence-drizzle"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./D1": "./src/D1.ts",
+    "./Libsql": "./src/Libsql.ts",
+    "./Mysql2": "./src/Mysql2.ts",
+    "./Pglite": "./src/Pglite.ts",
+    "./Postgres": "./src/Postgres.ts",
+    "./SqliteBun": "./src/SqliteBun.ts",
+    "./SqliteDo": "./src/SqliteDo.ts",
+    "./SqliteNode": "./src/SqliteNode.ts",
+    "./SqliteWasm": "./src/SqliteWasm.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./D1": "./dist/D1.js",
+      "./Libsql": "./dist/Libsql.js",
+      "./Mysql2": "./dist/Mysql2.js",
+      "./Pglite": "./dist/Pglite.js",
+      "./Postgres": "./dist/Postgres.js",
+      "./SqliteBun": "./dist/SqliteBun.js",
+      "./SqliteDo": "./dist/SqliteDo.js",
+      "./SqliteNode": "./dist/SqliteNode.js",
+      "./SqliteWasm": "./dist/SqliteWasm.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "@effect/auth": "workspace:^",
+    "@effect/auth-persistence": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/platform-bun": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/sql-d1": "workspace:^",
+    "@effect/sql-libsql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
+    "@effect/sql-pg": "workspace:^",
+    "@effect/sql-pglite": "workspace:^",
+    "@effect/sql-sqlite-bun": "workspace:^",
+    "@effect/sql-sqlite-do": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
+    "@effect/sql-sqlite-wasm": "workspace:^",
+    "drizzle-orm": "1.0.0-rc.4",
+    "effect": "workspace:^"
+  },
+  "peerDependencies": {
+    "@effect/sql-d1": "workspace:^",
+    "@effect/sql-libsql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
+    "@effect/sql-pg": "workspace:^",
+    "@effect/sql-pglite": "workspace:^",
+    "@effect/sql-sqlite-bun": "workspace:^",
+    "@effect/sql-sqlite-do": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
+    "@effect/sql-sqlite-wasm": "workspace:^",
+    "drizzle-orm": ">=1.0.0-rc.4",
+    "effect": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@effect/sql-d1": {
+      "optional": true
+    },
+    "@effect/sql-libsql": {
+      "optional": true
+    },
+    "@effect/sql-mysql2": {
+      "optional": true
+    },
+    "@effect/sql-pg": {
+      "optional": true
+    },
+    "@effect/sql-pglite": {
+      "optional": true
+    },
+    "@effect/sql-sqlite-bun": {
+      "optional": true
+    },
+    "@effect/sql-sqlite-do": {
+      "optional": true
+    },
+    "@effect/sql-sqlite-node": {
+      "optional": true
+    },
+    "@effect/sql-sqlite-wasm": {
+      "optional": true
+    }
+  }
+}
