@@ -4,7 +4,7 @@ import { CircuitBreaker } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as CircuitBreakerTest from "./CircuitBreakerTest.ts"
 
-CircuitBreakerTest.suite("memory", CircuitBreaker.layerStoreMemory(), TestClock.adjust)
+CircuitBreakerTest.suite("memory", CircuitBreaker.layerStoreMemory, TestClock.adjust)
 
 const storeError = new CircuitBreaker.CircuitBreakerError({
   reason: new CircuitBreaker.CircuitBreakerStoreError({ message: "store unavailable" })

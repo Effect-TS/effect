@@ -40,7 +40,7 @@ PersistedQueueTest.suite(
 
 CircuitBreakerTest.suite(
   "DenoRedis",
-  CircuitBreaker.layerStoreRedis().pipe(Layer.provide(RedisLayer)),
+  (options) => CircuitBreaker.layerStoreRedis(options).pipe(Layer.provide(RedisLayer)),
   // the store reads Redis TIME, so time only moves on the wall clock
   (duration) => TestClock.withLive(Effect.sleep(duration))
 )
