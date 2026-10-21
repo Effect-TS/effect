@@ -122,9 +122,10 @@ export type StatusLiteral = HttpStatus.Literal
  *
  * **Details**
  *
- * This is equivalent to calling `.annotate({ httpApiStatus: code })` on the
- * schema. You can pass either a numeric status code (for example, `201`) or a
- * common literal name (for example, `"Created"`).
+ * This is equivalent to calling `.annotateKey({ httpApiStatus: code })` on the
+ * schema, so a named schema keeps its identity across statuses. You can pass
+ * either a numeric status code (for example, `201`) or a common literal name
+ * (for example, `"Created"`).
  *
  * @stability unstable
  * @category schemas
@@ -144,7 +145,7 @@ export function status(code: StatusLiteral): {
  */
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? HttpStatus.fromLiteral(code) : code
-  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotate({ httpApiStatus: statusCode })
+  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotateKey({ httpApiStatus: statusCode })
 }
 
 /**
@@ -1044,7 +1045,7 @@ export function encodeToWithHeaders<
       } as WithHeadersAnnotation,
       httpApiStatus: status,
       "~httpApiEncoding": encoding
-    })
+    }).annotateKey({ httpApiStatus: status })
   }
 }
 
@@ -1266,7 +1267,12 @@ const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
  */
 export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
-const resolveHttpApiStatus = SchemaAST.resolveAt<number>("httpApiStatus")
+const resolveHttpApiStatusAnnotation = SchemaAST.resolveAt<number>("httpApiStatus")
+
+function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
+  const status = ast.context?.annotations?.httpApiStatus
+  return Predicate.isNumber(status) ? status : resolveHttpApiStatusAnnotation(ast)
+}
 
 const defaultJsonEncoding: Encoding = {
   _tag: "Json",
