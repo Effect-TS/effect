@@ -137,7 +137,26 @@ const runHook = <Args extends Array<any>>(
 ) =>
   withFixturesOf(fn, (...args: Args) => {
     const result = fn(...args)
-    return Effect.isEffect(result) ? runTest(ctx?.(...args))(result as Effect.Effect<unknown, unknown>) : result
+    if (!Effect.isEffect(result)) {
+      return result
+    }
+    const scope = Scope.makeUnsafe()
+    // Closing inside the fiber lets `runTest` await it when the hook times out.
+    const effect = (result as Effect.Effect<unknown, unknown, Scope.Scope>).pipe(
+      Scope.provide(scope),
+      Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
+    )
+    // The scope stays open until Vitest runs the hook's cleanup, after the
+    // test or suite. A cleanup function returned by the Effect runs first.
+    return runTest(ctx?.(...args))(effect).then((cleanup) => async () => {
+      try {
+        if (typeof cleanup === "function") {
+          await cleanup()
+        }
+      } finally {
+        await runPromise(Scope.close(scope, Exit.void))
+      }
+    })
   })
 
 /** @internal */
