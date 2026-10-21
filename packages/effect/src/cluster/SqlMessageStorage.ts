@@ -842,6 +842,8 @@ export const migrations = (options?: {
       const messagesTableSql = sql(messagesTable)
       const repliesTableSql = sql(repliesTable)
 
+      // mssql UNIQUE constraints treat NULLs as equal, so nullable keys use
+      // filtered unique indexes instead
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
@@ -855,8 +857,8 @@ export const migrations = (options?: {
               entity_id VARCHAR(255) NOT NULL,
               kind INT NOT NULL,
               tag VARCHAR(50),
-              payload TEXT,
-              headers TEXT,
+              payload NVARCHAR(MAX),
+              headers NVARCHAR(MAX),
               trace_id VARCHAR(32),
               span_id VARCHAR(16),
               sampled BIT,
@@ -866,7 +868,7 @@ export const migrations = (options?: {
               last_reply_id BIGINT,
               last_read DATETIME,
               deliver_at BIGINT,
-              UNIQUE (message_id)
+              INDEX ${sql(messagesTable + "_message_id_idx")} UNIQUE (message_id) WHERE message_id IS NOT NULL
             )
           `,
         mysql: () =>
@@ -1002,11 +1004,11 @@ export const migrations = (options?: {
               rowid BIGINT IDENTITY(1,1),
               kind INT,
               request_id BIGINT NOT NULL,
-              payload TEXT NOT NULL,
+              payload NVARCHAR(MAX) NOT NULL,
               sequence INT,
               acked BIT NOT NULL DEFAULT 0,
-              CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence)
+              INDEX ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind) WHERE kind IS NOT NULL,
+              INDEX ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence) WHERE sequence IS NOT NULL
             )
           `,
         mysql: () =>
@@ -1114,62 +1116,6 @@ export const migrations = (options?: {
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(rowIdIndex)}
             ON ${messagesTableSql} (rowid)
-          `,
-        orElse: () => Effect.void
-      })
-    }),
-    "0004_mssql_nullable_keys": Effect.gen(function*() {
-      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-      const messagesTableSql = sql(messagesTable)
-      const repliesTableSql = sql(repliesTable)
-      const messageIdIndex = `${messagesTable}_message_id_idx`
-      const messageIdLookupIndex = `${messagesTable}_message_id_lookup_idx`
-      const oneExitIndex = `${repliesTable}_one_exit`
-      const sequenceIndex = `${repliesTable}_sequence`
-
-      // mssql UNIQUE constraints treat NULLs as equal, so replace them with
-      // filtered unique indexes. Parameterized lookups cannot use a filtered
-      // index, so message_id also gets a plain one. TEXT columns reject NULL
-      // parameters, so convert them to NVARCHAR(MAX).
-      yield* sql.onDialectOrElse({
-        mssql: () =>
-          sql`
-            DECLARE @message_id_constraint sysname = (
-              SELECT TOP 1 kc.name
-              FROM sys.key_constraints kc
-              JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id
-              JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
-              WHERE kc.parent_object_id = OBJECT_ID(N'${messagesTableSql}') AND kc.type = 'UQ' AND c.name = 'message_id'
-            );
-            IF @message_id_constraint IS NOT NULL
-            BEGIN
-              DECLARE @drop_message_id nvarchar(max) =
-                N'ALTER TABLE ${messagesTableSql} DROP CONSTRAINT ' + QUOTENAME(@message_id_constraint);
-              EXEC sp_executesql @drop_message_id;
-            END;
-
-            ALTER TABLE ${repliesTableSql} DROP CONSTRAINT IF EXISTS ${sql(oneExitIndex)};
-            ALTER TABLE ${repliesTableSql} DROP CONSTRAINT IF EXISTS ${sql(sequenceIndex)};
-
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdIndex} AND object_id = OBJECT_ID(N'${messagesTableSql}'))
-            CREATE UNIQUE INDEX ${sql(messageIdIndex)}
-            ON ${messagesTableSql} (message_id) WHERE message_id IS NOT NULL;
-
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdLookupIndex} AND object_id = OBJECT_ID(N'${messagesTableSql}'))
-            CREATE INDEX ${sql(messageIdLookupIndex)}
-            ON ${messagesTableSql} (message_id);
-
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${oneExitIndex} AND object_id = OBJECT_ID(N'${repliesTableSql}'))
-            CREATE UNIQUE INDEX ${sql(oneExitIndex)}
-            ON ${repliesTableSql} (request_id, kind) WHERE kind IS NOT NULL;
-
-            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${sequenceIndex} AND object_id = OBJECT_ID(N'${repliesTableSql}'))
-            CREATE UNIQUE INDEX ${sql(sequenceIndex)}
-            ON ${repliesTableSql} (request_id, sequence) WHERE sequence IS NOT NULL;
-
-            ALTER TABLE ${messagesTableSql} ALTER COLUMN payload NVARCHAR(MAX);
-            ALTER TABLE ${messagesTableSql} ALTER COLUMN headers NVARCHAR(MAX);
-            ALTER TABLE ${repliesTableSql} ALTER COLUMN payload NVARCHAR(MAX) NOT NULL;
           `,
         orElse: () => Effect.void
       })
