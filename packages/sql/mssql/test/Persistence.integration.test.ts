@@ -1,11 +1,14 @@
+import { MssqlClient } from "@effect/sql-mssql"
 import { assert, it } from "@effect/vitest"
-import { Effect, Exit, Latch, Layer, Schedule, Schema } from "effect"
+import { Effect, Exit, Fiber, Latch, Layer, Pool, Schedule, Schema, Stream } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import { PersistedQueue, Persistence } from "effect/persistence"
-import { SqlClient } from "effect/sql"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import { SqlClient, SqlError, Statement } from "effect/sql"
 import { TestClock } from "effect/testing"
+import * as Tedious from "tedious"
 import { MssqlContainer } from "./utils.ts"
 
 PersistedCacheTest.suite(
@@ -74,6 +77,85 @@ const summarizeDeadlock = (graph: string) => {
   return `${transactions.join(" vs ")} on ${Array.from(new Set(locks)).join(", ")}`
 }
 
+// A third-party mssql-dialect client built from the public SqlClient
+// constructor, whose sessions run with XACT_ABORT ON: any error inside a
+// transaction dooms it.
+const makeXactAbortClient = Effect.fnUntraced(function*(database: string) {
+  const container = yield* MssqlContainer
+  const fail = (cause: unknown) =>
+    Effect.fail(new SqlError.SqlError({ reason: new SqlError.UnknownError({ cause, operation: "execute" }) }))
+  const connect = Effect.acquireRelease(
+    Effect.callback<Tedious.Connection, SqlError.SqlError>((resume) => {
+      const conn = new Tedious.Connection({
+        server: container.getHost(),
+        authentication: {
+          type: "default",
+          options: { userName: container.getUsername(), password: container.getPassword() }
+        },
+        options: {
+          port: container.getPort(),
+          database,
+          encrypt: !("Deno" in globalThis),
+          trustServerCertificate: true,
+          abortTransactionOnError: true,
+          rowCollectionOnRequestCompletion: true,
+          useColumnNames: false
+        }
+      })
+      conn.connect((cause) => resume(cause ? fail(cause) : Effect.succeed(conn)))
+    }),
+    (conn) => Effect.sync(() => conn.close())
+  )
+  const pool = yield* Pool.make({ acquire: connect, size: 4 })
+
+  const run = (conn: Tedious.Connection, sql: string, params: ReadonlyArray<unknown>, rowsAsArray: boolean) =>
+    Effect.callback<ReadonlyArray<any>, SqlError.SqlError>((resume) => {
+      const request = new Tedious.Request(sql, (
+        cause,
+        _rowCount,
+        rows: Array<Array<{ readonly metadata: { readonly colName: string }; readonly value: unknown }>>
+      ) => {
+        resume(
+          cause ? fail(cause) : Effect.succeed(rows.map((row) =>
+            rowsAsArray
+              ? row.map((column) => column.value)
+              : Object.fromEntries(row.map((column) => [column.metadata.colName, column.value]))
+          ))
+        )
+      })
+      params.forEach((value, i) => {
+        request.addParameter(`${i + 1}`, MssqlClient.defaultParameterTypes[Statement.primitiveKind(value)], value)
+      })
+      // transaction control runs as a plain batch, so it outlives the statement
+      if (params.length === 0) {
+        conn.execSqlBatch(request)
+      } else {
+        conn.execSql(request)
+      }
+    })
+
+  return yield* SqlClient.make({
+    driver: "test-xact-abort",
+    compiler: MssqlClient.makeCompiler(),
+    spanAttributes: [],
+    beginTransaction: "BEGIN TRANSACTION",
+    commit: "COMMIT TRANSACTION",
+    rollback: "ROLLBACK TRANSACTION",
+    savepoint: (name) => `SAVE TRANSACTION ${name}`,
+    rollbackSavepoint: (name) => `ROLLBACK TRANSACTION ${name}`,
+    acquirer: Effect.map(Pool.get(pool), (conn) => ({
+      execute: (sql, params, transformRows) =>
+        Effect.map(run(conn, sql, params, false), (rows) => transformRows ? transformRows(rows) : rows),
+      executeRaw: (sql, params) => run(conn, sql, params, false),
+      executeStream: () => Stream.die("executeStream not implemented"),
+      executeValues: (sql, params) => run(conn, sql, params, true),
+      executeValuesUnprepared: (sql, params) => run(conn, sql, params, true),
+      executeUnprepared: (sql, params, transformRows) =>
+        Effect.map(run(conn, sql, params, false), (rows) => transformRows ? transformRows(rows) : rows)
+    }))
+  }).pipe(Effect.provide(Reactivity.layer))
+})
+
 it.layer(MssqlContainer.layerClient, { timeout: "90 seconds" })((it) => {
   PersistedQueueSqlTest.suiteWith(it)
 
@@ -135,4 +217,56 @@ it.layer(MssqlContainer.layerClient, { timeout: "90 seconds" })((it) => {
         assert.strictEqual(count, n % 3 === 0 ? 2 : 1, `deliveries for element ${n}`)
       }
     }).pipe(TestClock.withLive), { timeout: 30000 })
+
+  it.effect(
+    "PersistedQueue skips an offer racing an uncommitted duplicate under XACT_ABORT",
+    () =>
+      Effect.gen(function*() {
+        const master = yield* SqlClient.SqlClient
+        const database = "effect_queue_xact_abort"
+        // With read committed snapshot, the Azure SQL Database default, a plain
+        // read does not wait for another transaction's uncommitted offer.
+        yield* master`IF DB_ID(${database}) IS NULL CREATE DATABASE ${master(database)}`
+        yield* master`ALTER DATABASE ${master(database)} SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE`
+        const sql = yield* makeXactAbortClient(database)
+
+        const tableName = "effect_queue_xact_abort"
+        const store = yield* PersistedQueue.makeStoreSql({ tableName }).pipe(
+          Effect.provideService(SqlClient.SqlClient, sql)
+        )
+        const factory = yield* PersistedQueue.makeFactory.pipe(
+          Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+        )
+        const queue = yield* factory.make({ name: tableName, schema: Schema.String })
+
+        const offered = Latch.makeUnsafe()
+        const first = yield* Effect.gen(function*() {
+          yield* queue.offer("first", { id: "job" })
+          yield* offered.open
+          // commit only once the duplicate offer is waiting on this row
+          yield* Effect.sleep("1 second")
+        }).pipe(sql.withTransaction, Effect.forkScoped)
+        yield* offered.await
+
+        const second = yield* Effect.gen(function*() {
+          const [{ xactAbort }] = yield* sql<{ readonly xactAbort: number }>`
+          SELECT @@OPTIONS & 16384 AS xactAbort
+        `
+          assert.strictEqual(xactAbort, 16384, "XACT_ABORT is on for the duplicate offer")
+          yield* queue.offer("duplicate", { id: "job" })
+          yield* queue.offer("other", { id: "other" })
+        }).pipe(sql.withTransaction, Effect.exit)
+        yield* Fiber.join(first)
+
+        assert.isTrue(Exit.isSuccess(second), String(second))
+        const rows = yield* sql<{ readonly id: string; readonly element: string }>`
+        SELECT id, element FROM ${sql(tableName)} ORDER BY id
+      `
+        assert.deepStrictEqual(rows, [
+          { id: "job", element: JSON.stringify("first") },
+          { id: "other", element: JSON.stringify("other") }
+        ])
+      }).pipe(TestClock.withLive),
+    { timeout: 30000 }
+  )
 })
