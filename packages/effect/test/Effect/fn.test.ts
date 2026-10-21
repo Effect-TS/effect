@@ -76,6 +76,19 @@ describe("Effect.fn", () => {
     strictEqual(fn2.length, 1)
     strictEqual(Effect.runSync(fn2(2)), 2)
   })
+
+  it.effect("supports transpiled generator bodies", () =>
+    Effect.gen(function*() {
+      // transpilers can lower `function*` into a function returning an iterator
+      let count = 0
+      const body = (n = ++count) =>
+        (function*() {
+          return yield* Effect.succeed(n)
+        })()
+      const effect = Effect.fn("test")(body as any)() as Effect.Effect<number>
+      strictEqual(yield* effect, 1)
+      strictEqual(yield* effect, 2)
+    }))
 })
 
 describe("Effect.fnUntraced", () => {
