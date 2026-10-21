@@ -100,11 +100,26 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
 
   readonly upgrade: Effect.Effect<Socket.Socket, HttpServerError>
 
+  /**
+   * Address of the directly connected peer. Trusted proxy middleware replaces
+   * `remoteAddress` with the forwarded client address and keeps the previous
+   * value here; otherwise it equals `remoteAddress`.
+   */
+  readonly peerAddress: Option.Option<string>
+
+  /**
+   * Scheme validated by trusted proxy middleware. `toURL` prefers it over the
+   * scheme of the transport connection.
+   */
+  readonly protocol: "http" | "https" | undefined
+
   readonly modify: (
     options: {
       readonly url?: string
       readonly headers?: Headers.Headers
       readonly remoteAddress?: Option.Option<string>
+      readonly peerAddress?: Option.Option<string>
+      readonly protocol?: "http" | "https"
     }
   ) => HttpServerRequest
 }
@@ -497,12 +512,16 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   readonly url: string
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private peerAddressOverride?: Option.Option<string> | undefined
+  readonly protocol: "http" | "https" | undefined
 
   constructor(
     source: Request,
     url: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    peerAddressOverride?: Option.Option<string>,
+    protocol?: "http" | "https"
   ) {
     super()
     this[TypeId] = TypeId
@@ -511,6 +530,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     this.url = url
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.peerAddressOverride = peerAddressOverride
+    this.protocol = protocol
   }
   toJSON(): unknown {
     return HttpIncomingMessage.inspect(this, {
@@ -524,13 +545,17 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       readonly url?: string | undefined
       readonly headers?: Headers.Headers | undefined
       readonly remoteAddress?: Option.Option<string> | undefined
+      readonly peerAddress?: Option.Option<string> | undefined
+      readonly protocol?: "http" | "https" | undefined
     }
   ) {
     return new ServerRequestImpl(
       this.source,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      options.peerAddress ?? this.peerAddressOverride,
+      options.protocol ?? this.protocol
     )
   }
   get method(): HttpMethod {
@@ -541,6 +566,9 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
   }
   get remoteAddress(): Option.Option<string> {
     return this.remoteAddressOverride ?? Option.none()
+  }
+  get peerAddress(): Option.Option<string> {
+    return this.peerAddressOverride ?? this.remoteAddress
   }
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers as any)
@@ -692,6 +720,8 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
   public originalUrl: string
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private peerAddressOverride?: Option.Option<string> | undefined
+  readonly protocol: "http" | "https" | undefined
   private urlOverride?: string | undefined
 
   constructor(
@@ -699,7 +729,9 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     originalUrl: string,
     urlOverride?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    peerAddressOverride?: Option.Option<string>,
+    protocol?: "http" | "https"
   ) {
     super()
     this[TypeId] = TypeId
@@ -709,6 +741,8 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     this.urlOverride = urlOverride
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.peerAddressOverride = peerAddressOverride
+    this.protocol = protocol
   }
 
   toJSON(): unknown {
@@ -724,6 +758,8 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       readonly url?: string | undefined
       readonly headers?: Headers.Headers | undefined
       readonly remoteAddress?: Option.Option<string> | undefined
+      readonly peerAddress?: Option.Option<string> | undefined
+      readonly protocol?: "http" | "https" | undefined
     }
   ) {
     return new ClientRequestImpl(
@@ -731,7 +767,9 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
       this.originalUrl,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      options.peerAddress ?? this.peerAddressOverride,
+      options.protocol ?? this.protocol
     )
   }
 
@@ -745,6 +783,10 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
 
   get remoteAddress(): Option.Option<string> {
     return this.remoteAddressOverride ?? Option.none()
+  }
+
+  get peerAddress(): Option.Option<string> {
+    return this.peerAddressOverride ?? this.remoteAddress
   }
 
   get headers(): Headers.Headers {
@@ -1043,10 +1085,13 @@ const textDecoder = new TextDecoder()
  *
  * **Details**
  *
- * Uses `host` (defaulting to `localhost`) and an exact `http` or `https` from
- * `x-forwarded-proto`. Otherwise, infers HTTPS from a case-insensitive `https:`
- * prefix in `originalUrl`, defaulting to HTTP. An absolute `url` keeps its own
- * protocol and host. Invalid URLs return `Option.none`.
+ * Uses `host` (defaulting to `localhost`) and the request `protocol` set by
+ * trusted proxy middleware. Otherwise, infers HTTPS from a case-insensitive
+ * `https:` prefix in `originalUrl`, defaulting to HTTP. Forwarding headers such
+ * as `x-forwarded-proto` are never read directly; use
+ * `HttpMiddleware.xForwardedHeaders` or `HttpMiddleware.forwardedHeader` behind
+ * a TLS-terminating proxy. An absolute `url` keeps its own protocol and host.
+ * Invalid URLs return `Option.none`.
  *
  * @stability unstable
  * @category converting
@@ -1054,12 +1099,7 @@ const textDecoder = new TextDecoder()
  */
 export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
   const host = self.headers.host ?? "localhost"
-  const forwardedProto = self.headers["x-forwarded-proto"]
-  const protocol = forwardedProto === "http" || forwardedProto === "https"
-    ? forwardedProto
-    : /^https:/i.test(self.originalUrl)
-    ? "https"
-    : "http"
+  const protocol = self.protocol ?? (/^https:/i.test(self.originalUrl) ? "https" : "http")
   try {
     // Prefix paths with `.` so leading `//` cannot replace the host.
     return Option.some(new URL(self.url.startsWith("/") ? `.${self.url}` : self.url, `${protocol}://${host}`))

@@ -546,27 +546,24 @@ describe("HttpMiddleware", () => {
 
   describe("forwarded headers", () => {
     const trustedProxies = [IpNetwork.fromStringUnsafe("10.0.0.0/8")]
-    const observe = (
-      middleware: HttpMiddleware.HttpMiddleware,
-      peer: string,
-      headers: Record<string, string>
-    ) =>
-      Effect.gen(function*() {
-        const app = middleware(HttpServerRequest.HttpServerRequest.use((request) =>
-          Effect.succeed(HttpServerResponse.jsonUnsafe({
-            remoteAddress: Option.getOrUndefined(request.remoteAddress),
-            host: request.headers.host,
-            url: Option.getOrUndefined(HttpServerRequest.toURL(request))?.href
-          }))
-        ))
+    const observe = Effect.fnUntraced(
+      function*(middleware: HttpMiddleware.HttpMiddleware, peer: string, headers: Record<string, string>) {
+        const app = middleware(
+          HttpServerRequest.HttpServerRequest.use((request) =>
+            Effect.succeed(HttpServerResponse.jsonUnsafe({
+              remoteAddress: Option.getOrUndefined(request.remoteAddress),
+              host: request.headers.host,
+              url: Option.getOrUndefined(HttpServerRequest.toURL(request))?.href
+            }))
+          )
+        )
         const request = HttpServerRequest.fromWeb(
           new Request("http://app.test/a", { headers: { host: "app.test", ...headers } })
         ).modify({ remoteAddress: Option.some(peer) })
         const response = yield* app.pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
-        return yield* Effect.promise(() =>
-          HttpServerResponse.toWeb(response).json()
-        )
-      })
+        return yield* Effect.promise(() => HttpServerResponse.toWeb(response).json())
+      }
+    )
 
     it.effect.each([
       {

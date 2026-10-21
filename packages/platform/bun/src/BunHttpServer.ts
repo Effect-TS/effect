@@ -434,6 +434,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   private compressionThreshold: number
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private peerAddressOverride?: Option.Option<string> | undefined
+  readonly protocol: "http" | "https" | undefined
 
   constructor(
     source: Request,
@@ -442,7 +444,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     bunServer: BunServer<WebSocketContext>,
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    peerAddressOverride?: Option.Option<string>,
+    protocol?: "http" | "https"
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -454,6 +458,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.compressionThreshold = compressionThreshold
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.peerAddressOverride = peerAddressOverride
+    this.protocol = protocol
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -467,6 +473,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       readonly url?: string | undefined
       readonly headers?: Headers.Headers | undefined
       readonly remoteAddress?: Option.Option<string> | undefined
+      readonly peerAddress?: Option.Option<string> | undefined
+      readonly protocol?: "http" | "https" | undefined
     }
   ) {
     return new BunServerRequest(
@@ -476,7 +484,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.bunServer,
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      options.peerAddress ?? this.peerAddressOverride,
+      options.protocol ?? this.protocol
     )
   }
   get method(): HttpMethod {
@@ -487,6 +497,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   }
   get remoteAddress(): Option.Option<string> {
     return this.remoteAddressOverride ?? Option.fromNullishOr(this.bunServer.requestIP(this.source)?.address)
+  }
+  get peerAddress(): Option.Option<string> {
+    return this.peerAddressOverride ?? this.remoteAddress
   }
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)

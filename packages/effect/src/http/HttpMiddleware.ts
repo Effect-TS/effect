@@ -22,6 +22,8 @@ import { constant, constFalse } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
+import type * as IpNetwork from "../net/IpNetwork.ts"
+import type * as NetAddress from "../net/NetAddress.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
@@ -38,6 +40,7 @@ import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
 import * as decompressionInternal from "./internal/decompression.ts"
+import * as forwarded from "./internal/forwarded.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
@@ -309,25 +312,114 @@ export const tracer: <E, R>(
 )
 
 /**
- * Middleware that trusts `X-Forwarded-Host` and `X-Forwarded-For`, updating the request host header and remote address.
+ * Options for `xForwardedHeaders` and `forwardedHeader`.
+ *
+ * **Details**
+ *
+ * `trustedProxies` is a list of networks or a predicate that decides whether an
+ * address belongs to a proxy you operate. IPv4-mapped IPv6 addresses are
+ * converted to IPv4 before matching.
  *
  * @stability unstable
  * @category proxying
  * @since 4.0.0
  */
-export const xForwardedHeaders = make((httpApp) =>
-  Effect.updateService(httpApp, HttpServerRequest, (request) =>
-    request.headers["x-forwarded-host"]
-      ? request.modify({
-        headers: Headers.set(
-          request.headers,
-          "host",
-          request.headers["x-forwarded-host"]
-        ),
-        remoteAddress: Option.fromNullishOr(request.headers["x-forwarded-for"]?.split(",")[0].trim())
-      })
-      : request)
-)
+export interface TrustedProxyOptions {
+  readonly trustedProxies: ReadonlyArray<IpNetwork.IpNetwork> | Predicate<NetAddress.IpAddress>
+}
+
+/**
+ * Creates middleware that applies `X-Forwarded-For`, `X-Forwarded-Host`, and
+ * `X-Forwarded-Proto` sent by trusted proxies.
+ *
+ * **When to use**
+ *
+ * Use when the app runs behind proxies that append to `X-Forwarded-For`, such
+ * as most load balancers and TLS terminators. Use `forwardedHeader` for proxies
+ * that send the RFC 7239 `Forwarded` header instead; the two header families
+ * are never combined.
+ *
+ * **Details**
+ *
+ * Headers are ignored unless the request's current `remoteAddress` is trusted.
+ * `X-Forwarded-For` is then walked from the right, skipping trusted proxies.
+ * The first untrusted address becomes `remoteAddress`. When every address is
+ * trusted, the leftmost one is used. An entry that is not an IP address, such
+ * as `unknown`, stops the walk and leaves the request unchanged.
+ *
+ * `X-Forwarded-Host` and `X-Forwarded-Proto` are only used when they list one
+ * value per `X-Forwarded-For` entry; the value at the selected position
+ * replaces the `host` header and sets `protocol` (`http` or `https`), which
+ * `HttpServerRequest.toURL` uses. Otherwise the transport values are kept.
+ *
+ * The previous remote address stays available as `request.peerAddress`.
+ *
+ * **Example** (Reading the client address behind a load balancer)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
+ * import { HttpMiddleware, HttpServerRequest, HttpServerResponse } from "effect/http"
+ * import { IpNetwork } from "effect/net"
+ *
+ * const app = HttpServerRequest.HttpServerRequest.use((request) =>
+ *   Effect.succeed(HttpServerResponse.text(Option.getOrElse(request.remoteAddress, () => "unknown")))
+ * ).pipe(
+ *   HttpMiddleware.xForwardedHeaders({
+ *     trustedProxies: [IpNetwork.fromStringUnsafe("10.0.0.0/8")]
+ *   })
+ * )
+ *
+ * // The load balancer at 10.0.0.1 appended the client address to a spoofed entry
+ * const request = HttpServerRequest.fromWeb(
+ *   new Request("http://app.test/", { headers: { "x-forwarded-for": "6.6.6.6, 198.51.100.7" } })
+ * ).modify({ remoteAddress: Option.some("10.0.0.1") })
+ *
+ * const response = await Effect.runPromise(
+ *   Effect.provideService(app, HttpServerRequest.HttpServerRequest, request)
+ * )
+ * await HttpServerResponse.toWeb(response).text() // => "198.51.100.7"
+ * ```
+ *
+ * @stability unstable
+ * @category proxying
+ * @since 4.0.0
+ */
+export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware =>
+  forwardingMiddleware(options, forwarded.xForwardedHops)
+
+/**
+ * Creates middleware that applies the RFC 7239 `Forwarded` header sent by
+ * trusted proxies.
+ *
+ * **Details**
+ *
+ * Headers are ignored unless the request's current `remoteAddress` is trusted.
+ * The `for` parameters are then walked from the right, skipping trusted
+ * proxies. The first untrusted address becomes `remoteAddress`, and the `host`
+ * and `proto` parameters of the same element replace the `host` header and set
+ * `protocol`. When every address is trusted, the leftmost element is used. An
+ * element that is malformed, lacks `for`, or uses an `unknown` or obfuscated
+ * identifier stops the walk and leaves the request unchanged.
+ * `X-Forwarded-*` headers are ignored.
+ *
+ * The previous remote address stays available as `request.peerAddress`.
+ *
+ * @stability unstable
+ * @category proxying
+ * @since 4.0.0
+ */
+export const forwardedHeader = (options: TrustedProxyOptions): HttpMiddleware =>
+  forwardingMiddleware(options, forwarded.forwardedHops)
+
+const forwardingMiddleware = (
+  options: TrustedProxyOptions,
+  getHops: (headers: Headers.Headers) => ReadonlyArray<forwarded.Hop>
+): HttpMiddleware => {
+  const isTrusted = forwarded.makeIsTrusted(options.trustedProxies)
+  return make((httpApp) =>
+    Effect.updateService(httpApp, HttpServerRequest, (request) => forwarded.apply(request, isTrusted, getHops))
+  )
+}
 
 /**
  * Middleware that parses the current request URL's search parameters and provides them as `ParsedSearchParams`.

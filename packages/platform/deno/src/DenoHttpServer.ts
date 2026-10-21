@@ -332,6 +332,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   public resolve: (response: Response) => void
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
+  private peerAddressOverride?: Option.Option<string> | undefined
+  readonly protocol: "http" | "https" | undefined
 
   constructor(
     source: Request,
@@ -340,7 +342,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     url: string,
     websocketOptions: Deno.UpgradeWebSocketOptions | undefined,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    peerAddressOverride?: Option.Option<string>,
+    protocol?: "http" | "https"
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -352,6 +356,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     this.websocketOptions = websocketOptions
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
+    this.peerAddressOverride = peerAddressOverride
+    this.protocol = protocol
   }
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
@@ -364,6 +370,8 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     readonly url?: string | undefined
     readonly headers?: Headers.Headers | undefined
     readonly remoteAddress?: Option.Option<string> | undefined
+    readonly peerAddress?: Option.Option<string> | undefined
+    readonly protocol?: "http" | "https" | undefined
   }) {
     return new DenoServerRequest(
       this.source,
@@ -372,7 +380,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       options.url ?? this.url,
       this.websocketOptions,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      options.peerAddress ?? this.peerAddressOverride,
+      options.protocol ?? this.protocol
     )
   }
   get method(): HttpMethod {
@@ -385,6 +395,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     return this.remoteAddressOverride ?? (this.remoteAddr.transport === "tcp"
       ? Option.some(this.remoteAddr.hostname)
       : Option.none())
+  }
+  get peerAddress(): Option.Option<string> {
+    return this.peerAddressOverride ?? this.remoteAddress
   }
   get headers(): Headers.Headers {
     if (this.headersOverride === undefined) {
