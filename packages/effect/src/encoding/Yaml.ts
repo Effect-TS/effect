@@ -55,6 +55,10 @@ const noProperties: Properties = {}
 
 const coreTag = "tag:yaml.org,2002:"
 
+const coreTags = new Set(["str", "null", "bool", "int", "float", "map", "seq"].map((kind) => coreTag + kind))
+
+const defaultHandles: ReadonlyMap<string, string> = new Map([["!", "!"], ["!!", coreTag]])
+
 const hasOwn = Object.prototype.hasOwnProperty
 
 const setProperty = (record: YamlRecord, key: string, value: unknown): void => {
@@ -128,7 +132,6 @@ const reservedPlainStart = /^[,[\]{}#|>%@`]/
 
 const isDocumentMarker = (line: Line): boolean => line.indent === 0 && /^(?:---|\.\.\.)(?:\s|$)/.test(line.raw)
 
-// Whether a flow indicator character is followed by a separator rather than scalar content.
 const isSeparated = (next: string | undefined): boolean => next === undefined || /[\s,[\]{}]/.test(next)
 
 const foldLineBreak = (blankLines: number): string => blankLines === 0 ? " " : "\n".repeat(blankLines)
@@ -244,10 +247,8 @@ const resolveScalar = (text: string, tag: string | undefined, plain: boolean): u
     case `${coreTag}bool`:
       if (typeof value === "boolean") return value
       break
-    // Numeric tags follow the core schema grammar, which also allows spellings
-    // that untagged scalars keep as strings, such as `012` and `1.`. Underscore
-    // digit separators are not core schema syntax; they are accepted for
-    // compatibility with untagged scalars.
+    // The core schema grammar admits `012` and `1.`, which untagged scalars keep as
+    // strings. Underscores are not in the grammar but match untagged scalars.
     case `${coreTag}int`: {
       const normalized = text.replace(/_/g, "")
       if (/^[+-]?\d+$/.test(normalized)) return Number(normalized)
@@ -267,15 +268,6 @@ const resolveScalar = (text: string, tag: string | undefined, plain: boolean): u
       return text
   }
   throw new SyntaxError(`Cannot resolve '${text}' as YAML tag ${tag}`)
-}
-
-// Core tags on collections must match their kind.
-const checkCollectionTag = (tag: string | undefined, kind: "map" | "seq"): void => {
-  if (
-    tag !== undefined && /^tag:yaml\.org,2002:(?:str|null|bool|int|float|map|seq)$/.test(tag) && tag !== coreTag + kind
-  ) {
-    throw new SyntaxError(`A YAML ${kind === "map" ? "mapping" : "sequence"} cannot have the tag ${tag}`)
-  }
 }
 
 const resolvePlain = (value: string): unknown => {
@@ -330,7 +322,7 @@ const readProperty = (
   const handle = `!${tag[2] ?? ""}`
   // A lone `!` is the non-specific tag, which keeps scalars strings.
   if (handle === "!" && tag[3].length === 0) return [{ ...properties, tag: "!" }, tag[0].length]
-  const prefix = handles.get(handle)
+  const prefix = handles.get(handle) ?? defaultHandles.get(handle)
   if (prefix === undefined) throw new SyntaxError(`Undefined YAML tag handle '${handle}'`)
   return [{ ...properties, tag: prefix + tag[3] }, tag[0].length]
 }
@@ -342,21 +334,21 @@ const pending = Symbol()
 class Anchors {
   private readonly nodes = new Map<string, unknown>()
 
-  reserve(properties: Properties): void {
-    if (properties.anchor !== undefined) this.nodes.set(properties.anchor, pending)
-  }
-
   define<A>(properties: Properties, value: A): A {
     if (properties.anchor !== undefined) this.nodes.set(properties.anchor, value)
     return value
   }
 
-  // Defines a reserved collection's anchor, unless one of its entries redefined it.
-  complete<A>(properties: Properties, value: A): A {
-    if (properties.anchor !== undefined && this.nodes.get(properties.anchor) === pending) {
-      this.nodes.set(properties.anchor, value)
+  // Fills a collection, then defines its anchor unless an entry redefined it.
+  collection<A>(properties: Properties, kind: "map" | "seq", output: A, fill: () => void): A {
+    const { anchor, tag } = properties
+    if (tag !== undefined && coreTags.has(tag) && tag !== coreTag + kind) {
+      throw new SyntaxError(`A YAML ${kind === "map" ? "mapping" : "sequence"} cannot have the tag ${tag}`)
     }
-    return value
+    if (anchor !== undefined) this.nodes.set(anchor, pending)
+    fill()
+    if (anchor !== undefined && this.nodes.get(anchor) === pending) this.nodes.set(anchor, output)
+    return output
   }
 
   alias(name: string, properties: Properties): unknown {
@@ -430,29 +422,26 @@ class FlowParser {
   }
 
   private parseSequence(properties: Properties): Array<unknown> {
-    this.expect("[")
-    checkCollectionTag(properties.tag, "seq")
-    this.anchors.reserve(properties)
     const output: Array<unknown> = []
-    this.parseEntries("]", () => output.push(this.parseSequenceEntry()))
-    return this.anchors.complete(properties, output)
+    return this.anchors.collection(properties, "seq", output, () => {
+      this.parseEntries("]", () => output.push(this.parseSequenceEntry()))
+    })
   }
 
   private parseMapping(properties: Properties): YamlRecord {
-    this.expect("{")
-    checkCollectionTag(properties.tag, "map")
-    this.anchors.reserve(properties)
     const output: YamlRecord = {}
-    this.parseEntries("}", () => {
-      const key = this.parseKey()
-      if (hasOwn.call(output, key)) this.fail(`Duplicate key '${key}'`)
-      setProperty(output, key, this.parsePairValue())
+    return this.anchors.collection(properties, "map", output, () => {
+      this.parseEntries("}", () => {
+        const key = this.parseKey()
+        if (hasOwn.call(output, key)) this.fail(`Duplicate key '${key}'`)
+        setProperty(output, key, this.parsePairValue())
+      })
     })
-    return this.anchors.complete(properties, output)
   }
 
-  // Parses comma-separated entries through the closing bracket, which may follow a trailing comma.
+  // Parses the bracketed, comma-separated entries; a trailing comma may precede the closing bracket.
   private parseEntries(close: "]" | "}", parseEntry: () => void): void {
+    this.index++
     this.skipWhitespace()
     while (this.peek() !== close) {
       parseEntry()
@@ -576,10 +565,9 @@ class YamlParser {
   private index = 0
   private documentStarted = false
   private readonly anchors = new Anchors()
-  private readonly handles = new Map([["!", "!"], ["!!", coreTag]])
+  private readonly handles = new Map<string, string>()
   private hasDirectives = false
   private hasYamlDirective = false
-  private readonly declaredHandles = new Set<string>()
 
   constructor(lines: Array<Line>) {
     this.lines = lines
@@ -625,34 +613,41 @@ class YamlParser {
     if (line.indent !== indent) this.fail(line, `Expected indentation of ${indent} spaces`)
     // A tab after the indentation may separate a scalar or flow node, but cannot indent a block collection.
     const text = line.text.trimStart()
+    const sequence = isSequenceEntry(text)
     const mapping = startsWithIndicator(text, "?") || mappingSeparator(text) !== -1
-    if (isSequenceEntry(text) || mapping) this.rejectTabIndent(line)
-    if (isSequenceEntry(text)) return this.parseSequence(indent, properties)
+    if (sequence || mapping) this.rejectTabIndent(line)
+    if (sequence) return this.parseSequence(indent, properties)
     if (mapping) return this.parseMapping(indent, properties)
     this.index++
     return this.parseNodeValue(text, parentIndent, allowIndentless, properties)
   }
 
   private parseMapping(indent: number, properties: Properties): YamlRecord {
-    checkCollectionTag(properties.tag, "map")
-    this.anchors.reserve(properties)
     const output: YamlRecord = {}
-    while (true) {
-      this.skipIgnored()
-      const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent) break
-      if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
-      this.rejectTabIndent(line)
-      if (startsWithIndicator(line.text, "?")) {
-        this.parseExplicitEntry(output, line, indent)
-        continue
+    return this.anchors.collection(properties, "map", output, () => {
+      while (true) {
+        const line = this.nextEntryLine(indent)
+        if (line === undefined) return
+        if (startsWithIndicator(line.text, "?")) {
+          this.parseExplicitEntry(output, line, indent)
+          continue
+        }
+        const separator = mappingSeparator(line.text)
+        if (separator === -1) return
+        this.index++
+        this.parseMappingEntry(output, line.text, separator, indent, line)
       }
-      const separator = mappingSeparator(line.text)
-      if (separator === -1) break
-      this.index++
-      this.parseMappingEntry(output, line.text, separator, indent, line)
-    }
-    return this.anchors.complete(properties, output)
+    })
+  }
+
+  // The next line of a block collection at `indent`, or undefined once the collection ends.
+  private nextEntryLine(indent: number): Line | undefined {
+    this.skipIgnored()
+    const line = this.lines[this.index]
+    if (line === undefined || line.indent < indent) return undefined
+    if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
+    this.rejectTabIndent(line)
+    return line
   }
 
   private parseMappingEntry(
@@ -689,19 +684,14 @@ class YamlParser {
   }
 
   private parseSequence(indent: number, properties: Properties): Array<unknown> {
-    checkCollectionTag(properties.tag, "seq")
-    this.anchors.reserve(properties)
     const output: Array<unknown> = []
-    while (true) {
-      this.skipIgnored()
-      const line = this.lines[this.index]
-      if (line === undefined || line.indent < indent) break
-      if (line.indent > indent) this.fail(line, `Unexpected indentation of ${line.indent} spaces`)
-      this.rejectTabIndent(line)
-      if (!isSequenceEntry(line.text)) break
-      output.push(this.parseCompactNode(line, indent))
-    }
-    return this.anchors.complete(properties, output)
+    return this.anchors.collection(properties, "seq", output, () => {
+      while (true) {
+        const line = this.nextEntryLine(indent)
+        if (line === undefined || !isSequenceEntry(line.text)) return
+        output.push(this.parseCompactNode(line, indent))
+      }
+    })
   }
 
   // Parses the node after a `-`, `?` or `:` indicator, which may start on the indicator's line.
@@ -787,11 +777,10 @@ class YamlParser {
     return new FlowParser(text, this.anchors, this.handles, () => {
       const next = this.lines[this.index]
       if (next === undefined || isDocumentMarker(next)) return undefined
-      // Continuation lines are more indented than the parent node. Unlike YAML 1.2, a closing
+      // Continuation lines are indented past the parent node. Unlike YAML 1.2, a closing
       // bracket may sit at the parent's indentation, as most parsers accept.
-      const content = next.text.trim().length > 0
-      if (content && next.indent < parentIndent) return undefined
-      if (content && next.indent === parentIndent && !/^[\]}]/.test(next.text)) return undefined
+      const minimumIndent = /^[\]}]/.test(next.text) ? parentIndent : parentIndent + 1
+      if (next.text.trim().length > 0 && next.indent < minimumIndent) return undefined
       this.index++
       // The flow parser skips comments itself, since quoted scalars may span lines.
       return next.raw.slice(next.indent)
@@ -971,8 +960,7 @@ class YamlParser {
     } else if (/^%TAG(?:\s|$)/.test(text)) {
       const directive = /^%TAG\s+(!(?:[\w-]*!)?)\s+(\S+)$/.exec(text)
       if (directive === null) this.fail(line, "Invalid %TAG directive")
-      if (this.declaredHandles.has(directive[1])) this.fail(line, `Duplicate %TAG directive for '${directive[1]}'`)
-      this.declaredHandles.add(directive[1])
+      if (this.handles.has(directive[1])) this.fail(line, `Duplicate %TAG directive for '${directive[1]}'`)
       this.handles.set(directive[1], directive[2])
     }
   }
