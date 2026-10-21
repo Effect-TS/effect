@@ -26,8 +26,8 @@ import { appendPreResponseHandlerUnsafe } from "../http/HttpEffect.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
-import * as JsonPointer from "../JsonPointer.ts"
-import * as JsonSchema from "../JsonSchema.ts"
+import * as InternalToCodec from "../internal/schema/toCodec.ts"
+import type * as JsonSchema from "../JsonSchema.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
@@ -2184,46 +2184,20 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// MCP requires an object root, so a top-level `$ref` is inlined.
+// MCP requires an object root. A non-recursive root is compiled inline so it is
+// not also published as a definition. A recursive root keeps its definition and
+// the top-level `$ref` is inlined.
 const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
-  const document = pruneDefinitions(InternalStructuredOutput.resolveTopLevelReference(
-    Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
-  ))
+  const root = SchemaAST.getContextOwner(SchemaAST.getLastEncoding(InternalToCodec.toCodecJsonAST(schema.ast)))
+  const document = InternalStructuredOutput.resolveTopLevelReference(
+    Schema.toJsonSchemaDocument(schema, {
+      onExcessProperty: strict ? "error" : "ignore",
+      referencePolicy: ({ ast, identifier, occurrences }) => ast === root && occurrences === 1 ? undefined : identifier
+    })
+  )
   return Object.keys(document.definitions).length === 0
     ? document.schema
     : { ...document.schema, $defs: document.definitions }
-}
-
-// Keeps only the definitions reached from the root schema through `#/$defs/<key>`
-// pointers. A reference that cannot be resolved that way, such as an `$anchor`,
-// keeps every definition.
-const pruneDefinitions = (document: JsonSchema.Document<"draft-2020-12">): JsonSchema.Document<"draft-2020-12"> => {
-  const reached = new Set<string>()
-  let resolvable = true
-  const visit = (schema: JsonSchema.JsonSchema): void => {
-    JsonSchema.rewriteRefs(schema, ($ref) => {
-      const path = $ref.startsWith("#") ? JsonPointer.parseUriFragment($ref) : undefined
-      if (path === undefined) {
-        resolvable = false
-      } else if (path[0] === "$defs") {
-        const key = path[1]
-        if (key === undefined) {
-          resolvable = false
-        } else if (!reached.has(key) && Object.hasOwn(document.definitions, key)) {
-          reached.add(key)
-          visit(document.definitions[key])
-        }
-      }
-      return $ref
-    })
-  }
-  visit(document.schema)
-  return resolvable
-    ? {
-      ...document,
-      definitions: Object.fromEntries(Object.entries(document.definitions).filter(([key]) => reached.has(key)))
-    }
-    : document
 }
 
 /**
