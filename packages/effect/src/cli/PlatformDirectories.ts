@@ -2,8 +2,8 @@
  * Well-known directories for CLI application data.
  *
  * `PlatformDirectories` resolves where an application should store its
- * configuration, following the host platform conventions. The resolved
- * directory composes with `KeyValueStore.layerFileSystem`.
+ * configuration, following the conventions of the host platform. Pass the
+ * resolved directory to `KeyValueStore.layerFileSystem` to persist settings.
  *
  * @stability unstable
  * @since 4.0.0
@@ -52,15 +52,39 @@ export class MissingHome extends Data.TaggedError("PlatformDirectoriesMissingHom
   }
 }
 
-const isAbsolute = (path: string, platform: string): boolean =>
+const optionalString = (name: string) => Config.String(name).pipe(Config.withDefault(undefined))
+
+const configBase = (platform: string, env: {
+  readonly xdgConfigHome: string | undefined
+  readonly appData: string | undefined
+  readonly home: string | undefined
+}): string | undefined => {
+  if (env.xdgConfigHome !== undefined && isAbsolute(platform, env.xdgConfigHome)) {
+    return env.xdgConfigHome
+  }
+  if (platform === "win32" && env.appData !== undefined && isAbsolute(platform, env.appData)) {
+    return env.appData
+  }
+  if (env.home === undefined) {
+    return undefined
+  }
+  switch (platform) {
+    case "win32":
+      return join(platform, env.home, "AppData", "Roaming")
+    case "darwin":
+      return join(platform, env.home, "Library", "Application Support")
+    default:
+      return join(platform, env.home, ".config")
+  }
+}
+
+const isAbsolute = (platform: string, path: string): boolean =>
   platform === "win32" ? /^([a-zA-Z]:)?[\\/]/.test(path) : path.startsWith("/")
 
 const join = (platform: string, base: string, ...segments: ReadonlyArray<string>): string =>
   platform === "win32"
     ? [base.replace(/[\\/]+$/, ""), ...segments].join("\\")
     : [base.replace(/\/+$/, ""), ...segments].join("/")
-
-const optionalString = (name: string) => Config.String(name).pipe(Config.withDefault(undefined))
 
 /**
  * Resolves `PlatformDirectories` from the current `ConfigProvider`.
@@ -110,22 +134,9 @@ export const layer = (options: {
       appData: optionalString("APPDATA"),
       home: optionalString(platform === "win32" ? "USERPROFILE" : "HOME")
     }))
-
-    if (env.xdgConfigHome !== undefined && isAbsolute(env.xdgConfigHome, platform)) {
-      return { config: join(platform, env.xdgConfigHome, appName) }
-    }
-    if (platform === "win32" && env.appData !== undefined && isAbsolute(env.appData, platform)) {
-      return { config: join(platform, env.appData, appName) }
-    }
-    if (env.home === undefined) {
+    const base = configBase(platform, env)
+    if (base === undefined) {
       return yield* new MissingHome({ appName })
     }
-    switch (platform) {
-      case "win32":
-        return { config: join(platform, env.home, "AppData", "Roaming", appName) }
-      case "darwin":
-        return { config: join(platform, env.home, "Library", "Application Support", appName) }
-      default:
-        return { config: join(platform, env.home, ".config", appName) }
-    }
+    return { config: join(platform, base, appName) }
   }))
