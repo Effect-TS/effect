@@ -349,6 +349,8 @@ export const PreliminaryBuffer = Context.Reference<number | "unbounded">("effect
 const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =>
   Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
 
+const failureOrigin = (error: unknown): Tool.FailureOrigin => Schema.isSchemaError(error) ? "result" : "handler"
+
 const Proto = {
   ...Effectable.Prototype({
     label: "Toolkit",
@@ -503,23 +505,22 @@ const Proto = {
 
         return Stream.fromQueue(queue).pipe(
           Stream.catchCause((cause) => {
-            const reason = cause.reasons[0]
+            const [reason] = cause.reasons
             if (tool.failureMode === "return" && cause.reasons.length === 1 && Cause.isFailReason(reason)) {
-              const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(reason.error) ? "result" : "handler"
               return Stream.succeed({
                 result: normalizeError(reason.error),
                 isFailure: true,
-                failureOrigin,
+                failureOrigin: failureOrigin(reason.error),
                 preliminary: false
               })
             }
-            return Stream.failCause(Cause.fromReasons(cause.reasons.map((reason) => {
-              if (!Cause.isFailReason(reason)) return reason
-              const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(reason.error) ? "result" : "handler"
-              return Cause.makeFailReason(normalizeError(reason.error)).annotate(
-                Context.add(Cause.reasonAnnotations(reason), FailureOrigin, failureOrigin)
-              )
-            })))
+            return Stream.failCause(Cause.fromReasons(cause.reasons.map((reason) =>
+              Cause.isFailReason(reason)
+                ? Cause.makeFailReason(normalizeError(reason.error)).annotate(
+                  Context.add(Cause.reasonAnnotations(reason), FailureOrigin, failureOrigin(reason.error))
+                )
+                : reason
+            )))
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
