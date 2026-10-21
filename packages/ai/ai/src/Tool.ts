@@ -38,6 +38,7 @@ import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { Covariant } from "effect/Types"
 import type * as AiError from "./AiError.js"
+import { setStackTraceLimit } from "./internal/stackTraceLimit.js"
 
 // =============================================================================
 // Type Ids
@@ -1506,13 +1507,6 @@ function filter(obj: any) {
   return obj
 }
 
-// Under frozen intrinsics (e.g. SES lockdown or the Temporal workflow sandbox)
-// `Error.stackTraceLimit` is read-only and assigning it throws.
-const canSetStackTraceLimit = (() => {
-  const desc = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")
-  return desc === undefined ? Object.isExtensible(Error) : desc.writable === true || desc.set !== undefined
-})()
-
 /**
  * **Unsafe**: This function will throw an error if an insecure property is
  * found in the parsed JSON or if the provided JSON text is not parseable.
@@ -1521,16 +1515,13 @@ const canSetStackTraceLimit = (() => {
  * @category Utilities
  */
 export const unsafeSecureJsonParse = (text: string): unknown => {
-  if (!canSetStackTraceLimit) {
-    return _parse(text)
-  }
   // Performance optimization, see https://github.com/fastify/secure-json-parse/pull/90
   const { stackTraceLimit } = Error
-  Error.stackTraceLimit = 0
+  setStackTraceLimit(0)
   try {
     return _parse(text)
   } finally {
-    Error.stackTraceLimit = stackTraceLimit
+    setStackTraceLimit(stackTraceLimit)
   }
 }
 

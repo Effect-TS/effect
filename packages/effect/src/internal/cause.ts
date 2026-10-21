@@ -911,7 +911,6 @@ export const makePrettyError = (originalError: unknown): Cause.PrettyError => {
   if (error.message === "") {
     error.message = "An error has occurred"
   }
-  setStackTraceLimit(prevLimit)
   error.name = originalError instanceof Error ? originalError.name : "Error"
   if (originalErrorIsObject) {
     if (spanSymbol in originalError) {
