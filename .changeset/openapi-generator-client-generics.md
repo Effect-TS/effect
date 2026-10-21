@@ -2,4 +2,4 @@
 "@effect/openapi-generator": minor
 ---
 
-Thread HttpClient error (`E`) and requirements (`R`) channels through generated client interfaces and the `make()` constructor, preserving middleware-introduced error types at the call site.
+Generated `httpclient` clients now keep the error and requirement types of the `HttpClient` passed to `make`, so errors and services added by client middleware appear in each operation's signature. The generated interface gains `E` and `R` type parameters that default to `HttpClientError` and `never`, so existing clients are unchanged.
