@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Bound each Toolkit handler's result buffer to 16 entries so preliminary results backpressure slow consumers. Interrupt handlers when their result stream closes, including early termination and cancellation.
+Bound Toolkit preliminary result buffering so handlers wait for slow consumers, and interrupt handlers when their result stream closes.

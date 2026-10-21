@@ -125,9 +125,9 @@ export interface HandlerContext<Tool extends Tool.Any> {
    * **Details**
    *
    * Preliminary results are streamed to the caller before the handler completes,
-   * enabling real-time progress updates for lengthy operations.
-   * Each tool call buffers up to 16 results. This effect suspends while that
-   * buffer is full, until the caller consumes results from the returned stream.
+   * enabling real-time progress updates for lengthy operations. Up to 16
+   * results are buffered per tool call; when the buffer is full, this effect
+   * waits for the caller to consume them.
    */
   readonly preliminary: (result: Tool.Success<Tool>) => Effect.Effect<void>
 }
