@@ -193,6 +193,26 @@ describe("SqlMessageStorage", () => {
             `
             expect(indexes).toHaveLength(1)
           }))
+
+        it.effect("limitIdentifiers keeps names distinct for long prefixes", () =>
+          Effect.gen(function*() {
+            const sql = yield* SqlClient.SqlClient
+            // Without limits these names all truncate to the same 63 characters.
+            const storage = yield* SqlMessageStorage.make({ prefix: "p".repeat(80), limitIdentifiers: true }).pipe(
+              Effect.provide(NodeCrypto.layer)
+            )
+            const request = yield* makeRequest()
+            yield* storage.saveRequest(request)
+            const reply = yield* makeReply(request)
+            yield* storage.saveReply(reply)
+            assert.deepStrictEqual(yield* storage.repliesFor([request]), [reply.reply])
+
+            const indexes = yield* sql<{ tablename: string }>`
+              SELECT tablename FROM pg_indexes WHERE schemaname = 'public'
+            `
+            const isDefault = (row: { tablename: string }) => row.tablename.startsWith("cluster_")
+            expect(indexes.filter((row) => !isDefault(row))).toHaveLength(indexes.filter(isDefault).length)
+          }))
       }
 
       it.effect("resetRequests with no IDs leaves existing claims untouched", () =>
