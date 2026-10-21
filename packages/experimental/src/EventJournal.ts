@@ -515,8 +515,9 @@ export const makeIndexedDb = (options?: {
           const entriesStore = tx.objectStore("entries")
           const remotesStore = tx.objectStore("remotes")
           const remoteEntryIdStore = tx.objectStore("remoteEntryId")
+          const remoteKey = remoteId as Uint8Array<ArrayBuffer>
 
-          remoteEntryIdStore.get(remoteId as Uint8Array<ArrayBuffer>).onsuccess = (event) => {
+          remoteEntryIdStore.get(remoteKey).onsuccess = (event) => {
             const startEntryId = (event.target as any).result?.entryId
             const entryCursor = entriesStore.index("id").openCursor(
               startEntryId ? IDBKeyRange.lowerBound(startEntryId, true) : null,
@@ -526,9 +527,7 @@ export const makeIndexedDb = (options?: {
               const cursor = entryCursor.result
               if (!cursor) return
               const entry = decodeEntryIdb(cursor.value)
-              remotesStore.get([remoteId as Uint8Array<ArrayBuffer>, entry.id as Uint8Array<ArrayBuffer>]).onsuccess = (
-                event
-              ) => {
+              remotesStore.get([remoteKey, entry.id as Uint8Array<ArrayBuffer>]).onsuccess = (event) => {
                 if (!(event.target as any).result) entries.push(entry)
                 cursor.continue()
               }
