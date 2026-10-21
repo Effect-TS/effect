@@ -3,11 +3,11 @@
  *
  * CLI errors describe problems such as unknown or duplicate flags, missing
  * flags or arguments, unexpected positional arguments, invalid values, unknown
- * subcommands, failed validation of the parsed input, user handler failures,
- * and requests to show command help. This module includes the `CliError`
- * union, the `isCliError` guard, schema-backed error classes with display
- * messages, and the `NonShowHelpErrors` union used when parse or validation
- * errors should be shown with help output.
+ * subcommands, rejected input combinations, user handler failures, and
+ * requests to show command help. This module includes the `CliError` union,
+ * the `isCliError` guard, schema-backed error classes with display messages,
+ * and the `NonShowHelpErrors` union used when parse or validation errors
+ * should be shown with help output.
  *
  * @stability unstable
  * @since 4.0.0
@@ -503,15 +503,14 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
 }
 
 /**
- * Error for parsed input that is rejected by a rule of your own.
+ * Error for parsed input that fails a rule of your own, such as two flags
+ * that cannot be used together.
  *
  * **Details**
  *
  * Fail with it from `Command.validate`, `Flag.mapEffect` or
- * `Argument.mapEffect`, typically for rules that span several flags or
- * arguments such as mutually exclusive flags. The runner shows it together
- * with the command help, like any other parse error. Handlers keep using
- * `UserError` for failures that happen after parsing.
+ * `Argument.mapEffect`. The runner shows it with the command help, like any
+ * other parse error. Handlers report their own failures with `UserError`.
  *
  * **Example** (Rejecting a flag combination)
  *

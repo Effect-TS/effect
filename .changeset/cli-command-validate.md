@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `Command.validate` to the unstable CLI for rules that span several flags or arguments, such as mutually exclusive flags, and `CliError.ValidationError` to report them. The validation receives the parsed input before the handler runs; a failure is shown together with the command help, like a parse error.
+Add `Command.validate` and `CliError.ValidationError` to the unstable CLI. `validate` checks the parsed input before the handler runs, for rules such as mutually exclusive flags. A failure is shown with the command help, like any parse error.

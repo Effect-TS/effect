@@ -736,25 +736,23 @@ export const withHandler: {
   makeCommand({ ...toImpl(self), handle: handler } as any))
 
 /**
- * Adds a validation step that runs on the parsed input of a command.
+ * Validates the parsed input of a command before the handler runs.
  *
  * **Details**
  *
- * Use this for rules that involve several flags or arguments at once, such as
- * mutually exclusive flags or a flag that requires another one. The validation
- * receives the same input the handler would receive, after defaults, fallback
- * configuration, prompts and the wizard have been applied. A failure is shown
- * together with the command help, like a parse error, and the handler does not
- * run. Fail with `CliError.ValidationError` for a message of your own, or with
- * any other `CliError` to reuse its standard message. Several validations run
- * in the order they were added and stop at the first failure; a handler added
- * later with `withHandler` keeps them.
+ * Use this for rules that involve several flags or arguments, such as
+ * mutually exclusive flags. The validation receives the same input as the
+ * handler, with defaults, prompts and the wizard already applied. A failure
+ * is shown with the command help, like a parse error, and the handler does
+ * not run. Fail with `CliError.ValidationError` to supply the message, or
+ * with any other `CliError`. Validations run in the order they were added and
+ * stop at the first failure. Adding a handler later with `withHandler` keeps
+ * them.
  *
- * The validation only sees the input that exists where it is applied. Apply
- * it after `withSharedFlags` to see the shared flags. Applied before
- * `withSubcommands`, it runs only when the command itself is selected; applied
- * after, it also runs when a subcommand is selected and then receives the
- * parent's shared flags.
+ * A validation sees only the input that exists where it is applied. Add it
+ * after `withSharedFlags` to see the shared flags. Added after
+ * `withSubcommands`, it also runs when a subcommand is selected, with the
+ * parent's shared flags as input.
  *
  * **Example** (Rejecting mutually exclusive flags)
  *
@@ -804,7 +802,7 @@ export const withHandler: {
  *   )
  * )
  * error._tag // => "ShowHelp"
- * error.errors.map((e) => e.message) // => ["--use-api and --use-docker are mutually exclusive"]
+ * error.errors[0].message // => "--use-api and --use-docker are mutually exclusive"
  * ```
  *
  * @stability unstable
