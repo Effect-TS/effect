@@ -1495,30 +1495,42 @@ export const makeStoreSql: (
     // XACT_ABORT is off while the offer runs, so the unique index error ends
     // just the insert instead of dooming a caller transaction whose session
     // runs with XACT_ABORT ON. The caller's setting is restored before any
-    // other error is rethrown, so that error still aborts the transaction, and
-    // again once the offer completes. The locking read waits for an
-    // uncommitted duplicate even under read committed snapshot.
-    mssql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
-      sql`
-        DECLARE @xactAbort INT = @@OPTIONS & 16384;
+    // other error is rethrown, so that error still aborts the transaction. The
+    // offer runs in a nested sp_executesql, whose exit restores the setting
+    // however the batch ends, including an attention from a client that sends
+    // plain batches. The locking read waits for an uncommitted duplicate even
+    // under read committed snapshot.
+    mssql: () => {
+      // the nested statement is plain text, so identifiers are escaped here
+      // the way the SQL Server compiler escapes them; values stay parameters
+      const escape = (name: string) => `[${name.replace(/\]/g, "]]").replace(/\./g, "].[")}]`
+      const table = escape(tableName)
+      const offerSql = `
         SET XACT_ABORT OFF;
         BEGIN TRY
           IF NOT EXISTS (
-            SELECT 1 FROM ${tableNameSql} WITH (READCOMMITTEDLOCK, FORCESEEK, INDEX(${sql(`idx_${tableName}_id`)}))
-            WHERE id = ${id} AND queue_name = ${name}
+            SELECT 1 FROM ${table} WITH (READCOMMITTEDLOCK, FORCESEEK, INDEX(${escape(`idx_${tableName}_id`)}))
+            WHERE id = @id AND queue_name = @name
           )
-            INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-            VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow});
+            INSERT INTO ${table} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
+            VALUES (@id, @name, @element, 'pending', 0, @visible_at, SYSDATETIME(), SYSDATETIME());
         END TRY
         BEGIN CATCH
           IF ERROR_NUMBER() NOT IN (2601, 2627) OR XACT_STATE() = -1
           BEGIN
-            IF @xactAbort <> 0 SET XACT_ABORT ON;
+            IF @xact_abort <> 0 SET XACT_ABORT ON;
             THROW;
           END
-        END CATCH;
-        IF @xactAbort <> 0 SET XACT_ABORT ON;
-      `,
+        END CATCH`
+      return (id: string, name: string, element: string, visibleAt: Fragment) =>
+        sql`
+          DECLARE @visible_at DATETIME2 = ${visibleAt};
+          DECLARE @xact_abort INT = @@OPTIONS & 16384;
+          EXEC sp_executesql ${offerSql},
+            N'@id NVARCHAR(MAX), @name NVARCHAR(MAX), @element NVARCHAR(MAX), @visible_at DATETIME2, @xact_abort INT',
+            @id = ${id}, @name = ${name}, @element = ${element}, @visible_at = @visible_at, @xact_abort = @xact_abort;
+        `
+    },
     // sqlite
     orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
