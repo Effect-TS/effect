@@ -198,3 +198,15 @@ it("should reject a callback when its layer does not provide Execution", () => {
     () => Layer.succeed(Database, { query: true })
   )
 })
+
+it("should preserve unknown requirements for widened task handler records", () => {
+  // Deliberately erase the known Database requirement rather than inferring it.
+  const handlers: Toolkit.HandlersFrom<typeof reports.tools, any> = {
+    report: () => Database.useSync(() => "report")
+  }
+  const memory = McpTasks.layerMemory(reports, handlers)
+  const workflow = McpTasks.layerWorkflow(reports, handlers, options)
+  expect<Layer.Services<typeof memory>>().type.toBe<unknown>()
+  expect<Layer.Services<typeof workflow>>().type.toBe<unknown>()
+  expect(Effect.runPromise).type.not.toBeCallableWith(Layer.launch(memory))
+})

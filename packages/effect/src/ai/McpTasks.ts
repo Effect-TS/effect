@@ -19,7 +19,6 @@ import * as Scope from "../Scope.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
-import type * as AiError from "./AiError.ts"
 import * as Binding from "./internal/mcpTasksBinding.ts"
 import { TaskError } from "./internal/mcpTasksBinding.ts"
 import * as McpSchema from "./McpSchema.ts"
@@ -157,13 +156,10 @@ export class Execution extends Context.Service<Execution, {
   readonly cancel: (request: TaskRequest) => Effect.Effect<void, TaskError>
 }>()("effect/ai/McpTasks/Execution") {}
 
-type Handlers<Tools extends Record<string, Tool.Any>> = {
-  readonly [K in keyof Tools as Tool.RequiresHandler<Tools[K]> extends true ? K : never]: (
-    params: Tool.Parameters<Tools[K]>,
-    context: Toolkit.HandlerContext<Tools[K]>
-  ) => Effect.Effect<Tool.Success<Tools[K]>, Tool.Failure<Tools[K]> | AiError.AiError | AiError.AiErrorReason, any>
-}
-type Services<H> = H extends (...args: any) => Effect.Effect<any, any, infer R> ? 0 extends (1 & R) ? never : R : never
+type Handlers<Tools extends Record<string, Tool.Any>> = Toolkit.HandlersFrom<Tools, unknown>
+type Services<H> = H extends (...args: Array<never>) => Effect.Effect<unknown, unknown, infer R>
+  ? 0 extends (1 & R) ? unknown : R
+  : never
 
 /**
  * Registers task-only tools using the supplied `Execution` service.
@@ -252,50 +248,42 @@ export function toolkit<Tools extends Record<string, Tool.Any>, R = never, E = n
   return makeExecution === undefined ? registration : Layer.provide(registration, makeExecution(tools))
 }
 
-const makeHandlers = <
+type TaskRunner<R> = (request: CreateRequest) => Effect.Effect<McpSchema.CallToolResult, TaskFailure, R>
+
+const makeHandlers = Effect.fnUntraced(function*<
   Tools extends Record<string, Tool.Any>,
   H extends Handlers<NoInfer<Tools>>,
   EX,
-  RX,
-  Provided = never
->(tools: Toolkit.Toolkit<Tools>, handlers: H | Effect.Effect<H, EX, RX>) => {
-  const build = Effect.gen(function*() {
-    const context = yield* tools.toHandlers(
-      handlers as Toolkit.HandlersFrom<Tools> | Effect.Effect<Toolkit.HandlersFrom<Tools>, EX, RX>
-    )
-    const registrations = yield* McpServer.makeToolkitRegistrations(tools).pipe(Effect.provideContext(context))
-    const run = new Map<
-      string,
-      (request: CreateRequest) => Effect.Effect<McpSchema.CallToolResult, TaskFailure>
-    >()
-    for (const registration of registrations) {
-      run.set(registration.tool.name, (request) =>
-        registration.handle(request.arguments).pipe(
-          Effect.provideService(McpSchema.McpRequestContext, request.requestContext),
-          Effect.mapError((error) => ({
-            code: error.code,
-            message: error.message
-          })),
-          Effect.flatMap((result) =>
-            Predicate.isTagged(result, "InputRequired")
-              ? Effect.fail({
-                code: McpSchema.INTERNAL_ERROR_CODE,
-                message: "Task input is not supported by this execution layer"
-              })
-              : Effect.succeed(result)
-          )
-        ))
-    }
-    return run
-  })
-  // Toolkit captures handler contexts; request and Workflow services arrive at invocation.
-  return build as Effect.Effect<
-    Map<string, (request: CreateRequest) => Effect.Effect<McpSchema.CallToolResult, TaskFailure>>,
-    EX,
-    | RX
-    | Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext | Provided>
-  >
-}
+  RX
+>(tools: Toolkit.Toolkit<Tools>, handlers: H | Effect.Effect<H, EX, RX>) {
+  const implementation = Effect.isEffect(handlers) ? yield* handlers : handlers
+  const built = yield* tools.withHandlers(implementation).pipe(
+    Effect.updateContext((context: Context.Context<never>) => McpServer.omitRequestServices(context))
+  )
+  const registrations = yield* McpServer.makeToolkitRegistrations(built)
+  const run = new Map<
+    string,
+    TaskRunner<
+      Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext>
+    >
+  >()
+  for (const registration of registrations) {
+    run.set(registration.tool.name, (request) =>
+      registration.handle(request.arguments).pipe(
+        Effect.provideService(McpSchema.McpRequestContext, request.requestContext),
+        Effect.mapError((error) => ({ code: error.code, message: error.message })),
+        Effect.flatMap((result) =>
+          Predicate.isTagged(result, "InputRequired")
+            ? Effect.fail({
+              code: McpSchema.INTERNAL_ERROR_CODE,
+              message: "Task input is not supported by this execution layer"
+            })
+            : Effect.succeed(result)
+        )
+      ))
+  }
+  return run
+})
 
 const identity = DurableDeferred.make("mcp/task/identity", {
   success: Schema.Struct({ ownerId: Schema.String, createdAt: Schema.DateTimeUtc })
@@ -340,29 +328,14 @@ export const layerWorkflow = <
   tools: Toolkit.Toolkit<Tools>,
   handlers: H | Effect.Effect<H, EX, RX>,
   options: { readonly name: string }
-): Layer.Layer<
-  Execution,
-  EX | Schema.SchemaError,
-  | WorkflowEngine.WorkflowEngine
-  | Exclude<RX, Scope.Scope>
-  | Exclude<
-    Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>,
-    McpSchema.McpRequestContext | WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance
-  >
-> =>
+) =>
   Layer.effect(
     Execution,
     Effect.gen(function*() {
       yield* decodeWorkflowName(options.name)
       const engine = yield* WorkflowEngine.WorkflowEngine
       const scope = yield* Scope.fork(yield* Scope.Scope)
-      const runners = yield* makeHandlers<
-        Tools,
-        H,
-        EX,
-        RX,
-        WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance
-      >(tools, handlers)
+      const runners = yield* makeHandlers(tools, handlers)
 
       const operations = new Map<string, Execution["Service"]>()
 
@@ -422,6 +395,7 @@ export const layerWorkflow = <
 
           return { ...fact.value, executionId: token.executionId }
         })
+
         yield* engine.register(workflow, (payload) =>
           Effect.gen(function*() {
             yield* DurableDeferred.succeed(identity, {
@@ -590,6 +564,9 @@ export const layerMemory = <
     Execution,
     Effect.gen(function*() {
       const scope = yield* Scope.fork(yield* Scope.Scope)
+      const services = yield* Effect.context<
+        Exclude<Tool.HandlerServices<Tools[keyof Tools]> | Services<H[keyof H]>, McpSchema.McpRequestContext>
+      >()
       const runners = yield* makeHandlers(tools, handlers)
 
       const tasks = new Map<string, { ownerId: string; task: Task; fiber?: Fiber.Fiber<void> }>()
@@ -628,6 +605,7 @@ export const layerMemory = <
           tasks.set(task.taskId, entry)
 
           entry.fiber = yield* run(request).pipe(
+            Effect.provideContext(services),
             Effect.onExit(Effect.fnUntraced(function*(exit) {
               const lastUpdatedAt = yield* DateTime.now
               const base = { ...task, lastUpdatedAt }
