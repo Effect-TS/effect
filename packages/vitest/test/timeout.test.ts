@@ -1,4 +1,4 @@
-import { afterAll, assert, describe, it } from "@effect/vitest"
+import { afterAll, assert, beforeEach, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 
 const pendingReleases: Array<Promise<void>> = []
@@ -45,6 +45,25 @@ for (const mode of ["effect", "live"] as const) {
     })
   })
 }
+
+describe("beforeEach timeout finalizers", { concurrent: false }, () => {
+  const events: Array<string> = []
+
+  describe("hook", () => {
+    beforeEach(() =>
+      Effect.gen(function*() {
+        yield* resource(events, "hook")
+        return yield* Effect.never
+      }).pipe(Effect.scoped), 75)
+
+    it.fails("times out while holding a resource", () => {})
+  })
+
+  it("awaits the finalizer before starting the next test", () => {
+    events.push("next:start")
+    assert.deepStrictEqual(events, ["hook:acquired", "hook:release:start", "hook:release:end", "next:start"])
+  })
+})
 
 describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
   const events: Array<string> = []
