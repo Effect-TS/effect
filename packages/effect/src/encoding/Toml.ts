@@ -54,7 +54,7 @@ const isValidDate = (date: string): boolean => {
 }
 const isValidTime = (time: string): boolean => {
   const [, hour, minute, second] = localTimePattern.exec(time)!.map(Number)
-  return hour <= 23 && minute <= 59 && second <= 59
+  return hour <= 23 && minute <= 59 && second <= 60
 }
 const isValidOffset = (offset: string): boolean => {
   const numeric = numericOffsetPattern.exec(offset)
@@ -264,7 +264,9 @@ class TomlParser {
     const dateTime = dateTimePattern.exec(token)
     if (dateTime !== null) {
       const [, date, time, offset] = dateTime
-      if (!isValidDate(date) || !isValidTime(time) || (offset !== undefined && !isValidOffset(offset))) {
+      // `Date` cannot represent a leap second, so offset date-times reject `:60`
+      const offsetValid = offset === undefined || (isValidOffset(offset) && time.slice(6, 8) !== "60")
+      if (!isValidDate(date) || !isValidTime(time) || !offsetValid) {
         this.fail(`Invalid date-time '${token}'`)
       }
       return offset === undefined ? `${date}T${time}` : new Date(`${date}T${time}${offset.toUpperCase()}`)
