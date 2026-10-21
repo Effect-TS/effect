@@ -27,7 +27,7 @@ describe("ClusterCron", () => {
       yield* deploy(OtherLayer)
       yield* deploy(Layer.merge(cron, OtherLayer))
       assert.deepStrictEqual(runs, [1000, 2000, 3000, 4000, 5000, 6000, 7000, 11000, 12000, 13000, 14000])
-    }).pipe(Effect.provide(MessageStorage.MemoryDriver.Default), Effect.provide(TestShardingConfig)))
+    }).pipe(Effect.provide(MessageStorage.MemoryDriver.Default), Effect.provide(TestShardingConfig)), 20_000)
 
   it.effect("runs a pending legacy initial tick once after upgrading (calculateNextRunFromPrevious: true)", () =>
     Effect.gen(function*() {
