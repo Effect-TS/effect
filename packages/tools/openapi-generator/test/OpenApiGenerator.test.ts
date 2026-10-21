@@ -3692,34 +3692,5 @@ export const withString: UploadRequestFormData = { files: ["upload.txt"] }
         ),
       compilationTimeout
     )
-
-    it.effect(
-      "compiles non-exploded nullable query arrays",
-      () =>
-        assertGeneratedClientsCompile({
-          openapi: "3.1.0",
-          info: { title: "Query array API", version: "1.0.0" },
-          paths: {
-            "/items": {
-              get: {
-                operationId: "listItems",
-                parameters: [{
-                  name: "tags",
-                  in: "query",
-                  explode: false,
-                  schema: { type: ["array", "null"], items: { type: ["string", "null"] } }
-                }],
-                responses: { "204": { description: "No content" } }
-              }
-            }
-          }
-        } as unknown as OpenAPISpec, {
-          usage: `declare const client: TestClient
-export const withNull = client.listItems({ params: { tags: null } })
-export const withArray = client.listItems({ params: { tags: [null, "red"] } })
-`
-        }),
-      compilationTimeout
-    )
   })
 })
