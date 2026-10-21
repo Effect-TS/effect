@@ -80,13 +80,14 @@ describe("Effect.fn", () => {
   it.effect("supports transpiled generator bodies", () =>
     Effect.gen(function*() {
       // transpilers can lower `function*` into a function returning an iterator
-      const body = (n: number) =>
+      let count = 0
+      const body = (n = ++count) =>
         (function*() {
           return yield* Effect.succeed(n)
         })()
-      const effect = Effect.fn("test")(body as any)(1) as Effect.Effect<number>
+      const effect = Effect.fn("test")(body as any)() as Effect.Effect<number>
       strictEqual(yield* effect, 1)
-      strictEqual(yield* effect, 1)
+      strictEqual(yield* effect, 2)
     }))
 })
 
