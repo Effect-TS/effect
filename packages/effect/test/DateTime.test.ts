@@ -521,6 +521,18 @@ describe("DateTime", () => {
     strictEqual(dt.zone._tag, "Named")
   })
 
+  describe("zoneFromString", () => {
+    it("parses GMT as a Named zone", () => {
+      assertSome(Option.map(DateTime.zoneFromString("GMT"), (zone) => zone._tag), "Named")
+      assertSome(DateTime.zoneFromString("GMT+05:30"), DateTime.zoneMakeOffset(5.5 * 60 * 60 * 1000))
+    })
+
+    it("parses a compact offset without colon", () => {
+      assertSome(DateTime.zoneFromString("+0530"), DateTime.zoneMakeOffset(5.5 * 60 * 60 * 1000))
+      assertSome(DateTime.zoneFromString("-0530"), DateTime.zoneMakeOffset(-5.5 * 60 * 60 * 1000))
+    })
+  })
+
   describe("toUtc", () => {
     it.effect("with a Utc", () =>
       Effect.gen(function*() {
