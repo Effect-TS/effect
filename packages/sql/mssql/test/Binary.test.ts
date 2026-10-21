@@ -55,6 +55,25 @@ vi.mock("tedious", async (importOriginal) => {
         request.callback(null, 0, [])
         return
       }
+      // The store row the storage locks before each write.
+      if (query.startsWith("SELECT next_sequence")) {
+        const store = {
+          next_sequence: 1,
+          active_activation: "originals",
+          active_batch_set: null,
+          base_sequence: 0,
+          active_kept_count: 0,
+          no_op_at: null,
+          no_op_count: 0,
+          open_stage: null,
+          next_sweep_at: null,
+          sweep_lease_until: null,
+          sweep_lease_owner: null,
+          pruned_through: 0
+        }
+        request.callback(null, 1, [Object.entries(store).map(([colName, value]) => ({ metadata: { colName }, value }))])
+        return
+      }
       if (query.startsWith("SELECT MAX(last_sequence)")) {
         request.callback(null, 1, [[{ metadata: { colName: "last_sequence" }, value: null }]])
         return
