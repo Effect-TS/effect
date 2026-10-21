@@ -1622,6 +1622,7 @@ export const make: (params: {
     const queue = yield* Queue.make<
       Response.StreamPart<Tools>,
       | AiError.AiError
+      | Tool.HandlerError<Tools[keyof Tools]>
       | Cause.Done
       | Schema.SchemaError
     >()
@@ -1634,7 +1635,7 @@ export const make: (params: {
     }
 
     // FiberSet to track concurrent tool call handlers
-    const toolCallFibers = yield* FiberSet.make<void, AiError.AiError>()
+    const toolCallFibers = yield* FiberSet.make<void, AiError.AiError | Tool.HandlerError<Tools[keyof Tools]>>()
     const toolCallSemaphore = concurrency === "unbounded"
       ? undefined
       : yield* Semaphore.make(concurrency)

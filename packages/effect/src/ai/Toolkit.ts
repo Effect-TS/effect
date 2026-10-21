@@ -502,12 +502,24 @@ const Proto = {
         }
 
         return Stream.fromQueue(queue).pipe(
-          Stream.catch((error) => {
-            const normalizedError = normalizeError(error)
-            const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
-            return tool.failureMode === "error"
-              ? Stream.failCause(failureCause(normalizedError, failureOrigin))
-              : Stream.succeed({ result: normalizedError, isFailure: true, failureOrigin, preliminary: false })
+          Stream.catchCause((cause) => {
+            const reason = cause.reasons[0]
+            if (tool.failureMode === "return" && cause.reasons.length === 1 && Cause.isFailReason(reason)) {
+              const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(reason.error) ? "result" : "handler"
+              return Stream.succeed({
+                result: normalizeError(reason.error),
+                isFailure: true,
+                failureOrigin,
+                preliminary: false
+              })
+            }
+            return Stream.failCause(Cause.fromReasons(cause.reasons.map((reason) => {
+              if (!Cause.isFailReason(reason)) return reason
+              const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(reason.error) ? "result" : "handler"
+              return Cause.makeFailReason(normalizeError(reason.error)).annotate(
+                Context.add(Cause.reasonAnnotations(reason), FailureOrigin, failureOrigin)
+              )
+            })))
           }),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)

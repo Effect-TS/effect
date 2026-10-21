@@ -3,7 +3,7 @@ import { type AiError, Tool, Toolkit } from "effect/ai"
 import { describe, expect, it } from "tstyche"
 
 describe("Tool", () => {
-  it("exposes result encoding failures on the extracted return-mode stream", () => {
+  it("exposes composed handler failures and encoding failures on the return-mode stream", () => {
     const positive = Tool.make("Positive", {
       failureMode: "return",
       success: Schema.Number.check(Schema.isGreaterThan(0)),
@@ -16,8 +16,9 @@ describe("Tool", () => {
 
     Effect.map(handled, (handlers) =>
       Effect.map(handlers.handle("Positive", {}), (inner) => {
-        expect<[Stream.Error<typeof inner>]>().type.toBe<[AiError.AiError]>()
+        expect<[Stream.Error<typeof inner>]>().type.toBe<[string | AiError.AiError]>()
       }))
+    expect<Tool.HandlerError<typeof positive>>().type.toBe<string | AiError.AiError>()
   })
 
   describe("failure results", () => {
