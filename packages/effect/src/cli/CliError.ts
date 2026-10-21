@@ -3,11 +3,11 @@
  *
  * CLI errors describe problems such as unknown or duplicate flags, missing
  * flags or arguments, unexpected positional arguments, invalid values, unknown
- * subcommands, failed cross-input validation, user handler failures, and
- * requests to show command help. This
- * module includes the `CliError` union, the `isCliError` guard, schema-backed
- * error classes with display messages, and the `NonShowHelpErrors` union used
- * when parse or validation errors should be shown with help output.
+ * subcommands, failed validation of the parsed input, user handler failures,
+ * and requests to show command help. This module includes the `CliError`
+ * union, the `isCliError` guard, schema-backed error classes with display
+ * messages, and the `NonShowHelpErrors` union used when parse or validation
+ * errors should be shown with help output.
  *
  * @stability unstable
  * @since 4.0.0
@@ -503,17 +503,15 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
 }
 
 /**
- * Error for a rule that spans several parsed flags or arguments.
+ * Error for parsed input that is rejected by a rule of your own.
  *
  * **Details**
  *
- * This error belongs to the parse stage. It is the error to fail with from
- * `Command.validate`, `Flag.mapEffect` or `Argument.mapEffect` when the
- * parsed values are individually valid but not allowed together, such as two
- * mutually exclusive flags or a flag that requires another one. The runner
- * reports it together with the command help, like any other parse error.
- * Handlers should keep using `UserError` for failures that happen after
- * parsing.
+ * Fail with it from `Command.validate`, `Flag.mapEffect` or
+ * `Argument.mapEffect`, typically for rules that span several flags or
+ * arguments such as mutually exclusive flags. The runner shows it together
+ * with the command help, like any other parse error. Handlers keep using
+ * `UserError` for failures that happen after parsing.
  *
  * **Example** (Rejecting a flag combination)
  *

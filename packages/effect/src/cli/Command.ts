@@ -741,39 +741,34 @@ export const withHandler: {
  * **Details**
  *
  * Use this for rules that involve several flags or arguments at once, such as
- * mutually exclusive flags, a flag that requires another one, or a range whose
- * bounds must be ordered. Individual values are still validated where they
- * are declared, with `Flag.mapEffect` and friends.
+ * mutually exclusive flags or a flag that requires another one. The validation
+ * receives the same input the handler would receive, after defaults, fallback
+ * configuration, prompts and the wizard have been applied. A failure is shown
+ * together with the command help, like a parse error, and the handler does not
+ * run. Fail with `CliError.ValidationError` for a message of your own, or with
+ * any other `CliError` to reuse its standard message. Several validations run
+ * in the order they were added and stop at the first failure; a handler added
+ * later with `withHandler` keeps them.
  *
- * The validation receives the same input the handler would receive: it runs
- * after every flag and argument has been parsed, including defaults, fallback
- * configuration, prompts and the wizard, and before the handler. A failure is
- * reported like a parse error: the command help is rendered together with the
- * error and the handler does not run. Fail with `CliError.ValidationError` to
- * report a message of your own, or with any other `CliError` to reuse its
- * standard message.
- *
- * Several validations run in the order they were added and stop at the first
- * failure. The validation is kept when a handler is added later with
- * `withHandler`.
- *
- * The validation only sees the input that exists at the point in the pipeline
- * where it is applied. Apply it after `withSharedFlags` to see the shared
- * flags. Applied before `withSubcommands`, it runs only when the command
- * itself is selected; applied after, it also runs when a subcommand is
- * selected, and then receives the parent's shared flags.
+ * The validation only sees the input that exists where it is applied. Apply
+ * it after `withSharedFlags` to see the shared flags. Applied before
+ * `withSubcommands`, it runs only when the command itself is selected; applied
+ * after, it also runs when a subcommand is selected and then receives the
+ * parent's shared flags.
  *
  * **Example** (Rejecting mutually exclusive flags)
  *
  * ```ts import.meta.vitest
- * import { Console, Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { CliError, Command, Flag } from "effect/cli"
  * import { ChildProcessSpawner } from "effect/process"
+ * import { TestConsole } from "effect/testing"
  *
  * const CliTestLayer = Layer.mergeAll(
  *   FileSystem.layerNoop({}),
  *   Path.layer,
  *   Stdio.layerTest({}),
+ *   TestConsole.layer,
  *   Layer.succeed(Terminal.Terminal, Terminal.make({
  *     columns: Effect.succeed(80),
  *     rows: Effect.succeed(24),
@@ -786,10 +781,6 @@ export const withHandler: {
  *     ChildProcessSpawner.make(() => Effect.die("unused"))
  *   )
  * )
- * const silentConsole: Console.Console = Object.assign(Object.create(console), {
- *   log: () => {},
- *   error: () => {}
- * })
  *
  * const download = Command.make("download", {
  *   useApi: Flag.Boolean("use-api").pipe(Flag.withDefault(false)),
@@ -809,7 +800,6 @@ export const withHandler: {
  * const error = await Effect.runPromise(
  *   Command.runWith(download, { version: "1.0.0" })(["--use-api", "--use-docker"]).pipe(
  *     Effect.flip,
- *     Effect.provideService(Console.Console, silentConsole),
  *     Effect.provide(CliTestLayer)
  *   )
  * )
