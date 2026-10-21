@@ -930,8 +930,11 @@ export const layerStoreMemory = (options?: {
  *
  * **Gotchas**
  *
- * If renewals cannot reach Redis, a probe cannot outlast its lease, so a
- * second caller may start a duplicate probe.
+ * - If renewals cannot reach Redis, a probe cannot outlast its lease, so a
+ *   second caller may start a duplicate probe.
+ * - Durations above 2^50 milliseconds (about 35,000 years) cannot be stored.
+ *   An operation that needs one fails with `CircuitBreakerStoreError` and
+ *   leaves the circuit unchanged.
  *
  * @stability experimental
  * @category layers
@@ -1077,26 +1080,33 @@ const makeStoreRedis = Effect.fnUntraced(function*(options?: {
 const toRedisMillis = (input: Duration.Input) =>
   Math.max(1, Math.ceil(Duration.toMillis(Duration.fromInputUnsafe(input))))
 
-// Shared Lua prelude. Generations are the larger of the previous generation
-// plus one and the current Redis time in microseconds, so a key that expired
-// and was recreated never reissues a generation an old permit still holds.
-// They are kept as integer strings so they never pass through a float format.
+// Shared Lua prelude.
+//
+// Numeric arguments are capped at 2^50 (about 35,000 years in milliseconds),
+// so every TTL and timestamp derived from them stays an exact integer. Redis
+// formats a Lua number above 1e17 with an exponent, which PEXPIRE rejects
+// after earlier writes have already happened. `int` formats every number
+// written to Redis without one.
+//
+// Generations are the larger of the previous generation plus one and the
+// current Redis time in microseconds, so a key that expired and was recreated
+// never reissues a generation an old permit still holds. They are kept as
+// integer strings so they never pass through a float format.
 const luaPrelude = `
-local function positive(value)
+local maxValue = 1125899906842624
+local function bounded(value, min)
   local n = tonumber(value)
-  if n == nil or n ~= n or n < 1 or n == math.huge then return nil end
+  if n == nil or n ~= n or n < min or n > maxValue then return nil end
   return n
 end
-local function nonNegative(value)
-  local n = tonumber(value)
-  if n == nil or n ~= n or n < 0 or n == math.huge then return nil end
-  return n
-end
+local function positive(value) return bounded(value, 1) end
+local function nonNegative(value) return bounded(value, 0) end
+local function int(n) return string.format("%.0f", n) end
 local time = redis.call("TIME")
 local nowMicros = tonumber(time[1]) * 1000000 + tonumber(time[2])
 local now = math.floor(nowMicros / 1000)
 local function nextGeneration(current)
-  return string.format("%.0f", math.max((tonumber(current) or 0) + 1, nowMicros))
+  return int(math.max((tonumber(current) or 0) + 1, nowMicros))
 end
 `
 
@@ -1122,12 +1132,12 @@ local openings = tonumber(fields[4]) or 0
 if not state then
   generation = nextGeneration(0)
   redis.call("HSET", key, "state", "Closed", "generation", generation)
-  redis.call("PEXPIRE", key, idle)
+  redis.call("PEXPIRE", key, int(idle))
   return { "ok", generation, 0, 0, 0 }
 end
 
 if state == "Closed" then
-  redis.call("PEXPIRE", key, idle)
+  redis.call("PEXPIRE", key, int(idle))
   return { "ok", generation, 0, openings, 0 }
 end
 
@@ -1145,8 +1155,8 @@ end
 -- Every probe admission, including a takeover of a lapsed lease, starts a
 -- new generation.
 generation = nextGeneration(generation)
-redis.call("HSET", key, "state", "HalfOpen", "generation", generation, "leaseUntil", string.format("%.0f", now + lease))
-redis.call("PEXPIRE", key, lease + idle)
+redis.call("HSET", key, "state", "HalfOpen", "generation", generation, "leaseUntil", int(now + lease))
+redis.call("PEXPIRE", key, int(lease + idle))
 return { "ok", generation, 1, openings, moved }
 `
   }
@@ -1211,20 +1221,20 @@ local function open()
     "HSET", key,
     "state", "Open",
     "generation", nextGeneration(fields[2]),
-    "openUntil", string.format("%.0f", now + openFor),
+    "openUntil", int(now + openFor),
     "openings", openings,
     "streak", 0,
     "ring", "",
     "failures", 0,
     "leaseUntil", 0
   )
-  redis.call("PEXPIRE", key, openFor + idle)
+  redis.call("PEXPIRE", key, int(openFor + idle))
 end
 
 if state == "HalfOpen" then
   if outcome == "Ignored" then
     redis.call("HSET", key, "leaseUntil", 0)
-    redis.call("PEXPIRE", key, idle)
+    redis.call("PEXPIRE", key, int(idle))
     return { "none", openings }
   end
   if outcome == "Failure" then
@@ -1241,7 +1251,7 @@ if state == "HalfOpen" then
     "failures", 0,
     "leaseUntil", 0
   )
-  redis.call("PEXPIRE", key, idle)
+  redis.call("PEXPIRE", key, int(idle))
   return { "halfopen-closed", 0 }
 end
 
@@ -1249,7 +1259,7 @@ if state ~= "Closed" then
   return { "none", openings }
 end
 if outcome == "Ignored" then
-  redis.call("PEXPIRE", key, idle)
+  redis.call("PEXPIRE", key, int(idle))
   return { "none", openings }
 end
 
@@ -1276,7 +1286,7 @@ if trips then
   return { "closed-open", openings }
 end
 redis.call("HSET", key, "streak", streak, "ring", ring, "failures", failures)
-redis.call("PEXPIRE", key, idle)
+redis.call("PEXPIRE", key, int(idle))
 return { "none", openings }
 `
   }
@@ -1322,8 +1332,8 @@ local fields = redis.call("HMGET", key, "state", "generation")
 if fields[1] ~= "HalfOpen" or fields[2] ~= ARGV[1] then
   return 0
 end
-redis.call("HSET", key, "leaseUntil", string.format("%.0f", now + lease))
-redis.call("PEXPIRE", key, lease + idle)
+redis.call("HSET", key, "leaseUntil", int(now + lease))
+redis.call("PEXPIRE", key, int(lease + idle))
 return 1
 `
   }
