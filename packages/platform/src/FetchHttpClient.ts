@@ -13,6 +13,11 @@ import * as internal from "./internal/fetchHttpClient.js"
 export class Fetch extends Context.Tag(internal.fetchTagKey)<Fetch, typeof globalThis.fetch>() {}
 
 /**
+ * Additional `RequestInit` options passed to `fetch`.
+ *
+ * Set `redirect: "manual"` when using `HttpClient.followRedirects`, otherwise
+ * `fetch` follows redirects itself.
+ *
  * @since 1.0.0
  * @category tags
  */
