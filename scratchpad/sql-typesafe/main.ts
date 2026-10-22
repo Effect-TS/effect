@@ -3,14 +3,13 @@
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
 import * as Effect from "effect/Effect"
 import * as Migrator from "effect/sql/Migrator"
-import * as SqlClient from "effect/sql/SqlClient"
-import { DatabaseSchema } from "./database.ts"
+import { Database } from "./database.ts"
 import { migrations } from "./migrations.ts"
 
 const result = await Effect.gen(function*() {
   // Apply the same migrations used to generate _schema.json to a fresh database.
   yield* Migrator.make({})({ loader: migrations })
-  const sql = yield* SqlClient.makeQuery(DatabaseSchema)
+  const sql = yield* Database
 
   const statement = sql(
     `
@@ -51,7 +50,8 @@ const result = await Effect.gen(function*() {
     untrustedNameMatches: matches.length
   }
 }).pipe(
-  Effect.provide([DatabaseSchema.layer, SqliteClient.layer({ filename: ":memory:" })]),
+  Effect.provide(Database.layer),
+  Effect.provide(SqliteClient.layer({ filename: ":memory:" })),
   Effect.runPromise
 )
 

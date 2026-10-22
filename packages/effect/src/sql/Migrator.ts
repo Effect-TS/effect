@@ -348,7 +348,7 @@ ORDER BY migration_id`,
 
 /**
  * Runs SQLite migrations and writes a version 2 `_schema.json` snapshot for
- * `SqlClient.makeQuery` into the required schema directory.
+ * `SqlClient.Service` into the required schema directory.
  *
  * **Details**
  *
@@ -364,7 +364,7 @@ ORDER BY migration_id`,
  * with `MigrationError`. Migrations have already committed when schema
  * inspection or writing fails; rerunning refreshes the snapshot.
  *
- * @see Client.makeQuery
+ * @see Client.Service
  * @stability experimental
  * @category running
  * @since 4.0.0

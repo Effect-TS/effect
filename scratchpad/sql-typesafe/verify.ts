@@ -1,17 +1,13 @@
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
-import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as Migrator from "effect/sql/Migrator"
-import * as SqlClient from "effect/sql/SqlClient"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import schema from "./_schema.json" with { type: "json" }
-import { DatabaseSchema } from "./database.ts"
+import { Database } from "./database.ts"
 import { migrations } from "./migrations.ts"
 
 const root = fileURLToPath(new URL("./", import.meta.url))
@@ -37,15 +33,7 @@ try {
     assert.deepEqual(yield* Migrator.runWithSnapshot(options), [])
     assert.equal(readFileSync(schemaPath, "utf8"), initial, "A no-op migration must refresh a missing snapshot")
 
-    const query = yield* SqlClient.makeQuery(DatabaseSchema)
-    for (const invalid of [{ ...schema, version: 1 }, { ...schema, dialect: "pg" }]) {
-      const exit = yield* SqlClient.makeQuery(DatabaseSchema).pipe(
-        Effect.provideService(DatabaseSchema, invalid),
-        Effect.exit
-      )
-      assert(Exit.isFailure(exit))
-      assert.match(Cause.pretty(exit.cause), /version 2 SQLite/)
-    }
+    const query = yield* Database
     const ordered = query("SELECT id, name FROM users WHERE name = :name AND age >= :minimumAge", {
       minimumAge: 18,
       name: "Ada"
@@ -73,7 +61,8 @@ try {
     assert.deepEqual(injection.compile(), ["SELECT id FROM users WHERE name = ?", ["' OR 1=1 --"]])
     assert.deepEqual(yield* injection, [])
   }).pipe(
-    Effect.provide([DatabaseSchema.layer, NodeFileSystem.layer, SqliteClient.layer({ filename: ":memory:" })]),
+    Effect.provide(Database.layer),
+    Effect.provide([NodeFileSystem.layer, SqliteClient.layer({ filename: ":memory:" })]),
     Effect.runPromise
   )
 
@@ -95,10 +84,9 @@ try {
   writeFileSync(
     join(directory, "database.ts"),
     [
-      "import * as Context from 'effect/Context'",
+      "import * as SqlClient from 'effect/sql/SqlClient'",
       "import schema from './_schema.json' with { type: 'json' }",
-      "export { schema }",
-      "export class DatabaseSchema extends Context.Service<DatabaseSchema, typeof schema>()('verify/DatabaseSchema') {}"
+      "export class Database extends SqlClient.Service<Database>()('verify/Database', { schema }) {}"
     ].join("\n")
   )
 
@@ -107,10 +95,10 @@ try {
     const source = [
       "import * as Effect from 'effect/Effect'",
       "import * as SqlClient from 'effect/sql/SqlClient'",
-      "import { DatabaseSchema, schema } from './database.ts'",
+      "import { Database } from './database.ts'",
       "export const program = Effect.gen(function*() {",
       "  const raw = yield* SqlClient.SqlClient",
-      "  const query = yield* SqlClient.makeQuery(DatabaseSchema)",
+      "  const query = yield* Database",
       body,
       "})"
     ].join("\n")
@@ -131,7 +119,7 @@ try {
     assert.match(
       result.output,
       location,
-      "Diagnostics must refer to the query, schema service, or schema"
+      "Diagnostics must refer to the query, database service, or schema"
     )
   }
 
@@ -143,14 +131,14 @@ try {
   ].join("\n")
   accepts(valid)
   accepts(
-    "void Effect.runPromise(SqlClient.makeQuery(DatabaseSchema).pipe(Effect.provideService(DatabaseSchema, schema), Effect.provideService(SqlClient.SqlClient, raw)))"
+    "void Effect.runPromise(Database.pipe(Effect.provide(Database.layer), Effect.provideService(SqlClient.SqlClient, raw)))"
   )
   rejects(
-    "void Effect.runPromise(SqlClient.makeQuery(DatabaseSchema).pipe(Effect.provideService(SqlClient.SqlClient, raw)))",
-    /DatabaseSchema.*never/s
+    "void Effect.runPromise(Database.pipe(Effect.provideService(SqlClient.SqlClient, raw)))",
+    /Database.*never/s
   )
   rejects(
-    "void Effect.runPromise(SqlClient.makeQuery(DatabaseSchema).pipe(Effect.provideService(DatabaseSchema, schema)))",
+    "void Effect.runPromise(Database.pipe(Effect.provide(Database.layer)))",
     /SqlClient.*never/s
   )
   accepts(
@@ -225,9 +213,9 @@ try {
   const invalid = JSON.parse(original)
   invalid.tables.users.id = { ANY: null }
   writeFileSync(schemaPath, JSON.stringify(invalid))
-  rejects(valid, /not assignable to parameter of type 'Key<DatabaseSchema, Snapshot>'/)
+  rejects(valid, /not assignable to type 'Snapshot'/, /database\.ts\(\d+,\d+\)/)
   writeFileSync(schemaPath, "{}")
-  rejects(valid, /missing the following properties from type 'Snapshot'/)
+  rejects(valid, /missing the following properties from type 'Snapshot'/, /database\.ts\(\d+,\d+\)/)
   writeFileSync(schemaPath, "{\"version\":")
   rejects(valid, /TS\d+/, /_schema\.json\(\d+,\d+\)/)
   rmSync(schemaPath)
@@ -247,7 +235,7 @@ try {
     untrustedNameMatches: 0
   })
   console.log(
-    "Verified schema service requirements, native JSON imports, SQL literal inference, bound parameters, schema invalidation, and SQLite execution."
+    "Verified database service requirements, native JSON imports, SQL literal inference, bound parameters, schema invalidation, and SQLite execution."
   )
 } finally {
   rmSync(directory, { recursive: true, force: true })

@@ -18,7 +18,7 @@ export interface Query<D extends Database> {
 export function makeQuery<S extends Snapshot>(client: SqlClient, schema: S): Query<DatabaseOf<S>> {
   assertSnapshot(schema)
   if (!client.onDialectOrElse({ sqlite: () => true, orElse: () => false })) {
-    throw new TypeError("SqlClient.makeQuery requires a SQLite client")
+    throw new TypeError("SqlClient.Service requires a SQLite client")
   }
   const sql = client.withoutTransforms()
   return ((text: string, params: Readonly<Record<string, unknown>> = {}) => {

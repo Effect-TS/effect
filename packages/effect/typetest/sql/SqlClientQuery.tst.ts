@@ -1,6 +1,5 @@
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
+import type * as Layer from "effect/Layer"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { SqlError } from "effect/sql/SqlError"
 import type { Statement } from "effect/sql/Statement"
@@ -23,32 +22,42 @@ const schema = {
     }
   }
 }
-class DatabaseSchema extends Context.Service<DatabaseSchema, typeof schema>()("test/SqlClientQuery/DatabaseSchema") {}
+class Database extends SqlClient.Service<Database>()("test/SqlClientQuery/Database", { schema }) {}
 
-const acquireQuery = SqlClient.makeQuery(DatabaseSchema)
+const acquireQuery = Effect.service(Database)
 declare const query: Effect.Success<typeof acquireQuery>
 
-describe("SqlClient.makeQuery", () => {
-  it("requires the schema and client services until they are provided", () => {
+describe("SqlClient.Service", () => {
+  it("requires the database service and binds its layer to a SQL client", () => {
     expect(acquireQuery).type.toBe<
-      Effect.Effect<SqlClient.Query<typeof schema>, never, SqlClient.SqlClient | DatabaseSchema>
+      Effect.Effect<SqlClient.Query<typeof schema>, never, Database>
     >()
-    expect(Effect.provide(acquireQuery, Layer.succeed(DatabaseSchema, schema))).type.toBe<
+    expect(Database.layer).type.toBe<Layer.Layer<Database, never, SqlClient.SqlClient>>()
+    const withDatabase = Effect.provide(acquireQuery, Database.layer)
+    expect(withDatabase).type.toBe<
       Effect.Effect<SqlClient.Query<typeof schema>, never, SqlClient.SqlClient>
     >()
     const withClient = Effect.provideService(acquireQuery, SqlClient.SqlClient, client)
-    expect(withClient).type.toBe<Effect.Effect<SqlClient.Query<typeof schema>, never, DatabaseSchema>>()
-    expect(Effect.provideService(withClient, DatabaseSchema, schema)).type.toBe<
+    expect(withClient).type.toBe<Effect.Effect<SqlClient.Query<typeof schema>, never, Database>>()
+    expect(Effect.provideService(withDatabase, SqlClient.SqlClient, client)).type.toBe<
       Effect.Effect<SqlClient.Query<typeof schema>>
     >()
     const program = Effect.gen(function*() {
-      const sql = yield* acquireQuery
+      const sql = yield* Database
       return yield* sql("SELECT id FROM users")
     })
     expect(program).type.toBe<
-      Effect.Effect<ReadonlyArray<{ readonly id: number }>, SqlError, SqlClient.SqlClient | DatabaseSchema>
+      Effect.Effect<ReadonlyArray<{ readonly id: number }>, SqlError, Database>
     >()
     expect(Effect.runPromise).type.not.toBeCallableWith(program)
+    class OtherDatabase extends SqlClient.Service<OtherDatabase>()("test/OtherDatabase", { schema }) {}
+    const wrongDatabase = program.pipe(
+      Effect.provide(OtherDatabase.layer),
+      Effect.provideService(SqlClient.SqlClient, client)
+    )
+    expect(wrongDatabase).type.toBe<
+      Effect.Effect<ReadonlyArray<{ readonly id: number }>, SqlError, Database>
+    >()
   })
 
   it("infers projected fields, aliases and nullability", () => {
@@ -109,9 +118,11 @@ describe("SqlClient.makeQuery", () => {
         }
       }
     }
-    class LiteralSchema extends Context.Service<LiteralSchema, typeof literalSchema>()("test/LiteralSchema") {}
+    class LiteralDatabase extends SqlClient.Service<LiteralDatabase>()("test/LiteralDatabase", {
+      schema: literalSchema
+    }) {}
     Effect.gen(function*() {
-      const literals = yield* SqlClient.makeQuery(LiteralSchema)
+      const literals = yield* LiteralDatabase
       expect(literals).type.not.toBeCallableWith("SELECT null FROM users")
       expect(literals).type.not.toBeCallableWith("SELECT true FROM users")
       expect(literals).type.not.toBeCallableWith("SELECT FALSE FROM users")
@@ -131,9 +142,11 @@ describe("SqlClient.makeQuery", () => {
       ...schema,
       tables: { users: { id: { TEXT: null }, email: { TEXT: null } } }
     }
-    class ChangedSchema extends Context.Service<ChangedSchema, typeof changedSchema>()("test/ChangedSchema") {}
+    class ChangedDatabase extends SqlClient.Service<ChangedDatabase>()("test/ChangedDatabase", {
+      schema: changedSchema
+    }) {}
     Effect.gen(function*() {
-      const changed = yield* SqlClient.makeQuery(ChangedSchema)
+      const changed = yield* ChangedDatabase
       expect(changed("SELECT * FROM users")).type.toBe<
         Statement<{
           readonly id: string
@@ -147,23 +160,21 @@ describe("SqlClient.makeQuery", () => {
       ...schema,
       tables: { users: { id: { ANY: null } } }
     }
-    class InvalidSchema extends Context.Service<InvalidSchema, typeof invalidSchema>()("test/InvalidSchema") {}
-    expect(SqlClient.makeQuery).type.not.toBeCallableWith(InvalidSchema)
+    expect(SqlClient.Service<never>()).type.not.toBeCallableWith("test/InvalidDatabase", { schema: invalidSchema })
     const blobSchema = {
       ...schema,
       tables: { users: { value: { BLOB: null } } }
     }
-    class BlobSchema extends Context.Service<BlobSchema, typeof blobSchema>()("test/BlobSchema") {}
-    expect(SqlClient.makeQuery).type.not.toBeCallableWith(BlobSchema)
+    expect(SqlClient.Service<never>()).type.not.toBeCallableWith("test/BlobDatabase", { schema: blobSchema })
     const alternative: { id: { INTEGER: null } } | { id: { TEXT: null } } = Math.random() ?
       { id: { INTEGER: null } } :
       { id: { TEXT: null } }
     const alternativeSchema = { ...schema, tables: { users: alternative } }
-    class AlternativeSchema
-      extends Context.Service<AlternativeSchema, typeof alternativeSchema>()("test/AlternativeSchema")
+    class AlternativeDatabase
+      extends SqlClient.Service<AlternativeDatabase>()("test/AlternativeDatabase", { schema: alternativeSchema })
     {}
     Effect.gen(function*() {
-      const alternatives = yield* SqlClient.makeQuery(AlternativeSchema)
+      const alternatives = yield* AlternativeDatabase
       expect(alternatives("SELECT id FROM users")).type.toBe<Statement<{ readonly id: number | string }>>()
     })
   })

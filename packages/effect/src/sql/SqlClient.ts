@@ -17,6 +17,7 @@ import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
 import * as query from "../internal/sqlQuery.ts"
 import type * as querySchema from "../internal/sqlQuerySchema.ts"
+import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -176,17 +177,17 @@ export interface SqlClient extends Constructor {
 export const SqlClient = Context.Service<SqlClient>("effect/sql/SqlClient")
 
 /**
- * JSON snapshot shape for a schema service read by `makeQuery`, with table
- * names, column names, SQLite types, and nullability encoded as object keys to
- * preserve inference through a native JSON import.
+ * JSON snapshot shape accepted by `Service`, with table names, column names,
+ * SQLite types, and nullability encoded as object keys to preserve inference
+ * through a native JSON import.
  *
  * **Details**
  *
- * Use `typeof snapshot` as the service shape so the imported snapshot's specific
- * keys are retained. A column such as `{ TEXT: null, NULL: null }` represents
+ * Pass the imported snapshot as the service's `schema` option to retain its
+ * specific keys. A column such as `{ TEXT: null, NULL: null }` represents
  * `string | null`; the marker values are not row data or defaults.
  *
- * @see makeQuery
+ * @see Service
  * @stability experimental
  * @category models
  * @since 4.0.0
@@ -198,7 +199,7 @@ export type QuerySchema = querySchema.Snapshot
  * a schema snapshot and a SQL string literal, returning an executable SQL
  * `Statement`.
  *
- * @see makeQuery
+ * @see Service
  * @stability experimental
  * @category models
  * @since 4.0.0
@@ -206,46 +207,58 @@ export type QuerySchema = querySchema.Snapshot
 export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>>
 
 /**
- * Reads the active SQL client and a schema service to create a query constructor
- * that checks SQL string literals and infers result and parameter types without
- * explicit row types.
+ * Defines a database service whose query constructor checks SQL string literals
+ * and infers result and parameter types from an imported JSON schema snapshot.
  *
  * **Details**
  *
- * Pass a service key whose shape is `typeof snapshot` for an imported JSON
- * snapshot. The effect requires that service and `SqlClient`; provide their
- * values through the surrounding context or layers. Each evaluation uses the
- * services active in that context.
+ * Extend `SqlClient.Service<Database>()("Database", { schema })` to declare the
+ * service, then use `yield* Database` to access its query constructor. Query
+ * code requires only `Database`. Its `layer` requires `SqlClient` and binds the
+ * snapshot to that client when the layer is built. Provide a driver layer to
+ * supply the connection and manage its lifetime.
  *
  * Call the resulting constructor with parentheses and use `:name` placeholders
  * with a parameter object. Values are bound in SQL occurrence order. Supports
- * single-table `SELECT`, projections, `AS` aliases, `DISTINCT`, comparisons joined by `AND`,
- * `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET`. Unsupported syntax,
- * dynamic strings, and unions of query literals produce type errors.
+ * single-table `SELECT`, projections, `AS` aliases, `DISTINCT`, comparisons
+ * joined by `AND`, `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET`.
+ * Unsupported query patterns, dynamic strings, and unions of query literals
+ * produce type errors.
  *
  * **Gotchas**
  *
  * Requires a version 2 SQLite snapshot. Invalid snapshots or other dialects
- * fail the effect with a defect. Only `STRICT` tables with ordinary `INT`,
- * `INTEGER`, `REAL`, and `TEXT` columns are supported. Generated columns and
- * `BLOB` values are not supported. Identifier spelling must match the snapshot.
+ * fail layer construction with a defect. Only `STRICT` tables with ordinary
+ * `INT`, `INTEGER`, `REAL`, and `TEXT` columns are supported. Generated columns
+ * and `BLOB` values are not supported. Identifier spelling must match the snapshot.
  * Column references named like SQL literals, such as `null` or `current_date`,
  * require quoted identifiers and are rejected by this grammar.
  * Row-name transforms are disabled, numeric decoding must use the driver's
  * defaults, and null checks do not narrow result nullability. The caller must
  * keep the snapshot in sync with the runtime database.
+ * SQLite performs final syntax validation; the type parser does not reject
+ * unquoted keyword aliases.
+ * Existing tagged-template queries and SQL client helpers remain available
+ * through the separate `SqlClient` service.
  *
  * @see QuerySchema
  * @see Query
  * @stability experimental
- * @category accessors
+ * @category services
  * @since 4.0.0
  */
-export const makeQuery: <I, S extends QuerySchema>(
-  schema: Context.Key<I, S>
-) => Effect.Effect<Query<S>, never, SqlClient | I> = Effect.fnUntraced(function*(schema) {
-  return query.makeQuery(yield* SqlClient, yield* schema)
-})
+export const Service = <Self>() =>
+<const Id extends string, S extends QuerySchema>(
+  id: Id,
+  options: { readonly schema: S }
+): Context.ServiceClass<Self, Id, Query<S>> & {
+  readonly layer: Layer.Layer<Self, never, SqlClient>
+} => {
+  const service = Context.Service<Self, Query<S>>()(id)
+  return Object.assign(service, {
+    layer: Layer.effect(service, Effect.map(SqlClient, (client) => query.makeQuery(client, options.schema)))
+  })
+}
 
 /**
  * Namespace containing types associated with the `SqlClient` service.

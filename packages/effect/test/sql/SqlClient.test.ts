@@ -646,9 +646,9 @@ const querySchema = {
   }
 }
 
-class QuerySchema extends Context.Service<QuerySchema, typeof querySchema>()("test/SqlClient/QuerySchema") {}
-
-const queryAccessor = SqlClient.makeQuery(QuerySchema)
+class QueryDatabase
+  extends SqlClient.Service<QueryDatabase>()("test/SqlClient/QueryDatabase", { schema: querySchema })
+{}
 
 const makeQueryClient = (compiler = Statement.makeCompilerSqlite()) =>
   SqlClient.make({
@@ -658,15 +658,14 @@ const makeQueryClient = (compiler = Statement.makeCompilerSqlite()) =>
     spanAttributes: []
   }).pipe(Effect.provide(Reactivity.layer))
 
-const queryLayer = Layer.merge(
-  Layer.effect(SqlClient.SqlClient, makeQueryClient()),
-  Layer.succeed(QuerySchema, querySchema)
+const queryLayer = QueryDatabase.layer.pipe(
+  Layer.provide(Layer.effect(SqlClient.SqlClient, makeQueryClient()))
 )
 
-describe("SqlClient.makeQuery", () => {
+describe("SqlClient.Service", () => {
   it.effect("binds every named occurrence in SQL order", () =>
     Effect.gen(function*() {
-      const query = yield* queryAccessor
+      const query = yield* QueryDatabase
       const name = "' OR 1=1 --"
       const statement = query(
         "SELECT id FROM users WHERE name = :name AND id = :id AND age > :id",
@@ -683,7 +682,7 @@ describe("SqlClient.makeQuery", () => {
       ])
     }).pipe(Effect.provide(queryLayer)))
 
-  it.effect("reads and validates the schema in the current service scope", () =>
+  it.effect("validates the schema when the database layer is built", () =>
     Effect.gen(function*() {
       const invalid: Array<unknown> = [
         { ...querySchema, version: 1 },
@@ -692,8 +691,12 @@ describe("SqlClient.makeQuery", () => {
         { ...querySchema, tables: { users: { id: { ANY: null } } } }
       ]
       for (const value of invalid) {
-        const exit = yield* queryAccessor.pipe(
-          Effect.provideService(QuerySchema, value as typeof querySchema),
+        class InvalidDatabase extends SqlClient.Service<InvalidDatabase>()("test/InvalidDatabase", {
+          schema: value as typeof querySchema
+        }) {}
+        const exit = yield* InvalidDatabase.pipe(
+          Effect.provide(InvalidDatabase.layer),
+          Effect.provideServiceEffect(SqlClient.SqlClient, makeQueryClient()),
           Effect.exit
         )
         assert(Exit.isFailure(exit))
@@ -701,9 +704,34 @@ describe("SqlClient.makeQuery", () => {
         assert(Result.isSuccess(defect))
         assert.instanceOf(defect.success, TypeError)
       }
-      const query = yield* queryAccessor
-      assert.deepStrictEqual(query("SELECT id FROM users").compile(), ["SELECT id FROM users", []])
-    }).pipe(Effect.provide(queryLayer)))
+    }))
+
+  it.effect("uses the database provided in the current scope", () =>
+    Effect.gen(function*() {
+      const first = yield* makeClient()
+      const second = yield* makeClient()
+      const firstQuery = yield* QueryDatabase.pipe(
+        Effect.provide(QueryDatabase.layer),
+        Effect.provideService(SqlClient.SqlClient, first.sql)
+      )
+      const secondQuery = yield* QueryDatabase.pipe(
+        Effect.provide(QueryDatabase.layer),
+        Effect.provideService(SqlClient.SqlClient, second.sql)
+      )
+      const select = QueryDatabase.use((sql) => sql("SELECT id FROM users"))
+      yield* Effect.gen(function*() {
+        yield* select
+        yield* select.pipe(Effect.provideService(QueryDatabase, secondQuery))
+        yield* select
+      }).pipe(Effect.provideService(QueryDatabase, firstQuery))
+      assert.deepStrictEqual(first.calls, [
+        "prepared(SELECT id FROM users)",
+        "release",
+        "prepared(SELECT id FROM users)",
+        "release"
+      ])
+      assert.deepStrictEqual(second.calls, ["prepared(SELECT id FROM users)", "release"])
+    }))
 
   it.effect("requires a SQLite client", () =>
     Effect.gen(function*() {
@@ -714,17 +742,18 @@ describe("SqlClient.makeQuery", () => {
         onRecordUpdate: () => ["", []],
         onCustom: () => ["", []]
       }))
-      const exit = yield* queryAccessor.pipe(
+      const exit = yield* QueryDatabase.pipe(
+        Effect.provide(QueryDatabase.layer),
         Effect.provideService(SqlClient.SqlClient, client),
         Effect.exit
       )
       assert(Exit.isFailure(exit))
       assert.include(Cause.pretty(exit.cause), "requires a SQLite client")
-    }).pipe(Effect.provideService(QuerySchema, querySchema)))
+    }))
 
   it.effect("rejects inherited or missing parameter values from untyped callers", () =>
     Effect.gen(function*() {
-      const query = yield* queryAccessor
+      const query = yield* QueryDatabase
       const text = "SELECT id FROM users WHERE id = :id"
       assert.throws(() => Reflect.apply(query, undefined, [text]), /Missing SQL parameter :id/)
       assert.throws(

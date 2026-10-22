@@ -30,7 +30,7 @@ stats.txt
 
 # Scratchpad files
 scratchpad/**/*
-# Keep the runnable SQL type-safety example with the spike.
+# Track the SQL example for integration coverage.
 !scratchpad/sql-typesafe/
 !scratchpad/sql-typesafe/*.ts
 !scratchpad/sql-typesafe/_schema.json
