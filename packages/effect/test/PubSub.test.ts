@@ -782,6 +782,111 @@ describe("PubSub", () => {
       })
     ))
 
+  it.effect("a resumed backpressured publisher does not overtake queued publishers", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<number>(3)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publishAll(pubsub, [1, 2, 3])
+      yield* Effect.forkChild(
+        PubSub.publish(pubsub, 4).pipe(Effect.andThen(PubSub.publish(pubsub, 6))),
+        { startImmediately: true }
+      )
+      yield* Effect.forkChild(PubSub.publish(pubsub, 5), { startImmediately: true })
+
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [1, 2, 3])
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [4, 5, 6])
+    }))
+
+  it.effect("a resumed backpressured publisher does not publishAll ahead of queued publishers", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<number>(3)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publishAll(pubsub, [1, 2, 3])
+      yield* Effect.forkChild(
+        PubSub.publish(pubsub, 4).pipe(Effect.andThen(PubSub.publishAll(pubsub, [6, 7]))),
+        { startImmediately: true }
+      )
+      yield* Effect.forkChild(PubSub.publish(pubsub, 5), { startImmediately: true })
+
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [1, 2, 3])
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [4, 5, 6])
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [7])
+    }))
+
+  it.effect("a resumed subscriber does not publish ahead of the rest of a publishAll batch", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<number>(2)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      const taker = yield* Effect.forkChild(
+        PubSub.take(subscription).pipe(Effect.tap(() => PubSub.publish(pubsub, 4))),
+        { startImmediately: true }
+      )
+      yield* Effect.forkChild(PubSub.publishAll(pubsub, [1, 2, 3]), { startImmediately: true })
+
+      assert.deepStrictEqual(yield* PubSub.takeBetween(subscription, 3, 3), [2, 3, 4])
+      assert.strictEqual(yield* Fiber.join(taker), 1)
+    }))
+
+  it.effect("publishUnsafe rejects a message while backpressured publishers are queued", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<number>(3)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publishAll(pubsub, [1, 2, 3])
+      const publisher = yield* Effect.forkChild(
+        PubSub.publish(pubsub, 4).pipe(Effect.andThen(Effect.sync(() => PubSub.publishUnsafe(pubsub, 6)))),
+        { startImmediately: true }
+      )
+      yield* Effect.forkChild(PubSub.publish(pubsub, 5), { startImmediately: true })
+
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [1, 2, 3])
+      assert.isFalse(yield* Fiber.join(publisher))
+      assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [4, 5])
+    }))
+
+  it.effect("a resumed subscriber does not publish ahead of queued publishers", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<number>(1)
+      const scope = yield* Scope.make()
+      yield* PubSub.subscribe(pubsub).pipe(Scope.provide(scope))
+      const first = yield* PubSub.subscribe(pubsub)
+      const second = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publish(pubsub, 1)
+      yield* PubSub.take(first)
+      yield* PubSub.take(second)
+      yield* Effect.forkChild(PubSub.publish(pubsub, 2), { startImmediately: true })
+      yield* Effect.forkChild(PubSub.publish(pubsub, 3), { startImmediately: true })
+      const waiting = yield* Effect.forkChild(PubSub.take(first), { startImmediately: true })
+      yield* Effect.forkChild(
+        PubSub.take(second).pipe(Effect.andThen(PubSub.publish(pubsub, 4))),
+        { startImmediately: true }
+      )
+
+      yield* Scope.close(scope, Exit.void)
+
+      assert.strictEqual(yield* Fiber.join(waiting), 2)
+      assert.strictEqual(yield* PubSub.take(first), 3)
+      assert.strictEqual(yield* PubSub.take(second), 3)
+      assert.strictEqual(yield* PubSub.take(first), 4)
+    }))
+
+  it.effect("drains many queued backpressured publishers without growing the stack", () =>
+    Effect.gen(function*() {
+      const n = 2_000
+      const pubsub = yield* PubSub.bounded<number>(n)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      yield* PubSub.publishAll(pubsub, Array.range(1, n))
+      for (let i = 0; i < n; i++) {
+        yield* Effect.forkChild(
+          PubSub.publish(pubsub, 0).pipe(Effect.andThen(PubSub.publish(pubsub, 0))),
+          { startImmediately: true }
+        )
+      }
+
+      let taken = 0
+      while (taken < 3 * n) taken += (yield* PubSub.takeAll(subscription)).length
+      assert.strictEqual(taken, 3 * n)
+    }))
+
   it.effect("an interrupted backpressured publisher never publishes later", () =>
     interruptAtEveryYield((budget) =>
       Effect.gen(function*() {
@@ -939,6 +1044,109 @@ describe("PubSub", () => {
         assert.strictEqual(yield* PubSub.take(fast), 0)
         assert.strictEqual(yield* PubSub.take(slow), 0)
       }))
+
+    it.effect("delivers a backpressured publish to a waiting subscriber before the publisher ends the PubSub", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const fast = yield* PubSub.subscribe(pubsub)
+        const slow = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        yield* Effect.forkChild(
+          PubSub.publish(pubsub, 2).pipe(Effect.andThen(PubSub.end(pubsub, 0))),
+          { startImmediately: true }
+        )
+        assert.strictEqual(yield* PubSub.take(fast), 1)
+        const waiting = yield* Effect.forkChild(PubSub.take(fast), { startImmediately: true })
+
+        assert.strictEqual(yield* PubSub.take(slow), 1)
+
+        assert.strictEqual(yield* Fiber.join(waiting), 2)
+        assert.strictEqual(yield* PubSub.take(fast), 0)
+        assert.deepStrictEqual(yield* PubSub.takeBetween(slow, 2, 2), [2, 0])
+      }))
+
+    it.effect("delivers buffered messages to waiting subscribers when a resumed subscriber ends the PubSub", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const first = yield* PubSub.subscribe(pubsub)
+        const second = yield* PubSub.subscribe(pubsub)
+        const ender = yield* Effect.forkChild(
+          PubSub.take(first).pipe(Effect.tap(() => PubSub.end(pubsub, 0))),
+          { startImmediately: true }
+        )
+        const waiting = yield* Effect.forkChild(PubSub.take(second), { startImmediately: true })
+
+        yield* PubSub.publishAll(pubsub, [1, 2])
+
+        assert.strictEqual(yield* Fiber.join(ender), 1)
+        assert.strictEqual(yield* Fiber.join(waiting), 1)
+        assert.deepStrictEqual(yield* PubSub.takeBetween(first, 2, 2), [2, 0])
+        assert.deepStrictEqual(yield* PubSub.takeBetween(second, 2, 2), [2, 0])
+      }))
+
+    it.effect("serves waiting takers in order before a re-entrant take receives the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const trigger = yield* PubSub.subscribe(pubsub)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const log: Array<string> = []
+        yield* Effect.forkChild(
+          PubSub.take(trigger).pipe(Effect.andThen(PubSub.end(pubsub, 0))),
+          { startImmediately: true }
+        )
+        const a = yield* Effect.forkChild(
+          Effect.gen(function*() {
+            log.push(`a:${yield* PubSub.take(subscription)}`)
+            log.push(`a:${yield* PubSub.take(subscription)}`)
+          }),
+          { startImmediately: true }
+        )
+        const b = yield* Effect.forkChild(
+          Effect.gen(function*() {
+            log.push(`b:${yield* PubSub.take(subscription)}`)
+          }),
+          { startImmediately: true }
+        )
+
+        yield* PubSub.publishAll(pubsub, [1, 2])
+        yield* Fiber.join(a)
+        yield* Fiber.join(b)
+
+        assert.deepStrictEqual(log, ["a:1", "b:2", "a:0"])
+      }))
+
+    it.effect("stops serving waiting subscribers once a resumed subscriber shuts the PubSub down", () =>
+      interruptAtEveryYield((budget) =>
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.unbounded<number>()
+          const trigger = yield* PubSub.subscribe(pubsub)
+          const closer = yield* PubSub.subscribe(pubsub)
+          const other = yield* PubSub.subscribe(pubsub)
+          yield* Effect.forkChild(
+            PubSub.take(trigger).pipe(Effect.andThen(PubSub.end(pubsub, 0))),
+            { startImmediately: true }
+          )
+          yield* Effect.forkChild(
+            PubSub.take(closer).pipe(
+              Effect.andThen(Effect.forkChild(budget(PubSub.shutdown(pubsub)), { startImmediately: true })),
+              Effect.andThen(PubSub.take(closer))
+            ),
+            { startImmediately: true }
+          )
+          const servedAfterShutdown = (subscription: PubSub.Subscription<number>) =>
+            Effect.forkChild(
+              PubSub.take(subscription).pipe(Effect.andThen(PubSub.isShutdown(pubsub))),
+              { startImmediately: true }
+            )
+          const sibling = yield* servedAfterShutdown(closer)
+          const waiting = yield* servedAfterShutdown(other)
+
+          yield* PubSub.publishAll(pubsub, [1, 2])
+
+          const exits = [yield* Fiber.await(sibling), yield* Fiber.await(waiting)]
+          return exits.every((exit) => Exit.hasInterrupts(exit) || (Exit.isSuccess(exit) && !exit.value))
+        })
+      ))
 
     it.effect("rejects a backpressured publish that yields before registering its surplus", () =>
       Effect.gen(function*() {
