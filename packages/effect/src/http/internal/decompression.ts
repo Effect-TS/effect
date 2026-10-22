@@ -124,6 +124,12 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return this.inner.upgrade
   }
 
+  upgradeWith(
+    options: { readonly headers?: Headers.Input | undefined }
+  ): Effect.Effect<Socket.Socket, HttpServerError> {
+    return this.inner.upgradeWith(options)
+  }
+
   // Platform accessors such as `NodeHttpServerRequest.toServerResponse` read
   // the response handle from the request.
   get response(): unknown {

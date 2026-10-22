@@ -939,6 +939,17 @@ function handlerToHttpEffect(
   const encodeStream = makeStreamEncoder(endpoint, options.success)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
   const upgrade = getUpgradeSuccessSchema(endpoint)
+  const encodeUpgradeHeaders = UndefinedOr.map(
+    upgrade?.headers,
+    (schema) => Schema.encodeUnknownEffect(schema, options.headers)
+  )
+  const upgradeWith = (httpRequest: HttpServerRequest, options?: { readonly headers?: unknown }) =>
+    encodeUpgradeHeaders === undefined
+      ? Effect.orDie(httpRequest.upgrade)
+      : HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)).pipe(
+        Effect.flatMap((headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })),
+        Effect.orDie
+      )
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
@@ -967,6 +978,12 @@ function handlerToHttpEffect(
       if (decodeQuery) {
         request.query = yield* HttpApiSchemaError.wrap("Query", decodeQuery(query))
       }
+      if (upgrade !== undefined) {
+        if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
+          return upgradeRequired(upgrade.protocol)
+        }
+        request.upgrade = (options?: { readonly headers?: unknown }) => upgradeWith(httpRequest, options)
+      }
       if (payloadBy) {
         const result = decodePayload(payloadBy, httpRequest, query)
         if (Response.isHttpServerResponse(result)) {
@@ -975,12 +992,6 @@ function handlerToHttpEffect(
         if (result !== undefined) {
           request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
-      }
-      if (upgrade !== undefined) {
-        if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
-          return upgradeRequired(upgrade.protocol)
-        }
-        request.socket = yield* Effect.orDie(httpRequest.upgrade)
       }
       let response = yield* handler(request)
       if (Response.isHttpServerResponse(response)) {

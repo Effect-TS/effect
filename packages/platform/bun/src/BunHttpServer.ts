@@ -632,6 +632,20 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     return this.arrayBufferEffect
   }
 
+  upgradeWith(
+    options: { readonly headers?: Headers.Input | undefined }
+  ): Effect.Effect<Socket.Socket, Error.HttpServerError> {
+    if (Object.keys(Headers.fromInput(options.headers)).length === 0) return this.upgrade
+    return Effect.fail(
+      new Error.HttpServerError({
+        reason: new Error.InternalError({
+          request: this,
+          description: "WebSocket upgrades do not support custom response headers"
+        })
+      })
+    )
+  }
+
   get upgrade(): Effect.Effect<Socket.Socket, Error.HttpServerError> {
     return Effect.callback<Socket.Socket, Error.HttpServerError>((resume) => {
       const deferred = Deferred.makeUnsafe<ServerWebSocket<WebSocketContext>>()

@@ -899,6 +899,7 @@ function extractResponseBodies(
       map.get(status)!.headers.push(
         Schema.Struct({ connection: Schema.Literal("Upgrade"), upgrade: Schema.Literal(body.protocol) })
       )
+      if (body.headers !== undefined) map.get(status)!.headers.push(body.headers)
     } else if (HttpApiSchema.isStreamSchema(body)) {
       addStreamContent(body, status)
     } else if (HttpApiSchema.isNoContent(ast)) {

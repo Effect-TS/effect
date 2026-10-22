@@ -1080,7 +1080,7 @@ describe("OpenAPI spec", () => {
                     payload: Schema.Struct({ tty: Schema.Boolean }),
                     success: HttpApiSchema.Upgrade({
                       protocol: "tcp",
-                      headers: { "content-type": Schema.Literals(["application/raw", "application/multiplexed"]) }
+                      headers: { "x-stream": Schema.Literals(["raw", "multiplexed"]) }
                     })
                   })
                 )
@@ -1091,10 +1091,7 @@ describe("OpenAPI spec", () => {
             headers: {
               connection: { schema: { type: "string", enum: ["Upgrade"] }, required: true },
               upgrade: { schema: { type: "string", enum: ["tcp"] }, required: true },
-              "content-type": {
-                schema: { type: "string", enum: ["application/raw", "application/multiplexed"] },
-                required: true
-              }
+              "x-stream": { schema: { type: "string", enum: ["raw", "multiplexed"] }, required: true }
             }
           })
           assert.deepStrictEqual(Object.keys(spec.paths["/a"].post?.requestBody?.content ?? {}), ["application/json"])
