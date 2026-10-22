@@ -4723,6 +4723,20 @@ describe("Effect", () => {
       })
     })
 
+    it.effect("untraced should support self with pipeable arguments", () => {
+      const self = { prefix: "bound" }
+      const body = function*(this: typeof self, value: string) {
+        return `${this.prefix}:${value}`
+      }
+      const untraced = Effect.fnUntraced({ self }, body, Effect.map((value) => value.toUpperCase()))
+      const eager = Effect.fnUntracedEager({ self }, body, Effect.map((value) => value.toUpperCase()))
+      return Effect.gen(function*() {
+        assert.strictEqual(untraced.length, 1)
+        assert.strictEqual(yield* untraced("value"), "BOUND:VALUE")
+        assert.strictEqual(yield* eager("value"), "BOUND:VALUE")
+      })
+    })
+
     it("should proxy body length", () => {
       const traced = Effect.fn(function*(a: string, b: number) {
         return a.length + b
