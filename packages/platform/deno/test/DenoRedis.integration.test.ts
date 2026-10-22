@@ -2,7 +2,10 @@ import * as DenoRedis from "@effect/platform-deno/DenoRedis"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Deferred, Effect, Fiber, Layer, Queue, Schema } from "effect"
-import { PersistedQueue, Persistence, Redis } from "effect/persistence"
+import { CircuitBreaker, PersistedQueue, Persistence, Redis } from "effect/persistence"
+import { TestClock } from "effect/testing"
+import * as CircuitBreakerRedisTest from "../../../effect/test/persistence/CircuitBreakerRedisTest.ts"
+import * as CircuitBreakerTest from "../../../effect/test/persistence/CircuitBreakerTest.ts"
 import * as PersistedCacheTest from "../../../effect/test/persistence/PersistedCacheTest.ts"
 import * as PersistedQueueTest from "../../../effect/test/persistence/PersistedQueueTest.ts"
 
@@ -34,6 +37,15 @@ PersistedQueueTest.suite(
     lockRefreshInterval: "100 millis"
   }).pipe(Layer.provide(RedisLayer))
 )
+
+CircuitBreakerTest.suite(
+  "DenoRedis",
+  (options) => CircuitBreaker.layerStoreRedis(options).pipe(Layer.provide(RedisLayer)),
+  // the store reads Redis TIME, so time only moves on the wall clock
+  (duration) => TestClock.withLive(Effect.sleep(duration))
+)
+
+CircuitBreakerRedisTest.suite("DenoRedis", RedisLayer)
 
 const PersistedQueueRedisLayer = Layer.mergeAll(
   RedisLayer,
