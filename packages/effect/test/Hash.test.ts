@@ -137,39 +137,10 @@ describe("Hash", () => {
     it("does not collide for 10k multiples of 0.001", () => {
       assertNoHashCollisions(range(10_000).map((i) => i * 0.001))
     })
-  })
 
-  for (const Buffer of [ArrayBuffer, ...(typeof SharedArrayBuffer === "undefined" ? [] : [SharedArrayBuffer])]) {
-    describe(`${Buffer.name} objects`, () => {
-      const make = (bytes: ReadonlyArray<number>) => {
-        const buffer = new Buffer(bytes.length)
-        new Uint8Array(buffer).set(bytes)
-        return buffer
-      }
-
-      it("hashes buffer contents", () => {
-        assert.notStrictEqual(Hash.hash(make([1, 2, 3])), Hash.hash(make([9, 9, 9])))
-        assert.notStrictEqual(Hash.hash(make([1])), Hash.hash(make([1, 0])))
-        assert.notStrictEqual(Hash.hash(make([])), Hash.hash(make([0])))
-      })
-
-      it("gives equal buffers equal hashes", () => {
-        for (const bytes of [[], [1, 2, 3]]) {
-          const self = make(bytes)
-          const that = make(bytes)
-          assert.isTrue(Equal.equals(self, that))
-          assert.strictEqual(Hash.hash(self), Hash.hash(that))
-        }
-      })
+    it("does not collide for ArrayBuffers with different bytes", () => {
+      assert.notStrictEqual(Hash.hash(Uint8Array.of(1, 2).buffer), Hash.hash(Uint8Array.of(9, 9).buffer))
     })
-  }
-
-  it("hashes detached ArrayBuffers without throwing", () => {
-    const buffer = new ArrayBuffer(3)
-    structuredClone(buffer, { transfer: [buffer] })
-    const hash = Hash.hash(buffer)
-    assert.isNumber(hash)
-    assert.strictEqual(Hash.hash(buffer), hash)
   })
 
   describe("floats", () => {

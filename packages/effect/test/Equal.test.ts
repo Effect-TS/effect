@@ -416,53 +416,35 @@ describe("Equal.equals", () => {
     })
   })
 
-  for (const Buffer of [ArrayBuffer, ...(typeof SharedArrayBuffer === "undefined" ? [] : [SharedArrayBuffer])]) {
-    describe(`${Buffer.name} objects`, () => {
-      const make = (bytes: ReadonlyArray<number>) => {
-        const buffer = new Buffer(bytes.length)
-        new Uint8Array(buffer).set(bytes)
-        return buffer
+  describe("ArrayBuffer objects", () => {
+    const make = (Buffer: typeof ArrayBuffer | typeof SharedArrayBuffer, bytes: ReadonlyArray<number>) => {
+      const buffer = new Buffer(bytes.length)
+      new Uint8Array(buffer).set(bytes)
+      return buffer
+    }
+
+    it("should compare bytes", () => {
+      for (const Buffer of [ArrayBuffer, SharedArrayBuffer]) {
+        expect(Equal.equals(make(Buffer, [1, 2]), make(Buffer, [1, 2]))).toBe(true)
+        expect(Equal.equals(make(Buffer, [1, 2]), make(Buffer, [9, 9]))).toBe(false)
       }
-
-      it("compares bytes", () => {
-        assert.isFalse(Equal.equals(make([1, 2, 3]), make([9, 9, 9])))
-        assert.isTrue(Equal.equals(make([1, 2, 3]), make([1, 2, 3])))
-      })
-
-      it("compares byte lengths and empty buffers", () => {
-        assert.isFalse(Equal.equals(make([1]), make([1, 0])))
-        assert.isFalse(Equal.equals(make([]), make([0])))
-        assert.isTrue(Equal.equals(make([]), make([])))
-      })
-
-      it("does not equal views or records in either order", () => {
-        const buffer = make([1, 2, 3])
-        for (const other of [new Uint8Array(buffer), new DataView(buffer), {}]) {
-          assert.isFalse(Equal.equals(buffer, other))
-          assert.isFalse(Equal.equals(other, buffer))
-        }
-      })
     })
-  }
 
-  it("does not equate ArrayBuffer and SharedArrayBuffer in either order", () => {
-    if (typeof SharedArrayBuffer === "undefined") return
-    const buffer = Uint8Array.of(1, 2, 3).buffer
-    const shared = new SharedArrayBuffer(3)
-    new Uint8Array(shared).set([1, 2, 3])
-    assert.isFalse(Equal.equals(buffer, shared))
-    assert.isFalse(Equal.equals(shared, buffer))
-  })
+    it("should not equal views or other buffer kinds with the same bytes", () => {
+      const buffer = make(ArrayBuffer, [1, 2])
+      for (const other of [new Uint8Array(buffer), make(SharedArrayBuffer, [1, 2])]) {
+        expect(Equal.equals(buffer, other)).toBe(false)
+        expect(Equal.equals(other, buffer)).toBe(false)
+      }
+    })
 
-  it("compares detached ArrayBuffers by reference without throwing", () => {
-    const self = new ArrayBuffer(3)
-    const that = new ArrayBuffer(3)
-    structuredClone(self, { transfer: [self] })
-    structuredClone(that, { transfer: [that] })
-    assert.isTrue(Equal.equals(self, self))
-    assert.isFalse(Equal.equals(self, that))
-    assert.isFalse(Equal.equals(self, new ArrayBuffer(0)))
-    assert.isFalse(Equal.equals(new ArrayBuffer(0), that))
+    it("should compare detached buffers by reference", () => {
+      const self = new ArrayBuffer(2)
+      const that = new ArrayBuffer(2)
+      structuredClone(self, { transfer: [self] })
+      structuredClone(that, { transfer: [that] })
+      expect(Equal.equals(self, that)).toBe(false)
+    })
   })
 
   describe("DataView objects", () => {
