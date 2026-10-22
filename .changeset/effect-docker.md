@@ -14,5 +14,6 @@ Add `effect/docker`, an Effect-native client for the Docker Engine API, and `Nod
 - `DockerImages` pulls, pushes, builds, tags, saves, loads, imports and commits images, with registry credentials resolved as the Docker CLI does (`DOCKER_AUTH_CONFIG`, credential helpers, `auths`).
 - `DockerSwarm` inits, joins, inspects, updates and leaves a Swarm, and reads the unlock key of an autolocked one. A Swarm endpoint's 503 fails with `SwarmUnavailable`, which isn't retryable, and join tokens and unlock keys are `Redacted`.
 - `DockerNodes` lists, inspects, updates and removes a Swarm's nodes.
+- `DockerServices` lists, inspects, creates, updates, rolls back and removes services, and streams their logs; `parseLogLine` reads the attributes `details` adds. Specs go as given: registry credentials only with `registryAuth` or `auth`, and `resolveImage` pins the image's digest and platforms as `docker service create` does.
 - Every operation runs in a span named `docker.<Service>.<operation>`, with the resource it acts on as `docker.resource_id` and the negotiated API version; a streaming operation's span lasts until its stream ends. Registry credentials and secret query parameters are redacted.
 - `NodeDocker.layer` and `NodeDocker.layerFromEnv` provide them on Node.js, over a unix socket or TCP with TLS.
