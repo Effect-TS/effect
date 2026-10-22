@@ -464,11 +464,13 @@ export class OtelSpan implements Tracer.Span {
   }
 
   attribute(key: string, value: unknown) {
+    if (this.status._tag === "Ended") return
     this.span.setAttribute(key, unknownToAttributeValue(value))
     this.attributes.set(key, value)
   }
 
   addLinks(links: ReadonlyArray<Tracer.SpanLink>): void {
+    if (this.status._tag === "Ended") return
     // oxlint-disable-next-line no-restricted-syntax
     this.links.push(...links)
     this.span.addLinks(links.map((link) => ({
@@ -478,6 +480,7 @@ export class OtelSpan implements Tracer.Span {
   }
 
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>) {
+    if (this.status._tag === "Ended") return
     const hrTime = nanosToHrTime(endTime)
     this.status = {
       _tag: "Ended",
@@ -512,6 +515,7 @@ export class OtelSpan implements Tracer.Span {
   }
 
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>) {
+    if (this.status._tag === "Ended") return
     this.span.addEvent(
       name,
       attributes ? recordToAttributes(attributes) : undefined,

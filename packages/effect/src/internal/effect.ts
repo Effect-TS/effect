@@ -6307,7 +6307,7 @@ export const annotateCurrentSpan: {
 } = (...args: [Record<string, unknown>] | [key: string, value: unknown]) =>
   withFiber((fiber) => {
     const span = fiber.currentSpanLocal
-    if (span) {
+    if (span && span.status._tag !== "Ended") {
       if (args.length === 1) {
         for (const [key, value] of Object.entries(args[0])) {
           span.attribute(key, value)
@@ -6950,7 +6950,7 @@ export const tracerLogger = loggerMake<unknown, void>(({ cause, fiber, logLevel,
   const clock = fiber.getRef(ClockRef)
   const annotations = fiber.getRef(CurrentLogAnnotations)
   const span = fiber.cache.span
-  if (span === undefined || span._tag === "ExternalSpan") return
+  if (span === undefined || span._tag === "ExternalSpan" || span.status._tag === "Ended") return
   const attributes: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(annotations)) {
     InternalRecord.assignProperty(attributes, key, value)

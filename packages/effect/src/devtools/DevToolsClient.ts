@@ -219,6 +219,7 @@ const makeTracerEffect = Effect.gen(function*() {
       client.sendUnsafe(spanSnapshot(span))
       const oldEvent = span.event
       span.event = function(this: Tracer.Span, name, startTime, attributes) {
+        if (span.status._tag === "Ended") return
         client.sendUnsafe({
           _tag: "SpanEvent",
           traceId: span.traceId,
@@ -232,6 +233,7 @@ const makeTracerEffect = Effect.gen(function*() {
 
       const oldEnd = span.end
       span.end = function(this: Tracer.Span, endTime, exit) {
+        if (span.status._tag === "Ended") return
         oldEnd.call(this, endTime, exit)
         client.sendUnsafe(spanSnapshot(span))
       }

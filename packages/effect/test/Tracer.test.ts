@@ -230,6 +230,23 @@ describe("Tracer", () => {
       }))
   })
 
+  describe("ended spans", () => {
+    it.effect("ignores mutations after end", () =>
+      Effect.gen(function*() {
+        const span = (yield* Effect.makeSpan("A")) as Tracer.NativeSpan
+        span.end(1n, Exit.void)
+        const ended = span.status
+
+        span.attribute("late", true)
+        span.event("late", 2n)
+        span.end(3n, Exit.fail("late"))
+
+        strictEqual(span.status, ended)
+        strictEqual(span.attributes.has("late"), false)
+        deepStrictEqual(span.events, [])
+      }))
+  })
+
   describe("Effect.annotateSpans", () => {
     it.effect("should allow adding span attributes as key/value pairs", () =>
       Effect.gen(function*() {
@@ -340,7 +357,7 @@ describe("Tracer", () => {
   })
 
   describe("OtlpTracer span status", () => {
-    const exportSpan = (exit: Exit.Exit<unknown, unknown>) => {
+    const exportSpan = (exit: Exit.Exit<unknown, unknown>, afterEnd?: (span: Span) => void) => {
       const exported: Array<OtlpTracer.TraceData> = []
       const layer = makeOtlpTracerLayer(Layer.succeed(OtlpSerialization.OtlpSerialization, {
         traces: (data) => {
@@ -353,6 +370,7 @@ describe("Tracer", () => {
       return Effect.gen(function*() {
         const span = yield* Effect.makeSpan("test")
         span.end(span.status.startTime + 1n, exit)
+        afterEnd?.(span)
       }).pipe(
         Effect.provide(layer),
         Effect.map(() => {
@@ -379,6 +397,12 @@ describe("Tracer", () => {
         deepStrictEqual(span.status, { code: 0 })
         deepStrictEqual(span.events, [])
         deepStrictEqual(span.attributes, [{ key: "effect.fiber.interrupted", value: { boolValue: true } }])
+      }))
+
+    it.effect("exports a span once when end is called again", () =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(Exit.void, (span) => span.end(span.status.startTime + 2n, Exit.fail("late")))
+        deepStrictEqual(span.status, { code: 1 })
       }))
   })
 
