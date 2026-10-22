@@ -112,6 +112,20 @@ export type WebSocketOptions =
 /**
  * Creates a scoped Bun `HttpServer` from `Bun.serve` options, stopping the server on scope finalization with optional graceful shutdown settings.
  *
+ * **Details**
+ *
+ * `idleTimeout` defaults to `0`, disabling Bun's 10 second idle timeout, so
+ * quiet response streams and slow uploads are bounded only by the `Stream`
+ * and `Effect` timeouts in your handlers or middleware. An explicit value is
+ * passed to Bun unchanged.
+ *
+ * **Gotchas**
+ *
+ * Without an idle timeout, Bun also keeps idle keep-alive connections and
+ * clients that stopped reading a response open, and handler timeouts cannot
+ * catch either. Directly exposed servers should set `idleTimeout` (seconds,
+ * at most 255) or sit behind a proxy with its own idle timeout.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -149,7 +163,12 @@ export const make = Effect.fnUntraced(
         }
       ]
     const server = Bun.serve<WebSocketContext, R>({
-      ...listenOptions as ServeOptions<R>,
+      // Opt-in; Effect timeouts bound requests and responses instead. Bun
+      // applies idleTimeout to Unix sockets too, although its types omit it.
+      ...{
+        ...listenOptions,
+        idleTimeout: (options as { readonly idleTimeout?: number | undefined }).idleTimeout ?? 0
+      } as ServeOptions<R>,
       fetch: handlerStack[0],
       websocket: {
         ...websocket,
@@ -351,6 +370,10 @@ export const layerHttpServices: Layer.Layer<
 
 /**
  * Layer that provides a Bun `HttpServer` together with the Bun HTTP platform, ETag generator, and Bun services.
+ *
+ * **Details**
+ *
+ * `idleTimeout` defaults to `0` (disabled); see `make`.
  *
  * @stability unstable
  * @category layers
