@@ -139,7 +139,8 @@ describe("CommandLine", () => {
         ["'$HOME' \\$HOME \"cost$\" cost$", ["$HOME", "$HOME", "cost$", "cost$"]],
         ["find . -exec rm {} \\;", ["find", ".", "-exec", "rm", "{}", ";"]],
         ["env FOO=bar --x=1 a#b x~ '!'", ["env", "FOO=bar", "--x=1", "a#b", "x~", "!"]],
-        ["'FOO=bar' cmd", ["FOO=bar", "cmd"]]
+        ["'FOO=bar' cmd", ["FOO=bar", "cmd"]],
+        ["a\0b c", ["a\0b", "c"]]
       ]
       for (const [line, expected] of cases) {
         assert.deepStrictEqual(Result.getOrThrow(template(line)), expected, line)
