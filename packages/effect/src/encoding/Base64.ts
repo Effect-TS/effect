@@ -153,8 +153,9 @@ const encodeBytes = (bytes: Uint8Array): string => {
   const length = bytes.length
   // Detached buffers have length 0 and stay here: native `toBase64` throws on them
   if (length < 32) return encodeShort(bytes)
-  const native = bytes as Uint8Array & { readonly toBase64?: () => string }
-  if (typeof native.toBase64 === "function") return native.toBase64()
+  // Read from the prototype, not the input, so an own or subclass `toBase64` cannot change the result
+  const toBase64 = (Uint8Array.prototype as { readonly toBase64?: (this: Uint8Array) => string }).toBase64
+  if (typeof toBase64 === "function") return toBase64.call(bytes)
   const result = new Uint8Array(Math.ceil(length / 3) * 4)
   let i: number
   let j = 0

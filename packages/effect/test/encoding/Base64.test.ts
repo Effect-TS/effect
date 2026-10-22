@@ -18,14 +18,27 @@ describe("Base64", () => {
 
   it("encodes views with and without native toBase64", () => {
     const bytes = Uint8Array.from({ length: 36 }, (_, i) => (i * 151) & 0xff)
+    const proto = Uint8Array.prototype as { toBase64?: unknown }
+    const native = Object.getOwnPropertyDescriptor(proto, "toBase64")
 
     for (const length of [31, 32, 33, 34]) {
       const view = bytes.subarray(1, 1 + length)
       const expected = Buffer.from(view).toString("base64")
       assert.strictEqual(Base64.encode(view), expected)
-      // An own undefined `toBase64` selects the fallback for runtimes without it
-      assert.strictEqual(Base64.encode(Object.defineProperty(view, "toBase64", { value: undefined })), expected)
+      // Without a native `toBase64`, as on runtimes that lack it, the fallback runs
+      Object.defineProperty(proto, "toBase64", { value: undefined, configurable: true, writable: true })
+      try {
+        assert.strictEqual(Base64.encode(view), expected)
+      } finally {
+        if (native) Object.defineProperty(proto, "toBase64", native)
+        else delete proto.toBase64
+      }
     }
+  })
+
+  it("ignores a toBase64 on the input", () => {
+    const bytes = Object.assign(new Uint8Array(32).fill(7), { toBase64: () => "x" })
+    assert.strictEqual(Base64.encode(bytes), Buffer.from(bytes).toString("base64"))
   })
 
   it("encodes a detached buffer as an empty string", () => {
