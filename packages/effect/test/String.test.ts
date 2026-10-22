@@ -122,6 +122,7 @@ describe("String", () => {
 
     it("capitalizes an astral letter", () => {
       strictEqual(S.capitalize("𐐨foo"), "𐐀foo")
+      strictEqual(S.capitalize("\uD801x"), "\uD801x")
     })
 
     it("leaves an emoji code point unchanged", () => {
@@ -144,6 +145,7 @@ describe("String", () => {
 
     it("preserves rest of string", () => {
       strictEqual(S.uncapitalize("ABC"), "aBC")
+      strictEqual(S.uncapitalize("AΣ"), "aΣ")
     })
 
     it("uncapitalizes an astral letter", () => {
