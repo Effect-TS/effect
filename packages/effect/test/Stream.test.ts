@@ -982,6 +982,34 @@ describe("Stream", () => {
         deepStrictEqual(exits, sinks.map(() => Exit.fail("StreamError")))
       }))
 
+    it.effect("run - sink onExit observes interruption on upstream failure", () =>
+      Effect.gen(function*() {
+        const events: Array<unknown> = []
+        const sink = Sink.drain.pipe(
+          Sink.ensuring(Effect.sync(() => events.push("ensuring"))),
+          Sink.onExit((exit) => Effect.sync(() => events.push(exit)))
+        )
+        const exit = yield* Stream.make(1, 2).pipe(
+          Stream.concat(Stream.fail("StreamError" as const)),
+          Stream.run(sink),
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("StreamError"))
+        deepStrictEqual(events, ["ensuring", Exit.interrupt()])
+      }))
+
+    it.effect("pipeThrough - upstream failures bypass sink error handlers", () =>
+      Effect.gen(function*() {
+        const sink = Sink.forEach((n: number) => n > 10 ? Effect.fail("SinkError" as const) : Effect.void)
+        const exit = yield* Stream.make(1, 2).pipe(
+          Stream.concat(Stream.fail("StreamError" as const)),
+          Stream.pipeThrough(Sink.catchCause(sink, (cause) => Effect.succeed({ recovered: cause }))),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("StreamError"))
+      }))
+
     it.effect("catch", () =>
       Effect.gen(function*() {
         let error: string | undefined = undefined
