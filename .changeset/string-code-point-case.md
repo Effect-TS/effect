@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Capitalize and uncapitalize the first Unicode code point, so astral letters agree with the returned string type.
+Fix `String.capitalize` and `String.uncapitalize` for strings that start with an astral letter such as `"𐐨"`.
