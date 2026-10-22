@@ -78,6 +78,23 @@ const toPlatformError = (
   return handleErrnoException("ChildProcess", method)(error, [commandStr])
 }
 
+const unwrap = (value: string | Redacted.Redacted<string>): string =>
+  Redacted.isRedacted(value) ? Redacted.value(value) : value
+
+// Node rejects NUL characters by throwing an error that contains the value, so
+// they are rejected before spawning to keep Redacted values out of errors.
+const findNulCharacter = (command: ChildProcess.StandardCommand): string | undefined => {
+  if (command.command.includes("\0")) return "The command contains a NUL character"
+  const index = command.args.findIndex((arg) => unwrap(arg).includes("\0"))
+  if (index !== -1) return `Argument ${index + 1} contains a NUL character`
+  for (const [name, value] of Object.entries(command.options.env ?? {})) {
+    if (value !== undefined && unwrap(value).includes("\0")) {
+      return `The environment variable ${name} contains a NUL character`
+    }
+  }
+  return undefined
+}
+
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 
@@ -144,7 +161,7 @@ const make = Effect.gen(function*() {
     const env: Record<string, string | undefined> = options.extendEnv === true ? { ...globalThis.process.env } : {}
     for (const [key, value] of Object.entries(options.env)) {
       if (value === undefined) delete env[key]
-      else env[key] = Redacted.isRedacted(value) ? Redacted.value(value) : value
+      else env[key] = unwrap(value)
     }
     return env
   }
@@ -397,10 +414,16 @@ const make = Effect.gen(function*() {
       const deferred = Deferred.makeUnsafe<ExitCodeWithSignal>()
       const handle = NodeChildProcess.spawn(
         command.command,
-        command.args.map((arg) => Redacted.isRedacted(arg) ? Redacted.value(arg) : arg),
+        command.args.map(unwrap),
         spawnOptions
       )
       handle.on("error", (error) => {
+        // Node copies the arguments into the error.
+        if (command.args.some(Redacted.isRedacted)) {
+          Object.assign(error, {
+            spawnargs: [command.command, ...command.args.map((arg) => Redacted.isRedacted(arg) ? "<redacted>" : arg)]
+          })
+        }
         resume(Effect.fail(toPlatformError("spawn", error, command)))
       })
       handle.on("exit", (...args) => {
@@ -562,6 +585,14 @@ const make = Effect.gen(function*() {
             module: "ChildProcess",
             method: "spawn",
             description: "The shell option cannot be combined with arguments; pass the whole script as the command"
+          }))
+        }
+        const nulCharacter = findNulCharacter(cmd)
+        if (nulCharacter !== undefined) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: nulCharacter
           }))
         }
         const stdinConfig = resolveStdinOption(cmd.options)
