@@ -1782,8 +1782,9 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
         withClose,
         (cause) => {
           if (Pull.isDoneCause(cause)) return Effect.void
-          options.onAbort?.(cause as Cause.Cause<IE | E>)
-          return Effect.promise(() => writer.abort(cause).catch(constVoid))
+          const reason = unwrapUpstreamFailure(cause) as Cause.Cause<IE | E>
+          options.onAbort?.(reason)
+          return Effect.promise(() => writer.abort(reason).catch(constVoid))
         }
       )
     },
@@ -7087,24 +7088,52 @@ export const pipeToOrFail: {
     that: Channel<OutElem2, OutErr2, OutDone2, OutElem, never, OutDone, Env2>
   ): Channel<OutElem2, OutErr | OutErr2, OutDone2, InElem, InErr, InDone, Env2 | Env> =>
     fromTransform((upstream, scope) =>
-      Effect.flatMap(toTransform(self)(upstream, scope), (upstream) => {
-        const upstreamPull = Effect.catchCause(
-          upstream,
-          (cause) => Pull.isDoneCause(cause) ? Effect.failCause(cause) : Effect.die(Cause.Done(cause))
-        ) as Pull.Pull<OutElem, never, OutDone>
-
-        return Effect.map(
-          toTransform(that)(upstreamPull, scope),
-          (pull) =>
-            Effect.catchDefect(
-              pull,
-              (defect) =>
-                Cause.isDone(defect) ? Effect.failCause(defect.value as Cause.Cause<OutErr>) : Effect.die(defect)
-            )
-        )
-      })
+      Effect.flatMap(toTransform(self)(upstream, scope), (upstream) =>
+        Effect.map(
+          toTransform(that)(upstreamFailureToDefect(upstream), scope),
+          restoreUpstreamFailure<OutElem2, OutErr | OutErr2 | Cause.Done<OutDone2>, Env2>
+        ))
     )
 )
+
+// Upstream failures are hidden from downstream error handlers by encoding them
+// as a `Die(Cause.Done(cause))` defect, which is unwrapped again once the
+// downstream has exited.
+const isUpstreamFailure = (
+  reason: Cause.Reason<unknown>
+): reason is Cause.Die & { readonly defect: Cause.Done<Cause.Cause<unknown>> } =>
+  reason._tag === "Die" && Cause.isDone(reason.defect) && Cause.isCause(reason.defect.value)
+
+/** @internal */
+export const hasUpstreamFailure = (cause: Cause.Cause<unknown>): boolean => cause.reasons.some(isUpstreamFailure)
+
+/** @internal */
+export const upstreamFailureToDefect = <A, E, Done, R>(
+  pull: Pull.Pull<A, E, Done, R>
+): Pull.Pull<A, never, Done, R> =>
+  Effect.catchCause(
+    pull,
+    (cause) => Pull.isDoneCause(cause) ? Effect.failCause(cause) : Effect.die(Cause.Done(cause))
+  ) as Pull.Pull<A, never, Done, R>
+
+/** @internal */
+export const unwrapUpstreamFailure = <E>(cause: Cause.Cause<E>): Cause.Cause<unknown> =>
+  hasUpstreamFailure(cause)
+    ? Cause.fromReasons(
+      cause.reasons.flatMap((reason) => isUpstreamFailure(reason) ? reason.defect.value.reasons : [reason])
+    )
+    : cause
+
+/**
+ * The type parameters are explicit because the restored error type includes
+ * the upstream error, which is not part of the input effect's type.
+ *
+ * @internal
+ */
+export const restoreUpstreamFailure = <A, E, R>(
+  effect: Effect.Effect<A, NoInfer<E>, R>
+): Effect.Effect<A, E, R> =>
+  Effect.catchCause(effect, (cause) => Effect.failCause(unwrapUpstreamFailure(cause) as Cause.Cause<E>))
 
 /**
  * Constructs a `Channel` from a scoped effect that will result in a
