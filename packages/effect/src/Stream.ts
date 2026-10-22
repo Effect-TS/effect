@@ -6781,7 +6781,7 @@ export const takeRight: {
     const count = Count.normalize(n)
     if (count === 0) return empty
     return mapAccumArray(self, MutableList.make<A>, (list, arr) => {
-      MutableList.appendAll(list, arr)
+      MutableList.appendAllUnsafe(list, arr)
       if (list.length > count) {
         MutableList.takeNVoid(list, list.length - count)
       }
