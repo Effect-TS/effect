@@ -375,8 +375,6 @@ export class AdditionalSchemas extends Context.Service<
  *
  * - `onExcessProperty: "error"` rejects real requests and `WithHeaders`
  *   responses with transport headers.
- * - `onExcessProperty: "preserve"` includes transport headers in the decoded
- *   value.
  *
  * Set `HeadersParseOptions` to `{}` at the API level to use Schema defaults for
  * headers, even if an endpoint sets `ParseOptions`.
