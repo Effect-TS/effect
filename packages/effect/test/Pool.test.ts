@@ -830,6 +830,22 @@ describe("Pool", () => {
       strictEqual(pool.state.usage, 0)
     }))
 
+  it.effect("serves a waiter before a later borrower takes the released item", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+      let busyBorrows = 0
+      const busy = yield* Effect.forkChild(Effect.gen(function*() {
+        for (let i = 0; i < 100; i++) {
+          yield* Pool.use(pool, () => Effect.yieldNow)
+          busyBorrows++
+        }
+      }))
+      yield* Effect.yieldNow
+      const waitedBorrows = yield* Pool.use(pool, () => Effect.sync(() => busyBorrows))
+      yield* Fiber.join(busy)
+      assert.isAtMost(waitedBorrows, 1)
+    }))
+
   it.effect("use reports acquire failures", () =>
     Effect.gen(function*() {
       const pool = yield* Pool.makeWithTTL({
