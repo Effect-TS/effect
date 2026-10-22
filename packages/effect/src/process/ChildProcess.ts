@@ -665,8 +665,8 @@ export const make: {
   // Template literal form: make`command`
   if (isTemplateString(args[0])) {
     const [templates, ...expressions] = args as [TemplateStringsArray, ...ReadonlyArray<CommandLine.TemplateExpression>]
-    const words = parseTemplate(templates, expressions)
-    return makeStandardCommand(programName(words), words.slice(1), {})
+    const [command, cmdArgs] = parseTemplate(templates, expressions)
+    return makeStandardCommand(command, cmdArgs, {})
   }
 
   // Options form: make({ cwd: "/tmp" })`command`
@@ -679,8 +679,8 @@ export const make: {
       if (options.shell !== undefined && options.shell !== false) {
         return makeStandardCommand(shellScript(templates, expressions), [], options)
       }
-      const words = parseTemplate(templates, expressions)
-      return makeStandardCommand(programName(words), words.slice(1), options)
+      const [command, cmdArgs] = parseTemplate(templates, expressions)
+      return makeStandardCommand(command, cmdArgs, options)
     }
   }
 
@@ -795,8 +795,8 @@ type PrefixSpec = {
 const parsePrefixArgs = (args: ReadonlyArray<unknown>): PrefixSpec => {
   if (isTemplateString(args[0])) {
     const [templates, ...expressions] = args as [TemplateStringsArray, ...ReadonlyArray<CommandLine.TemplateExpression>]
-    const words = parseTemplate(templates, expressions)
-    return { command: programName(words), args: words.slice(1) }
+    const [command, cmdArgs] = parseTemplate(templates, expressions)
+    return { command, args: cmdArgs }
   }
   const [command, cmdArgs = []] = args as [string, ReadonlyArray<CommandLine.Word>?]
   return { command, args: cmdArgs }
@@ -937,16 +937,15 @@ export const fdName = (fd: number): string => `fd${fd}`
 const parseTemplate = (
   templates: TemplateStringsArray,
   expressions: ReadonlyArray<CommandLine.TemplateExpression>
-): Array<CommandLine.Word> => Result.getOrThrow(CommandLine.template(templates, ...expressions))
-
-const programName = (words: ReadonlyArray<CommandLine.Word>): string => {
-  const program = words[0]
-  if (program === undefined) return ""
-  if (typeof program === "string") return program
-  throw new CommandLine.CommandLineError({
-    reason: "InvalidArgument",
-    message: "The program name of a command cannot be Redacted"
-  })
+): [command: string, args: Array<CommandLine.Word>] => {
+  const [program = "", ...args] = Result.getOrThrow(CommandLine.template(templates, ...expressions))
+  if (typeof program !== "string") {
+    throw new CommandLine.CommandLineError({
+      reason: "InvalidArgument",
+      message: "The program name of a command cannot be Redacted"
+    })
+  }
+  return [program, args]
 }
 
 const shellScript = (

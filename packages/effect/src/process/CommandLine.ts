@@ -206,14 +206,7 @@ export class CommandLineError extends Data.TaggedError("CommandLineError")<{
 export const quote = (word: Word, options?: Options): Result.Result<string, CommandLineError> => {
   const value = unwrap(word)
   if (value.includes("\0")) return failNul("The argument")
-  switch (options?.format ?? "posix") {
-    case "posix":
-      return Result.succeed(quotePosix(value))
-    case "powershell":
-      return Result.succeed(quotePowerShell(value))
-    case "windows":
-      return Result.succeed(quoteWindowsArgument(value))
-  }
+  return Result.succeed(quoteWord(options?.format ?? "posix", value, false))
 }
 
 /**
@@ -281,34 +274,26 @@ export const join = (
     values.push(value)
   }
   if (values.length === 0) return Result.succeed("")
-  switch (options?.format ?? "posix") {
-    case "posix":
-      return Result.succeed(values.map((value, i) => i === 0 ? quotePosixProgram(value) : quotePosix(value)).join(" "))
-    case "powershell": {
-      const stopParsing = values.indexOf("--%", 1)
-      if (stopParsing !== -1) {
-        return Result.fail(
-          new CommandLineError({
-            reason: "InvalidArgument",
-            message: `Argument ${stopParsing} is "--%", which PowerShell drops when it calls a program`
-          })
-        )
-      }
-      return Result.succeed(`& ${values.map(quotePowerShell).join(" ")}`)
+  const format = options?.format ?? "posix"
+  if (format === "powershell") {
+    const stopParsing = values.indexOf("--%", 1)
+    if (stopParsing !== -1) {
+      return Result.fail(
+        new CommandLineError({
+          reason: "InvalidArgument",
+          message: `Argument ${stopParsing} is "--%", which PowerShell drops when it calls a program`
+        })
+      )
     }
-    case "windows": {
-      const program = values[0]
-      if (program.includes("\"")) {
-        return Result.fail(
-          new CommandLineError({
-            reason: "InvalidArgument",
-            message: "A Windows program name cannot contain a double quote"
-          })
-        )
-      }
-      return Result.succeed([quoteWindowsProgram(program), ...values.slice(1).map(quoteWindowsArgument)].join(" "))
-    }
+  } else if (format === "windows" && values[0].includes("\"")) {
+    return Result.fail(
+      new CommandLineError({
+        reason: "InvalidArgument",
+        message: "A Windows program name cannot contain a double quote"
+      })
+    )
   }
+  return Result.succeed(joinWords(format, values.map((value, i) => quoteWord(format, value, i === 0))))
 }
 
 /**
@@ -355,20 +340,12 @@ export const display = (words: ReadonlyArray<Word>, options?: Options): string =
   if (words.length === 0) return ""
   const format = options?.format ?? "posix"
   // Escaping after quoting keeps the escapes inside the quotes.
-  const rendered = words.map((word, i) => {
-    if (Redacted.isRedacted(word)) return "<redacted>"
-    switch (format) {
-      case "posix":
-        return escapeControlCharacters(i === 0 ? quotePosixProgram(word) : quotePosix(word))
-      case "powershell":
-        return escapeControlCharacters(quotePowerShell(word))
-      case "windows":
-        return escapeControlCharacters(
-          i === 0 && !word.includes("\"") ? quoteWindowsProgram(word) : quoteWindowsArgument(word)
-        )
-    }
-  })
-  return format === "powershell" ? `& ${rendered.join(" ")}` : rendered.join(" ")
+  return joinWords(
+    format,
+    words.map((word, i) =>
+      Redacted.isRedacted(word) ? "<redacted>" : escapeControlCharacters(quoteWord(format, word, i === 0))
+    )
+  )
 }
 
 /**
@@ -505,6 +482,13 @@ export const template = (
     }
     if (text.includes("\0")) return failNul(`Template part ${i}`)
   }
+  for (let i = 0; i < expressions.length; i++) {
+    const expression = expressions[i]
+    const items: ReadonlyArray<TemplateExpressionItem> = Array.isArray(expression)
+      ? expression
+      : [expression as TemplateExpressionItem]
+    if (items.some((item) => unwrap(item).includes("\0"))) return failNul(`Template value ${i}`)
+  }
   return splitPosix(strings, expressions, true)
 }
 
@@ -512,10 +496,11 @@ export const template = (
 // Quoting
 // -----------------------------------------------------------------------------
 
-const unwrap = (word: Word): string => typeof word === "string" ? word : Redacted.value(word)
-
-const unwrapItem = (item: TemplateExpressionItem): string =>
+const unwrap = (item: TemplateExpressionItem): string =>
   Redacted.isRedacted(item) ? Redacted.value(item as Redacted.Redacted<string>) : String(item)
+
+const toWord = (item: TemplateExpressionItem): Word =>
+  Redacted.isRedacted(item) ? item as Redacted.Redacted<string> : String(item)
 
 const failNul = (subject: string, offset?: number): Result.Result<never, CommandLineError> =>
   Result.fail(
@@ -528,6 +513,23 @@ const failNul = (subject: string, offset?: number): Result.Result<never, Command
     })
   )
 
+// Quotes one word for the format. The program, the first word, follows
+// different rules from the arguments in POSIX shells and in Windows programs.
+const quoteWord = (format: Format, value: string, program: boolean): string => {
+  switch (format) {
+    case "posix":
+      // A quoted reserved word is an ordinary command name.
+      return program && reservedWords.has(value) ? `'${value}'` : quotePosix(value)
+    case "powershell":
+      return quotePowerShell(value)
+    case "windows":
+      return program && !value.includes("\"") ? quoteWindowsProgram(value) : quoteWindowsArgument(value)
+  }
+}
+
+const joinWords = (format: Format, quoted: ReadonlyArray<string>): string =>
+  format === "powershell" ? `& ${quoted.join(" ")}` : quoted.join(" ")
+
 const posixSafe = /^[A-Za-z0-9_@+:,./-]+$/
 
 // Single quotes keep every character literal in POSIX shells. `'` and `\` are
@@ -535,9 +537,6 @@ const posixSafe = /^[A-Za-z0-9_@+:,./-]+$/
 // escapes inside single quotes.
 const quotePosix = (value: string): string =>
   posixSafe.test(value) ? value : `'${value.replace(/['\\]/g, (char) => `'\\${char}'`)}'`
-
-// A quoted reserved word is an ordinary command name.
-const quotePosixProgram = (value: string): string => reservedWords.has(value) ? `'${value}'` : quotePosix(value)
 
 // PowerShell also reads the typographic single quotes U+2018 to U+201B as
 // quotes, so each of them is doubled like `'`.
@@ -804,11 +803,6 @@ const splitPosix = (
     return undefined
   }
 
-  const nulValue = (): Result.Result<never, CommandLineError> =>
-    Result.fail(
-      new CommandLineError({ reason: "NulCharacter", message: `Template value ${part} contains a NUL character` })
-    )
-
   for (; part < texts.length; part++) {
     const failure = scan(texts[part])
     if (failure !== undefined) return failure
@@ -816,19 +810,13 @@ const splitPosix = (
     const expression = values[part]
     if (Array.isArray(expression)) {
       // An array must stand alone: nothing may touch it on either side.
-      if (word.length > 0) return error("UnsupportedSyntax", "An interpolated array must be a separate argument", 0)
-      for (const item of expression as ReadonlyArray<TemplateExpressionItem>) {
-        if (unwrapItem(item).includes("\0")) return nulValue()
-        words.push(Redacted.isRedacted(item) ? item as Redacted.Redacted<string> : String(item))
-      }
       const after = texts[part + 1][0]
-      if (after === undefined ? part + 1 < values.length : !isBlank(after)) {
+      if (word.length > 0 || (after === undefined ? part + 1 < values.length : !isBlank(after))) {
         return error("UnsupportedSyntax", "An interpolated array must be a separate argument", 0)
       }
+      for (const item of expression as ReadonlyArray<TemplateExpressionItem>) words.push(toWord(item))
     } else {
-      const item = expression as TemplateExpressionItem
-      if (unwrapItem(item).includes("\0")) return nulValue()
-      word.push(Redacted.isRedacted(item) ? item as Redacted.Redacted<string> : String(item))
+      word.push(toWord(expression as TemplateExpressionItem))
       plain = false
     }
   }
