@@ -1,7 +1,7 @@
 ---
-"effect": minor
-"@effect/platform-node-shared": minor
-"@effect/platform-deno": minor
+"effect": patch
+"@effect/platform-node-shared": patch
+"@effect/platform-deno": patch
 "@effect/docgen": patch
 ---
 

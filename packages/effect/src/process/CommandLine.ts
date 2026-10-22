@@ -20,7 +20,7 @@
  * `<redacted>`.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.7
  */
 import * as Data from "../Data.ts"
 import * as Redacted from "../Redacted.ts"
@@ -42,7 +42,7 @@ import * as Result from "../Result.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export type Format = "posix" | "powershell" | "windows"
 
@@ -56,7 +56,7 @@ export type Format = "posix" | "powershell" | "windows"
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export type SplitFormat = "posix" | "windows"
 
@@ -66,7 +66,7 @@ export type SplitFormat = "posix" | "windows"
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export type Word = string | Redacted.Redacted<string>
 
@@ -75,7 +75,7 @@ export type Word = string | Redacted.Redacted<string>
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export interface Options {
   /**
@@ -91,7 +91,7 @@ export interface Options {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export interface SplitOptions {
   /**
@@ -107,7 +107,7 @@ export interface SplitOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export type TemplateExpressionItem = string | number | boolean | Redacted.Redacted<string>
 
@@ -121,7 +121,7 @@ export type TemplateExpressionItem = string | number | boolean | Redacted.Redact
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.7
  */
 export type TemplateExpression = TemplateExpressionItem | ReadonlyArray<TemplateExpressionItem>
 
@@ -147,7 +147,7 @@ export type TemplateExpression = TemplateExpressionItem | ReadonlyArray<Template
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.0.7
  */
 export class CommandLineError extends Data.TaggedError("CommandLineError")<{
   readonly reason: "NulCharacter" | "InvalidArgument" | "InvalidEscape" | "UnterminatedQuote" | "UnsupportedSyntax"
@@ -198,7 +198,7 @@ export class CommandLineError extends Data.TaggedError("CommandLineError")<{
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.0.7
  */
 export const quote = (word: Word, options?: Options): Result.Result<string, CommandLineError> => {
   const value = unwrap(word)
@@ -259,7 +259,7 @@ export const quote = (word: Word, options?: Options): Result.Result<string, Comm
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.0.7
  */
 export const join = (
   words: ReadonlyArray<Word>,
@@ -340,7 +340,7 @@ export const join = (
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.0.7
  */
 export const display = (words: ReadonlyArray<Word>, options?: Options): string => {
   if (words.length === 0) return ""
@@ -413,7 +413,7 @@ export const display = (words: ReadonlyArray<Word>, options?: Options): string =
  *
  * @stability unstable
  * @category decoding
- * @since 4.1.0
+ * @since 4.0.7
  */
 export const split = (
   line: string,
@@ -479,7 +479,7 @@ export const split = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.7
  */
 export const template = (
   strings: TemplateStringsArray,
