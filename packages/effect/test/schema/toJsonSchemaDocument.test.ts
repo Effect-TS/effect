@@ -87,6 +87,16 @@ describe("toJsonSchemaDocument", () => {
         "Objects property names must be strings"
       )
     })
+
+    it("rejects filtered TemplateLiteral segments regardless of identifier", () => {
+      const Segment = Schema.String.check(Schema.isPattern(/^abc$/u))
+      for (const segment of [Segment, Segment.annotate({ identifier: "Segment" })]) {
+        assertUnsupportedSchema(
+          Schema.TemplateLiteral(["item.", segment]),
+          "Unsupported TemplateLiteral part with checks"
+        )
+      }
+    })
   })
 
   it("Record(Symbol, Finite)", () => {
@@ -2540,23 +2550,6 @@ describe("toJsonSchemaDocument", () => {
         pattern: "^-?\\d+$"
       }
     })
-  })
-
-  it("approximates filtered TemplateLiteral segments regardless of identifier", () => {
-    const Segment = Schema.String.check(Schema.isPattern(/^abc$/u))
-    for (const segment of [Segment, Segment.annotate({ identifier: "Segment" })]) {
-      const schema = Schema.TemplateLiteral(["item.", segment])
-      assertJsonSchemaDocument(schema, {
-        schema: {
-          type: "string",
-          pattern: "^item\\.[\\s\\S]*?$"
-        }
-      })
-      assertJsonSchemaAcceptsEffectValues(
-        Schema.Union([schema, Schema.Literal("item.x")], { mode: "oneOf" }),
-        ["item.x"]
-      )
-    }
   })
 
   describe("Struct", () => {
