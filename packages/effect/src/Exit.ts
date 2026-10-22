@@ -10,7 +10,6 @@
  * @stability stable
  * @since 2.0.0
  */
-import type * as Brand from "./Brand.ts"
 import type * as Cause from "./Cause.ts"
 import type * as Effect from "./Effect.ts"
 import * as core from "./internal/core.ts"
@@ -464,7 +463,7 @@ export const isFailure: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effe
  * @category guards
  * @since 4.0.0
  */
-export const hasFails: <A, E>(self: Exit<A, E>) => self is Failure<A, E> & Brand.Brand<"HasFails"> = effect.exitHasFails
+export const hasFails: <A, E>(self: Exit<A, E>) => boolean = effect.exitHasFails
 
 /**
  * Checks whether a failed Exit contains defects (Die reasons).
@@ -495,7 +494,7 @@ export const hasFails: <A, E>(self: Exit<A, E>) => self is Failure<A, E> & Brand
  * @category guards
  * @since 4.0.0
  */
-export const hasDies: <A, E>(self: Exit<A, E>) => self is Failure<A, E> & Brand.Brand<"HasDies"> = effect.exitHasDies
+export const hasDies: <A, E>(self: Exit<A, E>) => boolean = effect.exitHasDies
 
 /**
  * Checks whether a failed Exit contains interruptions (Interrupt reasons).
@@ -526,8 +525,7 @@ export const hasDies: <A, E>(self: Exit<A, E>) => self is Failure<A, E> & Brand.
  * @category guards
  * @since 4.0.0
  */
-export const hasInterrupts: <A, E>(self: Exit<A, E>) => self is Failure<A, E> & Brand.Brand<"HasInterrupts"> =
-  effect.exitHasInterrupts
+export const hasInterrupts: <A, E>(self: Exit<A, E>) => boolean = effect.exitHasInterrupts
 
 /**
  * Extracts the Success variant from an Exit as a Result.

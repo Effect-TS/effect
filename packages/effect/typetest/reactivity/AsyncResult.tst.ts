@@ -1,4 +1,4 @@
-import type { Cause, Option } from "effect"
+import type { Option } from "effect"
 import { AsyncResult } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
@@ -78,10 +78,8 @@ describe("AsyncResult", () => {
       expect(missingSuccess).type.not.toHaveProperty("exhaustive")
     })
   })
-  it("isInterrupted narrows on true and keeps failures on false", () => {
-    if (AsyncResult.isInterrupted(result)) {
-      expect(result.cause).type.toBe<Cause.Cause<TestError>>()
-    } else {
+  it("isInterrupted keeps failures on false", () => {
+    if (!AsyncResult.isInterrupted(result)) {
       expect(result).type.toBe<AsyncResult.AsyncResult<number, TestError>>()
     }
     if (!AsyncResult.isInterrupted(failure)) {
