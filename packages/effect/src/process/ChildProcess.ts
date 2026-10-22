@@ -447,8 +447,8 @@ export interface CommandOptions extends KillOptions {
    * - Running a command with both `shell` and arguments fails with a
    *   `BadArgument` error, because shells would join the arguments into the
    *   script without quoting them.
-   * - On Windows the script runs in `cmd.exe`, which `CommandLine` cannot
-   *   quote for: `CommandLine.join` with `format: "windows"` only protects
+   * - On Windows the script runs in `cmd.exe`, which no `CommandLine` format
+   *   quotes for. `CommandLine.join` with `format: "windows"` is only safe for
    *   arguments without `%`, `^`, `&`, `|`, `<` or `>`.
    * - It is generally disadvised to use this option.
    */

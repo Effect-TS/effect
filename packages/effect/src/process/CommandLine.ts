@@ -138,12 +138,16 @@ export type TemplateExpression = TemplateExpressionItem | ReadonlyArray<Template
  * - `InvalidArgument`: the format cannot carry an argument: a Windows program
  *   name with a double quote, or the argument `--%`, which PowerShell drops
  *   when it calls a native program.
- * - `InvalidEscape`: a template contains an invalid JavaScript escape
- *   sequence, or a backslash that escapes nothing.
+ * - `InvalidEscape`: the text ends with a backslash that escapes nothing, or a
+ *   template contains an invalid JavaScript escape sequence.
  * - `UnterminatedQuote`: a quoted section is not closed.
  * - `UnsupportedSyntax`: the text contains shell syntax that splitting cannot
  *   reproduce without running a shell, such as operators, expansions, globs,
- *   comments or variable assignments.
+ *   comments, variable assignments or reserved words, or a template array
+ *   that is not a separate argument.
+ *
+ * `split` and `template` check for NUL characters before they parse shell
+ * syntax, so text that has both reports `NulCharacter`.
  *
  * `offset` is the position in the input of `split` where the problem starts.
  * Messages never include the input, which may contain secrets.
@@ -426,8 +430,8 @@ export const split = (
  * - The template text is split with the `"posix"` rules of {@link split}, so
  *   quotes group words and unsupported shell syntax fails. Line breaks in the
  *   text separate arguments, so a long command can span several lines.
- * - Unlike {@link split}, the program can be a shell reserved word such as
- *   `time`, and runs the executable with that name.
+ * - Unlike {@link split}, a reserved word such as `if` or `time` is accepted
+ *   as the program and names an executable.
  * - Each `${}` value is inserted literally, without splitting or quote
  *   processing. Next to other text or inside quotes, it becomes part of the
  *   surrounding argument.

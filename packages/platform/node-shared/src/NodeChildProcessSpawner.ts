@@ -81,8 +81,8 @@ const toPlatformError = (
 const unwrap = (value: string | Redacted.Redacted<string>): string =>
   Redacted.isRedacted(value) ? Redacted.value(value) : value
 
-// Node rejects NUL characters by throwing an error that contains the value, so
-// they are rejected before spawning to keep Redacted values out of errors.
+// Node's own NUL check throws an error that includes the value, so NUL is
+// rejected here to keep Redacted values out of errors.
 const findNulCharacter = (command: ChildProcess.StandardCommand): string | undefined => {
   if (command.command.includes("\0")) return "The command contains a NUL character"
   const index = command.args.findIndex((arg) => unwrap(arg).includes("\0"))
@@ -418,7 +418,7 @@ const make = Effect.gen(function*() {
         spawnOptions
       )
       handle.on("error", (error) => {
-        // Node copies the arguments into the error.
+        // Node copies the arguments into `spawnargs`.
         if (command.args.some(Redacted.isRedacted)) {
           Object.assign(error, {
             spawnargs: [command.command, ...command.args.map((arg) => Redacted.isRedacted(arg) ? "<redacted>" : arg)]
