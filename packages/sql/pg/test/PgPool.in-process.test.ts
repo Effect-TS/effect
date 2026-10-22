@@ -1,6 +1,6 @@
 import { PgClient, PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Option, Queue, References, Tracer } from "effect"
+import { Effect, Fiber, Latch, Option, Queue, References, Tracer } from "effect"
 import type * as Duration from "effect/Duration"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
@@ -147,6 +147,7 @@ describe("PgPool acquireTimeout", () => {
       Effect.gen(function*() {
         let socket!: Duplex
         let writes = 0
+        const statementSent = Latch.makeUnsafe()
         const sql = yield* PgClient.make({
           username: "test",
           maxConnections: 1,
@@ -157,6 +158,7 @@ describe("PgPool acquireTimeout", () => {
               read() {},
               write(_chunk: Buffer, _encoding, callback) {
                 if (++writes === 1) queueMicrotask(() => socket.push(ready))
+                else statementSent.openUnsafe()
                 callback()
               }
             })
@@ -165,7 +167,7 @@ describe("PgPool acquireTimeout", () => {
         })
         // The shared statement stays on the wire until the backend answers it.
         const busy = yield* Effect.forkChild(sql`SELECT 1`)
-        yield* waitFor(() => writes === 2)
+        yield* statementSent.await
 
         // The failed reservation shares the test scope, which stays open.
         const reservation = yield* Effect.forkChild(Effect.flip(sql.reserve))
