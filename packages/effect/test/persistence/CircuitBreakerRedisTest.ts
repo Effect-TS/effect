@@ -35,12 +35,12 @@ const storeOn = (redis: Redis.Redis["Service"], options: Parameters<typeof Circu
     Effect.map(Context.get(CircuitBreaker.CircuitBreakerStore))
   )
 
-const captureWarnings = () => {
-  const warnings: Array<unknown> = []
+const captureReports = () => {
+  const reports: Array<unknown> = []
   const logger = Logger.make<unknown, void>((options) => {
-    if (options.logLevel === "Warn" || options.logLevel === "Error") warnings.push(options.message)
+    if (options.logLevel === "Warn" || options.logLevel === "Error") reports.push(options.message)
   })
-  return { warnings, layer: Logger.layer([logger]) } as const
+  return { reports, layer: Logger.layer([logger]) } as const
 }
 
 /**
@@ -98,8 +98,8 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
         assert.deepStrictEqual(yield* Fiber.join(transitionsB), [{ key, from: "HalfOpen", to: "Closed" }])
       }).pipe(TestClock.withLive))
 
-    it.effect("a failed lease renewal is logged and retried without failing the probe", () => {
-      const { layer, warnings } = captureWarnings()
+    it.effect("a failed lease renewal is reported and retried without failing the probe", () => {
+      const { layer, reports } = captureReports()
       return Effect.gen(function*() {
         const key = "lease-renewal"
         const flaky = yield* partitionable
@@ -123,7 +123,7 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
 
         assert.isTrue(Exit.isSuccess(yield* probe.release))
         assert.deepStrictEqual(yield* b.state(key), { _tag: "Closed", key })
-        assert.isAbove(warnings.length, 0)
+        assert.isAbove(reports.length, 0)
       }).pipe(Effect.provide(layer), TestClock.withLive)
     })
 

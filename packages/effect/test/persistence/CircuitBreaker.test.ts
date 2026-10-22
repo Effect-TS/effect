@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Logger, Result, Scope, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Logger, References, Result, Scope, Stream } from "effect"
 import { CircuitBreaker } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as CircuitBreakerTest from "./CircuitBreakerTest.ts"
@@ -20,11 +20,13 @@ const memoryStoreWith = (override: Partial<CircuitBreaker.CircuitBreakerStore["S
   ).pipe(Layer.provide(CircuitBreaker.layerStoreMemory()))
 
 const captureLogs = () => {
-  const warnings: Array<unknown> = []
+  const reports: Array<{ readonly logLevel: string; readonly cause: Cause.Cause<unknown> }> = []
   const logger = Logger.make<unknown, void>((options) => {
-    if (options.logLevel === "Warn" || options.logLevel === "Error") warnings.push(options.message)
+    if (options.logLevel === "Warn" || options.logLevel === "Error") {
+      reports.push({ logLevel: options.logLevel, cause: options.cause })
+    }
   })
-  return { warnings, layer: Logger.layer([logger]) } as const
+  return { reports, layer: Logger.layer([logger]) } as const
 }
 
 const causeOf = <A, E>(exit: Exit.Exit<A, E>) => Exit.isFailure(exit) ? exit.cause : assert.fail("Expected failure")
@@ -33,8 +35,8 @@ describe("CircuitBreaker", () => {
   describe("onStoreError", () => {
     const unavailable = memoryStoreWith({ admit: () => Effect.fail(storeError), state: () => Effect.fail(storeError) })
 
-    it.effect("allow: an admit outage runs the call unrecorded and logs a warning", () => {
-      const { layer, warnings } = captureLogs()
+    it.effect("allow: an admit outage runs the call unrecorded and reports the cause at UnhandledLogLevel", () => {
+      const { layer, reports } = captureLogs()
       return Effect.gen(function*() {
         const breaker = yield* CircuitBreaker.make({
           tripPolicy: CircuitBreaker.consecutive(1),
@@ -43,10 +45,30 @@ describe("CircuitBreaker", () => {
         const result = yield* Effect.succeed(42).pipe(breaker.execute({ key: "allow" }))
 
         assert.strictEqual(result, 42)
-        assert.strictEqual(warnings.length, 1)
+        assert.strictEqual(reports.length, 1)
+        // UnhandledLogLevel defaults to Error.
+        assert.strictEqual(reports[0].logLevel, "Error")
+        assert.deepStrictEqual(Cause.findError(reports[0].cause), Result.succeed(storeError))
         const error = yield* Effect.flip(breaker.state("allow"))
         assert.strictEqual(error.reason._tag, "CircuitBreakerStoreError")
       }).pipe(Effect.provide(Layer.merge(unavailable, layer)))
+    })
+
+    it.effect("allow: an undefined UnhandledLogLevel silences the admit outage report", () => {
+      const { layer, reports } = captureLogs()
+      return Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        const result = yield* Effect.succeed(42).pipe(breaker.execute({ key: "silenced" }))
+
+        assert.strictEqual(result, 42)
+        assert.strictEqual(reports.length, 0)
+      }).pipe(
+        Effect.provideService(References.UnhandledLogLevel, undefined),
+        Effect.provide(Layer.merge(unavailable, layer))
+      )
     })
 
     it.effect("fail: an admit outage fails with CircuitBreakerStoreError without running the call", () =>
@@ -66,7 +88,7 @@ describe("CircuitBreaker", () => {
       }).pipe(Effect.provide(unavailable)))
 
     it.effect("a failed record never replaces the result", () => {
-      const { layer, warnings } = captureLogs()
+      const { layer, reports } = captureLogs()
       return Effect.gen(function*() {
         const breaker = yield* CircuitBreaker.make({
           tripPolicy: CircuitBreaker.consecutive(1),
@@ -78,7 +100,7 @@ describe("CircuitBreaker", () => {
 
         assert.strictEqual(success, 42)
         assert.strictEqual(failure, "boom")
-        assert.strictEqual(warnings.length, 2)
+        assert.strictEqual(reports.length, 2)
       }).pipe(Effect.provide(Layer.merge(memoryStoreWith({ record: () => Effect.fail(storeError) }), layer)))
     })
   })
