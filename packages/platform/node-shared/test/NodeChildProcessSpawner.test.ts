@@ -98,6 +98,22 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
         }).pipe(Effect.scoped, Effect.provide(NodeServices))
     )
   }
+
+  it.live("does not poll or force kill the process group of a child that exits during scope release", () =>
+    Effect.gen(function*() {
+      const kill = vi.spyOn(process, "kill")
+      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      let pid = 0
+      yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+          detached: false,
+          forceKillAfter: "1 second"
+        })
+        pid = handle.pid
+      }))
+      // Signalling the live child is fine; polling or escalating after it exits is not.
+      assert.deepStrictEqual(kill.mock.calls.filter(([target, signal]) => target === -pid && signal !== "SIGTERM"), [])
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 })
 
 // Synchronous fixture runs must not block other tests with active timeout budgets.
