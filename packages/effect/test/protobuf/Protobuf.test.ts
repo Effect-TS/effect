@@ -2,7 +2,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { BigDecimal, DateTime, Duration, Option, Result, Schema } from "effect"
 import * as Hex from "effect/encoding/Hex"
-import * as Protobuf from "effect/encoding/Protobuf"
+import * as Protobuf from "effect/protobuf/Protobuf"
 
 const bytes = (hex: string): Uint8Array<ArrayBuffer> =>
   Result.getOrThrow(Hex.decode(hex.replaceAll(" ", ""))) as Uint8Array<ArrayBuffer>
@@ -1015,7 +1015,7 @@ describe("Protobuf", () => {
         "malformed unknown fields",
         Keeper,
         { x: 1, [Protobuf.unknown]: bytes("ff") },
-        /premature end of input\n  at \[Symbol\(effect\/encoding\/Protobuf\/unknown\)\]/
+        /premature end of input\n  at \[Symbol\(effect\/protobuf\/Protobuf\/unknown\)\]/
       ],
       [
         "unknown fields with a declared number",

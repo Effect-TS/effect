@@ -47,12 +47,6 @@
 import * as Arr from "../Array.ts"
 import * as Bytes from "../Bytes.ts"
 import * as Effect from "../Effect.ts"
-import * as Codec from "../internal/protobuf/codec.ts"
-import * as Compile from "../internal/protobuf/compile.ts"
-import * as Layout from "../internal/protobuf/layout.ts"
-import * as ProtobufSchema from "../internal/protobuf/schema.ts"
-import * as Wire from "../internal/protobuf/wire.ts"
-import * as Wkt from "../internal/protobuf/wkt.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as InternalParser from "../internal/schema/parser.ts"
 import * as Option from "../Option.ts"
@@ -61,6 +55,12 @@ import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import * as Codec from "./internal/codec.ts"
+import * as Compile from "./internal/compile.ts"
+import * as Layout from "./internal/layout.ts"
+import * as ProtobufSchema from "./internal/schema.ts"
+import * as Wire from "./internal/wire.ts"
+import * as Wkt from "./internal/wkt.ts"
 
 // -----------------------------------------------------------------------------
 // annotations
@@ -123,7 +123,7 @@ interface FieldOptions {
  *
  * ```ts
  * import { Schema } from "effect"
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * // message User { uint64 id = 1; string name = 2; repeated string tags = 3; }
  * const User = Protobuf.Message("acme.v1.User", {
@@ -175,7 +175,7 @@ const fieldAnnotation = (number: number, options: FieldOptions | undefined): Pro
  * @category unknown fields
  * @since 4.0.6
  */
-export const unknown: unique symbol = Symbol.for("effect/encoding/Protobuf/unknown")
+export const unknown: unique symbol = Symbol.for("effect/protobuf/Protobuf/unknown")
 
 const UnknownFieldsBytes = Schema.Uint8Array.annotate({ [ProtobufSchema.UNKNOWN]: true })
 
@@ -221,7 +221,7 @@ type Message<Fields extends Schema.Struct.Fields> = Schema.Struct<Fields & Unkno
  *
  * ```ts
  * import { Schema } from "effect"
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * // message User { uint64 id = 1; string name = 2; }
  * const User = Protobuf.Message("acme.v1.User", {
@@ -294,7 +294,7 @@ type Oneof<Cases extends Readonly<Record<string, Schema.Constraint>>> = Schema.o
  *
  * ```ts
  * import { Schema } from "effect"
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * // message Delivery { oneof method { string address = 1; uint32 locker = 2; } }
  * const Delivery = Protobuf.Message("acme.v1.Delivery", {
@@ -339,7 +339,7 @@ export const Oneof = <const Cases extends Readonly<Record<string, Schema.Constra
  * **Example** (Declaring a closed enum)
  *
  * ```ts
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * // enum Status { STATUS_UNSPECIFIED = 0; STATUS_ACTIVE = 1; }
  * const Status = Protobuf.Enum("acme.v1.Status", {
@@ -377,7 +377,7 @@ export const Enum = <const Values extends Readonly<Record<string, number>>>(
  * **Example** (Declaring an open enum)
  *
  * ```ts
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * // enum Status { STATUS_UNSPECIFIED = 0; STATUS_ACTIVE = 1; }
  * const Status = Protobuf.OpenEnum("acme.v1.Status", {
@@ -446,7 +446,7 @@ export {
    *
    * ```ts
    * import { Schema } from "effect"
-   * import { Protobuf } from "effect/encoding"
+   * import { Protobuf } from "effect/protobuf"
    *
    * // message Catalog { map<int64, string> names = 1; map<sint32, string> labels = 2; }
    * const Catalog = Protobuf.Message("acme.v1.Catalog", {
@@ -777,7 +777,7 @@ export const BoolKey: Schema.String = Schema.String.annotate({ [ProtobufSchema.S
 // well-known types
 // -----------------------------------------------------------------------------
 
-// A well-known type, annotated with its layout from `internal/protobuf/wkt.ts`,
+// A well-known type, annotated with its layout from `internal/wkt.ts`,
 // so that a codec only holds the layouts of the types it uses.
 const wellKnown =
   (layout: ProtobufSchema.WellKnown, identifier?: string) => <S extends Schema.Top>(self: S): S["Rebuild"] =>
@@ -1119,7 +1119,7 @@ export interface Extension<in out E extends Schema.Top, S extends Schema.Codec<a
  *
  * ```ts import.meta.vitest
  * import { Option, Schema } from "effect"
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * const Product = Protobuf.Message("acme.v1.Product", {
  *   name: Schema.String.pipe(Protobuf.field(1))
@@ -1360,7 +1360,7 @@ const TYPE_URL_PREFIX = "type.googleapis.com/"
  *
  * ```ts import.meta.vitest
  * import { Option, Schema } from "effect"
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * const Point = Protobuf.Message("acme.v1.Point", {
  *   x: Protobuf.Int32.pipe(Protobuf.field(1)),
@@ -1490,7 +1490,7 @@ const registryCodecCache = new WeakMap<Registry, WeakMap<Schema.Constraint, toCo
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { Protobuf } from "effect/encoding"
+ * import { Protobuf } from "effect/protobuf"
  *
  * // message User { uint64 id = 1; string name = 2; }
  * const User = Protobuf.Message("acme.v1.User", {

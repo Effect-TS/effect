@@ -13,8 +13,8 @@
 // end.
 
 import * as Bytes from "../../Bytes.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Predicate from "../../Predicate.ts"
-import * as InternalRecord from "../record.ts"
 import * as L from "./layout.ts"
 import { is64Bit, isUnsigned, type ScalarName } from "./schema.ts"
 import * as Wire from "./wire.ts"

@@ -6,27 +6,27 @@ import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as L from "./layout.ts"
 
 /** @internal */
-export const FIELD = "~effect/encoding/Protobuf/field"
+export const FIELD = "~effect/protobuf/Protobuf/field"
 /** @internal */
-export const SCALAR = "~effect/encoding/Protobuf/scalar"
+export const SCALAR = "~effect/protobuf/Protobuf/scalar"
 /** @internal */
-export const MAP = "~effect/encoding/Protobuf/map"
+export const MAP = "~effect/protobuf/Protobuf/map"
 /** @internal */
-export const MESSAGE = "~effect/encoding/Protobuf/message"
+export const MESSAGE = "~effect/protobuf/Protobuf/message"
 /** @internal */
-export const MESSAGE_SET = "~effect/encoding/Protobuf/messageSet"
+export const MESSAGE_SET = "~effect/protobuf/Protobuf/messageSet"
 /** @internal */
-export const ONEOF = "~effect/encoding/Protobuf/oneof"
+export const ONEOF = "~effect/protobuf/Protobuf/oneof"
 /** @internal */
-export const ENUM = "~effect/encoding/Protobuf/enum"
+export const ENUM = "~effect/protobuf/Protobuf/enum"
 /** @internal */
-export const WKT = "~effect/encoding/Protobuf/wkt"
+export const WKT = "~effect/protobuf/Protobuf/wkt"
 /** @internal */
-export const UNKNOWN = "~effect/encoding/Protobuf/unknown"
+export const UNKNOWN = "~effect/protobuf/Protobuf/unknown"
 // Marks the checks of the protobuf scalars, which the wire layer enforces on
 // its own.
 /** @internal */
-export const PROVEN = "~effect/encoding/Protobuf/proven"
+export const PROVEN = "~effect/protobuf/Protobuf/proven"
 
 /** @internal */
 export const MAX_FIELD_NUMBER = 536_870_911 // 2 ** 29 - 1

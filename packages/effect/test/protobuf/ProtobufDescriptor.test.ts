@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Protobuf, ProtobufDescriptor } from "effect/encoding"
 import * as Option from "effect/Option"
+import { Protobuf, ProtobufDescriptor } from "effect/protobuf"
 import * as Schema from "effect/Schema"
 
 // `protoc --descriptor_set_out` (protoc 36.2) of

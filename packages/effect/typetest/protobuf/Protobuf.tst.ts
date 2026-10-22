@@ -1,5 +1,5 @@
 import { Context, Effect, type Option, Schema, SchemaGetter } from "effect"
-import * as Protobuf from "effect/encoding/Protobuf"
+import * as Protobuf from "effect/protobuf/Protobuf"
 import { describe, expect, it } from "tstyche"
 
 class Decoding extends Context.Service<Decoding, string>()("Decoding") {}

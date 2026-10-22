@@ -19,7 +19,7 @@
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { Protobuf, ProtobufDescriptor } from "effect/encoding"
+ * import { Protobuf, ProtobufDescriptor } from "effect/protobuf"
  *
  * const codec = Protobuf.toCodec(ProtobufDescriptor.FileDescriptorSet)
  *
