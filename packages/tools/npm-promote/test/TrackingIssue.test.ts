@@ -22,7 +22,7 @@ const githubClient = (issues: Array<Issue>): HttpClient.HttpClient =>
       const body = request.body._tag === "Uint8Array" ? JSON.parse(new TextDecoder().decode(request.body.body)) : {}
       const respond = (json: unknown) => HttpClientResponse.fromWeb(request, Response.json(json))
       if (request.method === "GET" && path === "/issues") {
-        return respond(issues.filter((issue) => issue.state === "open").toSorted((a, b) => b.number - a.number))
+        return respond(issues.filter((issue) => issue.state === "open").sort((a, b) => b.number - a.number))
       }
       if (request.method === "POST" && path === "/issues") {
         const issue: Issue = { number: Math.max(0, ...issues.map((issue) => issue.number)) + 1, state: "open", ...body }
