@@ -763,6 +763,14 @@ export const suite = (
 
             assert.deepStrictEqual(exit, Exit.fail(sourceError))
           }))
+
+        it.effect("fails the command when the stdin stream fails and stdin is kept open", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("cat", { stdin: { stream: failingInput, endOnDone: false } })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
+          }))
       })
 
       describe.skipIf(options.additionalFds === false)("additionalFds", () => {
