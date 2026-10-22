@@ -806,6 +806,18 @@ const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod
 
 const isHidden = (error: unknown): error is Hidden => error instanceof Hidden
 
+// Recovers a request rejected by a visibility gate. Any other cause, including
+// one that also holds an interrupt, is propagated unchanged.
+const catchHidden =
+  <B, E2>(onHidden: () => Effect.Effect<B, E2>) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A | B, Exclude<E, Hidden> | E2, R> =>
+    Effect.catchCause(self, (cause): Effect.Effect<B, Exclude<E, Hidden> | E2> => {
+      const failure = Cause.findFail(cause)
+      return !Cause.hasInterrupts(cause) && Result.isSuccess(failure) && isHidden(failure.success.error)
+        ? onHidden()
+        : Effect.failCause(cause as Cause.Cause<Exclude<E, Hidden>>)
+    })
+
 // The innermost middleware comes first. Middleware provided both locally and
 // globally runs once, at its outermost position.
 const middlewareStack = (
@@ -894,7 +906,7 @@ const makeInvoke = (
       invocation,
       request
     ).pipe(
-      Effect.catchIf(isHidden, () => Effect.fail(notFound(request.method, request.target) as NotFoundErrors[M]))
+      catchHidden(() => Effect.fail(notFound(request.method, request.target) as NotFoundErrors[M]))
     ) as Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected>
   // On list requests only the middleware outside the innermost visibility runs.
   const visible = (method: ListMethod, target: string): McpCore.Visible => (invocation) => {
@@ -906,7 +918,7 @@ const makeInvoke = (
     return runMiddleware(Effect.void, middleware.slice(innermost), invocation, { method, target, payload: undefined })
       .pipe(
         Effect.as(true),
-        Effect.catchIf(isHidden, () => Effect.succeed(false))
+        catchHidden(() => Effect.succeed(false))
       )
   }
   return { invoke, visible }
