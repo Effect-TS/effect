@@ -65,6 +65,14 @@ describe("PgliteClient", { concurrent: false }, () => {
         assert.deepStrictEqual(params, [1, 2, "x"])
       }))
 
+    it.effect("in helper with an empty list", () =>
+      Effect.gen(function*() {
+        const sql = yield* PgliteClient.PgliteClient
+        yield* sql`INSERT INTO test (name) VALUES ('hello')`
+        assert.deepStrictEqual(yield* sql`SELECT name FROM test WHERE id IN ${sql.in([])}`, [])
+        assert.deepStrictEqual(yield* sql`SELECT name FROM test WHERE id NOT IN ${sql.in([])}`, [{ name: "hello" }])
+      }).pipe(Effect.provide(Migrations)))
+
     it.effect("and helper", () =>
       Effect.gen(function*() {
         const sql = yield* PgliteClient.PgliteClient
