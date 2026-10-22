@@ -5347,7 +5347,11 @@ describe("Effect", () => {
       })
     }
 
-    it("does not leave async resources open after the effect completes", async () => {
+    // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
+    // in the worker, including from concurrent tests, would count as a leak.
+    const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
+
+    itWithAsyncHooks("does not leave async resources open after the effect completes", async () => {
       // Mirrors vitest's detectAsyncLeaks: track every resource descended from a root scope
       // and report the ones that are still pending once the effect has completed.
       const root = new AsyncResource("test-root")
