@@ -426,7 +426,8 @@ export const makeUpgradeHandler = <
               // Node rejects CR/LF in header values, so protocol cannot inject response headers.
               let responseHead = `HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: ${protocol}\r\n`
               for (const name in headers) responseHead += `${name}: ${headers[name]}\r\n`
-              socket.write(responseHead + "\r\n")
+              // Node writes header values as Latin-1, which is what peers decode them as.
+              socket.write(responseHead + "\r\n", "latin1")
             })))
           )
         }

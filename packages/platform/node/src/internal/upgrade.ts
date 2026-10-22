@@ -88,11 +88,20 @@ export const frameBody = (conn: Duplex, head: Buffer, length: number): {
     read() {
       if (reading) return onReadable()
       reading = true
+      // Pushed on first read, so the connection is not read before the body is.
+      if (head.length > 0) this.push(head)
+      // A half-closed connection may have ended before the body is read.
+      if (conn.readableEnded) return onEnd()
       conn.on("readable", onReadable)
       conn.on("end", onEnd)
+    },
+    destroy(error, callback) {
+      stop()
+      callback(error)
     }
   })
-  if (head.length > 0) body.push(head)
+  // Readers get the error through their own listeners; with none, it must not crash the process.
+  body.on("error", () => {})
   return { body, rest: Buffer.alloc(0) }
 }
 

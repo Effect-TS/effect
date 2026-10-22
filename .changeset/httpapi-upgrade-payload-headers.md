@@ -13,3 +13,4 @@ Allow buffered payloads and typed `101` response headers on `HttpApiSchema.Upgra
 - `426 Upgrade Required` is returned before the payload is decoded.
 - `HttpServerRequest` gains `upgradeWith({ headers })`, and `upgrade` is `upgradeWith({})`. Third-party `HttpServerRequest` implementations must add it. WebSocket upgrades fail when headers are given.
 - `NodeHttpServer` waits for the request body to end before writing the `101`. On Node 25 and older, which do not parse upgrade request bodies, it reads `Content-Length` bodies from the connection and answers chunked ones with `411 Length Required`.
+- `NodeMultipart` fails with a `MultipartError` when its source stream errors, instead of waiting for more input.
