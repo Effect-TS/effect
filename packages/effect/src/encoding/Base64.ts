@@ -148,13 +148,19 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
 export const decodeString = (str: string) => Result.map(decode(str), (_) => decoder.decode(_))
 
 // Appending characters builds a rope with one string per output character, so
-// only short inputs append; longer ones use native `toBase64` or one decode.
+// longer inputs use native `toBase64` (from 32 bytes) or fill a byte array that
+// is decoded once (from 128 bytes, where it overtakes appending on V8).
 const encodeBytes = (bytes: Uint8Array): string => {
   const length = bytes.length
-  // Detached buffers have length 0 and stay here: native `toBase64` throws on them
-  if (length < 32) return encodeShort(bytes)
-  const native = bytes as Uint8Array & { readonly toBase64?: () => string }
-  if (typeof native.toBase64 === "function") return native.toBase64()
+  // Read from the prototype so own or subclass overrides cannot change the output.
+  // Detached buffers have length 0 and append: native `toBase64` throws on them.
+  const toBase64 = (Uint8Array.prototype as { readonly toBase64?: (this: Uint8Array) => string }).toBase64
+  if (length >= 32 && typeof toBase64 === "function") return toBase64.call(bytes)
+  return length < 128 ? encodeShort(bytes) : encodeLong(bytes)
+}
+
+const encodeLong = (bytes: Uint8Array): string => {
+  const length = bytes.length
   const result = new Uint8Array(Math.ceil(length / 3) * 4)
   let i: number
   let j = 0
