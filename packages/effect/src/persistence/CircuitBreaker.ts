@@ -1,88 +1,44 @@
 /**
- * Guards calls to unreliable dependencies with keyed circuit breakers.
+ * Keyed circuit breakers for calls to unreliable dependencies.
  *
- * A `CircuitBreaker` is built once from a policy and holds one circuit per
- * key. Each call through `execute` names its key, so one breaker can guard
- * every host, tenant or endpoint that shares the policy. Circuit state lives
- * in a `CircuitBreakerStore`: `layerStoreMemory` keeps it in the process, and
- * `layerStoreRedis` shares it between processes.
- *
- * The breaker only rejects; it never waits. A rejected call fails with a
- * `CircuitBreakerError` whose `reason` says why, and can be handled with
- * `Effect.catchReason`. To wait out an open circuit, retry the rejection with
- * a schedule, as in the "Retrying rejections" example below.
+ * A `CircuitBreaker` holds one circuit per key, so one policy can guard many
+ * hosts or tenants. State lives in a `CircuitBreakerStore`: `layerStoreMemory`
+ * keeps it in the process, `layerStoreRedis` shares it between processes.
  *
  * **Details**
  *
- * - A Closed circuit runs calls and feeds their outcomes to the trip policy.
- *   When the policy trips, the circuit opens.
- * - An Open circuit rejects calls with `CircuitOpen`, whose `retryAfter` says
- *   how long it stays open. The open time comes from `openDuration`, and a
- *   `Retry-After` hint on the failure that opened it can lengthen it.
- * - Once the open time ends, the next call moves the circuit to HalfOpen and
- *   becomes the probe. Other calls are rejected with `CircuitHalfOpen` while
- *   it runs. A successful probe closes the circuit, and a failed one opens it
- *   again for the next `openDuration` delay. An interrupted or `Ignored` probe
- *   frees the slot for the next caller.
- * - Closing the circuit does not reset the backoff. `consecutiveOpenings`
- *   counts the openings since the backoff last reset, and resets once the
- *   circuit has stayed closed at least as long as it was last open. A
- *   dependency that recovers only briefly therefore gets longer and longer
- *   open windows, not the shortest one after every close.
+ * - Closed: calls run, and the trip policy decides when the circuit opens.
+ * - Open: calls fail with `CircuitOpen` until the open time ends.
+ * - HalfOpen: the next call is the probe, and other calls fail with
+ *   `CircuitHalfOpen` while it runs. A successful probe closes the circuit and
+ *   a failed one reopens it. An interrupted or `Ignored` probe frees the slot.
+ * - The backoff count survives a close. It resets once the circuit has stayed
+ *   closed as long as it was last open.
  *
- * One policy per key: keys are global within a store, and a circuit's state
- * does not record which policy wrote it. Two breakers with different policies
- * that share a key and a store share one circuit, and each applies its own
- * policy to it. On Redis, two `rate` policies with different sizes trim the
- * shared ring to whichever recorded last. Nothing checks for this. Give each
- * deployable unit whose policies differ its own Redis `prefix`, and give one
- * HTTP client its own circuits with a `key` function that prefixes the
- * origin, such as `payments:https://api.example.com`.
+ * The breaker never waits. Retry rejections outside it, as in "Retrying
+ * rejections" below. Put `Effect.retry` and `Effect.timeout` inside it, so it
+ * sees one outcome per call. With `ExecutionPlan`, put a breaker inside each
+ * step under its own key.
  *
- * Composition rules:
- *
- * - Put `Effect.retry` inside the breaker, so the breaker sees one outcome per
- *   call after retries and an open circuit stops a call before any retry loop
- *   starts. Libraries such as resilience4j and Polly put retry outside the
- *   breaker instead. There, every attempt counts and the breaker opens sooner.
- *   Here it opens later, and a failure a retry recovered from never counts.
- * - Put `Effect.timeout` inside the breaker. A timeout outside it interrupts
- *   the call, and an interrupted call is recorded as `Ignored`.
- * - With `ExecutionPlan`, put the breaker inside each step and give each
- *   fallback its own key, so an open circuit fails its step fast and the plan
- *   moves on.
- * - Retry rejections outside the breaker, with the schedule from the
- *   "Retrying rejections" example.
- *
- * The breaker emits no metrics, spans or span annotations of its own. What you
- * can observe is `state(key)`, the `transitions` stream and the typed error.
- * The "Counting transitions" example on `CircuitBreaker` turns transitions into
- * a metric. With `HttpClient.withCircuitBreaker`, a rejected request never
- * reaches the client, so it has no client span.
+ * The breaker emits no metrics or spans. Observe it through `state(key)`,
+ * `transitions` and the typed error.
  *
  * **Gotchas**
  *
- * - Every permit admitted before a trip goes stale when the circuit opens. The
- *   outcomes of stale permits change nothing, but work that is already running
- *   cannot be revoked and runs to completion.
- * - "Consecutive" means in order of completion, not of start. Concurrent calls
- *   feed the streak as they finish.
- * - `state(key)` reads the shared store, so it shows what every process did.
- *   `transitions` shows only the transitions this breaker instance made.
- * - With `onStoreError: "allow"` (the default), a call that the store cannot
- *   admit runs unrecorded and its cause is reported at
- *   `References.UnhandledLogLevel`, so a store outage produces one report per
- *   call. A failed `record` and a failed Redis lease renewal are reported the
- *   same way. The breaker never logs at a level of its own; provide
- *   `UnhandledLogLevel` as `undefined` to silence these reports.
- * - On Redis, a probe holds a lease that is renewed while it runs. If renewals
- *   cannot reach Redis, the lease lapses and another caller can start a second
- *   probe.
- * - An uncapped exponential `openDuration` keeps growing for a dependency that
- *   flaps as well as for one that is down. Cap it with `Schedule.upTo`, or
- *   with `Schedule.min` and a `Schedule.spaced` that sets the longest delay.
- *   The cap also bounds how long the circuit must stay closed before the
- *   backoff resets.
+ * - Use one policy per key. Breakers that share a key and a store share one
+ *   circuit, and nothing checks that their policies match. Separate them with
+ *   distinct keys or a Redis `prefix`.
+ * - Calls admitted before a trip still run to completion, but their outcomes
+ *   change nothing.
+ * - "Consecutive" counts in order of completion, not of start.
+ * - `state(key)` reads the shared store. `transitions` only shows what this
+ *   breaker instance did.
+ * - Store errors the breaker swallows (a fail-open admit, a failed record, a
+ *   failed Redis lease renewal) are reported with their cause at
+ *   `References.UnhandledLogLevel`. Set it to `undefined` to silence them.
+ * - Cap an exponential `openDuration`, with `Schedule.upTo` or with
+ *   `Schedule.min` and a `Schedule.spaced`, or it keeps growing for a
+ *   dependency that flaps.
  *
  * **Example** (Rejecting calls once a circuit opens)
  *
@@ -116,13 +72,9 @@
  *
  * **Example** (Retrying rejections)
  *
- * There is no wait mode. This schedule retries rejections with only public
- * API. `Schedule.modifyDelay` reads the rejection from `metadata.input`. For
- * `CircuitOpen` it waits for the longer of the backoff delay and the
- * rejection's `retryAfter`. For `CircuitHalfOpen`, which has no deadline, it
- * uses the jittered backoff delay, so waiting callers don't all retry at the
- * moment the probe finishes. Store errors and the call's own errors are not
- * retried.
+ * For `CircuitOpen`, wait at least the rejection's `retryAfter`. For
+ * `CircuitHalfOpen`, the jittered backoff keeps waiting callers from retrying
+ * at the same moment. Store errors and the call's own errors are not retried.
  *
  * ```ts import.meta.vitest
  * import { Data, Duration, Effect, Ref, Schedule } from "effect"
@@ -211,35 +163,27 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *
  * **Details**
  *
- * - `execute` admits the call through the circuit for `key`, runs it,
- *   classifies its exit, and records the outcome. `classify` sees the full
- *   exit of the call and returns an `Outcome`, either directly or as an
- *   effect. Without it, every success is a `Success` and every failure,
- *   defects included, is a `Failure`. An exit that is only interruption is
- *   recorded as `Ignored` before `classify` runs.
- * - `state` reads the shared state of a circuit, with relative times only.
- * - `transitions` emits the transitions made by this breaker instance only,
- *   and ends when the breaker's scope closes.
- *
- * The default classification counts defects because a generic effect has no
- * typed error to fail with in many cases. `Effect.promise`, for example, turns
- * a rejected promise into a defect, so a default that ignored defects would
- * never open the circuit for it. `HttpClient.circuitBreakerClassifier` makes
- * the opposite choice, because HttpClient errors are typed and a defect there
- * is a bug in the caller.
+ * - `execute` runs the call through the circuit for `key` and records its
+ *   outcome. `classify` maps the call's `Exit` to an `Outcome`, directly or as
+ *   an effect. By default a success is a `Success` and any failure, defects
+ *   included, is a `Failure`, since a rejected `Effect.promise` only surfaces
+ *   as a defect. An exit that is only interruption is always `Ignored`.
+ * - `state` reads the shared state of a circuit.
+ * - `transitions` emits this breaker's transitions and ends when its scope
+ *   closes.
  *
  * **Gotchas**
  *
- * - A throw or defect inside `classify` records `Ignored` and the call dies.
+ * - If `classify` throws or dies, the outcome is `Ignored` and the call dies.
  * - Bound an effectful `classify` with `Effect.timeoutOrElse` or
- *   `Effect.timeoutOption` rather than `Effect.timeout`, which adds a typed
- *   error. A call to the same key from inside `classify` is rejected with
- *   `CircuitHalfOpen` while that call is the probe.
+ *   `Effect.timeoutOption`, since `Effect.timeout` adds a typed error. A call
+ *   to the same key from inside `classify` is rejected while its call is the
+ *   probe.
  *
  * **Example** (Timing out calls inside the breaker)
  *
- * A timeout inside the breaker fails the call, which counts as a `Failure`. A
- * timeout outside it interrupts the call, which is `Ignored`.
+ * A timeout inside the breaker counts as a `Failure`. Outside, it interrupts
+ * the call, which is `Ignored`.
  *
  * ```ts import.meta.vitest
  * import { Effect } from "effect"
@@ -272,9 +216,8 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *
  * **Example** (Retrying inside the breaker)
  *
- * With the retry inside, the breaker sees one outcome per call. A call that a
- * retry rescued counts as one `Success`, and once the circuit is open a call
- * is rejected before its retry loop starts.
+ * The breaker sees one outcome per call, so a call a retry rescued counts as
+ * one `Success`.
  *
  * ```ts import.meta.vitest
  * import { Data, Effect, Ref, Schedule } from "effect"
@@ -307,11 +250,8 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *
  * **Example** (Falling back to another provider with ExecutionPlan)
  *
- * Each provider guards its own calls under its own key. Once the primary's
- * circuit opens, its step fails fast with `CircuitOpen` and the plan moves
- * straight to the fallback. A breaker wrapped around the whole plan would see
- * only the plan's final result, and its open circuit would block the fallback
- * too.
+ * Each provider guards its calls under its own key, so once the primary's
+ * circuit opens its step fails fast and the plan moves to the fallback.
  *
  * ```ts import.meta.vitest
  * import { Context, Data, Effect, ExecutionPlan, Layer } from "effect"
@@ -356,9 +296,7 @@ export type TypeId = "~effect/persistence/CircuitBreaker"
  *
  * **Example** (Counting transitions)
  *
- * Label the counter with `from` and `to`, not `key`, so the number of series
- * stays fixed however many keys there are. The counter only sees this
- * breaker's transitions.
+ * Label by `from` and `to`, not `key`, to keep the number of series fixed.
  *
  * ```ts import.meta.vitest
  * import { Effect, Metric, Stream } from "effect"
@@ -428,14 +366,8 @@ export interface CircuitBreaker {
  * **When to use**
  *
  * Use when one breaker policy serves the whole context. For several policies,
- * use a `LayerMap` keyed by policy or dependency, or define your own tags.
- *
- * **Details**
- *
- * A `LayerMap` key names a policy or a dependency, not a circuit key. Each
- * entry is a breaker that still holds one circuit per `execute` key. Circuit
- * state lives in the store, so evicting an entry loses none of it, as long as
- * every entry shares one store.
+ * use a `LayerMap` keyed by policy, with every entry sharing one store, or
+ * define your own tags.
  *
  * **Example** (Several breaker policies with LayerMap)
  *
@@ -478,56 +410,28 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  * **Details**
  *
  * - `tripPolicy` decides when a Closed circuit opens.
- * - `openDuration` is a fixed duration, or a schedule whose output is
- *   ignored. The schedule is never stored. For each opening the breaker takes
- *   a fresh step from the schedule and replays it `consecutiveOpenings` times
- *   against a simulated clock. The clock starts at the current time when the
- *   opening is recorded and advances by each replayed delay, so step k sees
- *   `attempt = k` and `elapsed` equal to the sum of the earlier replayed
- *   delays. Wall time spent idle, waiting for the probe, or inside the probe
- *   never enters the replay.
- * - Delay-, attempt- and elapsed-time-based schedules (`exponential`,
- *   `fibonacci`, `spaced`, `fixed`, `recurs`, `upTo`, `during`, `jittered`)
- *   are supported as `openDuration`; `jittered` draws fresh randomness on
- *   every replay. Schedules that read the absolute timestamp, such as `cron`,
- *   are not supported. When the schedule ends, the last delay it produced
- *   repeats; a schedule that ends before producing any delay opens the
- *   circuit for zero time.
- * - The backoff count survives a close. Every opening remembers its open
- *   time, including any `Retry-After` hint. The first call admitted once the
- *   circuit has stayed closed that long resets `consecutiveOpenings` to 0, so
- *   a hint lengthens the reset window too. Under a schedule, a long hint moves
- *   the next opening one step along the schedule, not to the hint's length.
- *   Idle expiry is separate: a key dropped by the store starts again at 0.
- * - An uncapped exponential schedule keeps growing for a dependency that
- *   flaps as well as for one that is down. Cap it with `Schedule.upTo`, or
- *   with `Schedule.min` and a `Schedule.spaced` that sets the longest delay.
- *   The cap bounds both the open window and the reset window, since the reset
- *   window is the last open window. With a fixed duration, the count never
- *   changes the delay.
- * - `maxOpenDuration` caps a `Retry-After` hint from `failure`, and defaults
- *   to one hour. It never caps `openDuration`.
+ * - `openDuration` is a duration or a `Schedule`. The n-th consecutive opening
+ *   lasts the schedule's n-th delay, and the last delay repeats once the
+ *   schedule ends. Elapsed-time combinators such as `upTo` and `during`
+ *   measure the time spent open, not wall time. Schedules that read the
+ *   current date, such as `cron`, are not supported.
+ * - `maxOpenDuration` (default one hour) caps a `Retry-After` hint. It never
+ *   caps `openDuration`.
  * - `onStoreError` decides what a call does when the store cannot admit it:
- *   `"allow"` (the default) runs it unrecorded and reports the cause at
- *   `References.UnhandledLogLevel`, `"fail"` fails it with
+ *   `"allow"` (the default) runs it unrecorded, `"fail"` fails it with
  *   `CircuitBreakerStoreError`.
  *
- * The breaker's `transitions` stream ends when the surrounding scope closes.
+ * The backoff count resets once the circuit has stayed closed as long as its
+ * last opening, `Retry-After` hint included.
  *
  * **Example** (Capping backoff growth by time spent open)
- *
- * `upTo({ duration })` measures the sum of the earlier open windows, not wall
- * time. Here the delay keeps doubling while the previous open windows add up
- * to at most one minute, then the last delay repeats.
  *
  * ```ts import.meta.vitest
  * import { Effect, Schedule } from "effect"
  * import { CircuitBreaker } from "effect/persistence"
  *
- * // Openings last 1, 2, 4, 8, 16 and 32 seconds. The seventh replay sees 63
- * // seconds of earlier open time, so the schedule ends and every later
- * // opening lasts 32 seconds, until the circuit stays closed for 32 seconds
- * // and the backoff resets.
+ * // Openings last 1, 2, 4, 8, 16 and 32 seconds. By then 63 seconds have been
+ * // spent open, past the one-minute cap, so later openings stay at 32 seconds.
  * const program = Effect.gen(function*() {
  *   const breaker = yield* CircuitBreaker.make({
  *     tripPolicy: CircuitBreaker.consecutive(5),
@@ -1068,29 +972,18 @@ export class CircuitBreakerError extends Schema.Error<CircuitBreakerError>(Error
  *
  * **Details**
  *
- * - `admit` decides whether a call may run. It returns an `Admission`, or
- *   fails with `CircuitOpen` or `CircuitHalfOpen`. Its scope stays open for
- *   the duration of the call.
- * - `record` applies an outcome atomically. Outcomes stamped with an older
- *   generation change nothing. `openFor` is how long the circuit stays open
- *   if this record opens it.
- * - `state` reads the state of a key without changing it.
+ * - `admit` returns an `Admission`, or fails with `CircuitOpen` or
+ *   `CircuitHalfOpen`. Its scope stays open while the call runs.
+ * - `record` applies an outcome atomically and opens the circuit for
+ *   `openFor` if it trips. An outcome stamped with an older generation
+ *   changes nothing.
+ * - `state` reads a key without changing it.
  *
- * Each operation reads "now" inside the store.
- *
- * Backoff reset rule:
- *
- * - Every opening stores its `openFor`. HalfOpen to Closed keeps
- *   `consecutiveOpenings` and sets a reset deadline of the close time plus
- *   the last opening's `openFor`.
- * - The first `admit` of a Closed key at or after the deadline sets
- *   `consecutiveOpenings` to 0 before returning the admission.
- * - `record` never reads the deadline. It only increments the count when it
- *   opens the circuit. A call admitted before the deadline that trips after a
- *   later admit reset the count opens with the `openFor` it computed from its
- *   older count, and the stored count restarts at 1.
- * - An expired key starts again as Closed with a count of 0, even before its
- *   deadline.
+ * Each operation reads the current time inside the store. A close keeps
+ * `consecutiveOpenings` and sets a reset deadline of the close time plus the
+ * last `openFor`. The first `admit` at or after the deadline resets the count
+ * to 0. `record` never reads the deadline, so a call admitted before a reset
+ * still opens with the `openFor` it computed.
  *
  * @stability experimental
  * @category services
@@ -1150,10 +1043,9 @@ interface MemoryEntry {
  * **Details**
  *
  * State is local to the layer and uses `Clock`. `idleTimeToLive` (default
- * one hour) drops idle keys: a Closed key once it has been idle that long, an
- * Open key that long after its open time ends, and a HalfOpen key only when
- * no probe is running. A dropped key starts again as Closed with a backoff
- * count of 0, even if its backoff reset window has not ended.
+ * one hour) drops a key once it has been idle that long. An Open key is kept
+ * that long past its open time, and a key whose probe is running is never
+ * dropped. A dropped key starts again as Closed with a backoff count of 0.
  *
  * @stability experimental
  * @category layers
@@ -1345,33 +1237,23 @@ export const layerStoreMemory = (options?: {
  *
  * **Details**
  *
- * - Each circuit is one hash at `${prefix}${key}`. `prefix` defaults to
- *   `"circuitbreaker:"`; give each deployable unit whose policies differ its
- *   own prefix.
- * - Every timestamp comes from Redis `TIME`, so client clock skew never
- *   affects a circuit. Requires Redis 5 or later.
- * - A HalfOpen probe holds a lease of `probeLease` (default 10 seconds),
- *   renewed every third of the lease while the call runs. A failed renewal is
- *   reported at `References.UnhandledLogLevel` and retried on the next tick,
- *   and never fails the call. If the lease lapses, another caller takes over
- *   as the probe and the old probe's outcome is discarded.
- * - `idleTimeToLive` (default one hour) expires idle keys. Closed keys, and
- *   HalfOpen keys whose probe slot is free, expire after `idleTimeToLive`.
- *   While a probe holds the lease, the key expires `idleTimeToLive` after the
- *   lease would lapse, and each renewal moves both together, so a probe whose
- *   renewals succeed never loses its key. Freeing the slot (an Ignored or
- *   interrupted probe) returns the key to `idleTimeToLive`. An Open key
- *   expires that long after its open time ends, so expiry never resets the
- *   backoff count early. An expired key starts again as Closed with a
- *   backoff count of 0, even if its backoff reset window has not ended.
+ * - Each circuit is one hash at `${prefix}${key}`, and `prefix` defaults to
+ *   `"circuitbreaker:"`. Times come from Redis `TIME`, so client clock skew
+ *   never matters. Requires Redis 5 or later.
+ * - The probe holds a lease of `probeLease` (default 10 seconds), renewed
+ *   while it runs. If the lease lapses, another caller takes over and the old
+ *   probe's outcome is discarded.
+ * - `idleTimeToLive` (default one hour) expires idle keys. An Open key, or one
+ *   whose probe holds the lease, is kept that long past its open time or
+ *   lease, so expiry never cuts a probe short or resets the backoff early. An
+ *   expired key starts again as Closed with a backoff count of 0.
  *
  * **Gotchas**
  *
- * - If renewals cannot reach Redis, a probe cannot outlast its lease, so a
- *   second caller may start a duplicate probe.
- * - Durations above 2^50 milliseconds (about 35,000 years) cannot be stored.
- *   An operation that needs one fails with `CircuitBreakerStoreError` and
- *   leaves the circuit unchanged.
+ * - If renewals cannot reach Redis, the lease lapses and a second probe can
+ *   start.
+ * - Durations above 2^50 milliseconds cannot be stored. An operation that
+ *   needs one fails with `CircuitBreakerStoreError`.
  *
  * @stability experimental
  * @category layers

@@ -1370,11 +1370,6 @@ export declare namespace WithCircuitBreaker {
   /**
    * Options used to configure `withCircuitBreaker`.
    *
-   * **Details**
-   *
-   * They define the breaker that guards each request, how a request maps to a
-   * circuit key, and how each call's `Exit` is classified.
-   *
    * @stability experimental
    * @category circuit breaking
    * @since 4.0.6
@@ -1407,37 +1402,24 @@ export declare namespace WithCircuitBreaker {
  *
  * **Details**
  *
- * Each request runs through `breaker.execute`, keyed by the request origin
- * unless `key` is set. While a circuit is open or probing, requests fail with
- * a `CircuitBreakerError` without reaching the wrapped client. Each admitted
- * request's `Exit` is classified with `circuitBreakerClassifier` unless
- * `classify` is set.
+ * Requests are keyed by origin unless `key` is set, and classified with
+ * `circuitBreakerClassifier` unless `classify` is set. A rejected request
+ * fails with `CircuitBreakerError` without reaching the wrapped client.
  *
- * Put the breaker outermost:
- * `client.pipe(withRateLimiter(...), retryTransient(...), withCircuitBreaker(...))`.
- * The breaker then sees one outcome per call after retries, and an open
- * circuit stops a call before any retry loop starts. The rate limiter's `429`
- * loop stays nearest the wire. `retryTransient` never retries a
- * `CircuitBreakerError`.
- *
- * A custom `classify` can handle the cases it cares about and delegate the
- * rest to `circuitBreakerClassifier`. Map over its result rather than
- * re-implementing the status table.
+ * Apply it after `withRateLimiter` and `retryTransient`, so the breaker sees
+ * one outcome per call and an open circuit skips the retry loop.
+ * `retryTransient` never retries a `CircuitBreakerError`. A custom `classify`
+ * can delegate the cases it doesn't handle to `circuitBreakerClassifier`.
  *
  * **Gotchas**
  *
- * - The breaker's view of a call ends at the response headers, because body
- *   decoding runs on the caller's side. Lift semantic errors into the error
- *   channel below the breaker with `transformResponse` or `filterOrElse`, and
- *   count them in `classify`, since the default classifier ignores errors it
- *   does not know. As a fallback, an effectful `classify` can read the body
- *   itself. Map a failed body read to `ignored`, and read the body afterwards
- *   with `text`, `json` or `arrayBuffer`, not `stream`.
- * - `withRateLimiter` retries `429` responses without limit by default, so a
- *   HalfOpen probe stuck behind it can hold the probe slot for minutes. Set
- *   `times` on `withRateLimiter`.
- * - A rejected request has no client span, because the span is created inside
- *   the wrapped client. The rejection fails the caller's own span instead.
+ * - The breaker only sees the response headers. To count an error in the
+ *   body, lift it into the error channel below the breaker with
+ *   `transformResponse` and count it in `classify`.
+ * - `withRateLimiter` retries `429` without limit by default, which can hold
+ *   the probe slot for minutes. Set its `times`.
+ * - A rejected request has no client span. The rejection fails the caller's
+ *   span instead.
  *
  * **Example** (Guarding an API in the recommended order)
  *
@@ -1489,9 +1471,6 @@ export declare namespace WithCircuitBreaker {
  * **Example** (Counting an error in the body as a failure)
  *
  * This API answers `200` with `{ "status": "degraded" }` when it is failing.
- * `transformResponse` lifts that into a typed error below the breaker, and
- * `classify` counts it, delegating everything else to
- * `circuitBreakerClassifier`.
  *
  * ```ts import.meta.vitest
  * import { Data, Effect, Exit, Option } from "effect"
@@ -1570,27 +1549,23 @@ const requestOrigin = (request: HttpClientRequest.HttpClientRequest): string =>
  *
  * **Details**
  *
- * - Status 408, 500, 502, 503 or 504, returned or wrapped in a
- *   `StatusCodeError`, a `TransportError` and a `Cause.TimeoutError` are
- *   failures.
- * - Any other response, including a non-transient 4xx, is a success, because
- *   the dependency answered.
- * - Status 429 is ignored, because `withRateLimiter` owns quota.
- * - `EncodeError`, `InvalidUrlError`, `DecodeError`, `EmptyBodyError`,
- *   defects and unknown typed errors are ignored.
+ * - Failure: status 408, 500, 502, 503 or 504, returned or wrapped in a
+ *   `StatusCodeError`, and any `TransportError` or `Cause.TimeoutError`.
+ * - Success: any other response, including other 4xx, since the dependency
+ *   answered.
+ * - Ignored: status 429 (left to `withRateLimiter`), `EncodeError`,
+ *   `InvalidUrlError`, `DecodeError`, `EmptyBodyError`, unknown typed errors
+ *   and defects. HttpClient errors are typed, so a defect here is a bug in
+ *   the caller.
  *
  * When a cause holds several errors, a failure beats a success and a success
- * beats an ignored outcome. A failure carries the longest `Retry-After` among
- * its failure-class responses, which the breaker caps at `maxOpenDuration`.
- *
- * The result is an `Effect` only because parsing an HTTP-date `Retry-After`
- * reads the current time from `Clock`. It performs no I/O and never reads the
- * response body.
+ * beats an ignored outcome. A failure carries the longest `Retry-After` it
+ * saw. The result is an `Effect` only because parsing an HTTP-date
+ * `Retry-After` reads `Clock`.
  *
  * **Gotchas**
  *
- * `TransportError` also covers client-side refusals, which then count as
- * failures.
+ * `TransportError` also covers client-side refusals, which count as failures.
  *
  * @stability experimental
  * @category circuit breaking
