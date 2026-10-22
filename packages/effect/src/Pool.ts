@@ -674,11 +674,9 @@ const returnCapacity = <A, E>(
   }
   // Every release frees one slot, so it can admit one waiter. Reacting only
   // to the saturated-to-unsaturated transition strands the rest: several
-  // leases returning at once would wake a single waiter and leave the others
+  // leases returning at once would admit a single waiter and leave the others
   // asleep against an item that has capacity for them.
-  if (item.refCount < self.config.concurrency) {
-    handOff(self, item, fiber)
-  }
+  handOff(self, item, fiber)
   return internal.void
 }
 
@@ -748,25 +746,16 @@ const waitForItem = <A, E>(self: Pool<A, E>, handoff: Handoff<A, E>): Effect.Eff
     })
   })
 
-const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown>, count: number) => {
-  const waiters = self.state.waiters
-  if (waiters.size === 0) return
-  fiber.currentDispatcher.scheduleTask(() => {
-    let remaining = count
-    const toWake: Array<(failure?: Exit.Failure<A, E>) => void> = []
-    for (const notify of waiters) {
-      if (remaining-- <= 0) break
-      toWake.push(notify)
-    }
-    for (let i = 0; i < toWake.length; i++) {
-      toWake[i]()
-    }
-  }, 0)
-}
-
+// Wakes every waiter to re-check the pool. Capacity reaches waiters through
+// `handOff`; waking matters after a failed acquisition, so the others retry it.
 const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   core.withFiber((fiber) => {
-    wakeWaiters(self, fiber, Number.POSITIVE_INFINITY)
+    const waiters = self.state.waiters
+    if (waiters.size > 0) {
+      fiber.currentDispatcher.scheduleTask(() => {
+        for (const notify of Array.from(waiters)) notify()
+      }, 0)
+    }
     return internal.void
   })
 
@@ -909,8 +898,7 @@ export const reserve: {
           if (
             !self.state.isShuttingDown &&
             self.state.items.has(poolItem) &&
-            !self.state.invalidated.has(poolItem) &&
-            poolItem.refCount < self.config.concurrency
+            !self.state.invalidated.has(poolItem)
           ) {
             handOff(self, poolItem, fiber)
           }
