@@ -1798,8 +1798,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* settle
         assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
 
+        // Resume resets the suspended reply, so the next Suspended reply
+        // belongs to the replay. Wait for it rather than a fixed number of
+        // steps: the replay derives the child execution id with
+        // crypto.subtle, which resolves outside of the TestClock.
         yield* Parent.resume(executionId)
-        yield* settle
+        yield* pollUntil(Parent, executionId, "Suspended")
         assert.strictEqual(failures, 2)
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
