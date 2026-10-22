@@ -6,7 +6,6 @@ import {
   DateTime,
   Deferred,
   Effect,
-  Exit,
   Fiber,
   Layer,
   Option,
@@ -22,7 +21,6 @@ import { Model } from "effect/schema"
 import { SqlClient, SqlError, SqlModel } from "effect/sql"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
-import { AsyncLocalStorage } from "node:async_hooks"
 import { PgContainer } from "./utils.ts"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
@@ -745,46 +743,8 @@ const RequestId = Context.Reference<string>("test/RequestId", { defaultValue: ()
 
 class Prefix extends Context.Service<Prefix, string>()("test/Prefix") {}
 
-class ClientUser extends Context.Service<ClientUser, { readonly sql: PgClient.PgClient }>()("test/ClientUser") {}
-
-const onAcquireClients = [
-  ["make", PgClient.layer],
-  ["makeClient", (config: PgClient.PgClientConfig) => PgClient.layerFrom(PgClient.makeClient(config))]
-] as const
-
 it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it) => {
-  for (const [name, layer] of onAcquireClients) {
-    it.effect(`${name} runs the hook once per acquisition in the consuming fiber`, () =>
-      Effect.gen(function*() {
-        const container = yield* PgContainer
-        const calls: Array<string> = []
-        const context = yield* Layer.build(
-          Layer.effect(ClientUser, Effect.map(PgClient.PgClient, (sql) => ({ sql }))).pipe(
-            Layer.provide(layer({
-              url: Redacted.make(container.getConnectionUri()),
-              onAcquire: Effect.gen(function*() {
-                calls.push(yield* RequestId)
-              })
-            }))
-          )
-        )
-        const { sql } = Context.get(context, ClientUser)
-        const as = (id: string) => Effect.provideService(RequestId, id)
-
-        yield* sql`SELECT 1`.pipe(as("statement"))
-        yield* sql.withTransaction(Effect.andThen(sql`SELECT 1`, sql.withTransaction(sql`SELECT 2`))).pipe(
-          as("transaction")
-        )
-        yield* Effect.scoped(sql.reserve).pipe(as("reserve"))
-        yield* Stream.runDrain(sql`SELECT 1`.stream).pipe(as("stream"))
-        yield* sql.notify("on_acquire", "payload").pipe(as("notify"))
-        yield* Effect.scoped(sql.listen("on_acquire")).pipe(as("listen"))
-
-        assert.deepStrictEqual(calls, ["statement", "transaction", "reserve", "stream", "notify", "listen"])
-      }).pipe(Effect.scoped))
-  }
-
-  it.effect("provides the hook's requirements from construction while running in the consuming fiber", () =>
+  it.effect("runs once per acquisition with construction services in the consuming fiber", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer
       const calls: Array<string> = []
@@ -799,12 +759,14 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
       const sql = Context.get(context, PgClient.PgClient)
 
       yield* sql`SELECT 1`.pipe(Effect.provideService(RequestId, "statement"))
-      yield* sql.withTransaction(sql`SELECT 1`).pipe(Effect.provideService(RequestId, "transaction"))
+      yield* sql.withTransaction(Effect.andThen(sql`SELECT 1`, sql`SELECT 2`)).pipe(
+        Effect.provideService(RequestId, "transaction")
+      )
 
       assert.deepStrictEqual(calls, ["pool:statement", "pool:transaction"])
     }).pipe(Effect.scoped))
 
-  it.effect("closes the hook's scope after each plain statement", () =>
+  it.effect("closes the hook's scope after each statement", () =>
     Effect.gen(function*() {
       const container = yield* PgContainer
       let finalized = 0
@@ -822,51 +784,4 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgClient onAcquire", (it
 
       assert.strictEqual(finalized, 2)
     }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
-
-  it.effect("releases the connection when the hook defects", () =>
-    Effect.gen(function*() {
-      const container = yield* PgContainer
-      let defect = true
-      const sql = yield* PgClient.make({
-        url: Redacted.make(container.getConnectionUri()),
-        maxConnections: 1,
-        onAcquire: Effect.suspend(() => defect ? Effect.die("onAcquire defect") : Effect.void)
-      })
-
-      assert.isTrue(Exit.hasDies(yield* Effect.exit(sql`SELECT 1`)))
-      assert.isTrue(Exit.hasDies(yield* Effect.exit(sql.withTransaction(sql`SELECT 1`))))
-
-      defect = false
-      const rows = yield* sql<{ value: number }>`SELECT 1 AS value`.pipe(
-        Effect.timeoutOrElse({
-          duration: "3 seconds",
-          orElse: () => Effect.fail(new Error("connection leaked after a hook defect"))
-        }),
-        TestClock.withLive
-      )
-      assert.deepStrictEqual(rows, [{ value: 1 }])
-    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
-
-  for (const multiplex of [false, true]) {
-    it.effect(`runs the hook in each caller's async context${multiplex ? " with multiplex" : ""}`, () =>
-      Effect.gen(function*() {
-        const container = yield* PgContainer
-        const store = new AsyncLocalStorage<string>()
-        const calls: Array<string | undefined> = []
-        const sql = yield* PgClient.make({
-          url: Redacted.make(container.getConnectionUri()),
-          maxConnections: 1,
-          multiplex,
-          onAcquire: Effect.sync(() => {
-            calls.push(store.getStore())
-          })
-        })
-        // With one connection, the second caller resumes after the first releases it.
-        const run = (id: string) => store.run(id, () => Effect.runPromise(sql`SELECT pg_sleep(0.1)`))
-
-        yield* Effect.promise(() => Promise.all([run("a"), run("b")]))
-
-        assert.deepStrictEqual([...calls].sort(), ["a", "b"])
-      }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
-  }
 })

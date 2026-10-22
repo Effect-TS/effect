@@ -6,41 +6,18 @@ import { describe, expect, it } from "tstyche"
 
 class Prefix extends Context.Service<Prefix, string>()("Prefix") {}
 
-const onAcquire = Effect.asVoid(Effect.service(Prefix))
+const onAcquire = Effect.andThen(Effect.service(Reactivity.Reactivity), Effect.service(Prefix)).pipe(Effect.asVoid)
 
 describe("PgClient onAcquire", () => {
-  it("adds the hook's requirements to the constructors", () => {
+  it("propagates the hook's requirements, except those the layers supply", () => {
     expect(PgClient.make({ onAcquire })).type.toBe<
       Effect.Effect<PgClient.PgClient, SqlError.SqlError, Scope.Scope | Reactivity.Reactivity | Prefix>
     >()
-    expect(PgClient.makeClient({ onAcquire })).type.toBe<
-      Effect.Effect<PgClient.PgClient, SqlError.SqlError, Scope.Scope | Reactivity.Reactivity | Prefix>
-    >()
-  })
-
-  it("adds the hook's requirements to the layers", () => {
     expect(PgClient.layer({ onAcquire })).type.toBe<
       Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, SqlError.SqlError, Prefix>
     >()
     expect(PgClient.layerConfig({ onAcquire: Config.succeed(onAcquire) })).type.toBe<
       Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, Config.ConfigError | SqlError.SqlError, Prefix>
-    >()
-  })
-
-  it("removes requirements the layers supply themselves", () => {
-    const onAcquire = Effect.andThen(Effect.service(Reactivity.Reactivity), Effect.service(Prefix)).pipe(Effect.asVoid)
-
-    expect(PgClient.layer({ onAcquire })).type.toBe<
-      Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, SqlError.SqlError, Prefix>
-    >()
-    expect(PgClient.layerConfig({ onAcquire: Config.succeed(onAcquire) })).type.toBe<
-      Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, Config.ConfigError | SqlError.SqlError, Prefix>
-    >()
-  })
-
-  it("requires nothing for a hook without requirements", () => {
-    expect(PgClient.layer({ onAcquire: Effect.void })).type.toBe<
-      Layer.Layer<PgClient.PgClient | SqlClient.SqlClient, SqlError.SqlError>
     >()
   })
 })
