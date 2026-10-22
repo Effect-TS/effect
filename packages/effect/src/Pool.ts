@@ -717,6 +717,9 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
     state.waiters.add(waiter)
     return internal.sync(() => {
       waiter.resume = undefined
+      // A cancelled waiter that was never woken leaves at once, so no wake or
+      // failure is spent on it. A woken one stays until it passes its wake on.
+      if (!waiter.woken) state.waiters.delete(waiter)
     })
   })
 
