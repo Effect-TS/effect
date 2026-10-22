@@ -8,6 +8,7 @@ import type * as PlatformError from "effect/PlatformError"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 
@@ -32,6 +33,18 @@ const decodeByteStream = Effect.fnUntraced(
     return new TextDecoder().decode(result).trim()
   }
 )
+
+// Sink that records how many bytes it received and completes with a marker
+const countingSink = () => {
+  const received = { bytes: 0 }
+  const result = new Uint8Array([42])
+  const sink = Sink.forEach((chunk: Uint8Array) =>
+    Effect.sync(() => {
+      received.bytes += chunk.length
+    })
+  ).pipe(Sink.as(result))
+  return { received, result, sink }
+}
 
 export const suite = (
   name: string,
@@ -443,6 +456,38 @@ export const suite = (
             }))
         })
 
+        describe("output sinks", () => {
+          it.effect("should only run a stdout sink while handle.stdout is consumed", () =>
+            Effect.gen(function*() {
+              const { received, result, sink } = countingSink()
+              const handle = yield* ChildProcess.make("sh", ["-c", "printf hello"], { stdout: sink })
+              const exitCode = yield* handle.exitCode
+
+              assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+              assert.strictEqual(received.bytes, 0)
+
+              const emitted = yield* Stream.runCollect(handle.stdout)
+
+              assert.strictEqual(received.bytes, 5)
+              assert.deepStrictEqual(emitted, [result])
+            }))
+
+          it.effect("should only run a stderr sink while handle.stderr is consumed", () =>
+            Effect.gen(function*() {
+              const { received, result, sink } = countingSink()
+              const handle = yield* ChildProcess.make("sh", ["-c", "printf hello >&2"], { stderr: sink })
+              const exitCode = yield* handle.exitCode
+
+              assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+              assert.strictEqual(received.bytes, 0)
+
+              const emitted = yield* Stream.runCollect(handle.stderr)
+
+              assert.strictEqual(received.bytes, 5)
+              assert.deepStrictEqual(emitted, [result])
+            }))
+        })
+
         describe("process control", () => {
           it.effect("should kill a process", () =>
             Effect.gen(function*() {
@@ -760,6 +805,23 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd3Output, "hello from fd3")
+          }))
+
+        it.effect("should only run an output fd sink while the fd stream is consumed", () =>
+          Effect.gen(function*() {
+            const { received, result, sink } = countingSink()
+            const handle = yield* ChildProcess.make("sh", ["-c", "printf hello >&3"], {
+              additionalFds: { fd3: { type: "output", sink } }
+            })
+            const exitCode = yield* handle.exitCode
+
+            assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+            assert.strictEqual(received.bytes, 0)
+
+            const emitted = yield* Stream.runCollect(handle.getOutputFd(3))
+
+            assert.strictEqual(received.bytes, 5)
+            assert.deepStrictEqual(emitted, [result])
           }))
 
         it.effect("should write data to an input fd (fd3)", () =>
