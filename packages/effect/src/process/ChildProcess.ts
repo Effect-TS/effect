@@ -548,26 +548,6 @@ export interface CommandOptions extends KillOptions {
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined
 }
 
-/**
- * Valid template expression item types. Same as
- * `CommandLine.TemplateExpressionItem`.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export type TemplateExpressionItem = CommandLine.TemplateExpressionItem
-
-/**
- * Template expression type for interpolated values. Same as
- * `CommandLine.TemplateExpression`.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export type TemplateExpression = CommandLine.TemplateExpression
-
 // =============================================================================
 // Constructors
 // =============================================================================

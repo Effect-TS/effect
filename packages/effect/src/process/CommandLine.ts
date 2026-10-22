@@ -60,22 +60,6 @@ export type Format = "posix" | "powershell" | "windows"
 export type Word = string | Redacted.Redacted<string>
 
 /**
- * Options for {@link quote}, {@link join} and {@link display}.
- *
- * @stability unstable
- * @category models
- * @since 4.0.7
- */
-export interface Options {
-  /**
-   * Syntax of the program that will parse the command line.
-   *
-   * @default "posix"
-   */
-  readonly format?: Format | undefined
-}
-
-/**
  * Single value accepted inside a `${}` interpolation of {@link template}.
  *
  * @stability unstable
@@ -174,7 +158,10 @@ export class CommandLineError extends Data.TaggedError("CommandLineError")<{
  * @category encoding
  * @since 4.0.7
  */
-export const quote = (word: Word, options?: Options): Result.Result<string, CommandLineError> => {
+export const quote = (
+  word: Word,
+  options?: { readonly format?: Format | undefined }
+): Result.Result<string, CommandLineError> => {
   const value = unwrap(word)
   if (value.includes("\0")) return failNul("The argument")
   return Result.succeed(quoteWord(options?.format ?? "posix", value, false))
@@ -235,7 +222,7 @@ export const quote = (word: Word, options?: Options): Result.Result<string, Comm
  */
 export const join = (
   words: ReadonlyArray<Word>,
-  options?: Options
+  options?: { readonly format?: Format | undefined }
 ): Result.Result<string, CommandLineError> => {
   const values: Array<string> = []
   for (let i = 0; i < words.length; i++) {
@@ -306,7 +293,7 @@ export const join = (
  * @category encoding
  * @since 4.0.7
  */
-export const display = (words: ReadonlyArray<Word>, options?: Options): string => {
+export const display = (words: ReadonlyArray<Word>, options?: { readonly format?: Format | undefined }): string => {
   if (words.length === 0) return ""
   const format = options?.format ?? "posix"
   // Escaping after quoting keeps the escapes inside the quotes.
