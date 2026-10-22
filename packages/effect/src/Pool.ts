@@ -558,29 +558,30 @@ const getSlowWith = <A, E, X, R>(
   internal.uninterruptibleMask((restore) => {
     const state = self.state
     state.usage++
-    // A borrower that has not waited yet queues behind the borrowers already
-    // waiting, so a released item reaches the oldest waiter rather than a
-    // borrower arriving in the tick before that waiter is woken.
-    let queued = false
+    const waiter = makeWaiter<A, E>()
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
       internal.onError(
-        restore(waitForItem(self)),
+        restore(waitForItem(self, waiter)),
         () =>
-          internal.sync(() => {
+          core.withFiber((fiber) => {
             state.usage--
+            // A woken waiter that leaves before taking an item passes its wake
+            // on, so the capacity it was woken for is not stranded.
+            if (state.waiters.delete(waiter) && waiter.woken) wakeWaiters(self, fiber, 1)
+            return internal.void
           })
       ),
-      () => {
-        queued = true
-        return loop
-      }
+      () => loop
     )
     const step: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
       if (state.isShuttingDown) {
         state.usage--
         return internal.interrupt
       }
-      if (!queued && state.waiters.size > 0) {
+      // A borrower that has not waited yet queues behind the borrowers already
+      // waiting. Waiters keep their place until they take an item, so this
+      // also holds while a woken waiter has yet to run.
+      if (state.waiters.size > 0 && !state.waiters.has(waiter)) {
         return wait
       }
       // Replace failed slots only when the pool cannot grow.
@@ -593,6 +594,7 @@ const getSlowWith = <A, E, X, R>(
         removeFailedItem(self, item)
         return loop
       }
+      state.waiters.delete(waiter)
       return lease(self, item, fiber, restore)
     })
     const loop: Effect.Effect<X, any, R> = internal.suspend(() => {
@@ -675,19 +677,46 @@ const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefin
   return item
 }
 
-const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
+/**
+ * A borrower's entry in `State.waiters`. It stays registered from the first
+ * wait until the borrower takes an item or leaves, so the borrower keeps its
+ * place in the queue across wakes.
+ */
+interface Waiter<A, E> {
+  (failure?: Exit.Failure<A, E>): void
+  /** Set when notified, until the borrower waits again or leaves. */
+  woken: boolean
+  resume: ((effect: Effect.Effect<void, E>) => void) | undefined
+}
+
+const makeWaiter = <A, E>(): Waiter<A, E> => {
+  const waiter = ((failure?: Exit.Failure<A, E>) => {
+    const resume = waiter.resume
+    if (resume === undefined) return
+    waiter.resume = undefined
+    waiter.woken = true
+    resume(failure ?? internal.void)
+  }) as Waiter<A, E>
+  waiter.woken = false
+  waiter.resume = undefined
+  return waiter
+}
+
+const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effect<void, E> =>
   internal.callback((resume) => {
     const state = self.state
-    if ((state.waiters.size === 0 && firstHealthyAvailable(self) !== undefined) || state.isShuttingDown) {
+    if (
+      state.isShuttingDown ||
+      (state.waiters.size === 0 && firstHealthyAvailable(self) !== undefined)
+    ) {
       return resume(internal.void)
     }
-    const observer = (failure?: Exit.Failure<A, E>) => {
-      state.waiters.delete(observer)
-      resume(failure ?? internal.void)
-    }
-    state.waiters.add(observer)
+    waiter.woken = false
+    waiter.resume = resume
+    // Re-adding a registered waiter keeps its position.
+    state.waiters.add(waiter)
     return internal.sync(() => {
-      state.waiters.delete(observer)
+      waiter.resume = undefined
     })
   })
 
@@ -695,19 +724,24 @@ const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown
   const waiters = self.state.waiters
   if (waiters.size === 0) return
   fiber.currentDispatcher.scheduleTask(() => {
+    // Walk the live set, so a waiter that leaves during the walk does not use
+    // up a wake. Skip waiters already woken, and stop once nothing is left to
+    // take.
     let remaining = count
-    const toWake: Array<(failure?: Exit.Failure<A, E>) => void> = []
     for (const notify of waiters) {
-      if (remaining-- <= 0) break
-      toWake.push(notify)
-    }
-    // A woken waiter resumes synchronously and takes what is available, so
-    // stop once nothing is left. A waiter woken for nothing would queue again
-    // behind borrowers that arrived after it.
-    for (let i = 0; i < toWake.length && self.state.availableHead !== undefined; i++) {
-      toWake[i]()
+      if (remaining <= 0 || self.state.availableHead === undefined) break
+      if ((notify as Waiter<A, E>).woken) continue
+      remaining--
+      notify()
     }
   }, 0)
+}
+
+const firstSleepingWaiter = <A, E>(self: Pool<A, E>) => {
+  for (const notify of self.state.waiters) {
+    if (!(notify as Waiter<A, E>).woken) return notify
+  }
+  return undefined
 }
 
 // Wakes every waiter so it can retry, e.g. after an acquisition. A waiter that
@@ -717,7 +751,9 @@ const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     const waiters = self.state.waiters
     if (waiters.size === 0) return internal.void
     fiber.currentDispatcher.scheduleTask(() => {
-      for (const notify of Array.from(waiters)) notify()
+      for (const notify of Array.from(waiters)) {
+        if (!(notify as Waiter<A, E>).woken) notify()
+      }
     }, 0)
     return internal.void
   })
@@ -970,7 +1006,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           return self.config.strategy === strategyNoop ? Effect.succeed(item) : Effect.as(onAcquire, item)
         }
         // Deliver a waiting borrower its own failure; otherwise retain the slot.
-        const waiter = firstHealthyAvailable(self) === undefined ? self.state.waiters.values().next().value : undefined
+        const waiter = firstHealthyAvailable(self) === undefined ? firstSleepingWaiter(self) : undefined
         if (waiter !== undefined) {
           waiter(exit)
         } else {
