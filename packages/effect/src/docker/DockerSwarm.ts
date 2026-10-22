@@ -34,7 +34,7 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -149,6 +149,36 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
    * `ConnectionFailed`.
    */
   readonly unlock: (unlockKey: Redacted.Redacted<string>) => Effect.Effect<void, DockerError>
+  /**
+   * Updates the Swarm from its current spec: inspects the Swarm, and updates
+   * it with `f` of its `Spec` at the version read.
+   *
+   * **Details**
+   *
+   * When another update comes first (`update out of sequence`), it starts
+   * over from a fresh `inspect`, at most 5 times in all; any other failure
+   * ends it. The options are `update`'s rotations.
+   *
+   * Typical reasons: `inspect`'s and `update`'s.
+   *
+   * **Example** (Turning on autolock)
+   *
+   * ```ts import.meta.vitest
+   * import { DockerSwarm } from "effect/docker"
+   *
+   * const autolock = DockerSwarm.DockerSwarm.use((swarm) =>
+   *   swarm.modify((spec) => ({ ...spec, EncryptionConfig: { AutoLockManagers: true } }))
+   * )
+   * ```
+   */
+  readonly modify: (
+    f: (spec: DockerSchema.SwarmSpec) => DockerSchema.SwarmSpec,
+    options?: {
+      readonly rotateWorkerToken?: boolean | undefined
+      readonly rotateManagerToken?: boolean | undefined
+      readonly rotateManagerUnlockKey?: boolean | undefined
+    }
+  ) => Effect.Effect<void, DockerError>
 }>()("effect/docker/DockerSwarm") {}
 
 /**
@@ -159,19 +189,28 @@ export class DockerSwarm extends Context.Service<DockerSwarm, {
  * @since 4.0.6
  */
 export const make: Effect.Effect<DockerSwarm["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const api = yield* apiClient(yield* DockerEngine, DockerApi.Swarm, "docker.Swarm")
+  const engine = yield* DockerEngine
+  const api = yield* apiClient(engine, DockerApi.Swarm, "docker.Swarm")
+  const inspect = api.inspect()
+  const update: DockerSwarm["Service"]["update"] = (spec, options) => api.update({ query: options, payload: spec })
   return DockerSwarm.of({
-    inspect: api.inspect(),
+    inspect,
     init: (request) => api.init({ payload: request }),
     join: (request) => api.join({ payload: request }),
     leave: (options) => api.leave({ query: options ?? {} }),
-    update: (spec, options) => api.update({ query: options, payload: spec }),
+    update,
     // a Swarm that isn't autolocked answers an empty key
     unlockKey: Effect.map(
       api.unlockKey(),
       ({ UnlockKey }) => UnlockKey !== undefined && Redacted.value(UnlockKey) !== "" ? UnlockKey : undefined
     ),
-    unlock: (unlockKey) => api.unlock({ payload: { UnlockKey: unlockKey } })
+    unlock: (unlockKey) => api.unlock({ payload: { UnlockKey: unlockKey } }),
+    modify: (f, options) =>
+      modifyWith(
+        inspect,
+        (spec, version) => update(spec, { ...options, version }),
+        f
+      ).pipe(withOperation(engine, "docker.Swarm.modify"))
   })
 })
 

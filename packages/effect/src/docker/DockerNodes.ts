@@ -25,7 +25,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -97,6 +97,22 @@ export class DockerNodes extends Context.Service<DockerNodes, {
    * `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly remove: (id: string, options?: { readonly force?: boolean | undefined }) => Effect.Effect<void, DockerError>
+  /**
+   * Updates a node from its current spec: inspects the node, and updates it
+   * with `f` of its `Spec` at the version read.
+   *
+   * **Details**
+   *
+   * When another update comes first (`update out of sequence`), it starts
+   * over from a fresh `inspect`, at most 5 times in all; any other failure
+   * ends it.
+   *
+   * Typical reasons: `inspect`'s and `update`'s.
+   */
+  readonly modify: (
+    id: string,
+    f: (spec: DockerSchema.NodeSpec) => DockerSchema.NodeSpec
+  ) => Effect.Effect<void, DockerError>
 }>()("effect/docker/DockerNodes") {}
 
 /**
@@ -107,12 +123,22 @@ export class DockerNodes extends Context.Service<DockerNodes, {
  * @since 4.0.6
  */
 export const make: Effect.Effect<DockerNodes["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const api = yield* apiClient(yield* DockerEngine, DockerApi.Nodes, "docker.Nodes")
+  const engine = yield* DockerEngine
+  const api = yield* apiClient(engine, DockerApi.Nodes, "docker.Nodes")
+  const inspect: DockerNodes["Service"]["inspect"] = (id) => api.inspect({ params: { id } })
+  const update: DockerNodes["Service"]["update"] = (id, spec, options) =>
+    api.update({ params: { id }, query: options, payload: spec })
   return DockerNodes.of({
     list: (options) => api.list({ query: options ?? {} }),
-    inspect: (id) => api.inspect({ params: { id } }),
-    update: (id, spec, options) => api.update({ params: { id }, query: options, payload: spec }),
-    remove: (id, options) => api.remove({ params: { id }, query: options ?? {} })
+    inspect,
+    update,
+    remove: (id, options) => api.remove({ params: { id }, query: options ?? {} }),
+    modify: (id, f) =>
+      modifyWith(
+        inspect(id),
+        (spec, version) => update(id, spec, { version }),
+        f
+      ).pipe(withOperation(engine, "docker.Nodes.modify", id))
   })
 })
 

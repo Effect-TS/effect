@@ -23,7 +23,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -104,6 +104,22 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
    * `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly remove: (id: string) => Effect.Effect<void, DockerError>
+  /**
+   * Updates a config's labels from its current spec: inspects the config, and
+   * updates it with `f` of its `Spec` at the version read.
+   *
+   * **Details**
+   *
+   * When another update comes first (`update out of sequence`), it starts
+   * over from a fresh `inspect`, at most 5 times in all; any other failure
+   * ends it.
+   *
+   * Typical reasons: `inspect`'s and `update`'s.
+   */
+  readonly modify: (
+    id: string,
+    f: (spec: DockerApi.ConfigSpec) => DockerApi.ConfigSpec
+  ) => Effect.Effect<void, DockerError>
 }>()("effect/docker/DockerSwarmConfigs") {}
 
 /**
@@ -115,13 +131,23 @@ export class DockerSwarmConfigs extends Context.Service<DockerSwarmConfigs, {
  * @since 4.0.6
  */
 export const make: Effect.Effect<DockerSwarmConfigs["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const api = yield* apiClient(yield* DockerEngine, DockerApi.SwarmConfigs, "docker.SwarmConfigs")
+  const engine = yield* DockerEngine
+  const api = yield* apiClient(engine, DockerApi.SwarmConfigs, "docker.SwarmConfigs")
+  const inspect: DockerSwarmConfigs["Service"]["inspect"] = (id) => api.inspect({ params: { id } })
+  const update: DockerSwarmConfigs["Service"]["update"] = (id, spec, options) =>
+    api.update({ params: { id }, query: options, payload: spec })
   return DockerSwarmConfigs.of({
     list: (options) => api.list({ query: options ?? {} }),
-    inspect: (id) => api.inspect({ params: { id } }),
+    inspect,
     create: (spec) => api.create({ payload: spec }),
-    update: (id, spec, options) => api.update({ params: { id }, query: options, payload: spec }),
-    remove: (id) => api.remove({ params: { id } })
+    update,
+    remove: (id) => api.remove({ params: { id } }),
+    modify: (id, f) =>
+      modifyWith(
+        inspect(id),
+        (spec, version) => update(id, spec, { version }),
+        f
+      ).pipe(withOperation(engine, "docker.SwarmConfigs.modify", id))
   })
 })
 

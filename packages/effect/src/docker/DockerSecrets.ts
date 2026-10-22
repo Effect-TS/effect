@@ -27,7 +27,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as DockerApi from "./DockerApi.ts"
-import { apiClient, DockerEngine } from "./DockerEngine.ts"
+import { apiClient, DockerEngine, modifyWith, withOperation } from "./DockerEngine.ts"
 import type { DockerError } from "./DockerError.ts"
 import type * as DockerSchema from "./DockerSchema.ts"
 
@@ -108,6 +108,22 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
    * `SwarmUnavailable`, `ConnectionFailed`.
    */
   readonly remove: (id: string) => Effect.Effect<void, DockerError>
+  /**
+   * Updates a secret's labels from its current spec: inspects the secret, and
+   * updates it with `f` of its `Spec` at the version read.
+   *
+   * **Details**
+   *
+   * When another update comes first (`update out of sequence`), it starts
+   * over from a fresh `inspect`, at most 5 times in all; any other failure
+   * ends it.
+   *
+   * Typical reasons: `inspect`'s and `update`'s.
+   */
+  readonly modify: (
+    id: string,
+    f: (spec: DockerApi.SecretSpec) => DockerApi.SecretSpec
+  ) => Effect.Effect<void, DockerError>
 }>()("effect/docker/DockerSecrets") {}
 
 /**
@@ -119,13 +135,23 @@ export class DockerSecrets extends Context.Service<DockerSecrets, {
  * @since 4.0.6
  */
 export const make: Effect.Effect<DockerSecrets["Service"], never, DockerEngine> = Effect.gen(function*() {
-  const api = yield* apiClient(yield* DockerEngine, DockerApi.Secrets, "docker.Secrets")
+  const engine = yield* DockerEngine
+  const api = yield* apiClient(engine, DockerApi.Secrets, "docker.Secrets")
+  const inspect: DockerSecrets["Service"]["inspect"] = (id) => api.inspect({ params: { id } })
+  const update: DockerSecrets["Service"]["update"] = (id, spec, options) =>
+    api.update({ params: { id }, query: options, payload: spec })
   return DockerSecrets.of({
     list: (options) => api.list({ query: options ?? {} }),
-    inspect: (id) => api.inspect({ params: { id } }),
+    inspect,
     create: (spec) => api.create({ payload: spec }),
-    update: (id, spec, options) => api.update({ params: { id }, query: options, payload: spec }),
-    remove: (id) => api.remove({ params: { id } })
+    update,
+    remove: (id) => api.remove({ params: { id } }),
+    modify: (id, f) =>
+      modifyWith(
+        inspect(id),
+        (spec, version) => update(id, spec, { version }),
+        f
+      ).pipe(withOperation(engine, "docker.Secrets.modify", id))
   })
 })
 

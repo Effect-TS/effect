@@ -55,6 +55,8 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("DockerSe
         assert.include(stale.reason.message, "update out of sequence")
         yield* services.rollback("echo")
         assert.deepStrictEqual((yield* services.inspect("echo")).Spec?.Labels, { rev: "1" })
+        yield* services.modify("echo", (spec) => ({ ...spec, Labels: { rev: "3" } }))
+        assert.deepStrictEqual((yield* services.inspect("echo")).Spec?.Labels, { rev: "3" })
         const listed = yield* services.list({ filters: { name: "echo" }, status: true })
         assert.deepStrictEqual(listed.map((service) => service.ID), [ID])
 

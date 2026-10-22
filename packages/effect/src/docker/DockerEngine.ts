@@ -743,6 +743,38 @@ export const swarmError = (error: DockerError): DockerError =>
     })
     : error
 
+/**
+ * Whether a Swarm update failed because the object changed since it was
+ * read: swarmkit's `update out of sequence`, which the Engine answers with
+ * 500.
+ *
+ * @internal
+ */
+export const isOutOfSequence = (error: DockerError): boolean =>
+  error.reason._tag === "ServerError" && error.reason.message.includes("update out of sequence")
+
+/**
+ * A Swarm object's read-modify-write: inspects the object, writes `f` of its
+ * spec at the version read, and starts over from the inspect while the write
+ * fails out of sequence, at most 5 times in all. A missing spec is empty, and
+ * a missing version 0.
+ *
+ * @internal
+ */
+export const modifyWith = <S extends object, A>(
+  inspect: Effect.Effect<
+    { readonly Spec?: S | undefined; readonly Version?: { readonly Index?: number | undefined } | undefined },
+    DockerError
+  >,
+  write: (spec: S, version: number) => Effect.Effect<A, DockerError>,
+  f: (spec: S) => S
+): Effect.Effect<A, DockerError> =>
+  Effect.flatMap(inspect, (object) =>
+    // every Swarm object's spec has only optional fields
+    write(f(object.Spec ?? ({} as S)), object.Version?.Index ?? 0)).pipe(
+      Effect.retry({ while: isOutOfSequence, times: 4 })
+    )
+
 /** A request field the caller set, and the API version it arrived in. */
 interface Gate {
   readonly option: string

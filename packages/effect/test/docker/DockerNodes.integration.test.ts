@@ -24,6 +24,8 @@ it.layer(layer, { timeout: "300 seconds", excludeTestServices: true })("DockerNo
       const stale = yield* Effect.flip(nodes.update(nodeId, updated.Spec!, { version: node.Version!.Index! }))
       assert(stale.reason._tag === "ServerError")
       assert.include(stale.reason.message, "update out of sequence")
+      yield* nodes.modify(nodeId, (spec) => ({ ...spec, Labels: { ...spec.Labels, tier: "x" } }))
+      assert.deepStrictEqual((yield* nodes.inspect(nodeId)).Spec?.Labels, { zone: "a", tier: "x" })
       const manager = yield* Effect.flip(nodes.remove(nodeId, { force: true }))
       assert.strictEqual(manager.reason._tag, "BadRequest")
       const missing = yield* Effect.flip(nodes.inspect("no-such-node"))
