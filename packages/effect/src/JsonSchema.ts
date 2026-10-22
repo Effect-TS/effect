@@ -690,6 +690,28 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   }
 }
 
+/**
+ * Converts a `Document<"draft-2020-12">` to OpenAPI 3.0 Schema Objects for a
+ * standalone schema.
+ *
+ * This builds on the Draft-04 conversion, so definitions are referenced via
+ * `#/definitions/<name>` rather than `#/components/schemas/<name>`. It writes
+ * `{ type: "null" }` as `nullable: true` on a typed `anyOf` branch, and as
+ * `{ enum: [null] }` where no such branch exists, because `nullable` only
+ * applies next to `type`. It also splits `type` arrays, writes the first of
+ * `examples` as `example` and drops the root `$schema`. Tuples, pattern
+ * properties, dependencies and schema identifiers throw.
+ *
+ * @internal
+ */
+export function toStandaloneOpenApi3_0(
+  document: Document<"draft-2020-12">
+): { readonly schema: JsonSchema; readonly definitions: Definitions } {
+  return convertDocument(document, openApi30Adapter, {
+    booleanAdapter: (schema) => schema ? {} : { not: {} }
+  })
+}
+
 /** @internal */
 export const VALID_OPEN_API_COMPONENTS_SCHEMAS_KEY_REGEXP = /^[a-zA-Z0-9.\-_]+$/
 
@@ -1665,5 +1687,156 @@ function convertDraft04ExclusiveBound(
     }
   } else if (bound !== undefined) {
     InternalRecord.assignProperty(out, boundKey, bound)
+  }
+}
+
+const OPEN_API_30_TARGET_COLLISIONS = ["discriminator", "example", "externalDocs", "nullable", "xml"]
+const OPEN_API_30_UNSUPPORTED_KEYWORDS = [
+  "$anchor",
+  "$id",
+  "dependentRequired",
+  "dependentSchemas",
+  "patternProperties",
+  "prefixItems"
+]
+// Keywords that `nullable` cannot be combined with, because they would also
+// apply to `null` once the null branch is merged into the typed branch.
+const OPEN_API_30_NULLABLE_BRANCH_BLOCKERS = ["$ref", "allOf", "anyOf", "contains", "if", "not", "oneOf"]
+const OPEN_API_30_HOISTABLE_KEYWORDS = new Set([
+  "$comment",
+  "default",
+  "deprecated",
+  "description",
+  "examples",
+  "readOnly",
+  "title",
+  "writeOnly"
+])
+
+function openApi30Adapter(source: JsonSchema, context: Context): JsonSchema {
+  rejectKeywordCollisions(source, OPEN_API_30_TARGET_COLLISIONS, "OpenAPI 3.0", "Draft 2020-12")
+  for (const key of OPEN_API_30_UNSUPPORTED_KEYWORDS) {
+    if (Object.hasOwn(source, key)) {
+      unsupported(
+        key,
+        "OpenAPI 3.0",
+        key === "prefixItems" ? "items must be a single schema" : "the target dialect has no equivalent"
+      )
+    }
+  }
+  if (Object.hasOwn(source, "$schema") && !isMetaSchemaUri(source.$schema, META_SCHEMA_URI_DRAFT_2020_12)) {
+    unsupported("$schema", "OpenAPI 3.0", "a Schema Object cannot declare a dialect")
+  }
+
+  const nullableIndex = getOpenApi30NullableIndex(source)
+  const out = nullableIndex === undefined
+    ? draft04Adapter(source, context)
+    : convertOpenApi30NullableAnyOf(source, source.anyOf as ReadonlyArray<unknown>, nullableIndex, context)
+
+  delete out.$schema
+  convertOpenApi30Type(out)
+  if (Array.isArray(out.examples)) {
+    const examples = out.examples
+    delete out.examples
+    if (examples.length > 0) InternalRecord.assignProperty(out, "example", examples[0])
+  }
+  return out
+}
+
+// Returns the `anyOf` branch that can absorb the `{ type: "null" }` branches
+// as `nullable: true`.
+function getOpenApi30NullableIndex(source: JsonSchema): number | undefined {
+  if (!Array.isArray(source.anyOf) || Object.hasOwn(source, "$ref") || !source.anyOf.some(isOpenApi30NullSchema)) {
+    return undefined
+  }
+  const index = source.anyOf.findIndex((branch) =>
+    Predicate.isObject(branch) &&
+    typeof branch.type === "string" &&
+    branch.type !== "null" &&
+    !OPEN_API_30_NULLABLE_BRANCH_BLOCKERS.some((key) => Object.hasOwn(branch, key)) &&
+    !(Object.hasOwn(branch, "const") && Object.hasOwn(branch, "enum"))
+  )
+  return index === -1 ? undefined : index
+}
+
+function isOpenApi30NullSchema(schema: unknown): boolean {
+  return Predicate.isObject(schema) && schema.type === "null" && Object.keys(schema).length === 1
+}
+
+function convertOpenApi30NullableAnyOf(
+  source: JsonSchema,
+  anyOf: ReadonlyArray<unknown>,
+  nullableIndex: number,
+  context: Context
+): JsonSchema {
+  const rest: JsonSchema = {}
+  for (const key of Object.keys(source)) {
+    if (key !== "anyOf") InternalRecord.assignProperty(rest, key, source[key])
+  }
+  const branches = anyOf.flatMap((branch, index) => isOpenApi30NullSchema(branch) ? [] : [index])
+  const nullableBranch = anyOf[nullableIndex] as JsonSchema
+
+  if (
+    branches.length === 1 &&
+    Object.keys(rest).every((key) => OPEN_API_30_HOISTABLE_KEYWORDS.has(key) && !Object.hasOwn(nullableBranch, key))
+  ) {
+    const out = context.schemaAt(nullableBranch, ["anyOf", String(nullableIndex)], []) as JsonSchema
+    setOpenApi30Nullable(out)
+    const annotations = draft04Adapter(rest, context)
+    for (const key of Object.keys(annotations)) InternalRecord.assignProperty(out, key, annotations[key])
+    return out
+  }
+
+  const out = draft04Adapter(rest, context)
+  InternalRecord.assignProperty(
+    out,
+    "anyOf",
+    branches.map((sourceIndex, targetIndex) => {
+      const branch = context.schemaAt(
+        anyOf[sourceIndex],
+        ["anyOf", String(sourceIndex)],
+        ["anyOf", String(targetIndex)]
+      ) as JsonSchema
+      if (sourceIndex === nullableIndex) {
+        setOpenApi30Nullable(branch)
+      }
+      return branch
+    })
+  )
+  return out
+}
+
+function setOpenApi30Nullable(out: JsonSchema): void {
+  InternalRecord.assignProperty(out, "nullable", true)
+  if (Array.isArray(out.enum) && !out.enum.includes(null)) {
+    InternalRecord.assignProperty(out, "enum", [...out.enum, null])
+  }
+}
+
+function convertOpenApi30Type(out: JsonSchema): void {
+  const type = out.type
+  if (type !== "null" && !Array.isArray(type)) {
+    return
+  }
+  const types = Array.isArray(type) ? type.filter((type) => type !== "null") : []
+  const nullable = Array.isArray(type) && types.length < type.length
+  delete out.type
+  if (types.length === 0) {
+    // OpenAPI 3.0 has no `null` type, and `nullable` requires a `type`.
+    InternalRecord.assignProperty(
+      out,
+      "enum",
+      Array.isArray(out.enum) ? out.enum.filter((value) => value === null) : [null]
+    )
+  } else if (types.length === 1) {
+    InternalRecord.assignProperty(out, "type", types[0])
+    if (nullable) InternalRecord.assignProperty(out, "nullable", true)
+  } else {
+    const anyOf = types.map((type, index): JsonSchema => index === 0 && nullable ? { type, nullable: true } : { type })
+    if (Object.hasOwn(out, "anyOf")) {
+      appendAllOf(out, { anyOf })
+    } else {
+      InternalRecord.assignProperty(out, "anyOf", anyOf)
+    }
   }
 }
