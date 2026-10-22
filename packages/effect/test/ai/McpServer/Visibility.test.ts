@@ -12,6 +12,8 @@ import { type JsonRpcMessage, makeMcpStdioHarness } from "./TestUtils/McpStdioHa
 
 class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUser") {}
 
+class CurrentTenant extends Context.Service<CurrentTenant, string>()("test/CurrentTenant") {}
+
 class Unauthorized extends Schema.Error<Unauthorized>("test/Unauthorized")({
   ...McpSchema.McpErrorBase.fields,
   _tag: Schema.tag("Unauthorized"),
@@ -227,6 +229,58 @@ describe("McpServer visibility", () => {
       assert.deepStrictEqual((call.result as { readonly content: unknown }).content, [
         { type: "text", text: "deleted" }
       ])
+    }))
+
+  it.effect("runs nested visibilities from the outside in on lists", () =>
+    Effect.gen(function*() {
+      const state = { user: "guest", plan: "free", calls: [] as Array<string> }
+      const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.andThen(
+          Effect.sync(() => state.calls.push("auth")),
+          Effect.provideService(effect, CurrentUser, state.user)
+        )
+      )
+      const SignedIn = McpServer.visibility(() =>
+        Effect.map(CurrentUser, (user) => {
+          state.calls.push(`signed-in ${user}`)
+          return user !== "guest"
+        })
+      )
+      const Tenant = McpServer.middleware<{ provides: CurrentTenant }>()((effect) =>
+        Effect.andThen(
+          Effect.sync(() => state.calls.push("tenant")),
+          Effect.provideService(effect, CurrentTenant, state.plan)
+        )
+      )
+      const Paid = McpServer.visibility(() =>
+        Effect.gen(function*() {
+          const user = yield* CurrentUser
+          const plan = yield* CurrentTenant
+          state.calls.push(`paid ${user} ${plan}`)
+          return plan === "paid"
+        })
+      )
+      const Audit = McpServer.middleware()((effect) =>
+        Effect.andThen(Effect.sync(() => state.calls.push("audit")), effect)
+      )
+      const Billing = Toolkit.make(Tool.make("Invoice", { success: Schema.String }))
+      const registrations = McpServer.toolkit(Billing).pipe(
+        Layer.provide(Audit.combine(Paid.combine(Tenant.combine(SignedIn.combine(Auth)))).layer),
+        Layer.provide(Billing.toLayer({ Invoice: () => Effect.succeed("invoice") }))
+      )
+      const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+      yield* harness.initialize()
+
+      assert.deepStrictEqual(names(yield* harness.sendRequest("tools/list", {}), "tools"), [])
+      assert.deepStrictEqual(state.calls.splice(0), ["auth", "signed-in guest"])
+
+      state.user = "alice"
+      assert.deepStrictEqual(names(yield* harness.sendRequest("tools/list", {}), "tools"), [])
+      assert.deepStrictEqual(state.calls.splice(0), ["auth", "signed-in alice", "tenant", "paid alice free"])
+
+      state.plan = "paid"
+      assert.deepStrictEqual(names(yield* harness.sendRequest("tools/list", {}), "tools"), ["Invoice"])
+      assert.deepStrictEqual(state.calls.splice(0), ["auth", "signed-in alice", "tenant", "paid alice paid"])
     }))
 
   it.effect("passes middleware outside a visibility an MCP error for hidden requests", () =>
