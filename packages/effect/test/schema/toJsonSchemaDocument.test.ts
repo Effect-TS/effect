@@ -96,6 +96,10 @@ describe("toJsonSchemaDocument", () => {
           "Unsupported TemplateLiteral part with checks"
         )
       }
+      assertUnsupportedSchema(
+        Schema.Record(Schema.TemplateLiteral(["item.", Schema.Int]), Schema.String),
+        "Unsupported TemplateLiteral part with checks"
+      )
     })
   })
 
@@ -2539,6 +2543,16 @@ describe("toJsonSchemaDocument", () => {
         "type": "string",
         "pattern": "^a[\\s\\S]*?$",
         "description": "a"
+      }
+    })
+    const Segment = Schema.String.annotate({ identifier: "Segment" })
+    assertJsonSchemaDocument(Schema.TemplateLiteral([Segment, ".", Segment]), {
+      schema: {
+        "type": "string",
+        "pattern": "^[\\s\\S]*?\\.[\\s\\S]*?$"
+      },
+      definitions: {
+        Segment: { "type": "string" }
       }
     })
   })
