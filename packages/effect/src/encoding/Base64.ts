@@ -147,34 +147,44 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
  */
 export const decodeString = (str: string) => Result.map(decode(str), (_) => decoder.decode(_))
 
+// The output is written as ASCII bytes and decoded once: appending each
+// character to a string builds a rope of one string per output character.
 const encodeBytes = (bytes: Uint8Array): string => {
   const length = bytes.length
-  let result = ""
+  // A detached buffer has length 0, and native `toBase64` throws on it
+  if (length === 0) return ""
+  const native = bytes as Uint8Array & { readonly toBase64?: () => string }
+  if (typeof native.toBase64 === "function") return native.toBase64()
+  const result = new Uint8Array(Math.ceil(length / 3) * 4)
   let i: number
-  for (i = 2; i < length; i += 3) {
-    result += alphabet[bytes[i - 2] >> 2]
-    result += alphabet[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)]
-    result += alphabet[((bytes[i - 1] & 0x0f) << 2) | (bytes[i] >> 6)]
-    result += alphabet[bytes[i] & 0x3f]
+  let j = 0
+  for (i = 2; i < length; i += 3, j += 4) {
+    result[j] = alphabetCodes[bytes[i - 2] >> 2]
+    result[j + 1] = alphabetCodes[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)]
+    result[j + 2] = alphabetCodes[((bytes[i - 1] & 0x0f) << 2) | (bytes[i] >> 6)]
+    result[j + 3] = alphabetCodes[bytes[i] & 0x3f]
   }
   if (i === length + 1) {
-    result += alphabet[bytes[i - 2] >> 2]
-    result += alphabet[(bytes[i - 2] & 0x03) << 4]
-    result += "=="
+    result[j] = alphabetCodes[bytes[i - 2] >> 2]
+    result[j + 1] = alphabetCodes[(bytes[i - 2] & 0x03) << 4]
+    result[j + 2] = paddingCode
+    result[j + 3] = paddingCode
   }
   if (i === length) {
-    result += alphabet[bytes[i - 2] >> 2]
-    result += alphabet[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)]
-    result += alphabet[(bytes[i - 1] & 0x0f) << 2]
-    result += "="
+    result[j] = alphabetCodes[bytes[i - 2] >> 2]
+    result[j + 1] = alphabetCodes[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)]
+    result[j + 2] = alphabetCodes[(bytes[i - 1] & 0x0f) << 2]
+    result[j + 3] = paddingCode
   }
-  return result
+  return decoder.decode(result)
 }
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 const stripCrlf = (str: string) => str.replace(/[\n\r]/g, "")
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+const alphabetCodes = encoder.encode(alphabet)
+const paddingCode = "=".charCodeAt(0)
 const codes = new Uint8Array(123).fill(255)
 for (let i = 0; i < alphabet.length; i++) codes[alphabet.charCodeAt(i)] = i
 codes["=".charCodeAt(0)] = 0
