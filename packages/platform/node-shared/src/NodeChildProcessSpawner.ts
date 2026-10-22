@@ -141,7 +141,7 @@ const make = Effect.gen(function*() {
 
   const resolveEnvironment = (options: ChildProcess.CommandOptions) => {
     if (options.env === undefined) return undefined
-    const env: Record<string, string | undefined> = options.extendEnv === false ? {} : { ...globalThis.process.env }
+    const env: Record<string, string | undefined> = options.extendEnv === true ? { ...globalThis.process.env } : {}
     for (const [key, value] of Object.entries(options.env)) {
       if (value === undefined) delete env[key]
       else env[key] = Redacted.isRedacted(value) ? Redacted.value(value) : value

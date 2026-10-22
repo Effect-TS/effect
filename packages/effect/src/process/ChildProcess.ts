@@ -402,29 +402,34 @@ export interface CommandOptions extends KillOptions {
    */
   readonly cwd?: string | undefined
   /**
-   * Environment variables for the child process.
+   * The environment of the child process.
    *
    * **Details**
    *
-   * The variables are added to the environment of the parent process, and
-   * values in `env` win. A variable set to `undefined` is removed from the
-   * child environment. `Redacted` values are passed to the child unchanged
-   * and are never shown in errors.
+   * If `extendEnv` is set to `true`, the value of `env` will be merged with
+   * the value of `globalThis.process.env`, prioritizing the values in `env`
+   * when conflicts exist. A variable set to `undefined` is then removed from
+   * the child environment.
    *
-   * Set `extendEnv` to `false` to use only the variables in `env`.
+   * `Redacted` values are passed to the child unchanged and are never shown in
+   * errors.
+   *
+   * **Gotchas**
+   *
+   * Without `extendEnv: true`, providing `env` replaces the inherited child
+   * environment. The child will not receive `PATH` unless `env` includes it.
    */
   readonly env?: Record<string, string | Redacted.Redacted<string> | undefined> | undefined
   /**
-   * Whether the child process also receives the environment of the parent
-   * process.
+   * If set to `true`, the child process uses both the values in `env` as well
+   * as the values in `globalThis.process.env`, prioritizing the values in `env`
+   * when conflicts exist.
    *
    * **Details**
    *
-   * If set to `false` and `env` is provided, the child receives only the
-   * variables in `env`, so it does not receive `PATH` unless `env` includes
-   * it.
+   * If set to `false` and `env` is provided, only the value of `env` is used.
    *
-   * @default true
+   * @default false
    */
   readonly extendEnv?: boolean | undefined
   /**

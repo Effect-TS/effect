@@ -77,7 +77,7 @@ const make = Effect.gen(function*() {
     options: ChildProcess.CommandOptions
   ): { readonly env: Record<string, string>; readonly clearEnv: boolean } | undefined => {
     if (options.env === undefined) return undefined
-    const extend = options.extendEnv !== false
+    const extend = options.extendEnv === true
     // Deno can only add variables to the inherited environment, so removing
     // one needs the whole environment.
     const removes = Object.values(options.env).some((value) => value === undefined)

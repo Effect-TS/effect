@@ -124,31 +124,32 @@ export const suite = (
               assert.strictEqual(output, "one-two-three")
             }))
 
-          it.effect("should extend the parent environment by default", () =>
-            Effect.gen(function*() {
-              const handle = yield* ChildProcess.make("sh", ["-c", "echo $TEST_VAR-${HOME:+home}"], {
-                env: { TEST_VAR: "test_value" }
-              })
-              const output = yield* decodeByteStream(handle.stdout)
-
-              assert.strictEqual(output, "test_value-home")
-            }))
-
-          it.effect("should use only env with extendEnv false", () =>
+          it.effect("should use only env by default", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("/bin/sh", ["-c", "echo $TEST_VAR-${HOME-unset}"], {
-                env: { TEST_VAR: "test_value" },
-                extendEnv: false
+                env: { TEST_VAR: "test_value" }
               })
               const output = yield* decodeByteStream(handle.stdout)
 
               assert.strictEqual(output, "test_value-unset")
             }))
 
+          it.effect("should extend the parent environment with extendEnv true", () =>
+            Effect.gen(function*() {
+              const handle = yield* ChildProcess.make("sh", ["-c", "echo $TEST_VAR-${HOME:+home}"], {
+                env: { TEST_VAR: "test_value" },
+                extendEnv: true
+              })
+              const output = yield* decodeByteStream(handle.stdout)
+
+              assert.strictEqual(output, "test_value-home")
+            }))
+
           it.effect("should remove variables set to undefined", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("sh", ["-c", "echo ${HOME-unset}"], {
-                env: { HOME: undefined }
+                env: { HOME: undefined },
+                extendEnv: true
               })
               const output = yield* decodeByteStream(handle.stdout)
 
@@ -158,7 +159,8 @@ export const suite = (
           it.effect("should pass Redacted arguments and environment values", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("sh", ["-c", "echo $1-$SECRET", "sh", Redacted.make("arg")], {
-                env: { SECRET: Redacted.make("env") }
+                env: { SECRET: Redacted.make("env") },
+                extendEnv: true
               })
               const output = yield* decodeByteStream(handle.stdout)
 
