@@ -1,4 +1,4 @@
-import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { Schema } from "effect"
 import type { StandardJSONSchemaV1 } from "effect/StandardSchema"
 import { describe, it } from "vitest"
@@ -162,5 +162,150 @@ describe("toStandardJSONSchemaV1", () => {
         }
       })
     })
+  })
+
+  describe("openapi-3.0", () => {
+    it("should return the input JSON Schema", () => {
+      const schema = Schema.Struct({ a: Schema.NullOr(Schema.FiniteFromString) })
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "type": "object",
+        "properties": {
+          "a": { "type": "string", "nullable": true }
+        },
+        "required": ["a"],
+        "additionalProperties": {}
+      })
+    })
+
+    it("should return the output JSON Schema", () => {
+      const schema = Schema.Struct({ a: Schema.NullOr(Schema.FiniteFromString) })
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaOutput(standardJSONSchema, "openapi-3.0"), {
+        "type": "object",
+        "properties": {
+          "a": { "type": "number", "nullable": true }
+        },
+        "required": ["a"],
+        "additionalProperties": {}
+      })
+    })
+
+    it("a nullable schema", () => {
+      const schema = Schema.NullOr(Schema.String).annotate({ description: "name", examples: ["a", null] })
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "type": "string",
+        "nullable": true,
+        "description": "name",
+        "example": "a"
+      })
+    })
+
+    it("a nullable literal", () => {
+      const schema = Schema.NullOr(Schema.Literal("cat"))
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "type": "string",
+        "enum": ["cat", null],
+        "nullable": true
+      })
+    })
+
+    it("a nullable union", () => {
+      const schema = Schema.Union([Schema.Boolean, Schema.Int, Schema.Null])
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "anyOf": [
+          { "type": "boolean", "nullable": true },
+          { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }
+        ]
+      })
+    })
+
+    it("a nullable reference", () => {
+      const schema = Schema.NullOr(Schema.String.annotate({ identifier: "id" }))
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "anyOf": [
+          { "$ref": "#/definitions/id" },
+          { "enum": [null] }
+        ],
+        "definitions": {
+          "id": {
+            "type": "string"
+          }
+        }
+      })
+    })
+
+    it("null", () => {
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(Schema.Null)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "enum": [null]
+      })
+    })
+
+    it("a literal", () => {
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(Schema.Literal("cat"))
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "type": "string",
+        "enum": ["cat"]
+      })
+    })
+
+    it("exclusive bounds", () => {
+      const schema = Schema.Finite.check(Schema.isGreaterThan(0), Schema.isLessThan(10))
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "type": "number",
+        "minimum": 0,
+        "exclusiveMinimum": true,
+        "maximum": 10,
+        "exclusiveMaximum": true
+      })
+    })
+
+    it("a schema with identifier", () => {
+      const S = Schema.String.annotate({ identifier: "id" })
+      const schema = Schema.Struct({ a: S, b: S })
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(schema)
+      deepStrictEqual(standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"), {
+        "type": "object",
+        "properties": {
+          "a": { "$ref": "#/definitions/id" },
+          "b": { "$ref": "#/definitions/id" }
+        },
+        "required": ["a", "b"],
+        "additionalProperties": {},
+        "definitions": {
+          "id": {
+            "type": "string"
+          }
+        }
+      })
+    })
+
+    it("should throw for a tuple", () => {
+      const standardJSONSchema = Schema.toStandardJSONSchemaV1(Schema.Tuple([Schema.String]))
+      throws(
+        () => standardConvertToJSONSchemaInput(standardJSONSchema, "openapi-3.0"),
+        new Error(
+          `Cannot convert JSON Schema keyword "prefixItems" to OpenAPI 3.0: items must be a single schema`
+        )
+      )
+    })
+  })
+
+  it("should throw for an unsupported target", () => {
+    const standardJSONSchema = Schema.toStandardJSONSchemaV1(Schema.String)
+    throws(
+      () => standardConvertToJSONSchemaInput(standardJSONSchema, "draft-04"),
+      new Error("Unsupported target: draft-04")
+    )
+    throws(
+      () => standardConvertToJSONSchemaOutput(standardJSONSchema, "draft-04"),
+      new Error("Unsupported target: draft-04")
+    )
   })
 })
