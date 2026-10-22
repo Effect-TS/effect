@@ -33,3 +33,16 @@ export const viewBytes = (view: DataView): Uint8Array => new Uint8Array(view.buf
 /** @internal */
 export const isArrayBufferLike = (u: unknown): u is ArrayBuffer | SharedArrayBuffer =>
   u instanceof ArrayBuffer || (typeof SharedArrayBuffer !== "undefined" && u instanceof SharedArrayBuffer)
+
+/**
+ * Returns `undefined` for detached buffers, which can no longer be read.
+ *
+ * @internal
+ */
+export const bufferBytes = (buffer: ArrayBuffer | SharedArrayBuffer): Uint8Array | undefined => {
+  try {
+    return new Uint8Array(buffer)
+  } catch {
+    return undefined
+  }
+}
