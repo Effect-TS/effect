@@ -26,8 +26,7 @@ const deploy = Effect.fnUntraced(function*(entities: Layer.Layer<never, never, S
     Layer.provide(ShardingConfig.layer({
       entityRegistrationTimeout: 1000,
       entityTerminationTimeout: 0,
-      entityMessagePollInterval: 100,
-      refreshAssignmentsInterval: 0
+      entityMessagePollInterval: 100
     }))
   ))
   for (let i = 0; i < millis / 100; i++) {
@@ -50,7 +49,7 @@ const LegacyCronEntity = Entity.make("ClusterCron/test", [
   Rpc.make("run", { payload: LegacyCronPayload }).annotate(ClusterSchema.Persisted, true)
 ])
 
-describe("ClusterCron", () => {
+describe("ClusterCron", { concurrent: false }, () => {
   it.effect("recovers from a transient failure to schedule the initial run", () => {
     let failed = false
     let runs = 0
@@ -68,7 +67,7 @@ describe("ClusterCron", () => {
           })
       })),
       Layer.provide(MessageStorage.layerMemory),
-      Layer.provide(ShardingConfig.layer({ entityMessagePollInterval: 100, refreshAssignmentsInterval: 0 }))
+      Layer.provide(ShardingConfig.layer({ entityMessagePollInterval: 100 }))
     )
     const layer = ClusterCron.make({
       name: "test",
@@ -109,7 +108,7 @@ describe("ClusterCron", () => {
           })
       })),
       Layer.provide(MessageStorage.layerMemory),
-      Layer.provide(ShardingConfig.layer({ entityMessagePollInterval: 100, refreshAssignmentsInterval: 0 }))
+      Layer.provide(ShardingConfig.layer({ entityMessagePollInterval: 100 }))
     )
     const layer = ClusterCron.make({
       name: "test",
