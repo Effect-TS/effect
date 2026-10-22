@@ -425,6 +425,18 @@ export const makeHandlers = (
       request: typeof McpSchema.SubscriptionsListen.payloadSchema.Type,
       { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
     ) {
+      if (
+        request.notifications.taskIds !== undefined &&
+        !Predicate.isReadonlyObject(
+          request._meta["io.modelcontextprotocol/clientCapabilities"].extensions?.["io.modelcontextprotocol/tasks"]
+        )
+      ) {
+        return yield* new McpProtocol.ProtocolError({
+          code: McpSchema.MISSING_REQUIRED_CLIENT_CAPABILITY,
+          message: "Client does not support the Tasks extension",
+          data: { requiredCapabilities: { extensions: { "io.modelcontextprotocol/tasks": {} } } }
+        })
+      }
       if (sendNotification === undefined) {
         return yield* new McpProtocol.ProtocolError({
           code: McpSchema.METHOD_NOT_FOUND,
