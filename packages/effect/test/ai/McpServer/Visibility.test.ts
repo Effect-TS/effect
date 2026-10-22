@@ -32,7 +32,7 @@ const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => u
 const makeFixture = () => {
   const state = { user: "guest", calls: [] as Array<string>, invoked: [] as Array<string> }
   const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, options) => {
-    state.calls.push(`auth ${options.method} ${"targets" in options ? options.targets.join(",") : options.target}`)
+    state.calls.push(`auth ${options.method} ${options.target}`)
     return Effect.provideService(effect, CurrentUser, state.user)
   })
   const Audit = McpServer.middleware()((effect, { method }) =>
@@ -71,12 +71,12 @@ describe("McpServer visibility", () => {
     return { harness, state }
   })
 
-  it.effect("filters lists in one pass of the middleware outside the visibility", () =>
+  it.effect("filters lists running only the middleware outside the visibility", () =>
     Effect.gen(function*() {
       const { harness, state } = yield* makeServer()
 
       assert.deepStrictEqual(names(yield* harness.sendRequest("tools/list", {}), "tools"), ["Search"])
-      assert.deepStrictEqual(state.calls.splice(0), ["auth tools/list DeleteUser,ResetPassword"])
+      assert.deepStrictEqual(state.calls.splice(0), ["auth tools/list DeleteUser", "auth tools/list ResetPassword"])
       assert.deepStrictEqual(names(yield* harness.sendRequest("resources/list", {}), "resources"), [])
       assert.deepStrictEqual(
         names(yield* harness.sendRequest("resources/templates/list", {}), "resourceTemplates"),

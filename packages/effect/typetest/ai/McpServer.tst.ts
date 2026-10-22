@@ -410,14 +410,10 @@ describe("McpServer", () => {
       expect(McpServer.middleware()).type.not.toBeCallableWith(() => Effect.fail("boom"))
     })
 
-    it("should pass list targets to middleware as one array", () => {
-      const options = hole<McpServer.MiddlewareOptions>()
-      if (options.method === "tools/list") {
-        expect(options.targets).type.toBe<ReadonlyArray<string>>()
-      }
-      if (options.method === "tools/call") {
-        expect(options.target).type.toBe<string>()
-      }
+    it("should pass middleware one target for list requests too", () => {
+      expect<"tools/list" | "resources/list" | "resources/templates/list" | "prompts/list">().type
+        .toBeAssignableTo<McpServer.MiddlewareOptions["method"]>()
+      expect<McpServer.MiddlewareOptions["target"]>().type.toBe<string>()
     })
 
     describe("visibility", () => {
@@ -433,8 +429,7 @@ describe("McpServer", () => {
 
       it("should accept per-target checks in function and Effect forms", () => {
         expect(McpServer.visibility).type.toBeCallableWith(
-          ({ target }: { readonly target: string; readonly method: McpServer.MiddlewareMethod }) =>
-            Effect.succeed(target !== "DeleteUser")
+          (options: McpServer.MiddlewareOptions) => Effect.succeed(options.target !== "DeleteUser")
         )
         expect(McpServer.visibility).type.toBeCallableWith(
           Effect.succeed(({ target }: { readonly target: string }) => Effect.succeed(target !== "DeleteUser"))
