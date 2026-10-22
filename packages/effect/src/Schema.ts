@@ -2,7 +2,7 @@
  * @since 3.10.0
  */
 
-import type { StandardSchemaV1 } from "@standard-schema/spec"
+import type { StandardJSONSchemaV1, StandardSchemaV1 } from "@standard-schema/spec"
 import type { ArbitraryAnnotation, ArbitraryGenerationContext, LazyArbitrary } from "./Arbitrary.js"
 import * as array_ from "./Array.js"
 import * as bigDecimal_ from "./BigDecimal.js"
@@ -34,6 +34,7 @@ import * as internalCause_ from "./internal/cause.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as schemaId_ from "./internal/schema/schemaId.js"
 import * as util_ from "./internal/schema/util.js"
+import * as JSONSchema from "./JSONSchema.js"
 import * as list_ from "./List.js"
 import * as number_ from "./Number.js"
 import * as option_ from "./Option.js"
@@ -165,6 +166,19 @@ const makeStandardFailureFromParseIssue = (
     }))
   }))
 
+const makeStandardJSONSchema = <A, I>(
+  schema: Schema<A, I>,
+  target: StandardJSONSchemaV1.Target
+): Record<string, unknown> => {
+  switch (target) {
+    case "draft-07":
+      return JSONSchema.make(schema, { target: "jsonSchema7" }) as any
+    case "draft-2020-12":
+      return JSONSchema.make(schema, { target: "jsonSchema2020-12" }) as any
+  }
+  throw new Error(errors_.getStandardJSONSchemaUnsupportedTargetErrorMessage(target))
+}
+
 /**
  * Returns a "Standard Schema" object conforming to the [Standard Schema
  * v1](https://standardschema.dev/) specification.
@@ -177,6 +191,12 @@ const makeStandardFailureFromParseIssue = (
  * Any detected defects will be reported via a single issue containing no
  * `path`.
  *
+ * The returned object also conforms to the [Standard JSON
+ * Schema](https://standardschema.dev/json-schema) specification:
+ * `jsonSchema.input` generates a JSON Schema for the encoded side of the
+ * schema, and `jsonSchema.output` for the type side. The `"draft-07"` and
+ * `"draft-2020-12"` targets are supported; any other target throws.
+ *
  * @example
  * ```ts
  * import { Schema } from "effect"
@@ -188,6 +208,8 @@ const makeStandardFailureFromParseIssue = (
  * //      ┌─── StandardSchemaV1<{ readonly name: string; }>
  * //      ▼
  * const standardSchema = Schema.standardSchemaV1(schema)
+ *
+ * const jsonSchema = standardSchema["~standard"].jsonSchema.output({ target: "draft-2020-12" })
  * ```
  *
  * @category Standard Schema
@@ -196,7 +218,7 @@ const makeStandardFailureFromParseIssue = (
 export const standardSchemaV1 = <A, I>(
   schema: Schema<A, I, never>,
   overrideOptions?: AST.ParseOptions
-): StandardSchemaV1<I, A> & SchemaClass<A, I, never> => {
+): StandardSchemaV1<I, A> & StandardJSONSchemaV1<I, A> & SchemaClass<A, I, never> => {
   const decodeUnknown = ParseResult.decodeUnknown(schema, { errors: "all" })
   return class StandardSchemaV1Class extends make<A, I, never>(schema.ast) {
     static "~standard" = {
@@ -221,6 +243,14 @@ export const standardSchemaV1 = <A, I>(
             resolve(makeStandardResult(exit))
           })
         })
+      },
+      jsonSchema: {
+        input(options) {
+          return makeStandardJSONSchema(encodedSchema(schema), options.target)
+        },
+        output(options) {
+          return makeStandardJSONSchema(typeSchema(schema), options.target)
+        }
       }
     }
   }

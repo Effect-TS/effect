@@ -391,8 +391,8 @@ importers:
   packages/effect:
     dependencies:
       '@standard-schema/spec':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.1.0
+        version: 1.1.0
       fast-check:
         specifier: ^3.23.1
         version: 3.23.2
@@ -2796,8 +2796,8 @@ packages:
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
 
-  '@standard-schema/spec@1.0.0':
-    resolution: {integrity: sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA==}
+  '@standard-schema/spec@1.1.0':
+    resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
   '@testcontainers/mssqlserver@10.28.0':
     resolution: {integrity: sha512-edyXfjU6rK7Jt/2Pei4HI4tt2rgOBJ6MM79YbwAp60fU0XIQHEdaDdlVtpVjArVNfnaS0kMUG3WxGINjtDhOyQ==}
@@ -9022,7 +9022,7 @@ snapshots:
 
   '@speed-highlight/core@1.2.7': {}
 
-  '@standard-schema/spec@1.0.0': {}
+  '@standard-schema/spec@1.1.0': {}
 
   '@testcontainers/mssqlserver@10.28.0':
     dependencies:

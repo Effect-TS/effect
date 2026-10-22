@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { StandardSchemaV1 } from "@standard-schema/spec"
+import type { StandardJSONSchemaV1, StandardSchemaV1 } from "@standard-schema/spec"
 import type {
   Arbitrary,
   BigDecimal,
@@ -4286,6 +4286,8 @@ describe("Schema", () => {
   it("standardSchemaV1", () => {
     const standardSchema = S.standardSchemaV1(S.NumberFromString)
     expect(S.asSchema(standardSchema)).type.toBe<S.Schema<number, string>>()
-    expect(standardSchema).type.toBe<StandardSchemaV1<string, number> & S.SchemaClass<number, string, never>>()
+    expect(standardSchema).type.toBe<
+      StandardSchemaV1<string, number> & StandardJSONSchemaV1<string, number> & S.SchemaClass<number, string, never>
+    >()
   })
 })

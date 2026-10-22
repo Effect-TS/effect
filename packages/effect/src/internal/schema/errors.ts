@@ -108,6 +108,13 @@ export const getJSONSchemaUnsupportedPostRestElementsErrorMessage = (path: Reado
 export const getJSONSchemaUnsupportedKeyErrorMessage = (key: PropertyKey, path: ReadonlyArray<PropertyKey>): string =>
   getErrorMessage("Unsupported key", `Cannot encode ${Inspectable.formatPropertyKey(key)} key to JSON Schema`, path)
 
+/** @internal */
+export const getStandardJSONSchemaUnsupportedTargetErrorMessage = (target: string): string =>
+  getErrorMessage(
+    "Unsupported target",
+    `Expected "draft-07" or "draft-2020-12", actual ${Inspectable.formatUnknown(target)}`
+  )
+
 // ---------------------------------------------
 // Pretty
 // ---------------------------------------------

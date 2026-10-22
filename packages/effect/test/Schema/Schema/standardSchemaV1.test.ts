@@ -1,4 +1,4 @@
-import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 import { Context, Effect, ParseResult, Predicate, Schema } from "effect"
 import { describe, it } from "vitest"
@@ -362,5 +362,77 @@ describe("standardSchemaV1", () => {
         path: ["a"]
       }
     ])
+  })
+
+  describe("jsonSchema", () => {
+    const schema = Schema.Struct({
+      a: Schema.NumberFromString
+    })
+    const standardSchema = Schema.standardSchemaV1(schema)
+
+    it("input (draft-07)", () => {
+      deepStrictEqual(standardSchema["~standard"].jsonSchema.input({ target: "draft-07" }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "a string to be decoded into a number"
+          }
+        },
+        "additionalProperties": false
+      })
+    })
+
+    it("input (draft-2020-12)", () => {
+      deepStrictEqual(standardSchema["~standard"].jsonSchema.input({ target: "draft-2020-12" }), {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "a string to be decoded into a number"
+          }
+        },
+        "additionalProperties": false
+      })
+    })
+
+    it("output (draft-07)", () => {
+      deepStrictEqual(standardSchema["~standard"].jsonSchema.output({ target: "draft-07" }), {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      })
+    })
+
+    it("output (draft-2020-12)", () => {
+      deepStrictEqual(standardSchema["~standard"].jsonSchema.output({ target: "draft-2020-12" }), {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["a"],
+        "properties": {
+          "a": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      })
+    })
+
+    it("should throw on unsupported targets", () => {
+      const message = `Unsupported target
+details: Expected "draft-07" or "draft-2020-12", actual "openapi-3.0"`
+      throws(() => standardSchema["~standard"].jsonSchema.input({ target: "openapi-3.0" }), new Error(message))
+      throws(() => standardSchema["~standard"].jsonSchema.output({ target: "openapi-3.0" }), new Error(message))
+    })
   })
 })
