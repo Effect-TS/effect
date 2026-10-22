@@ -107,23 +107,52 @@ export function parse(
   return result
 }
 
+// RFC 8187 ext-value: charset "'" [ language ] "'" value-chars
+const extValueRE = /^(utf-8|iso-8859-1)'[a-z0-9-]*'((?:%[0-9a-f]{2}|[!#$&+.^_`|~\w-])*)$/i
+const pctEncodedRE = /%([0-9a-f]{2})/gi
+
+/**
+ * Decodes an RFC 8187 ext-value, returning `undefined` when it is malformed.
+ * ISO-8859-1 is decoded byte by byte because `TextDecoder` treats it as
+ * windows-1252.
+ */
+function decodeExtValue(value: string): string | undefined {
+  const match = extValueRE.exec(value)
+  if (match === null) {
+    return undefined
+  }
+  if (match[1].toLowerCase() === "iso-8859-1") {
+    return match[2].replace(pctEncodedRE, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+  }
+  try {
+    return decodeURIComponent(match[2])
+  } catch {
+    return undefined
+  }
+}
+
+export interface ContentDisposition {
+  readonly value: string
+  readonly parameters: Record<string, string>
+  /** `filename*` decoded per RFC 8187, falling back to `filename` */
+  readonly filename: string | undefined
+}
+
+// default ContentDisposition to prevent repeated object creation
+const defaultContentDisposition: ContentDisposition = { ...defaultContentType, filename: undefined }
+
 /**
  * Parses a Content-Disposition header according to RFC 6266, returning
- * `undefined` when it is malformed or repeats a parameter.
+ * `undefined` when it is malformed, repeats a parameter or carries an
+ * undecodable `filename*`.
  *
  * Quoted-pairs are left as-is, so unescaped backslashes in file paths survive.
  */
 export function parseDisposition(
   header: string | ReadonlyArray<string> | undefined
-):
-  | {
-    readonly value: string
-    readonly parameters: Record<string, string>
-  }
-  | undefined
-{
+): ContentDisposition | undefined {
   if (header === undefined) {
-    return defaultContentType
+    return defaultContentDisposition
   } else if (typeof header !== "string") {
     return undefined
   }
@@ -135,40 +164,41 @@ export function parseDisposition(
     return undefined
   }
 
-  const result = {
-    value: type.toLowerCase(),
-    parameters: Object.create(null) as Record<string, string>
-  }
+  const parameters: Record<string, string> = Object.create(null)
 
-  if (index === -1) {
-    return result
-  }
+  if (index !== -1) {
+    let match: RegExpExecArray | null
 
-  let key: string
-  let match: RegExpExecArray | null
-  let value: string
+    dispositionParamRE.lastIndex = index
 
-  dispositionParamRE.lastIndex = index
+    while ((match = dispositionParamRE.exec(header))) {
+      if (match.index !== index) {
+        return undefined
+      }
 
-  while ((match = dispositionParamRE.exec(header))) {
-    if (match.index !== index) {
-      return undefined
+      index += match[0].length
+      const key = match[1].toLowerCase()
+      const value = match[2]
+
+      if (key in parameters) {
+        return undefined
+      }
+
+      parameters[key] = value[0] === "\"" ? value.slice(1, value.length - 1) : value
     }
 
-    index += match[0].length
-    key = match[1].toLowerCase()
-    value = match[2]
-
-    if (key in result.parameters) {
+    if (index !== header.length) {
       return undefined
     }
-
-    result.parameters[key] = value[0] === "\"" ? value.slice(1, value.length - 1) : value
   }
 
-  if (index !== header.length) {
-    return undefined
+  let filename: string | undefined = parameters.filename
+  if ("filename*" in parameters) {
+    filename = decodeExtValue(parameters["filename*"])
+    if (filename === undefined) {
+      return undefined
+    }
   }
 
-  return result
+  return { value: type.toLowerCase(), parameters, filename }
 }
