@@ -1,4 +1,5 @@
 import * as Arr from "../Array.ts"
+import type * as Brand from "../Brand.ts"
 import type * as Cause from "../Cause.ts"
 import type * as Clock from "../Clock.ts"
 import type * as Console from "../Console.ts"
@@ -2057,17 +2058,17 @@ export const exitFindDefect = Filter.composePassthrough(
 /** @internal */
 export const exitHasInterrupts = <A, E>(
   self: Exit.Exit<A, E>
-): self is Exit.Failure<A, E> => self._tag === "Failure" && hasInterrupts(self.cause)
+): self is Exit.Failure<A, E> & Brand.Brand<"HasInterrupts"> => self._tag === "Failure" && hasInterrupts(self.cause)
 
 /** @internal */
 export const exitHasDies = <A, E>(
   self: Exit.Exit<A, E>
-): self is Exit.Failure<A, E> => self._tag === "Failure" && hasDies(self.cause)
+): self is Exit.Failure<A, E> & Brand.Brand<"HasDies"> => self._tag === "Failure" && hasDies(self.cause)
 
 /** @internal */
 export const exitHasFails = <A, E>(
   self: Exit.Exit<A, E>
-): self is Exit.Failure<A, E> => self._tag === "Failure" && hasFails(self.cause)
+): self is Exit.Failure<A, E> & Brand.Brand<"HasFails"> => self._tag === "Failure" && hasFails(self.cause)
 
 /** @internal */
 export const exitVoid: Exit.Exit<void> = exitSucceed(void 0)

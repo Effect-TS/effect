@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Brand from "../Brand.ts"
 import * as Cause from "../Cause.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
@@ -309,7 +310,9 @@ export const isFailure = <A, E>(result: AsyncResult<A, E>): result is Failure<A,
  * @category guards
  * @since 4.0.0
  */
-export const isInterrupted = <A, E>(result: AsyncResult<A, E>): result is Failure<A, E> =>
+export const isInterrupted = <A, E>(
+  result: AsyncResult<A, E>
+): result is Failure<A, E> & Brand.Brand<"Interrupted"> =>
   result._tag === "Failure" && Cause.hasInterruptsOnly(result.cause)
 
 /**
