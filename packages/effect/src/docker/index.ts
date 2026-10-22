@@ -63,6 +63,12 @@ export * as DockerNetworks from "./DockerNetworks.ts"
  * @stability unstable
  * @since 4.2.0
  */
+export * as DockerNodes from "./DockerNodes.ts"
+
+/**
+ * @stability unstable
+ * @since 4.2.0
+ */
 export * as DockerSchema from "./DockerSchema.ts"
 
 /**

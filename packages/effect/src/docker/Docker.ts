@@ -28,6 +28,7 @@ import type { DockerEngine } from "./DockerEngine.ts"
 import * as DockerExec from "./DockerExec.ts"
 import * as DockerImages from "./DockerImages.ts"
 import * as DockerNetworks from "./DockerNetworks.ts"
+import * as DockerNodes from "./DockerNodes.ts"
 import * as DockerSwarm from "./DockerSwarm.ts"
 import * as DockerSystem from "./DockerSystem.ts"
 import * as DockerVolumes from "./DockerVolumes.ts"
@@ -44,6 +45,7 @@ export type Docker =
   | DockerExec.DockerExec
   | DockerImages.DockerImages
   | DockerNetworks.DockerNetworks
+  | DockerNodes.DockerNodes
   | DockerSwarm.DockerSwarm
   | DockerSystem.DockerSystem
   | DockerVolumes.DockerVolumes
@@ -61,6 +63,7 @@ export const layer: Layer.Layer<Docker, never, DockerEngine> = Layer.mergeAll(
   DockerExec.layer,
   DockerImages.layer,
   DockerNetworks.layer,
+  DockerNodes.layer,
   DockerSwarm.layer,
   DockerSystem.layer,
   DockerVolumes.layer
