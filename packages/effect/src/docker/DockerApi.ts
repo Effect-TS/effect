@@ -1309,6 +1309,39 @@ export const Swarm = HttpApiGroup.make("swarm").add(
 ).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// nodes
+// -----------------------------------------------------------------------------
+
+/**
+ * The Engine's node endpoints, which `DockerNodes` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Nodes = HttpApiGroup.make("nodes").add(
+  HttpApiEndpoint.get("list", "/nodes", {
+    query: { filters },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.Node))
+  }),
+  HttpApiEndpoint.get("inspect", "/nodes/:id", {
+    params: id,
+    success: Schema.toCodecGoJson(DockerSchema.Node)
+  }),
+  HttpApiEndpoint.post("update", "/nodes/:id/update", {
+    params: id,
+    query: { version: Schema.Number },
+    payload: DockerSchema.NodeSpec,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.delete("remove", "/nodes/:id", {
+    params: id,
+    query: { force: Schema.optional(Schema.Boolean) },
+    success: HttpApiSchema.Empty(200)
+  })
+).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -1326,5 +1359,6 @@ export const DockerApi = HttpApi.make("docker").add(
   Networks,
   Volumes,
   Images,
-  Swarm
+  Swarm,
+  Nodes
 )

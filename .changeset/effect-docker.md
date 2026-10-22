@@ -13,5 +13,6 @@ Add `effect/docker`, an Effect-native client for the Docker Engine API, and `Nod
 - `DockerContainers` covers the container lifecycle, logs, stats, attach and archives; `DockerExec` runs commands in running containers; `DockerNetworks` and `DockerVolumes` manage networks and volumes.
 - `DockerImages` pulls, pushes, builds, tags, saves, loads, imports and commits images, with registry credentials resolved as the Docker CLI does (`DOCKER_AUTH_CONFIG`, credential helpers, `auths`).
 - `DockerSwarm` inits, joins, inspects, updates and leaves a Swarm, and reads the unlock key of an autolocked one. A Swarm endpoint's 503 fails with `SwarmUnavailable`, which isn't retryable, and join tokens and unlock keys are `Redacted`.
+- `DockerNodes` lists, inspects, updates and removes a Swarm's nodes.
 - Every operation runs in a span named `docker.<Service>.<operation>`, with the resource it acts on as `docker.resource_id` and the negotiated API version; a streaming operation's span lasts until its stream ends. Registry credentials and secret query parameters are redacted.
 - `NodeDocker.layer` and `NodeDocker.layerFromEnv` provide them on Node.js, over a unix socket or TCP with TLS.
