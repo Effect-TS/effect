@@ -1,6 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
-import { DockerContainers, DockerSwarm, DockerVolumes } from "effect/docker"
+import {
+  DockerContainers,
+  DockerSecrets,
+  DockerServices,
+  DockerSwarm,
+  DockerSwarmConfigs,
+  DockerVolumes
+} from "effect/docker"
 import { inspect } from "node:util"
 import { json, makeStubEngine, recordSpans, withPing } from "./utils/stub.ts"
 
@@ -88,6 +95,37 @@ describe("DockerSwarm", () => {
       assert.isUndefined(off)
       const shown = [inspect(swarm, { depth: 10 }), String(key), JSON.stringify(swarm), attributes().join("\n")]
       for (const text of shown) assert.notMatch(text, /SWMTKN|SWMKEY/)
+    }))
+
+  it.effect("modify updates every Swarm object at the version it inspected", () =>
+    Effect.gen(function*() {
+      const stub = makeStubEngine(withPing("1.44", (request) =>
+        request.method === "GET"
+          ? json({ ID: "x", Version: { Index: 7 }, Spec: { Name: "x" } })
+          // only a service update answers with a body
+          : request.url.pathname.startsWith("/v1.44/services/")
+          ? json({ Warnings: null })
+          : {}))
+      const label = <S extends { readonly Labels?: Readonly<Record<string, string>> }>(spec: S): S => ({
+        ...spec,
+        Labels: { rev: "2" }
+      })
+      yield* Effect.all([
+        Swarm.use((swarm) => swarm.modify(label, { rotateWorkerToken: true })),
+        DockerServices.DockerServices.use((services) => services.modify("x", label)),
+        DockerSecrets.DockerSecrets.use((secrets) => secrets.modify("x", label)),
+        DockerSwarmConfigs.DockerSwarmConfigs.use((configs) => configs.modify("x", label))
+      ]).pipe(stub.provide)
+      const writes = stub.requests.filter((request) => request.method === "POST")
+      assert.deepStrictEqual(
+        writes.map((request) => [`${request.url.pathname}${request.url.search}`, JSON.parse(request.body!)]),
+        [
+          ["/v1.44/swarm/update?version=7&rotateWorkerToken=true", { Name: "x", Labels: { rev: "2" } }],
+          ["/v1.44/services/x/update?version=7", { Name: "x", Labels: { rev: "2" } }],
+          ["/v1.44/secrets/x/update?version=7", { Name: "x", Labels: { rev: "2" } }],
+          ["/v1.44/configs/x/update?version=7", { Name: "x", Labels: { rev: "2" } }]
+        ]
+      )
     }))
 
   it.effect("fails a Swarm endpoint's 503 with SwarmUnavailable, which isn't retryable", () =>

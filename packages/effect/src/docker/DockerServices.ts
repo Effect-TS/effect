@@ -39,7 +39,7 @@ import * as Stream from "../Stream.ts"
 import * as DockerApi from "./DockerApi.ts"
 import type * as DockerConfig from "./DockerConfig.ts"
 import { type LogFrame, logsQuery } from "./DockerContainers.ts"
-import { apiClient, authConfig, DockerEngine, withOperation, withStreamOperation } from "./DockerEngine.ts"
+import { apiClient, authConfig, DockerEngine, modifyWith, withOperation, withStreamOperation } from "./DockerEngine.ts"
 import { DockerError, InvalidResponse } from "./DockerError.ts"
 import { frames, fromContentType } from "./DockerExec.ts"
 import * as DockerImages from "./DockerImages.ts"
@@ -306,6 +306,35 @@ export class DockerServices extends Context.Service<DockerServices, {
    */
   readonly rollback: (id: string) => Effect.Effect<DockerSchema.ServiceUpdateResponse, DockerError>
   /**
+   * Updates a service from its current spec, and returns the warnings about
+   * it: inspects the service, and updates it with `f` of its `Spec` at the
+   * version read.
+   *
+   * **Details**
+   *
+   * When another update comes first (`update out of sequence`), it starts
+   * over from a fresh `inspect`, at most 5 times in all; any other failure
+   * ends it. The options are `update`'s.
+   *
+   * Typical reasons: `update`'s.
+   *
+   * **Example** (Scaling a service)
+   *
+   * ```ts import.meta.vitest
+   * import { DockerServices } from "effect/docker"
+   *
+   * const scale = (id: string, replicas: number) =>
+   *   DockerServices.DockerServices.use((services) =>
+   *     services.modify(id, (spec) => ({ ...spec, Mode: { Replicated: { Replicas: replicas } } }))
+   *   )
+   * ```
+   */
+  readonly modify: (
+    id: string,
+    f: (spec: DockerApi.ServiceSpec) => DockerApi.ServiceSpec,
+    options?: ImageOptions & { readonly registryAuthFrom?: "spec" | "previous-spec" | undefined }
+  ) => Effect.Effect<DockerSchema.ServiceUpdateResponse, DockerError>
+  /**
    * Removes a service.
    *
    * **Details**
@@ -413,6 +442,17 @@ export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine>
 
   const inspect: DockerServices["Service"]["inspect"] = (id, options) =>
     api.inspect({ params: { id }, query: options ?? {} })
+  const update: DockerServices["Service"]["update"] = (id, spec, options) =>
+    Effect.gen(function*() {
+      const prepared = yield* prepare(spec, options)
+      const response = yield* api.update({
+        params: { id },
+        query: { version: options.version, registryAuthFrom: options.registryAuthFrom },
+        headers: { "x-registry-auth": prepared.auth },
+        payload: prepared.spec
+      })
+      return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
+    }).pipe(withOperation(engine, "docker.Services.update", id))
 
   return DockerServices.of({
     list: (options) => api.list({ query: options ?? {} }),
@@ -423,17 +463,7 @@ export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine>
         const response = yield* api.create({ headers: { "x-registry-auth": prepared.auth }, payload: prepared.spec })
         return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
       }).pipe(withOperation(engine, "docker.Services.create", spec.Name)),
-    update: (id, spec, options) =>
-      Effect.gen(function*() {
-        const prepared = yield* prepare(spec, options)
-        const response = yield* api.update({
-          params: { id },
-          query: { version: options.version, registryAuthFrom: options.registryAuthFrom },
-          headers: { "x-registry-auth": prepared.auth },
-          payload: prepared.spec
-        })
-        return { ...response, Warnings: [...prepared.warnings, ...response.Warnings ?? []] }
-      }).pipe(withOperation(engine, "docker.Services.update", id)),
+    update,
     rollback: (id) =>
       Effect.flatMap(inspect(id), (service) =>
         api.update({
@@ -443,6 +473,12 @@ export const make: Effect.Effect<DockerServices["Service"], never, DockerEngine>
           headers: {},
           payload: service.Spec ?? {}
         })).pipe(withOperation(engine, "docker.Services.rollback", id)),
+    modify: (id, f, options) =>
+      modifyWith(
+        inspect(id),
+        (spec, version) => update(id, spec, { ...options, version }),
+        f
+      ).pipe(withOperation(engine, "docker.Services.modify", id)),
     remove: (id) => api.remove({ params: { id } }),
     logs: (id, options) =>
       Stream.unwrap(
