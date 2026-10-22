@@ -69,6 +69,37 @@ describe("Windows cleanup", { concurrent: false }, () => {
   }
 })
 
+describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { concurrent: false }, () => {
+  for (const signal of [false, true]) {
+    it.live(
+      `does not signal the process group of a ${
+        signal ? "signal-terminated" : "failed"
+      } child during exit, kill or scope release`,
+      () =>
+        Effect.gen(function*() {
+          const kill = vi.spyOn(process, "kill")
+          yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+          let pid = 0
+          yield* Effect.scoped(Effect.gen(function*() {
+            const handle = yield* ChildProcess.make(process.execPath, [
+              "-e",
+              signal ? "process.kill(process.pid, 'SIGTERM')" : "process.exit(1)"
+            ], { detached: false, forceKillAfter: "100 millis" })
+            pid = handle.pid
+            if (signal) {
+              assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
+            } else {
+              assert.strictEqual(yield* handle.exitCode, 1)
+            }
+            // The exited child's PID may now lead an unrelated process group.
+            yield* Effect.ignore(handle.kill())
+          }))
+          assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
+        }).pipe(Effect.scoped, Effect.provide(NodeServices))
+    )
+  }
+})
+
 // Synchronous fixture runs must not block other tests with active timeout budgets.
 describe("interrupted buffered input", { concurrent: false, timeout: 15_000 }, () => {
   for (const input of ["stdin", "fd3"] as const) {
