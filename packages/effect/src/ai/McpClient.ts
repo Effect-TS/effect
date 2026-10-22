@@ -135,15 +135,6 @@ export interface McpClient extends Pipeable {
 }
 
 /**
- * Alias of `McpClient`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export type Client = McpClient
-
-/**
  * Tool invocation carrying the discovered definition, which supplies the
  * request name and, over modern HTTP, the header routing annotations.
  *
