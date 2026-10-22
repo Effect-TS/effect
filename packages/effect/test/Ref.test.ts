@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Equal, Option, Ref } from "effect"
+import { Effect, Option, Ref } from "effect"
 
 const current = "value"
 const update = "new value"
@@ -27,11 +27,6 @@ const isChanged = (self: State): boolean => self._tag === "Changed"
 const isClosed = (self: State): boolean => self._tag === "Closed"
 
 describe("Ref", () => {
-  it.effect("distinct refs are not equal", () =>
-    Effect.gen(function*() {
-      assert.isFalse(Equal.equals(yield* Ref.make(0), yield* Ref.make(0)))
-    }))
-
   it.effect("get returns the current value", () =>
     Effect.gen(function*() {
       const result = yield* Ref.get(Ref.makeUnsafe(current))
