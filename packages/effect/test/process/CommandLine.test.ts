@@ -247,6 +247,7 @@ describe("CommandLine", () => {
           --rm ${"img"}`),
         ["docker", "run", "--rm", "img"]
       )
+      assert.deepStrictEqual(Result.getOrThrow(CommandLine.template`if true`), ["if", "true"])
     })
 
     it("joins values with the surrounding argument", () => {
@@ -291,6 +292,8 @@ describe("CommandLine", () => {
         [CommandLine.template`echo "${"a"}`, "UnterminatedQuote"],
         [CommandLine.template`echo ${"a\0"}`, "NulCharacter"],
         [CommandLine.template`echo \\\0`, "NulCharacter"],
+        [CommandLine.template`echo | \0`, "NulCharacter"],
+        [CommandLine.template`echo | ${"\0"}`, "NulCharacter"],
         [CommandLine.template(invalidEscape as unknown as TemplateStringsArray), "InvalidEscape"]
       ]
       for (const [result, reason] of cases) {
