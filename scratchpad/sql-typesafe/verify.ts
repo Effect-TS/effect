@@ -2,13 +2,16 @@ import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
 import * as Effect from "effect/Effect"
 import * as Migrator from "effect/sql/Migrator"
+import * as SqlClient from "effect/sql/SqlClient"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { Database } from "./database.ts"
+import schema from "./_schema.json" with { type: "json" }
 import { migrations } from "./migrations.ts"
+
+class Database extends SqlClient.Service<Database>()("scratchpad/verify/Database", { schema }) {}
 
 const root = fileURLToPath(new URL("./", import.meta.url))
 const directory = mkdtempSync(join(root, ".verify-"))
@@ -130,6 +133,10 @@ try {
     "rows[0].email?.toLowerCase()"
   ].join("\n")
   accepts(valid)
+  rejects(
+    "const users = yield* query('SELECT id AS userId, name, email FROM users'); const displayed: never = users",
+    /Type 'readonly \{ readonly name: string; readonly email: string \| null; readonly userId: number; \}\[\]'/
+  )
   accepts(
     "void Effect.runPromise(Database.pipe(Effect.provide(Database.layer), Effect.provideService(SqlClient.SqlClient, raw)))"
   )

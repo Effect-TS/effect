@@ -75,6 +75,15 @@ describe("SqlClient.Service", () => {
     >()
   })
 
+  it("displays selected rows without parser helper types", () => {
+    Effect.gen(function*() {
+      const users = yield* query("SELECT id AS userId, name, email FROM users")
+      // @ts-expect-error Type 'readonly { readonly userId: number; readonly name: string; readonly email: string | null; }[]'
+      const displayed: never = users
+      void displayed
+    })
+  })
+
   it("infers named parameters and pagination", () => {
     const text = "SELECT id FROM users WHERE age >= :age ORDER BY name LIMIT :take OFFSET :skip"
     expect(query).type.toBeCallableWith(text, { age: 18, take: 10, skip: 0 })

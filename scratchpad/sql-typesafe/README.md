@@ -2,8 +2,8 @@
 
 This scratchpad exercises the experimental **core Effect APIs**
 `SqlClient.Service` and `Migrator.runWithSnapshot`, with **TypeScript 7.1.0-beta**.
-Open [`main.ts`](./main.ts) for the runnable example. The database service is
-defined once in [`database.ts`](./database.ts):
+Open [`main.ts`](./main.ts) for the runnable example. It declares the database
+service alongside the schema import:
 
 ```ts
 import * as SqlClient from "effect/sql/SqlClient"
@@ -17,7 +17,6 @@ Query code gets the typed query constructor directly from its service scope:
 ```ts
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
 import * as Effect from "effect/Effect"
-import { Database } from "./database.ts"
 
 const findUsers = Effect.fnUntraced(function*(minimumAge: number) {
   const sql = yield* Database
@@ -70,9 +69,9 @@ and rerun `sql:check` to see the inferred types follow the schema.
 The beta compiler is local to the private scratchpad package. `sql:check`
 first builds the referenced workspace packages with the repository's normal
 compiler, then checks this consumer against their declarations. `sql:verify`
-also checks valid and invalid calls, required services, schema-only changes
-across incremental builds, snapshot refresh after a no-op migration, and actual
-SQLite execution.
+also checks valid and invalid calls, displayed result types, required services,
+schema-only changes across incremental builds, snapshot refresh after a no-op
+migration, and actual SQLite execution.
 
 ## Snapshot format
 

@@ -1,5 +1,7 @@
 /** @internal */
 
+import type { Simplify } from "../Types.ts"
+
 // A deliberately small SQL grammar, evaluated entirely by TypeScript.
 // Unsupported syntax produces an error instead of falling back to unknown rows.
 export type Database = Readonly<Record<string, Readonly<Record<string, unknown>>>>
@@ -8,7 +10,6 @@ declare const sqlError: unique symbol
 type Failure<Message extends string> = { readonly [sqlError]: Message }
 type Tokens = ReadonlyArray<string>
 type Step<Rest extends Tokens, Value> = { readonly rest: Rest; readonly value: Value }
-type Simplify<A> = { readonly [K in keyof A]: A[K] }
 type Space = " " | "\n" | "\r" | "\t"
 type Lower =
   | "a"
@@ -96,7 +97,7 @@ type Projection<D extends Database, Table extends keyof D & string, T extends To
 
 type AddProjection<D extends Database, Table extends keyof D & string, T extends Tokens, Row> =
   Projection<D, Table, T> extends infer P ? P extends Failure<string> ? P
-    : keyof P & keyof Row extends never ? Simplify<Row & P>
+    : keyof P & keyof Row extends never ? Row & P
     : Failure<"Duplicate result column; use AS aliases">
     : never
 

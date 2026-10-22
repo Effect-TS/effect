@@ -3,8 +3,11 @@
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
 import * as Effect from "effect/Effect"
 import * as Migrator from "effect/sql/Migrator"
-import { Database } from "./database.ts"
+import * as SqlClient from "effect/sql/SqlClient"
+import schema from "./_schema.json" with { type: "json" }
 import { migrations } from "./migrations.ts"
+
+export class Database extends SqlClient.Service<Database>()("scratchpad/Database", { schema }) {}
 
 const result = await Effect.gen(function*() {
   // Apply the same migrations used to generate _schema.json to a fresh database.
