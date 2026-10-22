@@ -128,7 +128,8 @@ const make = Effect.gen(function*() {
   const setupChildStdin = (
     command: ChildProcess.StandardCommand,
     childProcess: Deno.ChildProcess,
-    config: ChildProcess.StdinConfig
+    config: ChildProcess.StdinConfig,
+    inputFailure: Deferred.Deferred<never, PlatformError.PlatformError>
   ) =>
     Effect.suspend(() => {
       if (inputToStdioOption(config.stream) !== "piped") return Effect.succeed(Sink.drain)
@@ -138,7 +139,14 @@ const make = Effect.gen(function*() {
         closeOnDone: config.endOnDone
       })
       return Stream.isStream(config.stream)
-        ? Effect.as(Effect.forkScoped(Stream.run(config.stream, sink)), sink)
+        ? Effect.as(
+          Effect.forkScoped(
+            // Record a failure of the source stream so that it can be surfaced
+            // by the process exit code
+            Stream.run(Stream.tapError(config.stream, (error) => Deferred.fail(inputFailure, error)), sink)
+          ),
+          sink
+        )
         : Effect.succeed(sink)
     })
 
@@ -302,11 +310,16 @@ const make = Effect.gen(function*() {
           }
           return reref
         })
-        const stdin = yield* setupChildStdin(cmd, childProcess, stdinConfig)
+        const inputFailure = Deferred.makeUnsafe<never, PlatformError.PlatformError>()
+        const stdin = yield* setupChildStdin(cmd, childProcess, stdinConfig, inputFailure)
         const { all, stderr, stdout } = setupChildOutputStreams(cmd, childProcess, stdoutConfig, stderrConfig)
         const isRunning = Effect.map(Deferred.isDone(exitSignal), (done) => !done)
         const exitCode = Effect.flatMap(Deferred.await(exitSignal), (status) =>
-          Predicate.isNull(status.signal)
+          // A failed input stream truncates the input of the child process,
+          // so its failure takes precedence over the exit status
+          Deferred.isDoneUnsafe(inputFailure)
+            ? Deferred.await(inputFailure)
+            : Predicate.isNull(status.signal)
             ? Effect.succeed(ExitCode(status.code))
             : Effect.fail(toPlatformError(
               "exitCode",
