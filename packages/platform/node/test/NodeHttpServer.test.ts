@@ -681,7 +681,7 @@ describe("HttpServer", () => {
       const root = yield* client.get("/child").pipe(Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
       const rootSearch = yield* client.get("/child?foo=bar").pipe(Effect.flatMap((_) => _.text))
-      expect(rootSearch).toEqual("?foo=bar")
+      expect(rootSearch).toEqual("/?foo=bar")
       const rootSlash = yield* client.get("/child/").pipe(Effect.flatMap((_) => _.text))
       expect(rootSlash).toEqual("/")
       const invalid = yield* client.get("/child1/", {
