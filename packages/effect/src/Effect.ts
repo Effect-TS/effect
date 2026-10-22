@@ -9661,7 +9661,7 @@ export const runSyncWith: <R>(
  * import { Cause, Effect, Exit } from "effect"
  *
  * const exit = Effect.runSyncExit(Effect.promise(() => Promise.resolve(1)))
- * const isAsyncDie = Exit.hasDies(exit) && exit.cause.reasons.some(
+ * const isAsyncDie = Exit.isFailure(exit) && Exit.hasDies(exit) && exit.cause.reasons.some(
  *   (reason) => Cause.isDieReason(reason) && Cause.isAsyncFiberError(reason.defect)
  * )
  *

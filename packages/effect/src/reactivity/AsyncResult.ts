@@ -309,7 +309,7 @@ export const isFailure = <A, E>(result: AsyncResult<A, E>): result is Failure<A,
  * @category guards
  * @since 4.0.0
  */
-export const isInterrupted = <A, E>(result: AsyncResult<A, E>): result is Failure<A, E> =>
+export const isInterrupted = <A, E>(result: AsyncResult<A, E>): boolean =>
   result._tag === "Failure" && Cause.hasInterruptsOnly(result.cause)
 
 /**
