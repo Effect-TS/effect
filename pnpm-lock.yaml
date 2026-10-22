@@ -9,6 +9,7 @@ overrides:
   fake-indexeddb: 6.2.5
 
 patchedDependencies:
+  '@changesets/cli@3.0.3': 2582b979794e5afa0b5a665bf0e818bc8731c818aa50890425172eb69df4d6bd
   '@changesets/get-github-info@1.0.1': 4b2756eb490a2ad802075423f6b08a5f50f12307ec25e117b20a79e12236b625
 
 importers:
@@ -32,7 +33,7 @@ importers:
         version: 1.0.1
       '@changesets/cli':
         specifier: 3.0.3
-        version: 3.0.3
+        version: 3.0.3(patch_hash=2582b979794e5afa0b5a665bf0e818bc8731c818aa50890425172eb69df4d6bd)
       '@effect/ai-docgen':
         specifier: workspace:^
         version: link:packages/tools/ai-docgen
@@ -7342,7 +7343,7 @@ snapshots:
       '@changesets/get-github-info': 1.0.1(patch_hash=4b2756eb490a2ad802075423f6b08a5f50f12307ec25e117b20a79e12236b625)
       '@changesets/types': 7.0.0
 
-  '@changesets/cli@3.0.3':
+  '@changesets/cli@3.0.3(patch_hash=2582b979794e5afa0b5a665bf0e818bc8731c818aa50890425172eb69df4d6bd)':
     dependencies:
       '@changesets/apply-release-plan': 8.1.1
       '@changesets/assemble-release-plan': 7.0.0
