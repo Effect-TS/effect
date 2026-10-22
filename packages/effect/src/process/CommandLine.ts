@@ -1,6 +1,7 @@
 /**
  * Converts between argument lists and command lines: the single strings that
- * a shell, or a Windows program, turns back into arguments.
+ * a shell, or a Windows program, turns back into arguments. It is unrelated to
+ * `effect/cli`, which parses the arguments of your own program.
  *
  * The rules depend on what parses the string, not on the platform that builds
  * it, so every function takes an explicit `format`:
@@ -12,8 +13,10 @@
  *   use to split their command line.
  *
  * SSH sends one command line to the login shell of the remote account, so the
- * format must match that shell. Docker and Kubernetes exec take argument lists
- * and need no command line at all.
+ * format must match that shell. The remote shell must be a POSIX shell or
+ * PowerShell: Windows OpenSSH uses `cmd.exe` by default, which no format
+ * supports, so set its `DefaultShell` to PowerShell. Docker and Kubernetes exec
+ * take argument lists and need no command line at all.
  *
  * Arguments can be `Redacted` strings. `quote` and `join` include their values,
  * because their output is meant to run, while `display` replaces them with
@@ -240,6 +243,10 @@ export const quote = (word: Word, options?: Options): Result.Result<string, Comm
  * - For `"powershell"`, an argument equal to `--%` fails with
  *   `InvalidArgument`: PowerShell drops it when it calls a native program,
  *   however it is quoted.
+ * - `"windows"` output is the command line of a program, not a `cmd.exe`
+ *   script. `cmd.exe`, which `shell: true` uses on Windows, expands `%NAME%`
+ *   and reads `^ & | < >` before the program sees its arguments, so a script
+ *   that contains untrusted values has to be written by hand.
  *
  * **Example** (Joining arguments into command lines)
  *
@@ -422,12 +429,7 @@ export const split = (
   const nul = line.indexOf("\0")
   if (nul !== -1) return failNul("The command line", nul)
   if ((options?.format ?? "posix") === "windows") return Result.succeed(splitWindows(line))
-  const scanner = new PosixScanner(false)
-  const result = scanner.text(line, 0, false)
-  if (result !== undefined) return Result.fail(result)
-  const end = scanner.end(line.length, 0)
-  if (end !== undefined) return Result.fail(end)
-  return Result.succeed(scanner.words as Array<string>)
+  return splitPosix([line], [], false) as Result.Result<Array<string>, CommandLineError>
 }
 
 /**
@@ -485,27 +487,16 @@ export const template = (
   strings: TemplateStringsArray,
   ...expressions: ReadonlyArray<TemplateExpression>
 ): Result.Result<Array<Word>, CommandLineError> => {
-  const scanner = new PosixScanner(true)
-  for (let i = 0; i < strings.length; i++) {
-    const text = strings[i]
-    if (text === undefined) {
-      return Result.fail(
-        new CommandLineError({
-          reason: "InvalidEscape",
-          message: `Template part ${i} contains an invalid escape sequence`
-        })
-      )
-    }
-    const isLast = i === expressions.length
-    const textError = scanner.text(text, i, !isLast)
-    if (textError !== undefined) return Result.fail(textError)
-    if (isLast) break
-    const valueError = scanner.value(expressions[i], i)
-    if (valueError !== undefined) return Result.fail(valueError)
+  const index = strings.findIndex((text) => text === undefined)
+  if (index !== -1) {
+    return Result.fail(
+      new CommandLineError({
+        reason: "InvalidEscape",
+        message: `Template part ${index} contains an invalid escape sequence`
+      })
+    )
   }
-  const end = scanner.end(0, strings.length - 1)
-  if (end !== undefined) return Result.fail(end)
-  return Result.succeed(scanner.words)
+  return splitPosix(strings, expressions, true)
 }
 
 // -----------------------------------------------------------------------------
@@ -665,230 +656,158 @@ const expansionStart = /[A-Za-z_0-9{(@*#?$!'"-]/
 const quotedExpansionStart = /[A-Za-z_0-9{(@*#?$!-]/
 const assignmentName = /^[A-Za-z_][A-Za-z0-9_]*$/
 
-// Splits text with POSIX quote removal. A template feeds it text parts and
-// interpolated values in turn; `split` feeds it a single text part.
-class PosixScanner {
-  readonly words: Array<Word> = []
-  private quote: "none" | "single" | "double" = "none"
-  private quoteStart = 0
-  private quoteLocation = ""
-  private inWord = false
-  private chunks: Array<string> = []
-  private secret = false
-  // The Redacted value when the word consists of it alone, kept as is.
-  private redacted: Redacted.Redacted<string> | undefined = undefined
-  // The word so far is unquoted literal text, so it can be a reserved word or
+const isBlank = (char: string | undefined): boolean => char === " " || char === "\t" || char === "\n"
+
+// Why an unquoted character needs a shell, if it does.
+const unsupportedSyntax = (char: string, next: string | undefined, wordStart: boolean): string | undefined => {
+  if (char === "\n") return "A line break separates shell commands"
+  if (operators.includes(char)) return `The operator "${char}" needs a shell`
+  if (char === "`") return "Command substitution needs a shell"
+  if (char === "$" && next !== undefined && expansionStart.test(next)) return `The expansion "$${next}" needs a shell`
+  if (globs.includes(char)) return `The glob character "${char}" needs a shell`
+  if (!wordStart) return undefined
+  if (char === "#") return "A comment needs a shell"
+  if (char === "~") return "Tilde expansion needs a shell"
+  if (char === "=" && next !== undefined && !isBlank(next)) return "A leading \"=\" is expanded by zsh"
+  return undefined
+}
+
+// Splits text parts with POSIX quote removal. `split` passes one part and no
+// values; `template` passes its strings and the values between them.
+const splitPosix = (
+  texts: ReadonlyArray<string>,
+  values: ReadonlyArray<TemplateExpression>,
+  isTemplate: boolean
+): Result.Result<Array<Word>, CommandLineError> => {
+  const words: Array<Word> = []
+  // The current word, empty until it starts. An opened quote adds "".
+  let word: Array<Word> = []
+  // The current word is unquoted literal text, so it can be a reserved word or
   // the name of a variable assignment.
-  private plain = true
-  private braceDepth = 0
-  private afterArray = false
+  let plain = true
+  let braceDepth = 0
+  let quote: "'" | "\"" | undefined = undefined
+  let quoteOffset = 0
+  let quotePart = 0
+  let part = 0
 
-  private readonly isTemplate: boolean
-
-  constructor(isTemplate: boolean) {
-    this.isTemplate = isTemplate
-  }
-
-  private where(offset: number, part: number): string {
-    return this.isTemplate ? ` in template part ${part}` : ` at offset ${offset}`
-  }
-
-  private error(
+  const error = (
     reason: CommandLineError["reason"],
     message: string,
     offset: number,
-    part: number
-  ): CommandLineError {
-    return new CommandLineError({
-      reason,
-      message: `${message}${this.where(offset, part)}`,
-      offset: this.isTemplate ? undefined : offset
-    })
-  }
+    at = part
+  ): Result.Result<never, CommandLineError> =>
+    Result.fail(
+      new CommandLineError({
+        reason,
+        message: isTemplate ? `${message} in template part ${at}` : `${message} at offset ${offset}`,
+        offset: isTemplate ? undefined : offset
+      })
+    )
 
-  private append(text: string): void {
-    this.chunks.push(text)
-    this.inWord = true
-  }
-
-  private endWord(offset: number, part: number): CommandLineError | undefined {
-    if (!this.inWord) return undefined
-    const value = this.chunks.join("")
-    if (this.words.length === 0 && this.plain && reservedWords.has(value)) {
-      return this.error("UnsupportedSyntax", `The reserved word "${value}" needs a shell`, offset, part)
+  const endWord = (offset: number): Result.Result<never, CommandLineError> | undefined => {
+    if (word.length === 0) return undefined
+    const value = word.map(unwrap).join("")
+    if (words.length === 0 && plain && reservedWords.has(value)) {
+      return error("UnsupportedSyntax", `The reserved word "${value}" needs a shell`, offset)
     }
-    this.words.push(
-      this.redacted !== undefined && this.chunks.length === 1
-        ? this.redacted
-        : this.secret
+    words.push(
+      word.length === 1 && Redacted.isRedacted(word[0])
+        ? word[0]
+        : word.some(Redacted.isRedacted)
         ? Redacted.make(value)
         : value
     )
-    this.chunks = []
-    this.inWord = false
-    this.secret = false
-    this.redacted = undefined
-    this.plain = true
-    this.braceDepth = 0
+    word = []
+    plain = true
+    braceDepth = 0
     return undefined
   }
 
-  text(text: string, part: number, valueFollows: boolean): CommandLineError | undefined {
-    if (this.afterArray) {
-      this.afterArray = false
-      const next = text[0]
-      if (next === undefined ? valueFollows : !(next === " " || next === "\t" || next === "\n")) {
-        return this.error("UnsupportedSyntax", "An interpolated array must be a separate argument", 0, part)
-      }
-    }
-    const length = text.length
-    let i = 0
-    while (i < length) {
+  const scan = (text: string): Result.Result<never, CommandLineError> | undefined => {
+    for (let i = 0; i < text.length; i++) {
       const char = text[i]
       const next = text[i + 1]
-
-      if (char === "\0") {
-        return this.error("NulCharacter", "The text contains a NUL character", i, part)
-      }
-
-      if (this.quote === "single") {
-        if (char === "'") this.quote = "none"
-        else this.chunks.push(char)
-        i++
-        continue
-      }
-
-      if (this.quote === "double") {
+      if (char === "\0") return error("NulCharacter", "The text contains a NUL character", i)
+      if (quote === "'") {
+        if (char === "'") quote = undefined
+        else word.push(char)
+      } else if (quote === "\"") {
         if (char === "\"") {
-          this.quote = "none"
-        } else if (char === "\\") {
-          if (next === "\n") {
-            i++
-          } else if (next === "$" || next === "`" || next === "\"" || next === "\\") {
-            this.chunks.push(next)
-            i++
-          } else {
-            this.chunks.push(char)
-          }
-        } else if (char === "$" && next !== undefined && quotedExpansionStart.test(next)) {
-          return this.error("UnsupportedSyntax", `The expansion "$${next}" needs a shell`, i, part)
+          quote = undefined
+        } else if (char === "\\" && next !== undefined && "$`\"\\\n".includes(next)) {
+          if (next !== "\n") word.push(next)
+          i++
         } else if (char === "`") {
-          return this.error("UnsupportedSyntax", "Command substitution needs a shell", i, part)
+          return error("UnsupportedSyntax", "Command substitution needs a shell", i)
+        } else if (char === "$" && next !== undefined && quotedExpansionStart.test(next)) {
+          return error("UnsupportedSyntax", `The expansion "$${next}" needs a shell`, i)
         } else {
-          this.chunks.push(char)
+          word.push(char)
         }
-        i++
-        continue
-      }
-
-      if (char === " " || char === "\t" || (char === "\n" && this.isTemplate)) {
-        const error = this.endWord(i, part)
-        if (error !== undefined) return error
-        i++
-        continue
-      }
-      if (char === "\n") {
-        return this.error("UnsupportedSyntax", "A line break separates shell commands", i, part)
-      }
-      if (char === "\\") {
-        if (next === undefined) {
-          return this.error("InvalidEscape", "A trailing backslash escapes nothing", i, part)
-        }
+      } else if (char === " " || char === "\t" || (char === "\n" && isTemplate)) {
+        const failure = endWord(i)
+        if (failure !== undefined) return failure
+      } else if (char === "\\") {
+        if (next === undefined) return error("InvalidEscape", "A trailing backslash escapes nothing", i)
         if (next !== "\n") {
-          this.append(next)
-          this.plain = false
+          word.push(next)
+          plain = false
         }
-        i += 2
-        continue
-      }
-      if (char === "'" || char === "\"") {
-        this.quote = char === "'" ? "single" : "double"
-        this.quoteStart = i
-        this.quoteLocation = this.where(i, part)
-        this.inWord = true
-        this.plain = false
         i++
-        continue
-      }
-      if (operators.includes(char)) {
-        return this.error("UnsupportedSyntax", `The operator "${char}" needs a shell`, i, part)
-      }
-      if (char === "`") {
-        return this.error("UnsupportedSyntax", "Command substitution needs a shell", i, part)
-      }
-      if (char === "$" && next !== undefined && expansionStart.test(next)) {
-        return this.error("UnsupportedSyntax", `The expansion "$${next}" needs a shell`, i, part)
-      }
-      if (globs.includes(char)) {
-        return this.error("UnsupportedSyntax", `The glob character "${char}" needs a shell`, i, part)
-      }
-      if (!this.inWord) {
-        if (char === "#") {
-          return this.error("UnsupportedSyntax", "A comment needs a shell", i, part)
+      } else if (char === "'" || char === "\"") {
+        quote = char
+        quoteOffset = i
+        quotePart = part
+        word.push("")
+        plain = false
+      } else {
+        const unsupported = unsupportedSyntax(char, next, word.length === 0)
+        if (unsupported !== undefined) return error("UnsupportedSyntax", unsupported, i)
+        if (char === "{") {
+          braceDepth++
+        } else if (char === "}") {
+          if (braceDepth > 0) braceDepth--
+        } else if (braceDepth > 0 && (char === "," || (char === "." && next === "."))) {
+          return error("UnsupportedSyntax", "Brace expansion needs a shell", i)
+        } else if (char === "=" && words.length === 0 && plain && assignmentName.test(word.join(""))) {
+          return error("UnsupportedSyntax", "A variable assignment needs a shell", i)
         }
-        if (char === "~") {
-          return this.error("UnsupportedSyntax", "Tilde expansion needs a shell", i, part)
-        }
-        if (char === "=" && next !== undefined && next !== " " && next !== "\t" && next !== "\n") {
-          return this.error("UnsupportedSyntax", "A leading \"=\" is expanded by zsh", i, part)
-        }
+        word.push(char)
       }
-      if (char === "{") {
-        this.braceDepth++
-      } else if (char === "}") {
-        if (this.braceDepth > 0) this.braceDepth--
-      } else if (this.braceDepth > 0 && (char === "," || (char === "." && next === "."))) {
-        return this.error("UnsupportedSyntax", "Brace expansion needs a shell", i, part)
-      } else if (
-        char === "=" && this.words.length === 0 && this.plain && assignmentName.test(this.chunks.join(""))
-      ) {
-        return this.error("UnsupportedSyntax", "A variable assignment needs a shell", i, part)
-      }
-      this.append(char)
-      i++
     }
     return undefined
   }
 
-  value(expression: TemplateExpression, part: number): CommandLineError | undefined {
+  const nulValue = (): Result.Result<never, CommandLineError> =>
+    Result.fail(
+      new CommandLineError({ reason: "NulCharacter", message: `Template value ${part} contains a NUL character` })
+    )
+
+  for (; part < texts.length; part++) {
+    const failure = scan(texts[part])
+    if (failure !== undefined) return failure
+    if (part === values.length) break
+    const expression = values[part]
     if (Array.isArray(expression)) {
-      if (this.inWord || this.quote !== "none") {
-        return this.error("UnsupportedSyntax", "An interpolated array must be a separate argument", 0, part)
-      }
+      // An array must stand alone: nothing may touch it on either side.
+      if (word.length > 0) return error("UnsupportedSyntax", "An interpolated array must be a separate argument", 0)
       for (const item of expression as ReadonlyArray<TemplateExpressionItem>) {
-        if (unwrapItem(item).includes("\0")) return this.nulValue(part)
-        this.words.push(Redacted.isRedacted(item) ? item as Redacted.Redacted<string> : String(item))
+        if (unwrapItem(item).includes("\0")) return nulValue()
+        words.push(Redacted.isRedacted(item) ? item as Redacted.Redacted<string> : String(item))
       }
-      this.afterArray = true
-      return undefined
+      const after = texts[part + 1][0]
+      if (after === undefined ? part + 1 < values.length : !isBlank(after)) {
+        return error("UnsupportedSyntax", "An interpolated array must be a separate argument", 0)
+      }
+    } else {
+      const item = expression as TemplateExpressionItem
+      if (unwrapItem(item).includes("\0")) return nulValue()
+      word.push(Redacted.isRedacted(item) ? item as Redacted.Redacted<string> : String(item))
+      plain = false
     }
-    const item = expression as TemplateExpressionItem
-    const value = unwrapItem(item)
-    if (value.includes("\0")) return this.nulValue(part)
-    if (Redacted.isRedacted(item)) {
-      this.secret = true
-      if (this.chunks.length === 0) this.redacted = item as Redacted.Redacted<string>
-    }
-    this.append(value)
-    this.plain = false
-    return undefined
   }
-
-  private nulValue(part: number): CommandLineError {
-    return new CommandLineError({
-      reason: "NulCharacter",
-      message: `Template value ${part} contains a NUL character`
-    })
-  }
-
-  end(offset: number, part: number): CommandLineError | undefined {
-    if (this.quote !== "none") {
-      return new CommandLineError({
-        reason: "UnterminatedQuote",
-        message: `The quote${this.quoteLocation} is not closed`,
-        offset: this.isTemplate ? undefined : this.quoteStart
-      })
-    }
-    return this.endWord(offset, part)
-  }
+  if (quote !== undefined) return error("UnterminatedQuote", "The quote is not closed", quoteOffset, quotePart)
+  const failure = endWord(isTemplate ? 0 : texts[0].length)
+  return failure ?? Result.succeed(words)
 }
