@@ -4,6 +4,7 @@ import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -301,5 +302,30 @@ describe("McpServer visibility", () => {
       const call = yield* harness.sendRequest("tools/call", { name: "DeleteUser", arguments: {} })
 
       assert.deepStrictEqual(call.error, { code: -32602, message: "Tool 'DeleteUser' not found" })
+    }))
+
+  it.effect("propagates interruption from middleware outside a visibility on lists", () =>
+    Effect.gen(function*() {
+      const targets: Array<string> = []
+      const Interrupt = McpServer.middleware()((effect, { target }) =>
+        Effect.catchCause(effect, (cause) => {
+          targets.push(target)
+          return Effect.failCause(Cause.combine(cause, Cause.interrupt(123)))
+        })
+      )
+      const registrations = McpServer.toolkit(AdminTools).pipe(
+        Layer.provide(McpServer.visibility(() => Effect.succeed(false)).combine(Interrupt).layer),
+        Layer.provide(AdminTools.toLayer({
+          DeleteUser: () => Effect.succeed("deleted"),
+          ResetPassword: () => Effect.succeed("reset")
+        }))
+      )
+      const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+      yield* harness.initialize()
+
+      const response = yield* harness.sendRequest("tools/list", {})
+
+      assert.isUndefined(response.result)
+      assert.deepStrictEqual(targets, ["DeleteUser"])
     }))
 })
