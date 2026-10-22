@@ -4732,16 +4732,13 @@ export const peel: {
   ): Effect.fn.Return<[A2, Stream<A, E, never>], E | E2, Scope.Scope | R | R2> {
     let cause: Cause.Cause<E | Cause.Done<void>> | undefined = undefined
     const originalPull = yield* Channel.toPull(self.channel)
-    const pull: Pull.Pull<
-      Arr.NonEmptyReadonlyArray<A>,
-      E
-    > = Effect.catchCause(originalPull, (cause_) => {
+    const pull = Channel.upstreamFailureToDefect(Effect.catchCause(originalPull, (cause_) => {
       cause = cause_
       return Effect.failCause(cause_)
-    })
+    }))
 
     const [result, leftover] = yield* Effect.scopedWith((scope) =>
-      sink.transform(pull as Pull.Pull<Arr.NonEmptyReadonlyArray<A>>, scope)
+      Channel.restoreUpstreamFailure<Sink.End<A2, A>, E | E2, R2>(sink.transform(pull, scope))
     )
     let stream: Stream<A, E> = cause ? empty : fromPull(Effect.succeed(originalPull))
     if (leftover) {
@@ -9179,17 +9176,19 @@ export const aggregateWithin: {
       Effect.flatMap(() => Effect.never)
     )
 
-    const sinkUpstream = Effect.suspend((): Pull.Pull<Arr.NonEmptyReadonlyArray<A | A2>, E> => {
-      if (leftover !== undefined) {
-        const chunk = leftover
-        leftover = undefined
-        return onInput(chunk)
-      }
-      if (buffer.state._tag === "Open") {
-        pullLatch.openUnsafe()
-      }
-      return Effect.flatMap(Queue.take(buffer), (arr) => arr === scheduleStep ? Cause.done() : onInput(arr))
-    })
+    const sinkUpstream = Channel.upstreamFailureToDefect(
+      Effect.suspend((): Pull.Pull<Arr.NonEmptyReadonlyArray<A | A2>, E> => {
+        if (leftover !== undefined) {
+          const chunk = leftover
+          leftover = undefined
+          return onInput(chunk)
+        }
+        if (buffer.state._tag === "Open") {
+          pullLatch.openUnsafe()
+        }
+        return Effect.flatMap(Queue.take(buffer), (arr) => arr === scheduleStep ? Cause.done() : onInput(arr))
+      })
+    )
     const emit = Effect.flatMap(([value, leftover_]: Sink.End<B, A2>) => {
       if (hasInput.isOpen()) {
         scheduleTime += clock.currentTimeMillisUnsafe() - openedAt
@@ -9206,7 +9205,11 @@ export const aggregateWithin: {
         return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
       }
       hasInput.closeUnsafe()
-      const pull = emit(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
+      const pull = emit(
+        Channel.restoreUpstreamFailure<Sink.End<B, A2>, E | E2, R2>(
+          Effect.suspend(() => sink.transform(sinkUpstream, scope))
+        )
+      )
       return buffer.state._tag === "Open" ? Effect.raceFirst(pull, stepToBuffer) : pull
     })
   }))))
@@ -11072,7 +11075,15 @@ export const run: {
 ): Effect.Effect<A2, E | E2, R | R2> =>
   Effect.scopedWith((scope) =>
     Channel.toPullScoped(self.channel, scope).pipe(
-      Effect.flatMap((upstream) => sink.transform(upstream as any, scope)),
+      Effect.flatMap((upstream) =>
+        Channel.restoreUpstreamFailure<Sink.End<A2, L>, E | E2, R2>(
+          // The upstream pull runs in this fiber, which already provides `R`.
+          sink.transform(
+            Channel.upstreamFailureToDefect(upstream) as Pull.Pull<Arr.NonEmptyReadonlyArray<A>, never, void>,
+            scope
+          )
+        )
+      ),
       Effect.map(([a]) => a)
     )
   ))

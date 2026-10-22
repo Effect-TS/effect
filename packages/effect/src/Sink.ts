@@ -2223,7 +2223,12 @@ export const catchCause: {
 ): Sink<A | A2, In, L, E2, R | R2> =>
   transformEffect(
     self,
-    Effect.catchCause((cause) => Effect.map(f(cause), (a2) => [a2 as A | A2] as const))
+    Effect.catchCause((cause) =>
+      // Upstream failures are not sink errors, so they bypass the handler.
+      Channel.hasUpstreamFailure(cause)
+        ? Effect.failCause(cause as Cause.Cause<never>)
+        : Effect.map(f(cause), (a2) => [a2 as A | A2] as const)
+    )
   ))
 
 const catch_: {
@@ -2288,7 +2293,15 @@ export const onExit: {
 ): Sink<A, In, L, E | E2, R | R2> =>
   transformEffect(
     self,
-    Effect.onExit((exit) => f(Exit.map(exit, ([a]) => a)))
+    Effect.onExit((exit) =>
+      // Upstream failures stop the sink like an interruption; they are not
+      // sink errors.
+      f(
+        Exit.isFailure(exit) && Channel.hasUpstreamFailure(exit.cause)
+          ? Exit.interrupt()
+          : Exit.map(exit, ([a]) => a)
+      )
+    )
   ))
 
 /**
