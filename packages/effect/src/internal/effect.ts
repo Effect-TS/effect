@@ -1290,11 +1290,16 @@ export const gen = <
   return suspend(() => fromIteratorUnsafe(body.call(options.self) as any))
 }
 
+// With `{ self }` the body is `pipeables[0]`, so take it out and bind it.
+const fnBody = (bodyOrOptions: Function | { readonly self: any }, pipeables: Array<Function>): Function =>
+  typeof bodyOrOptions === "function" ? bodyOrOptions : pipeables.shift()!.bind(bodyOrOptions.self)
+
 /** @internal */
 export const fnUntraced: Effect.fn.Untraced = (
-  body: Function,
+  bodyOrOptions: Function | { readonly self: any },
   ...pipeables: Array<any>
 ) => {
+  const body = fnBody(bodyOrOptions, pipeables)
   const fn = pipeables.length === 0
     ? function(this: any) {
       return suspend(() => fromIteratorUnsafe(body.apply(this, arguments)))
@@ -1354,9 +1359,7 @@ const makeFn = (
   addSpan: boolean,
   spanOptions: Tracer.SpanOptionsNoTrace | undefined
 ) => {
-  const body = typeof bodyOrOptions === "function"
-    ? bodyOrOptions
-    : (pipeables.shift()!).bind(bodyOrOptions.self)
+  const body = fnBody(bodyOrOptions, pipeables)
   const definitionName = `${name} (definition)`
   const definitionStack = defError ? fnStackCleaner(() => defError.stack) : constUndefined
   // Built outside the traced function so the frame cannot capture its `arguments`,
@@ -1401,10 +1404,11 @@ const makeFn = (
 
 /** @internal */
 export const fnUntracedEager: Effect.fn.Untraced = (
-  body: Function,
+  bodyOrOptions: Function | { readonly self: any },
   ...pipeables: Array<any>
-) =>
-  defineFunctionLength(
+) => {
+  const body = fnBody(bodyOrOptions, pipeables)
+  return defineFunctionLength(
     body.length,
     pipeables.length === 0
       ? function(this: any) {
@@ -1418,6 +1422,7 @@ export const fnUntracedEager: Effect.fn.Untraced = (
         return effect
       }
   )
+}
 
 const fromIteratorEagerUnsafe = (
   evaluate: () => Iterator<Effect.Effect<any, any, any>>
