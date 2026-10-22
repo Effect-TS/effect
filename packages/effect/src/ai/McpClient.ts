@@ -75,19 +75,7 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
  * @category services
  * @since 4.0.6
  */
-export const McpClient: Context.ServiceClass<McpClient, "effect/ai/McpClient", Client> = Context.Service<
-  McpClient,
-  Client
->()("effect/ai/McpClient")
-
-/**
- * Type of the McpClient service tag.
- *
- * @stability experimental
- * @category services
- * @since 4.0.6
- */
-export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClient", Client> {}
+export class McpClient extends Context.Service<McpClient, Client>()("effect/ai/McpClient") {}
 
 /**
  * A scoped connection to one MCP server.
@@ -672,21 +660,9 @@ export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
  * @category services
  * @since 4.0.6
  */
-export const Transport: Context.ServiceClass<Transport, "effect/ai/McpClient/Transport", Transport["Service"]> = Context
-  .Service<Transport, Transport["Service"]>()("effect/ai/McpClient/Transport")
-
-/**
- * Type of the Transport service tag.
- *
- * @stability experimental
- * @category services
- * @since 4.0.6
- */
-export interface Transport extends
-  Context.ServiceClass.Shape<"effect/ai/McpClient/Transport", {
-    readonly "~effect/ai/McpClient/Transport": "~effect/ai/McpClient/Transport"
-  }>
-{}
+export class Transport extends Context.Service<Transport, {
+  readonly "~effect/ai/McpClient/Transport": "~effect/ai/McpClient/Transport"
+}>()("effect/ai/McpClient/Transport") {}
 
 /**
  * Starts a scoped subprocess using newline-delimited JSON-RPC.
