@@ -229,6 +229,8 @@ export const quote = (word: Word, options?: Options): Result.Result<string, Comm
  * The first word is the program. Each word is quoted as in {@link quote} and
  * the words are separated by spaces.
  *
+ * - `"posix"` also quotes a program name that `sh`, `bash`, `zsh` or `fish`
+ *   reads as syntax, such as `if` or `time`.
  * - `"powershell"` starts the line with the call operator `&`, because a
  *   quoted program name is otherwise read as a string value.
  * - `"windows"` quotes the program name with the C runtime rules for program
@@ -387,8 +389,10 @@ export const display = (words: ReadonlyArray<Word>, options?: Options): string =
  * - expansions (`$NAME`, `${...}`, `$(...)`, backticks, a leading `~`, braces
  *   such as `{a,b}`, and a leading `=` that `zsh` expands);
  * - globs (`* ? [`) and comments (`#` at the start of a word);
- * - a variable assignment, or a reserved word of `sh`, `bash`, `zsh` or
- *   `fish` such as `if`, in the program position.
+ * - a variable assignment in the program position, or a program name such
+ *   as `if` or `time` that `sh`, `bash`, `zsh` or `fish` reads as syntax.
+ *   This covers more than the POSIX reserved words, so quote a program
+ *   named `time` or `and`.
  *
  * Quote such characters to pass them literally, or run the text with a shell.
  *
@@ -445,6 +449,8 @@ export const split = (
  * - The template text is split with the `"posix"` rules of {@link split}, so
  *   quotes group words and unsupported shell syntax fails. Line breaks in the
  *   text separate arguments, so a long command can span several lines.
+ * - Unlike {@link split}, the program can be a shell reserved word such as
+ *   `time`, and runs the executable with that name.
  * - Each `${}` value is inserted literally, without splitting or quote
  *   processing. Next to other text or inside quotes, it becomes part of the
  *   surrounding argument.
@@ -657,12 +663,15 @@ const reservedWords = new Set([
   "foreach",
   "function",
   "if",
+  "in",
+  "nocorrect",
   "not",
   "or",
   "repeat",
   "select",
   "switch",
   "then",
+  "time",
   "until",
   "while"
 ])
@@ -725,7 +734,7 @@ const splitPosix = (
   const endWord = (offset: number): Result.Result<never, CommandLineError> | undefined => {
     if (word.length === 0) return undefined
     const value = word.map(unwrap).join("")
-    if (words.length === 0 && plain && reservedWords.has(value)) {
+    if (!isTemplate && words.length === 0 && plain && reservedWords.has(value)) {
       return error("UnsupportedSyntax", `The reserved word "${value}" needs a shell`, offset)
     }
     words.push(
