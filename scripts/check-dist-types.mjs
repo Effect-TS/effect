@@ -48,6 +48,12 @@ try {
   Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
   execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
 
+  // Without an explicit `lib`, TypeScript includes DOM by default. Node-only
+  // consumers must not need DOM globals (see Effect-TS/effect#9785).
+  config.compilerOptions.lib = ["ES2022"]
+  Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
+  execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
+
   // Even a single subpath import must work without Node ambient types or
   // an explicit ESNext.Disposable library (see Effect-TS/effect#9314).
   Fs.writeFileSync(Path.join(dir, "index.ts"), 'export * from "effect/Option"\n')
