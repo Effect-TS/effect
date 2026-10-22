@@ -27,13 +27,13 @@ import * as SchemaGetter from "../SchemaGetter.ts"
  */
 export class Collector extends Context.Service<Collector, {
   readonly addAll: (
-    _: Iterable<globalThis.Transferable>
+    _: Iterable<unknown>
   ) => Effect.Effect<void>
-  readonly addAllUnsafe: (_: Iterable<globalThis.Transferable>) => void
-  readonly read: Effect.Effect<Array<globalThis.Transferable>>
-  readonly readUnsafe: () => Array<globalThis.Transferable>
-  readonly clearUnsafe: () => Array<globalThis.Transferable>
-  readonly clear: Effect.Effect<Array<globalThis.Transferable>>
+  readonly addAllUnsafe: (_: Iterable<unknown>) => void
+  readonly read: Effect.Effect<Array<unknown>>
+  readonly readUnsafe: () => Array<unknown>
+  readonly clearUnsafe: () => Array<unknown>
+  readonly clear: Effect.Effect<Array<unknown>>
 }>()("effect/workers/Transferable/Collector") {}
 
 /**
@@ -45,12 +45,12 @@ export class Collector extends Context.Service<Collector, {
  * @since 4.0.0
  */
 export const makeCollectorUnsafe = (): Collector["Service"] => {
-  let tranferables: Array<globalThis.Transferable> = []
-  const unsafeAddAll = (transfers: Iterable<globalThis.Transferable>): void => {
+  let tranferables: Array<unknown> = []
+  const unsafeAddAll = (transfers: Iterable<unknown>): void => {
     tranferables.push(...transfers)
   }
-  const unsafeRead = (): Array<globalThis.Transferable> => tranferables
-  const unsafeClear = (): Array<globalThis.Transferable> => {
+  const unsafeRead = (): Array<unknown> => tranferables
+  const unsafeClear = (): Array<unknown> => {
     const prev = tranferables
     tranferables = []
     return prev
@@ -84,7 +84,7 @@ export const makeCollector: Effect.Effect<Collector["Service"]> = Effect.sync(ma
  * @since 4.0.0
  */
 export const addAll = (
-  tranferables: Iterable<globalThis.Transferable>
+  tranferables: Iterable<unknown>
 ): Effect.Effect<void> =>
   Effect.contextWith((services) => {
     const collector = Context.getOrUndefined(services, Collector)
@@ -102,7 +102,7 @@ export const addAll = (
  * @since 4.0.0
  */
 export const getterAddAll = <A>(
-  f: (_: A) => Iterable<globalThis.Transferable>
+  f: (_: A) => Iterable<unknown>
 ): SchemaGetter.Getter<A, A> =>
   SchemaGetter.transformEffect((e: A) =>
     Effect.contextWith((services) => {
@@ -138,17 +138,17 @@ export interface Transferable<S extends Schema.Top> extends
  */
 export const schema: {
   <S extends Schema.Top>(
-    f: (_: S["Encoded"]) => Iterable<globalThis.Transferable>
+    f: (_: S["Encoded"]) => Iterable<unknown>
   ): (self: S) => Transferable<S>
   <S extends Schema.Top>(
     self: S,
-    f: (_: S["Encoded"]) => Iterable<globalThis.Transferable>
+    f: (_: S["Encoded"]) => Iterable<unknown>
   ): Transferable<S>
 } = dual(
   2,
   <S extends Schema.Top>(
     self: S,
-    f: (_: S["Encoded"]) => Iterable<globalThis.Transferable>
+    f: (_: S["Encoded"]) => Iterable<unknown>
   ): Transferable<S> =>
     self.annotate({
       toCodecJson: () => passthroughLink
@@ -165,6 +165,10 @@ const passthroughLink = Schema.link()(Schema.Any, {
   encode: SchemaGetter.passthrough()
 })
 
+// `ImageData` is only declared by the DOM libraries, so resolve it from the
+// consumer's globals instead of requiring DOM in Node-only projects.
+type ImageDataInstance = typeof globalThis extends { readonly ImageData: { readonly prototype: infer A } } ? A : never
+
 /**
  * Schema for transferring `ImageData` values with their pixel data buffer.
  *
@@ -172,8 +176,8 @@ const passthroughLink = Schema.link()(Schema.Any, {
  * @category schemas
  * @since 4.0.0
  */
-export const ImageData: Transferable<Schema.declare<ImageData>> = schema(
-  Schema.Any as any as Schema.declare<globalThis.ImageData>,
+export const ImageData: Transferable<Schema.declare<ImageDataInstance>> = schema(
+  Schema.Any as any as Schema.declare<ImageDataInstance>,
   (_) => [_.data.buffer]
 )
 

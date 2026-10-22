@@ -917,7 +917,7 @@ export class Protocol extends Context.Service<Protocol, {
   readonly send: (
     clientId: number,
     request: FromClientEncoded,
-    transferables?: ReadonlyArray<globalThis.Transferable>
+    transferables?: ReadonlyArray<unknown>
   ) => Effect.Effect<void, RpcClientError>
   readonly supportsAck: boolean
   readonly supportsTransferables: boolean
@@ -1608,7 +1608,7 @@ export const makeProtocolWorker = (
     const send = (
       clientId: number,
       request: FromClientEncoded,
-      transferables?: ReadonlyArray<globalThis.Transferable>
+      transferables?: ReadonlyArray<unknown>
     ) => {
       switch (request._tag) {
         case "Request": {
