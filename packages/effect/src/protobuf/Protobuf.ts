@@ -174,19 +174,21 @@ const fieldAnnotation = (number: number, options: FieldOptions | undefined): Pro
 
 /**
  * The key of the property of a {@link Message} that keeps the fields it does
- * not declare, as their bytes.
+ * not declare, as their bytes: `"$unknown"`.
  *
  * **Details**
  *
- * A symbol keeps the bytes out of `Object.keys`, `JSON.stringify`, and logs.
- * {@link getExtension} and the other extension functions read and write this
- * property.
+ * The property is present only when there are unknown fields. No field of a
+ * `.proto` file can have the key, since protobuf names cannot contain `$`.
+ * As a string key, it is part of what `Schema.toCodecJson` and
+ * `Schema.toJsonSchemaDocument` derive, as base64 bytes. {@link getExtension}
+ * and the other extension functions read and write this property.
  *
  * @stability experimental
  * @category unknown fields
  * @since 4.0.6
  */
-export const unknown: unique symbol = Symbol.for("effect/protobuf/Protobuf/unknown")
+export const unknown = "$unknown" as const
 
 const UnknownFieldsBytes = Schema.Uint8Array.annotate({ [ProtobufSchema.UNKNOWN]: true })
 
@@ -1280,7 +1282,7 @@ export const hasExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
 
 const unknownFields = (message: unknown): Uint8Array | undefined => {
   const bytes = typeof message === "object" && message !== null && Object.hasOwn(message, unknown)
-    ? (message as Record<symbol, unknown>)[unknown]
+    ? (message as Record<string, unknown>)[unknown]
     : undefined
   return bytes instanceof Uint8Array ? bytes : undefined
 }

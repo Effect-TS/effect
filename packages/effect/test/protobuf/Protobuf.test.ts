@@ -787,10 +787,17 @@ describe("Protobuf", () => {
     })
   })
 
-  it("keeps unknown fields out of the keys of a value", () => {
+  it("keeps unknown fields at $unknown, only when there are some", () => {
+    assert.deepStrictEqual(Object.keys(decode(Keeper, "0805")), ["x"])
+    assert.deepStrictEqual(Object.keys(decode(Keeper, "0805 1801")), ["x", "$unknown"])
+  })
+
+  it("derives the JSON codec and JSON Schema of Schema for a message", () => {
     const keeper = decode(Keeper, "0805 1801")
-    assert.deepStrictEqual(Object.keys(keeper), ["x"])
-    assert.strictEqual(JSON.stringify(keeper), `{"x":5}`)
+    const json = Schema.toCodecJson(Keeper)
+    assert.deepStrictEqual(Schema.encodeSync(json)(keeper), { x: 5, $unknown: "GAE=" })
+    assert.deepStrictEqual(Schema.decodeSync(json)({ x: 5, $unknown: "GAE=" }), keeper)
+    assert.doesNotThrow(() => Schema.toJsonSchemaDocument(Keeper))
   })
 
   it("writes well-known types and wrappers delimited", () => {
@@ -1015,7 +1022,7 @@ describe("Protobuf", () => {
         "malformed unknown fields",
         Keeper,
         { x: 1, [Protobuf.unknown]: bytes("ff") },
-        /premature end of input\n  at \[Symbol\(effect\/protobuf\/Protobuf\/unknown\)\]/
+        /premature end of input\n  at \["\$unknown"\]/
       ],
       [
         "unknown fields with a declared number",
