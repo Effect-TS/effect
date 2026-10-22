@@ -1,5 +1,34 @@
 # @effect/platform
 
+## 0.97.3
+
+### Patch Changes
+
+- [#9697](https://github.com/Effect-TS/effect/pull/9697) [`579c4a9`](https://github.com/Effect-TS/effect/commit/579c4a9f96418f9898282f9e7112fe2cd2686272) Thanks @effect-bot! - Log status 101 for upgraded WebSocket requests served by BunHttpServer.
+
+  `HttpApp.toHandled` now passes an `HttpServerResponse` returned by the send handler to middleware in place of the handler's response.
+
+- [#9662](https://github.com/Effect-TS/effect/pull/9662) [`ea8c9db`](https://github.com/Effect-TS/effect/commit/ea8c9db34e5bd44a8f29302bfd89a6d5f6e13df7) Thanks @effect-bot! - Build the layer eagerly in `HttpApp.toWebHandlerLayerWith`, so an aborted first request can no longer leave the handler hanging on runtimes such as Cloudflare workerd.
+
+- [#6246](https://github.com/Effect-TS/effect/pull/6246) [`ee6d1ad`](https://github.com/Effect-TS/effect/commit/ee6d1adc356c1847f208211bc8ae4b868c6e0fc0) Thanks @matheuspuel! - Preserve annotations on `Union` and multi-value `Literal` schemas in `HttpApi`, and stop a `Union` response status set on one endpoint from leaking into other endpoints that reuse the same schema.
+
+- [#6279](https://github.com/Effect-TS/effect/pull/6279) [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b) Thanks @bweis! - Avoid throwing when `Error.stackTraceLimit` is non-writable (frozen intrinsics / SES / deterministic sandboxes such as Temporal).
+
+- [#6235](https://github.com/Effect-TS/effect/pull/6235) [`486d67b`](https://github.com/Effect-TS/effect/commit/486d67ba3fe4cce226159e71c84fca3bb221eac7) Thanks @mvanhorn! - Document that `HttpClient.followRedirects` only sees redirects from `FetchHttpClient` when `FetchHttpClient.RequestInit` sets `redirect: "manual"`.
+
+- [#6203](https://github.com/Effect-TS/effect/pull/6203) [`1137a3e`](https://github.com/Effect-TS/effect/commit/1137a3e9c0274bff1828ce91e35b413b1ce26003) Thanks @Zelys-DFKH! - Decode `HttpApi` request bodies with a `+json` content type such as `application/scim+json` as JSON instead of raw bytes.
+
+- [#9294](https://github.com/Effect-TS/effect/pull/9294) [`cab7f2e`](https://github.com/Effect-TS/effect/commit/cab7f2e3493e4a3dceda27cb1b6d28c4599cb939) Thanks @effect-bot! - Keep HTTP message bodies unread during inspection.
+
+- [#9746](https://github.com/Effect-TS/effect/pull/9746) [`57b747f`](https://github.com/Effect-TS/effect/commit/57b747f0cf4ddec47f23c08553c9e7011e31f8a4) Thanks @effect-bot! - Fix multipart parsing of raw UTF-8 filenames containing characters above U+00FF, such as the narrow no-break space in macOS screenshot names, by updating `multipasta` to 0.2.9. Previously these parts were parsed as a field with an empty name.
+
+- [#6207](https://github.com/Effect-TS/effect/pull/6207) [`5aed0d3`](https://github.com/Effect-TS/effect/commit/5aed0d37260eff91d370bb27e2a955af28e05744) Thanks @Zelys-DFKH! - Flatten the `anyOf` that `OpenApi.fromApi` emits for `setPayload` unions whose members share a content type.
+
+- [#4834](https://github.com/Effect-TS/effect/pull/4834) [`fb8c80c`](https://github.com/Effect-TS/effect/commit/fb8c80cddaa649f7b6f714f3092c9ff6a5108946) Thanks @rbuckton! - Fix `HttpIncomingMessage.arrayBuffer` in `@effect/platform-node` returning a `Uint8Array` instead of an `ArrayBuffer`, and support building under TypeScript 5.9
+
+- Updated dependencies [[`23e019c`](https://github.com/Effect-TS/effect/commit/23e019c1282135f337d5d622160d570c1644fe79), [`c2ea45c`](https://github.com/Effect-TS/effect/commit/c2ea45c7c72fb6e00bb98cd4183558a90f2ed2a5), [`3120364`](https://github.com/Effect-TS/effect/commit/312036412db345332b79ccb4f827b6ad28edb195), [`358ac3f`](https://github.com/Effect-TS/effect/commit/358ac3f844ccae4af846a7acfe84c08c023f4088), [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b), [`19f6f3d`](https://github.com/Effect-TS/effect/commit/19f6f3d45cfebccc6937f676e47bf60ff31b397d), [`8c46c75`](https://github.com/Effect-TS/effect/commit/8c46c75565ea062e9cfee49b4dcfcf8dcc8e7019), [`9895b61`](https://github.com/Effect-TS/effect/commit/9895b61ff7bea168211315c775e94ee85812acc1)]:
+  - effect@3.22.4
+
 ## 0.97.2
 
 ### Patch Changes

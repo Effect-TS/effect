@@ -1,5 +1,17 @@
 # @effect/sql-drizzle
 
+## 0.51.1
+
+### Patch Changes
+
+- [#9664](https://github.com/Effect-TS/effect/pull/9664) [`ec1ef4d`](https://github.com/Effect-TS/effect/commit/ec1ef4dea62ddd35659e1c6d03877296200ec1d5) Thanks @effect-bot! - Support `db.batch` in `@effect/sql-drizzle/Sqlite`. Batched queries run in order inside a single transaction.
+
+  Fix single-row SQLite queries such as `findFirst()` and `.get()`, which returned `undefined` column values, or an empty row instead of `undefined` when nothing matched. As a result, raw `db.get(sql)` queries now return a positional array of values instead of an object, matching raw `db.all(sql)`.
+
+- Updated dependencies [[`23e019c`](https://github.com/Effect-TS/effect/commit/23e019c1282135f337d5d622160d570c1644fe79), [`c2ea45c`](https://github.com/Effect-TS/effect/commit/c2ea45c7c72fb6e00bb98cd4183558a90f2ed2a5), [`3120364`](https://github.com/Effect-TS/effect/commit/312036412db345332b79ccb4f827b6ad28edb195), [`358ac3f`](https://github.com/Effect-TS/effect/commit/358ac3f844ccae4af846a7acfe84c08c023f4088), [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b), [`19f6f3d`](https://github.com/Effect-TS/effect/commit/19f6f3d45cfebccc6937f676e47bf60ff31b397d), [`8c46c75`](https://github.com/Effect-TS/effect/commit/8c46c75565ea062e9cfee49b4dcfcf8dcc8e7019), [`cdcf89a`](https://github.com/Effect-TS/effect/commit/cdcf89a8d258c6e6449b72164fe0197a2c685de4), [`9895b61`](https://github.com/Effect-TS/effect/commit/9895b61ff7bea168211315c775e94ee85812acc1)]:
+  - effect@3.22.4
+  - @effect/sql@0.52.2
+
 ## 0.51.0
 
 ### Patch Changes

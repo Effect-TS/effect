@@ -1,5 +1,16 @@
 # @effect/sql-sqlite-do
 
+## 0.30.1
+
+### Patch Changes
+
+- [#9649](https://github.com/Effect-TS/effect/pull/9649) [`2d401a8`](https://github.com/Effect-TS/effect/commit/2d401a8e86e0a311944b74ab75233b974466d0f2) Thanks @effect-bot! - Support `withTransaction` in Durable Objects by passing `storage: ctx.storage` to `SqliteClient`. Transactions, including nested ones, then use `storage.transaction()` instead of the `BEGIN`/`COMMIT`/`ROLLBACK` statements that workerd rejects.
+
+- Updated dependencies [[`23e019c`](https://github.com/Effect-TS/effect/commit/23e019c1282135f337d5d622160d570c1644fe79), [`c2ea45c`](https://github.com/Effect-TS/effect/commit/c2ea45c7c72fb6e00bb98cd4183558a90f2ed2a5), [`3120364`](https://github.com/Effect-TS/effect/commit/312036412db345332b79ccb4f827b6ad28edb195), [`358ac3f`](https://github.com/Effect-TS/effect/commit/358ac3f844ccae4af846a7acfe84c08c023f4088), [`53f93db`](https://github.com/Effect-TS/effect/commit/53f93dbe41b7a84cdc122e29e2b7d024243d6f6b), [`19f6f3d`](https://github.com/Effect-TS/effect/commit/19f6f3d45cfebccc6937f676e47bf60ff31b397d), [`81b9d3a`](https://github.com/Effect-TS/effect/commit/81b9d3ad602132d7535086359b19f672fafbf1f2), [`8c46c75`](https://github.com/Effect-TS/effect/commit/8c46c75565ea062e9cfee49b4dcfcf8dcc8e7019), [`fb8c80c`](https://github.com/Effect-TS/effect/commit/fb8c80cddaa649f7b6f714f3092c9ff6a5108946), [`cdcf89a`](https://github.com/Effect-TS/effect/commit/cdcf89a8d258c6e6449b72164fe0197a2c685de4), [`9895b61`](https://github.com/Effect-TS/effect/commit/9895b61ff7bea168211315c775e94ee85812acc1)]:
+  - effect@3.22.4
+  - @effect/experimental@0.61.2
+  - @effect/sql@0.52.2
+
 ## 0.30.0
 
 ### Patch Changes
