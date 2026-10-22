@@ -916,6 +916,36 @@ describe("Pool", () => {
       strictEqual(pool.state.usage, 0)
     }))
 
+  it.effect("wakes the next waiter when a woken waiter has yet to take its item", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const pool = yield* Pool.make({ acquire: Effect.sync(() => ++acquired), size: 2 })
+      const owners = [yield* Scope.make(), yield* Scope.make()]
+      for (const owner of owners) yield* Pool.get(pool).pipe(Scope.provide(owner))
+      // Keeps `first` yielding, once woken, until `hold` is cleared.
+      let hold = false
+      const scheduler = yield* Scheduler.Scheduler
+      const first = yield* Effect.forkChild(
+        Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.Scheduler, {
+          executionMode: scheduler.executionMode,
+          makeDispatcher: () => scheduler.makeDispatcher(),
+          shouldYield: (fiber) => hold || scheduler.shouldYield(fiber)
+        })),
+        { startImmediately: true }
+      )
+      const second = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
+      hold = true
+      yield* Scope.close(owners[0], Exit.void)
+      yield* Effect.yieldNow
+      // `first` is awake but has not taken its item, so this wake is `second`'s.
+      yield* Scope.close(owners[1], Exit.void)
+      yield* Effect.yieldNow
+      hold = false
+      assert.isNumber(yield* Fiber.join(second))
+      yield* Fiber.interrupt(first)
+      strictEqual(pool.state.usage, 0)
+    }))
+
   it.effect("wakes the next waiter when a waiter is woken during its interruption", () =>
     Effect.gen(function*() {
       // Each budget makes the interrupted waiter yield at a different point of
