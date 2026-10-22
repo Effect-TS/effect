@@ -371,10 +371,9 @@ export class AdditionalSchemas extends Context.Service<
  *
  * Header codecs receive all HTTP headers, including undeclared transport
  * headers such as `content-type`, `content-length`, `host`, `user-agent` and
- * proxy headers. Without `HeadersParseOptions`, headers use `ParseOptions`:
- *
- * - `onExcessProperty: "error"` rejects real requests and `WithHeaders`
- *   responses with transport headers.
+ * proxy headers. Without `HeadersParseOptions`, headers use `ParseOptions`, so
+ * `onExcessProperty: "error"` rejects real requests and `WithHeaders` responses
+ * with transport headers.
  *
  * Set `HeadersParseOptions` to `{}` at the API level to use Schema defaults for
  * headers, even if an endpoint sets `ParseOptions`.
