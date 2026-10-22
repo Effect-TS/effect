@@ -1474,6 +1474,34 @@ export const Services = HttpApiGroup.make("services").add(
 ).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// tasks
+// -----------------------------------------------------------------------------
+
+/**
+ * The Engine's task endpoints, which `DockerTasks` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Tasks = HttpApiGroup.make("tasks").add(
+  HttpApiEndpoint.get("list", "/tasks", {
+    query: { filters },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.Task))
+  }),
+  HttpApiEndpoint.get("inspect", "/tasks/:id", {
+    params: id,
+    success: Schema.toCodecGoJson(DockerSchema.Task)
+  }),
+  HttpApiEndpoint.get("logs", "/tasks/:id/logs", {
+    params: id,
+    query: LogsQuery,
+    // raw or multiplexed, as the `Content-Type` says
+    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
+  })
+).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -1493,5 +1521,6 @@ export const DockerApi = HttpApi.make("docker").add(
   Images,
   Swarm,
   Nodes,
-  Services
+  Services,
+  Tasks
 )

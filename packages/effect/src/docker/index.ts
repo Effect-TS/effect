@@ -93,4 +93,10 @@ export * as DockerSystem from "./DockerSystem.ts"
  * @stability unstable
  * @since 4.0.6
  */
+export * as DockerTasks from "./DockerTasks.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
 export * as DockerVolumes from "./DockerVolumes.ts"
