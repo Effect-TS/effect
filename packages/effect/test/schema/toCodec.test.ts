@@ -1726,6 +1726,23 @@ describe("Serializers", () => {
   })
 
   describe("toCodecStringTree", () => {
+    it("shares a named reference across required and optional keys when codec derivation rebuilds it", () => {
+      const Value = Schema.Struct({ value: Schema.Unknown }).annotate({ identifier: "Value" })
+      const schema = Schema.Struct({ required: Value, optional: Schema.optionalKey(Value) })
+      const document = Schema.toRepresentation(Schema.toCodecStringTree(schema))
+
+      assert.deepStrictEqual(Object.keys(document.references), ["Value"])
+      assert.deepStrictEqual(document.representation, {
+        _tag: "Objects",
+        propertySignatures: [
+          { name: "required", type: { _tag: "Reference", $ref: "Value" }, isOptional: false, isMutable: false },
+          { name: "optional", type: { _tag: "Reference", $ref: "Value" }, isOptional: true, isMutable: false }
+        ],
+        indexSignatures: [],
+        checks: []
+      })
+    })
+
     it("exposes the source schema", () => {
       const schema = Schema.FiniteFromString
       const serializer = Schema.toCodecStringTree(schema)
