@@ -24,8 +24,6 @@ import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
-import type { Pipeable } from "../Pipeable.ts"
-import { pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import type * as ChildProcess from "../process/ChildProcess.ts"
 import { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
@@ -84,7 +82,7 @@ export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<
  * @category models
  * @since 4.0.6
  */
-export interface McpClient extends Pipeable {
+export interface McpClient {
   readonly [TypeId]: typeof TypeId
   readonly protocolVersion: ProtocolVersion
   readonly serverInfo: McpSchema.Implementation | undefined
@@ -387,9 +385,6 @@ export const make: (options: {
 
   return {
     [TypeId]: TypeId,
-    pipe() {
-      return pipeArguments(this, arguments)
-    },
     protocolVersion: version,
     serverInfo,
     instructions,

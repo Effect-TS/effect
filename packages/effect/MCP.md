@@ -477,7 +477,7 @@ export const readReport = Effect.fn("readReport")(function*(reportId: string) {
 ```
 
 Every operation also has a dual module function, so `McpClient.callTool(client, params)` and
-`client.pipe(McpClient.callTool(params))` are equivalent to `client.callTool(params)`.
+`pipe(client, McpClient.callTool(params))` are equivalent to `client.callTool(params)`.
 
 Remote input schemas are returned as JSON Schema metadata only. The client does not validate
 arguments against them; define the argument contract in your application or in a `Toolkit`.
