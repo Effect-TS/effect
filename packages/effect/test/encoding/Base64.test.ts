@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
-import { Buffer } from "node:buffer"
 
 describe("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
@@ -18,20 +17,25 @@ describe("Base64", () => {
 
   it("encodes views with and without native toBase64", () => {
     const bytes = Uint8Array.from({ length: 36 }, (_, i) => (i * 151) & 0xff)
-
-    for (const length of [31, 32, 33, 34]) {
-      const view = bytes.subarray(1, 1 + length)
-      const expected = Buffer.from(view).toString("base64")
-      assert.strictEqual(Base64.encode(view), expected)
-      // An own undefined `toBase64` selects the fallback for runtimes without it
-      assert.strictEqual(Base64.encode(Object.defineProperty(view, "toBase64", { value: undefined })), expected)
+    const detached = new Uint8Array(32)
+    structuredClone(detached.buffer, { transfer: [detached.buffer] })
+    const assertEncodes = () => {
+      for (const length of [31, 32, 33, 34]) {
+        const view = bytes.subarray(1, 1 + length)
+        assert.strictEqual(Base64.encode(view), btoa(String.fromCharCode(...view)))
+      }
+      assert.strictEqual(Base64.encode(detached), "")
     }
-  })
 
-  it("encodes a detached buffer as an empty string", () => {
-    const bytes = new Uint8Array([1, 2, 3])
-    structuredClone(bytes.buffer, { transfer: [bytes.buffer] })
-    assert.strictEqual(Base64.encode(bytes), "")
+    assertEncodes()
+    const descriptor = Object.getOwnPropertyDescriptor(Uint8Array.prototype, "toBase64")
+    if (descriptor === undefined) return
+    Reflect.deleteProperty(Uint8Array.prototype, "toBase64")
+    try {
+      assertEncodes()
+    } finally {
+      Reflect.defineProperty(Uint8Array.prototype, "toBase64", descriptor)
+    }
   })
 
   it("encodes strings and bytes", () => {
