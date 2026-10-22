@@ -997,7 +997,7 @@ export class Protocol extends Context.Service<
     readonly send: (
       clientId: number,
       response: FromServerEncoded,
-      transferables?: ReadonlyArray<unknown>
+      transferables?: ReadonlyArray<Transferable.TransferableObject>
     ) => Effect.Effect<void>
     readonly end: (clientId: number) => Effect.Effect<void>
     readonly clientIds: Effect.Effect<ReadonlySet<number>>

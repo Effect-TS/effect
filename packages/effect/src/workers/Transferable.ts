@@ -18,6 +18,30 @@ import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 
 /**
+ * A value that can be listed in a `postMessage` transfer list.
+ *
+ * Resolved from the globals of the current environment: the DOM or WebWorker
+ * `Transferable` type when `postMessage` is available, otherwise the Node.js
+ * `worker_threads` `Transferable` type through `structuredClone`, so neither
+ * library is required. The `& {}` keeps this name in emitted declarations
+ * instead of the type it resolves to while building.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.7
+ */
+export type TransferableObject =
+  & TransferListElement<
+    typeof globalThis extends { readonly postMessage: (message: any, options?: infer Options) => void } ? Options
+      : typeof globalThis extends { readonly structuredClone: (value: any, options?: infer Options) => any } ? Options
+      : never
+  >
+  & {}
+
+type TransferListElement<Options> = NonNullable<Options> extends { readonly transfer?: ReadonlyArray<infer A> } ? A
+  : unknown
+
+/**
  * Service for collecting `Transferable` objects while encoding worker messages
  * so they can be passed to `postMessage` transfer lists.
  *
@@ -27,13 +51,13 @@ import * as SchemaGetter from "../SchemaGetter.ts"
  */
 export class Collector extends Context.Service<Collector, {
   readonly addAll: (
-    _: Iterable<unknown>
+    _: Iterable<TransferableObject>
   ) => Effect.Effect<void>
-  readonly addAllUnsafe: (_: Iterable<unknown>) => void
-  readonly read: Effect.Effect<Array<unknown>>
-  readonly readUnsafe: () => Array<unknown>
-  readonly clearUnsafe: () => Array<unknown>
-  readonly clear: Effect.Effect<Array<unknown>>
+  readonly addAllUnsafe: (_: Iterable<TransferableObject>) => void
+  readonly read: Effect.Effect<Array<TransferableObject>>
+  readonly readUnsafe: () => Array<TransferableObject>
+  readonly clearUnsafe: () => Array<TransferableObject>
+  readonly clear: Effect.Effect<Array<TransferableObject>>
 }>()("effect/workers/Transferable/Collector") {}
 
 /**
@@ -45,12 +69,12 @@ export class Collector extends Context.Service<Collector, {
  * @since 4.0.0
  */
 export const makeCollectorUnsafe = (): Collector["Service"] => {
-  let tranferables: Array<unknown> = []
-  const unsafeAddAll = (transfers: Iterable<unknown>): void => {
+  let tranferables: Array<TransferableObject> = []
+  const unsafeAddAll = (transfers: Iterable<TransferableObject>): void => {
     tranferables.push(...transfers)
   }
-  const unsafeRead = (): Array<unknown> => tranferables
-  const unsafeClear = (): Array<unknown> => {
+  const unsafeRead = (): Array<TransferableObject> => tranferables
+  const unsafeClear = (): Array<TransferableObject> => {
     const prev = tranferables
     tranferables = []
     return prev
@@ -84,7 +108,7 @@ export const makeCollector: Effect.Effect<Collector["Service"]> = Effect.sync(ma
  * @since 4.0.0
  */
 export const addAll = (
-  tranferables: Iterable<unknown>
+  tranferables: Iterable<TransferableObject>
 ): Effect.Effect<void> =>
   Effect.contextWith((services) => {
     const collector = Context.getOrUndefined(services, Collector)
@@ -102,7 +126,7 @@ export const addAll = (
  * @since 4.0.0
  */
 export const getterAddAll = <A>(
-  f: (_: A) => Iterable<unknown>
+  f: (_: A) => Iterable<TransferableObject>
 ): SchemaGetter.Getter<A, A> =>
   SchemaGetter.transformEffect((e: A) =>
     Effect.contextWith((services) => {
@@ -138,17 +162,17 @@ export interface Transferable<S extends Schema.Top> extends
  */
 export const schema: {
   <S extends Schema.Top>(
-    f: (_: S["Encoded"]) => Iterable<unknown>
+    f: (_: S["Encoded"]) => Iterable<TransferableObject>
   ): (self: S) => Transferable<S>
   <S extends Schema.Top>(
     self: S,
-    f: (_: S["Encoded"]) => Iterable<unknown>
+    f: (_: S["Encoded"]) => Iterable<TransferableObject>
   ): Transferable<S>
 } = dual(
   2,
   <S extends Schema.Top>(
     self: S,
-    f: (_: S["Encoded"]) => Iterable<unknown>
+    f: (_: S["Encoded"]) => Iterable<TransferableObject>
   ): Transferable<S> =>
     self.annotate({
       toCodecJson: () => passthroughLink

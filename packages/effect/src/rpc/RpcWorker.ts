@@ -31,7 +31,7 @@ export class InitialMessage extends Context.Service<
   Effect.Effect<
     readonly [
       data: unknown,
-      transfers: ReadonlyArray<unknown>
+      transfers: ReadonlyArray<Transferable.TransferableObject>
     ]
   >
 >()("effect/rpc/RpcWorker/InitialMessage") {}
@@ -73,7 +73,7 @@ export const makeInitialMessage = <S extends Schema.Constraint, E, R2>(
   schema: S,
   effect: Effect.Effect<S["Type"], E, R2>
 ): Effect.Effect<
-  readonly [data: unknown, transferables: ReadonlyArray<unknown>],
+  readonly [data: unknown, transferables: ReadonlyArray<Transferable.TransferableObject>],
   E | Schema.SchemaError,
   S["EncodingServices"] | R2
 > => {
