@@ -255,10 +255,19 @@ const make = Effect.gen(function*() {
     return stdio as NodeChildProcess.StdioOptions
   }
 
+  // Runs a user-provided input stream into its sink, recording a failure of
+  // the source stream so that it can be surfaced by the process exit code
+  const runInputStream = (
+    stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>,
+    sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>,
+    inputFailure: Deferred.Deferred<never, PlatformError.PlatformError>
+  ) => Effect.forkScoped(Stream.run(Stream.tapError(stream, (error) => Deferred.fail(inputFailure, error)), sink))
+
   const setupAdditionalFds = Effect.fnUntraced(function*(
     command: ChildProcess.StandardCommand,
     childProcess: NodeChildProcess.ChildProcess,
-    additionalFds: ReadonlyArray<ResolvedAdditionalFd>
+    additionalFds: ReadonlyArray<ResolvedAdditionalFd>,
+    inputFailure: Deferred.Deferred<never, PlatformError.PlatformError>
   ) {
     if (additionalFds.length === 0) {
       return {
@@ -287,7 +296,7 @@ const make = Effect.gen(function*() {
 
           // If user provided a stream, pipe it into the sink
           if (config.stream) {
-            yield* Effect.forkScoped(Stream.run(config.stream, sink))
+            yield* runInputStream(config.stream, sink, inputFailure)
           }
 
           inputSinks.set(fd, sink)
@@ -328,7 +337,8 @@ const make = Effect.gen(function*() {
   const setupChildStdin = (
     command: ChildProcess.StandardCommand,
     childProcess: NodeChildProcess.ChildProcess,
-    config: ChildProcess.StdinConfig
+    config: ChildProcess.StdinConfig,
+    inputFailure: Deferred.Deferred<never, PlatformError.PlatformError>
   ) =>
     Effect.suspend(() => {
       // If the child process has a standard input stream, connect it to the
@@ -346,7 +356,7 @@ const make = Effect.gen(function*() {
 
       // If the user provided a `Stream`, run it into the stdin sink
       if (Stream.isStream(config.stream)) {
-        return Effect.as(Effect.forkScoped(Stream.run(config.stream, sink)), sink)
+        return Effect.as(runInputStream(config.stream, sink, inputFailure), sink)
       }
 
       return Effect.succeed(sink)
@@ -621,20 +631,35 @@ const make = Effect.gen(function*() {
           }
           return reref
         })
-        const stdin = yield* setupChildStdin(cmd, childProcess, stdinConfig)
+        const inputFailure = Deferred.makeUnsafe<never, PlatformError.PlatformError>()
+        const stdin = yield* setupChildStdin(cmd, childProcess, stdinConfig, inputFailure)
         const { all, stderr, stdout } = setupChildOutputStreams(cmd, childProcess, stdoutConfig, stderrConfig)
-        const { getInputFd, getOutputFd } = yield* setupAdditionalFds(cmd, childProcess, resolvedAdditionalFds)
+        const { getInputFd, getOutputFd } = yield* setupAdditionalFds(
+          cmd,
+          childProcess,
+          resolvedAdditionalFds,
+          inputFailure
+        )
         const isRunning = Effect.map(Deferred.isDone(exitSignal), (done) => !done)
-        const exitCode = Effect.flatMap(Deferred.await(exitSignal), ([code, signal]) => {
-          if (Predicate.isNotNull(code)) {
-            return Effect.succeed(ExitCode(code))
+        // A failed input stream truncates the input of the child process, so
+        // its failure takes precedence over the exit status and is surfaced
+        // without waiting for the child process to exit
+        const exitCode = Effect.flatMap(
+          Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
+          ([code, signal]) => {
+            if (Deferred.isDoneUnsafe(inputFailure)) {
+              return Deferred.await(inputFailure)
+            }
+            if (Predicate.isNotNull(code)) {
+              return Effect.succeed(ExitCode(code))
+            }
+            // If code is `null`, then `signal` must be defined. See the NodeJS
+            // documentation for the `"exit"` event on a `child_process`.
+            // https://nodejs.org/api/child_process.html#child_process_event_exit
+            const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${signal}'`)
+            return Effect.fail(toPlatformError("exitCode", error, cmd))
           }
-          // If code is `null`, then `signal` must be defined. See the NodeJS
-          // documentation for the `"exit"` event on a `child_process`.
-          // https://nodejs.org/api/child_process.html#child_process_event_exit
-          const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${signal}'`)
-          return Effect.fail(toPlatformError("exitCode", error, cmd))
-        })
+        )
         const kill = (options?: ChildProcess.KillOptions | undefined) =>
           terminateProcessGroup(cmd, childProcess, exitSignal, options)
 
