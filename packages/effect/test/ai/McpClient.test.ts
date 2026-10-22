@@ -71,7 +71,7 @@ const connect = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolAdapte
   return Context.get(context, McpClient.McpClient)
 })
 
-const findTool = Effect.fnUntraced(function*(client: McpClient.Client, name: string) {
+const findTool = Effect.fnUntraced(function*(client: McpClient.McpClient, name: string) {
   const tool = (yield* client.listTools()).find((tool) => tool.name === name)
   assert.isDefined(tool)
   return tool

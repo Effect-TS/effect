@@ -5,7 +5,7 @@ import type * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import { describe, expect, it } from "tstyche"
 
-const client = {} as McpClient.Client
+const client = {} as McpClient.McpClient
 
 const tool = McpSchema.Tool.make({ name: "read", inputSchema: { type: "object" } })
 
