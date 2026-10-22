@@ -29,3 +29,7 @@ export const byReferenceInstances = new WeakSet<object>()
 
 /** @internal */
 export const viewBytes = (view: DataView): Uint8Array => new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+
+/** @internal */
+export const isArrayBufferLike = (u: unknown): u is ArrayBuffer | SharedArrayBuffer =>
+  u instanceof ArrayBuffer || (typeof SharedArrayBuffer !== "undefined" && u instanceof SharedArrayBuffer)

@@ -416,6 +416,55 @@ describe("Equal.equals", () => {
     })
   })
 
+  for (const Buffer of [ArrayBuffer, ...(typeof SharedArrayBuffer === "undefined" ? [] : [SharedArrayBuffer])]) {
+    describe(`${Buffer.name} objects`, () => {
+      const make = (bytes: ReadonlyArray<number>) => {
+        const buffer = new Buffer(bytes.length)
+        new Uint8Array(buffer).set(bytes)
+        return buffer
+      }
+
+      it("compares bytes", () => {
+        assert.isFalse(Equal.equals(make([1, 2, 3]), make([9, 9, 9])))
+        assert.isTrue(Equal.equals(make([1, 2, 3]), make([1, 2, 3])))
+      })
+
+      it("compares byte lengths and empty buffers", () => {
+        assert.isFalse(Equal.equals(make([1]), make([1, 0])))
+        assert.isFalse(Equal.equals(make([]), make([0])))
+        assert.isTrue(Equal.equals(make([]), make([])))
+      })
+
+      it("does not equal views or records in either order", () => {
+        const buffer = make([1, 2, 3])
+        for (const other of [new Uint8Array(buffer), new DataView(buffer), {}]) {
+          assert.isFalse(Equal.equals(buffer, other))
+          assert.isFalse(Equal.equals(other, buffer))
+        }
+      })
+    })
+  }
+
+  it("does not equate ArrayBuffer and SharedArrayBuffer in either order", () => {
+    if (typeof SharedArrayBuffer === "undefined") return
+    const buffer = Uint8Array.of(1, 2, 3).buffer
+    const shared = new SharedArrayBuffer(3)
+    new Uint8Array(shared).set([1, 2, 3])
+    assert.isFalse(Equal.equals(buffer, shared))
+    assert.isFalse(Equal.equals(shared, buffer))
+  })
+
+  it("compares detached ArrayBuffers by reference without throwing", () => {
+    const self = new ArrayBuffer(3)
+    const that = new ArrayBuffer(3)
+    structuredClone(self, { transfer: [self] })
+    structuredClone(that, { transfer: [that] })
+    assert.isTrue(Equal.equals(self, self))
+    assert.isFalse(Equal.equals(self, that))
+    assert.isFalse(Equal.equals(self, new ArrayBuffer(0)))
+    assert.isFalse(Equal.equals(new ArrayBuffer(0), that))
+  })
+
   describe("DataView objects", () => {
     it("should compare viewed bytes", () => {
       const self = new DataView(Uint8Array.of(1).buffer)
