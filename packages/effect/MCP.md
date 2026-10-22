@@ -337,10 +337,11 @@ const Registrations = Layer.mergeAll(
 - Scope a visibility by providing its layer to some registrations only, as above, or branch on the
   `target` it receives. `McpServer.visibility(check, { global: true })` applies it to every
   registration.
-- On list requests only the middleware outside the innermost visibility runs, once per request for
-  every registration it wraps, with `targets` instead of `target`. `audit.combine(adminOnly)` keeps
-  `audit` off list requests and `adminOnly.combine(audit)` runs it there. Middleware wrapping no
-  visibility never runs on list requests.
+- On list requests only the middleware outside the innermost visibility runs, once for each
+  registration, with that registration as `target` and an `undefined` `payload`.
+  `audit.combine(adminOnly)` keeps `audit` off list requests and `adminOnly.combine(audit)` runs it
+  there. Middleware wrapping no visibility never runs on list requests. Cache expensive lookups,
+  such as resolving the user from a token, in the middleware itself.
 - A failure of that middleware or of a check fails the whole list request rather than hiding
   anything. A global visibility makes global middleware such as authentication run on every list
   request, so make it succeed for anonymous clients if they should still see public registrations.

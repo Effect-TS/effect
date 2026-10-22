@@ -304,33 +304,29 @@ export interface MiddlewareSuccess {
  * @category middleware
  * @since 4.0.0
  */
-export type MiddlewareMethod = MiddlewareCallOptions["method"] | MiddlewareListOptions["method"]
+export type MiddlewareMethod =
+  | "tools/call"
+  | "resources/read"
+  | "prompts/get"
+  | "completion/complete"
+  | "tools/list"
+  | "resources/list"
+  | "resources/templates/list"
+  | "prompts/list"
 
 /**
  * Request metadata passed to MCP middleware.
  *
  * **Details**
  *
- * Narrow on `method` to read `target` or `targets`.
- *
- * @see {@link MiddlewareCallOptions} for requests on a single registration
- * @see {@link MiddlewareListOptions} for list requests
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export type MiddlewareOptions = MiddlewareCallOptions | MiddlewareListOptions
-
-/**
- * Request metadata passed to MCP middleware for a request on a single
- * registration.
- *
- * **Details**
- *
  * `target` is the tool name, the requested resource URI, or the prompt name.
  * For `completion/complete` it is the prompt name, or the URI template of the
  * resource template being completed. `payload` holds the request parameters.
+ *
+ * On list requests, middleware runs only when it wraps a {@link visibility},
+ * once for each registration it wraps. `target` is then the tool name, the
+ * resource URI, the URI template or the prompt name of that registration, and
+ * `payload` is `undefined`.
  *
  * `headers` are the HTTP request headers. They are empty on stdio, on custom
  * transports and for in-process calls. `sessionId` is the `Mcp-Session-Id`
@@ -340,34 +336,10 @@ export type MiddlewareOptions = MiddlewareCallOptions | MiddlewareListOptions
  * @category middleware
  * @since 4.0.0
  */
-export interface MiddlewareCallOptions {
-  readonly method: "tools/call" | "resources/read" | "prompts/get" | "completion/complete"
+export interface MiddlewareOptions {
+  readonly method: MiddlewareMethod
   readonly target: string
   readonly payload: unknown
-  readonly requestContext: McpRequestContext["Service"]
-  readonly headers: Headers.Headers
-  readonly sessionId: string | undefined
-}
-
-/**
- * Request metadata passed to MCP middleware for a list request.
- *
- * **Details**
- *
- * Middleware runs for a list request only when it wraps a `visibility`, and
- * then once per request for every registration it wraps. `targets` holds the
- * names, URIs or URI templates of those registrations, including any that a
- * visibility then hides.
- *
- * `headers` and `sessionId` are as in {@link MiddlewareCallOptions}.
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export interface MiddlewareListOptions {
-  readonly method: "tools/list" | "resources/list" | "resources/templates/list" | "prompts/list"
-  readonly targets: ReadonlyArray<string>
   readonly requestContext: McpRequestContext["Service"]
   readonly headers: Headers.Headers
   readonly sessionId: string | undefined
@@ -575,27 +547,6 @@ export declare namespace middleware {
 }
 
 /**
- * Request metadata passed to a visibility check.
- *
- * **Details**
- *
- * On list requests `method` is the list method and `target` is the tool name,
- * the resource URI, the URI template of a resource template, or the prompt
- * name. On other requests both are as in {@link MiddlewareCallOptions}.
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export interface VisibilityOptions {
-  readonly method: MiddlewareMethod
-  readonly target: string
-  readonly requestContext: McpRequestContext["Service"]
-  readonly headers: Headers.Headers
-  readonly sessionId: string | undefined
-}
-
-/**
  * Creates middleware that hides registrations per request.
  *
  * **Details**
@@ -605,16 +556,16 @@ export interface VisibilityOptions {
  * the registration is left out of list results, and requests for it fail as if
  * it was not registered.
  *
- * The result is a `Middleware` and composes like one. Services the check reads
- * per request, other than `McpRequestContext`, must come from middleware
- * combined outside it with `combine`, or from the transport. Scope a
- * visibility to some tools by providing its layer to their toolkit only, or
- * branch on `target`.
+ * The result is a `Middleware` and composes like one. The check receives the
+ * same {@link MiddlewareOptions} as middleware. Services it reads per request,
+ * other than `McpRequestContext`, must come from middleware combined outside it
+ * with `combine`, or from the transport. Scope a visibility to some tools by
+ * providing its layer to their toolkit only, or branch on `target`.
  *
- * On a list request only the middleware outside the innermost visibility runs,
- * once per request for all registrations that share it, with
- * {@link MiddlewareListOptions}. A failure of that middleware or of a check
- * fails the whole list request. It never hides a registration.
+ * On a list request, the check and the middleware outside the innermost
+ * visibility run once for each registration. Middleware inside it does not
+ * run. A failure of that middleware or of a check fails the whole list
+ * request. It never hides a registration.
  *
  * Unlike `EnabledWhen`, a visibility runs the middleware around it on list
  * requests, and middleware sees requests for hidden registrations.
@@ -668,7 +619,7 @@ export declare namespace visibility {
    * @category middleware
    * @since 4.0.0
    */
-  export type Check<E, R> = (options: VisibilityOptions) => Effect.Effect<boolean, E, R>
+  export type Check<E, R> = (options: MiddlewareOptions) => Effect.Effect<boolean, E, R>
 
   /**
    * The overloads of `visibility`.
@@ -715,16 +666,13 @@ const failHidden = Effect.fail(
   new Hidden({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Not found" })
 ) as Effect.Effect<never>
 
-// Lets list requests run a gate's check directly.
-const visibilityChecks = new WeakMap<AnyMiddlewareFn, AnyVisibilityCheck>()
+// Marks the middleware functions created by `visibility`.
+const gates = new WeakSet<AnyMiddlewareFn>()
 
 const makeGate = (check: AnyVisibilityCheck): AnyMiddlewareFn => {
   const gate: AnyMiddlewareFn = (effect, options) =>
-    Effect.flatMap(
-      check(options as MiddlewareCallOptions),
-      (visible) => visible ? effect : failHidden
-    )
-  visibilityChecks.set(gate, check)
+    Effect.flatMap(check(options), (visible) => visible ? effect : failHidden)
+  gates.add(gate)
   return gate
 }
 
@@ -846,7 +794,9 @@ const rejectMiddlewareCause = (cause: Cause.Cause<unknown>): Effect.Effect<never
   )
 }
 
-type CallMethod = MiddlewareCallOptions["method"]
+type CallMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete"
+
+type ListMethod = Exclude<MiddlewareMethod, CallMethod>
 
 interface NotFoundErrors {
   readonly "tools/call": McpCore.ToolNotFound
@@ -880,10 +830,23 @@ const middlewareStack = (
     ? globalMiddleware
     : Arr.fromIterable(new Set([...localMiddleware, ...globalMiddleware].reverse())).reverse()
 
-const requestOptions = (context: Context.Context<never>, invocation: McpCore.McpInvocation) => {
-  const headers = Context.getOrUndefined(context, HttpServerRequest.HttpServerRequest)?.headers ?? Headers.empty
-  return { requestContext: invocation.requestContext, headers, sessionId: headers[MCP_SESSION_ID_HEADER] }
-}
+const runMiddleware = (
+  effect: Effect.Effect<any, any, any>,
+  middleware: ReadonlyArray<AnyMiddlewareFn>,
+  invocation: McpCore.McpInvocation,
+  request: Pick<MiddlewareOptions, "method" | "target" | "payload">
+): Effect.Effect<any, any, any> =>
+  Effect.withFiber((fiber) => {
+    const headers = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers ??
+      Headers.empty
+    const options: MiddlewareOptions = {
+      ...request,
+      requestContext: invocation.requestContext,
+      headers,
+      sessionId: headers[MCP_SESSION_ID_HEADER]
+    }
+    return middleware.reduce((effect, fn) => fn(effect, options), effect)
+  })
 
 // Request services override captured services; global middleware wraps local middleware.
 const makeInvoke = (
@@ -907,10 +870,7 @@ const makeInvoke = (
     const middleware = middlewareStack(localMiddleware, globalMiddleware)
     if (middleware.length > 0) {
       const handled = Effect.catchCause(effect, (cause) => Effect.failCause(Cause.annotate(cause, handlerFailure)))
-      effect = Effect.withFiber((fiber) => {
-        const options: MiddlewareCallOptions = { ...request, ...requestOptions(fiber.context, invocation) }
-        return middleware.reduce((effect, fn) => fn(effect, options), handled)
-      })
+      effect = runMiddleware(handled, middleware, invocation, request)
     }
     return provideInvocationContext(effect, invocation).pipe(
       Effect.catchCause((cause): Effect.Effect<never, E | NotFoundErrors[M] | McpCore.RequestRejected> => {
@@ -930,69 +890,34 @@ const makeInvoke = (
       })
     ) as Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected>
   }
-  return Object.assign(invoke, { localMiddleware })
-}
-
-const listed = Effect.void as unknown as Effect.Effect<MiddlewareSuccess>
-
-// On list requests only the middleware outside the innermost visibility runs.
-// Registrations with the same such middleware share one pass, inside which
-// each check runs per target and sees the services of the middleware outside it.
-const makeFilterVisible =
-  (globalMiddleware: ReadonlyArray<AnyMiddlewareFn>): McpCore.FilterVisible => (method, entries, invocation) => {
-    const global = globalMiddleware.slice()
-    const groups: Array<{ readonly stack: ReadonlyArray<AnyMiddlewareFn>; readonly indices: Array<number> }> = []
-    for (let index = 0; index < entries.length; index++) {
-      const local = (entries[index].visibility ?? []) as ReadonlyArray<AnyMiddlewareFn>
-      const stack = middlewareStack(local, global)
-      const innermost = stack.findIndex((fn) => visibilityChecks.has(fn))
-      if (innermost === -1) {
-        continue
-      }
-      const outer = stack.slice(innermost)
-      const group = groups.find(({ stack }) =>
-        stack.length === outer.length && stack.every((fn, position) => fn === outer[position])
-      )
-      if (group === undefined) {
-        groups.push({ stack: outer, indices: [index] })
-      } else {
-        group.indices.push(index)
-      }
+  // On list requests only the middleware outside the innermost visibility runs.
+  const visible = (method: ListMethod, target: string): McpCore.Visible => (invocation) => {
+    const middleware = middlewareStack(localMiddleware, globalMiddleware)
+    const innermost = middleware.findIndex((fn) => gates.has(fn))
+    if (innermost === -1) {
+      return Effect.succeed(true)
     }
-    const visible = entries.map(() => true)
-    if (groups.length === 0) {
-      return Effect.succeed(visible)
-    }
-    const passes = Effect.withFiber((fiber) => {
-      const base = requestOptions(fiber.context, invocation)
-      return Effect.forEach(groups, ({ indices, stack }) => {
-        const options: MiddlewareListOptions = {
-          ...base,
-          method,
-          targets: indices.map((index) => entries[index].target)
+    const effect = runMiddleware(
+      Effect.void,
+      middleware.slice(innermost),
+      invocation,
+      { method, target, payload: undefined }
+    ) as Effect.Effect<unknown, unknown>
+    return provideInvocationContext(effect, invocation).pipe(
+      Effect.as(true),
+      Effect.catchCause((cause) => {
+        if (Cause.hasInterrupts(cause)) {
+          return Effect.failCause(cause as Cause.Cause<never>)
         }
-        return stack.reduce((effect: Effect.Effect<MiddlewareSuccess, any, any>, fn) => {
-          const check = visibilityChecks.get(fn)
-          if (check === undefined) {
-            return fn(effect, options)
-          }
-          const checks = Effect.forEach(indices, (index) =>
-            visible[index]
-              ? Effect.map(check({ ...base, method, target: entries[index].target }), (ok) => {
-                visible[index] = ok
-              })
-              : Effect.void, { discard: true })
-          return Effect.andThen(checks, effect)
-        }, listed)
-      }, { discard: true })
-    })
-    return provideInvocationContext(passes as Effect.Effect<void, unknown>, invocation).pipe(
-      Effect.catchCause((cause) =>
-        Cause.hasInterrupts(cause) ? Effect.failCause(cause as Cause.Cause<never>) : rejectMiddlewareCause(cause)
-      ),
-      Effect.as(visible)
+        const failure = Cause.findFail(cause)
+        return Result.isSuccess(failure) && !Cause.hasDies(cause) && failure.success.error instanceof Hidden
+          ? Effect.succeed(false)
+          : rejectMiddlewareCause(cause)
+      })
     )
   }
+  return { invoke, visible }
+}
 
 const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejected.error)
 
@@ -1117,7 +1042,7 @@ export class McpServer extends Context.Service<McpServer, {
    */
   static readonly make = Effect.gen(function*() {
     const globalMiddleware: Array<AnyMiddlewareFn> = []
-    const internalCore = yield* McpCore.make(makeFilterVisible(globalMiddleware))
+    const internalCore = yield* McpCore.make
     const tools = Arr.empty<{
       readonly tool: McpTool
       readonly annotations: Context.Context<never>
@@ -1234,13 +1159,13 @@ export class McpServer extends Context.Service<McpServer, {
           tools[existingIndex] = options
         }
         const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-        const invoke = makeInvoke(options.services, globalMiddleware)
+        const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
         yield* internalCore.tools.register({
           descriptor: new McpTool({
             ...options.tool,
             title: options.tool.title ?? options.tool.annotations?.title
           }),
-          visibility: invoke.localMiddleware,
+          visible: visible("tools/list", options.tool.name),
           isVisible: (profile) =>
             enabledWhen === undefined || enabledWhen(
               {
@@ -1317,10 +1242,10 @@ export class McpServer extends Context.Service<McpServer, {
         } else {
           resources[existingIndex] = options
         }
-        const invoke = makeInvoke(options.services, globalMiddleware)
+        const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
         yield* internalCore.resources.register({
           descriptor: options.resource,
-          visibility: invoke.localMiddleware,
+          visible: visible("resources/list", options.resource.uri),
           isVisible: (profile) => {
             const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
             return enabledWhen === undefined || enabledWhen({
@@ -1348,12 +1273,12 @@ export class McpServer extends Context.Service<McpServer, {
           } else {
             resourceTemplates[existingIndex] = { template, annotations }
           }
-          const invoke = makeInvoke(services, globalMiddleware)
+          const { invoke, visible } = makeInvoke(services, globalMiddleware)
           const templateMatcher = makeUriMatcher<true>()
           templateMatcher.add(routerPath, true)
           yield* internalCore.resources.registerTemplate({
             descriptor: template,
-            visibility: invoke.localMiddleware,
+            visible: visible("resources/templates/list", template.uriTemplate),
             isVisible: (profile) => {
               const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
               return enabledWhen === undefined || enabledWhen({
@@ -1424,10 +1349,10 @@ export class McpServer extends Context.Service<McpServer, {
         } else {
           prompts[existingIndex] = options
         }
-        const invoke = makeInvoke(options.services, globalMiddleware)
+        const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
         yield* internalCore.prompts.register({
           descriptor: options.prompt,
-          visibility: invoke.localMiddleware,
+          visible: visible("prompts/list", options.prompt.name),
           isVisible: (profile) => {
             const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
             return enabledWhen === undefined || enabledWhen({
