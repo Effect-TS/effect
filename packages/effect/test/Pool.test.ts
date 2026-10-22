@@ -916,6 +916,26 @@ describe("Pool", () => {
       strictEqual(pool.state.usage, 0)
     }))
 
+  it.effect("wakes the next waiter when a waiter is woken during its interruption", () =>
+    Effect.gen(function*() {
+      // Each budget makes the interrupted waiter yield at a different point of
+      // its cleanup, so the wake lands while that cleanup is in progress.
+      for (let budget = 3; budget <= 10; budget++) {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+        const owner = yield* Scope.make()
+        yield* Pool.get(pool).pipe(Scope.provide(owner))
+        const first = yield* Effect.forkChild(
+          Pool.use(pool, Effect.succeed).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)),
+          { startImmediately: true }
+        )
+        yield* waitUntil(() => pool.state.waiters.size === 1)
+        const second = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
+        yield* Scope.close(owner, Exit.void)
+        first.interruptUnsafe()
+        strictEqual(yield* Fiber.join(second), "resource", `MaxOpsBeforeYield ${budget}`)
+      }
+    }))
+
   it.effect("use reports acquire failures", () =>
     Effect.gen(function*() {
       const pool = yield* Pool.makeWithTTL({
