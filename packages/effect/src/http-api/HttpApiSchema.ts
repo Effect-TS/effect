@@ -122,13 +122,15 @@ export type StatusLiteral = HttpStatus.Literal
  *
  * **Details**
  *
- * The status is stored with `.annotateKey({ httpApiStatus: code })`, so a named
- * schema reused with different statuses still emits a single OpenAPI component.
- * If the schema has checks or already has an `httpApiStatus` annotation, it is
- * stored with `.annotate({ httpApiStatus: code })` instead. A later
- * `.annotate({ httpApiStatus })` takes precedence, and a later check drops the
- * status. You can pass either a numeric status code (for example, `201`) or a
- * common literal name (for example, `"Created"`).
+ * Stores the status with `.annotateKey({ httpApiStatus: code })` unless the
+ * schema or any of its checks already has an ordinary `httpApiStatus`
+ * annotation, including an explicit `undefined`. In that case, uses
+ * `.annotate({ httpApiStatus: code })` instead.
+ *
+ * Ordinary status annotations take precedence over key annotations. Checks
+ * without a status annotation preserve the existing status. You can pass
+ * either a numeric code (for example, `201`) or a common literal name
+ * (for example, `"Created"`).
  *
  * @stability unstable
  * @category schemas
@@ -149,9 +151,9 @@ export function status(code: StatusLiteral): {
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? HttpStatus.fromLiteral(code) : code
   return <S extends Schema.Top>(self: S): S["Rebuild"] =>
-    self.ast.checks !== undefined || hasStatusAnnotation(self.ast)
-      ? self.annotate({ httpApiStatus: statusCode })
-      : self.annotateKey({ httpApiStatus: statusCode })
+    findHttpApiStatusAnnotation(self.ast) === undefined
+      ? self.annotateKey({ httpApiStatus: statusCode })
+      : self.annotate({ httpApiStatus: statusCode })
 }
 
 /**
@@ -1273,18 +1275,28 @@ const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
  */
 export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
-const resolveHttpApiStatusAnnotation = SchemaAST.resolveAt<number>("httpApiStatus")
-
-function hasStatusAnnotation(ast: SchemaAST.AST): boolean {
-  const annotations = SchemaAST.resolve(ast)
-  return annotations !== undefined && "httpApiStatus" in annotations
+function findHttpApiStatusAnnotation(
+  ast: SchemaAST.AST | SchemaAST.FilterGroup<any>
+): Schema.Annotations.Annotations | undefined {
+  if (ast.checks) {
+    for (let i = ast.checks.length - 1; i >= 0; i--) {
+      const check = ast.checks[i]
+      if (check.annotations && "httpApiStatus" in check.annotations) return check.annotations
+      if (check._tag === "FilterGroup") {
+        const annotations = findHttpApiStatusAnnotation(check)
+        if (annotations !== undefined) return annotations
+      }
+    }
+  }
+  const annotations = ast.annotations
+  return annotations && "httpApiStatus" in annotations ? annotations : undefined
 }
 
-// An `httpApiStatus` annotation, even `undefined`, overrides the key context set by
-// `status`, which a later check drops, matching annotations
 function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
-  if (hasStatusAnnotation(ast)) return resolveHttpApiStatusAnnotation(ast)
-  return ast.checks === undefined ? ast.context?.annotations?.httpApiStatus : undefined
+  const annotations = findHttpApiStatusAnnotation(ast)
+  // An explicit undefined clears the status instead of falling back to key context.
+  if (annotations !== undefined) return annotations.httpApiStatus as number | undefined
+  return ast.context?.annotations?.httpApiStatus
 }
 
 const defaultJsonEncoding: Encoding = {
