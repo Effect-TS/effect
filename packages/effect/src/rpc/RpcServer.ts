@@ -628,6 +628,23 @@ const applyMiddleware = <A, E, R>(
  * requests, invoking handlers, encoding responses, and managing in-flight
  * request lifetime.
  *
+ * **Details**
+ *
+ * The server consumes `Protocol.disconnects` to interrupt a disconnected
+ * client's requests, so use the `onDisconnect` option to observe disconnects
+ * instead of taking from that queue.
+ *
+ * `onDisconnect` is called for each disconnect reported by the `Protocol`,
+ * after the server has requested interruption of that client's in-flight
+ * requests. It does not wait for those requests to finish. It is not called
+ * when a client ends its input normally, or for clients still connected when
+ * the server stops.
+ *
+ * Each callback runs in its own fiber, so a slow callback does not delay
+ * cleanup for other clients, and callbacks may run concurrently. Pending
+ * callbacks are interrupted when the server stops. Failures are ignored and
+ * logged at `References.UnhandledLogLevel`.
+ *
  * @stability unstable
  * @category running
  * @since 4.0.0
@@ -641,6 +658,7 @@ export const make: <Rpcs extends Rpc.Any>(
       readonly spanAttributes?: Record<string, unknown> | undefined
       readonly concurrency?: number | "unbounded" | undefined
       readonly disableFatalDefects?: boolean | undefined
+      readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
     }
     | undefined
 ) => Effect.Effect<
@@ -658,6 +676,7 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
   }
 ) {
   const {
@@ -717,13 +736,24 @@ export const make: <Rpcs extends Rpc.Any>(
   }).pipe(Scope.provide(scope))
 
   // handle disconnects
+  const onDisconnect = options?.onDisconnect
+  const handleDisconnect = onDisconnect
+    ? (clientId: number) =>
+      Effect.andThen(
+        server.disconnect(clientId),
+        Effect.ignoreCause(Effect.suspend(() => onDisconnect(clientId)), {
+          log: "Unhandled",
+          message: "RpcServer onDisconnect hook failed"
+        }).pipe(Effect.forkIn(scope))
+      )
+    : server.disconnect
   yield* Effect.forkChild(
     Effect.whileLoop({
       while: constTrue,
       body: constant(
         Effect.flatMap(Queue.take(disconnects), (clientId) => {
           clients.delete(clientId)
-          return server.disconnect(clientId)
+          return handleDisconnect(clientId)
         })
       ),
       step: constVoid
@@ -1001,6 +1031,7 @@ export const layer = <Rpcs extends Rpc.Any>(
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
   }
 ): Layer.Layer<
   never,
@@ -1032,6 +1063,7 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly concurrency?: number | "unbounded" | undefined
   readonly disableFatalDefects?: boolean | undefined
+  readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
   readonly streamBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<
   never,
@@ -1435,6 +1467,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
     readonly streamBufferSize?: number | "unbounded" | undefined
   } | undefined
 ) => Effect.Effect<
@@ -1452,6 +1485,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
     readonly streamBufferSize?: number | "unbounded" | undefined
   }
 ) {
@@ -1479,6 +1513,7 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
   } | undefined
 ) => Effect.Effect<
   Effect.Effect<HttpServerResponse.HttpServerResponse, never, Scope.Scope | HttpServerRequest.HttpServerRequest>,
@@ -1495,6 +1530,7 @@ export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly onDisconnect?: ((clientId: number) => Effect.Effect<void>) | undefined
   }
 ) {
   const { httpEffect, protocol } = yield* makeProtocolWithHttpEffectWebsocket
