@@ -558,16 +558,32 @@ const getSlowWith = <A, E, X, R>(
   internal.uninterruptibleMask((restore) => {
     const state = self.state
     state.usage++
+    const handoff: Handoff<A, E> = { item: undefined }
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
       internal.onError(
-        restore(waitForItem(self)),
+        restore(waitForItem(self, handoff)),
         () =>
-          internal.sync(() => {
+          core.withFiber((fiber) => {
             state.usage--
+            const item = handoff.item
+            if (item === undefined) return internal.void
+            handoff.item = undefined
+            return returnCapacity(self, item, fiber)
           })
       ),
-      () => loop
+      () => handoff.item === undefined ? loop : takeHandoff
     )
+    // A release handed this waiter a slot on an item. Take the slot back off
+    // the count so leasing it counts it once.
+    const takeHandoff: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
+      const item = handoff.item!
+      handoff.item = undefined
+      if (state.isShuttingDown || state.invalidated.has(item)) {
+        return internal.flatMap(returnCapacity(self, item, fiber), () => loop)
+      }
+      item.refCount--
+      return lease(self, item, fiber, restore)
+    })
     const step: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
       if (state.isShuttingDown) {
         state.usage--
@@ -638,26 +654,61 @@ const leaseItemWith = <A, E>(
 
 const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effect<void> =>
   core.withFiber((fiber) => {
-    const state = self.state
-    item.refCount--
-    state.usage--
-    if (item.refCount === 0) {
-      item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
-    }
-    if (state.invalidated.has(item)) {
-      return invalidatePoolItem(self, item)
-    }
-    // Every release frees one slot, so it can admit one waiter. Reacting only
-    // to the saturated-to-unsaturated transition strands the rest: several
-    // leases returning at once would wake a single waiter and leave the others
-    // asleep against an item that has capacity for them. `addAvailable` is
-    // idempotent, so re-adding an available item is free.
-    if (item.refCount < self.config.concurrency) {
-      addAvailableFront(self, item)
-      wakeWaiters(self, fiber, 1)
-    }
-    return internal.void
+    self.state.usage--
+    return returnCapacity(self, item, fiber)
   })
+
+/** Gives back one slot of an item's capacity. */
+const returnCapacity = <A, E>(
+  self: Pool<A, E>,
+  item: PoolItem<A, E>,
+  fiber: Fiber.Fiber<unknown, unknown>
+): Effect.Effect<void> => {
+  const state = self.state
+  item.refCount--
+  if (item.refCount === 0) {
+    item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
+  }
+  if (state.invalidated.has(item)) {
+    return invalidatePoolItem(self, item)
+  }
+  // Every release frees one slot, so it can admit one waiter. Reacting only
+  // to the saturated-to-unsaturated transition strands the rest: several
+  // leases returning at once would wake a single waiter and leave the others
+  // asleep against an item that has capacity for them.
+  if (item.refCount < self.config.concurrency) {
+    handOff(self, item, fiber)
+  }
+  return internal.void
+}
+
+/**
+ * Hands a released item's free slots to the oldest waiters before anybody
+ * else can borrow it.
+ *
+ * Waiters resume on a later tick. Publishing the item as available and only
+ * waking a waiter would let a borrower arriving in between take it, sending
+ * the waiter to the back of the queue, where it can starve indefinitely.
+ */
+const handOff = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>, fiber: Fiber.Fiber<unknown, unknown>): void => {
+  if (reservations.has(item)) return
+  const waiters = self.state.waiters
+  for (const notify of waiters) {
+    if (item.refCount >= self.config.concurrency) break
+    const handoff = handoffs.get(notify)
+    if (handoff === undefined) continue
+    waiters.delete(notify)
+    item.refCount++
+    handoff.item = item
+    fiber.currentDispatcher.scheduleTask(notify, 0)
+  }
+  // `addAvailableFront` is idempotent, so re-adding an available item is free.
+  if (item.refCount < self.config.concurrency) {
+    addAvailableFront(self, item)
+  } else {
+    removeAvailable(self, item)
+  }
+}
 
 const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefined => {
   let item = self.state.availableHead
@@ -665,7 +716,14 @@ const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefin
   return item
 }
 
-const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
+interface Handoff<A, E> {
+  item: PoolItem<A, E> | undefined
+}
+
+// The slot a release has handed to each waiter, if any.
+const handoffs = new WeakMap<(failure?: Exit.Failure<any, any>) => void, Handoff<any, any>>()
+
+const waitForItem = <A, E>(self: Pool<A, E>, handoff: Handoff<A, E>): Effect.Effect<void, E> =>
   internal.callback((resume) => {
     const state = self.state
     if (firstHealthyAvailable(self) !== undefined || state.isShuttingDown) {
@@ -675,6 +733,7 @@ const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
       state.waiters.delete(observer)
       resume(failure ?? internal.void)
     }
+    handoffs.set(observer, handoff)
     state.waiters.add(observer)
     return internal.sync(() => {
       state.waiters.delete(observer)
