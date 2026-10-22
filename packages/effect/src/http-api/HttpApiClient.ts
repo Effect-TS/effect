@@ -845,6 +845,10 @@ const compilePath = (path: string, schema: Schema.Top | undefined) => {
   return (params: Record<string, string | undefined>) =>
     HttpApiPath.replaceParams(path, paramNames, (key, optional) => {
       const value = params[key]
+      if (value === "." || value === "..") {
+        // dot segments survive encoding and would be resolved by URL normalization
+        throw new Error(`Invalid path parameter: ${key}`)
+      }
       if (value !== undefined) return encodeURIComponent(value)
       if (optional) return undefined
       throw new Error(`Missing path parameter: ${key}`)
