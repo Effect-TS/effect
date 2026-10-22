@@ -149,13 +149,7 @@ describe("cluster cron integration", () => {
 
         const previousSecond = DateTime.toEpochMillis(DateTime.makeUnsafe(previousTicks[1].scheduled))
         const currentSecond = DateTime.toEpochMillis(DateTime.makeUnsafe(currentTicks[1].scheduled))
-        // The first recorded execution may be the initial run, so compare from the second.
-        for (let index = 2; index < previousTicks.length; index++) {
-          assert.strictEqual(
-            previousTicks[index].scheduled,
-            nextScheduled(everySecond, previousTicks[index - 1].scheduled)
-          )
-        }
+        assertScheduledFromPrevious(everySecond, previousTicks)
         assertScheduledFromExecutionTime(everySecond, currentTicks, 2)
         assert.isAtLeast(previousTicks[1].at - previousSecond, 2_000)
         assert.isAtMost(currentTicks[1].at - currentSecond, 1_000)
