@@ -51,7 +51,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assert.deepStrictEqual(output.codes, [
       {
         runtime:
-          `Schema.String.check(Schema.isPattern(new RegExp("^a+$")).annotate({ "expected": "a string matching the RegExp ^a+$" }))`,
+          `Schema.String.check(Schema.isPattern(new globalThis.RegExp("^a+$")).annotate({ "expected": "a string matching the RegExp ^a+$" }))`,
         Type: "string"
       },
       {
@@ -113,7 +113,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
 
     const runtime = SchemaRepresentation.toCodeDocument(document).codes[0].runtime
     assertInclude(runtime, `"bigint": 1n`)
-    assertInclude(runtime, `"symbol": Symbol.for("shared")`)
+    assertInclude(runtime, `"symbol": globalThis.Symbol.for("shared")`)
     assertInclude(runtime, `"nan": NaN`)
     assertInclude(runtime, `"positive": Infinity`)
     assertInclude(runtime, `"negative": -Infinity`)
