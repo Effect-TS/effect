@@ -959,7 +959,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             clientInfo: profile.clientInfo,
             initializePayload,
             requestMetadata: Predicate.isReadonlyObject(payload) && Predicate.isReadonlyObject(payload._meta)
-              ? payload._meta as Schema.JsonObject
+              ? payload._meta as Readonly<Record<string, unknown>>
               : undefined,
             getClient: RcMap.get(
               clients,
