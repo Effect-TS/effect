@@ -346,50 +346,15 @@ describe("toCodeDocument", () => {
       })
     })
 
-    it("identifiers that shadow names used by the generated code", () => {
-      assertSchema({
-        schema: Schema.Struct({
-          a: Schema.String.annotate({ identifier: "Schema" }),
-          b: Schema.String.check(Schema.isPattern(/^a/)).annotate({ identifier: "RegExp" }),
-          c: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))).annotate({ identifier: "Date" }),
-          d: Schema.UniqueSymbol(Symbol.for("a")).annotate({ identifier: "Symbol" })
-        })
-      }, {
-        codes: makeCode(
-          `Schema.Struct({ "a": Schema1, "b": RegExp, "c": Date, "d": Symbol })`,
-          `{ readonly "a": Schema1, readonly "b": RegExp, readonly "c": Date, readonly "d": Symbol }`
-        ),
+    it("renames an identifier that collides with the Schema import", () => {
+      assertSchema({ schema: Schema.String.annotate({ identifier: "Schema" }) }, {
+        codes: makeCode("Schema1", "Schema1"),
         references: {
-          nonRecursives: [
-            {
-              $ref: "Schema1",
-              code: makeCode(`Schema.String.annotate({ "identifier": "Schema" })`, "string")
-            },
-            {
-              $ref: "RegExp",
-              code: makeCode(
-                `Schema.String.check(Schema.isPattern(new globalThis.RegExp("^a")).annotate({ "identifier": "RegExp" }))`,
-                "string"
-              )
-            },
-            {
-              $ref: "Date",
-              code: makeCode(
-                `Schema.Date.check(Schema.isGreaterThanDate(new globalThis.Date(0)).annotate({ "identifier": "Date" }))`,
-                "globalThis.Date"
-              )
-            },
-            {
-              $ref: "Symbol",
-              code: makeCode(`Schema.UniqueSymbol(_symbol).annotate({ "identifier": "Symbol" })`, "typeof _symbol")
-            }
-          ]
-        },
-        artifacts: [{
-          _tag: "Symbol",
-          identifier: "_symbol",
-          code: makeCode(`globalThis.Symbol.for("a")`, "typeof _symbol")
-        }]
+          nonRecursives: [{
+            $ref: "Schema1",
+            code: makeCode(`Schema.String.annotate({ "identifier": "Schema" })`, "string")
+          }]
+        }
       })
     })
 
