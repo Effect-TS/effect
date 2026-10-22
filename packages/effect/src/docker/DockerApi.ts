@@ -59,6 +59,17 @@ export class ApiVersions extends Context.Service<ApiVersions, {
   readonly payload?: Readonly<Record<string, string>> | undefined
 }>()("effect/docker/DockerApi/ApiVersions") {}
 
+/**
+ * An endpoint annotation: Swarm serves the endpoint, so the `DockerEngine`'s
+ * client reports its 503 as `SwarmUnavailable`, which isn't retryable,
+ * instead of `Unavailable`.
+ *
+ * @internal
+ */
+export class SwarmEndpoint extends Context.Service<SwarmEndpoint, boolean>()(
+  "effect/docker/DockerApi/SwarmEndpoint"
+) {}
+
 // -----------------------------------------------------------------------------
 // errors
 // -----------------------------------------------------------------------------
@@ -929,7 +940,7 @@ export const Volumes = HttpApiGroup.make("volumes").add(
     query: { version: Schema.Number },
     payload: DockerSchema.VolumeUpdateRequest,
     success: HttpApiSchema.Empty(200)
-  }),
+  }).annotate(SwarmEndpoint, true),
   HttpApiEndpoint.delete("remove", "/volumes/:name", {
     params: name,
     query: { force: Schema.optional(Schema.Boolean) },
@@ -1203,6 +1214,101 @@ export const Images = HttpApiGroup.make("images").add(
 ).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// swarm
+// -----------------------------------------------------------------------------
+
+const SwarmSecret = Schema.RedactedFromValue(Schema.String)
+
+/**
+ * A Swarm, as the Engine's `Swarm`, with the join tokens redacted.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SwarmInfo = DockerSchema.Swarm.mapFields((fields) => ({
+  ...fields,
+  JoinTokens: Schema.optionalKey(DockerSchema.JoinTokens.mapFields((fields) => ({
+    ...fields,
+    Worker: Schema.optionalKey(SwarmSecret),
+    Manager: Schema.optionalKey(SwarmSecret)
+  })))
+}))
+
+/**
+ * A Swarm, see {@link SwarmInfo}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type SwarmInfo = typeof SwarmInfo.Type
+
+/**
+ * What joining a Swarm takes, as the Engine's `SwarmJoinRequest`, with the join token redacted.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const JoinRequest = DockerSchema.SwarmJoinRequest.mapFields((fields) => ({ ...fields, JoinToken: SwarmSecret }))
+
+/**
+ * What joining a Swarm takes, see {@link JoinRequest}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type JoinRequest = typeof JoinRequest.Type
+
+/** The unlock key the Engine answers with, redacted and labelled; a labelled schema only encodes its own label. */
+const UnlockKey = Schema.RedactedFromValue(Schema.String, { label: "docker-swarm-unlock-key" })
+
+/**
+ * The Engine's Swarm endpoints, which `DockerSwarm` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Swarm = HttpApiGroup.make("swarm").add(
+  HttpApiEndpoint.get("inspect", "/swarm", { success: Schema.toCodecGoJson(SwarmInfo) }),
+  HttpApiEndpoint.post("init", "/swarm/init", {
+    payload: DockerSchema.SwarmInitRequest,
+    // the node ID, as a JSON string
+    success: Schema.String
+  }),
+  HttpApiEndpoint.post("join", "/swarm/join", {
+    payload: JoinRequest,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("leave", "/swarm/leave", {
+    query: { force: Schema.optional(Schema.Boolean) },
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("update", "/swarm/update", {
+    query: {
+      version: Schema.Number,
+      rotateWorkerToken: Schema.optional(Schema.Boolean),
+      rotateManagerToken: Schema.optional(Schema.Boolean),
+      rotateManagerUnlockKey: Schema.optional(Schema.Boolean)
+    },
+    payload: DockerSchema.SwarmSpec,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.get("unlockKey", "/swarm/unlockkey", {
+    success: Schema.toCodecGoJson(
+      DockerSchema.UnlockKeyResponse.mapFields((fields) => ({ ...fields, UnlockKey: Schema.optionalKey(UnlockKey) }))
+    )
+  }),
+  HttpApiEndpoint.post("unlock", "/swarm/unlock", {
+    payload: Schema.Struct({ UnlockKey: SwarmSecret }),
+    success: HttpApiSchema.Empty(200)
+  })
+).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -1219,5 +1325,6 @@ export const DockerApi = HttpApi.make("docker").add(
   Exec,
   Networks,
   Volumes,
-  Images
+  Images,
+  Swarm
 )

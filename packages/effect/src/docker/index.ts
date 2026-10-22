@@ -69,6 +69,12 @@ export * as DockerSchema from "./DockerSchema.ts"
  * @stability unstable
  * @since 4.0.6
  */
+export * as DockerSwarm from "./DockerSwarm.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
 export * as DockerSystem from "./DockerSystem.ts"
 
 /**

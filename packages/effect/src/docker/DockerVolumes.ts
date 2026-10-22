@@ -65,8 +65,8 @@ export class DockerVolumes extends Context.Service<DockerVolumes, {
    * [Engine API: VolumeUpdate](https://docs.docker.com/reference/api/engine/version/v1.56/#tag/Volume/operation/VolumeUpdate).
    * `version` is the volume's current object version, from `inspect`.
    *
-   * Typical reasons: `NotFound`, `BadRequest`, `Unavailable` (not a Swarm
-   * manager), `ConnectionFailed`.
+   * Typical reasons: `NotFound`, `BadRequest`, `SwarmUnavailable` (not a
+   * Swarm manager), `ConnectionFailed`.
    */
   readonly update: (
     name: string,

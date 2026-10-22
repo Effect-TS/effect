@@ -298,7 +298,8 @@ export class NotImplemented extends Data.TaggedError("NotImplemented")<ResponseF
 }
 
 /**
- * The Engine answered 503.
+ * The Engine answered 503. A Swarm endpoint's 503 is {@link SwarmUnavailable}
+ * instead.
  *
  * @stability unstable
  * @category errors
@@ -313,6 +314,35 @@ export class Unavailable extends Data.TaggedError("Unavailable")<ResponseFields>
    */
   get isRetryable(): boolean {
     return true
+  }
+}
+
+/**
+ * A Swarm endpoint answered 503: the node can't serve Swarm requests in its
+ * current state.
+ *
+ * **Details**
+ *
+ * The Engine answers 503 when the node isn't in a Swarm, is a worker, is
+ * locked, is already a member (`init`, `join`), has expired certificates, or
+ * is still joining in the background after a `join` timed out; `message`
+ * says which. Unlike {@link Unavailable}, retrying doesn't help until the
+ * node's state changes. `DockerSystem`'s `ping` reports that state as
+ * `swarm` without a Swarm request.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export class SwarmUnavailable extends Data.TaggedError("SwarmUnavailable")<ResponseFields> {
+  /**
+   * Whether retrying may succeed: never for this reason.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  get isRetryable(): boolean {
+    return false
   }
 }
 
@@ -599,6 +629,7 @@ export type DockerErrorReason =
   | ServerError
   | NotImplemented
   | Unavailable
+  | SwarmUnavailable
   | UnexpectedStatus
   | ConnectionFailed
   | InvalidResponse

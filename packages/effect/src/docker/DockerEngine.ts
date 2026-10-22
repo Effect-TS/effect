@@ -82,7 +82,8 @@ import {
   errorMessage,
   type ErrorResponse,
   ErrorResponses,
-  errorStatus
+  errorStatus,
+  SwarmEndpoint
 } from "./DockerApi.ts"
 import * as DockerConfig from "./DockerConfig.ts"
 import {
@@ -101,6 +102,7 @@ import {
   PreconditionFailed,
   type ResponseFields,
   ServerError,
+  SwarmUnavailable,
   TooManyRequests,
   Unauthorized,
   Unavailable,
@@ -725,6 +727,22 @@ export const withStreamOperation =
 // API version gates
 // -----------------------------------------------------------------------------
 
+/**
+ * A Swarm endpoint's failure: a 503 as `SwarmUnavailable`, anything else as it is.
+ *
+ * @internal
+ */
+export const swarmError = (error: DockerError): DockerError =>
+  error.reason._tag === "Unavailable"
+    ? new DockerError({
+      reason: new SwarmUnavailable({
+        status: error.reason.status,
+        message: error.reason.message,
+        operation: error.reason.operation
+      })
+    })
+    : error
+
 /** A request field the caller set, and the API version it arrived in. */
 interface Gate {
   readonly option: string
@@ -824,7 +842,8 @@ export type ApiClient<Group extends HttpApiGroup.Constraint> = Group["endpoints"
 
 /**
  * The client of an endpoint group over the engine's `HttpClient`. Each method
- * checks the endpoint's {@link ApiVersions}, runs in a span named
+ * checks the endpoint's {@link ApiVersions}, reports a {@link SwarmEndpoint}'s
+ * 503 as `SwarmUnavailable`, runs in a span named
  * `<operations>.<endpoint>` (e.g. `docker.System.info`) with the `id` or
  * `name` path parameter as `docker.resource_id`, and fails only with
  * `DockerError`, naming that operation. A streamed success is returned as the
@@ -852,7 +871,10 @@ export const apiClient = <Group extends HttpApiGroup.Constraint>(
         Object.entries(group.endpoints as Readonly<Record<string, HttpApiEndpoint.Top>>).map(([id, endpoint]) => {
           const method = client[id]
           const name = `${operations}.${id}`
-          const mapError = toDockerError(engine, name)
+          const toError = toDockerError(engine, name)
+          const mapError = Context.getOrUndefined(endpoint.annotations as Context.Context<SwarmEndpoint>, SwarmEndpoint)
+            ? (error: MethodError) => swarmError(toError(error))
+            : toError
           const versions = Context.getOrUndefined(endpoint.annotations as Context.Context<ApiVersions>, ApiVersions)
           const streamed = Array.from(endpoint.success).some(HttpApiSchema.isStreamSchema)
           // an error status `DockerApi` doesn't declare, with the message of its body
