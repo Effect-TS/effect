@@ -17,9 +17,9 @@ describe("Base64", () => {
   })
 
   it("encodes views with and without native toBase64", () => {
-    const bytes = Uint8Array.from({ length: 1030 }, (_, i) => (i * 151) & 0xff)
+    const bytes = Uint8Array.from({ length: 36 }, (_, i) => (i * 151) & 0xff)
 
-    for (const length of [1026, 1027, 1028]) {
+    for (const length of [31, 32, 33, 34]) {
       const view = bytes.subarray(1, 1 + length)
       const expected = Buffer.from(view).toString("base64")
       assert.strictEqual(Base64.encode(view), expected)

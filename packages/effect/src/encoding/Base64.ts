@@ -147,12 +147,12 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
  */
 export const decodeString = (str: string) => Result.map(decode(str), (_) => decoder.decode(_))
 
-// The output is written as ASCII bytes and decoded once: appending each
-// character to a string builds a rope of one string per output character.
+// Appending characters builds a rope with one string per output character, so
+// only short inputs append; longer ones use native `toBase64` or one decode.
 const encodeBytes = (bytes: Uint8Array): string => {
   const length = bytes.length
-  // A detached buffer has length 0, and native `toBase64` throws on it
-  if (length === 0) return ""
+  // Detached buffers have length 0 and stay here: native `toBase64` throws on them
+  if (length < 32) return encodeShort(bytes)
   const native = bytes as Uint8Array & { readonly toBase64?: () => string }
   if (typeof native.toBase64 === "function") return native.toBase64()
   const result = new Uint8Array(Math.ceil(length / 3) * 4)
@@ -177,6 +177,30 @@ const encodeBytes = (bytes: Uint8Array): string => {
     result[j + 3] = paddingCode
   }
   return decoder.decode(result)
+}
+
+const encodeShort = (bytes: Uint8Array): string => {
+  const length = bytes.length
+  let result = ""
+  let i: number
+  for (i = 2; i < length; i += 3) {
+    result += alphabet[bytes[i - 2] >> 2]
+    result += alphabet[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)]
+    result += alphabet[((bytes[i - 1] & 0x0f) << 2) | (bytes[i] >> 6)]
+    result += alphabet[bytes[i] & 0x3f]
+  }
+  if (i === length + 1) {
+    result += alphabet[bytes[i - 2] >> 2]
+    result += alphabet[(bytes[i - 2] & 0x03) << 4]
+    result += "=="
+  }
+  if (i === length) {
+    result += alphabet[bytes[i - 2] >> 2]
+    result += alphabet[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)]
+    result += alphabet[(bytes[i - 1] & 0x0f) << 2]
+    result += "="
+  }
+  return result
 }
 
 const encoder = new TextEncoder()
