@@ -1413,7 +1413,7 @@ class QueryMachine implements Consumer {
     const prepared = this.plan.prepared
     if (prepared !== undefined) prepared.parsing = false
     if (this.aborted) this.drainDone?.()
-    else this.finish(Effect.fail(error))
+    else this.finish(Effect.fail(this.failure ?? error))
   }
 
   onMessage(message: PgProtocol.BackendMessage<unknown>): void {
