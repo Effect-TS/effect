@@ -7392,16 +7392,18 @@ const CAPITALIZED_PATTERN = "^(?:[^a-z][\\s\\S]*)?$"
  * @since 4.0.0
  */
 export function isCapitalized(annotations?: Annotations.Filter) {
-  const regExp = new globalThis.RegExp(CAPITALIZED_PATTERN)
   return makeFilter(
-    (s: string) => s.charAt(0).toUpperCase() === s.charAt(0),
+    (s: string) => {
+      const [first = ""] = s
+      return first.toUpperCase() === first
+    },
     {
       expected: "a string with the first character in uppercase",
       representation: {
         id: "effect/schema/isCapitalized",
         payload: null
       },
-      toJsonSchema: () => [{ pattern: regExp.source }, true],
+      toJsonSchema: () => [{ pattern: CAPITALIZED_PATTERN }, true],
       toCode: () => ({ runtime: "Schema.isCapitalized()" }),
       arbitraryConstraint: {
         patterns: [{ source: CAPITALIZED_PATTERN, flags: "" }]
@@ -7426,16 +7428,18 @@ const UNCAPITALIZED_PATTERN = "^(?:[^A-Z][\\s\\S]*)?$"
  * @since 4.0.0
  */
 export function isUncapitalized(annotations?: Annotations.Filter) {
-  const regExp = new globalThis.RegExp(UNCAPITALIZED_PATTERN)
   return makeFilter(
-    (s: string) => s.charAt(0).toLowerCase() === s.charAt(0),
+    (s: string) => {
+      const [first = ""] = s
+      return first.toLowerCase() === first
+    },
     {
       expected: "a string with the first character in lowercase",
       representation: {
         id: "effect/schema/isUncapitalized",
         payload: null
       },
-      toJsonSchema: () => [{ pattern: regExp.source }, true],
+      toJsonSchema: () => [{ pattern: UNCAPITALIZED_PATTERN }, true],
       toCode: () => ({ runtime: "Schema.isUncapitalized()" }),
       arbitraryConstraint: {
         patterns: [{ source: UNCAPITALIZED_PATTERN, flags: "" }]
