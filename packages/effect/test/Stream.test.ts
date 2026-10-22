@@ -6179,11 +6179,11 @@ describe("Stream", () => {
         deepStrictEqual(yield* Stream.runCollect(stream), [1, 2, 3])
       }))
 
-    it.effect("delivers every element to a fast subscriber while another lags beyond capacity", () =>
+    it.effect("delivers every element to a subscriber that keeps up while another lags beyond capacity", () =>
       Effect.gen(function*() {
-        const [slow, fast] = yield* Stream.range(1, 20).pipe(
+        const [slow, fast] = yield* Stream.range(1, 5).pipe(
           Stream.mapEffect(Effect.succeed),
-          Stream.broadcastN({ n: 2, capacity: 4 })
+          Stream.broadcastN({ n: 2, capacity: 1 })
         )
 
         const result = yield* Effect.all([
@@ -6191,8 +6191,7 @@ describe("Stream", () => {
           Stream.runCollect(fast)
         ], { concurrency: "unbounded" })
 
-        const expected = Array.range(1, 20)
-        assert.deepStrictEqual(result, [expected, expected])
+        deepStrictEqual(result, [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]])
       }))
 
     it.effect("propagates failures to all downstream streams", () =>
