@@ -968,6 +968,48 @@ describe("Stream", () => {
   })
 
   describe("error handling", () => {
+    it.effect("run - upstream failures bypass sink error handlers", () =>
+      Effect.gen(function*() {
+        const stream = Stream.make(1, 2).pipe(Stream.concat(Stream.fail("StreamError" as const)))
+        const sink = Sink.forEach((n: number) => n > 10 ? Effect.fail("SinkError" as const) : Effect.void)
+        const sinks: ReadonlyArray<Sink.Sink<unknown, number, unknown, unknown>> = [
+          Sink.mapError(sink, (error) => ({ mapped: error })),
+          Sink.catch(sink, (error) => Effect.succeed({ recovered: error })),
+          Sink.catchCause(sink, (cause) => Effect.succeed({ recovered: cause })),
+          Sink.orElse(sink, (error) => Sink.succeed({ fallback: error }))
+        ]
+        const exits = yield* Effect.forEach(sinks, (sink) => Effect.exit(Stream.run(stream, sink)))
+        deepStrictEqual(exits, sinks.map(() => Exit.fail("StreamError")))
+      }))
+
+    it.effect("run - sink onExit observes interruption on upstream failure", () =>
+      Effect.gen(function*() {
+        const events: Array<unknown> = []
+        const sink = Sink.drain.pipe(
+          Sink.ensuring(Effect.sync(() => events.push("ensuring"))),
+          Sink.onExit((exit) => Effect.sync(() => events.push(exit)))
+        )
+        const exit = yield* Stream.make(1, 2).pipe(
+          Stream.concat(Stream.fail("StreamError" as const)),
+          Stream.run(sink),
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("StreamError"))
+        deepStrictEqual(events, ["ensuring", Exit.interrupt()])
+      }))
+
+    it.effect("pipeThrough - upstream failures bypass sink error handlers", () =>
+      Effect.gen(function*() {
+        const sink = Sink.forEach((n: number) => n > 10 ? Effect.fail("SinkError" as const) : Effect.void)
+        const exit = yield* Stream.make(1, 2).pipe(
+          Stream.concat(Stream.fail("StreamError" as const)),
+          Stream.pipeThrough(Sink.catchCause(sink, (cause) => Effect.succeed({ recovered: cause }))),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("StreamError"))
+      }))
+
     it.effect("catch", () =>
       Effect.gen(function*() {
         let error: string | undefined = undefined
@@ -2862,6 +2904,18 @@ describe("Stream", () => {
   })
 
   describe("aggregateWithin", () => {
+    it.effect("upstream failures bypass sink error handlers", () =>
+      Effect.gen(function*() {
+        const sink = Sink.forEach((n: number) => n > 10 ? Effect.fail("SinkError" as const) : Effect.void)
+        const exit = yield* Stream.make(1, 2).pipe(
+          Stream.concat(Stream.fail("StreamError" as const)),
+          Stream.aggregate(Sink.mapError(sink, (error) => ({ mapped: error }))),
+          Stream.runCollect,
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail("StreamError"))
+      }))
+
     it.effect("does not step the schedule while upstream is idle", () =>
       Effect.gen(function*() {
         let steps = 0
@@ -5249,6 +5303,18 @@ describe("Stream", () => {
           Effect.scoped
         )
         deepStrictEqual(result, Exit.fail("fail"))
+      }))
+
+    it.effect("peel - upstream failures bypass sink error handlers", () =>
+      Effect.gen(function*() {
+        const sink = Sink.forEach((n: number) => n > 10 ? Effect.fail("SinkError" as const) : Effect.void)
+        const exit = yield* Stream.make(1, 2).pipe(
+          Stream.concat(Stream.fail("StreamError" as const)),
+          Stream.peel(Sink.mapError(sink, (error) => ({ mapped: error }))),
+          Effect.exit,
+          Effect.scoped
+        )
+        assertExitFailure(exit, Cause.fail("StreamError"))
       }))
   })
 

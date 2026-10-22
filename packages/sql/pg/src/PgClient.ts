@@ -203,7 +203,7 @@ export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
   readonly maxConnections?: number | undefined
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
-  /** Bounds the wait for a free pooled connection. See `PgPool.Config.acquireTimeout`. */
+  /** Bounds how long acquiring a pooled connection takes. See `PgPool.Config.acquireTimeout`. */
   readonly acquireTimeout?: Duration.Input | undefined
 }
 

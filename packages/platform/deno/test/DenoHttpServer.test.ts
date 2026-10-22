@@ -477,7 +477,7 @@ describe("DenoHttpServer", () => {
       )
       assert.strictEqual(yield* HttpClient.get("/child/1").pipe(Effect.flatMap((_) => _.text)), "/1")
       assert.strictEqual(yield* HttpClient.get("/child").pipe(Effect.flatMap((_) => _.text)), "/")
-      assert.strictEqual(yield* HttpClient.get("/child?foo=bar").pipe(Effect.flatMap((_) => _.text)), "?foo=bar")
+      assert.strictEqual(yield* HttpClient.get("/child?foo=bar").pipe(Effect.flatMap((_) => _.text)), "/?foo=bar")
       assert.strictEqual(yield* HttpClient.get("/child/").pipe(Effect.flatMap((_) => _.text)), "/")
       assert.strictEqual(
         yield* HttpClient.get("/child1/", { urlParams: { foo: "bar" } }).pipe(Effect.map((_) => _.status)),

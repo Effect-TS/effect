@@ -158,7 +158,7 @@ it.effect("test failure as Exit", () =>
 
 ### Using the TestClock
 
-When writing tests with `it.effect`, Effect test services are automatically provided. These include the [`TestClock`](https://effect.website/docs/guides/testing/testclock), which allows you to simulate the passage of time in your tests.
+When writing tests with `it.effect`, Effect test services are automatically provided. These include the [`TestClock`](https://effect.website/docs/testing/testclock/), which allows you to simulate the passage of time in your tests.
 
 **Note**: If you want to use the real-time clock (instead of the simulated one), you can switch to `it.live`.
 

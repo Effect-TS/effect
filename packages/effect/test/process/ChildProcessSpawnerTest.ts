@@ -4,7 +4,7 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
-import type * as PlatformError from "effect/PlatformError"
+import * as PlatformError from "effect/PlatformError"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
@@ -16,6 +16,17 @@ export interface Options {
   readonly processGroups: boolean
   readonly additionalFds?: boolean | undefined
 }
+
+const sourceError = PlatformError.systemError({
+  _tag: "Unknown",
+  module: "FileSystem",
+  method: "read",
+  description: "source failed"
+})
+
+const failingInput = Stream.make(new TextEncoder().encode("first chunk\n")).pipe(
+  Stream.concat(Stream.fail(sourceError))
+)
 
 // Helper to collect stream output into a string
 const decodeByteStream = Effect.fnUntraced(
@@ -789,6 +800,22 @@ export const suite = (
             assert.deepStrictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, input)
           }))
+
+        it.effect("fails the command when the stdin stream fails", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("cat", { stdin: failingInput })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
+          }))
+
+        it.effect("fails the command when the stdin stream fails and stdin is kept open", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("cat", { stdin: { stream: failingInput, endOnDone: false } })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
+          }))
       })
 
       describe.skipIf(options.additionalFds === false)("additionalFds", () => {
@@ -842,6 +869,17 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(stdout, inputData)
+          }))
+
+        it.effect("fails the command when an input fd stream fails", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("sh", ["-c", "cat <&3"], {
+              stdin: "ignore",
+              additionalFds: { fd3: { type: "input", stream: failingInput } }
+            })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
           }))
 
         it.effect("should handle multiple additional fds", () =>

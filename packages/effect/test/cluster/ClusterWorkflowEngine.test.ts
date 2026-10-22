@@ -1778,28 +1778,37 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }))
       const ChildLayer = Child.toLayer(() => DurableDeferred.await(ChildGate))
       yield* Effect.gen(function*() {
-        const sharding = yield* Sharding.Sharding
-        const settle = Effect.gen(function*() {
-          for (let i = 0; i < 20; i++) {
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-          }
-        })
+        const driver = yield* MessageStorage.MemoryDriver
+        const parentReply = (tag: "run" | "resume") =>
+          Array.from(driver.requests.values()).find(({ envelope }) =>
+            envelope._tag === "Request" && envelope.tag === tag &&
+            envelope.address.entityType === `Workflow/${Parent._tag}`
+          )?.replies.find((reply) => reply._tag === "WithExit")
         yield* TestClock.adjust(1)
         const executionId = yield* Parent.execute({}, { discard: true })
         const childId = yield* Child.executionId({})
         yield* pollUntil(Parent, executionId, "Suspended")
+        const suspended = parentReply("run")
+        assert.isDefined(suspended)
 
         yield* DurableDeferred.succeed(ChildGate, {
           token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
           value: void 0
         })
         yield* pollUntil(Child, childId, "Complete")
-        yield* settle
-        assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
+        // The completed child wakes the parent through its resume RPC. Once
+        // that wake has replied, a reset of the failure suspension would
+        // already have replaced the run reply.
+        yield* pollStorageUntil(() => parentReply("resume") !== undefined, "the child must wake its parent")
+        assert.strictEqual(parentReply("run")?.id, suspended.id, "only an explicit resume may reset the suspension")
+        assert.strictEqual(failures, 1)
 
+        // Resume resets the suspended reply, so the next Suspended reply
+        // belongs to the replay. Wait for it rather than a fixed number of
+        // steps: the replay derives the child execution id with
+        // crypto.subtle, which resolves outside of the TestClock.
         yield* Parent.resume(executionId)
-        yield* settle
+        yield* pollUntil(Parent, executionId, "Suspended")
         assert.strictEqual(failures, 2)
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))

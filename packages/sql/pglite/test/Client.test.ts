@@ -52,7 +52,7 @@ describe("PgliteClient", { concurrent: false }, () => {
         }`.compile()
         assert.strictEqual(
           query,
-          `UPDATE people SET name = data.name FROM (values ($1),($2)) AS data("name")`
+          `UPDATE people SET name = data.name FROM (values ($1),($2)) AS "data"("name")`
         )
         assert.deepStrictEqual(params, ["Tim", "John"])
       }))

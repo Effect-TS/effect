@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 Preserve shared references in `Schema.toCodecJson` and `Schema.toCodecStringTree`, and retain `httpApiStatus` annotations when adding checks.
