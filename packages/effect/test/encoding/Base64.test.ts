@@ -16,8 +16,8 @@ describe("Base64", () => {
   })
 
   it("encodes views with and without native toBase64", () => {
-    const bytes = Uint8Array.from({ length: 36 }, (_, i) => (i * 151) & 0xff)
-    const views = [31, 32, 33, 34].map((length) => bytes.subarray(1, 1 + length))
+    const bytes = Uint8Array.from({ length: 132 }, (_, i) => (i * 151) & 0xff)
+    const views = [31, 32, 33, 34, 127, 128, 129, 130].map((length) => bytes.subarray(1, 1 + length))
     const detached = new Uint8Array(32)
     structuredClone(detached.buffer, { transfer: [detached.buffer] })
     const reference = (view: Uint8Array) => btoa(String.fromCharCode(...view))
