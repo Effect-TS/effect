@@ -73,7 +73,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
         )
       }`.compile()
       expect(query).toEqual(
-        `UPDATE people SET name = data.name FROM (values ($1),($2)) AS data("name")`
+        `UPDATE people SET name = data.name FROM (values ($1),($2)) AS "data"("name")`
       )
       expect(params).toEqual(["Tim", "John"])
     }))
@@ -88,7 +88,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
         ).returning("*")
       }`.compile()
       expect(query).toEqual(
-        `UPDATE people SET name = data.name FROM (values ($1),($2)) AS data("name") RETURNING *`
+        `UPDATE people SET name = data.name FROM (values ($1),($2)) AS "data"("name") RETURNING *`
       )
       expect(params).toEqual(["Tim", "John"])
     }))
@@ -245,7 +245,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       } WHERE created_at > ${now}`.compile()
       assert.strictEqual(
         query,
-        `UPDATE people SET json = data.json FROM (values ($1),($2)) AS data("json") WHERE created_at > $3`
+        `UPDATE people SET json = data.json FROM (values ($1),($2)) AS "data"("json") WHERE created_at > $3`
       )
       assert.lengthOf(params, 3)
     }))

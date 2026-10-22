@@ -519,6 +519,9 @@ export interface Constructor {
    * **Gotchas**
    *
    * Not supported in sqlite.
+   *
+   * The alias is escaped as an identifier and is not passed through name
+   * transforms.
    */
   readonly updateValues: (
     value: ReadonlyArray<Record<string, unknown>>,
@@ -822,6 +825,10 @@ export type CompilerOptions<C extends Custom<any, any, any, any> = any> = {
   readonly dialect: Dialect
   readonly placeholder: (index: number, value: unknown) => string
   readonly onIdentifier: (value: string, withoutTransform: boolean) => string
+  /**
+   * Renders `updateValues`. The `alias` is already escaped with
+   * `onIdentifier(alias, true)` and must be inserted as is.
+   */
   readonly onRecordUpdate: (
     placeholders: string,
     alias: string,
@@ -1085,7 +1092,7 @@ const CompilerProto = {
           }
           const [s, b] = opts.onRecordUpdate(
             placeholders,
-            segment.alias,
+            opts.onIdentifier(segment.alias, true),
             generateColumns(keys, opts.onIdentifier, withoutTransform),
             values,
             typeof segment.returningIdentifier === "string"

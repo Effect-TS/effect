@@ -65,6 +65,27 @@ describe("Statement", () => {
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
 
+  it("escapes updateValues aliases without transforming them", () => {
+    const compiler = Statement.makeCompiler({
+      dialect: "pg",
+      placeholder: (index) => `$${index}`,
+      onIdentifier: (value, withoutTransform) => Statement.defaultEscape("\"")(withoutTransform ? value : `t_${value}`),
+      onRecordUpdate: (placeholders, alias, columns, values) => [
+        `(values ${placeholders}) AS ${alias}${columns}`,
+        values.flat()
+      ],
+      onCustom: () => ["", []]
+    })
+    const fragment = Statement.fragment([
+      Statement.recordUpdateHelper([{ name: "Ada" }], "My\"Data --")
+    ])
+
+    assert.deepStrictEqual(compiler.compile(fragment, false), [
+      "(values ($1)) AS \"My\"\"Data --\"(\"t_name\")",
+      ["Ada"]
+    ])
+  })
+
   it("renumbers a cached returning fragment", () => {
     const sql = Statement.make(
       Effect.void as any,
