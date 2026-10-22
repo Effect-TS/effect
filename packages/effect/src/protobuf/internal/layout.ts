@@ -34,6 +34,8 @@ export interface Scalar {
 /** @internal */
 export interface Enum {
   readonly _tag: "Enum"
+  // The full name, such as `google.protobuf.NullValue`.
+  readonly name: string
   readonly wireType: typeof Wire.WIRE_VARINT
   readonly toNumber: ReadonlyMap<unknown, number>
   readonly fromNumber: ReadonlyMap<number, unknown>
@@ -80,6 +82,17 @@ export interface Converted {
  */
 export type Absent = "zero" | "omit" | "required"
 
+/**
+ * The names of a field in JSON: its JSON name, and the name in its `.proto`
+ * file, which parsers accept as well.
+ *
+ * @internal
+ */
+export interface Names {
+  readonly json: string
+  readonly proto: string
+}
+
 interface SlotBase {
   readonly key: PropertyKey
   readonly absent: Absent
@@ -92,6 +105,7 @@ interface SlotBase {
 export interface Singular extends SlotBase {
   readonly _tag: "Singular"
   readonly number: number
+  readonly names: Names
   readonly type: Type
   readonly delimited: boolean
 }
@@ -100,6 +114,7 @@ export interface Singular extends SlotBase {
 export interface Repeated extends SlotBase {
   readonly _tag: "Repeated"
   readonly number: number
+  readonly names: Names
   readonly element: Type
   readonly packed: boolean
   readonly delimited: boolean
@@ -109,6 +124,7 @@ export interface Repeated extends SlotBase {
 export interface MapField extends SlotBase {
   readonly _tag: "Map"
   readonly number: number
+  readonly names: Names
   readonly keyType: Scalar
   // The wire value of a key of a value to encode, or `undefined` for a key that
   // the key schema rejects, which is left out, as `Schema.Record` leaves it.
@@ -129,6 +145,7 @@ export interface Case {
   readonly _tag: "Case"
   readonly oneof: Oneof
   readonly number: number
+  readonly names: Names
   readonly type: Type
   readonly delimited: boolean
   // The `_tag` of the case.
@@ -226,7 +243,7 @@ export const isPackable = (type: Type): type is Scalar | Enum => {
  *
  * @internal
  */
-export const makeEnum = (numbers: ReadonlyArray<readonly [string, number]>, open: boolean): Enum => {
+export const makeEnum = (name: string, numbers: ReadonlyArray<readonly [string, number]>, open: boolean): Enum => {
   const toNumber = new Map<unknown, number>()
   const fromNumber = new Map<number, unknown>()
   for (const [value, number] of numbers) {
@@ -234,7 +251,7 @@ export const makeEnum = (numbers: ReadonlyArray<readonly [string, number]>, open
     if (!fromNumber.has(number)) fromNumber.set(number, value)
   }
   const zero = fromNumber.has(0) ? fromNumber.get(0) : open ? 0 : numbers[0][0]
-  return { _tag: "Enum", wireType: Wire.WIRE_VARINT, toNumber, fromNumber, open, zero }
+  return { _tag: "Enum", name, wireType: Wire.WIRE_VARINT, toNumber, fromNumber, open, zero }
 }
 
 /** @internal */
@@ -363,6 +380,18 @@ const addField = (message: Message, field: Field, describe: string): void => {
 export const finishMessage = (message: Message): Message => {
   message.fields.sort((a, b) => a.number - b.number)
   return message
+}
+
+/**
+ * The names of a field whose property key is `key`, unless its annotation
+ * names it otherwise: `key` in JSON, and `key` in snake_case in its `.proto`
+ * file.
+ *
+ * @internal
+ */
+export const fieldNames = (key: PropertyKey, name: string | undefined, jsonName: string | undefined): Names => {
+  const json = typeof key === "string" ? key : "value"
+  return { json: jsonName ?? json, proto: name ?? json.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`) }
 }
 
 /** @internal */

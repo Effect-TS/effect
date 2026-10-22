@@ -138,7 +138,7 @@ const compileSlot = (
   where: string
 ): L.Singular | L.Repeated | L.MapField => {
   const ast = resolved.ast
-  const presence = { key, guarded: isGuarded(key) }
+  const presence = { key, guarded: isGuarded(key), names: L.fieldNames(key, annotation.name, annotation.jsonName) }
   const absent: L.Absent | undefined = optional ? "omit" : undefined
   const utf8 = annotation.validateUtf8 ?? true
 
@@ -286,6 +286,7 @@ const compileOneof = (c: Compiler, key: PropertyKey, ast: SchemaAST.Union, where
       _tag: "Case",
       oneof,
       number: annotation.number,
+      names: L.fieldNames(literal.literal, annotation.name, annotation.jsonName),
       type,
       delimited: annotation.delimited === true,
       tag: literal.literal

@@ -46,19 +46,15 @@
  */
 import * as Arr from "../Array.ts"
 import * as Bytes from "../Bytes.ts"
-import * as Effect from "../Effect.ts"
 import * as InternalRecord from "../internal/record.ts"
-import * as InternalParser from "../internal/schema/parser.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
-import * as SchemaIssue from "../SchemaIssue.ts"
-import * as SchemaParser from "../SchemaParser.ts"
-import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Codec from "./internal/codec.ts"
 import * as Compile from "./internal/compile.ts"
 import * as Layout from "./internal/layout.ts"
 import * as ProtobufSchema from "./internal/schema.ts"
+import * as Transform from "./internal/transform.ts"
 import * as Wire from "./internal/wire.ts"
 import * as Wkt from "./internal/wkt.ts"
 
@@ -434,7 +430,7 @@ const makeEnum = (
     }
     numbers.push([key, number])
   }
-  return [Schema.Literals(keys), Layout.makeEnum(numbers, open)]
+  return [Schema.Literals(keys), Layout.makeEnum(name, numbers, open)]
 }
 
 const Map_ = <K extends Schema.String | Schema.Number, V extends Schema.Constraint>(
@@ -1108,12 +1104,26 @@ export interface Extension<in out E extends Schema.Top, S extends Schema.Codec<a
   readonly extendee: E
   readonly number: number
   readonly schema: S
+  // The full name of the extension, such as `acme.v1.priority`.
+  readonly name: string | undefined
+  /** @internal */
+  readonly layout: Layout.Root
   /** @internal */
   readonly codec: Schema.Codec<S["Type"], Uint8Array<ArrayBuffer>>
   /** @internal */
   readonly messageSet: boolean
   /** @internal */
   readonly annotation: ProtobufSchema.FieldAnnotation
+}
+
+// The options of `extension`.
+interface ExtensionOptions extends Omit<FieldOptions, "name" | "jsonName"> {
+  /**
+   * The full name of the extension, such as `acme.v1.priority`. The JSON
+   * mapping writes the extension under it, as `"[acme.v1.priority]"`, and
+   * leaves out extensions without one.
+   */
+  readonly name?: string | undefined
 }
 
 /**
@@ -1155,7 +1165,7 @@ export const extension = <E extends Schema.Top, S extends Schema.Codec<any, any>
   extendee: E,
   number: number,
   schema: S,
-  options?: FieldOptions
+  options?: ExtensionOptions
 ): Extension<E, S> => {
   ProtobufSchema.checkFieldNumber(number)
   // A `Protobuf.Message` keeps its unknown fields, where extensions live.
@@ -1168,15 +1178,28 @@ export const extension = <E extends Schema.Top, S extends Schema.Codec<any, any>
   const messageSet = extendeeAnnotations[ProtobufSchema.MESSAGE_SET] === true
   // The value of a MessageSet item is the bytes of a message; that of any other
   // extension is a field.
-  if (messageSet && (ProtobufSchema.resolveEncoded(schema.ast).ast._tag !== "Objects" || options !== undefined)) {
+  if (
+    messageSet &&
+    (ProtobufSchema.resolveEncoded(schema.ast).ast._tag !== "Objects" ||
+      (options !== undefined && Object.keys(options).some((key) => key !== "name")))
+  ) {
     throw new Error(`Protobuf layout: ${where} extends a MessageSet, whose extensions are messages without options`)
   }
-  const annotation = fieldAnnotation(number, options)
+  const annotation = fieldAnnotation(number, { ...options, name: undefined })
   const root = messageSet ? Compile.compile(schema.ast) : Compile.compileField(schema.ast, annotation, where)
   const codec = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(schema, makeTransformation(Codec.makeCodec(root), undefined))
+    Schema.decodeTo(schema, Transform.makeTransformation(Codec.makeCodec(root), undefined))
   )
-  return { extendee, number, schema, codec, messageSet, annotation } as Extension<E, S>
+  return {
+    extendee,
+    number,
+    schema,
+    name: options?.name,
+    layout: root,
+    codec,
+    messageSet,
+    annotation
+  } as Extension<E, S>
 }
 
 /**
@@ -1293,7 +1316,7 @@ const selectExtension = (bytes: Uint8Array, extension: Extension<any, any>, keep
       if (matches === keep) chunks.push(bytes.subarray(start, r.pos))
     }
   } catch (e) {
-    throw e instanceof Wire.WireError ? new Schema.SchemaError(toIssue(e, SchemaAST.defaultParseOptions)) : e
+    throw e instanceof Wire.WireError ? new Schema.SchemaError(Transform.toIssue(e, SchemaAST.defaultParseOptions)) : e
   }
   return Bytes.concat(chunks)
 }
@@ -1536,78 +1559,11 @@ export const toCodec = <S extends Schema.Constraint>(schema: S, options?: ToCode
   const extensions: Compile.ExtensionsOf | undefined = registry === undefined
     ? undefined
     : (name) => registry.extensions.get(name)?.map((e) => ({ ast: e.schema.ast, annotation: e.annotation }))
-  const codec = Codec.makeCodec(Compile.compile(schema.ast, extensions))
-  const trusted: Trusted | undefined = ProtobufSchema.isExact(schema.ast) ? { value: undefined } : undefined
-  const out = (Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>).pipe(
-    Schema.decodeTo(trusted === undefined ? schema : trustedTarget(schema, trusted), makeTransformation(codec, trusted))
+  const out = Transform.derive(
+    Schema.Uint8Array as Schema.instanceOf<Uint8Array<ArrayBuffer>>,
+    schema,
+    Codec.makeCodec(Compile.compile(schema.ast, extensions))
   ) as unknown as toCodec<S>
   cache.set(schema, out)
   return out
-}
-
-// The value the wire decoder last produced, which the schema pass returns as
-// it is.
-interface Trusted {
-  value: unknown
-}
-
-const makeTransformation = (
-  codec: Codec.Codec,
-  trusted: Trusted | undefined
-): SchemaTransformation.Transformation<unknown, Uint8Array<ArrayBuffer>> => {
-  return SchemaTransformation.transformEffect({
-    decode: (bytes: Uint8Array<ArrayBuffer>, options) => {
-      try {
-        const value = codec.decode(bytes)
-        if (trusted !== undefined) trusted.value = value
-        return Effect.succeed(value)
-      } catch (e) {
-        return e instanceof Wire.WireError ? Effect.fail(toIssue(e, options)) : Effect.die(e)
-      }
-    },
-    encode: (value: unknown, options) => {
-      try {
-        return Effect.succeed(codec.encode(value))
-      } catch (e) {
-        return e instanceof Wire.WireError ? Effect.fail(toIssue(e, options)) : Effect.die(e)
-      }
-    }
-  })
-}
-
-// The type of an exact schema, whose schema pass returns the value the wire
-// decoder produced, and the value to encode, as they are. Any other input,
-// such as that of `Schema.is`, runs the schema pass. Encoding keeps it under
-// `onExcessProperty: "error"`, since the wire layer ignores excess keys.
-const trustedTarget = (schema: Schema.Constraint, trusted: Trusted): Schema.Constraint => {
-  const type = Schema.make(SchemaAST.toType(schema.ast))
-  const parse = SchemaParser.decodeUnknownEffect(type as Schema.ConstraintDecoder<unknown>)
-  const run = (
-    accept: (input: unknown, options: SchemaAST.ParseOptions) => boolean
-  ): SchemaAST.Declaration["run"] =>
-  () =>
-  (input, _ast, options) => accept(input, options) ? InternalParser.sameExit : parse(input, options)
-  return Schema.make(
-    new SchemaAST.Declaration(
-      [type.ast],
-      run((input) => {
-        if (trusted.value === undefined || trusted.value !== input) return false
-        trusted.value = undefined
-        return true
-      }),
-      { identifier: "protobuf value" },
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      run((_, options) => options.onExcessProperty !== "error")
-    )
-  )
-}
-
-const toIssue = (e: Wire.WireError, options: SchemaAST.ParseOptions): SchemaIssue.Issue => {
-  const issue = e.missing
-    ? new SchemaIssue.MissingKey(undefined)
-    : new SchemaIssue.InvalidValue({ message: e.message }, e.input, options)
-  return e.path.length === 0 ? issue : new SchemaIssue.Pointer(e.path, issue)
 }

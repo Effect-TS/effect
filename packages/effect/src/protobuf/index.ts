@@ -21,4 +21,10 @@ export * as ProtobufDescriptor from "./ProtobufDescriptor.ts"
  * @stability experimental
  * @since 4.0.6
  */
+export * as ProtobufJson from "./ProtobufJson.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.6
+ */
 export * as ProtobufPlugin from "./ProtobufPlugin.ts"

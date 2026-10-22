@@ -4,7 +4,7 @@
 import * as DateTime from "../../DateTime.ts"
 import * as Duration_ from "../../Duration.ts"
 import type { Converted, Message, MessageType, Scalar, Slot } from "./layout.ts"
-import { addSlot, finishMessage, makeMessage, scalar, WRAPPED } from "./layout.ts"
+import { addSlot, fieldNames, finishMessage, makeMessage, scalar, WRAPPED } from "./layout.ts"
 import * as Wire from "./wire.ts"
 
 // The layouts are built by calls, without statements or property reads at the
@@ -41,6 +41,7 @@ const timeLayout = (name: string): Message => {
       key: "seconds",
       guarded: false,
       number: 1,
+      names: fieldNames("seconds", undefined, undefined),
       type: scalar("int64"),
       absent: "zero",
       delimited: false
@@ -50,6 +51,7 @@ const timeLayout = (name: string): Message => {
       key: "nanos",
       guarded: false,
       number: 2,
+      names: fieldNames("nanos", undefined, undefined),
       type: scalar("int32"),
       absent: "zero",
       delimited: false
@@ -149,6 +151,7 @@ const wrapper = (name: string, type: Scalar): MessageType => {
     key: WRAPPED,
     guarded: false,
     number: 1,
+    names: fieldNames("value", undefined, undefined),
     type,
     absent: "zero",
     delimited: false
@@ -184,6 +187,7 @@ export const FieldMask: MessageType = messageOf("google.protobuf.FieldMask", "wr
   key: WRAPPED,
   guarded: false,
   number: 1,
+  names: fieldNames("paths", undefined, undefined),
   element: scalar("string"),
   absent: "zero",
   packed: false,
