@@ -625,20 +625,22 @@ const make = Effect.gen(function*() {
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
-        const exitSignalOrInputFailure = Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure))
-        const exitCode = Effect.flatMap(exitSignalOrInputFailure, ([code, signal]) => {
-          if (Deferred.isDoneUnsafe(inputFailure)) {
-            return Deferred.await(inputFailure)
+        const exitCode = Effect.flatMap(
+          Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
+          ([code, signal]) => {
+            if (Deferred.isDoneUnsafe(inputFailure)) {
+              return Deferred.await(inputFailure)
+            }
+            if (Predicate.isNotNull(code)) {
+              return Effect.succeed(ExitCode(code))
+            }
+            // If code is `null`, then `signal` must be defined. See the NodeJS
+            // documentation for the `"exit"` event on a `child_process`.
+            // https://nodejs.org/api/child_process.html#child_process_event_exit
+            const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${signal}'`)
+            return Effect.fail(toPlatformError("exitCode", error, cmd))
           }
-          if (Predicate.isNotNull(code)) {
-            return Effect.succeed(ExitCode(code))
-          }
-          // If code is `null`, then `signal` must be defined. See the NodeJS
-          // documentation for the `"exit"` event on a `child_process`.
-          // https://nodejs.org/api/child_process.html#child_process_event_exit
-          const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${signal}'`)
-          return Effect.fail(toPlatformError("exitCode", error, cmd))
-        })
+        )
         const kill = (options?: ChildProcess.KillOptions | undefined) =>
           terminateProcessGroup(cmd, childProcess, exitSignal, options)
 

@@ -317,17 +317,19 @@ const make = Effect.gen(function*() {
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
-        const exitSignalOrInputFailure = Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure))
-        const exitCode = Effect.flatMap(exitSignalOrInputFailure, (status) =>
-          Deferred.isDoneUnsafe(inputFailure)
-            ? Deferred.await(inputFailure)
-            : Predicate.isNull(status.signal)
-            ? Effect.succeed(ExitCode(status.code))
-            : Effect.fail(toPlatformError(
-              "exitCode",
-              new globalThis.Error(`Process interrupted due to receipt of signal: '${status.signal}'`),
-              cmd
-            )))
+        const exitCode = Effect.flatMap(
+          Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
+          (status) => {
+            if (Deferred.isDoneUnsafe(inputFailure)) {
+              return Deferred.await(inputFailure)
+            }
+            if (Predicate.isNull(status.signal)) {
+              return Effect.succeed(ExitCode(status.code))
+            }
+            const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${status.signal}'`)
+            return Effect.fail(toPlatformError("exitCode", error, cmd))
+          }
+        )
         const kill = (options?: ChildProcess.KillOptions | undefined) => {
           const killWithTimeout = withTimeout(childProcess, cmd, options)
           return killWithTimeout((command, childProcess, signal) =>
