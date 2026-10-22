@@ -114,20 +114,17 @@ export type WebSocketOptions =
  *
  * **Details**
  *
- * `idleTimeout` defaults to `0`, which disables Bun's idle timeout, so quiet
- * response streams and slow uploads are not cut after Bun's 10 second
- * default. Use `Stream` and `Effect` timeouts in handlers or middleware to
- * bound them instead. An explicit `idleTimeout` is passed to Bun unchanged.
+ * `idleTimeout` defaults to `0`, disabling Bun's 10 second idle timeout, so
+ * quiet response streams and slow uploads are bounded only by the `Stream`
+ * and `Effect` timeouts in your handlers or middleware. An explicit value is
+ * passed to Bun unchanged.
  *
  * **Gotchas**
  *
- * With the idle timeout disabled, Bun no longer closes idle keep-alive
- * connections or connections whose client stopped reading a response. Handler
- * timeouts cannot catch either case. When the server is directly exposed, set
- * an explicit `idleTimeout` (in seconds, at most 255) or put a proxy with its
- * own idle timeout in front. Bun 1.3 still closes connections that never send
- * a complete request when `idleTimeout` is `0`, but that is Bun behavior and
- * not guaranteed by this module.
+ * Without an idle timeout, Bun also keeps idle keep-alive connections and
+ * clients that stopped reading a response open, and handler timeouts cannot
+ * catch either. Directly exposed servers should set `idleTimeout` (seconds,
+ * at most 255) or sit behind a proxy with its own idle timeout.
  *
  * @stability unstable
  * @category constructors
@@ -166,8 +163,8 @@ export const make = Effect.fnUntraced(
         }
       ]
     const server = Bun.serve<WebSocketContext, R>({
-      // Effect expresses request and response timeouts, so Bun's idle cut is
-      // opt-in. Bun applies it to Unix sockets too, although its types do not.
+      // Opt-in; Effect timeouts bound requests and responses instead. Bun
+      // applies idleTimeout to Unix sockets too, although its types omit it.
       ...{
         ...listenOptions,
         idleTimeout: (options as { readonly idleTimeout?: number | undefined }).idleTimeout ?? 0
@@ -376,9 +373,7 @@ export const layerHttpServices: Layer.Layer<
  *
  * **Details**
  *
- * `idleTimeout` defaults to `0` (disabled) and an explicit value is passed to
- * Bun unchanged. See `make` for what the idle timeout covers and when to set
- * it.
+ * `idleTimeout` defaults to `0` (disabled); see `make`.
  *
  * @stability unstable
  * @category layers
