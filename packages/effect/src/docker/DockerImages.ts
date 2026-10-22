@@ -281,6 +281,30 @@ export type PushResult = typeof PushResult.Type
 
 const decodePushResult = Schema.decodeUnknownEffect(Schema.toCodecGoJson(PushResult))
 
+/**
+ * The pushed manifest, from the `aux` of a push's progress. Docker's
+ * containerd store sends other `aux` data too.
+ *
+ * @internal
+ */
+export const pushResultOf = <E, R>(
+  messages: Stream.Stream<DockerSchema.ProgressMessage, E, R>,
+  operation: string
+): Effect.Effect<PushResult, E | DockerError, R> =>
+  messages.pipe(
+    Stream.runFold(
+      () => ({}) as Readonly<Record<string, Schema.Json>>,
+      (result, message) =>
+        message.aux !== undefined && (message.aux.Digest !== undefined || result.Digest === undefined)
+          ? message.aux
+          : result
+    ),
+    Effect.flatMap((aux) =>
+      Effect.mapError(decodePushResult(aux), (cause) =>
+        new DockerError({ reason: new InvalidResponse({ issue: cause.message, operation, cause }) }))
+    )
+  )
+
 // -----------------------------------------------------------------------------
 // builds
 // -----------------------------------------------------------------------------
@@ -390,8 +414,13 @@ const inBandError = (
     : new DockerError({ reason: new StreamFailed({ message: text ?? "" }) })
 }
 
-/** The messages of a progress stream, failing with `StreamFailed` on the first in-band error. */
-const failOnError = <E>(
+/**
+ * The messages of a progress stream, failing with `StreamFailed` on the first
+ * in-band error.
+ *
+ * @internal
+ */
+export const failOnError = <E>(
   messages: Stream.Stream<typeof DockerApi.Progress.Type, E>
 ): Stream.Stream<DockerSchema.ProgressMessage, E | DockerError> =>
   Stream.mapEffect(messages, ({ error, ...message }) => {
@@ -977,21 +1006,7 @@ export const make: Effect.Effect<DockerImages["Service"], never, DockerEngine> =
     pull,
     pushStream,
     push: (reference, options) =>
-      pushStream(reference, options).pipe(
-        // the manifest's `{ Tag, Digest, Size }`; Docker's containerd store sends other `aux` data too
-        Stream.runFold(
-          () => ({}) as Readonly<Record<string, Schema.Json>>,
-          (result, message) =>
-            message.aux !== undefined && (message.aux.Digest !== undefined || result.Digest === undefined)
-              ? message.aux
-              : result
-        ),
-        Effect.flatMap((aux) =>
-          Effect.mapError(decodePushResult(aux), (cause) =>
-            new DockerError({
-              reason: new InvalidResponse({ issue: cause.message, operation: "docker.Images.push", cause })
-            }))
-        ),
+      pushResultOf(pushStream(reference, options), "docker.Images.push").pipe(
         withOperation(engine, "docker.Images.push", resourceOf(reference))
       ),
     import: importImage,

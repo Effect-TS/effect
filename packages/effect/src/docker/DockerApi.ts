@@ -1649,6 +1649,102 @@ export const SwarmConfigs = HttpApiGroup.make("configs").add(
 ).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// plugins
+// -----------------------------------------------------------------------------
+
+const registryAuth = { "x-registry-auth": RegistryAuth }
+/**
+ * The privileges a plugin asks for, as the Engine lists them.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Privileges = Schema.Array(DockerSchema.PluginPrivilege)
+
+/**
+ * The privileges a plugin asks for, see {@link Privileges}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type Privileges = typeof Privileges.Type
+
+/** A pull's or upgrade's progress, with the name of the plugin it installs. */
+const installProgress = HttpApiSchema.WithHeaders(progress, {
+  "docker-plugin-name": Schema.optional(Schema.String)
+})
+
+/**
+ * The Engine's plugin endpoints, which `DockerPlugins` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Plugins = HttpApiGroup.make("plugins").add(
+  HttpApiEndpoint.get("list", "/plugins", {
+    query: { filters },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.Plugin))
+  }),
+  HttpApiEndpoint.get("privileges", "/plugins/privileges", {
+    query: { remote: Schema.String },
+    headers: registryAuth,
+    success: Schema.toCodecGoJson(Privileges)
+  }),
+  HttpApiEndpoint.post("pull", "/plugins/pull", {
+    query: { remote: Schema.String, name: Schema.optional(Schema.String) },
+    headers: registryAuth,
+    payload: Privileges,
+    success: installProgress
+  }),
+  HttpApiEndpoint.get("inspect", "/plugins/:name/json", {
+    params: name,
+    success: Schema.toCodecGoJson(DockerSchema.Plugin)
+  }),
+  HttpApiEndpoint.delete("remove", "/plugins/:name", {
+    params: name,
+    query: { force: Schema.optional(Schema.Boolean) },
+    // the Engine sends no body, unlike the spec's `Plugin`
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("enable", "/plugins/:name/enable", {
+    params: name,
+    // required: the Engine fails a request without it
+    query: { timeout: Schema.Number },
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("disable", "/plugins/:name/disable", {
+    params: name,
+    query: { force: Schema.optional(Schema.Boolean) },
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.post("upgrade", "/plugins/:name/upgrade", {
+    params: name,
+    query: { remote: Schema.String },
+    headers: registryAuth,
+    payload: Privileges,
+    success: installProgress
+  }),
+  HttpApiEndpoint.post("create", "/plugins/create", {
+    query: { name: Schema.String },
+    payload: tar,
+    success: HttpApiSchema.NoContent
+  }),
+  HttpApiEndpoint.post("push", "/plugins/:name/push", {
+    params: name,
+    headers: registryAuth,
+    success: progress
+  }),
+  HttpApiEndpoint.post("set", "/plugins/:name/set", {
+    params: name,
+    payload: Env,
+    success: HttpApiSchema.NoContent
+  })
+).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -1671,5 +1767,6 @@ export const DockerApi = HttpApi.make("docker").add(
   Services,
   Tasks,
   Secrets,
-  SwarmConfigs
+  SwarmConfigs,
+  Plugins
 )
