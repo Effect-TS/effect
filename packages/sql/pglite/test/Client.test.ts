@@ -73,6 +73,13 @@ describe("PgliteClient", { concurrent: false }, () => {
         assert.deepStrictEqual(yield* sql`SELECT name FROM test WHERE id NOT IN ${sql.in([])}`, [{ name: "hello" }])
       }).pipe(Effect.provide(Migrations)))
 
+    it.effect("in helper is not rewritten inside a line comment", () =>
+      Effect.gen(function*() {
+        const sql = yield* PgliteClient.PgliteClient
+        const [query] = sql`SELECT 2 -- check in\n${sql.in([])} AS x`.compile()
+        assert.strictEqual(query, "SELECT 2 -- check in\n() AS x")
+      }))
+
     it.effect("and helper", () =>
       Effect.gen(function*() {
         const sql = yield* PgliteClient.PgliteClient
