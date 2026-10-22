@@ -454,10 +454,7 @@ function compileJsonSchema(
         return types.length === 0 ? { not: {} } : { anyOf: types }
       }
       case "TemplateLiteral":
-        return {
-          type: "string",
-          pattern: `^${representation.parts.map((part) => getPartPattern(part, references)).join("")}$`
-        }
+        return { type: "string", pattern: `^${getTemplateLiteralPattern(representation.parts, new Set())}$` }
       case "Arrays": {
         const out: JsonSchema.JsonSchema = { type: "array" }
         let minItems = representation.elements.length
@@ -685,7 +682,7 @@ function compileJsonSchema(
       }
       case "TemplateLiteral":
         return parameter.checks.length === 0
-          ? [`^${parameter.parts.map((part) => getPartPattern(part, references)).join("")}$`]
+          ? [`^${getTemplateLiteralPattern(parameter.parts, new Set())}$`]
           : undefined
       case "Union": {
         if (parameter.types.length === 0 || parameter.checks.length > 0 || parameter.options?.mode === "oneOf") {
@@ -706,6 +703,45 @@ function compileJsonSchema(
           : undefined
       default:
         throw errorWithPath(`Invalid index signature parameter ${parameter._tag}`, path)
+    }
+  }
+
+  function getTemplateLiteralPattern(
+    parts: ReadonlyArray<SchemaRepresentation.Representation>,
+    seenReferences: ReadonlySet<string>
+  ): string {
+    return parts.map((part) => getPartPattern(part, seenReferences)).join("")
+  }
+
+  function getPartPattern(part: SchemaRepresentation.Representation, seenReferences: ReadonlySet<string>): string {
+    if (part._tag === "Reference") {
+      if (!Object.hasOwn(references, part.$ref)) {
+        throw errorWithPath(`Invalid reference ${part.$ref}`, [])
+      }
+      if (seenReferences.has(part.$ref)) {
+        throw errorWithPath(`Invalid recursive TemplateLiteral part ${part.$ref}`, [])
+      }
+      return getPartPattern(references[part.$ref], new Set(seenReferences).add(part.$ref))
+    }
+    // Segment checks cannot be embedded in the pattern without changing their semantics
+    if (part.checks.length > 0) {
+      throw errorWithPath("Unsupported TemplateLiteral part with checks", [])
+    }
+    switch (part._tag) {
+      case "Literal":
+        return RegEx.escape(globalThis.String(part.literal))
+      case "String":
+        return InternalAST.STRING_PATTERN
+      case "Number":
+        return InternalAST.FINITE_PATTERN
+      case "BigInt":
+        return "-?\\d+"
+      case "TemplateLiteral":
+        return getTemplateLiteralPattern(part.parts, seenReferences)
+      case "Union":
+        return `(?:${part.types.map((type) => getPartPattern(type, seenReferences)).join("|")})`
+      default:
+        throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])
     }
   }
 }
@@ -733,43 +769,6 @@ function compactEnums(
     }
   }
   return { type: sharedType, enum: values }
-}
-
-function getPartPattern(
-  part: SchemaRepresentation.Representation,
-  references: SchemaRepresentation.References,
-  seenReferences: ReadonlySet<string> = new Set()
-): string {
-  if (part._tag === "Reference") {
-    if (!Object.hasOwn(references, part.$ref)) {
-      throw errorWithPath(`Invalid reference ${part.$ref}`, [])
-    }
-    if (seenReferences.has(part.$ref)) {
-      throw errorWithPath(`Invalid recursive TemplateLiteral part ${part.$ref}`, [])
-    }
-    return getPartPattern(references[part.$ref], references, new Set(seenReferences).add(part.$ref))
-  }
-  // Segment checks cannot be embedded in the pattern without changing their semantics
-  if (part.checks.length > 0) {
-    throw errorWithPath("Unsupported TemplateLiteral part with checks", [])
-  }
-  const recur = (child: SchemaRepresentation.Representation) => getPartPattern(child, references, seenReferences)
-  switch (part._tag) {
-    case "Literal":
-      return RegEx.escape(globalThis.String(part.literal))
-    case "String":
-      return InternalAST.STRING_PATTERN
-    case "Number":
-      return InternalAST.FINITE_PATTERN
-    case "BigInt":
-      return "-?\\d+"
-    case "TemplateLiteral":
-      return part.parts.map(recur).join("")
-    case "Union":
-      return `(?:${part.types.map(recur).join("|")})`
-    default:
-      throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])
-  }
 }
 
 /** @internal */
