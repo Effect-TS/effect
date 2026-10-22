@@ -454,15 +454,12 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   >()
 
-  const filterList = <
-    D,
-    R extends {
+  const filterList = <D>(
+    registrations: Iterable<{
       readonly descriptor: D
       readonly isVisible: ToolRegistration["isVisible"]
       readonly visible?: Visible | undefined
-    }
-  >(
-    registrations: Iterable<R>,
+    }>,
     invocation: McpInvocation
   ): Effect.Effect<ReadonlyArray<D>, RequestRejected> =>
     Effect.map(

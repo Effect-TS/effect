@@ -597,12 +597,10 @@ export declare namespace middleware {
  * @category middleware
  * @since 4.0.0
  */
-export const visibility: visibility.Make = function(
+export const visibility: visibility.Make = ((
   check: AnyVisibilityCheck | Effect.Effect<AnyVisibilityCheck, any, any>,
   options?: { readonly global?: boolean | undefined }
-) {
-  return makeMiddleware(Effect.isEffect(check) ? Effect.map(check, makeGate) : makeGate(check), options)
-} as any
+) => makeMiddleware(Effect.isEffect(check) ? Effect.map(check, makeGate) : makeGate(check), options)) as any
 
 /**
  * Types used by `visibility`.
@@ -782,18 +780,6 @@ const internalError = new InternalError({ message: "Internal error" })
 const rejectWith = (error: McpErrorBase) =>
   Effect.fail(new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error }))
 
-// Middleware failures are sent as JSON-RPC errors; anything else is reported as an internal error.
-const rejectMiddlewareCause = (cause: Cause.Cause<unknown>): Effect.Effect<never, McpCore.RequestRejected> => {
-  const failure = Cause.findFail(cause)
-  if (Result.isSuccess(failure) && !Cause.hasDies(cause) && isMcpError(failure.success.error)) {
-    return rejectWith(failure.success.error)
-  }
-  return Effect.logError(cause).pipe(
-    Effect.andThen(ErrorReporter.report(cause)),
-    Effect.andThen(rejectWith(internalError))
-  )
-}
-
 type CallMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete"
 
 type ListMethod = Exclude<MiddlewareMethod, CallMethod>
@@ -818,25 +804,35 @@ const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod
   }
 }
 
+const isHidden = (error: unknown): error is Hidden => error instanceof Hidden
+
 // The innermost middleware comes first. Middleware provided both locally and
 // globally runs once, at its outermost position.
 const middlewareStack = (
   localMiddleware: ReadonlyArray<AnyMiddlewareFn>,
   globalMiddleware: ReadonlyArray<AnyMiddlewareFn>
-): ReadonlyArray<AnyMiddlewareFn> =>
-  globalMiddleware.length === 0
-    ? localMiddleware
-    : localMiddleware.length === 0
-    ? globalMiddleware
-    : Arr.fromIterable(new Set([...localMiddleware, ...globalMiddleware].reverse())).reverse()
+): ReadonlyArray<AnyMiddlewareFn> => {
+  if (globalMiddleware.length === 0) {
+    return localMiddleware
+  }
+  if (localMiddleware.length === 0) {
+    return globalMiddleware
+  }
+  const stack = [...localMiddleware, ...globalMiddleware]
+  return stack.filter((fn, index) => stack.lastIndexOf(fn) === index)
+}
 
-const runMiddleware = (
-  effect: Effect.Effect<any, any, any>,
+// Runs a handler inside middleware. The handler's own failures pass through, a
+// visibility gate fails with `Hidden`, and other failures become
+// `RequestRejected`: middleware failures as JSON-RPC errors, anything else as
+// a reported internal error.
+const runMiddleware = <A, E>(
+  handler: Effect.Effect<A, E, any>,
   middleware: ReadonlyArray<AnyMiddlewareFn>,
   invocation: McpCore.McpInvocation,
   request: Pick<MiddlewareOptions, "method" | "target" | "payload">
-): Effect.Effect<any, any, any> =>
-  Effect.withFiber((fiber) => {
+): Effect.Effect<A, E | Hidden | McpCore.RequestRejected> => {
+  const effect = middleware.length === 0 ? handler : Effect.withFiber((fiber) => {
     const headers = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers ??
       Headers.empty
     const options: MiddlewareOptions = {
@@ -845,8 +841,34 @@ const runMiddleware = (
       headers,
       sessionId: headers[MCP_SESSION_ID_HEADER]
     }
-    return middleware.reduce((effect, fn) => fn(effect, options), effect)
+    const handled = Effect.catchCause(handler, (cause) => Effect.failCause(Cause.annotate(cause, handlerFailure)))
+    return middleware.reduce((effect: Effect.Effect<any, any, any>, fn) => fn(effect, options), handled)
   })
+  return provideInvocationContext(effect, invocation).pipe(
+    Effect.catchCause((cause): Effect.Effect<never, E | Hidden | McpCore.RequestRejected> => {
+      if (Cause.hasInterrupts(cause)) {
+        return Effect.failCause(cause)
+      }
+      const failure = Cause.findFail(cause)
+      if (Result.isSuccess(failure) && !Cause.hasDies(cause)) {
+        const error = failure.success.error
+        if (isHidden(error)) {
+          return Effect.fail(error)
+        }
+        if (middleware.length === 0 || Context.get(Cause.reasonAnnotations(failure.success), HandlerFailure)) {
+          return Effect.failCause(cause)
+        }
+        if (isMcpError(error)) {
+          return rejectWith(error)
+        }
+      }
+      return Effect.logError(cause).pipe(
+        Effect.andThen(ErrorReporter.report(cause)),
+        Effect.andThen(rejectWith(internalError))
+      )
+    })
+  ) as Effect.Effect<A, E | Hidden | McpCore.RequestRejected>
+}
 
 // Request services override captured services; global middleware wraps local middleware.
 const makeInvoke = (
@@ -863,33 +885,17 @@ const makeInvoke = (
       readonly target: string
       readonly payload: unknown
     }
-  ): Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected> => {
-    let effect: Effect.Effect<any, any, any> = services.mapUnsafe.size === 0
-      ? handler
-      : Effect.updateContext(handler, (context: Context.Context<any>) => Context.merge(services, context))
-    const middleware = middlewareStack(localMiddleware, globalMiddleware)
-    if (middleware.length > 0) {
-      const handled = Effect.catchCause(effect, (cause) => Effect.failCause(Cause.annotate(cause, handlerFailure)))
-      effect = runMiddleware(handled, middleware, invocation, request)
-    }
-    return provideInvocationContext(effect, invocation).pipe(
-      Effect.catchCause((cause): Effect.Effect<never, E | NotFoundErrors[M] | McpCore.RequestRejected> => {
-        if (Cause.hasInterrupts(cause)) {
-          return Effect.failCause(cause)
-        }
-        const failure = Cause.findFail(cause)
-        if (Result.isSuccess(failure) && !Cause.hasDies(cause)) {
-          if (failure.success.error instanceof Hidden) {
-            return Effect.fail(notFound(request.method, request.target) as NotFoundErrors[M])
-          }
-          if (middleware.length === 0 || Context.get(Cause.reasonAnnotations(failure.success), HandlerFailure)) {
-            return Effect.failCause(cause)
-          }
-        }
-        return rejectMiddlewareCause(cause)
-      })
+  ): Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected> =>
+    runMiddleware(
+      services.mapUnsafe.size === 0
+        ? handler
+        : Effect.updateContext(handler, (context: Context.Context<any>) => Context.merge(services, context)),
+      middlewareStack(localMiddleware, globalMiddleware),
+      invocation,
+      request
+    ).pipe(
+      Effect.catchIf(isHidden, () => Effect.fail(notFound(request.method, request.target) as NotFoundErrors[M]))
     ) as Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected>
-  }
   // On list requests only the middleware outside the innermost visibility runs.
   const visible = (method: ListMethod, target: string): McpCore.Visible => (invocation) => {
     const middleware = middlewareStack(localMiddleware, globalMiddleware)
@@ -897,26 +903,24 @@ const makeInvoke = (
     if (innermost === -1) {
       return Effect.succeed(true)
     }
-    const effect = runMiddleware(
-      Effect.void,
-      middleware.slice(innermost),
-      invocation,
-      { method, target, payload: undefined }
-    ) as Effect.Effect<unknown, unknown>
-    return provideInvocationContext(effect, invocation).pipe(
-      Effect.as(true),
-      Effect.catchCause((cause) => {
-        if (Cause.hasInterrupts(cause)) {
-          return Effect.failCause(cause as Cause.Cause<never>)
-        }
-        const failure = Cause.findFail(cause)
-        return Result.isSuccess(failure) && !Cause.hasDies(cause) && failure.success.error instanceof Hidden
-          ? Effect.succeed(false)
-          : rejectMiddlewareCause(cause)
-      })
-    )
+    return runMiddleware(Effect.void, middleware.slice(innermost), invocation, { method, target, payload: undefined })
+      .pipe(
+        Effect.as(true),
+        Effect.catchIf(isHidden, () => Effect.succeed(false))
+      )
   }
   return { invoke, visible }
+}
+
+// Applies the `EnabledWhen` annotation of a registration.
+const isEnabled = (annotations: Context.Context<never>) => {
+  const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
+  return (profile: McpCore.NegotiatedProtocolProfile<string>): boolean =>
+    enabledWhen === undefined || enabledWhen({
+      protocolVersion: profile.protocolVersion,
+      capabilities: profile.clientCapabilities,
+      clientInfo: profile.clientInfo
+    })
 }
 
 const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejected.error)
@@ -1041,7 +1045,6 @@ export class McpServer extends Context.Service<McpServer, {
    * @since 4.0.0
    */
   static readonly make = Effect.gen(function*() {
-    const globalMiddleware: Array<AnyMiddlewareFn> = []
     const internalCore = yield* McpCore.make
     const tools = Arr.empty<{
       readonly tool: McpTool
@@ -1060,6 +1063,7 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
+    const globalMiddleware: Array<AnyMiddlewareFn> = []
     const notificationDelivery = { consumers: 0, listChangeRevision: 0, requestEndpoints: 0 }
     // With only request-scoped endpoints, no long-lived server ever takes from the shared queue.
     const withoutSharedConsumer = () =>
@@ -1158,7 +1162,6 @@ export class McpServer extends Context.Service<McpServer, {
         } else {
           tools[existingIndex] = options
         }
-        const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
         const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
         yield* internalCore.tools.register({
           descriptor: new McpTool({
@@ -1166,14 +1169,7 @@ export class McpServer extends Context.Service<McpServer, {
             title: options.tool.title ?? options.tool.annotations?.title
           }),
           visible: visible("tools/list", options.tool.name),
-          isVisible: (profile) =>
-            enabledWhen === undefined || enabledWhen(
-              {
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              }
-            ),
+          isVisible: isEnabled(options.annotations),
           handle: (call, invocation) =>
             invoke(options.handle(call.arguments), invocation, {
               method: "tools/call",
@@ -1246,14 +1242,7 @@ export class McpServer extends Context.Service<McpServer, {
         yield* internalCore.resources.register({
           descriptor: options.resource,
           visible: visible("resources/list", options.resource.uri),
-          isVisible: (profile) => {
-            const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-            return enabledWhen === undefined || enabledWhen({
-              protocolVersion: profile.protocolVersion,
-              capabilities: profile.clientCapabilities,
-              clientInfo: profile.clientInfo
-            })
-          },
+          isVisible: isEnabled(options.annotations),
           read: (invocation) =>
             invoke(options.handle, invocation, {
               method: "resources/read",
@@ -1279,14 +1268,7 @@ export class McpServer extends Context.Service<McpServer, {
           yield* internalCore.resources.registerTemplate({
             descriptor: template,
             visible: visible("resources/templates/list", template.uriTemplate),
-            isVisible: (profile) => {
-              const enabledWhen = Context.getOrUndefined(annotations, EnabledWhen)
-              return enabledWhen === undefined || enabledWhen({
-                protocolVersion: profile.protocolVersion,
-                capabilities: profile.clientCapabilities,
-                clientInfo: profile.clientInfo
-              })
-            },
+            isVisible: isEnabled(annotations),
             match: (uri) => {
               const match = templateMatcher.find(uri)
               if (match === undefined) {
@@ -1353,14 +1335,7 @@ export class McpServer extends Context.Service<McpServer, {
         yield* internalCore.prompts.register({
           descriptor: options.prompt,
           visible: visible("prompts/list", options.prompt.name),
-          isVisible: (profile) => {
-            const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-            return enabledWhen === undefined || enabledWhen({
-              protocolVersion: profile.protocolVersion,
-              capabilities: profile.clientCapabilities,
-              clientInfo: profile.clientInfo
-            })
-          },
+          isVisible: isEnabled(options.annotations),
           get: (params, invocation) =>
             invoke(options.handle(params), invocation, {
               method: "prompts/get",
