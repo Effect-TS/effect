@@ -2462,6 +2462,157 @@ describe("JsonSchema", () => {
     })
   })
 
+  describe("toStandaloneOpenApi3_0", () => {
+    function assertToStandaloneOpenApi3_0(
+      schema: JsonSchema.JsonSchema,
+      expected: JsonSchema.JsonSchema,
+      definitions: JsonSchema.Definitions = {},
+      expectedDefinitions: JsonSchema.Definitions = {}
+    ) {
+      deepStrictEqual(JsonSchema.toStandaloneOpenApi3_0({ dialect: "draft-2020-12", schema, definitions }), {
+        schema: expected,
+        definitions: expectedDefinitions
+      })
+    }
+
+    it("drops the canonical meta-schema URI", () => {
+      assertToStandaloneOpenApi3_0(
+        { $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12, type: "string" },
+        { type: "string" }
+      )
+    })
+
+    it("rejects custom dialects", () => {
+      assert.throws(
+        () =>
+          JsonSchema.toStandaloneOpenApi3_0({
+            dialect: "draft-2020-12",
+            schema: { $schema: "https://example.com/dialect" },
+            definitions: {}
+          }),
+        /Cannot convert JSON Schema keyword "\$schema" to OpenAPI 3.0/
+      )
+    })
+
+    it("lowers const and exclusive bounds like Draft-04", () => {
+      assertToStandaloneOpenApi3_0(
+        { type: "number", const: 1, exclusiveMinimum: 0, exclusiveMaximum: 10 },
+        { type: "number", enum: [1], minimum: 0, exclusiveMinimum: true, maximum: 10, exclusiveMaximum: true }
+      )
+    })
+
+    it("writes the first example as example", () => {
+      assertToStandaloneOpenApi3_0({ type: "string", examples: ["a", "b"] }, { type: "string", example: "a" })
+      assertToStandaloneOpenApi3_0({ type: "string", examples: [] }, { type: "string" })
+    })
+
+    describe("null", () => {
+      it("writes a null branch as nullable on the typed branch", () => {
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ type: "null" }, { type: "string", minLength: 1 }], description: "d" },
+          { type: "string", minLength: 1, nullable: true, description: "d" }
+        )
+      })
+
+      it("adds null to the enum of the typed branch", () => {
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ type: "string", enum: ["a"] }, { type: "null" }] },
+          { type: "string", enum: ["a", null], nullable: true }
+        )
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ type: "string", const: "a" }, { type: "null" }] },
+          { type: "string", enum: ["a", null], nullable: true }
+        )
+      })
+
+      it("keeps the other branches of a union", () => {
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ $ref: "#/$defs/A" }, { type: "string" }, { type: "null" }, { type: "null" }] },
+          { anyOf: [{ $ref: "#/definitions/A" }, { type: "string", nullable: true }] },
+          { A: { type: "number" } },
+          { A: { type: "number" } }
+        )
+      })
+
+      it("keeps the union when siblings are not annotations", () => {
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ type: "string" }, { type: "null" }], minLength: 1 },
+          { minLength: 1, anyOf: [{ type: "string", nullable: true }] }
+        )
+      })
+
+      it("writes null as an enum when no branch has a type", () => {
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ $ref: "#/$defs/A" }, { type: "null" }] },
+          { anyOf: [{ $ref: "#/definitions/A" }, { enum: [null] }] },
+          { A: { type: "string" } },
+          { A: { type: "string" } }
+        )
+        assertToStandaloneOpenApi3_0(
+          { anyOf: [{ type: "object", allOf: [{ $ref: "#/$defs/A" }] }, { type: "null" }] },
+          { anyOf: [{ type: "object", allOf: [{ $ref: "#/definitions/A" }] }, { enum: [null] }] },
+          { A: { type: "object" } },
+          { A: { type: "object" } }
+        )
+        assertToStandaloneOpenApi3_0({ type: "null", description: "d" }, { enum: [null], description: "d" })
+        assertToStandaloneOpenApi3_0({ type: "null", enum: [null, "a"] }, { enum: [null] })
+      })
+
+      it("splits type arrays", () => {
+        assertToStandaloneOpenApi3_0({ type: ["string", "null"] }, { type: "string", nullable: true })
+        assertToStandaloneOpenApi3_0({ type: ["null"] }, { enum: [null] })
+        assertToStandaloneOpenApi3_0(
+          { type: ["string", "number", "null"], minLength: 1 },
+          { minLength: 1, anyOf: [{ type: "string", nullable: true }, { type: "number" }] }
+        )
+        assertToStandaloneOpenApi3_0(
+          { type: ["string", "number"], anyOf: [{ minLength: 1 }, { minimum: 1 }] },
+          {
+            anyOf: [{ minLength: 1 }, { minimum: 1 }],
+            allOf: [{ anyOf: [{ type: "string" }, { type: "number" }] }]
+          }
+        )
+      })
+
+      it("reads back with fromSchemaOpenApi3_0", () => {
+        const roundtrip = (schema: JsonSchema.JsonSchema) =>
+          JsonSchema.fromSchemaOpenApi3_0(
+            JsonSchema.toStandaloneOpenApi3_0({ dialect: "draft-2020-12", schema, definitions: {} }).schema
+          ).schema
+        deepStrictEqual(roundtrip({ type: "null" }), { enum: [null] })
+        deepStrictEqual(roundtrip({ anyOf: [{ type: "string" }, { type: "null" }] }), { type: ["string", "null"] })
+      })
+    })
+
+    it("rewrites definition references", () => {
+      assertToStandaloneOpenApi3_0(
+        { type: "array", items: { $ref: "#/$defs/A" } },
+        { type: "array", items: { $ref: "#/definitions/A" } },
+        { A: { anyOf: [{ type: "string" }, { $ref: "#/$defs/A" }] } },
+        { A: { anyOf: [{ type: "string" }, { $ref: "#/definitions/A" }] } }
+      )
+    })
+
+    it("rejects keywords without an OpenAPI 3.0 equivalent", () => {
+      const convert = (schema: JsonSchema.JsonSchema) => () =>
+        JsonSchema.toStandaloneOpenApi3_0({ dialect: "draft-2020-12", schema, definitions: {} })
+      assert.throws(
+        convert({ type: "array", prefixItems: [{ type: "string" }] }),
+        /Cannot convert JSON Schema keyword "prefixItems" to OpenAPI 3.0: items must be a single schema/
+      )
+      assert.throws(
+        convert({ type: "object", patternProperties: { "^a": { type: "string" } } }),
+        /Cannot convert JSON Schema keyword "patternProperties" to OpenAPI 3.0/
+      )
+      assert.throws(
+        convert({ dependentRequired: { a: ["b"] } }),
+        /Cannot convert JSON Schema keyword "dependentRequired" to OpenAPI 3.0/
+      )
+      assert.throws(convert({ $id: "a.json" }), /Cannot convert JSON Schema keyword "\$id" to OpenAPI 3.0/)
+      assert.throws(convert({ nullable: true }), /Cannot convert JSON Schema keyword "nullable" to OpenAPI 3.0/)
+    })
+  })
+
   describe("toMultiDocumentOpenApi3_1", () => {
     it("rejects opaque keywords that OpenAPI 3.1 would activate", () => {
       for (

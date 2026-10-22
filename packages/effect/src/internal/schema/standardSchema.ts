@@ -106,6 +106,14 @@ function toBaseStandardJSONSchemaV1(
       schema.definitions = doc07.definitions
     }
     return schema
+  } else if (target === "openapi-3.0") {
+    // OpenAPI 3.0 Schema Objects have no `$schema`.
+    const doc30 = JsonSchema.toStandaloneOpenApi3_0(doc2020_12)
+    const schema: JsonSchema.JsonSchema = { ...doc30.schema }
+    if (Object.keys(doc30.definitions).length > 0) {
+      schema.definitions = doc30.definitions
+    }
+    return schema
   }
   throw new globalThis.Error(`Unsupported target: ${target}`)
 }
