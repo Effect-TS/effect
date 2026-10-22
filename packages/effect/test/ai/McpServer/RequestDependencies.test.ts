@@ -82,4 +82,19 @@ describe("McpServer request-level dependencies", () => {
       assert.deepStrictEqual(localCalls, ["global", "local"])
       assert.deepStrictEqual(otherCalls, ["global"])
     }))
+
+  it.effect("runs middleware provided both locally and globally once", () =>
+    Effect.gen(function*() {
+      let calls = 0
+      const Count = McpServer.middleware()((effect) => Effect.andThen(Effect.sync(() => calls++), effect))
+      const registrations = Layer.mergeAll(
+        McpServer.resource({ uri: "test://counted", name: "counted", content: Effect.succeed("counted") }),
+        Count.layerGlobal
+      ).pipe(Layer.provide(Count.layer))
+      const client = yield* McpTest.makeClient(registrations, { protocols: [McpProtocol.v2025_11_25] })
+
+      yield* client.readResource({ uri: "test://counted" })
+
+      assert.strictEqual(calls, 1)
+    }))
 })

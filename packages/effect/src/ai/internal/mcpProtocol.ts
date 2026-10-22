@@ -96,6 +96,18 @@ export const invocationFromClient = (
 })
 
 /**
+ * Runs a core list operation for the legacy client of the current request.
+ *
+ * @internal
+ */
+export const listForClient = <A>(
+  list: (invocation: McpCore.McpInvocation) => Effect.Effect<A, McpCore.RequestRejected>
+): Effect.Effect<A, ProtocolError, PublicMcpSchema.McpServerClient> =>
+  PublicMcpSchema.McpServerClient.use((request) =>
+    list(invocationFromClient(request)).pipe(Effect.mapError(ProtocolError.fromFeature))
+  )
+
+/**
  * @internal
  */
 export const invocationFromRequestContext = (
