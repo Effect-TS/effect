@@ -2,7 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as PlatformError from "effect/PlatformError"
-import { ChildProcess, ChildProcessSpawner } from "effect/process"
+import { ChildProcess, ChildProcessSpawner, CommandLine } from "effect/process"
+import * as Redacted from "effect/Redacted"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 
@@ -72,6 +73,38 @@ describe("ChildProcess", () => {
       const cmd = ChildProcess.make({ cwd: "/tmp" })`ls -la`
       assert(ChildProcess.isStandardCommand(cmd))
       assert.strictEqual(cmd.options.cwd, "/tmp")
+    })
+
+    it("template form groups quoted words and keeps values literal", () => {
+      const message = "fix: a | b"
+      const cmd = ChildProcess.make`git commit -m ${message} "two words"`
+      assert(ChildProcess.isStandardCommand(cmd))
+      assert.strictEqual(cmd.command, "git")
+      assert.deepStrictEqual(cmd.args, ["commit", "-m", message, "two words"])
+    })
+
+    it("template form keeps Redacted values Redacted", () => {
+      const token = Redacted.make("hunter2")
+      const cmd = ChildProcess.make`curl -H ${token} "--user=${token}"`
+      assert(ChildProcess.isStandardCommand(cmd))
+      assert.strictEqual(cmd.args[1], token)
+      assert.isTrue(Redacted.isRedacted(cmd.args[2]))
+    })
+
+    it("template form throws for shell syntax", () => {
+      assert.throws(() => ChildProcess.make`ls | wc`, CommandLine.CommandLineError)
+      assert.throws(() => ChildProcess.make`echo $HOME`, CommandLine.CommandLineError)
+      assert.throws(() => ChildProcess.make`echo "open`, CommandLine.CommandLineError)
+      assert.throws(() => ChildProcess.make`${Redacted.make("program")} arg`, CommandLine.CommandLineError)
+      assert.throws(() => ChildProcess.prefix`time |`, CommandLine.CommandLineError)
+    })
+
+    it("template form with the shell option keeps the script as written", () => {
+      const cmd = ChildProcess.make({ shell: true })`echo $HOME | wc -c`
+      assert(ChildProcess.isStandardCommand(cmd))
+      assert.strictEqual(cmd.command, "echo $HOME | wc -c")
+      assert.deepStrictEqual(cmd.args, [])
+      assert.throws(() => ChildProcess.make({ shell: true })`echo ${"value"}`, CommandLine.CommandLineError)
     })
 
     it("array form with options should work", () => {

@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
+import * as CommandLine from "effect/process/CommandLine"
 import * as Stream from "effect/Stream"
 import { NpmPromoteError } from "./NpmPromoteError.ts"
 
@@ -13,7 +14,7 @@ export const run = (
   args: ReadonlyArray<string>,
   options?: { readonly cwd?: string | undefined }
 ): Effect.Effect<string, NpmPromoteError, ChildProcessSpawner.ChildProcessSpawner> => {
-  const display = `${command} ${args.join(" ")}`
+  const display = CommandLine.display([command, ...args])
   return Effect.gen(function*() {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const handle = yield* spawner.spawn(ChildProcess.make(command, args, { cwd: options?.cwd }))

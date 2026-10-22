@@ -39,7 +39,7 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
-import type * as PlatformError from "effect/PlatformError"
+import * as PlatformError from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
 import * as ChildProcess from "effect/process/ChildProcess"
 import type { ChildProcessHandle } from "effect/process/ChildProcessSpawner"
@@ -50,6 +50,8 @@ import {
   makeHandle,
   ProcessId
 } from "effect/process/ChildProcessSpawner"
+import * as CommandLine from "effect/process/CommandLine"
+import * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
@@ -71,10 +73,8 @@ const toPlatformError = (
   command: ChildProcess.Command
 ): PlatformError.PlatformError => {
   const { commands } = flattenCommand(command)
-  const commandStr = commands.reduce((acc, curr) => {
-    const cmd = `${curr.command} ${curr.args.join(" ")}`
-    return acc.length === 0 ? cmd : `${acc} | ${cmd}`
-  }, "")
+  const format = globalThis.process.platform === "win32" ? "windows" : "posix"
+  const commandStr = commands.map((cmd) => CommandLine.display([cmd.command, ...cmd.args], { format })).join(" | ")
   return handleErrnoException("ChildProcess", method)(error, [commandStr])
 }
 
@@ -140,9 +140,13 @@ const make = Effect.gen(function*() {
   )
 
   const resolveEnvironment = (options: ChildProcess.CommandOptions) => {
-    return options.extendEnv
-      ? { ...globalThis.process.env, ...options.env }
-      : options.env
+    if (options.env === undefined) return undefined
+    const env: Record<string, string | undefined> = options.extendEnv === false ? {} : { ...globalThis.process.env }
+    for (const [key, value] of Object.entries(options.env)) {
+      if (value === undefined) delete env[key]
+      else env[key] = Redacted.isRedacted(value) ? Redacted.value(value) : value
+    }
+    return env
   }
 
   const inputToStdioOption = (input: ChildProcess.CommandInput | undefined): NodeChildProcess.IOType | undefined =>
@@ -393,7 +397,7 @@ const make = Effect.gen(function*() {
       const deferred = Deferred.makeUnsafe<ExitCodeWithSignal>()
       const handle = NodeChildProcess.spawn(
         command.command,
-        command.args,
+        command.args.map((arg) => Redacted.isRedacted(arg) ? Redacted.value(arg) : arg),
         spawnOptions
       )
       handle.on("error", (error) => {
@@ -553,6 +557,13 @@ const make = Effect.gen(function*() {
   > = Effect.fnUntraced(function*(cmd) {
     switch (cmd._tag) {
       case "StandardCommand": {
+        if (cmd.options.shell !== undefined && cmd.options.shell !== false && cmd.args.length > 0) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: "The shell option cannot be combined with arguments; pass the whole script as the command"
+          }))
+        }
         const stdinConfig = resolveStdinOption(cmd.options)
         const stdoutConfig = resolveOutputOption(cmd.options, "stdout")
         const stderrConfig = resolveOutputOption(cmd.options, "stderr")

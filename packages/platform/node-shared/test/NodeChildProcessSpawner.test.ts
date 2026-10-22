@@ -29,6 +29,19 @@ ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
 })
 
+describe.skipIf(process.platform === "win32")("error descriptions", () => {
+  it.effect("quote arguments and escape control characters", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(ChildProcess.make("nonexistent-command-12345", ["a b", "it's", "\u001b[2J"]))
+
+      assert.strictEqual(error.reason._tag, "NotFound")
+      assert.strictEqual(
+        error.reason._tag === "NotFound" ? error.reason.pathOrDescriptor : undefined,
+        "nonexistent-command-12345 'a b' 'it'\\''s' '\\u001b[2J'"
+      )
+    }).pipe(Effect.provide(NodeServices)))
+})
+
 describe("Windows cleanup", { concurrent: false }, () => {
   for (const signal of [false, true]) {
     it.skipIf(signal && process.platform === "win32")(
