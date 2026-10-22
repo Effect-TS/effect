@@ -14,6 +14,7 @@ import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { FileSystem } from "../FileSystem.ts"
 import { pipe } from "../Function.ts"
+import * as querySchema from "../internal/sqlQuerySchema.ts"
 import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { Path } from "../Path.ts"
@@ -344,6 +345,100 @@ ORDER BY migration_id`,
 
     return completed
   })
+
+/**
+ * Runs SQLite migrations and writes a version 2 `_schema.json` snapshot for
+ * `SqlClient.makeQuery` into the required schema directory.
+ *
+ * **Details**
+ *
+ * Refreshes the snapshot even when no migrations are pending. Uses the current
+ * `SqlClient` and `FileSystem` services and excludes SQLite's internal tables
+ * and the configured migrations table.
+ *
+ * **Gotchas**
+ *
+ * Only SQLite `STRICT` tables with ordinary `INT`, `INTEGER`, `REAL`, and `TEXT`
+ * columns are supported. Generated columns and `BLOB` values are not supported.
+ * Unsupported schemas and snapshot write failures fail
+ * with `MigrationError`. Migrations have already committed when schema
+ * inspection or writing fails; rerunning refreshes the snapshot.
+ *
+ * @see Client.makeQuery
+ * @stability experimental
+ * @category running
+ * @since 4.0.0
+ */
+export const runWithSnapshot: <R = never>(
+  options: MigratorOptions<R> & { readonly schemaDirectory: string }
+) => Effect.Effect<
+  ReadonlyArray<readonly [id: number, name: string]>,
+  MigrationError | SqlError,
+  Client.SqlClient | FileSystem | R
+> = Effect.fnUntraced(function*({ schemaDirectory, ...options }) {
+  const sql = (yield* Client.SqlClient).withoutTransforms()
+  if (!sql.onDialectOrElse({ sqlite: () => true, orElse: () => false })) {
+    return yield* new MigrationError({
+      kind: "BadState",
+      message: "Migrator.runWithSnapshot requires a SQLite client"
+    })
+  }
+  const fs = yield* FileSystem
+  const completed = yield* make({})(options)
+  const tables = yield* sql<{ name: string; strict: number }>`
+    SELECT name, strict FROM pragma_table_list
+    WHERE schema = 'main' AND type = 'table'
+      AND name NOT GLOB 'sqlite_*'
+      AND name <> ${options.table ?? "effect_sql_migrations"} COLLATE NOCASE
+    ORDER BY name
+  `
+  const output: Record<string, Record<string, querySchema.Column>> = Object.create(null)
+  for (const table of tables) {
+    if (table.strict !== 1) {
+      return yield* new MigrationError({
+        kind: "BadState",
+        message: "Table " + table.name + " must be STRICT"
+      })
+    }
+    const columns = yield* sql<{ name: string; type: string; notnull: number; pk: number; hidden: number }>`
+      SELECT name, type, "notnull", pk, hidden FROM pragma_table_xinfo(${table.name}) ORDER BY cid
+    `
+    const fields: Record<string, querySchema.Column> = Object.create(null)
+    for (const column of columns) {
+      if (column.hidden !== 0) {
+        return yield* new MigrationError({
+          kind: "BadState",
+          message: "Generated or hidden columns are not supported: " + table.name + "." + column.name
+        })
+      }
+      const type = column.type.toUpperCase()
+      if (!querySchema.isSqlType(type)) {
+        return yield* new MigrationError({
+          kind: "BadState",
+          message: "Unsupported SQLite type " + column.type + " on " + table.name + "." + column.name
+        })
+      }
+      const nullable = column.notnull === 0 && column.pk === 0
+      // The validated computed key is exactly one member of the Column union.
+      fields[column.name] = { [type]: null, ...(nullable ? { NULL: null } : {}) } as querySchema.Column
+    }
+    output[table.name] = fields
+  }
+  yield* fs.makeDirectory(schemaDirectory, { recursive: true }).pipe(
+    Effect.andThen(fs.writeFileString(
+      `${schemaDirectory}/_schema.json`,
+      JSON.stringify({ version: 2, dialect: "sqlite", tables: output } satisfies Client.QuerySchema, null, 2) + "\n"
+    )),
+    Effect.mapError((cause) =>
+      new MigrationError({
+        kind: "Failed",
+        message: "Could not write schema snapshot",
+        cause
+      })
+    )
+  )
+  return completed
+})
 
 const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> => {
   // Match query quoting: to_regclass folds unquoted names to lowercase.

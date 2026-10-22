@@ -618,3 +618,82 @@ describe("SqlClient", () => {
       }))
   })
 })
+
+const querySchema = {
+  version: 2,
+  dialect: "sqlite",
+  tables: {
+    users: {
+      id: { INTEGER: null },
+      name: { TEXT: null },
+      email: { TEXT: null, NULL: null },
+      age: { INTEGER: null }
+    }
+  }
+}
+
+const makeQueryClient = (compiler = Statement.makeCompilerSqlite()) =>
+  SqlClient.make({
+    driver: "test",
+    acquirer: Effect.die("Compilation must not acquire a connection"),
+    compiler,
+    spanAttributes: []
+  }).pipe(Effect.provide(Reactivity.layer))
+
+describe("SqlClient.makeQuery", () => {
+  it.effect("binds every named occurrence in SQL order", () =>
+    Effect.gen(function*() {
+      const query = SqlClient.makeQuery(yield* makeQueryClient(), querySchema)
+      const name = "' OR 1=1 --"
+      const statement = query(
+        "SELECT id FROM users WHERE name = :name AND id = :id AND age > :id",
+        { id: 1, name }
+      )
+
+      assert.deepStrictEqual(statement.compile(), [
+        "SELECT id FROM users WHERE name = ? AND id = ? AND age > ?",
+        [name, 1, 1]
+      ])
+      assert.deepStrictEqual(query("SELECT email FROM users WHERE email = :email", { email: null }).compile(), [
+        "SELECT email FROM users WHERE email = ?",
+        [null]
+      ])
+    }))
+
+  it.effect("validates snapshots supplied by untyped callers", () =>
+    Effect.gen(function*() {
+      const client = yield* makeQueryClient()
+      const invalid: Array<unknown> = [
+        { ...querySchema, version: 1 },
+        { ...querySchema, dialect: "pg" },
+        { ...querySchema, tables: { users: { id: { INTEGER: null, TEXT: null } } } },
+        { ...querySchema, tables: { users: { id: { ANY: null } } } }
+      ]
+      for (const value of invalid) {
+        assert.throws(() => SqlClient.makeQuery(client, value as SqlClient.QuerySchema), TypeError)
+      }
+    }))
+
+  it.effect("requires a SQLite client", () =>
+    Effect.gen(function*() {
+      const client = yield* makeQueryClient(Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => `$${index}`,
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onCustom: () => ["", []]
+      }))
+      assert.throws(() => SqlClient.makeQuery(client, querySchema), /requires a SQLite client/)
+    }))
+
+  it.effect("rejects inherited or missing parameter values from untyped callers", () =>
+    Effect.gen(function*() {
+      const query = SqlClient.makeQuery(yield* makeQueryClient(), querySchema)
+      const text = "SELECT id FROM users WHERE id = :id"
+      assert.throws(() => Reflect.apply(query, undefined, [text]), /Missing SQL parameter :id/)
+      assert.throws(
+        () => Reflect.apply(query, undefined, [text, Object.create({ id: 1 })]),
+        /Missing SQL parameter :id/
+      )
+    }))
+})

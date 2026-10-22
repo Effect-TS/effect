@@ -30,6 +30,12 @@ stats.txt
 
 # Scratchpad files
 scratchpad/**/*
+# Keep the runnable SQL type-safety example with the spike.
+!scratchpad/sql-typesafe/
+!scratchpad/sql-typesafe/*.ts
+!scratchpad/sql-typesafe/_schema.json
+!scratchpad/sql-typesafe/tsconfig.json
+!scratchpad/sql-typesafe/README.md
 
 # Agent instructions
 /AGENTS.md

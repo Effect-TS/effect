@@ -15,6 +15,8 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import * as query from "../internal/sqlQuery.ts"
+import type * as querySchema from "../internal/sqlQuerySchema.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -172,6 +174,69 @@ export interface SqlClient extends Constructor {
  * @since 4.0.0
  */
 export const SqlClient = Context.Service<SqlClient>("effect/sql/SqlClient")
+
+/**
+ * JSON schema snapshot accepted by `makeQuery`, with table names, column names,
+ * SQLite types, and nullability encoded as object keys to preserve inference
+ * through a native JSON import.
+ *
+ * **Details**
+ *
+ * Pass the imported snapshot directly to `makeQuery` so its specific keys are
+ * retained. A column such as `{ TEXT: null, NULL: null }` represents
+ * `string | null`; the marker values are not row data or defaults.
+ *
+ * @see makeQuery
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type QuerySchema = querySchema.Snapshot
+
+/**
+ * Query constructor that infers selected fields and named parameter types from
+ * a schema snapshot and a SQL string literal, returning an executable SQL
+ * `Statement`.
+ *
+ * @see makeQuery
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>>
+
+/**
+ * Creates a query constructor for a SQLite client and an imported JSON schema
+ * snapshot, checking SQL string literals and inferring result and parameter
+ * types without explicit row types.
+ *
+ * **Details**
+ *
+ * Call the result with parentheses and use `:name` placeholders with a parameter
+ * object. Values are bound in SQL occurrence order. Supports single-table
+ * `SELECT`, projections, `AS` aliases, `DISTINCT`, comparisons joined by `AND`,
+ * `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET`. Unsupported syntax,
+ * dynamic strings, and unions of query literals produce type errors.
+ *
+ * **Gotchas**
+ *
+ * Requires a version 2 SQLite snapshot and throws for invalid snapshots or
+ * other dialects. Only `STRICT` tables with ordinary `INT`, `INTEGER`, `REAL`,
+ * and `TEXT` columns are supported. Generated columns and `BLOB` values are not
+ * supported. Identifier spelling must match the snapshot.
+ * Column references named like SQL literals, such as `null` or `current_date`,
+ * require quoted identifiers and are rejected by this grammar.
+ * Row-name transforms are disabled, numeric decoding must use the driver's
+ * defaults, and null checks do not narrow result nullability. The caller must
+ * keep the snapshot in sync with the runtime database.
+ *
+ * @see QuerySchema
+ * @see Query
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeQuery: <S extends QuerySchema>(client: SqlClient, schema: S) => Query<S> = query.makeQuery
 
 /**
  * Namespace containing types associated with the `SqlClient` service.

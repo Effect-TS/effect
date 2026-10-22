@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "dialect": "sqlite",
+  "tables": {
+    "users": {
+      "id": {
+        "INTEGER": null
+      },
+      "name": {
+        "TEXT": null
+      },
+      "email": {
+        "TEXT": null,
+        "NULL": null
+      },
+      "age": {
+        "INTEGER": null
+      }
+    }
+  }
+}
