@@ -929,9 +929,17 @@ const CompilerProto = {
         }
 
         case "ArrayHelper": {
-          // IN () is invalid sql. an empty subquery is false, and NOT IN of it stays true
           if (segment.value.length === 0) {
-            sql += "(SELECT NULL WHERE 1=0)"
+            const inKeyword = emptyInKeyword.exec(sql)
+            if (inKeyword === null) {
+              sql += "()"
+            } else if (this.dialect === "pg") {
+              // an empty subquery is typed as text in postgres, so compare with an
+              // empty array, which takes the type of the left operand instead
+              sql = sql.slice(0, inKeyword.index) + (inKeyword[1] ? "<> ALL('{}')" : "= ANY('{}')")
+            } else {
+              sql += "(SELECT NULL WHERE 1=0)"
+            }
             break
           }
           sql += `(${placeholders(segment.value)})`
@@ -1675,3 +1683,5 @@ function in_(): Fragment | ArrayHelper {
 }
 
 const neverFragment = fragment([literal("1=0")])
+
+const emptyInKeyword = /\b(NOT\s+)?IN\s*$/i
