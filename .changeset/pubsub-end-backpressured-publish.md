@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `PubSub.end` dropping a backpressured message for a waiting subscriber when the resumed publisher ends the `PubSub`, which made `Stream.broadcastN` lose the last element on a subscriber that keeps up while another lags.
+Fix `Stream.broadcastN` dropping the last element for a subscriber that keeps up while another lags beyond capacity. `PubSub.end` no longer drops a backpressured message that a waiting subscriber has not received yet.

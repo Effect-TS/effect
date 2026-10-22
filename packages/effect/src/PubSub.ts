@@ -2619,8 +2619,8 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
         const published = pubsub.publish(value)
         if (!published) MutableList.prepend(this.publishers, publisher)
         this.completeSubscribersUnsafe(pubsub, subscribers)
-        // Resuming the publisher can end the PubSub synchronously, so waiting
-        // subscribers receive the message first.
+        // Resuming the publisher can synchronously end the PubSub, so notify
+        // waiting subscribers first.
         if (published && last) Deferred.doneUnsafe(deferred, Exit.succeed(true))
       }
     }
