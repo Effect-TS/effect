@@ -70,8 +70,11 @@
  * - `state(key)` reads the shared store, so it shows what every process did.
  *   `transitions` shows only the transitions this breaker instance made.
  * - With `onStoreError: "allow"` (the default), a call that the store cannot
- *   admit runs unrecorded and logs a warning, so a store outage logs one
- *   warning per call.
+ *   admit runs unrecorded and its cause is reported at
+ *   `References.UnhandledLogLevel`, so a store outage produces one report per
+ *   call. A failed `record` and a failed Redis lease renewal are reported the
+ *   same way. The breaker never logs at a level of its own; provide
+ *   `UnhandledLogLevel` as `undefined` to silence these reports.
  * - On Redis, a probe holds a lease that is renewed while it runs. If renewals
  *   cannot reach Redis, the lease lapses and another caller can start a second
  *   probe.
@@ -176,6 +179,7 @@ import * as Exit from "../Exit.ts"
 import { dual } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
+import { UnhandledLogLevel } from "../References.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
@@ -503,8 +507,9 @@ export const CircuitBreaker: Context.Service<CircuitBreaker, CircuitBreaker> = C
  * - `maxOpenDuration` caps a `Retry-After` hint from `failure`, and defaults
  *   to one hour. It never caps `openDuration`.
  * - `onStoreError` decides what a call does when the store cannot admit it:
- *   `"allow"` (the default) runs it unrecorded and logs a warning, `"fail"`
- *   fails it with `CircuitBreakerStoreError`.
+ *   `"allow"` (the default) runs it unrecorded and reports the cause at
+ *   `References.UnhandledLogLevel`, `"fail"` fails it with
+ *   `CircuitBreakerStoreError`.
  *
  * The breaker's `transitions` stream ends when the surrounding scope closes.
  *
@@ -592,7 +597,7 @@ export const make: (options: {
             ) {
               return yield* Effect.failCause(admitted.cause)
             }
-            yield* Effect.logWarning("CircuitBreaker store unavailable, running the call unrecorded", error.value)
+            yield* reportUnhandled("CircuitBreaker store unavailable, running the call unrecorded", admitted.cause)
             return yield* restore(self)
           }
           const admission = admitted.value
@@ -608,7 +613,10 @@ export const make: (options: {
             openFor: yield* openFor(outcome, admission)
           }).pipe(
             Effect.flatMap(publish),
-            Effect.catch((error) => Effect.logWarning("CircuitBreaker failed to record an outcome", error))
+            Effect.catchCauseFilter(
+              Cause.findError,
+              (_, cause) => reportUnhandled("CircuitBreaker failed to record an outcome", cause)
+            )
           )
           if (Exit.isSuccess(classified)) return yield* exit
           return yield* Effect.failCause(
@@ -643,6 +651,14 @@ export const layer = (options: {
   readonly maxOpenDuration?: Duration.Input | undefined
   readonly onStoreError?: "allow" | "fail" | undefined
 }): Layer.Layer<CircuitBreaker, never, CircuitBreakerStore> => Layer.effect(CircuitBreaker, make(options))
+
+// Reports an error that has no caller to receive it at `UnhandledLogLevel`, as
+// `Pool` and `ScopedCache` do. An undefined level silences it.
+const reportUnhandled = (message: string, cause: Cause.Cause<unknown>): Effect.Effect<void> =>
+  Effect.withFiber((fiber) => {
+    const level = fiber.getRef(UnhandledLogLevel)
+    return level === undefined ? Effect.void : Effect.logWithLevel(level)(message, cause)
+  })
 
 const classifyExit = <A, E, R2>(
   exit: Exit.Exit<A, E>,
@@ -1333,9 +1349,9 @@ export const layerStoreMemory = (options?: {
  *   affects a circuit. Requires Redis 5 or later.
  * - A HalfOpen probe holds a lease of `probeLease` (default 10 seconds),
  *   renewed every third of the lease while the call runs. A failed renewal is
- *   logged and retried on the next tick, and never fails the call. If the
- *   lease lapses, another caller takes over as the probe and the old probe's
- *   outcome is discarded.
+ *   reported at `References.UnhandledLogLevel` and retried on the next tick,
+ *   and never fails the call. If the lease lapses, another caller takes over
+ *   as the probe and the old probe's outcome is discarded.
  * - `idleTimeToLive` (default one hour) expires idle keys. Closed keys, and
  *   HalfOpen keys whose probe slot is free, expire after `idleTimeToLive`.
  *   While a probe holds the lease, the key expires `idleTimeToLive` after the
@@ -1409,8 +1425,9 @@ const makeStoreRedis = Effect.fnUntraced(function*(options?: {
     while (true) {
       yield* Effect.sleep(renewInterval)
       const renewed = yield* renewRedis(redisKey, generation, leaseMillis, idleMillis).pipe(
-        Effect.catch((error) =>
-          Effect.as(Effect.logWarning("CircuitBreaker failed to renew a probe lease, retrying", error), 1)
+        Effect.catchCauseFilter(
+          Cause.findError,
+          (_, cause) => Effect.as(reportUnhandled("CircuitBreaker failed to renew a probe lease, retrying", cause), 1)
         )
       )
       if (renewed !== 1) return
