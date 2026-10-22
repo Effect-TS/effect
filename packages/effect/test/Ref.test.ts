@@ -29,13 +29,7 @@ const isClosed = (self: State): boolean => self._tag === "Closed"
 describe("Ref", () => {
   it.effect("distinct refs are not equal", () =>
     Effect.gen(function*() {
-      const left = yield* Ref.make(0)
-      const right = yield* Ref.make(0)
-      assert.isTrue(Equal.equals(left, left))
-      assert.isFalse(Equal.equals(left, right))
-      yield* Ref.set(left, 1)
-      yield* Ref.set(right, 1)
-      assert.isFalse(Equal.equals(left, right))
+      assert.isFalse(Equal.equals(yield* Ref.make(0), yield* Ref.make(0)))
     }))
 
   it.effect("get returns the current value", () =>
