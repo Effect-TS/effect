@@ -128,9 +128,10 @@ describe("CommandLine", () => {
 
     it("round-trips through split", () => {
       for (const format of ["posix", "windows"] as const) {
-        const words = ["prog", ...tricky]
-        const line = Result.getOrThrow(CommandLine.join(words, { format }))
-        assert.deepStrictEqual(Result.getOrThrow(CommandLine.split(line, { format })), words, `${format}: ${line}`)
+        for (const words of [["prog", ...tricky], ["if", "then"]]) {
+          const line = Result.getOrThrow(CommandLine.join(words, { format }))
+          assert.deepStrictEqual(Result.getOrThrow(CommandLine.split(line, { format })), words, `${format}: ${line}`)
+        }
       }
     })
   })
@@ -145,6 +146,7 @@ describe("CommandLine", () => {
       )
       assert.strictEqual(CommandLine.display(["a\"b", "c d"], { format: "windows" }), "\"a\\\"b\" \"c d\"")
       assert.strictEqual(CommandLine.display([]), "")
+      assert.strictEqual(CommandLine.display(["if", "x"]), "'if' x")
     })
   })
 
@@ -282,6 +284,7 @@ describe("CommandLine", () => {
         [CommandLine.template`echo $HOME`, "UnsupportedSyntax"],
         [CommandLine.template`echo "${"a"}`, "UnterminatedQuote"],
         [CommandLine.template`echo ${"a\0"}`, "NulCharacter"],
+        [CommandLine.template`echo \\\0`, "NulCharacter"],
         [CommandLine.template(invalidEscape as unknown as TemplateStringsArray), "InvalidEscape"]
       ]
       for (const [result, reason] of cases) {

@@ -11,6 +11,7 @@ import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
+import { inspect } from "node:util"
 
 export interface Options {
   readonly processGroups: boolean
@@ -763,6 +764,24 @@ export const suite = (
             )
 
             assert.isTrue(exit._tag === "Failure")
+          }))
+
+        it.effect("should not expose Redacted arguments in errors", () =>
+          Effect.gen(function*() {
+            for (
+              const command of [
+                ChildProcess.make("nonexistent-command-12345", [Redacted.make("hunter2")]),
+                ChildProcess.make("echo", [Redacted.make("hunter2\0")])
+              ]
+            ) {
+              const exit = yield* Effect.exit(Effect.scoped(Effect.gen(function*() {
+                return yield* command
+              })))
+
+              assert.isTrue(Exit.isFailure(exit))
+              assert.notInclude(inspect(exit, { depth: Infinity }), "hunter2")
+              assert.notInclude(JSON.stringify(exit), "hunter2")
+            }
           }))
 
         it.effect("should handle spawn error with invalid cwd", () =>
