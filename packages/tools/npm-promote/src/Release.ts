@@ -4,7 +4,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import type * as Redacted from "effect/Redacted"
 import type { GitHubRepository } from "./GitHub.ts"
 import {
@@ -64,9 +63,8 @@ export class Alerts extends Context.Service<Alerts, {
               Effect.provide(context)
             ),
           resolve: TrackingIssue.close(github, "Promotion succeeded, so this is resolved.").pipe(
-            Effect.flatMap(Option.match({
-              onNone: () => Effect.void,
-              onSome: (number) => Console.log(`Closed tracking issue #${number}`)
+            Effect.flatMap(Effect.forEach((number) => Console.log(`Closed tracking issue #${number}`), {
+              discard: true
             })),
             Effect.provide(context)
           )
