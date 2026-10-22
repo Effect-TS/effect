@@ -9,7 +9,6 @@
  * @stability stable
  * @since 4.0.0
  */
-import * as Arr from "./Array.ts"
 import * as Count from "./internal/count.ts"
 
 /**
@@ -279,7 +278,7 @@ export const prepend = <A>(self: MutableList<A>, message: A): void => {
  * @since 4.0.0
  */
 export const prependAll = <A>(self: MutableList<A>, messages: Iterable<A>): void =>
-  prependAllUnsafe(self, Arr.fromIterable(messages), !Array.isArray(messages))
+  prependAllUnsafe(self, Array.from(messages), true)
 
 /**
  * Prepends all elements from a ReadonlyArray to the beginning of the MutableList.
@@ -349,7 +348,7 @@ export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArra
  * @since 4.0.0
  */
 export const appendAll = <A>(self: MutableList<A>, messages: Iterable<A>): number =>
-  appendAllUnsafe(self, Arr.fromIterable(messages), !Array.isArray(messages))
+  appendAllUnsafe(self, Array.from(messages), true)
 
 /**
  * Appends all elements from a ReadonlyArray to the end of the MutableList.

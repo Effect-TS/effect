@@ -79,6 +79,20 @@ describe("Queue", () => {
       assert.isTrue(Queue.isDequeue(dequeue))
     }))
 
+  for (const strategy of ["unbounded", "sliding"] as const) {
+    it.effect(`${strategy} offerAll preserves values when the input buffer is reused`, () =>
+      Effect.gen(function*() {
+        const queue = yield* strategy === "unbounded" ? Queue.unbounded<number>() : Queue.sliding<number>(10)
+        const buffer = [1, 2, 3]
+        yield* Queue.offerAll(queue, buffer)
+
+        buffer.length = 0
+        buffer.push(7)
+
+        assert.deepStrictEqual(yield* Queue.takeAll(queue), [1, 2, 3])
+      }))
+  }
+
   it.effect("bounded offerAll waits until capacity is released", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(2)

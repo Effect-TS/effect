@@ -3,6 +3,36 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { MutableList } from "effect"
 
 describe("MutableList", () => {
+  for (
+    const [method, insert] of [
+      ["appendAll", MutableList.appendAll],
+      ["prependAll", MutableList.prependAll]
+    ] as const
+  ) {
+    it(`${method} preserves values when the input array changes`, () => {
+      const list = MutableList.make<number>()
+      const input = [1, 2, 3]
+      insert(list, input)
+
+      input.length = 0
+      input.push(7)
+
+      deepStrictEqual(MutableList.takeAll(list), [1, 2, 3])
+    })
+
+    it(`${method} keeps the input array separate from takeN results`, () => {
+      const list = MutableList.make<number>()
+      const input = [3, 1, 2]
+      insert(list, input)
+
+      const taken = MutableList.takeN(list, 3)
+      strictEqual(taken === input, false)
+      taken.sort()
+
+      deepStrictEqual(input, [3, 1, 2])
+    })
+  }
+
   it("prependAll with no values preserves existing elements", () => {
     const list = MutableList.make<number>()
     MutableList.appendAll(list, [1, 2])
