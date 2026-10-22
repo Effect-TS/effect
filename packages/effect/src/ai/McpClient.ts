@@ -337,10 +337,10 @@ export const make: (options: {
         let cursor: string | undefined
         for (let page = 0; page < MAX_DISCOVERY_PAGES; page++) {
           const result = yield* request<ListResult<K, A>>(`${kind}/list`, cursor === undefined ? {} : { cursor })
-          items.push(...result[kind])
-          if (items.length > MAX_DISCOVERY_ITEMS) {
+          if (items.length + result[kind].length > MAX_DISCOVERY_ITEMS) {
             return yield* limitError(`MCP ${kind} discovery exceeded its item limit`)
           }
+          items.push(...result[kind])
           if (result.nextCursor === undefined) return items
           if (cursors.has(result.nextCursor)) {
             return yield* limitError(`MCP ${kind} discovery repeated a cursor`)
