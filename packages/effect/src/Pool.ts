@@ -683,14 +683,24 @@ const returnCapacity = <A, E>(
 }
 
 /**
- * Hands a released item's free slots to the oldest waiters before anybody
- * else can borrow it.
+ * Hands an item's free slots to the oldest waiters before anybody else can
+ * borrow it, then publishes whatever capacity is left with `publish`.
  *
  * Waiters resume on a later tick. Publishing the item as available and only
  * waking a waiter would let a borrower arriving in between take it, sending
  * the waiter to the back of the queue, where it can starve indefinitely.
+ *
+ * Every path that makes a healthy item available goes through here, and
+ * waiters only queue while no healthy item is available. So an item is never
+ * in the available list when it is handed to a waiter, and filling it needs
+ * no `removeAvailable`.
  */
-const handOff = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>, fiber: Fiber.Fiber<unknown, unknown>): void => {
+const handOff = <A, E>(
+  self: Pool<A, E>,
+  item: PoolItem<A, E>,
+  fiber: Fiber.Fiber<unknown, unknown>,
+  publish: (self: Pool<A, E>, item: PoolItem<A, E>) => void = addAvailableFront
+): void => {
   if (reservations.has(item)) return
   const waiters = self.state.waiters
   for (const notify of waiters) {
@@ -702,11 +712,9 @@ const handOff = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>, fiber: Fiber.Fibe
     handoff.item = item
     fiber.currentDispatcher.scheduleTask(notify, 0)
   }
-  // `addAvailableFront` is idempotent, so re-adding an available item is free.
+  // Publishing is idempotent, so re-adding an available item is free.
   if (item.refCount < self.config.concurrency) {
-    addAvailableFront(self, item)
-  } else {
-    removeAvailable(self, item)
+    publish(self, item)
   }
 }
 
@@ -904,8 +912,7 @@ export const reserve: {
             !self.state.invalidated.has(poolItem) &&
             poolItem.refCount < self.config.concurrency
           ) {
-            addAvailableFront(self, poolItem)
-            wakeWaiters(self, fiber, self.config.concurrency - poolItem.refCount)
+            handOff(self, poolItem, fiber)
           }
           return internal.void
         })
@@ -951,17 +958,19 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
       ? allocate(self)
       : Effect.flatMap(
         self.config.strategy.reclaim(self),
-        (item) => item ? Effect.succeed(item) : allocate(self)
+        (item) => item ? Effect.as(wakeAll(self), item) : allocate(self)
       )
+    // Allocation hands successful items to waiters itself. Waking the rest
+    // after a failure lets them retry the acquisition.
     if (toAcquire === 1) {
-      const acquired = Effect.tap(acquireOne, wakeAll(self))
+      const acquired = Effect.tap(acquireOne, (item) => item.exit._tag === "Failure" ? wakeAll(self) : Effect.void)
       return self.config.isFixed
         ? Effect.asVoid(acquired)
         : Effect.flatMap(acquired, (item) => item.exit._tag === "Failure" ? Effect.void : resizeLoop(self))
     }
     const acquired = acquireOne.pipe(
       Effect.replicateEffect(toAcquire, { concurrency: toAcquire }),
-      Effect.tap(wakeAll(self))
+      Effect.tap((items) => items.some((_) => _.exit._tag === "Failure") ? wakeAll(self) : Effect.void)
     )
     return self.config.isFixed
       ? Effect.asVoid(acquired)
@@ -997,7 +1006,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         )
         if (exit._tag === "Success") {
           self.state.items.add(item)
-          addAvailable(self, item)
+          handOff(self, item, fiber, addAvailable)
           return self.config.strategy === strategyNoop ? Effect.succeed(item) : Effect.as(onAcquire, item)
         }
         // Deliver a waiting borrower its own failure; otherwise retain the slot.
