@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Socket from "effect/socket/Socket"
 import type * as Net from "node:net"
-import { type Duplex, Readable } from "node:stream"
+import { type Duplex, finished, Readable } from "node:stream"
 import * as NodeSocket from "../NodeSocket.ts"
 
 /**
@@ -114,31 +114,24 @@ export const frameBody = (conn: Duplex, head: Buffer, length: number): {
 export const drainBody = (body: Readable, maxBytes: number | undefined): Effect.Effect<void, Socket.SocketError> =>
   Effect.callback((resume) => {
     if (body.readableEnded) return resume(Effect.void)
-    if (body.destroyed) return resume(Effect.fail(openError("The request closed before its body ended")))
     let bytes = 0
-    const done = (effect: Effect.Effect<void, Socket.SocketError>) => {
-      cleanup()
-      resume(effect)
-    }
-    const onData = (chunk: Uint8Array) => {
+    const cleanup = finished(body, { readable: true, writable: false }, (error) => {
+      done()
+      resume(error ? Effect.fail(openError(error)) : Effect.void)
+    })
+    function onData(chunk: Uint8Array) {
       bytes += chunk.length
       if (maxBytes !== undefined && bytes > maxBytes) {
-        done(Effect.fail(openError("The request body exceeds the maximum body size")))
+        done()
+        resume(Effect.fail(openError("The request body exceeds the maximum body size")))
       }
     }
-    const onEnd = () => done(Effect.void)
-    const onError = (cause: Error) => done(Effect.fail(openError(cause)))
-    const onClose = () => done(Effect.fail(openError("The request closed before its body ended")))
-    const cleanup = () => {
+    function done() {
       body.off("data", onData)
-      body.off("end", onEnd)
-      body.off("error", onError)
-      body.off("close", onClose)
+      cleanup()
     }
     body.on("data", onData)
-    body.on("end", onEnd)
-    body.on("error", onError)
-    body.on("close", onClose)
+    // A body paused by an earlier partial read must flow again.
     body.resume()
-    return Effect.sync(cleanup)
+    return Effect.sync(done)
   })

@@ -407,10 +407,8 @@ export const makeUpgradeHandler = <
               ? webSocketUpgrade
               : Effect.fail(upgradeError(request, "WebSocket upgrades do not support custom response headers"))
           }
-          const invalid = validateUpgradeHeaders(headers)
-          if (invalid !== undefined) {
-            return Effect.fail(upgradeError(request, invalid.message, invalid.cause))
-          }
+          const invalid = validateUpgradeHeaders(request, headers)
+          if (invalid !== undefined) return Effect.fail(invalid)
           return Upgrade.toSocket(
             socket,
             Effect.withFiber((fiber) => {
@@ -420,7 +418,7 @@ export const makeUpgradeHandler = <
               if (state.response !== undefined) return
               state.response = Response.empty({
                 status: 101,
-                headers: Headers.fromInput({ ...headers, connection: "Upgrade", upgrade: protocol! })
+                headers: { ...headers, connection: "Upgrade", upgrade: protocol! }
               })
               if (head.length > 0) socket.unshift(head)
               // Node rejects CR/LF in header values, so protocol cannot inject response headers.
@@ -464,17 +462,18 @@ interface UpgradeState {
 const reservedUpgradeHeaders = new Set(["connection", "upgrade", "content-length", "transfer-encoding"])
 
 const validateUpgradeHeaders = (
+  request: HttpServerRequest,
   headers: Headers.Headers
-): { readonly message: string; readonly cause?: unknown } | undefined => {
+): HttpServerError | undefined => {
   for (const name in headers) {
     if (reservedUpgradeHeaders.has(name)) {
-      return { message: `Upgrade responses cannot set the ${name} header` }
+      return upgradeError(request, `Upgrade responses cannot set the ${name} header`)
     }
     try {
       http.validateHeaderName(name)
       http.validateHeaderValue(name, headers[name])
     } catch (cause) {
-      return { message: `Invalid upgrade response header: ${name}`, cause }
+      return upgradeError(request, `Invalid upgrade response header: ${name}`, cause)
     }
   }
 }
@@ -705,7 +704,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
         })
       )
     }
-    return Effect.suspend(() => state.upgradeWith(this, Headers.fromInput(options.headers)))
+    return state.upgradeWith(this, Headers.fromInput(options.headers))
   }
 
   // The response reported to middleware once the connection is upgraded.

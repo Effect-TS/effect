@@ -455,9 +455,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             ? Effect.succeed
             : Schema.decodeUnknownEffect(upgrade.headers, parseOptions.headers)
           decodeMap[101] = (response) =>
-            Effect.flatMap(
+            Effect.zipWith(
               decodeHeaders(response.headers),
-              (headers) => Effect.map(response.upgrade, (socket): Upgraded<unknown> => ({ headers, socket }))
+              response.upgrade,
+              (headers, socket): Upgraded<unknown> => ({ headers, socket })
             )
         }
 

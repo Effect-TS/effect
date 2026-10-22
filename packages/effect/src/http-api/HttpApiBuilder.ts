@@ -943,13 +943,6 @@ function handlerToHttpEffect(
     upgrade?.headers,
     (schema) => Schema.encodeUnknownEffect(schema, options.headers)
   )
-  const upgradeWith = (httpRequest: HttpServerRequest, options?: { readonly headers?: unknown }) =>
-    encodeUpgradeHeaders === undefined
-      ? Effect.orDie(httpRequest.upgrade)
-      : HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)).pipe(
-        Effect.flatMap((headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })),
-        Effect.orDie
-      )
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
@@ -982,7 +975,15 @@ function handlerToHttpEffect(
         if (!isUpgradeRequest(httpRequest, upgrade.protocol)) {
           return upgradeRequired(upgrade.protocol)
         }
-        request.upgrade = (options?: { readonly headers?: unknown }) => upgradeWith(httpRequest, options)
+        request.upgrade = (options?: { readonly headers?: unknown }) =>
+          Effect.orDie(
+            encodeUpgradeHeaders === undefined
+              ? httpRequest.upgrade
+              : Effect.flatMap(
+                HttpApiSchemaError.wrap("ResponseHeaders", encodeUpgradeHeaders(options?.headers)),
+                (headers) => httpRequest.upgradeWith({ headers: headers as Record<string, string> })
+              )
+          )
       }
       if (payloadBy) {
         const result = decodePayload(payloadBy, httpRequest, query)
