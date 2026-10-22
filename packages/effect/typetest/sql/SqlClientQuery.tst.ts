@@ -1,4 +1,6 @@
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { SqlError } from "effect/sql/SqlError"
 import type { Statement } from "effect/sql/Statement"
@@ -21,9 +23,34 @@ const schema = {
     }
   }
 }
-const query = SqlClient.makeQuery(client, schema)
+class DatabaseSchema extends Context.Service<DatabaseSchema, typeof schema>()("test/SqlClientQuery/DatabaseSchema") {}
+
+const acquireQuery = SqlClient.makeQuery(DatabaseSchema)
+declare const query: Effect.Success<typeof acquireQuery>
 
 describe("SqlClient.makeQuery", () => {
+  it("requires the schema and client services until they are provided", () => {
+    expect(acquireQuery).type.toBe<
+      Effect.Effect<SqlClient.Query<typeof schema>, never, SqlClient.SqlClient | DatabaseSchema>
+    >()
+    expect(Effect.provide(acquireQuery, Layer.succeed(DatabaseSchema, schema))).type.toBe<
+      Effect.Effect<SqlClient.Query<typeof schema>, never, SqlClient.SqlClient>
+    >()
+    const withClient = Effect.provideService(acquireQuery, SqlClient.SqlClient, client)
+    expect(withClient).type.toBe<Effect.Effect<SqlClient.Query<typeof schema>, never, DatabaseSchema>>()
+    expect(Effect.provideService(withClient, DatabaseSchema, schema)).type.toBe<
+      Effect.Effect<SqlClient.Query<typeof schema>>
+    >()
+    const program = Effect.gen(function*() {
+      const sql = yield* acquireQuery
+      return yield* sql("SELECT id FROM users")
+    })
+    expect(program).type.toBe<
+      Effect.Effect<ReadonlyArray<{ readonly id: number }>, SqlError, SqlClient.SqlClient | DatabaseSchema>
+    >()
+    expect(Effect.runPromise).type.not.toBeCallableWith(program)
+  })
+
   it("infers projected fields, aliases and nullability", () => {
     const statement = query("SELECT users.id AS userId, name, email FROM users")
     expect(statement).type.toBe<
@@ -68,7 +95,7 @@ describe("SqlClient.makeQuery", () => {
   })
 
   it("rejects column names that SQLite can interpret as literals", () => {
-    const literals = SqlClient.makeQuery(client, {
+    const literalSchema = {
       ...schema,
       tables: {
         users: {
@@ -81,45 +108,63 @@ describe("SqlClient.makeQuery", () => {
           CURRENT_TIMESTAMP: { INTEGER: null }
         }
       }
+    }
+    class LiteralSchema extends Context.Service<LiteralSchema, typeof literalSchema>()("test/LiteralSchema") {}
+    Effect.gen(function*() {
+      const literals = yield* SqlClient.makeQuery(LiteralSchema)
+      expect(literals).type.not.toBeCallableWith("SELECT null FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT true FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT FALSE FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT current_date FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT current_time FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT CURRENT_TIMESTAMP FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT users.current_date FROM users")
+      expect(literals).type.not.toBeCallableWith("SELECT id FROM users WHERE null = :value", { value: "value" })
+      expect(literals).type.not.toBeCallableWith("SELECT id FROM users ORDER BY current_date")
+      expect(literals).type.toBeCallableWith("SELECT * FROM users")
+      expect(literals).type.toBeCallableWith("SELECT id AS current_date FROM users")
     })
-    expect(literals).type.not.toBeCallableWith("SELECT null FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT true FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT FALSE FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT current_date FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT current_time FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT CURRENT_TIMESTAMP FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT users.current_date FROM users")
-    expect(literals).type.not.toBeCallableWith("SELECT id FROM users WHERE null = :value", { value: "value" })
-    expect(literals).type.not.toBeCallableWith("SELECT id FROM users ORDER BY current_date")
-    expect(literals).type.toBeCallableWith("SELECT * FROM users")
-    expect(literals).type.toBeCallableWith("SELECT id AS current_date FROM users")
   })
 
   it("derives changed column types from the supplied snapshot", () => {
-    const changed = SqlClient.makeQuery(client, {
+    const changedSchema = {
       ...schema,
       tables: { users: { id: { TEXT: null }, email: { TEXT: null } } }
+    }
+    class ChangedSchema extends Context.Service<ChangedSchema, typeof changedSchema>()("test/ChangedSchema") {}
+    Effect.gen(function*() {
+      const changed = yield* SqlClient.makeQuery(ChangedSchema)
+      expect(changed("SELECT * FROM users")).type.toBe<
+        Statement<{
+          readonly id: string
+          readonly email: string
+        }>
+      >()
+      expect(changed).type.toBeCallableWith("SELECT id FROM users WHERE id = :id", { id: "one" })
+      expect(changed).type.not.toBeCallableWith("SELECT id FROM users WHERE id = :id", { id: 1 })
     })
-    expect(changed("SELECT * FROM users")).type.toBe<
-      Statement<{
-        readonly id: string
-        readonly email: string
-      }>
-    >()
-    expect(changed).type.toBeCallableWith("SELECT id FROM users WHERE id = :id", { id: "one" })
-    expect(changed).type.not.toBeCallableWith("SELECT id FROM users WHERE id = :id", { id: 1 })
-    expect(SqlClient.makeQuery).type.not.toBeCallableWith(client, {
+    const invalidSchema = {
       ...schema,
       tables: { users: { id: { ANY: null } } }
-    })
-    expect(SqlClient.makeQuery).type.not.toBeCallableWith(client, {
+    }
+    class InvalidSchema extends Context.Service<InvalidSchema, typeof invalidSchema>()("test/InvalidSchema") {}
+    expect(SqlClient.makeQuery).type.not.toBeCallableWith(InvalidSchema)
+    const blobSchema = {
       ...schema,
       tables: { users: { value: { BLOB: null } } }
-    })
+    }
+    class BlobSchema extends Context.Service<BlobSchema, typeof blobSchema>()("test/BlobSchema") {}
+    expect(SqlClient.makeQuery).type.not.toBeCallableWith(BlobSchema)
     const alternative: { id: { INTEGER: null } } | { id: { TEXT: null } } = Math.random() ?
       { id: { INTEGER: null } } :
       { id: { TEXT: null } }
-    const alternatives = SqlClient.makeQuery(client, { ...schema, tables: { users: alternative } })
-    expect(alternatives("SELECT id FROM users")).type.toBe<Statement<{ readonly id: number | string }>>()
+    const alternativeSchema = { ...schema, tables: { users: alternative } }
+    class AlternativeSchema
+      extends Context.Service<AlternativeSchema, typeof alternativeSchema>()("test/AlternativeSchema")
+    {}
+    Effect.gen(function*() {
+      const alternatives = yield* SqlClient.makeQuery(AlternativeSchema)
+      expect(alternatives("SELECT id FROM users")).type.toBe<Statement<{ readonly id: number | string }>>()
+    })
   })
 })

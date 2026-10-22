@@ -1,6 +1,8 @@
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Migrator from "effect/sql/Migrator"
 import * as SqlClient from "effect/sql/SqlClient"
 import assert from "node:assert/strict"
@@ -9,6 +11,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import schema from "./_schema.json" with { type: "json" }
+import { DatabaseSchema } from "./database.ts"
 import { migrations } from "./migrations.ts"
 
 const root = fileURLToPath(new URL("./", import.meta.url))
@@ -34,10 +37,15 @@ try {
     assert.deepEqual(yield* Migrator.runWithSnapshot(options), [])
     assert.equal(readFileSync(schemaPath, "utf8"), initial, "A no-op migration must refresh a missing snapshot")
 
-    const client = yield* SqlClient.SqlClient
-    const query = SqlClient.makeQuery(client, schema)
-    assert.throws(() => SqlClient.makeQuery(client, { ...schema, version: 1 }), /version 2 SQLite/)
-    assert.throws(() => SqlClient.makeQuery(client, { ...schema, dialect: "pg" }), /version 2 SQLite/)
+    const query = yield* SqlClient.makeQuery(DatabaseSchema)
+    for (const invalid of [{ ...schema, version: 1 }, { ...schema, dialect: "pg" }]) {
+      const exit = yield* SqlClient.makeQuery(DatabaseSchema).pipe(
+        Effect.provideService(DatabaseSchema, invalid),
+        Effect.exit
+      )
+      assert(Exit.isFailure(exit))
+      assert.match(Cause.pretty(exit.cause), /version 2 SQLite/)
+    }
     const ordered = query("SELECT id, name FROM users WHERE name = :name AND age >= :minimumAge", {
       minimumAge: 18,
       name: "Ada"
@@ -65,7 +73,7 @@ try {
     assert.deepEqual(injection.compile(), ["SELECT id FROM users WHERE name = ?", ["' OR 1=1 --"]])
     assert.deepEqual(yield* injection, [])
   }).pipe(
-    Effect.provide([NodeFileSystem.layer, SqliteClient.layer({ filename: ":memory:" })]),
+    Effect.provide([DatabaseSchema.layer, NodeFileSystem.layer, SqliteClient.layer({ filename: ":memory:" })]),
     Effect.runPromise
   )
 
@@ -84,16 +92,25 @@ try {
       references: base.references.map((reference: { path: string }) => ({ path: resolve(root, reference.path) }))
     })
   )
+  writeFileSync(
+    join(directory, "database.ts"),
+    [
+      "import * as Context from 'effect/Context'",
+      "import schema from './_schema.json' with { type: 'json' }",
+      "export { schema }",
+      "export class DatabaseSchema extends Context.Service<DatabaseSchema, typeof schema>()('verify/DatabaseSchema') {}"
+    ].join("\n")
+  )
 
   let previousSource: string | undefined
   const check = (body: string) => {
     const source = [
       "import * as Effect from 'effect/Effect'",
       "import * as SqlClient from 'effect/sql/SqlClient'",
-      "import schema from './_schema.json' with { type: 'json' }",
+      "import { DatabaseSchema, schema } from './database.ts'",
       "export const program = Effect.gen(function*() {",
       "  const raw = yield* SqlClient.SqlClient",
-      "  const query = SqlClient.makeQuery(raw, schema)",
+      "  const query = yield* SqlClient.makeQuery(DatabaseSchema)",
       body,
       "})"
     ].join("\n")
@@ -107,14 +124,14 @@ try {
     const result = check(body)
     assert.equal(result.status, 0, result.output)
   }
-  const rejects = (body: string, message: RegExp, schemaError = false) => {
+  const rejects = (body: string, message: RegExp, location = /query\.ts\(\d+,\d+\)/) => {
     const result = check(body)
     assert.equal(result.status, 2, result.output)
     assert.match(result.output, message)
     assert.match(
       result.output,
-      schemaError ? /_schema\.json\(\d+,\d+\)/ : /query\.ts\(\d+,\d+\)/,
-      "Diagnostics must refer to the query or schema"
+      location,
+      "Diagnostics must refer to the query, schema service, or schema"
     )
   }
 
@@ -125,6 +142,17 @@ try {
     "rows[0].email?.toLowerCase()"
   ].join("\n")
   accepts(valid)
+  accepts(
+    "void Effect.runPromise(SqlClient.makeQuery(DatabaseSchema).pipe(Effect.provideService(DatabaseSchema, schema), Effect.provideService(SqlClient.SqlClient, raw)))"
+  )
+  rejects(
+    "void Effect.runPromise(SqlClient.makeQuery(DatabaseSchema).pipe(Effect.provideService(SqlClient.SqlClient, raw)))",
+    /DatabaseSchema.*never/s
+  )
+  rejects(
+    "void Effect.runPromise(SqlClient.makeQuery(DatabaseSchema).pipe(Effect.provideService(DatabaseSchema, schema)))",
+    /SqlClient.*never/s
+  )
   accepts(
     "const rows = yield* query(`SELECT users.id AS userId, email FROM users WHERE email IS NOT NULL`); rows[0].userId.toFixed()"
   )
@@ -197,13 +225,13 @@ try {
   const invalid = JSON.parse(original)
   invalid.tables.users.id = { ANY: null }
   writeFileSync(schemaPath, JSON.stringify(invalid))
-  rejects(valid, /not assignable to parameter of type 'Snapshot'/)
+  rejects(valid, /not assignable to parameter of type 'Key<DatabaseSchema, Snapshot>'/)
   writeFileSync(schemaPath, "{}")
   rejects(valid, /missing the following properties from type 'Snapshot'/)
   writeFileSync(schemaPath, "{\"version\":")
-  rejects(valid, /TS\d+/, true)
+  rejects(valid, /TS\d+/, /_schema\.json\(\d+,\d+\)/)
   rmSync(schemaPath)
-  rejects(valid, /Cannot find module '.\/_schema.json'/)
+  rejects(valid, /Cannot find module '.\/_schema.json'/, /database\.ts\(\d+,\d+\)/)
   writeFileSync(schemaPath, original)
   accepts(valid)
 
@@ -219,7 +247,7 @@ try {
     untrustedNameMatches: 0
   })
   console.log(
-    "Verified native JSON schema imports, SQL literal inference, bound parameters, schema invalidation, and SQLite execution."
+    "Verified schema service requirements, native JSON imports, SQL literal inference, bound parameters, schema invalidation, and SQLite execution."
   )
 } finally {
   rmSync(directory, { recursive: true, force: true })

@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add experimental `SqlClient.makeQuery` for single-table SQLite `SELECT` string literals, inferring result fields and named parameter types from imported JSON schema snapshots and binding parameter values. Add `Migrator.runWithSnapshot` to run migrations and refresh snapshots for SQLite `STRICT` tables with ordinary `INT`, `INTEGER`, `REAL`, and `TEXT` columns.
+Add experimental `SqlClient.makeQuery` with schema services and inferred SQLite `SELECT` row and parameter types, plus `Migrator.runWithSnapshot` to refresh schema snapshots.

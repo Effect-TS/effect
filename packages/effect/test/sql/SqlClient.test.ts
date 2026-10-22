@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, type Scope, Semaphore, Stream } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Logger,
+  Option,
+  Result,
+  type Scope,
+  Semaphore,
+  Stream
+} from "effect"
 import { Reactivity } from "effect/reactivity"
 import { SqlClient, SqlError, Statement } from "effect/sql"
 import type { SqlConnection } from "effect/sql"
@@ -632,6 +646,10 @@ const querySchema = {
   }
 }
 
+class QuerySchema extends Context.Service<QuerySchema, typeof querySchema>()("test/SqlClient/QuerySchema") {}
+
+const queryAccessor = SqlClient.makeQuery(QuerySchema)
+
 const makeQueryClient = (compiler = Statement.makeCompilerSqlite()) =>
   SqlClient.make({
     driver: "test",
@@ -640,10 +658,15 @@ const makeQueryClient = (compiler = Statement.makeCompilerSqlite()) =>
     spanAttributes: []
   }).pipe(Effect.provide(Reactivity.layer))
 
+const queryLayer = Layer.merge(
+  Layer.effect(SqlClient.SqlClient, makeQueryClient()),
+  Layer.succeed(QuerySchema, querySchema)
+)
+
 describe("SqlClient.makeQuery", () => {
   it.effect("binds every named occurrence in SQL order", () =>
     Effect.gen(function*() {
-      const query = SqlClient.makeQuery(yield* makeQueryClient(), querySchema)
+      const query = yield* queryAccessor
       const name = "' OR 1=1 --"
       const statement = query(
         "SELECT id FROM users WHERE name = :name AND id = :id AND age > :id",
@@ -658,11 +681,10 @@ describe("SqlClient.makeQuery", () => {
         "SELECT email FROM users WHERE email = ?",
         [null]
       ])
-    }))
+    }).pipe(Effect.provide(queryLayer)))
 
-  it.effect("validates snapshots supplied by untyped callers", () =>
+  it.effect("reads and validates the schema in the current service scope", () =>
     Effect.gen(function*() {
-      const client = yield* makeQueryClient()
       const invalid: Array<unknown> = [
         { ...querySchema, version: 1 },
         { ...querySchema, dialect: "pg" },
@@ -670,9 +692,18 @@ describe("SqlClient.makeQuery", () => {
         { ...querySchema, tables: { users: { id: { ANY: null } } } }
       ]
       for (const value of invalid) {
-        assert.throws(() => SqlClient.makeQuery(client, value as SqlClient.QuerySchema), TypeError)
+        const exit = yield* queryAccessor.pipe(
+          Effect.provideService(QuerySchema, value as typeof querySchema),
+          Effect.exit
+        )
+        assert(Exit.isFailure(exit))
+        const defect = Cause.findDefect(exit.cause)
+        assert(Result.isSuccess(defect))
+        assert.instanceOf(defect.success, TypeError)
       }
-    }))
+      const query = yield* queryAccessor
+      assert.deepStrictEqual(query("SELECT id FROM users").compile(), ["SELECT id FROM users", []])
+    }).pipe(Effect.provide(queryLayer)))
 
   it.effect("requires a SQLite client", () =>
     Effect.gen(function*() {
@@ -683,17 +714,22 @@ describe("SqlClient.makeQuery", () => {
         onRecordUpdate: () => ["", []],
         onCustom: () => ["", []]
       }))
-      assert.throws(() => SqlClient.makeQuery(client, querySchema), /requires a SQLite client/)
-    }))
+      const exit = yield* queryAccessor.pipe(
+        Effect.provideService(SqlClient.SqlClient, client),
+        Effect.exit
+      )
+      assert(Exit.isFailure(exit))
+      assert.include(Cause.pretty(exit.cause), "requires a SQLite client")
+    }).pipe(Effect.provideService(QuerySchema, querySchema)))
 
   it.effect("rejects inherited or missing parameter values from untyped callers", () =>
     Effect.gen(function*() {
-      const query = SqlClient.makeQuery(yield* makeQueryClient(), querySchema)
+      const query = yield* queryAccessor
       const text = "SELECT id FROM users WHERE id = :id"
       assert.throws(() => Reflect.apply(query, undefined, [text]), /Missing SQL parameter :id/)
       assert.throws(
         () => Reflect.apply(query, undefined, [text, Object.create({ id: 1 })]),
         /Missing SQL parameter :id/
       )
-    }))
+    }).pipe(Effect.provide(queryLayer)))
 })

@@ -2,15 +2,29 @@
 
 This scratchpad exercises the experimental **core Effect APIs**
 `SqlClient.makeQuery` and `Migrator.runWithSnapshot`, with **TypeScript 7.1.0-beta**.
-Open [`main.ts`](./main.ts) for the runnable example:
+Open [`main.ts`](./main.ts) for the runnable example. The schema service is
+defined once in [`database.ts`](./database.ts):
 
 ```ts
-import * as Effect from "effect/Effect"
-import * as SqlClient from "effect/sql/SqlClient"
+import * as Context from "effect/Context"
+import * as Layer from "effect/Layer"
 import schema from "./_schema.json" with { type: "json" }
 
+export class DatabaseSchema extends Context.Service<DatabaseSchema, typeof schema>()("scratchpad/DatabaseSchema") {
+  static readonly layer = Layer.succeed(DatabaseSchema, schema)
+}
+```
+
+Query code reads the schema and SQL client from its service scope:
+
+```ts
+import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
+import * as Effect from "effect/Effect"
+import * as SqlClient from "effect/sql/SqlClient"
+import { DatabaseSchema } from "./database.ts"
+
 const findUsers = Effect.fnUntraced(function*(minimumAge: number) {
-  const sql = SqlClient.makeQuery(yield* SqlClient.SqlClient, schema)
+  const sql = yield* SqlClient.makeQuery(DatabaseSchema)
   return yield* sql(
     `SELECT id, name, email FROM users WHERE age >= :minimumAge ORDER BY name`,
     { minimumAge }
@@ -18,7 +32,16 @@ const findUsers = Effect.fnUntraced(function*(minimumAge: number) {
   // ReadonlyArray<{ readonly id: number; readonly name: string;
   //                 readonly email: string | null }>
 })
+
+const program = findUsers(18).pipe(
+  Effect.provide([DatabaseSchema.layer, SqliteClient.layer({ filename: ":memory:" })])
+)
 ```
+
+`findUsers` requires `DatabaseSchema | SqlClient.SqlClient` until the surrounding
+layers provide them. The service tag retains `typeof schema` for inference;
+TypeScript cannot infer a query's schema backwards from a later provider.
+The runnable example applies the migrations before querying its database.
 
 The imported JSON and SQL literal determine the result fields and required
 parameter object. Unknown tables or columns, missing or mistyped parameters,
@@ -49,7 +72,7 @@ and rerun `sql:check` to see the inferred types follow the schema.
 The beta compiler is local to the private scratchpad package. `sql:check`
 first builds the referenced workspace packages with the repository's normal
 compiler, then checks this consumer against their declarations. `sql:verify`
-also checks valid and invalid calls, schema-only changes across incremental
+also checks valid and invalid calls, required services, schema-only changes across incremental
 builds, snapshot refresh after a no-op migration, and actual SQLite execution.
 
 ## Snapshot format

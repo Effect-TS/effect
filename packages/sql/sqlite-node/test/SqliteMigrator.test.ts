@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient, SqliteMigrator } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem } from "effect"
+import { Context, Effect, FileSystem } from "effect"
 import { Reactivity } from "effect/reactivity"
 import * as Migrator from "effect/sql/Migrator"
 import * as SqlClient from "effect/sql/SqlClient"
@@ -81,7 +81,8 @@ describe("SqliteMigrator", () => {
       assert.deepStrictEqual(yield* Migrator.runWithSnapshot({ ...options, table: "migration_log" }), [])
       assert.strictEqual(yield* fs.readFileString(directory + "/_schema.json"), snapshot)
 
-      const query = SqlClient.makeQuery(yield* SqlClient.SqlClient, schema)
+      class QuerySchema extends Context.Service<QuerySchema, typeof schema>()("test/SqliteMigrator/QuerySchema") {}
+      const query = yield* SqlClient.makeQuery(QuerySchema).pipe(Effect.provideService(QuerySchema, schema))
       const rows = yield* query("SELECT id, display_name, email FROM users WHERE age >= :minimumAge", {
         minimumAge: 18
       })

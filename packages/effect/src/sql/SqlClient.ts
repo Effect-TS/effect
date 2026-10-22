@@ -176,14 +176,14 @@ export interface SqlClient extends Constructor {
 export const SqlClient = Context.Service<SqlClient>("effect/sql/SqlClient")
 
 /**
- * JSON schema snapshot accepted by `makeQuery`, with table names, column names,
- * SQLite types, and nullability encoded as object keys to preserve inference
- * through a native JSON import.
+ * JSON snapshot shape for a schema service read by `makeQuery`, with table
+ * names, column names, SQLite types, and nullability encoded as object keys to
+ * preserve inference through a native JSON import.
  *
  * **Details**
  *
- * Pass the imported snapshot directly to `makeQuery` so its specific keys are
- * retained. A column such as `{ TEXT: null, NULL: null }` represents
+ * Use `typeof snapshot` as the service shape so the imported snapshot's specific
+ * keys are retained. A column such as `{ TEXT: null, NULL: null }` represents
  * `string | null`; the marker values are not row data or defaults.
  *
  * @see makeQuery
@@ -206,24 +206,29 @@ export type QuerySchema = querySchema.Snapshot
 export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>>
 
 /**
- * Creates a query constructor for a SQLite client and an imported JSON schema
- * snapshot, checking SQL string literals and inferring result and parameter
- * types without explicit row types.
+ * Reads the active SQL client and a schema service to create a query constructor
+ * that checks SQL string literals and infers result and parameter types without
+ * explicit row types.
  *
  * **Details**
  *
- * Call the result with parentheses and use `:name` placeholders with a parameter
- * object. Values are bound in SQL occurrence order. Supports single-table
- * `SELECT`, projections, `AS` aliases, `DISTINCT`, comparisons joined by `AND`,
+ * Pass a service key whose shape is `typeof snapshot` for an imported JSON
+ * snapshot. The effect requires that service and `SqlClient`; provide their
+ * values through the surrounding context or layers. Each evaluation uses the
+ * services active in that context.
+ *
+ * Call the resulting constructor with parentheses and use `:name` placeholders
+ * with a parameter object. Values are bound in SQL occurrence order. Supports
+ * single-table `SELECT`, projections, `AS` aliases, `DISTINCT`, comparisons joined by `AND`,
  * `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET`. Unsupported syntax,
  * dynamic strings, and unions of query literals produce type errors.
  *
  * **Gotchas**
  *
- * Requires a version 2 SQLite snapshot and throws for invalid snapshots or
- * other dialects. Only `STRICT` tables with ordinary `INT`, `INTEGER`, `REAL`,
- * and `TEXT` columns are supported. Generated columns and `BLOB` values are not
- * supported. Identifier spelling must match the snapshot.
+ * Requires a version 2 SQLite snapshot. Invalid snapshots or other dialects
+ * fail the effect with a defect. Only `STRICT` tables with ordinary `INT`,
+ * `INTEGER`, `REAL`, and `TEXT` columns are supported. Generated columns and
+ * `BLOB` values are not supported. Identifier spelling must match the snapshot.
  * Column references named like SQL literals, such as `null` or `current_date`,
  * require quoted identifiers and are rejected by this grammar.
  * Row-name transforms are disabled, numeric decoding must use the driver's
@@ -233,10 +238,14 @@ export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>
  * @see QuerySchema
  * @see Query
  * @stability experimental
- * @category constructors
+ * @category accessors
  * @since 4.0.0
  */
-export const makeQuery: <S extends QuerySchema>(client: SqlClient, schema: S) => Query<S> = query.makeQuery
+export const makeQuery: <I, S extends QuerySchema>(
+  schema: Context.Key<I, S>
+) => Effect.Effect<Query<S>, never, SqlClient | I> = Effect.fnUntraced(function*(schema) {
+  return query.makeQuery(yield* SqlClient, yield* schema)
+})
 
 /**
  * Namespace containing types associated with the `SqlClient` service.
