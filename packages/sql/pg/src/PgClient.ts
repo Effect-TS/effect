@@ -153,28 +153,20 @@ export interface PgClientConfig<R = never> {
   /** Maximum backend message size in bytes. Defaults to 16 MiB. */
   readonly maxMessageSize?: number | undefined
   /**
-   * Runs after each connection checkout, in the fiber that uses the
-   * connection, so it sees that fiber's context and async context.
+   * Runs after each connection checkout, in the fiber that uses the connection.
    *
    * **Details**
    *
-   * It runs once per acquisition, not once per socket: for every statement or
-   * stream outside a transaction, even when `multiplex` shares one connection
-   * between them, and once per outermost `withTransaction`, `reserve`, `listen`
-   * and `notify`. If it fails or is interrupted, the connection is released.
-   * The hook's `Scope` belongs to that acquisition, so finalizers it adds run
-   * when the statement, stream, transaction, reservation, or listener ends.
+   * Runs once per statement or stream outside a transaction, including
+   * multiplexed statements, and once per `withTransaction`, `reserve`, `listen`
+   * and `notify`. Finalizers it adds run when that acquisition ends. Services it
+   * requires are captured when the client is built, and the consuming fiber's
+   * services take precedence.
    *
    * **Gotchas**
    *
-   * Keep it cheap. It holds the connection and, with `multiplex`, a pipelining
-   * slot while it runs, and a request may run it many times. With `makeClient`
-   * and `acquireForStream`, it runs before a stream opens its own connection.
-   *
-   * Services the hook requires become requirements of the client constructor
-   * or layer, except those the layer supplies itself, and are captured when
-   * the client is built. Services in the consuming fiber take precedence. The
-   * client's `config` holds the hook with those services already provided.
+   * Keep it cheap: it runs while holding the connection. With `makeClient` and
+   * `acquireForStream`, it runs before a stream opens its own connection.
    *
    * **Example** (Reading request context on each checkout)
    *
@@ -272,8 +264,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     readonly config: PgClientConfig<R>
   }
 ): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity | R> {
-  // Provide the hook's services from construction, letting the consuming
-  // fiber's context take precedence.
+  // The consuming fiber's services take precedence over the captured ones.
   const hook = options.config.onAcquire
   const context = yield* Effect.context<R>()
   const onAcquire = hook &&
@@ -286,8 +277,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     listenAcquirer = Effect.tap(listenAcquirer, onAcquire)
     if (borrower !== undefined) {
       const borrow = borrower
-      // Give each statement its own scope, so finalizers the hook adds run
-      // when the statement ends rather than when the client closes.
+      // Scope each statement so hook finalizers run when it ends.
       borrower = (f) => borrow((connection) => Effect.scoped(Effect.andThen(onAcquire, f(connection))))
     }
   }
