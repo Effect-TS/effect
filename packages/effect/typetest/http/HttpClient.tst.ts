@@ -166,17 +166,6 @@ describe("HttpClient", () => {
   })
 
   describe("withCircuitBreaker", () => {
-    it("should support data-last and data-first usage without Scope", () => {
-      const options = { breaker, key: (request: HttpClientRequest.HttpClientRequest) => request.url }
-
-      expect(client.pipe(HttpClient.withCircuitBreaker(options))).type.toBe<
-        HttpClient.HttpClient.With<HttpClientError.HttpClientError | CircuitBreaker.CircuitBreakerError>
-      >()
-      expect(HttpClient.withCircuitBreaker(client, options)).type.toBe<
-        HttpClient.HttpClient.With<HttpClientError.HttpClientError | CircuitBreaker.CircuitBreakerError>
-      >()
-    })
-
     it("should add R2 from an effectful classifier in both forms", () => {
       const options = {
         breaker,

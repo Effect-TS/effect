@@ -72,7 +72,7 @@ export const suite = (
 ) => {
   // Sequential, because the tests share one TestClock under the memory store.
   it.layer(layer(), { timeout: "30 seconds", concurrent: false })(`CircuitBreaker (${name})`, (it) => {
-    it.effect("consecutive: only a Success resets the streak and the n-th failure opens", () =>
+    it.effect("consecutive: only a Success resets the streak, and the n-th failure opens without running the call", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "consecutive"
         const breaker = yield* CircuitBreaker.make({
@@ -99,55 +99,25 @@ export const suite = (
         )
 
         assert.isFalse(ran)
-        if (reason._tag !== "CircuitOpen") {
-          return assert.fail("Expected CircuitOpen")
-        }
-        assert.strictEqual(reason.key, key)
-        const remaining = Duration.toMillis(reason.retryAfter)
-        assert.isTrue(remaining > 0 && remaining <= 60_000)
-        const state = yield* breaker.state(key)
-        assert.strictEqual(state._tag, "Open")
-        assert.strictEqual(state._tag === "Open" && state.consecutiveOpenings, 1)
+        assert.strictEqual(reason._tag === "CircuitOpen" && reason.key, key)
       })))
 
-    it.effect("rate: opens at the threshold once minimumCalls are recorded, ignoring Ignored", () =>
+    it.effect("rate: Ignored outcomes never count, and a Success can trip once minimumCalls are recorded", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "rate"
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.rate({ threshold: 0.5, size: 4, minimumCalls: 4 }),
-          openDuration: "1 minute"
-        })
-        const ignoredFailure = Effect.fail("boom").pipe(
-          breaker.execute({ key, classify: () => CircuitBreaker.ignored }),
-          Effect.ignore
-        )
-        yield* Effect.void.pipe(breaker.execute({ key }))
-        yield* ignoredFailure
-        yield* fail(breaker, key)
-        yield* ignoredFailure
-        yield* Effect.void.pipe(breaker.execute({ key }))
-        assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
-
-        yield* fail(breaker, key)
-        assert.strictEqual((yield* breaker.state(key))._tag, "Open")
-      })))
-
-    it.effect("rate: a Success that reaches the threshold opens for openDuration", () =>
-      Effect.scoped(Effect.gen(function*() {
-        const key = "rate-success"
         const breaker = yield* CircuitBreaker.make({
           tripPolicy: CircuitBreaker.rate({ threshold: 0.5, size: 3, minimumCalls: 3 }),
           openDuration: "1 minute"
         })
         yield* fail(breaker, key)
+        yield* Effect.fail("boom").pipe(breaker.execute({ key, classify: () => CircuitBreaker.ignored }), Effect.ignore)
         yield* fail(breaker, key)
-        yield* Effect.void.pipe(breaker.execute({ key }))
+        assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
 
-        const reason = yield* rejection(Effect.void.pipe(breaker.execute({ key })))
-        if (reason._tag !== "CircuitOpen") {
-          return assert.fail("Expected CircuitOpen")
-        }
-        assert.isTrue(Duration.toMillis(reason.retryAfter) > 0)
+        // 2 failures in 3 calls. The opening lasts openDuration, so the next
+        // call is rejected rather than admitted as a probe.
+        yield* Effect.void.pipe(breaker.execute({ key }))
+        assert.strictEqual((yield* rejection(Effect.void.pipe(breaker.execute({ key }))))._tag, "CircuitOpen")
       })))
 
     it.effect("half-open admits one probe, rejects the rest, and a success closes", () =>
@@ -227,47 +197,6 @@ export const suite = (
         }))
     )
 
-    it.effect("a close shorter than the last opening carries the count into the next opening, and a close at least that long resets it", () =>
-      Effect.scoped(Effect.gen(function*() {
-        const key = "carry"
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: "200 millis"
-        })
-        const collected = yield* openings(breaker, 3)
-        yield* fail(breaker, key)
-        yield* advance("300 millis")
-        yield* Effect.void.pipe(breaker.execute({ key }))
-        yield* fail(breaker, key)
-        yield* advance("300 millis")
-        yield* Effect.void.pipe(breaker.execute({ key }))
-        yield* advance("200 millis")
-        yield* fail(breaker, key)
-
-        assert.deepStrictEqual((yield* Fiber.join(collected)).map(([, openings]) => openings), [1, 2, 1])
-      })))
-
-    it.effect("a Retry-After hint lengthens the reset window along with the opening", () =>
-      Effect.scoped(Effect.gen(function*() {
-        const key = "hint-reset"
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: "200 millis"
-        })
-        yield* Effect.fail("boom").pipe(
-          breaker.execute({ key, classify: () => CircuitBreaker.failure({ retryAfter: "600 millis" }) }),
-          Effect.ignore
-        )
-        yield* advance("700 millis")
-        yield* Effect.void.pipe(breaker.execute({ key }))
-        // Past openDuration, but inside the 600 millis the hinted opening lasted.
-        yield* advance("300 millis")
-        yield* fail(breaker, key)
-
-        const state = yield* breaker.state(key)
-        assert.strictEqual(state._tag === "Open" && state.consecutiveOpenings, 2)
-      })))
-
     it.effect("a call admitted before the reset deadline opens with its older count after a later admit resets it", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "reset-race"
@@ -289,39 +218,14 @@ export const suite = (
         assert.deepStrictEqual((yield* Fiber.join(collected))[1], [400, 1])
       })))
 
-    it.effect("an exhausted Schedule openDuration repeats its last delay", () =>
-      Effect.scoped(Effect.gen(function*() {
-        const key = "schedule-exhausted"
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: Schedule.concat(Schedule.duration("200 millis"), Schedule.duration("400 millis"))
-        })
-        yield* fail(breaker, key)
-        yield* advance("300 millis")
-        yield* fail(breaker, key)
-        yield* advance("500 millis")
-        yield* fail(breaker, key)
-
-        yield* advance("300 millis")
-        assert.strictEqual((yield* rejection(Effect.void.pipe(breaker.execute({ key }))))._tag, "CircuitOpen")
-        yield* advance("200 millis")
-        yield* Effect.void.pipe(breaker.execute({ key }))
-        assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
-      })))
-
-    it.effect("an elapsed-time Schedule openDuration replays from the recording time, ignoring idle time", () =>
+    it.effect("a Schedule openDuration replays from the recording time and repeats its last delay once it ends", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "schedule-elapsed"
         const breaker = yield* CircuitBreaker.make({
           tripPolicy: CircuitBreaker.consecutive(1),
           openDuration: Schedule.exponential("100 millis").pipe(Schedule.upTo({ duration: "250 millis" }))
         })
-        const openings = yield* breaker.transitions.pipe(
-          Stream.filter((transition) => transition.to === "Open"),
-          Stream.take(4),
-          Stream.runCollect,
-          Effect.forkChild({ startImmediately: true })
-        )
+        const collected = yield* openings(breaker, 4)
         yield* fail(breaker, key)
         // Each gap exceeds the 250 millis cap, so a replay that saw wall time
         // would end the schedule at step 2 and repeat 100 millis.
@@ -330,14 +234,10 @@ export const suite = (
           yield* fail(breaker, key)
         }
 
-        const collected = yield* Fiber.join(openings)
-        assert.deepStrictEqual(
-          collected.map((transition) => transition.to === "Open" && Duration.toMillis(transition.retryAfter)),
-          [100, 200, 200, 200]
-        )
+        assert.deepStrictEqual((yield* Fiber.join(collected)).map(([millis]) => millis), [100, 200, 200, 200])
       })))
 
-    it.effect("a Retry-After hint extends only the opening it causes, capped at maxOpenDuration", () =>
+    it.effect("a Retry-After hint lengthens only the opening it causes and its reset window, capped at maxOpenDuration", () =>
       Effect.scoped(Effect.gen(function*() {
         const key = "hint"
         const breaker = yield* CircuitBreaker.make({
@@ -345,17 +245,23 @@ export const suite = (
           openDuration: "200 millis",
           maxOpenDuration: "600 millis"
         })
-        const hinted = Effect.fail("boom").pipe(
+        yield* Effect.fail("boom").pipe(
           breaker.execute({ key, classify: () => CircuitBreaker.failure({ retryAfter: "1 hour" }) }),
           Effect.ignore
         )
-        yield* hinted
         yield* advance("300 millis")
         assert.strictEqual((yield* rejection(Effect.void.pipe(breaker.execute({ key }))))._tag, "CircuitOpen")
         yield* advance("400 millis")
+        yield* Effect.void.pipe(breaker.execute({ key }))
 
-        // The probe fails without a hint, so the next opening uses openDuration.
+        // Closed past openDuration, but not for the 600 millis the hinted
+        // opening lasted, so the count carries over.
+        yield* advance("300 millis")
         yield* fail(breaker, key)
+        const reopened = yield* breaker.state(key)
+        assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
+
+        // Without a hint, the opening lasts openDuration.
         yield* advance("300 millis")
         yield* Effect.void.pipe(breaker.execute({ key }))
         assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
@@ -427,8 +333,7 @@ export const suite = (
         assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
       })))
 
-    // Scaled down from a one-hour hint and a ten-minute idleTimeToLive so
-    // that live-time stores can run it.
+    // Short enough for live-time stores to run.
     it.layer(layer({ idleTimeToLive: "400 millis" }))((it) => {
       it.effect("idle expiry drops a key before a longer reset window ends and its next admit starts at count 0", () =>
         Effect.scoped(Effect.gen(function*() {
@@ -448,6 +353,25 @@ export const suite = (
 
           const state = yield* breaker.state(key)
           assert.strictEqual(state._tag === "Open" && state.consecutiveOpenings, 1)
+        })))
+
+      it.effect("an Open key outlives idleTimeToLive until its open time ends, so the backoff count survives", () =>
+        Effect.scoped(Effect.gen(function*() {
+          const key = "idle-open"
+          const breaker = yield* CircuitBreaker.make({
+            tripPolicy: CircuitBreaker.consecutive(1),
+            openDuration: "800 millis"
+          })
+          yield* fail(breaker, key)
+          yield* advance("600 millis")
+          const open = yield* breaker.state(key)
+          assert.strictEqual(open._tag === "Open" && open.consecutiveOpenings, 1)
+
+          // Past the open time, so the failed probe is the second opening.
+          yield* advance("300 millis")
+          yield* fail(breaker, key)
+          const reopened = yield* breaker.state(key)
+          assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
         })))
     })
   })

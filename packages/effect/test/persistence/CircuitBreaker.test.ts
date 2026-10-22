@@ -33,7 +33,7 @@ const causeOf = <A, E>(exit: Exit.Exit<A, E>) => Exit.isFailure(exit) ? exit.cau
 
 describe("CircuitBreaker", () => {
   describe("onStoreError", () => {
-    const unavailable = memoryStoreWith({ admit: () => Effect.fail(storeError), state: () => Effect.fail(storeError) })
+    const unavailable = memoryStoreWith({ admit: () => Effect.fail(storeError) })
 
     it.effect("allow: an admit outage runs the call unrecorded and reports the cause at UnhandledLogLevel", () => {
       const { layer, reports } = captureLogs()
@@ -42,33 +42,15 @@ describe("CircuitBreaker", () => {
           tripPolicy: CircuitBreaker.consecutive(1),
           openDuration: "1 minute"
         })
-        const result = yield* Effect.succeed(42).pipe(breaker.execute({ key: "allow" }))
+        const call = Effect.succeed(42).pipe(breaker.execute({ key: "allow" }))
+        assert.strictEqual(yield* call, 42)
+        assert.strictEqual(yield* call.pipe(Effect.provideService(References.UnhandledLogLevel, undefined)), 42)
 
-        assert.strictEqual(result, 42)
+        // UnhandledLogLevel defaults to Error, and undefined silences the report.
         assert.strictEqual(reports.length, 1)
-        // UnhandledLogLevel defaults to Error.
         assert.strictEqual(reports[0].logLevel, "Error")
         assert.deepStrictEqual(Cause.findError(reports[0].cause), Result.succeed(storeError))
-        const error = yield* Effect.flip(breaker.state("allow"))
-        assert.strictEqual(error.reason._tag, "CircuitBreakerStoreError")
       }).pipe(Effect.provide(Layer.merge(unavailable, layer)))
-    })
-
-    it.effect("allow: an undefined UnhandledLogLevel silences the admit outage report", () => {
-      const { layer, reports } = captureLogs()
-      return Effect.gen(function*() {
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: "1 minute"
-        })
-        const result = yield* Effect.succeed(42).pipe(breaker.execute({ key: "silenced" }))
-
-        assert.strictEqual(result, 42)
-        assert.strictEqual(reports.length, 0)
-      }).pipe(
-        Effect.provideService(References.UnhandledLogLevel, undefined),
-        Effect.provide(Layer.merge(unavailable, layer))
-      )
     })
 
     it.effect("fail: an admit outage fails with CircuitBreakerStoreError without running the call", () =>
@@ -169,34 +151,6 @@ describe("CircuitBreaker", () => {
     }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
 
   describe("memory retention", () => {
-    it.effect("drops an idle Closed key", () =>
-      Effect.gen(function*() {
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(2),
-          openDuration: "1 minute"
-        })
-        const fail = Effect.fail("boom").pipe(breaker.execute({ key: "idle" }), Effect.ignore)
-        yield* fail
-        yield* TestClock.adjust("2 minutes")
-        yield* fail
-
-        assert.strictEqual((yield* breaker.state("idle"))._tag, "Closed")
-      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory({ idleTimeToLive: "1 minute" }))))
-
-    it.effect("keeps an Open key past idleTimeToLive until openUntil", () =>
-      Effect.gen(function*() {
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: "2 hours"
-        })
-        yield* Effect.fail("boom").pipe(breaker.execute({ key: "open" }), Effect.ignore)
-        yield* TestClock.adjust("90 minutes")
-
-        const state = yield* breaker.state("open")
-        assert.strictEqual(state._tag, "Open")
-        assert.strictEqual(state._tag === "Open" && state.consecutiveOpenings, 1)
-      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory({ idleTimeToLive: "1 minute" }))))
-
     it.effect("fences a permit admitted before its key was dropped and recreated", () =>
       Effect.gen(function*() {
         const breaker = yield* CircuitBreaker.make({

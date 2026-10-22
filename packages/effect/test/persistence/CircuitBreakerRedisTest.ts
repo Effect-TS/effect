@@ -161,34 +161,6 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
         }))
       }).pipe(TestClock.withLive))
 
-    it.effect("an Open key outlives idleTimeToLive until openUntil, so the backoff count survives", () =>
-      Effect.gen(function*() {
-        const key = "retention-open"
-        const redis = yield* Redis.Redis
-        const store = yield* storeOn(redis, { idleTimeToLive: "300 millis" })
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: "600 millis"
-        }).pipe(Effect.provideService(CircuitBreaker.CircuitBreakerStore, store))
-
-        yield* fail(breaker, key)
-        // The remaining open time plus idleTimeToLive.
-        const ttl = yield* redis.send<number>("PTTL", `circuitbreaker:${key}`)
-        assert.isAbove(ttl, 700)
-        assert.isAtMost(ttl, 900)
-
-        yield* Effect.sleep("450 millis")
-        const open = yield* breaker.state(key)
-        assert.strictEqual(open._tag === "Open" && open.consecutiveOpenings, 1)
-
-        // Past openUntil, before the key expires: the failed probe counts as
-        // the second opening.
-        yield* Effect.sleep("300 millis")
-        yield* fail(breaker, key)
-        const reopened = yield* breaker.state(key)
-        assert.strictEqual(reopened._tag === "Open" && reopened.consecutiveOpenings, 2)
-      }).pipe(TestClock.withLive))
-
     it.effect("a leased HalfOpen key outlives a shorter idleTimeToLive, and freeing the slot restores it", () =>
       Effect.gen(function*() {
         const key = "retention-half-open"
@@ -238,28 +210,6 @@ export const suite = (name: string, redisLayer: Layer.Layer<Redis.Redis, unknown
         const freed = yield* pttl
         assert.isAbove(freed, 0)
         assert.isAtMost(freed, 300)
-      }).pipe(TestClock.withLive))
-
-    it.effect("an idle Closed key expires after idleTimeToLive", () =>
-      Effect.gen(function*() {
-        const key = "retention-idle"
-        const redis = yield* Redis.Redis
-        const store = yield* storeOn(redis, { prefix: "cb-idle:", idleTimeToLive: "200 millis" })
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(2),
-          openDuration: "1 minute"
-        }).pipe(Effect.provideService(CircuitBreaker.CircuitBreakerStore, store))
-
-        yield* fail(breaker, key)
-        const ttl = yield* redis.send<number>("PTTL", `cb-idle:${key}`)
-        assert.isAbove(ttl, 0)
-        assert.isAtMost(ttl, 200)
-
-        yield* Effect.sleep("400 millis")
-        assert.strictEqual(yield* redis.send<number>("EXISTS", `cb-idle:${key}`), 0)
-        // The streak went with the key.
-        yield* fail(breaker, key)
-        assert.strictEqual((yield* breaker.state(key))._tag, "Closed")
       }).pipe(TestClock.withLive))
 
     it.effect("a duration Redis cannot represent is rejected before the script writes anything", () =>

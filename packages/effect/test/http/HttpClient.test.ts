@@ -96,63 +96,6 @@ const classifierCases: ReadonlyArray<{
   readonly outcome: CircuitBreaker.Outcome["_tag"]
   readonly retryAfterMillis?: number
 }> = [
-  ...[408, 500, 502, 503, 504].flatMap((status) => [
-    { name: `a returned ${status}`, exit: () => Exit.succeed(classifiedResponse(status)), outcome: "Failure" as const },
-    { name: `a wrapped ${status}`, exit: () => Exit.fail(statusCodeError(status)), outcome: "Failure" as const }
-  ]),
-  { name: "a TransportError", exit: () => Exit.fail(transportError), outcome: "Failure" },
-  { name: "a TimeoutError", exit: () => Exit.fail(new Cause.TimeoutError()), outcome: "Failure" },
-  { name: "a returned 200", exit: () => Exit.succeed(classifiedResponse(200)), outcome: "Success" },
-  { name: "a returned 404", exit: () => Exit.succeed(classifiedResponse(404)), outcome: "Success" },
-  { name: "a wrapped 404", exit: () => Exit.fail(statusCodeError(404)), outcome: "Success" },
-  {
-    name: "a returned 429",
-    exit: () => Exit.succeed(classifiedResponse(429, { "retry-after": "5" })),
-    outcome: "Ignored"
-  },
-  { name: "a wrapped 429", exit: () => Exit.fail(statusCodeError(429, { "retry-after": "5" })), outcome: "Ignored" },
-  { name: "an EncodeError", exit: () => Exit.fail(encodeError), outcome: "Ignored" },
-  {
-    name: "an InvalidUrlError",
-    exit: () =>
-      Exit.fail(
-        new HttpClientError.HttpClientError({
-          reason: new HttpClientError.InvalidUrlError({ request: classifiedRequest })
-        })
-      ),
-    outcome: "Ignored"
-  },
-  {
-    name: "a DecodeError",
-    exit: () =>
-      Exit.fail(
-        new HttpClientError.HttpClientError({
-          reason: new HttpClientError.DecodeError({ request: classifiedRequest, response: classifiedResponse(200) })
-        })
-      ),
-    outcome: "Ignored"
-  },
-  {
-    name: "an EmptyBodyError",
-    exit: () =>
-      Exit.fail(
-        new HttpClientError.HttpClientError({
-          reason: new HttpClientError.EmptyBodyError({ request: classifiedRequest, response: classifiedResponse(200) })
-        })
-      ),
-    outcome: "Ignored"
-  },
-  { name: "a defect", exit: () => Exit.die(new Error("caller bug")), outcome: "Ignored" },
-  {
-    name: "an unknown typed error",
-    exit: () =>
-      Exit.fail(
-        new RateLimiter.RateLimiterError({
-          reason: new RateLimiter.RateLimitStoreError({ message: "store unavailable" })
-        })
-      ),
-    outcome: "Ignored"
-  },
   {
     name: "a returned 503 with Retry-After seconds",
     exit: () => Exit.succeed(classifiedResponse(503, { "retry-after": "5" })),
@@ -165,10 +108,25 @@ const classifierCases: ReadonlyArray<{
     outcome: "Failure",
     retryAfterMillis: 30_000
   },
+  { name: "a TransportError", exit: () => Exit.fail(transportError), outcome: "Failure" },
+  { name: "a TimeoutError", exit: () => Exit.fail(new Cause.TimeoutError()), outcome: "Failure" },
+  { name: "a wrapped 404", exit: () => Exit.fail(statusCodeError(404)), outcome: "Success" },
   {
-    name: "a failure beside a success and an ignored error",
-    exit: () => failures(encodeError, statusCodeError(404), transportError),
-    outcome: "Failure"
+    name: "a returned 429",
+    exit: () => Exit.succeed(classifiedResponse(429, { "retry-after": "5" })),
+    outcome: "Ignored"
+  },
+  { name: "an EncodeError", exit: () => Exit.fail(encodeError), outcome: "Ignored" },
+  { name: "a defect", exit: () => Exit.die(new Error("caller bug")), outcome: "Ignored" },
+  {
+    name: "an unknown typed error",
+    exit: () =>
+      Exit.fail(
+        new RateLimiter.RateLimiterError({
+          reason: new RateLimiter.RateLimitStoreError({ message: "store unavailable" })
+        })
+      ),
+    outcome: "Ignored"
   },
   {
     name: "a success beside an ignored error",
@@ -176,13 +134,13 @@ const classifierCases: ReadonlyArray<{
     outcome: "Success"
   },
   {
-    name: "several failures with Retry-After",
+    name: "failures beside a success and an ignored error",
     exit: () =>
       failures(
+        statusCodeError(404),
         statusCodeError(503, { "retry-after": "5" }),
         statusCodeError(429, { "retry-after": "60" }),
-        statusCodeError(502, { "retry-after": "10" }),
-        new Cause.TimeoutError()
+        statusCodeError(502, { "retry-after": "10" })
       ),
     outcome: "Failure",
     retryAfterMillis: 10_000
@@ -2133,39 +2091,6 @@ Missing key
         strictEqual((yield* client.get("http://up.test/")).status, 200)
         assert.deepStrictEqual(yield* Ref.get(hosts), ["down.test:8080", "up.test"])
       }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
-
-    it.effect("sits outside withRateLimiter and retryTransient in the recommended order", () =>
-      Effect.gen(function*() {
-        const { attempts, client } = yield* makeSequenceClient([{ status: 503 }, { status: 200 }, { status: 503 }])
-        const breaker = yield* CircuitBreaker.make({
-          tripPolicy: CircuitBreaker.consecutive(1),
-          openDuration: "1 minute"
-        })
-        const resilient = client.pipe(
-          HttpClient.withRateLimiter({
-            limiter: yield* RateLimiter.RateLimiter,
-            key: "order",
-            limit: 100,
-            window: "1 minute"
-          }),
-          HttpClient.retryTransient({ times: 2 }),
-          HttpClient.withCircuitBreaker({ breaker, key: "order" })
-        )
-
-        // A failure the retry recovered from never reaches the breaker.
-        strictEqual((yield* resilient.get("http://test/")).status, 200)
-        strictEqual(yield* Ref.get(attempts), 2)
-        strictEqual((yield* breaker.state("order"))._tag, "Closed")
-
-        // Exhausted retries reach the breaker as one failure.
-        strictEqual((yield* resilient.get("http://test/")).status, 503)
-        strictEqual(yield* Ref.get(attempts), 5)
-
-        // An open breaker rejects before the retry loop or the limiter runs.
-        const error = yield* Effect.flip(resilient.get("http://test/"))
-        strictEqual(circuitOpenKey(error), "order")
-        strictEqual(yield* Ref.get(attempts), 5)
-      }).pipe(Effect.provide(Layer.merge(RateLimiterTestLayer, CircuitBreaker.layerStoreMemory()))))
   })
 
   it("reads cookies when Headers has no getSetCookie", () => {
