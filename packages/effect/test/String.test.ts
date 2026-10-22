@@ -114,6 +114,24 @@ describe("String", () => {
     it("does not change already capitalized", () => {
       strictEqual(S.capitalize("Hello"), "Hello")
     })
+
+    it("capitalizes a non-ascii letter", () => {
+      strictEqual(S.capitalize("é"), "É")
+    })
+
+    it("expands an eszett", () => {
+      strictEqual(S.capitalize("ß"), "SS")
+      strictEqual(S.capitalize("ßx"), "SSx")
+    })
+
+    it("capitalizes an astral letter", () => {
+      strictEqual(S.capitalize("𐐨foo"), "𐐀foo")
+      strictEqual(S.capitalize(`${String.fromCodePoint(0x104D8)}x`), `${String.fromCodePoint(0x104B0)}x`)
+    })
+
+    it("leaves an emoji code point unchanged", () => {
+      strictEqual(S.capitalize("😀x"), "😀x")
+    })
   })
 
   describe("uncapitalize", () => {
@@ -131,6 +149,14 @@ describe("String", () => {
 
     it("preserves rest of string", () => {
       strictEqual(S.uncapitalize("ABC"), "aBC")
+    })
+
+    it("uncapitalizes an astral letter", () => {
+      strictEqual(S.uncapitalize("𐐀FOO"), "𐐨FOO")
+    })
+
+    it("expands a dotted capital i", () => {
+      strictEqual(S.uncapitalize("İX"), "i\u0307X")
     })
   })
 
