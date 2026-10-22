@@ -11,6 +11,19 @@ const StreamError = Schema.Struct({ reason: Schema.String })
 const sse = () => HttpApiSchema.StreamSse({ events: Events, error: StreamError })
 
 describe("HttpApiEndpoint", () => {
+  it("omits undefined optional HTTP properties", () => {
+    const endpoint = HttpApiEndpoint.get("get", "/", {
+      query: {
+        search: Schema.optional(Schema.String),
+        absent: Schema.optional(Schema.Undefined)
+      }
+    })
+    const schema = endpoint.query as typeof endpoint["~Query"]
+
+    assert.deepStrictEqual(Schema.encodeSync(schema)({ search: undefined, absent: undefined }), {})
+    assert.deepStrictEqual(Schema.encodeSync(schema)({ search: "value" }), { search: "value" })
+  })
+
   it("stores the supplied identifier", () => {
     const endpoint = HttpApiEndpoint.get("getUser", "/users/:id")
 

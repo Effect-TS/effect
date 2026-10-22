@@ -385,9 +385,6 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
                 {
                   "type": "string",
                 },
-                {
-                  "type": "null",
-                },
               ],
               "description": "search query",
             },
@@ -511,14 +508,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "name": "0",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                },
-                {
-                  "type": "null",
-                },
-              ],
+              "type": "string",
             },
           },
         ],
