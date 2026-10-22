@@ -75,7 +75,7 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
  * @category services
  * @since 4.0.6
  */
-export class McpClient extends Context.Service<McpClient, Client>()("effect/ai/McpClient") {}
+export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<McpClient>("effect/ai/McpClient")
 
 /**
  * A scoped connection to one MCP server.
@@ -84,7 +84,7 @@ export class McpClient extends Context.Service<McpClient, Client>()("effect/ai/M
  * @category models
  * @since 4.0.6
  */
-export interface Client extends Pipeable {
+export interface McpClient extends Pipeable {
   readonly [TypeId]: typeof TypeId
   readonly protocolVersion: ProtocolVersion
   readonly serverInfo: McpSchema.Implementation | undefined
@@ -135,6 +135,15 @@ export interface Client extends Pipeable {
 }
 
 /**
+ * Alias of `McpClient`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.6
+ */
+export type Client = McpClient
+
+/**
  * Tool invocation carrying the discovered definition, which supplies the
  * request name and, over modern HTTP, the header routing annotations.
  *
@@ -178,8 +187,7 @@ export interface ReadResourceParams {
  * @category guards
  * @since 4.0.6
  */
-export const isClient: (value: unknown) => value is Client = (value): value is Client =>
-  Predicate.hasProperty(value, TypeId)
+export const isMcpClient = (value: unknown): value is McpClient => Predicate.hasProperty(value, TypeId)
 
 // =============================================================================
 // Constructors
@@ -210,15 +218,15 @@ export const make: (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly timeout?: Duration.Input | undefined
 }) => Effect.Effect<
-  Client,
+  McpClient,
   McpClientError,
   Scope.Scope | Transport
 > = Effect.fnUntraced(function*(options: Options): Effect.fn.Return<
-  Client,
+  McpClient,
   McpClientError,
   Scope.Scope | Transport
 > {
-  const transport = (yield* Transport) as TransportService
+  const transport = yield* Transport
   const protocol = transport.protocol
   const version = protocol.protocolVersion
   const modern = version === "2026-07-28"
@@ -430,7 +438,7 @@ export const make: (options: {
         "resources/read",
         callOptions?.timeout
       ),
-    callTool: callTool as Client["callTool"]
+    callTool: callTool as McpClient["callTool"]
   }
 })
 
@@ -451,34 +459,34 @@ export const callTool: {
   (
     params: CallToolParams,
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  ): (self: McpClient) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
   (
-    self: Client,
+    self: McpClient,
     params: CallToolParams,
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
   <S extends Schema.Top>(
     params: CallToolParams<S> & { readonly schema: S },
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  ): (self: McpClient) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top = never>(
     params: CallToolParams<S>,
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
+  ): (self: McpClient) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top>(
-    self: Client,
+    self: McpClient,
     params: CallToolParams<S> & { readonly schema: S },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top = never>(
-    self: Client,
+    self: McpClient,
     params: CallToolParams<S>,
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
 } = dual(
-  (args) => isClient(args[0]),
+  (args) => isMcpClient(args[0]),
   <S extends Schema.Top>(
-    self: Client,
+    self: McpClient,
     params: CallToolParams<S>,
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => self.callTool(params, options)
@@ -494,14 +502,14 @@ export const callTool: {
 export const listPrompts: {
   (
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+  ): (self: McpClient) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
   (
-    self: Client,
+    self: McpClient,
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
 } = dual(
-  (args) => isClient(args[0]),
-  (self: Client, options?: { readonly timeout?: Duration.Input | undefined }) => self.listPrompts(options)
+  (args) => isMcpClient(args[0]),
+  (self: McpClient, options?: { readonly timeout?: Duration.Input | undefined }) => self.listPrompts(options)
 )
 
 /**
@@ -515,15 +523,15 @@ export const getPrompt: {
   (
     params: GetPromptParams,
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+  ): (self: McpClient) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   (
-    self: Client,
+    self: McpClient,
     params: GetPromptParams,
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
 } = dual(
-  (args) => isClient(args[0]),
-  (self: Client, params: GetPromptParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
+  (args) => isMcpClient(args[0]),
+  (self: McpClient, params: GetPromptParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
     self.getPrompt(params, options)
 )
 
@@ -537,14 +545,14 @@ export const getPrompt: {
 export const listResources: {
   (
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  ): (self: McpClient) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   (
-    self: Client,
+    self: McpClient,
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
 } = dual(
-  (args) => isClient(args[0]),
-  (self: Client, options?: { readonly timeout?: Duration.Input | undefined }) => self.listResources(options)
+  (args) => isMcpClient(args[0]),
+  (self: McpClient, options?: { readonly timeout?: Duration.Input | undefined }) => self.listResources(options)
 )
 
 /**
@@ -558,15 +566,15 @@ export const readResource: {
   (
     params: ReadResourceParams,
     options?: { readonly timeout?: Duration.Input | undefined }
-  ): (self: Client) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+  ): (self: McpClient) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   (
-    self: Client,
+    self: McpClient,
     params: ReadResourceParams,
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
 } = dual(
-  (args) => isClient(args[0]),
-  (self: Client, params: ReadResourceParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
+  (args) => isMcpClient(args[0]),
+  (self: McpClient, params: ReadResourceParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
     self.readResource(params, options)
 )
 
@@ -589,7 +597,7 @@ export const readResource: {
  * @category constructors
  * @since 4.0.6
  */
-export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
+export const toolkit: (client: McpClient, prefix?: string) => Effect.Effect<
   Toolkit.WithHandler<
     Record<
       string,
@@ -602,7 +610,7 @@ export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
     >
   >,
   McpClientError
-> = Effect.fnUntraced(function*(client: Client, prefix = "") {
+> = Effect.fnUntraced(function*(client: McpClient, prefix = "") {
   const descriptors = yield* client.listTools()
   const tools: Array<
     Tool.Tool<string, {
@@ -660,9 +668,30 @@ export const toolkit: (client: Client, prefix?: string) => Effect.Effect<
  * @category services
  * @since 4.0.6
  */
-export class Transport extends Context.Service<Transport, {
-  readonly "~effect/ai/McpClient/Transport": "~effect/ai/McpClient/Transport"
-}>()("effect/ai/McpClient/Transport") {}
+export const Transport: Context.Service<Transport, Transport> = Context.Service<Transport>(
+  "effect/ai/McpClient/Transport"
+)
+
+/**
+ * Exchanges JSON-RPC messages with one MCP server using its protocol adapter.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.6
+ */
+export interface Transport {
+  readonly [TransportTypeId]: typeof TransportTypeId
+  readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
+  /** Sends a request and waits for its response. `tool` supplies header routing for tool calls. */
+  readonly request: (
+    message: McpSchema.JsonRpcRequest,
+    tool?: McpSchema.Tool
+  ) => Effect.Effect<McpSchema.JsonRpcResponse, McpClientError>
+  /** Sends a notification without waiting for a reply. */
+  readonly notify: (message: McpSchema.JsonRpcNotification) => Effect.Effect<void, McpClientError>
+  /** Returns whether the transport can route a call to the tool. */
+  readonly isCallable: (tool: McpSchema.Tool) => boolean
+}
 
 /**
  * Starts a scoped subprocess using newline-delimited JSON-RPC.
@@ -675,12 +704,12 @@ export const stdio: (options: {
   readonly command: ChildProcess.Command
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly maxMessageBytes?: ByteSize.Input | undefined
-}) => Effect.Effect<Transport["Service"], McpClientError, ChildProcessSpawner | Scope.Scope> = Effect.fnUntraced(
+}) => Effect.Effect<Transport, McpClientError, ChildProcessSpawner | Scope.Scope> = Effect.fnUntraced(
   function*(options: {
     readonly command: ChildProcess.Command
     readonly protocol: Protocol
     readonly maxMessageBytes?: ByteSize.Input | undefined
-  }): Effect.fn.Return<TransportService, McpClientError, ChildProcessSpawner | Scope.Scope> {
+  }): Effect.fn.Return<Transport, McpClientError, ChildProcessSpawner | Scope.Scope> {
     const maxBytes = yield* messageLimit(options.maxMessageBytes)
     const spawner = yield* ChildProcessSpawner
     const process = yield* spawner.spawn(options.command).pipe(
@@ -845,13 +874,13 @@ export const http: (options: {
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>
   readonly headers?: Readonly<Record<string, string>> | undefined
   readonly maxMessageBytes?: ByteSize.Input | undefined
-}) => Effect.Effect<Transport["Service"], McpClientError, HttpClient.HttpClient | Scope.Scope> = Effect.fnUntraced(
+}) => Effect.Effect<Transport, McpClientError, HttpClient.HttpClient | Scope.Scope> = Effect.fnUntraced(
   function*(options: {
     readonly url: string | URL
     readonly protocol: Protocol
     readonly headers?: Readonly<Record<string, string>> | undefined
     readonly maxMessageBytes?: ByteSize.Input | undefined
-  }): Effect.fn.Return<TransportService, McpClientError, HttpClient.HttpClient | Scope.Scope> {
+  }): Effect.fn.Return<Transport, McpClientError, HttpClient.HttpClient | Scope.Scope> {
     const maxBytes = yield* messageLimit(options.maxMessageBytes)
     const client = HttpClient.withScope(yield* HttpClient.HttpClient)
     const modern = options.protocol.protocolVersion === "2026-07-28"
@@ -1093,16 +1122,6 @@ type Options = Parameters<typeof make>[0]
 
 interface CallOptions {
   readonly timeout?: Duration.Input | undefined
-}
-
-type TransportService = Transport["Service"] & {
-  readonly protocol: Protocol
-  readonly request: (
-    message: McpSchema.JsonRpcRequest,
-    tool?: McpSchema.Tool
-  ) => Effect.Effect<McpSchema.JsonRpcResponse, McpClientError>
-  readonly notify: (message: McpSchema.JsonRpcNotification) => Effect.Effect<void, McpClientError>
-  readonly isCallable: (tool: McpSchema.Tool) => boolean
 }
 
 interface InitializeResult {

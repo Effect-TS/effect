@@ -498,7 +498,7 @@ import type { McpClient, McpSchema } from "effect/ai"
 
 const Report = Schema.Struct({ count: Schema.Number })
 
-export const readWithDeadline = (client: McpClient.Client, tool: McpSchema.Tool, reportId: string) =>
+export const readWithDeadline = (client: McpClient.McpClient, tool: McpSchema.Tool, reportId: string) =>
   client.callTool({ tool, arguments: { reportId }, schema: Report }, { timeout: "2 seconds" }).pipe(
     Effect.map((report) => ({ status: "ready" as const, report })),
     Effect.catchReason("McpClientError", "TimeoutError", () => Effect.succeed({ status: "deferred" as const }))
@@ -535,7 +535,7 @@ is serialized as JSON. Binary content and tool-reported errors fail the handler.
 import { Effect } from "effect"
 import { LanguageModel, McpClient } from "effect/ai"
 
-export const readRemoteReport = (client: McpClient.Client) =>
+export const readRemoteReport = (client: McpClient.McpClient) =>
   Effect.gen(function*() {
     const toolkit = yield* McpClient.toolkit(client, "reports__")
     return yield* LanguageModel.generateText({ prompt: "Read the quarterly report", toolkit })
@@ -556,7 +556,7 @@ call `client.callTool` from their handlers.
 import { Effect } from "effect"
 import type { McpClient } from "effect/ai"
 
-export const loadContext = (client: McpClient.Client) =>
+export const loadContext = (client: McpClient.McpClient) =>
   Effect.gen(function*() {
     const prompts = yield* client.listPrompts()
     const prompt = prompts.find((prompt) => prompt.name === "review")
