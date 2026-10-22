@@ -958,19 +958,17 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
       ? allocate(self)
       : Effect.flatMap(
         self.config.strategy.reclaim(self),
-        (item) => item ? Effect.as(wakeAll(self), item) : allocate(self)
+        (item) => item ? handOffReclaimed(self, item) : allocate(self)
       )
-    // Allocation hands successful items to waiters itself. Waking the rest
-    // after a failure lets them retry the acquisition.
     if (toAcquire === 1) {
-      const acquired = Effect.tap(acquireOne, (item) => item.exit._tag === "Failure" ? wakeAll(self) : Effect.void)
+      const acquired = Effect.tap(acquireOne, wakeAll(self))
       return self.config.isFixed
         ? Effect.asVoid(acquired)
         : Effect.flatMap(acquired, (item) => item.exit._tag === "Failure" ? Effect.void : resizeLoop(self))
     }
     const acquired = acquireOne.pipe(
       Effect.replicateEffect(toAcquire, { concurrency: toAcquire }),
-      Effect.tap((items) => items.some((_) => _.exit._tag === "Failure") ? wakeAll(self) : Effect.void)
+      Effect.tap(wakeAll(self))
     )
     return self.config.isFixed
       ? Effect.asVoid(acquired)
@@ -978,6 +976,17 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
         acquired,
         (items) => items.some((_) => _.exit._tag === "Failure") ? Effect.void : resizeLoop(self)
       )
+  })
+
+// A reclaimed item rejoins circulation like a released one, so its free
+// capacity goes to waiters first.
+const handOffReclaimed = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effect<PoolItem<A, E>> =>
+  core.withFiber((fiber) => {
+    const state = self.state
+    if (!state.isShuttingDown && state.items.has(item) && !state.invalidated.has(item)) {
+      handOff(self, item, fiber)
+    }
+    return Effect.succeed(item)
   })
 
 const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
