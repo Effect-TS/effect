@@ -888,6 +888,21 @@ describe("Serializers", () => {
           await decoding.succeed([], [])
           await decoding.succeed([null], [undefined])
         })
+
+        it("omitted trailing optional elements", async () => {
+          const schema = Schema.Tuple([
+            Schema.String,
+            Schema.OptionFromOptionalKey(Schema.String),
+            Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("c"), { encodingStrategy: "omit" }))
+          ])
+          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+          for (const concurrency of [1, "unbounded"] as const) {
+            const encoding = asserts.encoding({ parseOptions: { concurrency } })
+            await encoding.succeed(["a", Option.some("b"), "c"], ["a", "b"])
+            await encoding.succeed(["a", Option.none(), "c"], ["a"])
+          }
+        })
       })
 
       it("Array(Date)", async () => {
