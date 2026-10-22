@@ -108,7 +108,9 @@ describe("PgPool failed startup", () => {
 })
 
 describe("PgPool acquireTimeout", () => {
-  it.live("fails a checkout that waits on an exhausted pool past acquireTimeout", () =>
+  // The timeouts run on the TestClock, so opening the first connection on a
+  // busy machine cannot use up the acquireTimeout before the pool is exhausted.
+  it.effect("fails a checkout that waits on an exhausted pool past acquireTimeout", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.make({
         username: "test",
@@ -127,18 +129,19 @@ describe("PgPool acquireTimeout", () => {
       })
       yield* sql.reserve
 
-      const statement = yield* Effect.flip(sql`SELECT 1`)
-      assert.strictEqual(statement.reason._tag, "ConnectionError")
-      assert.strictEqual(statement.reason.operation, "acquireConnection")
-      const transaction = yield* Effect.flip(sql.withTransaction(sql`SELECT 1`))
-      assert.strictEqual(transaction.reason._tag, "ConnectionError")
-      assert.strictEqual(transaction.reason.operation, "acquireConnection")
+      const statement = yield* Effect.forkChild(Effect.flip(sql`SELECT 1`))
+      const transaction = yield* Effect.forkChild(Effect.flip(sql.withTransaction(sql`SELECT 1`)))
+      yield* TestClock.adjust("100 millis")
+      for (const error of [yield* Fiber.join(statement), yield* Fiber.join(transaction)]) {
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        assert.strictEqual(error.reason.operation, "acquireConnection")
+      }
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ), 10_000)
 
-  it.live(
+  it.effect(
     "fails a multiplexed reservation that waits on a busy pipeline past acquireTimeout",
     () =>
       Effect.gen(function*() {
@@ -165,7 +168,9 @@ describe("PgPool acquireTimeout", () => {
         yield* waitFor(() => writes === 2)
 
         // The failed reservation shares the test scope, which stays open.
-        const error = yield* Effect.flip(sql.reserve)
+        const reservation = yield* Effect.forkChild(Effect.flip(sql.reserve))
+        yield* TestClock.adjust("100 millis")
+        const error = yield* Fiber.join(reservation)
         assert.strictEqual(error.reason._tag, "ConnectionError")
         assert.strictEqual(error.reason.operation, "acquireConnection")
 
