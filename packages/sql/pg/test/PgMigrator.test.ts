@@ -58,7 +58,7 @@ const makeMigrator = Effect.fnUntraced(function*(
 
 // Parses the libpq conninfo passed as `pg_dump --dbname=<conninfo>`.
 const dumpConnection = (command: ChildProcess.StandardCommand) => {
-  const dbname = command.args.find((arg) => arg.startsWith("--dbname="))
+  const dbname = command.args.find((arg): arg is string => typeof arg === "string" && arg.startsWith("--dbname="))
   assert(dbname !== undefined, "pg_dump was not given --dbname")
   const conninfo: Record<string, string> = {}
   for (const [, key, quoted, plain] of dbname.slice(9).matchAll(/(\w+)\s*=\s*(?:'((?:[^'\\]|\\.)*)'|(\S*))/g)) {
@@ -120,7 +120,9 @@ describe("PgMigrator", () => {
           // The client verifies the certificate whenever the server accepts TLS
           sslmode: "verify-full"
         })
-        assert.isFalse(command.args.some((arg) => arg.includes("s3cret")))
+        assert.isFalse(
+          command.args.some((arg) => (Redacted.isRedacted(arg) ? Redacted.value(arg) : arg).includes("s3cret"))
+        )
         assert.strictEqual(command.options.extendEnv, false)
         assert.deepStrictEqual(command.options.env, { PATH: process.env.PATH, PGPASSWORD: "s3cret" })
       }
