@@ -93,12 +93,25 @@ const handleInputErrors = (writable: Writable): void => {
   writable.once("close", () => writable.off("error", onError))
 }
 
+/**
+ * A non-detached leader shares its parent's process group. After it exits, its
+ * PID may be reused by an unrelated process group leader.
+ */
+const isProcessGroupUnowned = (
+  command: ChildProcess.StandardCommand,
+  childProcess: NodeChildProcess.ChildProcess
+): boolean => command.options.detached === false && (childProcess.exitCode !== null || childProcess.signalCode !== null)
+
 /** The leader has not exited, or a member of its process group still exists. */
-const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean => {
+const isProcessAlive = (
+  command: ChildProcess.StandardCommand,
+  childProcess: NodeChildProcess.ChildProcess,
+  exitSignal: ExitSignal
+): boolean => {
   if (!Deferred.isDoneUnsafe(exitSignal)) {
     return true
   }
-  if (globalThis.process.platform === "win32") {
+  if (globalThis.process.platform === "win32" || isProcessGroupUnowned(command, childProcess)) {
     return false
   }
   try {
@@ -466,6 +479,7 @@ const make = Effect.gen(function*() {
 
   /** Waits for the leader and its process group, bounded by native time. */
   const awaitProcessExit = (
+    command: ChildProcess.StandardCommand,
     childProcess: NodeChildProcess.ChildProcess,
     exitSignal: ExitSignal,
     timeoutMillis: number
@@ -479,7 +493,7 @@ const make = Effect.gen(function*() {
       }
       const poll = () => {
         clearTimeout(timer)
-        if (Date.now() >= deadline || !isProcessAlive(childProcess, exitSignal)) {
+        if (Date.now() >= deadline || !isProcessAlive(command, childProcess, exitSignal)) {
           stop()
           resume(Effect.void)
           return
@@ -499,18 +513,20 @@ const make = Effect.gen(function*() {
     options: ChildProcess.KillOptions | undefined
   ) {
     const signalGroup = (signal: NodeJS.Signals) =>
-      killProcessGroup(command, childProcess, signal).pipe(
-        Effect.catch(() => killProcess(command, childProcess, signal))
-      )
+      isProcessGroupUnowned(command, childProcess) ?
+        killProcess(command, childProcess, signal) :
+        killProcessGroup(command, childProcess, signal).pipe(
+          Effect.catch(() => killProcess(command, childProcess, signal))
+        )
     yield* signalGroup(options?.killSignal ?? "SIGTERM")
     if (Predicate.isUndefined(options?.forceKillAfter)) {
       yield* Deferred.await(exitSignal)
-      yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
+      yield* awaitProcessExit(command, childProcess, exitSignal, processGroupGraceMillis)
     } else {
-      yield* awaitProcessExit(childProcess, exitSignal, Duration.toMillis(options.forceKillAfter))
-      if (isProcessAlive(childProcess, exitSignal)) {
+      yield* awaitProcessExit(command, childProcess, exitSignal, Duration.toMillis(options.forceKillAfter))
+      if (isProcessAlive(command, childProcess, exitSignal)) {
         yield* signalGroup("SIGKILL")
-        yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
+        yield* awaitProcessExit(command, childProcess, exitSignal, processGroupGraceMillis)
       }
     }
     yield* Deferred.await(exitSignal)
@@ -585,7 +601,7 @@ const make = Effect.gen(function*() {
 
         const pid = ProcessId(childProcess.pid!)
         childProcess.on("exit", (code) => {
-          if (code !== 0 && Predicate.isNotNull(code)) {
+          if (code !== 0 && Predicate.isNotNull(code) && !isProcessGroupUnowned(cmd, childProcess)) {
             killProcessGroupOnExit(childProcess, cmd.options.killSignal ?? "SIGTERM")
           }
         })
