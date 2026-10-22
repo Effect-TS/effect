@@ -1,8 +1,8 @@
 ---
-"effect": patch
-"@effect/platform-node-shared": patch
-"@effect/platform-deno": patch
-"@effect/docgen": patch
+"effect": minor
+"@effect/platform-node-shared": minor
+"@effect/platform-deno": minor
+"@effect/docgen": minor
 ---
 
 Add `CommandLine` to `effect/process` for quoting and joining command lines, and support `Redacted` arguments and `env` values in `ChildProcess`.
