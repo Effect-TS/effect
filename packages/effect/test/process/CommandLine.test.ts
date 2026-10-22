@@ -101,6 +101,9 @@ describe("CommandLine", () => {
         "git commit -m \"fix: don't\""
       )
       assert.strictEqual(Result.getOrThrow(CommandLine.join([])), "")
+      for (const program of ["time", "nocorrect", "in"]) {
+        assert.strictEqual(Result.getOrThrow(CommandLine.join([program, "x"])), `'${program}' x`)
+      }
       const error = failure(CommandLine.join(["echo", "a\0b"]))
       assert.deepStrictEqual([error.reason, error.message], ["NulCharacter", "Argument 1 contains a NUL character"])
     })
@@ -196,6 +199,9 @@ describe("CommandLine", () => {
         ["=ls", "UnsupportedSyntax", 0],
         ["FOO=bar cmd", "UnsupportedSyntax", 3],
         ["if true", "UnsupportedSyntax", 2],
+        ["time make", "UnsupportedSyntax", 4],
+        ["nocorrect make", "UnsupportedSyntax", 9],
+        ["in x", "UnsupportedSyntax", 2],
         ["! cmd", "UnsupportedSyntax", 1],
         ["'open", "UnterminatedQuote", 0],
         ["a \"b", "UnterminatedQuote", 2],
