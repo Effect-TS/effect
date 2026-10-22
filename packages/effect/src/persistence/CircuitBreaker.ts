@@ -1447,10 +1447,7 @@ const makeStoreRedis = Effect.fnUntraced(function*(options?: {
         `${prefix}${key}`,
         String(generation),
         outcome,
-        tripPolicy._tag,
-        tripPolicy._tag === "Consecutive" ? tripPolicy.failures : tripPolicy.threshold,
-        tripPolicy._tag === "Consecutive" ? 0 : tripPolicy.minimumCalls,
-        tripPolicy._tag === "Consecutive" ? 0 : tripPolicy.size,
+        tripPolicy,
         Math.max(0, Math.ceil(Duration.toMillis(openFor))),
         idleMillis
       ).pipe(
@@ -1593,18 +1590,29 @@ return { "ok", generation, 1, openings, moved }
 
 // Returns { transition, consecutiveOpenings }, where transition is "none",
 // "closed-open", "halfopen-open" or "halfopen-closed".
+//
+// ARGV holds the generation, the outcome, the policy tag, the policy's
+// failures (Consecutive) or threshold (Rate), minimumCalls and size (0 under
+// Consecutive), then the open time and idle time in milliseconds.
 const recordScript = Redis.script(
   (
     key: string,
     generation: string,
     outcome: "Success" | "Failure" | "Ignored",
-    policy: TripPolicy["_tag"],
-    failuresOrThreshold: number,
-    minimumCalls: number,
-    size: number,
+    tripPolicy: TripPolicy,
     openForMillis: number,
     idleMillis: number
-  ) => [key, generation, outcome, policy, failuresOrThreshold, minimumCalls, size, openForMillis, idleMillis],
+  ) => [
+    key,
+    generation,
+    outcome,
+    tripPolicy._tag,
+    ...(tripPolicy._tag === "Consecutive"
+      ? [tripPolicy.failures, 0, 0]
+      : [tripPolicy.threshold, tripPolicy.minimumCalls, tripPolicy.size]),
+    openForMillis,
+    idleMillis
+  ],
   {
     numberOfKeys: 1,
     lua: `${luaPrelude}
