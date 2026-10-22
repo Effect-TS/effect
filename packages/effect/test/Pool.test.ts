@@ -830,13 +830,67 @@ describe("Pool", () => {
       strictEqual(pool.state.usage, 0)
     }))
 
-  it.effect("serves a waiter before a later borrower takes the released item", () =>
+  it.effect.each([1, 2])(
+    "serves a waiter before later borrowers take released capacity (concurrency: %s)",
+    (concurrency) =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency })
+        let busyBorrows = 0
+        const borrowRepeatedly = Effect.gen(function*() {
+          for (let i = 0; i < 100; i++) {
+            yield* Pool.use(pool, () => Effect.yieldNow)
+            busyBorrows++
+          }
+        })
+        const busy = yield* Effect.forEach(
+          Array.from({ length: concurrency }),
+          () => Effect.forkChild(borrowRepeatedly)
+        )
+        yield* Effect.yieldNow
+        const waitedBorrows = yield* Pool.use(pool, () => Effect.sync(() => busyBorrows))
+        yield* Fiber.joinAll(busy)
+        assert.isAtMost(waitedBorrows, concurrency)
+        strictEqual(pool.state.usage, 0)
+      })
+  )
+
+  it.effect("serves a waiter before a later borrower takes capacity freed by a reservation", () =>
     Effect.gen(function*() {
-      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+      const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency: 2 })
+      const owner = yield* Scope.make()
+      yield* Pool.get(pool).pipe(Scope.provide(owner))
+      let reservation = yield* Scope.make()
+      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
+      let busyBorrows = 0
+      const waiter = yield* Effect.forkChild(
+        Pool.use(pool, () => Effect.sync(() => busyBorrows)),
+        { startImmediately: true }
+      )
+      for (let i = 0; i < 100; i++) {
+        yield* Scope.close(reservation, Exit.void)
+        const borrow = yield* Scope.make()
+        yield* Pool.get(pool).pipe(Scope.provide(borrow))
+        reservation = yield* Scope.make()
+        yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
+        yield* Effect.yieldNow
+        yield* Scope.close(borrow, Exit.void)
+        busyBorrows++
+      }
+      yield* Scope.close(reservation, Exit.void)
+      const waitedBorrows = yield* Fiber.join(waiter)
+      yield* Scope.close(owner, Exit.void)
+      assert.isAtMost(waitedBorrows, 1)
+      strictEqual(pool.state.usage, 0)
+    }))
+
+  it.effect("serves a waiter before a later borrower takes a replacement item", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      const pool = yield* Pool.make({ acquire: Effect.sync(() => ++acquired), size: 1 })
       let busyBorrows = 0
       const busy = yield* Effect.forkChild(Effect.gen(function*() {
         for (let i = 0; i < 100; i++) {
-          yield* Pool.use(pool, () => Effect.yieldNow)
+          yield* Pool.use(pool, (item) => Effect.andThen(Effect.yieldNow, Pool.invalidate(pool, item)))
           busyBorrows++
         }
       }))
@@ -844,7 +898,54 @@ describe("Pool", () => {
       const waitedBorrows = yield* Pool.use(pool, () => Effect.sync(() => busyBorrows))
       yield* Fiber.join(busy)
       assert.isAtMost(waitedBorrows, 1)
+      strictEqual(pool.state.usage, 0)
     }))
+
+  it.effect.each(["interrupt", "invalidate", "shutdown"] as const)(
+    "returns capacity handed to a waiter that cannot take it (%s)",
+    (event) =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const finalized: Array<number> = []
+        const used: Array<number> = []
+        const poolScope = yield* Scope.make()
+        const pool = yield* Pool.make({
+          acquire: Effect.acquireRelease(
+            Effect.sync(() => ++acquired),
+            (item) => Effect.sync(() => finalized.push(item))
+          ),
+          size: 1
+        }).pipe(Scope.provide(poolScope))
+        const owner = yield* Scope.make()
+        yield* Pool.get(pool).pipe(Scope.provide(owner))
+        const borrow = Pool.use(pool, (item) => Effect.sync(() => used.push(item)))
+        const first = yield* Effect.forkChild(borrow, { startImmediately: true })
+        const second = yield* Effect.forkChild(borrow, { startImmediately: true })
+        // Release the item to `first`, then act before `first` resumes.
+        yield* Scope.close(owner, Exit.void)
+        if (event === "interrupt") {
+          yield* Fiber.interrupt(first)
+        } else if (event === "invalidate") {
+          yield* Pool.invalidate(pool, 1)
+        } else {
+          yield* Scope.close(poolScope, Exit.void)
+        }
+        const exits = [yield* Fiber.await(first), yield* Fiber.await(second)]
+        yield* Scope.close(poolScope, Exit.void)
+
+        if (event === "interrupt") {
+          assert.isTrue(Exit.hasInterrupts(exits[0]))
+          deepStrictEqual(used, [1])
+        } else if (event === "invalidate") {
+          deepStrictEqual(used, [2, 2])
+        } else {
+          assert.isTrue(exits.every(Exit.hasInterrupts))
+          deepStrictEqual(used, [])
+        }
+        deepStrictEqual(finalized, Array.from({ length: acquired }, (_, i) => i + 1))
+        strictEqual(pool.state.usage, 0)
+      })
+  )
 
   it.effect("use reports acquire failures", () =>
     Effect.gen(function*() {
