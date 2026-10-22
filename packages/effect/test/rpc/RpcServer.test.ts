@@ -755,6 +755,54 @@ describe("RpcServer", () => {
       ])
     }))
 
+  it.effect("keeps interrupting disconnected clients while an onDisconnect callback is pending", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}) }))
+      const started = yield* Queue.unbounded<number>()
+      const interrupted = yield* Queue.unbounded<number>()
+      const observed = yield* Queue.unbounded<number>()
+      const disconnects = yield* Queue.unbounded<number>()
+      let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+      const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
+        writeRequest = writeRequest_
+        return Effect.succeed({
+          disconnects,
+          send: () => Effect.void,
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set([1, 2])),
+          initialMessage: Effect.succeedNone,
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: false,
+          codecFor: RpcSerialization.json.codecFor
+        })
+      })
+      yield* RpcServer.make(group, {
+        onDisconnect: (clientId) => Queue.offer(observed, clientId).pipe(Effect.andThen(Effect.never))
+      }).pipe(
+        Effect.provideService(RpcServer.Protocol, protocol),
+        Effect.provide(group.toLayer({
+          wait: (_, { client }) =>
+            Queue.offer(started, client.id).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Queue.offer(interrupted, client.id))
+            )
+        })),
+        Effect.forkScoped
+      )
+
+      for (const clientId of [1, 2]) {
+        yield* writeRequest(clientId, { _tag: "Request", id: "1", tag: "wait", payload: {}, headers: [] })
+        assert.strictEqual(yield* Queue.take(started), clientId)
+      }
+      yield* Queue.offer(disconnects, 1)
+      yield* Queue.offer(disconnects, 2)
+
+      assert.deepStrictEqual([yield* Queue.take(interrupted), yield* Queue.take(interrupted)], [1, 2])
+      assert.deepStrictEqual([yield* Queue.take(observed), yield* Queue.take(observed)], [1, 2])
+    }))
+
   it.effect("applies backpressure to framed HTTP responses by default", () =>
     Effect.gen(function*() {
       const produced = yield* producedWithoutReadingFramedBody()
