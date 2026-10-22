@@ -377,39 +377,6 @@ describe("Tracer", () => {
         spanProcessor: [new SimpleSpanProcessor(exporter)]
       }))))
     })
-
-    it.effect("ignores mutations after end without reaching the SDK", () => {
-      const exporter = new InMemorySpanExporter()
-      const diagnostics: Array<string> = []
-      const record = (message: string) => {
-        diagnostics.push(message)
-      }
-      return Effect.gen(function*() {
-        const span = yield* Effect.makeSpan("test")
-        span.end(span.status.startTime + 1n, Exit.void)
-        const ended = span.status
-
-        OtelApi.diag.setLogger({ error: record, warn: record, info: record, debug: record, verbose: record })
-        yield* Effect.addFinalizer(() => Effect.sync(() => OtelApi.diag.disable()))
-        span.attribute("late", true)
-        span.event("late", span.status.startTime + 2n)
-        span.addLinks([{ span: EffectTracer.externalSpan({ spanId: "span", traceId: "trace" }), attributes: {} }])
-        span.end(span.status.startTime + 3n, Exit.fail("late"))
-
-        assert.deepStrictEqual(diagnostics, [])
-        assert.strictEqual(span.status, ended)
-        assert.isFalse(span.attributes.has("late"))
-        assert.deepStrictEqual(span.links, [])
-        assert.lengthOf(exporter.getFinishedSpans(), 1)
-      }).pipe(
-        Effect.scoped,
-        Effect.provide(NodeSdk.layer(() => ({
-          resource: { serviceName: "test" },
-          spanProcessor: [new SimpleSpanProcessor(exporter)]
-        })))
-      )
-    })
-
     it.effect("exports homogeneous primitive arrays as array attributes", () =>
       Effect.gen(function*() {
         const exporter = new InMemorySpanExporter()

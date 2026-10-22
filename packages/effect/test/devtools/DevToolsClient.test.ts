@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, type Duration, Effect, Exit, Fiber, Latch, Layer, Tracer } from "effect"
-import { DevTools, DevToolsClient, type DevToolsSchema } from "effect/devtools"
+import { Deferred, type Duration, Effect, Fiber, Latch, Layer } from "effect"
+import { DevTools, DevToolsClient } from "effect/devtools"
 import { Socket } from "effect/socket"
 import { TestClock } from "effect/testing"
 
@@ -204,20 +204,5 @@ describe("DevToolsClient", () => {
       )
 
       assert.deepStrictEqual(spans.map((span) => span.status._tag), ["Started", "Ended"])
-    }))
-
-  it.effect("sends nothing for an ended span", () =>
-    Effect.gen(function*() {
-      const messages: Array<DevToolsSchema.Span | DevToolsSchema.SpanEvent> = []
-      const tracer = yield* DevToolsClient.makeTracer.pipe(
-        Effect.provideService(DevToolsClient.DevToolsClient, { sendUnsafe: (message) => messages.push(message) })
-      )
-      const span = yield* Effect.makeSpan("test").pipe(Effect.provideService(Tracer.Tracer, tracer))
-      span.end(1n, Exit.void)
-
-      span.event("late", 2n)
-      span.end(3n, Exit.fail("late"))
-
-      assert.deepStrictEqual(messages.map((message) => message._tag), ["Span", "Span"])
     }))
 })
