@@ -1502,6 +1502,153 @@ export const Tasks = HttpApiGroup.make("tasks").add(
 ).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// secrets
+// -----------------------------------------------------------------------------
+
+/**
+ * A secret's spec, as the Engine's `SecretSpec`, with `Data` as `Redacted` bytes.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SecretSpec = DockerSchema.SecretSpec.mapFields((fields) => ({
+  ...fields,
+  // padded standard base64: the Engine rejects base64url and unpadded data
+  Data: Schema.optionalKey(Schema.RedactedFromValue(Schema.Uint8ArrayFromBase64))
+}))
+
+/**
+ * A secret's spec, see {@link SecretSpec}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type SecretSpec = typeof SecretSpec.Type
+
+/**
+ * A secret, as the Engine's `Secret`, with its {@link SecretSpec}.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Secret = DockerSchema.Secret.mapFields((fields) => ({ ...fields, Spec: Schema.optionalKey(SecretSpec) }))
+
+/**
+ * A secret, see {@link Secret}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type Secret = typeof Secret.Type
+
+/**
+ * The Engine's secret endpoints, which `DockerSecrets` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Secrets = HttpApiGroup.make("secrets").add(
+  HttpApiEndpoint.get("list", "/secrets", {
+    query: { filters },
+    success: Schema.toCodecGoJson(Schema.Array(Secret))
+  }),
+  HttpApiEndpoint.get("inspect", "/secrets/:id", {
+    params: id,
+    success: Schema.toCodecGoJson(Secret)
+  }),
+  HttpApiEndpoint.post("create", "/secrets/create", {
+    payload: SecretSpec,
+    success: Schema.toCodecGoJson(DockerSchema.SecretCreateResponse).pipe(HttpApiSchema.status(201))
+  }),
+  HttpApiEndpoint.post("update", "/secrets/:id/update", {
+    params: id,
+    query: { version: Schema.Number },
+    payload: SecretSpec,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.delete("remove", "/secrets/:id", { params: id, success: HttpApiSchema.NoContent })
+).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
+// configs
+// -----------------------------------------------------------------------------
+
+/**
+ * A config's spec, as the Engine's `ConfigSpec`, with `Data` as bytes.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ConfigSpec = DockerSchema.ConfigSpec.mapFields((fields) => ({
+  ...fields,
+  // padded standard base64: the Engine rejects base64url and unpadded data
+  Data: Schema.optionalKey(Schema.Uint8ArrayFromBase64)
+}))
+
+/**
+ * A config's spec, see {@link ConfigSpec}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ConfigSpec = typeof ConfigSpec.Type
+
+/**
+ * A config, as the Engine's `Config`, with its {@link ConfigSpec}.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const Config = DockerSchema.Config.mapFields((fields) => ({ ...fields, Spec: Schema.optionalKey(ConfigSpec) }))
+
+/**
+ * A config, see {@link Config}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type Config = typeof Config.Type
+
+/**
+ * The Engine's Swarm config endpoints, which `DockerSwarmConfigs` is a client
+ * of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const SwarmConfigs = HttpApiGroup.make("configs").add(
+  HttpApiEndpoint.get("list", "/configs", {
+    query: { filters },
+    success: Schema.toCodecGoJson(Schema.Array(Config))
+  }),
+  HttpApiEndpoint.get("inspect", "/configs/:id", {
+    params: id,
+    success: Schema.toCodecGoJson(Config)
+  }),
+  HttpApiEndpoint.post("create", "/configs/create", {
+    payload: ConfigSpec,
+    success: Schema.toCodecGoJson(DockerSchema.ConfigCreateResponse).pipe(HttpApiSchema.status(201))
+  }),
+  HttpApiEndpoint.post("update", "/configs/:id/update", {
+    params: id,
+    query: { version: Schema.Number },
+    payload: ConfigSpec,
+    success: HttpApiSchema.Empty(200)
+  }),
+  HttpApiEndpoint.delete("remove", "/configs/:id", { params: id, success: HttpApiSchema.NoContent })
+).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -1522,5 +1669,7 @@ export const DockerApi = HttpApi.make("docker").add(
   Swarm,
   Nodes,
   Services,
-  Tasks
+  Tasks,
+  Secrets,
+  SwarmConfigs
 )
