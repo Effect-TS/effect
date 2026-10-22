@@ -442,6 +442,10 @@ export interface CommandOptions extends KillOptions {
    * use on the system. The command is the whole script; build it with
    * `CommandLine.join` or `CommandLine.quote` when it contains values.
    *
+   * This is also the way to run a command configured as shell text, such as
+   * the `EDITOR` environment variable: use the setting as the start of the
+   * script and quote the values that follow it.
+   *
    * **Gotchas**
    *
    * - Running a command with both `shell` and arguments fails with a
@@ -526,6 +530,26 @@ export interface CommandOptions extends KillOptions {
    */
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined
 }
+
+/**
+ * Valid template expression item types. Same as
+ * `CommandLine.TemplateExpressionItem`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type TemplateExpressionItem = CommandLine.TemplateExpressionItem
+
+/**
+ * Template expression type for interpolated values. Same as
+ * `CommandLine.TemplateExpression`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type TemplateExpression = CommandLine.TemplateExpression
 
 // =============================================================================
 // Constructors
@@ -619,6 +643,8 @@ const makePipedCommand = (
  *   their quoting depends on the shell. Build the script with
  *   `CommandLine.quote` and pass it as a string.
  * - The program name, the first word, cannot be `Redacted`.
+ * - A NUL character in the command, an argument or an `env` value fails with
+ *   a `BadArgument` error when the command is spawned.
  *
  * **Example** (Creating commands)
  *

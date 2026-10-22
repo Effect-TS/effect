@@ -1,4 +1,4 @@
-import { type ChildProcess, type CommandLine } from "effect/process"
+import type { ChildProcess, CommandLine } from "effect/process"
 import { describe, expect, it } from "tstyche"
 
 describe("ChildProcess", () => {

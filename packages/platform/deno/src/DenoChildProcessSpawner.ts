@@ -31,6 +31,23 @@ import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 
+const unwrap = (value: string | Redacted.Redacted<string>): string =>
+  Redacted.isRedacted(value) ? Redacted.value(value) : value
+
+// Deno cannot pass NUL characters to a process. They are rejected before
+// spawning so that the error does not depend on Deno's message.
+const findNulCharacter = (command: ChildProcess.StandardCommand): string | undefined => {
+  if (command.command.includes("\0")) return "The command contains a NUL character"
+  const index = command.args.findIndex((arg) => unwrap(arg).includes("\0"))
+  if (index !== -1) return `Argument ${index + 1} contains a NUL character`
+  for (const [name, value] of Object.entries(command.options.env ?? {})) {
+    if (value !== undefined && unwrap(value).includes("\0")) {
+      return `The environment variable ${name} contains a NUL character`
+    }
+  }
+  return undefined
+}
+
 const commandString = (command: ChildProcess.Command): string => {
   const { commands } = flattenCommand(command)
   const format = Deno.build.os === "windows" ? "windows" : "posix"
@@ -84,7 +101,7 @@ const make = Effect.gen(function*() {
     const env: Record<string, string> = extend && removes ? Deno.env.toObject() : {}
     for (const [key, value] of Object.entries(options.env)) {
       if (value === undefined) delete env[key]
-      else env[key] = Redacted.isRedacted(value) ? Redacted.value(value) : value
+      else env[key] = unwrap(value)
     }
     return { env, clearEnv: !extend || removes }
   }
@@ -267,9 +284,17 @@ const make = Effect.gen(function*() {
             description: "The shell option cannot be combined with arguments; pass the whole script as the command"
           }))
         }
+        const nulCharacter = findNulCharacter(cmd)
+        if (nulCharacter !== undefined) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: nulCharacter
+          }))
+        }
 
         let executable = cmd.command
-        let args: ReadonlyArray<string> = cmd.args.map((arg) => Redacted.isRedacted(arg) ? Redacted.value(arg) : arg)
+        let args: ReadonlyArray<string> = cmd.args.map(unwrap)
         let windowsRawArguments = false
         if (cmd.options.shell) {
           const shellCommand = cmd.command
