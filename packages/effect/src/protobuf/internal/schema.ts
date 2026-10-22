@@ -39,6 +39,10 @@ export interface FieldOptions {
   readonly validateUtf8: boolean | undefined
   // The `[default = …]` of the field, which the codec does not read.
   readonly default: unknown
+  // The names of the field in its `.proto` file and in JSON, when they are not
+  // the ones its property key stands for. The binary codec does not read them.
+  readonly name: string | undefined
+  readonly jsonName: string | undefined
 }
 
 /** @internal */

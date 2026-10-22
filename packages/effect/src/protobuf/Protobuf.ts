@@ -108,6 +108,19 @@ interface FieldOptions {
    * fields reject it.
    */
   readonly default?: unknown
+  /**
+   * The name of the field in its `.proto` file.
+   *
+   * @default the property key with each upper-case letter replaced by `_`
+   * and the letter in lower case, such as `user_id` for `userId`
+   */
+  readonly name?: string | undefined
+  /**
+   * The `json_name` of the field, its name in the protobuf JSON mapping.
+   *
+   * @default the property key
+   */
+  readonly jsonName?: string | undefined
 }
 
 /**
@@ -157,7 +170,9 @@ const fieldAnnotation = (number: number, options: FieldOptions | undefined): Pro
     required: options?.required,
     delimited: options?.delimited,
     validateUtf8: options?.validateUtf8,
-    default: options?.default
+    default: options?.default,
+    name: options?.name,
+    jsonName: options?.jsonName
   }
 }
 
