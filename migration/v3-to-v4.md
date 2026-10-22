@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
+Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `origin/main` (`4cddd3c41e71fc4990d37c42b1bcf2ce3780b41d`)
+Head: `origin/main` (`399ecbe63f68b8698789190ec3e779315e26e35e`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4998,7 +4998,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/ai/Prompt`
 
-- `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/ai/Prompt with the same file-part model and schema; update the module import.
+- `Prompt.FilePart` -> `Prompt.FilePart`: Moved to effect/ai/Prompt with the same file-part model; update the module import. Encoding now writes Uint8Array and URL data as JSON-safe { \_tag: "Uint8Array", base64 } and { \_tag: "URL", href } objects; decoding still accepts strings, raw Uint8Array, and URL values.
+
+- `Prompt.FilePartEncoded` -> `Prompt.FilePartEncoded`: Moved to effect/ai/Prompt; update the module import. data additionally accepts the tagged { \_tag: "Uint8Array", base64 } and { \_tag: "URL", href } forms, which the schema now produces when encoding byte arrays and URLs.
 
 - `Prompt.FromJson` -> `Schema.fromJsonString(Prompt.Prompt)`: The module-specific JSON schema was removed. Compose the general v4 JSON-string codec with the public Prompt codec.
 
@@ -5450,7 +5452,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Options.Options` -> `Flag.Flag`: Options was renamed to Flag in effect/cli.
 
-- `Options.Options.BooleanOptionsConfig` -> `Flag.Boolean + Flag.withAlias + Flag.map`: The config object was removed; aliases and value inversion are combinators, while custom negation names need application logic.
+- `Options.Options.BooleanOptionsConfig` -> `Flag.Boolean + Flag.withAlias + Flag.withNegation + Flag.map`: The config object was removed; aliases, the negation name, and value inversion are combinators. Flag.withNegation replaces --no-name with a single custom name and Flag.withoutNegation removes it; additional negation names need application logic.
 
 - `Options.Options.PathOptionsConfig` -> `{ readonly mustExist?: boolean }`: Path options are inline; true replaces exists=yes and omission replaces either. exists=no has no exact replacement.
 
@@ -5466,7 +5468,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Options.between` -> `Flag.between`: Use the moved combinator; v4 validates bounds when constructing the parameter.
 
-- `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic and aliases are added with Flag.withAlias.
+- `Options.boolean` -> `Flag.Boolean + Flag.withDefault`: Use Flag.Boolean(name).pipe(Flag.withDefault(false)) to preserve v3's omitted-flag default; bare Flag.Boolean is now required. --no-name is automatic; rename it with Flag.withNegation or remove it with Flag.withoutNegation. Aliases are added with Flag.withAlias.
 
 - `Options.choice` -> `Flag.Literals`: Use the moved constructor.
 
@@ -5696,7 +5698,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/ClusterCron`
 
-- `ClusterCron.make` -> `effect/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input.
+- `ClusterCron.make` -> `effect/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input. Read the scheduled run time inside execute from the ClusterCron.CurrentScheduledTime service instead of parsing Entity.CurrentAddress, whose entity ID no longer encodes it when calculateNextRunFromPrevious is true.
 
 ### `@effect/cluster/ClusterError`
 
@@ -6138,7 +6140,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Reactivity.make` -> `effect/reactivity/Reactivity#make`: Import make from the v4 unstable Reactivity module.
 
-- `Reactivity.query`: TODO: needs guidance
+- `Reactivity.query` -> `effect/reactivity/Reactivity#query`: Import query from the v4 unstable Reactivity module. It returns a Queue.Dequeue instead of a Mailbox.ReadonlyMailbox; read results with Queue operations or Stream.fromQueue. Keys stay untyped unless you augment Reactivity.Keys, which then restricts key names and IDs.
+
+- `Reactivity.stream` -> `effect/reactivity/Reactivity#stream`: Import stream from the v4 unstable Reactivity module.
 
 ### `@effect/experimental/RequestResolver`
 
@@ -6700,7 +6704,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `FileSystem.layerNoop` -> `FileSystem.layerNoop`: The helper remains after moving the module to effect/FileSystem.
 
-- `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape.
+- `FileSystem.make` -> `FileSystem.make`: The constructor remains after moving the module to effect/FileSystem; adapt the implementation to the v4 service shape, which also requires lstat to return File.Info without following symbolic links.
 
 ### `@effect/platform/Headers`
 
@@ -7140,7 +7144,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/HttpClientResponse`
 
-- `HttpClientResponse.HttpClientResponse` -> `HttpClientResponse.HttpClientResponse`: Custom implementations must supply the required url string. It represents the resolved URL including query parameters and excluding the hash, uses the final URL after redirects, and is empty when unknown.
+- `HttpClientResponse.HttpClientResponse` -> `HttpClientResponse.HttpClientResponse`: Custom implementations must supply the required url string and an upgrade effect. url represents the resolved URL including query parameters and excluding the hash, uses the final URL after redirects, and is empty when unknown. upgrade returns the upgraded Socket and should fail with an HttpClientError when the backend cannot hand over the connection.
 
 - `HttpClientResponse.TypeId` -> `typeof HttpClientResponse.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
@@ -7369,6 +7373,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpServerRequest.toWeb` -> `HttpServerRequest.toWeb`: Retained and captures the current Context for streamed bodies.
 
 - `HttpServerRequest.toWebEither` -> `HttpServerRequest.toWebResult`: Either became Result, and the optional Runtime became an optional Context.
+
+- `HttpServerRequest.upgrade` -> `HttpServerRequest.HttpServerRequest.use((request) => request.upgrade)`: The top-level accessor was removed; read upgrade from the request service. It fails with HttpServerError instead of RequestError. HttpServerRequest.upgradeChannel remains for channel-based WebSocket handling.
 
 ### `@effect/platform/HttpServerRespondable`
 
@@ -7820,6 +7826,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `RpcClient.currentHeaders` -> `effect/rpc/RpcClient#CurrentHeaders`: Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHeaders for scoped overrides.
 
+- `RpcClient.layerProtocolHttp` -> `effect/rpc/RpcClient#layerProtocolHttp`: Retained; it provides the v4 Protocol from HttpClient and RpcSerialization.
+
 - `RpcClient.makeProtocolHttp` -> `effect/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
 
 - `RpcClient.withHeadersEffect` -> `Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))`: withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect.
@@ -8020,7 +8028,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers.
 
-- `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
+- `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. v3 connectTimeout also bounded waits for a free pooled connection through node-pg; v4 connectTimeout covers only opening a connection, so set acquireTimeout to fail with ConnectionError when the pool stays exhausted. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
 
 - `PgClient.PgClientFromPoolOptions` -> `none`: The node-pg Pool wrapper options were removed with fromPool. Use PgClient.PgPoolConfig with PgClient.make or PgClient.layer.
 
@@ -8719,6 +8727,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `index.WorkerContext` -> `vitest/node#WorkerContext`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 5 shape.
 
 - `index.WorkerRPC` -> `none`: The concrete worker RPC composition is internal. Use public Vitest RuntimeRPC, RunnerRPC, ContextRPC, or WorkerRequest types only when their narrower contract fits.
+
+- `index.beforeAll` -> `@effect/vitest#beforeAll`: Still accepts Vitest callbacks. A callback may also return an Effect, which runs with a Scope that closes after the suite's afterAll hooks; the Effect must not require other services.
+
+- `index.beforeEach` -> `@effect/vitest#beforeEach`: Still accepts Vitest callbacks. A callback may also return an Effect, which runs with a Scope that closes when the test finishes; the Effect must not require other services.
 
 - `index.bench` -> `vitest#test`: Vitest 5 removes the top-level bench export. Destructure bench from a regular test's context and await bench(name, fn).run(); use skip, only, or todo on the enclosing test.
 
