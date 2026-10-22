@@ -89,22 +89,22 @@ describe("McpClient", () => {
           const tool = yield* findTool(client, "add")
           const raw = yield* client.callTool({ tool, arguments: { a: 20, b: 22 } })
           assert.deepStrictEqual(raw.structuredContent, { total: 42 })
-          const decoded = yield* McpClient.callTool(client, {
+          const decoded = yield* client.callTool({
             tool,
             arguments: { a: 1, b: 2 },
             schema: Schema.Struct({ total: Schema.Number })
           })
           assert.deepStrictEqual(decoded, { total: 3 })
 
-          const [prompt] = yield* McpClient.listPrompts(client)
-          const messages = yield* McpClient.getPrompt(client, { prompt, arguments: { total: "42" } })
+          const [prompt] = yield* client.listPrompts()
+          const messages = yield* client.getPrompt({ prompt, arguments: { total: "42" } })
           assert.deepStrictEqual(messages.messages.map((message) => message.content), [{
             type: "text",
             text: "Explain 42"
           }])
 
-          const [resource] = yield* McpClient.listResources(client)
-          const contents = yield* McpClient.readResource(client, { uri: resource.uri })
+          const [resource] = yield* client.listResources()
+          const contents = yield* client.readResource({ uri: resource.uri })
           assert.deepStrictEqual(contents.contents, [{ uri: "demo://guide", text: "Guide" }])
         }).pipe(Effect.scoped))
 
