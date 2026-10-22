@@ -37,6 +37,19 @@ const waitFor = (predicate: () => boolean) =>
     assert.ok(predicate(), "background acquisition did not start")
   })
 
+// Cold socket startup can outlast acquireTimeout, so let a background
+// connection open before the timed scenario starts. Each probe that times out
+// is retried; the first that succeeds hands the idle connection straight back.
+const waitForIdleConnection = Effect.fnUntraced(function*(sql: PgClient.PgClient) {
+  yield* Effect.scoped(sql.reserve).pipe(
+    Effect.retry({
+      times: 50,
+      while: (error) => error.reason._tag === "ConnectionError" && error.reason.operation === "acquireConnection"
+    }),
+    Effect.mapError((error) => new Error(`no idle connection opened: ${error.message}`, { cause: error }))
+  )
+})
+
 describe("PgPool failed startup", () => {
   it.live(
     "retries a stale background acquisition rather than failing an unrelated checkout",
@@ -112,6 +125,7 @@ describe("PgPool acquireTimeout", () => {
     Effect.gen(function*() {
       const sql = yield* PgClient.make({
         username: "test",
+        minConnections: 1,
         maxConnections: 1,
         acquireTimeout: "100 millis",
         stream: () => {
@@ -125,6 +139,7 @@ describe("PgPool acquireTimeout", () => {
           return socket
         }
       })
+      yield* waitForIdleConnection(sql)
       yield* sql.reserve
 
       const statement = yield* Effect.flip(sql`SELECT 1`)
@@ -146,6 +161,7 @@ describe("PgPool acquireTimeout", () => {
         let writes = 0
         const sql = yield* PgClient.make({
           username: "test",
+          minConnections: 1,
           maxConnections: 1,
           multiplex: true,
           acquireTimeout: "100 millis",
@@ -160,6 +176,7 @@ describe("PgPool acquireTimeout", () => {
             return socket
           }
         })
+        yield* waitForIdleConnection(sql)
         // The shared statement stays on the wire until the backend answers it.
         const busy = yield* Effect.forkChild(sql`SELECT 1`)
         yield* waitFor(() => writes === 2)
