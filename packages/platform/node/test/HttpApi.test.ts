@@ -1159,6 +1159,14 @@ describe("HttpApi", () => {
                 params: { id: Schema.String },
                 success: HttpApiSchema.Upgrade({ protocol: "tcp" }),
                 error: NotFound
+              }),
+              HttpApiEndpoint.post("start", "/containers/:id/start", {
+                params: { id: Schema.String },
+                payload: Schema.Struct({ tty: Schema.Boolean }),
+                success: HttpApiSchema.Upgrade({
+                  protocol: "tcp",
+                  headers: { "content-type": Schema.Literals(["application/raw", "application/multiplexed"]) }
+                })
               })
             )
         )
@@ -1166,14 +1174,25 @@ describe("HttpApi", () => {
         Api,
         "containers",
         (handlers) =>
-          handlers.handle("attach", ({ params, socket }) =>
-            Effect.gen(function*() {
-              // fails before the 101 is sent
-              if (params.id !== "abc") return yield* new NotFound()
-              const reader = yield* socket.reader
-              const writer = yield* socket.writer
-              yield* writer.write(`${params.id}:${yield* readUntilClose(reader)}`)
-            }).pipe(Effect.catchTag("SocketError", Effect.die), Effect.scoped))
+          handlers
+            .handle("attach", ({ params, upgrade }) =>
+              Effect.gen(function*() {
+                // fails before the 101 is sent
+                if (params.id !== "abc") return yield* new NotFound()
+                const socket = yield* upgrade()
+                const reader = yield* socket.reader
+                const writer = yield* socket.writer
+                yield* writer.write(`${params.id}:${yield* readUntilClose(reader)}`)
+              }).pipe(Effect.catchTag("SocketError", Effect.die), Effect.scoped))
+            .handle("start", ({ params, payload, upgrade }) =>
+              Effect.gen(function*() {
+                const socket = yield* upgrade({
+                  headers: { "content-type": payload.tty ? "application/raw" : "application/multiplexed" }
+                })
+                const reader = yield* socket.reader
+                const writer = yield* socket.writer
+                yield* writer.write(`${params.id}:${payload.tty}:${yield* readUntilClose(reader)}`)
+              }).pipe(Effect.catchTag("SocketError", Effect.die), Effect.scoped))
       )
       const ApiLayer = HttpRouter.serve(
         HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
@@ -1196,6 +1215,16 @@ describe("HttpApi", () => {
         assert.strictEqual(missingConnection.status, 426)
         assert.strictEqual(missingConnection.headers.upgrade, "tcp")
 
+        // the upgrade is checked before the payload is decoded
+        const invalidPayload = HttpBody.text("{", "application/json")
+        const refusedStart = yield* HttpClient.post("/containers/abc/start", { body: invalidPayload })
+        assert.strictEqual(refusedStart.status, 426)
+        const invalidStart = yield* HttpClient.post("/containers/abc/start", {
+          headers: { connection: "Upgrade", upgrade: "tcp" },
+          body: invalidPayload
+        })
+        assert.strictEqual(invalidStart.status, 400)
+
         // client side
         const client = yield* HttpApiClient.make(Api)
         const { headers, socket } = yield* client.containers.attach({ params: { id: "abc" } })
@@ -1206,6 +1235,12 @@ describe("HttpApi", () => {
 
         const error = yield* Effect.flip(client.containers.attach({ params: { id: "missing" } }))
         assert.deepStrictEqual(error, new NotFound())
+
+        const started = yield* client.containers.start({ params: { id: "abc" }, payload: { tty: true } })
+        assert.deepStrictEqual(started.headers, { "content-type": "application/raw" })
+        const startReader = yield* started.socket.reader
+        yield* Effect.scoped(Effect.flatMap(started.socket.writer, (writer) => writer.write("ping")))
+        assert.strictEqual(yield* readUntilClose(startReader), "abc:true:ping")
       }).pipe(Effect.scoped, Effect.provide(ApiLayer))
     })
 

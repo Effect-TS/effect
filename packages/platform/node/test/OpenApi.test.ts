@@ -1077,7 +1077,11 @@ describe("OpenAPI spec", () => {
               HttpApiGroup.make("group")
                 .add(
                   HttpApiEndpoint.post("a", "/a", {
-                    success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+                    payload: Schema.Struct({ tty: Schema.Boolean }),
+                    success: HttpApiSchema.Upgrade({
+                      protocol: "tcp",
+                      headers: { "content-type": Schema.Literals(["application/raw", "application/multiplexed"]) }
+                    })
                   })
                 )
             )
@@ -1086,9 +1090,14 @@ describe("OpenAPI spec", () => {
             description: "Switching Protocols",
             headers: {
               connection: { schema: { type: "string", enum: ["Upgrade"] }, required: true },
-              upgrade: { schema: { type: "string", enum: ["tcp"] }, required: true }
+              upgrade: { schema: { type: "string", enum: ["tcp"] }, required: true },
+              "content-type": {
+                schema: { type: "string", enum: ["application/raw", "application/multiplexed"] },
+                required: true
+              }
             }
           })
+          assert.deepStrictEqual(Object.keys(spec.paths["/a"].post?.requestBody?.content ?? {}), ["application/json"])
           assert.strictEqual(spec.paths["/a"].post?.responses["200"], undefined)
         })
 

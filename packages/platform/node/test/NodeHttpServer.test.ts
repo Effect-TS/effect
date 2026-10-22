@@ -1948,6 +1948,64 @@ describe("HttpServer", () => {
       )
     }).pipe(Effect.provide(layerTestWebsocket)))
 
+  it.effect.each([
+    {
+      name: "a Content-Length body split from the head",
+      input: [
+        "POST /attach HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: tcp\r\nContent-Length: 5\r\n\r\nhe",
+        "lloearly"
+      ],
+      upgrades: true
+    },
+    {
+      name: "a chunked body",
+      input: [
+        "POST /attach HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: tcp\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe",
+        "llo\r\n0\r\n\r\nearly"
+      ],
+      // Node 25 and older do not parse upgrade request bodies, and only Content-Length is framed by hand.
+      upgrades: Number(process.versions.node.split(".")[0]) >= 26
+    }
+  ])("reads $name before switching protocols", ({ input, upgrades }) =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/attach",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const body = yield* request.text
+          const socket = yield* Effect.orDie(request.upgradeWith({ headers: { "content-type": "application/raw" } }))
+          const reader = yield* socket.reader
+          const writer = yield* socket.writer
+          const decoder = new TextDecoder()
+          let received = ""
+          while (true) {
+            const chunks = yield* reader.pull.pipe(
+              Effect.catchReason("SocketError", "SocketCloseError", () => Effect.succeed(undefined))
+            )
+            if (chunks === undefined) break
+            for (const chunk of chunks) received += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+          }
+          yield* writer.write(`${body}|${received}`)
+          return HttpServerResponse.empty()
+        }).pipe(Effect.scoped)
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const response = yield* Effect.promise(() => rawExchange(port, input))
+      if (upgrades) {
+        assert.strictEqual(
+          response,
+          "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\ncontent-type: application/raw\r\n\r\nhello|early"
+        )
+      } else {
+        assert.match(response, /^HTTP\/1\.1 411 /)
+      }
+    }).pipe(Effect.provide(layerTestWebsocket)))
+
   describe("request URL", () => {
     it.effect("toURL reports https over TLS", () =>
       Effect.gen(function*() {
@@ -2233,7 +2291,7 @@ const rawWebSocket = (
   })
 
 // Writes `input`, half-closes, and resolves with everything the server sent.
-const rawExchange = (port: number, input: string): Promise<string> =>
+const rawExchange = (port: number, input: string | ReadonlyArray<string>): Promise<string> =>
   new Promise((resolve, reject) => {
     const socket = Net.createConnection({ host: "127.0.0.1", port })
     const timer = setTimeout(() => {
@@ -2241,7 +2299,15 @@ const rawExchange = (port: number, input: string): Promise<string> =>
       reject(new Error("the exchange did not finish in time"))
     }, 5000)
     let stream = Buffer.Buffer.alloc(0)
-    socket.on("connect", () => socket.end(input))
+    // Pause between parts so the server reads them separately.
+    const parts = typeof input === "string" ? [input] : [...input]
+    const writeNext = () => {
+      const part = parts.shift()!
+      if (parts.length === 0) return socket.end(part)
+      socket.write(part)
+      setTimeout(writeNext, 50)
+    }
+    socket.on("connect", writeNext)
     socket.on("data", (data) => {
       stream = Buffer.Buffer.concat([stream, Buffer.Buffer.from(data)])
     })
