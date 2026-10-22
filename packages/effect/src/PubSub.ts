@@ -917,13 +917,14 @@ export const endUnsafe: {
       if (last) Deferred.doneUnsafe(deferred, Exit.succeed(false))
     }
   }
+  // A waiting subscriber has nothing buffered, so it receives the final
+  // message right away.
   const exit = Exit.succeed(value)
-  for (const [subscription, pollersSet] of Array.from(self.subscribers)) {
+  for (const pollersSet of self.subscribers.values()) {
     for (const pollers of pollersSet) {
       let poller: Deferred.Deferred<A> | MutableList.Empty
-      while (!self.shutdownFlag.current && (poller = MutableList.take(pollers)) !== MutableList.Empty) {
-        const message = subscription.poll()
-        Deferred.doneUnsafe(poller, message === MutableList.Empty ? exit : Exit.succeed(message))
+      while ((poller = MutableList.take(pollers)) !== MutableList.Empty) {
+        Deferred.doneUnsafe(poller, exit)
       }
     }
   }
@@ -1084,7 +1085,7 @@ export const publish: {
       return Effect.succeed(false)
     }
 
-    if (!hasQueuedPublishers(self) && self.pubsub.publish(value)) {
+    if (self.pubsub.publish(value)) {
       self.strategy.completeSubscribersUnsafe(self.pubsub, self.subscribers)
       return Effect.succeed(true)
     }
@@ -1110,8 +1111,7 @@ export const publish: {
  * **Details**
  *
  * Returns `false` if the `PubSub` is shut down or the message cannot be
- * accepted immediately, for example when a bounded PubSub is full or other
- * publishers are still waiting for capacity. Prefer
+ * accepted immediately, for example when a bounded PubSub is full. Prefer
  * `publish` when backpressure or sliding behavior should be honored.
  *
  * **Example** (Publishing without suspending)
@@ -1139,7 +1139,7 @@ export const publishUnsafe: {
   <A>(self: PubSub<A>, value: A): boolean
 } = dual(2, <A>(self: PubSub<A>, value: A): boolean => {
   if (self.shutdownFlag.current || Option.isSome(self.ended.current)) return false
-  if (!hasQueuedPublishers(self) && self.pubsub.publish(value)) {
+  if (self.pubsub.publish(value)) {
     self.strategy.completeSubscribersUnsafe(self.pubsub, self.subscribers)
     return true
   }
@@ -1190,18 +1190,8 @@ export const publishAll: {
     if (self.shutdownFlag.current || Option.isSome(self.ended.current)) {
       return Effect.succeed(false)
     }
-    const batch = self.strategy instanceof BackPressureStrategy ? Arr.fromIterable(elements) : undefined
-    let surplus: Array<A>
-    if (
-      batch !== undefined &&
-      (hasQueuedPublishers(self) || batch.length > self.pubsub.capacity - self.pubsub.size())
-    ) {
-      // Subscribers resumed by a partial publish could otherwise publish ahead of the rest of the batch.
-      surplus = batch
-    } else {
-      surplus = self.pubsub.publishAll(batch ?? elements)
-      self.strategy.completeSubscribersUnsafe(self.pubsub, self.subscribers)
-    }
+    const surplus = self.pubsub.publishAll(elements)
+    self.strategy.completeSubscribersUnsafe(self.pubsub, self.subscribers)
     if (surplus.length === 0) {
       return Effect.succeed(true)
     }
@@ -1406,9 +1396,11 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
 const pollForItem = <A>(self: Subscription<A>) =>
   Effect.callback<A>((resume) => {
     if (self.shutdownFlag.current) return resume(Effect.interrupt)
-    if (Option.isSome(self.ended.current) && (self.pollers.length === 0 || self.subscription.isEmpty())) {
+    if (Option.isSome(self.ended.current)) {
       // Messages may have been published after the empty check, before this callback ran.
-      const message = self.subscription.poll()
+      const message = self.pollers.length === 0
+        ? self.subscription.poll()
+        : MutableList.Empty
       if (message !== MutableList.Empty) {
         self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
         return resume(Effect.succeed(message))
@@ -1416,22 +1408,19 @@ const pollForItem = <A>(self: Subscription<A>) =>
       return resume(Effect.succeed(self.ended.current.value))
     }
     const deferred = Deferred.makeUnsafe<A>()
-    MutableList.append(self.pollers, deferred)
-    // Once ended, only `end` serves the pollers, and it stops on shutdown.
-    if (Option.isNone(self.ended.current)) {
-      let set = self.subscribers.get(self.subscription)
-      if (!set) {
-        set = new Set()
-        self.subscribers.set(self.subscription, set)
-      }
-      set.add(self.pollers)
-      self.strategy.completePollersUnsafe(
-        self.pubsub,
-        self.subscribers,
-        self.subscription,
-        self.pollers
-      )
+    let set = self.subscribers.get(self.subscription)
+    if (!set) {
+      set = new Set()
+      self.subscribers.set(self.subscription, set)
     }
+    set.add(self.pollers)
+    MutableList.append(self.pollers, deferred)
+    self.strategy.completePollersUnsafe(
+      self.pubsub,
+      self.subscribers,
+      self.subscription,
+      self.pollers
+    )
     if (deferred.effect) return resume(deferred.effect)
     deferred.resumes = [resume]
     return Effect.sync(() => MutableList.remove(self.pollers, deferred))
@@ -2580,7 +2569,6 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
   publishers: MutableList.MutableList<
     readonly [A, Deferred.Deferred<boolean>, boolean]
   > = MutableList.make()
-  private draining = false
 
   get shutdown(): Effect.Effect<void> {
     return Effect.withFiber((fiber) =>
@@ -2621,26 +2609,20 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     pubsub: PubSub.Atomic<A>,
     subscribers: PubSub.Subscribers<A>
   ): void {
-    // Resumed fibers re-enter here; the outer loop serves them.
-    if (this.draining) return
-    this.draining = true
-    try {
-      let published = true
-      while (published && !pubsub.isFull()) {
-        published = false
-        let publisher: readonly [A, Deferred.Deferred<boolean>, boolean] | MutableList.Empty
-        while (!pubsub.isFull() && (publisher = MutableList.take(this.publishers)) !== MutableList.Empty) {
-          if (!pubsub.publish(publisher[0])) {
-            MutableList.prepend(this.publishers, publisher)
-            break
-          }
-          published = true
-          if (publisher[2]) Deferred.doneUnsafe(publisher[1], Exit.succeed(true))
-        }
-        if (published) this.completeSubscribersUnsafe(pubsub, subscribers)
+    let keepPolling = true
+    while (keepPolling && !pubsub.isFull()) {
+      const publisher = MutableList.take(this.publishers)
+      if (publisher === MutableList.Empty) {
+        keepPolling = false
+      } else {
+        const [value, deferred, last] = publisher
+        const published = pubsub.publish(value)
+        if (!published) MutableList.prepend(this.publishers, publisher)
+        this.completeSubscribersUnsafe(pubsub, subscribers)
+        // Resuming the publisher can end the PubSub synchronously, so waiting
+        // subscribers receive the message first.
+        if (published && last) Deferred.doneUnsafe(deferred, Exit.succeed(true))
       }
-    } finally {
-      this.draining = false
     }
   }
 
@@ -2913,9 +2895,6 @@ const strategyCompleteSubscribersUnsafe = <A>(
     }
   }
 }
-
-const hasQueuedPublishers = <A>(self: PubSub<A>): boolean =>
-  self.strategy instanceof BackPressureStrategy && self.strategy.publishers.length > 0
 
 interface ReplayNode<A> {
   value: A | AbsentValue
