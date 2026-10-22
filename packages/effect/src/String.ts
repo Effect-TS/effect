@@ -199,8 +199,6 @@ export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toU
  */
 export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toLowerCase() as Lowercase<T>
 
-const firstCodePointLength = (self: string): number => (self.codePointAt(0) ?? 0) > 0xFFFF ? 2 : 1
-
 /**
  * Capitalizes the first Unicode code point of a string type.
  *
@@ -285,8 +283,8 @@ export type Uncapitalize<A extends string> = A extends unknown ? string extends 
  * @since 2.0.0
  */
 export const capitalize = <T extends string>(self: T): Capitalize<T> => {
-  const length = firstCodePointLength(self)
-  return (toUpperCase(self.slice(0, length)) + self.slice(length)) as Capitalize<T>
+  const [first = ""] = self
+  return (toUpperCase(first) + self.slice(first.length)) as Capitalize<T>
 }
 
 /**
@@ -307,8 +305,8 @@ export const capitalize = <T extends string>(self: T): Capitalize<T> => {
  * @since 2.0.0
  */
 export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
-  const length = firstCodePointLength(self)
-  return (toLowerCase(self.slice(0, length)) + self.slice(length)) as Uncapitalize<T>
+  const [first = ""] = self
+  return (toLowerCase(first) + self.slice(first.length)) as Uncapitalize<T>
 }
 
 /**
