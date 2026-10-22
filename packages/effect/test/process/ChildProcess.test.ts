@@ -77,18 +77,13 @@ describe("ChildProcess", () => {
 
     it("template form groups quoted words and keeps values literal", () => {
       const message = "fix: a | b"
-      const cmd = ChildProcess.make`git commit -m ${message} "two words"`
+      const token = Redacted.make("hunter2")
+      const cmd = ChildProcess.make`git commit -m ${message} "two words" ${token} "--user=${token}"`
       assert(ChildProcess.isStandardCommand(cmd))
       assert.strictEqual(cmd.command, "git")
-      assert.deepStrictEqual(cmd.args, ["commit", "-m", message, "two words"])
-    })
-
-    it("template form keeps Redacted values Redacted", () => {
-      const token = Redacted.make("hunter2")
-      const cmd = ChildProcess.make`curl -H ${token} "--user=${token}"`
-      assert(ChildProcess.isStandardCommand(cmd))
-      assert.strictEqual(cmd.args[1], token)
-      assert.isTrue(Redacted.isRedacted(cmd.args[2]))
+      assert.deepStrictEqual(cmd.args.slice(0, 5), ["commit", "-m", message, "two words", token])
+      assert.isTrue(Redacted.isRedacted(cmd.args[5]))
+      assert.strictEqual(Redacted.value(cmd.args[5] as Redacted.Redacted<string>), "--user=hunter2")
     })
 
     it("template form throws for shell syntax", () => {

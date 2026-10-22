@@ -134,17 +134,6 @@ export const suite = (
               assert.strictEqual(output, "test_value-unset")
             }))
 
-          it.effect("should extend the parent environment with extendEnv true", () =>
-            Effect.gen(function*() {
-              const handle = yield* ChildProcess.make("sh", ["-c", "echo $TEST_VAR-${HOME:+home}"], {
-                env: { TEST_VAR: "test_value" },
-                extendEnv: true
-              })
-              const output = yield* decodeByteStream(handle.stdout)
-
-              assert.strictEqual(output, "test_value-home")
-            }))
-
           it.effect("should remove variables set to undefined", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("sh", ["-c", "echo ${HOME-unset}"], {

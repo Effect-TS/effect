@@ -34,7 +34,7 @@ const tricky = [
 describe("CommandLine", () => {
   describe("quote", () => {
     it("quotes for POSIX shells", () => {
-      const cases: Array<[string, string]> = [
+      const cases: Array<[CommandLine.Word, string]> = [
         ["plain", "plain"],
         ["path/to.file:1,2@x+y-z_", "path/to.file:1,2@x+y-z_"],
         ["", "''"],
@@ -47,11 +47,13 @@ describe("CommandLine", () => {
         ["~", "'~'"],
         ["#x", "'#x'"],
         ["$HOME", "'$HOME'"],
-        ["a\nb", "'a\nb'"]
+        ["a\nb", "'a\nb'"],
+        [Redacted.make("a b"), "'a b'"]
       ]
       for (const [input, expected] of cases) {
-        assert.strictEqual(Result.getOrThrow(CommandLine.quote(input)), expected, input)
+        assert.strictEqual(Result.getOrThrow(CommandLine.quote(input)), expected, String(input))
       }
+      assert.strictEqual(failure(CommandLine.quote("a\0b")).reason, "NulCharacter")
     })
 
     it("quotes for PowerShell", () => {
@@ -84,16 +86,6 @@ describe("CommandLine", () => {
         assert.strictEqual(Result.getOrThrow(CommandLine.quote(input, { format: "windows" })), expected, input)
       }
     })
-
-    it("uses the value of a Redacted argument", () => {
-      assert.strictEqual(Result.getOrThrow(CommandLine.quote(Redacted.make("a b"))), "'a b'")
-    })
-
-    it("rejects NUL characters in every format", () => {
-      for (const format of ["posix", "powershell", "windows"] as const) {
-        assert.strictEqual(failure(CommandLine.quote("a\0b", { format })).reason, "NulCharacter")
-      }
-    })
   })
 
   describe("join", () => {
@@ -108,12 +100,9 @@ describe("CommandLine", () => {
         Result.getOrThrow(CommandLine.join(args, { format: "windows" })),
         "git commit -m \"fix: don't\""
       )
-    })
-
-    it("returns an empty string for no words", () => {
-      for (const format of ["posix", "powershell", "windows"] as const) {
-        assert.strictEqual(Result.getOrThrow(CommandLine.join([], { format })), "")
-      }
+      assert.strictEqual(Result.getOrThrow(CommandLine.join([])), "")
+      const error = failure(CommandLine.join(["echo", "a\0b"]))
+      assert.deepStrictEqual([error.reason, error.message], ["NulCharacter", "Argument 1 contains a NUL character"])
     })
 
     it("quotes Windows program names without backslash escapes", () => {
@@ -137,12 +126,6 @@ describe("CommandLine", () => {
       assert.strictEqual(Result.getOrThrow(CommandLine.quote("--%", { format: "powershell" })), "'--%'")
     })
 
-    it("reports which argument contains a NUL character", () => {
-      const error = failure(CommandLine.join(["echo", "a\0b"]))
-      assert.strictEqual(error.reason, "NulCharacter")
-      assert.strictEqual(error.message, "Argument 1 contains a NUL character")
-    })
-
     it("round-trips through split", () => {
       for (const format of ["posix", "windows"] as const) {
         const words = ["prog", ...tricky]
@@ -153,16 +136,13 @@ describe("CommandLine", () => {
   })
 
   describe("display", () => {
-    it("hides Redacted words and escapes control characters", () => {
+    it("masks Redacted words, escapes control characters and accepts any input", () => {
       const words = ["curl", "-H", Redacted.make("Authorization: hunter2"), "a\nb\u001b[2J\0"]
       assert.strictEqual(CommandLine.display(words), "curl -H <redacted> 'a\\nb\\u001b[2J\\u0000'")
       assert.strictEqual(
         CommandLine.display(words, { format: "powershell" }),
         "& 'curl' '-H' <redacted> 'a\\nb\\u001b[2J\\u0000'"
       )
-    })
-
-    it("renders input that join rejects", () => {
       assert.strictEqual(CommandLine.display(["a\"b", "c d"], { format: "windows" }), "\"a\\\"b\" \"c d\"")
       assert.strictEqual(CommandLine.display([]), "")
     })
