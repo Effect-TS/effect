@@ -20,22 +20,27 @@ import * as SchemaGetter from "../SchemaGetter.ts"
 /**
  * A value that can be listed in a `postMessage` transfer list.
  *
- * Resolved from the globals of the current environment: the DOM or WebWorker
- * `Transferable` type when `postMessage` is available, otherwise the Node.js
- * `worker_threads` `Transferable` type through `structuredClone`, so neither
- * library is required. The `& {}` keeps this name in emitted declarations
- * instead of the type it resolves to while building.
+ * **Details**
+ *
+ * Resolved from the globals of the consuming project, so neither the DOM nor
+ * the Node.js type declarations are required. Browser-like environments with a
+ * `Worker` global (DOM, WebWorker, Deno, Bun) contribute their `Transferable`
+ * type through `Worker.prototype.postMessage`. Node.js contributes the
+ * `worker_threads` `Transferable` type through `structuredClone`. Environments
+ * with neither fall back to `unknown`. The `& {}` keeps this name in emitted
+ * declarations instead of the type it resolves to while building.
  *
  * @stability unstable
  * @category models
  * @since 4.0.7
  */
 export type TransferableObject =
-  & TransferListElement<
-    typeof globalThis extends { readonly postMessage: (message: any, options?: infer Options) => void } ? Options
-      : typeof globalThis extends { readonly structuredClone: (value: any, options?: infer Options) => any } ? Options
-      : never
-  >
+  & (typeof globalThis extends {
+    readonly Worker: { readonly prototype: { readonly postMessage: (message: any, options?: infer Options) => void } }
+  } ? TransferListElement<Options>
+    : typeof globalThis extends { readonly structuredClone: (value: any, options?: infer Options) => any }
+      ? TransferListElement<Options>
+    : unknown)
   & {}
 
 type TransferListElement<Options> = NonNullable<Options> extends { readonly transfer?: ReadonlyArray<infer A> } ? A
