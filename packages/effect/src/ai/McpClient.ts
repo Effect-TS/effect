@@ -102,7 +102,10 @@ export interface McpClient extends Pipeable {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
   /** Gets the messages for a discovered prompt. Unbounded unless `timeout` is supplied. */
   readonly getPrompt: (
-    params: GetPromptParams,
+    params: {
+      readonly prompt: McpSchema.Prompt
+      readonly arguments?: typeof McpSchema.GetPrompt.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   /** Returns every resource page as one snapshot with the same bounds as `listTools`. */
@@ -111,7 +114,7 @@ export interface McpClient extends Pipeable {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
   /** Reads the complete contents of a resource URI. Unbounded unless `timeout` is supplied. */
   readonly readResource: (
-    params: ReadResourceParams,
+    params: { readonly uri: string },
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   /**
@@ -120,55 +123,30 @@ export interface McpClient extends Pipeable {
    */
   readonly callTool: {
     (
-      params: CallToolParams,
+      params: {
+        readonly tool: McpSchema.Tool
+        readonly schema?: undefined
+        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+      },
       options?: { readonly timeout?: Duration.Input | undefined }
     ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
     <S extends Schema.Top>(
-      params: CallToolParams<S> & { readonly schema: S },
+      params: {
+        readonly tool: McpSchema.Tool
+        readonly schema: S
+        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+      },
       options?: { readonly timeout?: Duration.Input | undefined }
     ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
     <S extends Schema.Top = never>(
-      params: CallToolParams<S>,
+      params: {
+        readonly tool: McpSchema.Tool
+        readonly schema?: S | undefined
+        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+      },
       options?: { readonly timeout?: Duration.Input | undefined }
     ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
   }
-}
-
-/**
- * Tool invocation carrying the discovered definition, which supplies the
- * request name and, over modern HTTP, the header routing annotations.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface CallToolParams<S extends Schema.Top = never> {
-  readonly tool: McpSchema.Tool
-  readonly schema?: S | undefined
-  readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
-}
-
-/**
- * Prompt invocation carrying its discovered definition and string arguments.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface GetPromptParams {
-  readonly prompt: McpSchema.Prompt
-  readonly arguments?: typeof McpSchema.GetPrompt.payloadSchema.Type["arguments"]
-}
-
-/**
- * Resource URI to read from the server.
- *
- * @stability experimental
- * @category models
- * @since 4.0.6
- */
-export interface ReadResourceParams {
-  readonly uri: string
 }
 
 /**
@@ -380,7 +358,14 @@ export const make: (options: {
   const listTools = list<"tools", McpSchema.Tool>("tools")
 
   const callTool = Effect.fnUntraced(
-    function*<S extends Schema.Top>(params: CallToolParams<S>, _options?: CallOptions) {
+    function*<S extends Schema.Top>(
+      params: {
+        readonly tool: McpSchema.Tool
+        readonly schema?: S | undefined
+        readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+      },
+      _options?: CallOptions
+    ) {
       yield* requireCapability("tools")
       const result = yield* request<McpSchema.CallToolResult>(
         "tools/call",
@@ -439,7 +424,8 @@ export const make: (options: {
 
 /**
  * Calls a discovered tool and returns the full result, or decodes structured content
- * using the optional schema. With a schema, tool-reported errors fail before decoding
+ * using the optional schema. The discovered `tool` supplies the request name and, over
+ * modern HTTP, the header routing annotations. With a schema, tool-reported errors fail before decoding
  * and retain the full result. Decoder services are required by the caller.
  *
  * @stability experimental
@@ -448,37 +434,65 @@ export const make: (options: {
  */
 export const callTool: {
   (
-    params: CallToolParams,
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema?: undefined
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: McpClient) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
   (
     self: McpClient,
-    params: CallToolParams,
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema?: undefined
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
   <S extends Schema.Top>(
-    params: CallToolParams<S> & { readonly schema: S },
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema: S
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: McpClient) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top = never>(
-    params: CallToolParams<S>,
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema?: S | undefined
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: McpClient) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top>(
     self: McpClient,
-    params: CallToolParams<S> & { readonly schema: S },
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema: S
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
   <S extends Schema.Top = never>(
     self: McpClient,
-    params: CallToolParams<S>,
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema?: S | undefined
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
 } = dual(
   (args) => isMcpClient(args[0]),
   <S extends Schema.Top>(
     self: McpClient,
-    params: CallToolParams<S>,
+    params: {
+      readonly tool: McpSchema.Tool
+      readonly schema?: S | undefined
+      readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => self.callTool(params, options)
 )
@@ -512,18 +526,30 @@ export const listPrompts: {
  */
 export const getPrompt: {
   (
-    params: GetPromptParams,
+    params: {
+      readonly prompt: McpSchema.Prompt
+      readonly arguments?: typeof McpSchema.GetPrompt.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: McpClient) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
   (
     self: McpClient,
-    params: GetPromptParams,
+    params: {
+      readonly prompt: McpSchema.Prompt
+      readonly arguments?: typeof McpSchema.GetPrompt.payloadSchema.Type["arguments"]
+    },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
 } = dual(
   (args) => isMcpClient(args[0]),
-  (self: McpClient, params: GetPromptParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
-    self.getPrompt(params, options)
+  (
+    self: McpClient,
+    params: {
+      readonly prompt: McpSchema.Prompt
+      readonly arguments?: typeof McpSchema.GetPrompt.payloadSchema.Type["arguments"]
+    },
+    options?: { readonly timeout?: Duration.Input | undefined }
+  ) => self.getPrompt(params, options)
 )
 
 /**
@@ -555,17 +581,17 @@ export const listResources: {
  */
 export const readResource: {
   (
-    params: ReadResourceParams,
+    params: { readonly uri: string },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): (self: McpClient) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   (
     self: McpClient,
-    params: ReadResourceParams,
+    params: { readonly uri: string },
     options?: { readonly timeout?: Duration.Input | undefined }
   ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
 } = dual(
   (args) => isMcpClient(args[0]),
-  (self: McpClient, params: ReadResourceParams, options?: { readonly timeout?: Duration.Input | undefined }) =>
+  (self: McpClient, params: { readonly uri: string }, options?: { readonly timeout?: Duration.Input | undefined }) =>
     self.readResource(params, options)
 )
 
