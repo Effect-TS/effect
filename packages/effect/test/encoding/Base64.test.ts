@@ -17,25 +17,34 @@ describe("Base64", () => {
 
   it("encodes views with and without native toBase64", () => {
     const bytes = Uint8Array.from({ length: 36 }, (_, i) => (i * 151) & 0xff)
+    const views = [31, 32, 33, 34].map((length) => bytes.subarray(1, 1 + length))
     const detached = new Uint8Array(32)
     structuredClone(detached.buffer, { transfer: [detached.buffer] })
-    const assertEncodes = () => {
-      for (const length of [31, 32, 33, 34]) {
-        const view = bytes.subarray(1, 1 + length)
-        assert.strictEqual(Base64.encode(view), btoa(String.fromCharCode(...view)))
-      }
-      assert.strictEqual(Base64.encode(detached), "")
+    const reference = (view: Uint8Array) => btoa(String.fromCharCode(...view))
+    const receivers: Array<unknown> = []
+    const nativeToBase64 = function(this: Uint8Array) {
+      receivers.push(this)
+      return reference(this)
     }
-
-    assertEncodes()
     const descriptor = Object.getOwnPropertyDescriptor(Uint8Array.prototype, "toBase64")
-    if (descriptor === undefined) return
-    Reflect.deleteProperty(Uint8Array.prototype, "toBase64")
+
     try {
-      assertEncodes()
+      for (const toBase64 of [nativeToBase64, undefined]) {
+        Reflect.defineProperty(Uint8Array.prototype, "toBase64", { value: toBase64, configurable: true })
+        for (const view of views) {
+          assert.strictEqual(Base64.encode(view), reference(view))
+        }
+        assert.strictEqual(
+          Base64.encode(Object.assign(bytes.subarray(1, 35), { toBase64: () => "x" })),
+          reference(views[3])
+        )
+        assert.strictEqual(Base64.encode(detached), "")
+      }
     } finally {
-      Reflect.defineProperty(Uint8Array.prototype, "toBase64", descriptor)
+      if (descriptor === undefined) Reflect.deleteProperty(Uint8Array.prototype, "toBase64")
+      else Reflect.defineProperty(Uint8Array.prototype, "toBase64", descriptor)
     }
+    assert.include(receivers, views[3])
   })
 
   it("encodes strings and bytes", () => {
