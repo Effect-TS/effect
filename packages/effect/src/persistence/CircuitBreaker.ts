@@ -177,6 +177,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { dual } from "../Function.ts"
+import { findRecoverableError } from "../internal/effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
 import { UnhandledLogLevel } from "../References.ts"
@@ -614,7 +615,7 @@ export const make: (options: {
           }).pipe(
             Effect.flatMap(publish),
             Effect.catchCauseFilter(
-              Cause.findError,
+              findRecoverableError,
               (_, cause) => reportUnhandled("CircuitBreaker failed to record an outcome", cause)
             )
           )
@@ -653,7 +654,9 @@ export const layer = (options: {
 }): Layer.Layer<CircuitBreaker, never, CircuitBreakerStore> => Layer.effect(CircuitBreaker, make(options))
 
 // Reports an error that has no caller to receive it at `UnhandledLogLevel`, as
-// `Pool` and `ScopedCache` do. An undefined level silences it.
+// `Pool` and `ScopedCache` do. An undefined level silences it. Callers recover
+// with `findRecoverableError`, as `Effect.catch` does, so a cause that holds a
+// defect still propagates.
 const reportUnhandled = (message: string, cause: Cause.Cause<unknown>): Effect.Effect<void> =>
   Effect.withFiber((fiber) => {
     const level = fiber.getRef(UnhandledLogLevel)
@@ -1426,7 +1429,7 @@ const makeStoreRedis = Effect.fnUntraced(function*(options?: {
       yield* Effect.sleep(renewInterval)
       const renewed = yield* renewRedis(redisKey, generation, leaseMillis, idleMillis).pipe(
         Effect.catchCauseFilter(
-          Cause.findError,
+          findRecoverableError,
           (_, cause) => Effect.as(reportUnhandled("CircuitBreaker failed to renew a probe lease, retrying", cause), 1)
         )
       )
