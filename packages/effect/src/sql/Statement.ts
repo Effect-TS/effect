@@ -1072,7 +1072,8 @@ const CompilerProto = {
           }
           const [s, b] = opts.onRecordUpdate(
             placeholders,
-            segment.alias,
+            // quote the alias as written. name transforms are for columns
+            opts.onIdentifier(segment.alias, true),
             generateColumns(keys, opts.onIdentifier, withoutTransform),
             values,
             typeof segment.returningIdentifier === "string"

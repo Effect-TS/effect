@@ -173,7 +173,7 @@ describe("mssql", () => {
       )
     }`.compile()
     expect(query).toEqual(
-      `UPDATE people SET name = data.name FROM (values (@1),(@2)) AS data([name])`
+      `UPDATE people SET name = data.name FROM (values (@1),(@2)) AS [data]([name])`
     )
     expect(params).toEqual(["Tim", "John"])
   })
@@ -186,7 +186,7 @@ describe("mssql", () => {
       ).returning("*")
     }`.compile()
     expect(query).toEqual(
-      `UPDATE people SET name = data.name OUTPUT INSERTED.* FROM (values (@1),(@2)) AS data([name])`
+      `UPDATE people SET name = data.name OUTPUT INSERTED.* FROM (values (@1),(@2)) AS [data]([name])`
     )
     expect(params).toEqual(["Tim", "John"])
   })
@@ -231,7 +231,7 @@ describe("mssql", () => {
       }`.compile()
 
       assert.deepStrictEqual(result, [
-        `UPDATE people SET name = data.name OUTPUT [INSERTED].[name] FROM (values (@1),(@2)) AS data([name])`,
+        `UPDATE people SET name = data.name OUTPUT [INSERTED].[name] FROM (values (@1),(@2)) AS [data]([name])`,
         ["Rowan", "Mira"]
       ])
     })

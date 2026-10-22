@@ -65,6 +65,34 @@ describe("Statement", () => {
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
 
+  it("quotes an updateValues alias", () => {
+    const sql = Statement.make(
+      {} as any,
+      Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => `$${index}`,
+        onIdentifier(value, withoutTransform) {
+          return Statement.defaultEscape("\"")(withoutTransform ? value : `t_${value}`)
+        },
+        onRecordUpdate(placeholders, alias, columns, values) {
+          return [`(values ${placeholders}) AS ${alias}${columns}`, values.flat()]
+        },
+        onCustom: () => ["", []]
+      }),
+      [],
+      undefined
+    )
+    const alias = "data(\"name\") WHERE TRUE --"
+    const [query, params] = sql`UPDATE people SET name = data.name FROM ${
+      sql.updateValues([{ name: "Ada" }], alias)
+    } WHERE id = 7`.compile()
+
+    assert.deepStrictEqual([query, params], [
+      "UPDATE people SET name = data.name FROM (values ($1)) AS \"data(\"\"name\"\") WHERE TRUE --\"(\"t_name\") WHERE id = 7",
+      ["Ada"]
+    ])
+  })
+
   it("renumbers a cached returning fragment", () => {
     const sql = Statement.make(
       Effect.void as any,
