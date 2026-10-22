@@ -1342,6 +1342,138 @@ export const Nodes = HttpApiGroup.make("nodes").add(
 ).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
 
 // -----------------------------------------------------------------------------
+// services
+// -----------------------------------------------------------------------------
+
+/** The query of service and task logs. */
+const LogsQuery = {
+  details: Schema.optional(Schema.Boolean),
+  follow: Schema.optional(Schema.Boolean),
+  stdout: Schema.optional(Schema.Boolean),
+  stderr: Schema.optional(Schema.Boolean),
+  since: Schema.optional(UnixSeconds),
+  timestamps: Schema.optional(Schema.Boolean),
+  tail: Schema.optional(Schema.Union([Schema.Number, Schema.Literal("all")]))
+}
+
+/** The fields of a service spec that are newer than API 1.44. */
+const serviceSpecVersions = {
+  payload: {
+    "TaskTemplate.ContainerSpec.OomScoreAdj": "1.46",
+    "TaskTemplate.ContainerSpec.Mounts.*.TmpfsOptions.Options": "1.46",
+    "TaskTemplate.Resources.SwapBytes": "1.52",
+    "TaskTemplate.Resources.MemorySwappiness": "1.52"
+  }
+}
+
+/**
+ * A task's container, as the Engine's `TaskSpec.ContainerSpec`, whose `Env` entries can be `Redacted`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ContainerSpec = DockerSchema.TaskSpec.fields.ContainerSpec.schema.mapFields((fields) => ({
+  ...fields,
+  Env: Schema.optionalKey(Env)
+}))
+
+/**
+ * A task's container, see {@link ContainerSpec}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ContainerSpec = typeof ContainerSpec.Type
+
+/**
+ * A task's spec, as the Engine's `TaskSpec`, with its {@link ContainerSpec}.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const TaskSpec = DockerSchema.TaskSpec.mapFields((fields) => ({
+  ...fields,
+  ContainerSpec: Schema.optionalKey(ContainerSpec)
+}))
+
+/**
+ * A task's spec, see {@link TaskSpec}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type TaskSpec = typeof TaskSpec.Type
+
+/**
+ * A service's spec, as the Engine's `ServiceSpec`, with its {@link TaskSpec}.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const ServiceSpec = DockerSchema.ServiceSpec.mapFields((fields) => ({
+  ...fields,
+  TaskTemplate: Schema.optionalKey(TaskSpec)
+}))
+
+/**
+ * A service's spec, see {@link ServiceSpec}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type ServiceSpec = typeof ServiceSpec.Type
+
+const optionalRegistryAuth = { "x-registry-auth": Schema.optional(RegistryAuth) }
+
+/**
+ * The Engine's service endpoints, which `DockerServices` is a client of.
+ *
+ * @stability unstable
+ * @category groups
+ * @since 4.0.6
+ */
+export const Services = HttpApiGroup.make("services").add(
+  HttpApiEndpoint.get("list", "/services", {
+    query: { filters, status: Schema.optional(Schema.Boolean) },
+    success: Schema.toCodecGoJson(Schema.Array(DockerSchema.Service))
+  }),
+  HttpApiEndpoint.get("inspect", "/services/:id", {
+    params: id,
+    query: { insertDefaults: Schema.optional(Schema.Boolean) },
+    success: Schema.toCodecGoJson(DockerSchema.Service)
+  }),
+  HttpApiEndpoint.post("create", "/services/create", {
+    headers: optionalRegistryAuth,
+    payload: ServiceSpec,
+    success: Schema.toCodecGoJson(DockerSchema.ServiceCreateResponse).pipe(HttpApiSchema.status(201))
+  }).annotate(ApiVersions, serviceSpecVersions),
+  HttpApiEndpoint.post("update", "/services/:id/update", {
+    params: id,
+    query: {
+      version: Schema.Number,
+      registryAuthFrom: Schema.optional(Schema.Literals(["spec", "previous-spec"])),
+      rollback: Schema.optional(Schema.Literal("previous"))
+    },
+    headers: optionalRegistryAuth,
+    payload: ServiceSpec,
+    success: Schema.toCodecGoJson(DockerSchema.ServiceUpdateResponse)
+  }).annotate(ApiVersions, serviceSpecVersions),
+  HttpApiEndpoint.delete("remove", "/services/:id", { params: id, success: HttpApiSchema.Empty(200) }),
+  HttpApiEndpoint.get("logs", "/services/:id/logs", {
+    params: id,
+    query: LogsQuery,
+    // raw or multiplexed, as the `Content-Type` says
+    success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), logsHeaders)
+  })
+).annotateEndpoints(SwarmEndpoint, true).middleware(EngineErrors)
+
+// -----------------------------------------------------------------------------
 // api
 // -----------------------------------------------------------------------------
 
@@ -1360,5 +1492,6 @@ export const DockerApi = HttpApi.make("docker").add(
   Volumes,
   Images,
   Swarm,
-  Nodes
+  Nodes,
+  Services
 )
