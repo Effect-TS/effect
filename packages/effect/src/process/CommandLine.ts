@@ -281,7 +281,7 @@ export const join = (
   if (values.length === 0) return Result.succeed("")
   switch (options?.format ?? "posix") {
     case "posix":
-      return Result.succeed(values.map(quotePosix).join(" "))
+      return Result.succeed(values.map((value, i) => i === 0 ? quotePosixProgram(value) : quotePosix(value)).join(" "))
     case "powershell": {
       const stopParsing = values.indexOf("--%", 1)
       if (stopParsing !== -1) {
@@ -357,7 +357,7 @@ export const display = (words: ReadonlyArray<Word>, options?: Options): string =
     if (Redacted.isRedacted(word)) return "<redacted>"
     switch (format) {
       case "posix":
-        return escapeControlCharacters(quotePosix(word))
+        return escapeControlCharacters(i === 0 ? quotePosixProgram(word) : quotePosix(word))
       case "powershell":
         return escapeControlCharacters(quotePowerShell(word))
       case "windows":
@@ -387,8 +387,8 @@ export const display = (words: ReadonlyArray<Word>, options?: Options): string =
  * - expansions (`$NAME`, `${...}`, `$(...)`, backticks, a leading `~`, braces
  *   such as `{a,b}`, and a leading `=` that `zsh` expands);
  * - globs (`* ? [`) and comments (`#` at the start of a word);
- * - a variable assignment or a reserved word such as `if` in the program
- *   position.
+ * - a variable assignment, or a reserved word of `sh`, `bash`, `zsh` or
+ *   `fish` such as `if`, in the program position.
  *
  * Quote such characters to pass them literally, or run the text with a shell.
  *
@@ -487,14 +487,17 @@ export const template = (
   strings: TemplateStringsArray,
   ...expressions: ReadonlyArray<TemplateExpression>
 ): Result.Result<Array<Word>, CommandLineError> => {
-  const index = strings.findIndex((text) => text === undefined)
-  if (index !== -1) {
-    return Result.fail(
-      new CommandLineError({
-        reason: "InvalidEscape",
-        message: `Template part ${index} contains an invalid escape sequence`
-      })
-    )
+  for (let i = 0; i < strings.length; i++) {
+    const text = strings[i]
+    if (text === undefined) {
+      return Result.fail(
+        new CommandLineError({
+          reason: "InvalidEscape",
+          message: `Template part ${i} contains an invalid escape sequence`
+        })
+      )
+    }
+    if (text.includes("\0")) return failNul(`Template part ${i}`)
   }
   return splitPosix(strings, expressions, true)
 }
@@ -526,6 +529,9 @@ const posixSafe = /^[A-Za-z0-9_@+:,./-]+$/
 // escapes inside single quotes.
 const quotePosix = (value: string): string =>
   posixSafe.test(value) ? value : `'${value.replace(/['\\]/g, (char) => `'\\${char}'`)}'`
+
+// A quoted reserved word is an ordinary command name.
+const quotePosixProgram = (value: string): string => reservedWords.has(value) ? `'${value}'` : quotePosix(value)
 
 // PowerShell also reads the typographic single quotes U+2018 to U+201B as
 // quotes, so each of them is doubled like `'`.
@@ -631,20 +637,31 @@ const splitWindows = (line: string): Array<string> => {
   }
 }
 
-// POSIX reserved words that start or continue a compound command.
+// Words that sh, bash, zsh or fish read as syntax in the program position.
 const reservedWords = new Set([
   "!",
   "{",
   "}",
+  "and",
+  "begin",
   "case",
+  "coproc",
   "do",
   "done",
   "elif",
   "else",
+  "end",
   "esac",
   "fi",
   "for",
+  "foreach",
+  "function",
   "if",
+  "not",
+  "or",
+  "repeat",
+  "select",
+  "switch",
   "then",
   "until",
   "while"
@@ -728,7 +745,6 @@ const splitPosix = (
     for (let i = 0; i < text.length; i++) {
       const char = text[i]
       const next = text[i + 1]
-      if (char === "\0") return error("NulCharacter", "The text contains a NUL character", i)
       if (quote === "'") {
         if (char === "'") quote = undefined
         else word.push(char)
