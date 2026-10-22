@@ -103,6 +103,25 @@ describe("HttpRouter", () => {
       }))
   }
 
+  it.effect("adds a leading slash when only a query string follows the prefix", () =>
+    Effect.gen(function*() {
+      const routes = HttpRouter.use((router) => router.prefixed("/api").add("GET", "/", echoUrl))
+
+      const body = yield* fetchText(routes, "/api?x=1")
+
+      assert.strictEqual(body, "/?x=1")
+    }))
+
+  it.effect("routes a query-only URL to the root of a router mounted under a prefix", () =>
+    Effect.gen(function*() {
+      const admin = yield* HttpRouter.toHttpEffect(HttpRouter.use((router) => router.add("GET", "/", echoUrl)))
+      const routes = HttpRouter.use((router) => router.prefixed("/admin").add("*", "*", Effect.orDie(admin)))
+
+      const body = yield* fetchText(routes, "/admin?tab=1")
+
+      assert.strictEqual(body, "/?tab=1")
+    }))
+
   for (const ignoreDuplicateSlashes of [true, false]) {
     it.effect(`preserves the local URL with ignoreDuplicateSlashes=${ignoreDuplicateSlashes}`, () =>
       Effect.gen(function*() {
