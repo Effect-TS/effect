@@ -494,7 +494,7 @@ export const makeHandlers = (
       _request: typeof McpSchema.ListResources.payloadSchema.Type
     ) {
       const invocation = yield* getInvocation
-      const resources = yield* core.resources.list(invocation.protocol)
+      const resources = yield* core.resources.list(invocation)
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         resources: resources.map(projectResource)
@@ -505,7 +505,7 @@ export const makeHandlers = (
       _request: typeof McpSchema.ListResourceTemplates.payloadSchema.Type
     ) {
       const invocation = yield* getInvocation
-      const resourceTemplates = yield* core.resources.listTemplates(invocation.protocol)
+      const resourceTemplates = yield* core.resources.listTemplates(invocation)
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
         resourceTemplates: resourceTemplates.map(projectResourceTemplate)
@@ -537,7 +537,7 @@ export const makeHandlers = (
         )
       }
       const invocation = yield* getInvocation
-      const prompts = yield* core.prompts.list(invocation.protocol)
+      const prompts = yield* core.prompts.list(invocation)
       const projectedPrompts = yield* Effect.forEach(prompts, projectPrompt)
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
@@ -593,7 +593,7 @@ export const makeHandlers = (
       _request: typeof McpSchema.ListTools.payloadSchema.Type
     ) {
       const invocation = yield* getInvocation
-      const tools = yield* core.tools.list(invocation.protocol)
+      const tools = yield* core.tools.list(invocation)
       const projectedTools = yield* Effect.forEach(tools, projectTool)
       const result = yield* projectCompleteResult({
         ...privateStaleCache,
@@ -603,7 +603,7 @@ export const makeHandlers = (
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
       const invocation = yield* getInputInvocation(request)
-      const tool = (yield* core.tools.list(invocation.protocol)).find((tool) => tool.name === request.name)
+      const tool = core.tools.find(request.name, invocation.protocol)
       const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
 
       if (tool !== undefined && Option.isSome(httpRequest)) {
