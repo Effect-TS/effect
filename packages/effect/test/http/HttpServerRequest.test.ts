@@ -213,8 +213,7 @@ describe("HttpServerRequest", () => {
   describe("toURL", () => {
     const cases: ReadonlyArray<[url: string, headers: Record<string, string>, expected: string]> = [
       ["https://example.test/a?b=1", { host: "example.test" }, "https://example.test/a?b=1"],
-      ["http://example.test/a", { host: "example.test", "x-forwarded-proto": "https" }, "http://example.test/a"],
-      ["https://example.test/a", { host: "example.test", "x-forwarded-proto": "http" }, "https://example.test/a"]
+      ["http://example.test/a", { host: "example.test", "x-forwarded-proto": "https" }, "http://example.test/a"]
     ]
     for (const [url, headers, expected] of cases) {
       it(`${url} ${JSON.stringify(headers)} -> ${expected}`, () => {

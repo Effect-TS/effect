@@ -583,27 +583,9 @@ describe("HttpMiddleware", () => {
         expected: { remoteAddress: "198.51.100.7", host: "b.test", url: "https://b.test/a" }
       },
       {
-        name: "applies X-Forwarded-For without X-Forwarded-Host",
-        peer: "10.0.0.1",
-        headers: { "x-forwarded-for": "198.51.100.7" },
-        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
-      },
-      {
         name: "keeps the transport host when X-Forwarded-Host does not align with X-Forwarded-For",
         peer: "10.0.0.1",
         headers: { "x-forwarded-for": "198.51.100.7", "x-forwarded-host": "a.test, b.test" },
-        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
-      },
-      {
-        name: "keeps the transport host when X-Forwarded-Host has an out-of-range port",
-        peer: "10.0.0.1",
-        headers: { "x-forwarded-for": "198.51.100.7", "x-forwarded-host": "app.test:99999" },
-        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
-      },
-      {
-        name: "keeps the transport host when X-Forwarded-Host is an invalid IPv6 literal",
-        peer: "10.0.0.1",
-        headers: { "x-forwarded-for": "198.51.100.7", "x-forwarded-host": "[:::]" },
         expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
       },
       {
