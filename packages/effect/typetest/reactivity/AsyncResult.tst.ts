@@ -1,4 +1,4 @@
-import type { Option } from "effect"
+import type { Cause, Option } from "effect"
 import { AsyncResult } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
@@ -7,6 +7,7 @@ interface TestError {
 }
 
 declare const result: AsyncResult.AsyncResult<number, TestError>
+declare const failure: AsyncResult.Failure<number, TestError>
 declare const previous: Option.Option<AsyncResult.AsyncResult<string, never>>
 
 describe("AsyncResult", () => {
@@ -77,6 +78,17 @@ describe("AsyncResult", () => {
       expect(missingSuccess).type.not.toHaveProperty("exhaustive")
     })
   })
+  it("isInterrupted narrows on true and keeps failures on false", () => {
+    if (AsyncResult.isInterrupted(result)) {
+      expect(result.cause).type.toBe<Cause.Cause<TestError>>()
+    } else {
+      expect(result).type.toBe<AsyncResult.AsyncResult<number, TestError>>()
+    }
+    if (!AsyncResult.isInterrupted(failure)) {
+      expect(failure).type.toBe<AsyncResult.Failure<number, TestError>>()
+    }
+  })
+
   it("flatMap", () => {
     expect(
       AsyncResult.success(1).pipe(AsyncResult.flatMap((value) => AsyncResult.success(value)))
