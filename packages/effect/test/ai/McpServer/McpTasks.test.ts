@@ -21,7 +21,7 @@ import * as DurableDeferred from "effect/workflow/DurableDeferred"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { externalReports, type ReportJob, ReportJobs } from "./TestUtils/McpExternalJobs.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
-import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 
 const metadata = {
@@ -105,6 +105,38 @@ const server = McpTasks.toolkit(Reports, { owner: "shared" }).pipe(
   Layer.provide(McpTasks.layerWorkflow(Reports, { report: () => Effect.succeed("finished") }, { name: "reports" }))
 ).pipe(Layer.provide(WorkflowEngine.layerMemory), Layer.provideMerge(serverLayer))
 const decodeError = Schema.decodeUnknownEffect(Schema.Struct({ error: McpSchema.McpError }))
+
+for (const supported of [false, true]) {
+  it.effect(`should ${supported ? "acknowledge" : "reject"} task subscriptions ${supported ? "with" : "without"} Tasks capability`, () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(server)
+      const response = yield* harness.post(
+        request("subscriptions/listen", { notifications: { taskIds: ["example-task"] } }, undefined, supported),
+        headers("subscriptions/listen")
+      )
+      let body: unknown
+      if (response.headers.get("content-type")?.includes("text/event-stream")) {
+        const subscription = makeMcpSseReader(response)
+        yield* Effect.addFinalizer(() => subscription.cancel)
+        body = yield* subscription.take()
+      } else {
+        body = yield* readMcpHttpResponse(response)
+      }
+      if (supported) {
+        const acknowledgement = yield* Schema.decodeUnknownEffect(Schema.Struct({
+          method: Schema.Literal("notifications/subscriptions/acknowledged"),
+          params: Schema.Struct({ notifications: Schema.JsonObject })
+        }))(body)
+        assert.deepStrictEqual(acknowledgement.params.notifications, {})
+      } else {
+        const { error } = yield* decodeError(body)
+        assert.strictEqual(error.code, TaskWire.MISSING_REQUIRED_CLIENT_CAPABILITY)
+        assert.deepStrictEqual(error.data, {
+          requiredCapabilities: { extensions: { "io.modelcontextprotocol/tasks": {} } }
+        })
+      }
+    }))
+}
 
 it.effect("should advertise Tasks support when a task toolkit is registered", () =>
   Effect.gen(function*() {
