@@ -9,7 +9,6 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
-import * as CommandLine from "effect/process/CommandLine"
 import * as Stream from "effect/Stream"
 
 /**
@@ -111,7 +110,7 @@ export const layer: Layer.Layer<
     step: "lint" | "format",
     filePath: string
   ) {
-    const fullCommand = CommandLine.display([command, ...args])
+    const fullCommand = [command, ...args].join(" ")
     const cmd = ChildProcess.make(command, args, {
       stdout: "pipe",
       stderr: "pipe"

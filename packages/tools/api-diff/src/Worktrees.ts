@@ -6,7 +6,6 @@ import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
-import * as CommandLine from "effect/process/CommandLine"
 import * as Stream from "effect/Stream"
 import { ApiDiffError, isApiDiffError } from "./Error.ts"
 import { decodeJson } from "./Json.ts"
@@ -40,7 +39,7 @@ export class Worktrees extends Context.Service<Worktrees, {
         args: ReadonlyArray<string>,
         cwd: string
       ) {
-        const display = CommandLine.display([command, ...args])
+        const display = `${command} ${args.join(" ")}`
         const handle = yield* spawner.spawn(
           ChildProcess.make(command, args, { cwd })
         ).pipe(
