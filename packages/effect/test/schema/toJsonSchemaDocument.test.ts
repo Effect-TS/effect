@@ -2542,6 +2542,23 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
+  it("approximates filtered TemplateLiteral segments regardless of identifier", () => {
+    const Segment = Schema.String.check(Schema.isPattern(/^abc$/u))
+    for (const segment of [Segment, Segment.annotate({ identifier: "Segment" })]) {
+      const schema = Schema.TemplateLiteral(["item.", segment])
+      assertJsonSchemaDocument(schema, {
+        schema: {
+          type: "string",
+          pattern: "^item\\.[\\s\\S]*?$"
+        }
+      })
+      assertJsonSchemaAcceptsEffectValues(
+        Schema.Union([schema, Schema.Literal("item.x")], { mode: "oneOf" }),
+        ["item.x"]
+      )
+    }
+  })
+
   describe("Struct", () => {
     it("empty struct", () => {
       const schema = Schema.Struct({})
