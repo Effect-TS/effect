@@ -65,6 +65,24 @@ describe("Statement", () => {
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
 
+  it("compiles an empty in list as an empty subquery", () => {
+    const sql = Statement.make(
+      {} as any,
+      Statement.makeCompilerSqlite(),
+      [],
+      undefined
+    )
+
+    assert.deepStrictEqual(
+      sql`SELECT * FROM people WHERE id IN ${sql.in([])}`.compile(),
+      ["SELECT * FROM people WHERE id IN (SELECT NULL WHERE 1=0)", []]
+    )
+    assert.deepStrictEqual(
+      sql`SELECT * FROM people WHERE id IN ${sql.in([1])}`.compile(),
+      ["SELECT * FROM people WHERE id IN (?)", [1]]
+    )
+  })
+
   it("renumbers a cached returning fragment", () => {
     const sql = Statement.make(
       Effect.void as any,

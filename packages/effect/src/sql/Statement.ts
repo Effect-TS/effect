@@ -929,6 +929,11 @@ const CompilerProto = {
         }
 
         case "ArrayHelper": {
+          // IN () is invalid sql. an empty subquery is false, and NOT IN of it stays true
+          if (segment.value.length === 0) {
+            sql += "(SELECT NULL WHERE 1=0)"
+            break
+          }
           sql += `(${placeholders(segment.value)})`
           binds.push.apply(binds, segment.value as any)
           break
