@@ -21,11 +21,13 @@ import * as Effect from "effect/Effect"
 const findUsers = Effect.fnUntraced(function*(minimumAge: number) {
   const sql = yield* Database
   return yield* sql(
-    `SELECT id, name, email FROM users WHERE age >= :minimumAge ORDER BY name`,
+    `SELECT u.id, u.name, p.bio
+     FROM users u LEFT JOIN profiles p ON u.id = p.user_id
+     WHERE u.age >= :minimumAge ORDER BY u.name`,
     { minimumAge }
   )
   // ReadonlyArray<{ readonly id: number; readonly name: string;
-  //                 readonly email: string | null }>
+  //                 readonly bio: string | null }>
 })
 
 const program = findUsers(18).pipe(
@@ -45,6 +47,12 @@ parameter object. Unknown tables or columns, missing or mistyped parameters,
 and unsupported query patterns produce TypeScript errors. Uncomment the marked lines in
 `main.ts` to try the diagnostics.
 
+`profiles.bio` is `TEXT NOT NULL` in the database. The `LEFT JOIN` makes it
+`string | null` in this result because some users have no profile. `INNER JOIN`
+keeps it `string`; `RIGHT JOIN` makes the users' columns nullable, and `FULL JOIN`
+makes both sides nullable. Each join in a chain sees the preceding result.
+`ON` parameters use the inputs' types before that join adds unmatched rows.
+
 ## Run
 
 From the repository root, with Node 24 or later:
@@ -58,8 +66,8 @@ pnpm --filter scratchpad sql:verify
 ```
 
 The demo also runs directly with `node scratchpad/sql-typesafe/main.ts`.
-It migrates an in-memory SQLite database, selects Ada and Grace, handles a
-nullable email, and shows the bound SQL and parameters. An SQL-like input
+It migrates an in-memory SQLite database, selects Ada and Grace with a left join,
+handles a nullable email and Grace's missing profile, and shows the bound SQL and parameters. An SQL-like input
 string remains a bound value and matches no users.
 
 `sql:snapshot` runs the migrations and regenerates `_schema.json` through
@@ -71,7 +79,7 @@ first builds the referenced workspace packages with the repository's normal
 compiler, then checks this consumer against their declarations. `sql:verify`
 also checks valid and invalid calls, displayed result types, required services,
 schema-only changes across incremental builds, snapshot refresh after a no-op
-migration, and actual SQLite execution.
+migration, and actual SQLite execution of inner, left, right, full, and cross joins.
 
 ## Snapshot format
 
@@ -111,16 +119,22 @@ the SQL literal type; tagged-template text becomes `TemplateStringsArray`.
   columns. Generated columns and `BLOB` values are excluded because their
   runtime types vary across SQLite versions and drivers. Unsupported schemas
   fail snapshot generation.
-- Single-table `SELECT`, `DISTINCT`, columns, `*`, qualified columns, explicit
-  `AS` aliases, comparisons joined by `AND`, `IS [NOT] NULL`, `ORDER BY`, and
-  bound `LIMIT`/`OFFSET`.
+- `SELECT`, `DISTINCT`, columns, `*`, `alias.*`, explicit column `AS` aliases,
+  and table aliases with or without `AS`. Supports `JOIN`/`INNER JOIN`,
+  `LEFT`/`RIGHT`/`FULL [OUTER] JOIN`, and `CROSS JOIN`, including self joins.
+  Non-cross joins require `ON` comparing a column to another column or a named
+  parameter, or testing `IS [NOT] NULL`; combine conditions with `AND`.
+  `WHERE`, `ORDER BY`, and bound `LIMIT`/`OFFSET`
+  remain available. Ambiguous column references and duplicate output names
+  are rejected; qualify columns and alias the outputs to disambiguate them.
 - Keywords are case-insensitive; identifiers must match the snapshot spelling.
   Column references named like SQL literals (`null`, `current_date`, etc.)
   require quoted identifiers and are rejected by this grammar.
-  Joins, table aliases, expressions, aggregates, DML, quoted identifiers,
-  comments, and inline literal values are outside the grammar.
-- Null checks do not narrow results. Row-name transforms are disabled; numeric
-  decoding must use the driver's defaults.
+  `NATURAL JOIN`, `USING`, comma joins, subqueries, expressions, aggregates, DML,
+  quoted identifiers, comments, and inline literal values are outside the grammar.
+- Predicates do not narrow results, including `WHERE p.bio IS NOT NULL` after
+  a left join. Row-name transforms are disabled; numeric decoding must use
+  the driver's defaults.
 - The database service yields the typed query constructor. Existing tagged
   templates and SQL client helpers use the separate `SqlClient.SqlClient` service.
 - SQLite performs final syntax validation. The type parser accepts unquoted

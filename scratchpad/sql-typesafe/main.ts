@@ -16,21 +16,24 @@ const result = await Effect.gen(function*() {
 
   const statement = sql(
     `
-      SELECT id AS userId, name, email FROM users
-      WHERE age >= :minimumAge
-      ORDER BY name
+      SELECT u.id AS userId, u.name, u.email, p.bio AS profileBio
+      FROM users AS u LEFT JOIN profiles AS p ON u.id = p.user_id
+      WHERE u.age >= :minimumAge
+      ORDER BY u.name
       LIMIT :limit
     `,
     { minimumAge: 18, limit: 2 }
   )
 
-  // Hover over users: userId is number, name is string, email is string | null.
-  // No row interfaces or generic type arguments are needed.
+  // Inferred: readonly { readonly userId: number; readonly name: string;
+  //   readonly email: string | null; readonly profileBio: string | null }[]
+  // profiles.bio is NOT NULL, but LEFT JOIN makes it nullable here.
   const users = yield* statement
   const cards = users.map((user) => ({
     id: user.userId.toFixed(0),
     name: user.name.toUpperCase(),
-    email: user.email?.toLowerCase() ?? "(no email)"
+    email: user.email?.toLowerCase() ?? "(no email)",
+    profile: user.profileBio ?? "(no profile)"
   }))
 
   // This input remains a bound value; it cannot change the SQL query.
@@ -43,6 +46,7 @@ const result = await Effect.gen(function*() {
   // sql("SELECT id FROM users WHERE id = :id", { id: "1" })     // id must be a number
   // sql("SELECT id FROM users WHERE id = :id")                  // missing parameter
   // users[0].email.toLowerCase()                                // possibly null
+  // users[0].profileBio.toUpperCase()                           // possibly null after LEFT JOIN
   // users[0].age                                               // not selected
 
   const [text, parameters] = statement.compile()

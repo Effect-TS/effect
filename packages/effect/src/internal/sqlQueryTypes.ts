@@ -71,49 +71,76 @@ type BeforeFrom<T extends Tokens, Acc extends Tokens = []> = T extends
 
 // These tokens can evaluate as literals even when a column has the same name.
 type LiteralKeyword = "NULL" | "TRUE" | "FALSE" | "CURRENT_DATE" | "CURRENT_TIME" | "CURRENT_TIMESTAMP"
-type ColumnName<D extends Database, Table extends keyof D & string, Name extends string, Rest extends Tokens> =
+type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never
+type Field = { readonly name: string; readonly type: unknown }
+type ColumnName<S extends Database, Table extends keyof S & string, Name extends string, Rest extends Tokens> =
   Uppercase<Name> extends LiteralKeyword ? Failure<`Column ${Name} requires a quoted identifier`>
-    : Name extends keyof D[Table] ? Step<Rest, Name>
+    : Name extends keyof S[Table] ? Step<Rest, { readonly name: Name; readonly type: S[Table][Name] }>
     : Failure<`Unknown column ${Name} on ${Table}`>
 
-type Column<D extends Database, Table extends keyof D & string, T extends Tokens> = T extends
+type SourcesWithColumn<S extends Database, Name extends PropertyKey> = {
+  [Table in keyof S]: Name extends keyof S[Table] ? Table : never
+}[keyof S]
+
+// SQLite resolves identifiers without case, while returned object keys retain their spelling.
+type MatchingSources<S extends Database, Name extends string> = {
+  [Table in keyof S]: Uppercase<Name> extends Uppercase<keyof S[Table] & string> ? Table : never
+}[keyof S]
+
+type UnqualifiedColumn<S extends Database, Name extends string, Rest extends Tokens> = MatchingSources<S, Name> extends
+  infer Table ? [Table] extends [never] ? Failure<`Unknown column ${Name}`>
+  : true extends IsUnion<Table> ? Failure<`Ambiguous column ${Name}; qualify it with a table alias`>
+  : Table extends keyof S & string ? ColumnName<S, Table, Name, Rest>
+  : never
+  : never
+
+type Column<S extends Database, T extends Tokens> = T extends
   [infer Qualifier extends string, ".", infer Name extends string, ...infer Rest extends Tokens]
-  ? Qualifier extends Table ? ColumnName<D, Table, Name, Rest>
+  ? Qualifier extends keyof S ? ColumnName<S, Qualifier, Name, Rest>
   : Failure<`Unknown table qualifier ${Qualifier}`>
-  : T extends [infer Name extends string, ...infer Rest extends Tokens] ? ColumnName<D, Table, Name, Rest>
+  : T extends [infer Name extends string, ...infer Rest extends Tokens] ? UnqualifiedColumn<S, Name, Rest>
   : Failure<"Expected a column">
 
-type Projection<D extends Database, Table extends keyof D & string, T extends Tokens> = T extends
-  ["*"] | [Table, ".", "*"] ? D[Table]
-  : Column<D, Table, T> extends infer C
-    ? C extends Step<infer Rest, infer Name extends keyof D[Table] & string> ? Rest extends [] ? Pick<D[Table], Name>
+type ColumnNames<S extends Database> = { [Table in keyof S]: keyof S[Table] }[keyof S]
+type DuplicateColumns<S extends Database> = {
+  [Name in ColumnNames<S>]: true extends IsUnion<SourcesWithColumn<S, Name>> ? Name : never
+}[ColumnNames<S>]
+type AllColumns<S extends Database> = [DuplicateColumns<S>] extends [never] ? {
+    readonly [Name in ColumnNames<S>]: S[SourcesWithColumn<S, Name>][Name & keyof S[SourcesWithColumn<S, Name>]]
+  }
+  : Failure<"Duplicate result column; use AS aliases">
+
+type Projection<S extends Database, T extends Tokens> = T extends ["*"] ? AllColumns<S>
+  : T extends [infer Table extends string, ".", "*"] ? Table extends keyof S ? S[Table]
+    : Failure<`Unknown table qualifier ${Table}`>
+  : Column<S, T> extends infer C
+    ? C extends Step<infer Rest, infer F extends Field> ? Rest extends [] ? { readonly [K in F["name"]]: F["type"] }
       : Rest extends [infer As extends string, infer Alias extends string]
-        ? Uppercase<As> extends "AS" ? Alias extends `${Start}${string}` ? { readonly [K in Alias]: D[Table][Name] }
+        ? Uppercase<As> extends "AS" ? Alias extends `${Start}${string}` ? { readonly [K in Alias]: F["type"] }
           : Failure<"Expected an alias">
         : Failure<"Expected AS before an alias">
       : Failure<"Unsupported SELECT expression">
     : C
   : never
 
-type AddProjection<D extends Database, Table extends keyof D & string, T extends Tokens, Row> =
-  Projection<D, Table, T> extends infer P ? P extends Failure<string> ? P
-    : keyof P & keyof Row extends never ? Row & P
-    : Failure<"Duplicate result column; use AS aliases">
-    : never
+type AddProjection<S extends Database, T extends Tokens, Row> = Projection<S, T> extends infer P ?
+  P extends Failure<string> ? P
+  : keyof P & keyof Row extends never ? Row & P
+  : Failure<"Duplicate result column; use AS aliases">
+  : never
 
 type Projections<
-  D extends Database,
-  Table extends keyof D & string,
+  S extends Database,
   T extends Tokens,
   Row = {},
   Current extends Tokens = []
 > = T extends [infer Head extends string, ...infer Rest extends Tokens]
   ? Head extends ","
-    ? AddProjection<D, Table, Current, Row> extends infer Next
-      ? Next extends Failure<string> ? Next : Projections<D, Table, Rest, Next>
+    ? AddProjection<S, Current, Row> extends infer Next
+      ? Next extends Failure<string> ? Next : Projections<S, Rest, Next>
     : never
-  : Projections<D, Table, Rest, Row, [...Current, Head]>
-  : AddProjection<D, Table, Current, Row>
+  : Projections<S, Rest, Row, [...Current, Head]>
+  : AddProjection<S, Current, Row>
 
 type AddParameter<P, Name extends string, Value> = Simplify<P & { readonly [K in Name]: Value }> extends infer Next
   ? Name extends keyof Next ? [Next[Name]] extends [never] ? Failure<`Incompatible uses of parameter :${Name}`> : Next
@@ -125,11 +152,15 @@ type Parameter<T extends Tokens, P, Value> = T extends [`:${infer Name}`, ...inf
   : never
   : Failure<"Expected a :named parameter">
 
-type Condition<D extends Database, Table extends keyof D & string, T extends Tokens, P> = Column<D, Table, T> extends
-  infer C
-  ? C extends Step<infer Rest, infer Name extends keyof D[Table]>
+type Operand<S extends Database, T extends Tokens, P, Value> = T extends [`:${string}`, ...Tokens]
+  ? Parameter<T, P, Value>
+  : Column<S, T> extends infer C ? C extends Step<infer Rest, unknown> ? Step<Rest, P> : C
+  : never
+
+type Condition<S extends Database, T extends Tokens, P> = Column<S, T> extends infer C
+  ? C extends Step<infer Rest, infer F extends Field>
     ? Rest extends [infer Op extends string, ...infer Tail extends Tokens]
-      ? Op extends Comparison ? Parameter<Tail, P, D[Table][Name]>
+      ? Op extends Comparison ? Operand<S, Tail, P, F["type"]>
       : Uppercase<Op> extends "IS"
         ? Tail extends [infer NotOrNull extends string, ...infer End extends Tokens]
           ? Uppercase<NotOrNull> extends "NULL" ? Step<End, P>
@@ -144,38 +175,35 @@ type Condition<D extends Database, Table extends keyof D & string, T extends Tok
   : C
   : never
 
-type Conditions<D extends Database, Table extends keyof D & string, T extends Tokens, P = {}> =
-  Condition<D, Table, T, P> extends infer C
-    ? C extends Step<infer Rest, infer Next>
-      ? Rest extends [infer And extends string, ...infer Tail extends Tokens]
-        ? Uppercase<And> extends "AND" ? Conditions<D, Table, Tail, Next> : C
-      : C
+type Conditions<S extends Database, T extends Tokens, P> = Condition<S, T, P> extends infer C
+  ? C extends Step<infer Rest, infer Next>
+    ? Rest extends [infer And extends string, ...infer Tail extends Tokens]
+      ? Uppercase<And> extends "AND" ? Conditions<S, Tail, Next> : C
     : C
-    : never
+  : C
+  : never
 
-type Where<D extends Database, Table extends keyof D & string, T extends Tokens> = T extends
+type Where<S extends Database, T extends Tokens, P> = T extends
   [infer Head extends string, ...infer Rest extends Tokens]
-  ? Uppercase<Head> extends "WHERE" ? Conditions<D, Table, Rest> : Step<T, {}>
-  : Step<T, {}>
+  ? Uppercase<Head> extends "WHERE" ? Conditions<S, Rest, P> : Step<T, P>
+  : Step<T, P>
 
 type Direction<T extends Tokens> = T extends [infer Head extends string, ...infer Rest extends Tokens]
   ? Uppercase<Head> extends "ASC" | "DESC" ? Rest : T
   : T
 
-type OrderColumns<D extends Database, Table extends keyof D & string, T extends Tokens> = Column<D, Table, T> extends
-  infer C
+type OrderColumns<S extends Database, T extends Tokens> = Column<S, T> extends infer C
   ? C extends Step<infer Rest, unknown>
     ? Direction<Rest> extends infer End extends Tokens
-      ? End extends [",", ...infer Tail extends Tokens] ? OrderColumns<D, Table, Tail> : End
+      ? End extends [",", ...infer Tail extends Tokens] ? OrderColumns<S, Tail> : End
     : never
   : C
   : never
 
-type Order<D extends Database, Table extends keyof D & string, T extends Tokens> = T extends
-  [infer Head extends string, ...infer Rest extends Tokens]
+type Order<S extends Database, T extends Tokens> = T extends [infer Head extends string, ...infer Rest extends Tokens]
   ? Uppercase<Head> extends "ORDER"
     ? Rest extends [infer By extends string, ...infer Tail extends Tokens]
-      ? Uppercase<By> extends "BY" ? OrderColumns<D, Table, Tail> : Failure<"Expected BY">
+      ? Uppercase<By> extends "BY" ? OrderColumns<S, Tail> : Failure<"Expected BY">
     : Failure<"Expected BY">
   : T
   : T
@@ -194,27 +222,119 @@ type Limit<T extends Tokens, P> = T extends [infer Head extends string, ...infer
 type Finish<T extends Tokens, Row, P> = T extends [] | [";"] ? { readonly row: Row; readonly params: P }
   : Failure<`Unsupported SQL near ${T[0]}`>
 
-type Clauses<D extends Database, Table extends keyof D & string, T extends Tokens, Row> = Where<D, Table, T> extends
-  infer W
-  ? W extends Step<infer Rest, infer P>
-    ? Order<D, Table, Rest> extends infer O
+type Clauses<S extends Database, T extends Tokens, Row, P> = Where<S, T, P> extends infer W
+  ? W extends Step<infer Rest, infer Params>
+    ? Order<S, Rest> extends infer O
       ? O extends Tokens
-        ? Limit<O, P> extends infer L ? L extends Step<infer Tail, infer Next> ? Finish<Tail, Row, Next> : L
+        ? Limit<O, Params> extends infer L ? L extends Step<infer Tail, infer Next> ? Finish<Tail, Row, Next> : L
         : never
       : O
     : never
   : W
   : never
 
+type JoinKind = "INNER" | "LEFT" | "RIGHT" | "FULL" | "CROSS"
+// These tokens start clauses rather than implicit table aliases, even for unsupported clauses.
+type AliasBoundary =
+  | JoinKind
+  | "JOIN"
+  | "OUTER"
+  | "NATURAL"
+  | "ON"
+  | "USING"
+  | "WHERE"
+  | "ORDER"
+  | "GROUP"
+  | "HAVING"
+  | "LIMIT"
+  | "OFFSET"
+  | "UNION"
+  | "EXCEPT"
+  | "INTERSECT"
+  | "WINDOW"
+  | "INDEXED"
+  | "NOT"
+
+type TableAlias<D extends Database, Table extends keyof D, T extends Tokens> = T extends
+  [infer Head extends string, ...infer Rest extends Tokens]
+  ? Uppercase<Head> extends "AS"
+    ? Rest extends [infer Alias extends string, ...infer Tail extends Tokens]
+      ? Alias extends `${Start}${string}` ? Step<Tail, { readonly [K in Alias]: D[Table] }>
+      : Failure<"Expected a table alias">
+    : Failure<"Expected a table alias">
+  : Uppercase<Head> extends AliasBoundary ? Step<T, Pick<D, Table>>
+  : Head extends `${Start}${string}` ? Step<Rest, { readonly [K in Head]: D[Table] }>
+  : Step<T, Pick<D, Table>>
+  : Step<T, Pick<D, Table>>
+
+type Table<D extends Database, T extends Tokens> = T extends [infer Name extends string, ...infer Rest extends Tokens]
+  ? Name extends keyof D ? TableAlias<D, Name, Rest> : Failure<`Unknown table ${Name}`>
+  : Failure<"Expected a table">
+
+type ExpectJoin<T extends Tokens, Kind extends JoinKind> = T extends
+  [infer Head extends string, ...infer Rest extends Tokens]
+  ? Uppercase<Head> extends "JOIN" ? Step<Rest, Kind> : Failure<`Expected JOIN after ${Kind}`>
+  : Failure<`Expected JOIN after ${Kind}`>
+
+type JoinOperator<T extends Tokens> = T extends [infer Head extends string, ...infer Rest extends Tokens]
+  ? Uppercase<Head> extends "JOIN" ? Step<Rest, "INNER">
+  : Uppercase<Head> extends infer Kind extends JoinKind
+    ? Kind extends "LEFT" | "RIGHT" | "FULL"
+      ? Rest extends [infer Outer extends string, ...infer Tail extends Tokens]
+        ? Uppercase<Outer> extends "OUTER" ? ExpectJoin<Tail, Kind> : ExpectJoin<Rest, Kind>
+      : ExpectJoin<Rest, Kind>
+    : ExpectJoin<Rest, Kind>
+  : Step<T, undefined>
+  : Step<T, undefined>
+
+type NullableSources<S extends Database> = {
+  readonly [Alias in keyof S]: { readonly [Name in keyof S[Alias]]: S[Alias][Name] | null }
+}
+type JoinScope<Left extends Database, Right extends Database, Kind extends JoinKind> =
+  & (Kind extends "RIGHT" | "FULL" ? NullableSources<Left> : Left)
+  & (Kind extends "LEFT" | "FULL" ? NullableSources<Right> : Right)
+
+type Join<
+  D extends Database,
+  Left extends Database,
+  Right extends Database,
+  Kind extends JoinKind,
+  T extends Tokens,
+  P
+> = Uppercase<keyof Left & string> & Uppercase<keyof Right & string> extends never
+  ? Kind extends "CROSS" ? Joins<D, T, Left & Right, P>
+  : T extends [infer On extends string, ...infer Rest extends Tokens] ? Uppercase<On> extends "ON"
+      // ON sees the inputs; the current join adds unmatched null rows afterwards.
+      ? Conditions<Left & Right, Rest, P> extends infer C
+        ? C extends Step<infer Tail, infer Params> ? Joins<D, Tail, JoinScope<Left, Right, Kind>, Params> : C
+      : never
+    : Failure<"Expected ON after joined table">
+  : Failure<"Expected ON after joined table">
+  : Failure<"Duplicate table alias">
+
+type Joins<D extends Database, T extends Tokens, S extends Database, P> = JoinOperator<T> extends infer J
+  ? J extends Step<infer Rest, infer Kind>
+    ? Kind extends JoinKind
+      ? Table<D, Rest> extends infer R
+        ? R extends Step<infer Tail, infer Source extends Database> ? Join<D, S, Source, Kind, Tail, P> : R
+      : never
+    : Step<T, { readonly scope: S; readonly params: P }>
+  : J
+  : never
+
+type From<D extends Database, T extends Tokens> = Table<D, T> extends infer F
+  ? F extends Step<infer Rest, infer S extends Database> ? Joins<D, Rest, S, {}> : F
+  : never
+
 type SelectFrom<D extends Database, T extends Tokens> = BeforeFrom<T> extends infer F
   ? F extends Step<infer Rest, infer Fields extends Tokens>
-    ? Rest extends [infer Table extends string, ...infer Tail extends Tokens]
-      ? Table extends keyof D
-        ? Projections<D, Table, Fields> extends infer Row
-          ? Row extends Failure<string> ? Row : Clauses<D, Table, Tail, Row>
+    ? From<D, Rest> extends infer S
+      ? S extends Step<infer Tail, { readonly scope: infer Scope extends Database; readonly params: infer P }>
+        ? Projections<Scope, Fields> extends infer Row
+          ? Row extends Failure<string> ? Row : Clauses<Scope, Tail, Row, P>
         : never
-      : Failure<`Unknown table ${Table}`>
-    : Failure<"Expected a table after FROM">
+      : S
+    : never
   : F
   : never
 
@@ -226,7 +346,6 @@ type Select<D extends Database, T extends Tokens> = T extends [infer Head extend
   : Failure<"Only SELECT is supported">
   : Failure<"Expected SELECT">
 
-type IsUnion<T, Whole = T> = T extends Whole ? [Whole] extends [T] ? false : true : never
 type Analyze<D extends Database, S extends string> = string extends S ? Failure<"Use a SQL string literal">
   : true extends IsUnion<S> ? Failure<"Use one SQL literal per call">
   : Tokenize<S> extends infer T ? T extends Tokens ? Select<D, T> : T

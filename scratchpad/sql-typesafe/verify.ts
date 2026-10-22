@@ -29,7 +29,7 @@ const run = (args: Array<string>) => {
 try {
   await Effect.gen(function*() {
     const options = { loader: migrations, schemaDirectory: directory }
-    assert.deepEqual(yield* Migrator.runWithSnapshot(options), [[1, "create_users"]])
+    assert.deepEqual(yield* Migrator.runWithSnapshot(options), [[1, "create_users"], [2, "create_profiles"]])
     const initial = readFileSync(schemaPath, "utf8")
     assert.equal(initial, readFileSync(join(root, "_schema.json"), "utf8"), "Regenerate the demo snapshot")
     rmSync(schemaPath)
@@ -63,6 +63,40 @@ try {
     const injection = query("SELECT id FROM users WHERE name = :name", { name: "' OR 1=1 --" })
     assert.deepEqual(injection.compile(), ["SELECT id FROM users WHERE name = ?", ["' OR 1=1 --"]])
     assert.deepEqual(yield* injection, [])
+
+    const left = query(
+      `SELECT u.id AS userId, p.bio FROM users u
+       LEFT JOIN profiles p ON u.id = p.user_id AND p.bio = :bio
+       WHERE u.age >= :age ORDER BY u.id LIMIT :take OFFSET :skip`,
+      { skip: 0, take: 2, age: 18, bio: "Analytical Engine" }
+    )
+    assert.deepEqual(left.compile()[1], ["Analytical Engine", 18, 2, 0])
+    assert.deepEqual(records(yield* left), [{ userId: 1, bio: "Analytical Engine" }, { userId: 2, bio: null }])
+    assert.deepEqual(
+      records(yield* query("SELECT u.name, p.bio FROM users u JOIN profiles p ON u.id = p.user_id")),
+      [{ name: "Ada", bio: "Analytical Engine" }]
+    )
+    assert.deepEqual(
+      records(
+        yield* query("SELECT u.name, p.bio FROM users u RIGHT JOIN profiles p ON u.id = p.user_id ORDER BY p.id")
+      ),
+      [{ name: "Ada", bio: "Analytical Engine" }, { name: null, bio: "No matching user" }]
+    )
+    assert.deepEqual(
+      records(
+        yield* query("SELECT u.name, p.bio FROM users u FULL JOIN profiles p ON u.id = p.user_id ORDER BY u.id, p.id")
+      ),
+      [
+        { name: null, bio: "No matching user" },
+        { name: "Ada", bio: "Analytical Engine" },
+        { name: "Grace", bio: null },
+        { name: "Sam", bio: null }
+      ]
+    )
+    assert.equal(
+      (yield* query("SELECT u.id AS userId, p.id AS profileId FROM users u CROSS JOIN profiles p")).length,
+      6
+    )
   }).pipe(
     Effect.provide(Database.layer),
     Effect.provide([NodeFileSystem.layer, SqliteClient.layer({ filename: ":memory:" })]),
@@ -133,9 +167,17 @@ try {
     "rows[0].email?.toLowerCase()"
   ].join("\n")
   accepts(valid)
+  const joined = [
+    "const rows = yield* query('SELECT u.id, p.bio FROM users u LEFT JOIN profiles p ON u.id = p.user_id')",
+    "rows[0].id.toFixed()",
+    "rows[0].bio?.toUpperCase()"
+  ].join("\n")
+  accepts(joined)
+  rejects(joined + "; rows[0].bio.toUpperCase()", /possibly 'null'/)
+  accepts(joined.replace("LEFT JOIN", "INNER JOIN") + "; rows[0].bio.toUpperCase()")
   rejects(
     "const users = yield* query('SELECT id AS userId, name, email FROM users'); const displayed: never = users",
-    /Type 'readonly \{ readonly name: string; readonly email: string \| null; readonly userId: number; \}\[\]'/
+    /Type 'readonly \{ readonly email: string \| null; readonly name: string; readonly userId: number; \}\[\]'/
   )
   accepts(
     "void Effect.runPromise(Database.pipe(Effect.provide(Database.layer), Effect.provideService(SqlClient.SqlClient, raw)))"
@@ -175,8 +217,13 @@ try {
   rejects("yield* query('SELECT id FROM missing')", /Unknown table missing/)
   rejects(
     "yield* query('SELECT id FROM users LEFT JOIN other ON users.id = other.id')",
-    /Unsupported SQL near LEFT/
+    /Unknown table other/
   )
+  rejects(
+    "yield* query('SELECT id FROM users u LEFT JOIN profiles p ON u.id = p.user_id')",
+    /Ambiguous column id/
+  )
+  rejects("yield* query('SELECT users.id FROM users NATURAL JOIN profiles')", /Unsupported SQL near NATURAL/)
   rejects("yield* query('SELECT id, id FROM users')", /Duplicate result column/)
   rejects("yield* query('SELECT id FROM users WHERE id = :id', { id: raw.literal('1') })", /Fragment.*number/)
   rejects("yield* query('SELECT id FROM users ORDER BY missing')", /Unknown column missing/)
@@ -207,6 +254,14 @@ try {
   writeFileSync(schemaPath, original)
   rejects(nullable, /possibly 'null'/)
 
+  accepts(joined)
+  const changedProfile = JSON.parse(original)
+  changedProfile.tables.profiles.bio = { INTEGER: null }
+  writeFileSync(schemaPath, JSON.stringify(changedProfile))
+  rejects(joined, /TS2339.*toUpperCase/)
+  writeFileSync(schemaPath, original)
+  accepts(joined)
+
   const literals = JSON.parse(original)
   literals.tables.users.current_date = { INTEGER: null }
   literals.tables.users.null = { TEXT: null }
@@ -233,16 +288,17 @@ try {
   const demo = run(["main.ts"])
   assert.equal(demo.status, 0, demo.output)
   assert.deepEqual(JSON.parse(demo.output), {
-    sql: "SELECT id AS userId, name, email FROM users WHERE age >= ? ORDER BY name LIMIT ?",
+    sql:
+      "SELECT u.id AS userId, u.name, u.email, p.bio AS profileBio FROM users AS u LEFT JOIN profiles AS p ON u.id = p.user_id WHERE u.age >= ? ORDER BY u.name LIMIT ?",
     parameters: [18, 2],
     cards: [
-      { id: "1", name: "ADA", email: "(no email)" },
-      { id: "2", name: "GRACE", email: "grace@example.com" }
+      { id: "1", name: "ADA", email: "(no email)", profile: "Analytical Engine" },
+      { id: "2", name: "GRACE", email: "grace@example.com", profile: "(no profile)" }
     ],
     untrustedNameMatches: 0
   })
   console.log(
-    "Verified database service requirements, native JSON imports, SQL literal inference, bound parameters, schema invalidation, and SQLite execution."
+    "Verified database service requirements, native JSON imports, join nullability, bound parameters, schema invalidation, and SQLite execution."
   )
 } finally {
   rmSync(directory, { recursive: true, force: true })

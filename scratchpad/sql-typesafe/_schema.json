@@ -2,6 +2,21 @@
   "version": 2,
   "dialect": "sqlite",
   "tables": {
+    "profiles": {
+      "id": {
+        "INTEGER": null
+      },
+      "user_id": {
+        "INTEGER": null
+      },
+      "bio": {
+        "TEXT": null
+      },
+      "note": {
+        "TEXT": null,
+        "NULL": null
+      }
+    },
     "users": {
       "id": {
         "INTEGER": null

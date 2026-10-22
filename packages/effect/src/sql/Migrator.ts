@@ -385,11 +385,15 @@ export const runWithSnapshot: <R = never>(
   }
   const fs = yield* FileSystem
   const completed = yield* make({})(options)
+  // Identifier escaping treats dots as schema separators; PRAGMA names are unqualified.
+  const tableParts = (options.table ?? "effect_sql_migrations").split(".")
+  const migrationSchema = tableParts.length === 1 ? "main" : tableParts[0]
+  const migrationTable = tableParts[tableParts.length - 1]
   const tables = yield* sql<{ name: string; strict: number }>`
     SELECT name, strict FROM pragma_table_list
     WHERE schema = 'main' AND type = 'table'
       AND name NOT GLOB 'sqlite_*'
-      AND name <> ${options.table ?? "effect_sql_migrations"} COLLATE NOCASE
+      AND NOT (schema = ${migrationSchema} COLLATE NOCASE AND name = ${migrationTable} COLLATE NOCASE)
     ORDER BY name
   `
   const output: Record<string, Record<string, querySchema.Column>> = Object.create(null)
@@ -401,7 +405,7 @@ export const runWithSnapshot: <R = never>(
       })
     }
     const columns = yield* sql<{ name: string; type: string; notnull: number; pk: number; hidden: number }>`
-      SELECT name, type, "notnull", pk, hidden FROM pragma_table_xinfo(${table.name}) ORDER BY cid
+      SELECT name, type, "notnull", pk, hidden FROM pragma_table_xinfo(${table.name}, 'main') ORDER BY cid
     `
     const fields: Record<string, querySchema.Column> = Object.create(null)
     for (const column of columns) {

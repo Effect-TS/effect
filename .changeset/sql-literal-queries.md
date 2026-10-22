@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add experimental `SqlClient.Service` to infer SQLite query types from schema snapshots and `Migrator.runWithSnapshot` to generate snapshots.
+Add experimental `SqlClient.Service` to infer SQLite query types, including outer join nullability, and `Migrator.runWithSnapshot` to generate schema snapshots.

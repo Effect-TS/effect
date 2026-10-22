@@ -220,8 +220,12 @@ export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>
  *
  * Call the resulting constructor with parentheses and use `:name` placeholders
  * with a parameter object. Values are bound in SQL occurrence order. Supports
- * single-table `SELECT`, projections, `AS` aliases, `DISTINCT`, comparisons
- * joined by `AND`, `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET`.
+ * `SELECT`, projections, `AS` aliases, `DISTINCT`, table aliases, and
+ * `INNER`/`LEFT`/`RIGHT`/`FULL`/`CROSS JOIN`. Non-cross joins require `ON`.
+ * Comparisons of a column to another column or a named parameter can use `AND`;
+ * `IS [NOT] NULL`, `ORDER BY`, and bound `LIMIT`/`OFFSET` are also supported.
+ * Outer joins make the unmatched side's columns nullable. Ambiguous column
+ * references and duplicate result names require explicit qualification or aliases.
  * Unsupported query patterns, dynamic strings, and unions of query literals
  * produce type errors.
  *
@@ -234,8 +238,9 @@ export type Query<S extends QuerySchema> = query.Query<querySchema.DatabaseOf<S>
  * Column references named like SQL literals, such as `null` or `current_date`,
  * require quoted identifiers and are rejected by this grammar.
  * Row-name transforms are disabled, numeric decoding must use the driver's
- * defaults, and null checks do not narrow result nullability. The caller must
- * keep the snapshot in sync with the runtime database.
+ * defaults, and predicates do not narrow result nullability. `NATURAL JOIN`,
+ * `USING`, subqueries, and expressions are outside this grammar. The caller
+ * must keep the snapshot in sync with the runtime database.
  * SQLite performs final syntax validation; the type parser does not reject
  * unquoted keyword aliases.
  * Existing tagged-template queries and SQL client helpers remain available
