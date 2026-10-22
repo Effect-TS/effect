@@ -314,9 +314,11 @@ const make = Effect.gen(function*() {
         const stdin = yield* setupChildStdin(cmd, childProcess, stdinConfig, inputFailure)
         const { all, stderr, stdout } = setupChildOutputStreams(cmd, childProcess, stdoutConfig, stderrConfig)
         const isRunning = Effect.map(Deferred.isDone(exitSignal), (done) => !done)
-        const exitCode = Effect.flatMap(Deferred.await(exitSignal), (status) =>
-          // A failed input stream truncates the input of the child process,
-          // so its failure takes precedence over the exit status
+        // A failed input stream truncates the input of the child process, so
+        // its failure takes precedence over the exit status and is surfaced
+        // without waiting for the child process to exit
+        const exitSignalOrInputFailure = Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure))
+        const exitCode = Effect.flatMap(exitSignalOrInputFailure, (status) =>
           Deferred.isDoneUnsafe(inputFailure)
             ? Deferred.await(inputFailure)
             : Predicate.isNull(status.signal)

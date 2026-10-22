@@ -622,9 +622,11 @@ const make = Effect.gen(function*() {
           inputFailure
         )
         const isRunning = Effect.map(Deferred.isDone(exitSignal), (done) => !done)
-        const exitCode = Effect.flatMap(Deferred.await(exitSignal), ([code, signal]) => {
-          // A failed input stream truncates the input of the child process,
-          // so its failure takes precedence over the exit status
+        // A failed input stream truncates the input of the child process, so
+        // its failure takes precedence over the exit status and is surfaced
+        // without waiting for the child process to exit
+        const exitSignalOrInputFailure = Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure))
+        const exitCode = Effect.flatMap(exitSignalOrInputFailure, ([code, signal]) => {
           if (Deferred.isDoneUnsafe(inputFailure)) {
             return Deferred.await(inputFailure)
           }
