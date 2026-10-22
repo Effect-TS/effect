@@ -337,7 +337,13 @@ export const layerWorkflow = <
       const scope = yield* Scope.fork(yield* Scope.Scope)
       const runners = yield* makeHandlers(tools, handlers)
 
-      const operations = new Map<string, Execution["Service"]>()
+      type WorkflowTaskRequest = TaskRequest & { readonly token: DurableDeferred.TokenParsed }
+      const operations = new Map<string, {
+        readonly create: Execution["Service"]["create"]
+        readonly get: (request: WorkflowTaskRequest) => Effect.Effect<Task, TaskError>
+        readonly update: (request: WorkflowTaskRequest & UpdateRequest) => Effect.Effect<void, TaskError>
+        readonly cancel: (request: WorkflowTaskRequest) => Effect.Effect<void, TaskError>
+      }>()
 
       for (const tool of Object.values(tools.tools)) {
         const workflow = Workflow.make(JSON.stringify(["McpTasks", options.name, tool.name]), {
@@ -377,13 +383,7 @@ export const layerWorkflow = <
             )
           )
 
-        const findOwned = Effect.fnUntraced(function*({ taskId, ownerId }: TaskRequest) {
-          const token = yield* decodeTaskToken(taskId).pipe(
-            Effect.mapError(() =>
-              new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" })
-            )
-          )
-
+        const findOwned = Effect.fnUntraced(function*({ token, ownerId }: WorkflowTaskRequest) {
           if (token.workflowName !== workflow._tag || token.deferredName !== identity.name) {
             return yield* new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" })
           }
@@ -507,7 +507,7 @@ export const layerWorkflow = <
           return yield* new TaskError({ code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Unknown taskId" })
         }
 
-        return entry
+        return { entry, token }
       })
 
       return Execution.of({
@@ -522,13 +522,16 @@ export const layerWorkflow = <
           return yield* entry.create(request)
         }),
         get: Effect.fnUntraced(function*(request) {
-          return yield* (yield* resolve(request.taskId)).get(request)
+          const { entry, token } = yield* resolve(request.taskId)
+          return yield* entry.get({ ...request, token })
         }),
         update: Effect.fnUntraced(function*(request) {
-          yield* (yield* resolve(request.taskId)).update(request)
+          const { entry, token } = yield* resolve(request.taskId)
+          yield* entry.update({ ...request, token })
         }),
         cancel: Effect.fnUntraced(function*(request) {
-          yield* (yield* resolve(request.taskId)).cancel(request)
+          const { entry, token } = yield* resolve(request.taskId)
+          yield* entry.cancel({ ...request, token })
         })
       })
     })
