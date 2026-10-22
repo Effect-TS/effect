@@ -103,6 +103,23 @@ describe("CircuitBreaker", () => {
         assert.strictEqual(reports.length, 2)
       }).pipe(Effect.provide(Layer.merge(memoryStoreWith({ record: () => Effect.fail(storeError) }), layer)))
     })
+
+    it.effect("a record defect alongside a store failure still dies, whether or not it is reported", () =>
+      Effect.gen(function*() {
+        const breaker = yield* CircuitBreaker.make({
+          tripPolicy: CircuitBreaker.consecutive(1),
+          openDuration: "1 minute"
+        })
+        const call = Effect.succeed(42).pipe(breaker.execute({ key: "record-defect" }), Effect.exit)
+        const reported = yield* call
+        const silenced = yield* call.pipe(Effect.provideService(References.UnhandledLogLevel, undefined))
+
+        for (const exit of [reported, silenced]) {
+          assert.isTrue(causeOf(exit).reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === "bug"))
+        }
+      }).pipe(Effect.provide(memoryStoreWith({
+        record: () => Effect.failCause(Cause.combine(Cause.fail(storeError), Cause.die("bug")))
+      }))))
   })
 
   describe("classify", () => {
