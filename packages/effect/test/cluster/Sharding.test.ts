@@ -3309,6 +3309,45 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       }).pipe(Effect.provide(TerminationSharding(entityLayer, storageState)), Effect.scoped)
     }))
 
+  it.effect("releases a shard reassigned while a defected entity waits to restart", () =>
+    Effect.gen(function*() {
+      const entity = Entity.make("ReleaseDuringRestart", [
+        Rpc.make("Defect").annotate(ClusterSchema.Persisted, true)
+      ])
+      const storageState = makeFailoverStorageState()
+      const defected = yield* Deferred.make<void>()
+      let attempts = 0
+      const entityLayer = entity.toLayer({
+        Defect: () =>
+          Effect.suspend(() => {
+            attempts++
+            return attempts === 1 ?
+              Deferred.succeed(defected, void 0).pipe(Effect.andThen(Effect.die("boom"))) :
+              Effect.void
+          })
+      })
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitForTerminationOwnership(sharding, true)
+        yield* TestClock.adjust(1000)
+        yield* (yield* entity.client)("restarting").Defect().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* advanceUntil(Deferred.await(defected))
+
+        // Reassign the shard during the 500ms defect retry sleep.
+        storageState.assignSelf = false
+        yield* waitForTerminationOwnership(sharding, false)
+        yield* TestClock.adjust(1000)
+        const releases = storageState.releaseCalls.slice()
+        // Finish a broken implementation's termination timeout before asserting.
+        yield* TestClock.adjust(10_000)
+        assert.deepStrictEqual(releases, [ShardId.make("default", 1)])
+      }).pipe(
+        Effect.provide(TerminationSharding(entityLayer, storageState, { entityTerminationTimeout: 10_000 })),
+        Effect.scoped
+      )
+    }))
+
   it.effect("keeps the graceful timeout and records release duration across retries for shard reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState({ releaseFailures: 1 })
@@ -3702,7 +3741,11 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
 const terminationRpc = <Tag extends RpcGroup.Rpcs<typeof TestEntity.protocol>["_tag"]>(tag: Tag) =>
   TestEntity.protocol.requests.get(tag)! as Extract<RpcGroup.Rpcs<typeof TestEntity.protocol>, { readonly _tag: Tag }>
 
-const TerminationSharding = (entityLayer: Layer.Layer<never, never, Sharding.Sharding>, state: FailoverStorageState) =>
+const TerminationSharding = (
+  entityLayer: Layer.Layer<never, never, Sharding.Sharding>,
+  state: FailoverStorageState,
+  config?: Partial<ShardingConfig.ShardingConfig["Service"]>
+) =>
   entityLayer.pipe(
     Layer.provideMerge(Sharding.layer),
     Layer.provide(Layer.effect(
@@ -3721,7 +3764,8 @@ const TerminationSharding = (entityLayer: Layer.Layer<never, never, Sharding.Sha
       entityMessagePollInterval: 10,
       entityReplyPollInterval: 10,
       refreshAssignmentsInterval: 10,
-      sendRetryInterval: 10
+      sendRetryInterval: 10,
+      ...config
     }))
   )
 

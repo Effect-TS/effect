@@ -97,9 +97,13 @@ describe("cluster cron integration", () => {
         const previousTicks: Array<Tick> = []
         const currentTicks: Array<Tick> = []
         const gate = Latch.makeUnsafe()
+        // Hold an execution only once the assignments are stable, as a held
+        // execution on a moving shard would keep that shard from being released.
+        let armed = false
         let entered = 0
         const blockedExecution = Effect.fnUntraced(
           function*(ticks: Array<Tick>) {
+            if (!armed) return
             if (yield* recordTick(ticks)) {
               entered++
               yield* gate.await
@@ -125,6 +129,7 @@ describe("cluster cron integration", () => {
         })
         yield* cluster.start(3)
         yield* cluster.waitForStableAssignments()
+        armed = true
         yield* cluster.waitUntil(
           "Both cron executions did not enter their first run",
           Effect.sync(() => entered === 2)
