@@ -705,7 +705,10 @@ Missing key
       { name: "a five-minute Retry-After", header: "300", status: 429, delay: 300_000 },
       { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
       { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
-      { name: "no header", status: 503, delay: 0 }
+      { name: "no header", status: 503, delay: 0 },
+      // invalid values are ignored rather than parsed as dates or fractions
+      { name: "a negative Retry-After", header: "-5", status: 503, delay: 0 },
+      { name: "a fractional Retry-After", header: "1.5", status: 503, delay: 0 }
     ])(
       "honors the retry delay for $name",
       ({ delay, header, scheduled, status }) =>

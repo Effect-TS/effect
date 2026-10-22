@@ -11688,6 +11688,65 @@ export const DateTimeUtcFromString: DateTimeUtcFromString = String.annotate({
     dateTimeUtcFromString
   )
 )
+const dateTimeUtcFromHttpDate: SchemaTransformation.Transformation<DateTime.Utc, string> = SchemaTransformation
+  .transformEffect<DateTime.Utc, string>({
+    decode: (s, options) =>
+      Result_.match(Headers_.parseHttpDate(s), {
+        onFailure: () =>
+          Effect.fail(
+            new SchemaIssue.InvalidValue(
+              { expected: "an HTTP date (RFC 9110 §5.6.7)" },
+              s,
+              options
+            )
+          ),
+        onSuccess: Effect.succeed
+      }),
+    encode: (utc) => Effect.succeed(Headers_.formatHttpDate(utc))
+  })
+/**
+ * Type-level representation of {@link DateTimeUtcFromHttpDate}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface DateTimeUtcFromHttpDate extends decodeTo<DateTimeUtc, String> {
+  readonly "Rebuild": DateTimeUtcFromHttpDate
+}
+/**
+ * Schema for HTTP date header values, such as `Date`, `Last-Modified` and
+ * `Expires`, decoded as `DateTime.Utc`.
+ *
+ * **When to use**
+ *
+ * Use with HTTP API header schemas that carry dates. Decoding accepts the
+ * three formats of RFC 9110 §5.6.7 and reads them as UTC; encoding emits the
+ * preferred IMF-fixdate form (`Sun, 06 Nov 1994 08:49:37 GMT`).
+ *
+ * **Example** (Decoding an HTTP date)
+ *
+ * ```ts
+ * import { DateTime, Schema } from "effect"
+ *
+ * const date = Schema.decodeSync(Schema.DateTimeUtcFromHttpDate)("Sun, 06 Nov 1994 08:49:37 GMT")
+ * const millis = DateTime.toEpochMillis(date) // => 784111777000
+ * ```
+ *
+ * @see {@link DateTimeUtcFromString} for ISO 8601 strings
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DateTimeUtcFromHttpDate: DateTimeUtcFromHttpDate = String.annotate({
+  expected: "an HTTP date string"
+}).pipe(
+  decodeTo(
+    DateTimeUtc,
+    dateTimeUtcFromHttpDate
+  )
+)
 /**
  * Type-level representation of {@link DateTimeUtcFromMillis}.
  *
@@ -15196,6 +15255,110 @@ export const Headers: Headers = declare(
         })
       )
   }
+)
+
+/**
+ * Type-level representation of {@link RetryAfter}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface RetryAfter extends
+  Union<
+    readonly [
+      Struct<{ readonly _tag: tag<"Duration">; readonly duration: Duration }>,
+      Struct<{ readonly _tag: tag<"DateTime">; readonly dateTime: DateTimeUtc }>
+    ]
+  >
+{
+  readonly "Rebuild": RetryAfter
+}
+
+/**
+ * Schema for parsed `Retry-After` header values.
+ *
+ * **Details**
+ *
+ * Matches `Headers.RetryAfter`: either `{ _tag: "Duration", duration }` or
+ * `{ _tag: "DateTime", dateTime }`. The duration must be finite and
+ * non-negative. Use {@link RetryAfterFromString} for the header string form.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const RetryAfter: RetryAfter = Union([
+  Struct({
+    _tag: tag("Duration"),
+    duration: Duration.check(
+      makeFilter((d) => Duration_.isFinite(d) && !Duration_.isNegative(d), {
+        expected: "a finite, non-negative duration"
+      })
+    )
+  }),
+  Struct({ _tag: tag("DateTime"), dateTime: DateTimeUtc })
+])
+
+const retryAfterFromString: SchemaTransformation.Transformation<Headers_.RetryAfter, string> = SchemaTransformation
+  .transformEffect<Headers_.RetryAfter, string>({
+    decode: (s, options) =>
+      Result_.match(Headers_.parseRetryAfter(s), {
+        onFailure: () =>
+          Effect.fail(
+            new SchemaIssue.InvalidValue(
+              { expected: "whole non-negative seconds or an HTTP date (RFC 9110 §10.2.3)" },
+              s,
+              options
+            )
+          ),
+        onSuccess: Effect.succeed
+      }),
+    encode: (self) => Effect.succeed(Headers_.formatRetryAfter(self))
+  })
+
+/**
+ * Type-level representation of {@link RetryAfterFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface RetryAfterFromString extends decodeTo<RetryAfter, String> {
+  readonly "Rebuild": RetryAfterFromString
+}
+
+/**
+ * Schema for `Retry-After` header values, decoded with
+ * `Headers.parseRetryAfter`.
+ *
+ * **When to use**
+ *
+ * Use with HTTP API header schemas that carry `Retry-After`. Decoding accepts
+ * whole non-negative seconds or an HTTP date and rejects anything else;
+ * encoding emits the delay as whole seconds, rounding a fractional second up,
+ * or the date as an IMF-fixdate.
+ *
+ * **Example** (Decoding a Retry-After header)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const value = Schema.decodeSync(Schema.RetryAfterFromString)("120")
+ * // => { _tag: "Duration", duration: Duration.seconds(120) }
+ * ```
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const RetryAfterFromString: RetryAfterFromString = String.annotate({
+  expected: "a Retry-After header value"
+}).pipe(
+  decodeTo(
+    RetryAfter,
+    retryAfterFromString
+  )
 )
 
 /**

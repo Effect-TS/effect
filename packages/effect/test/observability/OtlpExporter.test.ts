@@ -332,6 +332,25 @@ describe("OtlpExporter", () => {
       assert.strictEqual(yield* Ref.get(attempts), 2)
     }))
 
+  it.effect("uses fallback retry-after delay when header is negative", () =>
+    Effect.gen(function*() {
+      const { attempts, httpClient } = yield* makeHttpClient("-5")
+      const exporter = yield* makeExporter(httpClient)
+
+      exporter.push({ value: 1 })
+      yield* yieldNowN(3)
+
+      assert.strictEqual(yield* Ref.get(attempts), 1)
+
+      yield* TestClock.adjust("4 seconds")
+      yield* yieldNowN(2)
+      assert.strictEqual(yield* Ref.get(attempts), 1)
+
+      yield* TestClock.adjust("1 second")
+      yield* yieldNowN(2)
+      assert.strictEqual(yield* Ref.get(attempts), 2)
+    }))
+
   it.effect("uses fallback retry-after delay when header is missing", () =>
     Effect.gen(function*() {
       const { attempts, httpClient } = yield* makeHttpClient(undefined)

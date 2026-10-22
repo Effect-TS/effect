@@ -6,7 +6,7 @@ import * as OpenAiClientGenerated from "@effect/ai-openai/OpenAiClientGenerated"
 import * as OpenAiConfig from "@effect/ai-openai/OpenAiConfig"
 import * as OpenAiLanguageModel from "@effect/ai-openai/OpenAiLanguageModel"
 import { assert, describe, it } from "@effect/vitest"
-import { Config, ConfigProvider, Context, Effect, Layer, Redacted, Schema, Stream } from "effect"
+import { Config, ConfigProvider, Context, Duration, Effect, Layer, Redacted, Schema, Stream } from "effect"
 import { Chat } from "effect/ai"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
@@ -309,6 +309,7 @@ describe("OpenAiClient", () => {
     it("preserves and truncates a fallback HTTP response", () => {
       const body = `${"a".repeat(200)}b`
       const reason = Errors.mapStatusCodeToReason({
+        now: 0,
         status: 400,
         headers: {},
         message: undefined,
@@ -355,6 +356,28 @@ describe("OpenAiClient", () => {
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
         status: 429,
+        body: { error: { message: "Rate limit exceeded", type: "rate_limit_error", code: null } }
+      }))))
+
+    it.effect.each([
+      { name: "ignores a negative Retry-After", header: "-5", expected: undefined },
+      { name: "ignores a non-finite Retry-After", header: "Infinity", expected: undefined },
+      { name: "honors an HTTP-date Retry-After", header: "Thu, 01 Jan 1970 00:00:30 GMT", expected: 30_000 }
+    ])("$name", ({ expected, header }) =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const result = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(Effect.flip)
+
+        assert.strictEqual(result.reason._tag, "RateLimitError")
+        if (result.reason._tag !== "RateLimitError") return
+        assert.strictEqual(
+          result.reason.retryAfter === undefined ? undefined : Duration.toMillis(result.reason.retryAfter),
+          expected
+        )
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Json",
+        status: 429,
+        headers: { "retry-after": header },
         body: { error: { message: "Rate limit exceeded", type: "rate_limit_error", code: null } }
       }))))
 
@@ -417,6 +440,7 @@ describe("OpenAiClient", () => {
         }
       }
       const reason = Errors.mapStatusCodeToReason({
+        now: 0,
         status: 429,
         headers: {},
         message: "You exceeded your current quota",

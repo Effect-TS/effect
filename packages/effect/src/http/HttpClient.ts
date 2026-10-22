@@ -1459,6 +1459,8 @@ const parseRateLimitWindow = (
   return parseResetHeader(clock, getHeader(headers, ...headerNames.reset))
 }
 
+// An invalid Retry-After is treated as absent (RFC 9110 §10.2.3); the
+// one millisecond floor keeps a past date or `0` from retrying immediately.
 const parseRetryAfter = (
   nowMillis: number,
   value: string | undefined
@@ -1466,22 +1468,10 @@ const parseRetryAfter = (
   if (value === undefined) {
     return undefined
   }
-  const trimmed = value.trim()
-  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
-    const numeric = Number(trimmed)
-    return Number.isFinite(numeric)
-      ? Duration.max(Duration.seconds(numeric), Duration.millis(1))
-      : undefined
-  }
-  const parsedDate = Date.parse(trimmed)
-  if (Number.isNaN(parsedDate)) {
-    return undefined
-  }
-  const millis = parsedDate - nowMillis
-  if (millis <= 0) {
-    return Duration.millis(1)
-  }
-  return Duration.millis(millis)
+  const retryAfter = Headers.parseRetryAfter(value)
+  return Result.isSuccess(retryAfter)
+    ? Duration.max(Headers.retryAfterDelay(retryAfter.success, nowMillis), Duration.millis(1))
+    : undefined
 }
 
 const parseResetAfter = (value: string | undefined): Duration.Duration | undefined => {
