@@ -447,6 +447,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
+  private peerAddressOverride?: Option.Option<string> | undefined
+  readonly protocol: "http" | "https" | undefined
 
   constructor(
     source: Http.IncomingMessage,
@@ -454,7 +456,9 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
     url?: string,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>
+    remoteAddressOverride?: Option.Option<string>,
+    peerAddressOverride?: Option.Option<string>,
+    protocol?: "http" | "https"
   ) {
     super(source, (cause) =>
       new HttpServerError({
@@ -480,6 +484,12 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     }
     this.url = url
     this.headersOverride = headersOverride
+    this.peerAddressOverride = peerAddressOverride
+    this.protocol = protocol
+  }
+
+  get peerAddress(): Option.Option<string> {
+    return this.peerAddressOverride ?? this.remoteAddress
   }
 
   private cachedCookies: Record.ReadonlyRecord<string, string> | undefined
@@ -525,6 +535,8 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       readonly url?: string | undefined
       readonly headers?: Headers.Headers | undefined
       readonly remoteAddress?: Option.Option<string> | undefined
+      readonly peerAddress?: Option.Option<string> | undefined
+      readonly protocol?: "http" | "https" | undefined
     }
   ) {
     return new ServerRequestImpl(
@@ -533,7 +545,9 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
       this.upgradeEffect,
       options.url ?? this.url,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
+      options.peerAddress ?? this.peerAddressOverride,
+      options.protocol ?? this.protocol
     )
   }
 

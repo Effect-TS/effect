@@ -7234,6 +7234,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpMiddleware.withTracerDisabledWhenEffect` -> `Effect.provideService(effect, HttpMiddleware.TracerDisabledWhen, predicate)`: Provide the TracerDisabledWhen reference locally to the effect.
 
+- `HttpMiddleware.xForwardedHeaders` -> `HttpMiddleware.xForwardedHeaders({ trustedProxies })`: Now requires a trusted proxy policy; headers from untrusted peers are ignored and X-Forwarded-For is read from the right. HttpServerRequest.toURL no longer reads x-forwarded-proto directly.
+
 ### `@effect/platform/HttpPlatform`
 
 - `HttpPlatform.HttpPlatform` -> `HttpPlatform.HttpPlatform`: The service is now a Context.Service class; use its Service member for the implementation type. Path-backed offset and bytesToRead accept ByteSize.Input, while chunkSize and all Web File range options use number.
