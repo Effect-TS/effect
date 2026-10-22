@@ -1,6 +1,19 @@
 import { describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, DateTime, Effect, Exit, Fiber, identity, Latch, Schema, SchemaGetter, Stream } from "effect"
+import {
+  Cause,
+  Context,
+  DateTime,
+  Effect,
+  Exit,
+  Fiber,
+  identity,
+  Latch,
+  References,
+  Schema,
+  SchemaGetter,
+  Stream
+} from "effect"
 import { AiError, LanguageModel, Response, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
 import * as TestUtils from "./utils.ts"
@@ -215,6 +228,33 @@ describe("Tool", () => {
         )
 
         deepStrictEqual(response, toolResult)
+      }))
+
+    it.effect("should preserve every reason and its annotations when failure mode is error", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("Lookup", { failure: Schema.String }))
+        const failAt = (error: string) =>
+          Effect.fail(error).pipe(
+            Effect.provideService(References.CurrentStackFrame, { name: error, stack: () => "", parent: undefined })
+          )
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          Lookup: () => Effect.race(failAt("first"), failAt("second"))
+        })))
+
+        const exit = yield* handlers.handle("Lookup", {}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+
+        assertTrue(Exit.isFailure(exit))
+        deepStrictEqual(
+          exit.cause.reasons.map((reason) => {
+            const annotations = Cause.reasonAnnotations(reason)
+            return [
+              Cause.isFailReason(reason) ? reason.error : reason._tag,
+              Context.getUnsafe(annotations, Cause.StackTrace).name,
+              Context.get(annotations, Toolkit.FailureOrigin)
+            ]
+          }),
+          [["first", "first", "handler"], ["second", "second", "handler"]]
+        )
       }))
 
     it.effect("should return a failed tool result when tool call parameters are invalid and failure mode is return", () =>

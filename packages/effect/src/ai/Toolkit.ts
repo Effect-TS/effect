@@ -349,6 +349,8 @@ export const PreliminaryBuffer = Context.Reference<number | "unbounded">("effect
 const failureCause = <E>(error: E, origin: Tool.FailureOrigin): Cause.Cause<E> =>
   Cause.annotate(Cause.fail(error), Context.make(FailureOrigin, origin))
 
+const failureOrigin = (error: unknown): Tool.FailureOrigin => Schema.isSchemaError(error) ? "result" : "handler"
+
 const Proto = {
   ...Effectable.Prototype({
     label: "Toolkit",
@@ -502,13 +504,25 @@ const Proto = {
         }
 
         return Stream.fromQueue(queue).pipe(
-          Stream.catch((error) => {
-            const normalizedError = normalizeError(error)
-            const failureOrigin: Tool.FailureOrigin = Schema.isSchemaError(error) ? "result" : "handler"
-            return tool.failureMode === "error"
-              ? Stream.failCause(failureCause(normalizedError, failureOrigin))
-              : Stream.succeed({ result: normalizedError, isFailure: true, failureOrigin, preliminary: false })
-          }),
+          tool.failureMode === "error"
+            ? Stream.catchCause((cause) =>
+              Stream.failCause(Cause.map(
+                Cause.fromReasons(cause.reasons.map((reason) =>
+                  Cause.isFailReason(reason)
+                    ? reason.annotate(Context.make(FailureOrigin, failureOrigin(reason.error)), { overwrite: true })
+                    : reason
+                )),
+                normalizeError
+              ))
+            )
+            : Stream.catch((error) =>
+              Stream.succeed({
+                result: normalizeError(error),
+                isFailure: true,
+                failureOrigin: failureOrigin(error),
+                preliminary: false
+              })
+            ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
             return { ...output, encodedResult }
