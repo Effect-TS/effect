@@ -13,6 +13,8 @@ import * as FileSystem from "effect/FileSystem"
 import { pipe } from "effect/Function"
 import * as Path from "effect/Path"
 import * as ChildProcess from "effect/process/ChildProcess"
+import * as CommandLine from "effect/process/CommandLine"
+import * as Result from "effect/Result"
 import * as Stream from "effect/Stream"
 import * as String from "effect/String"
 import * as Glob from "glob"
@@ -47,7 +49,12 @@ export const runCommand = Effect.fnUntraced(function*(
   args: ReadonlyArray<string>,
   shell: boolean
 ) {
-  const handle = yield* ChildProcess.make(executable, args, { shell })
+  // Windows runs `.cmd` shims only through a shell, which takes one script.
+  const handle = yield* (shell
+    ? ChildProcess.make(Result.getOrThrow(CommandLine.join([executable, ...args], { format: "windows" })), {
+      shell
+    })
+    : ChildProcess.make(executable, args))
   const [stdout, stderr, exitCode] = yield* Effect.all([
     Stream.mkString(Stream.decodeText(handle.stdout)),
     Stream.mkString(Stream.decodeText(handle.stderr)),

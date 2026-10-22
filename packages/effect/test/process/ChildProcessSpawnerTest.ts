@@ -6,11 +6,13 @@ import type * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
+import * as Redacted from "effect/Redacted"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
+import { inspect } from "node:util"
 
 export interface Options {
   readonly processGroups: boolean
@@ -147,6 +149,38 @@ export const suite = (
               assert.strictEqual(output, "one-two-three")
             }))
 
+          it.effect("should use only env by default", () =>
+            Effect.gen(function*() {
+              const handle = yield* ChildProcess.make("/bin/sh", ["-c", "echo $TEST_VAR-${HOME-unset}"], {
+                env: { TEST_VAR: "test_value" }
+              })
+              const output = yield* decodeByteStream(handle.stdout)
+
+              assert.strictEqual(output, "test_value-unset")
+            }))
+
+          it.effect("should remove variables set to undefined", () =>
+            Effect.gen(function*() {
+              const handle = yield* ChildProcess.make("sh", ["-c", "echo ${HOME-unset}"], {
+                env: { HOME: undefined },
+                extendEnv: true
+              })
+              const output = yield* decodeByteStream(handle.stdout)
+
+              assert.strictEqual(output, "unset")
+            }))
+
+          it.effect("should pass Redacted arguments and environment values", () =>
+            Effect.gen(function*() {
+              const handle = yield* ChildProcess.make("sh", ["-c", "echo $1-$SECRET", "sh", Redacted.make("arg")], {
+                env: { SECRET: Redacted.make("env") },
+                extendEnv: true
+              })
+              const output = yield* decodeByteStream(handle.stdout)
+
+              assert.strictEqual(output, "arg-env")
+            }))
+
           it.effect("should merge environment variables with setEnv", () =>
             Effect.gen(function*() {
               const command = ChildProcess.make("sh", ["-c", "echo $VAR1-$VAR2-$VAR3"], {
@@ -188,6 +222,21 @@ export const suite = (
               assert.strictEqual(output, "$HOME")
             }))
 
+          it.effect("should run the command as a shell script", () =>
+            Effect.gen(function*() {
+              const handle = yield* ChildProcess.make("echo hello | tr a-z A-Z", { shell: true })
+              const output = yield* decodeByteStream(handle.stdout)
+
+              assert.strictEqual(output, "HELLO")
+            }))
+
+          it.effect("should reject arguments together with shell", () =>
+            Effect.gen(function*() {
+              const error = yield* Effect.flip(ChildProcess.make("echo", ["a b"], { shell: true }))
+
+              assert.strictEqual(error.reason._tag, "BadArgument")
+            }))
+
           it.effect("should allow piping with shell", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("sh", ["-c", "echo hello | tr a-z A-Z"])
@@ -200,6 +249,14 @@ export const suite = (
         })
 
         describe("template literal forms", () => {
+          it.effect("should group quoted words", () =>
+            Effect.gen(function*() {
+              const handle = yield* ChildProcess.make`printf %s- "a  b" ${"c d"}`
+              const output = yield* decodeByteStream(handle.stdout)
+
+              assert.strictEqual(output, "a  b-c d-")
+            }))
+
           it.effect("should work with template literal form", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make`echo hello`
@@ -763,6 +820,26 @@ export const suite = (
             )
 
             assert.isTrue(exit._tag === "Failure")
+          }))
+
+        it.effect("should not expose Redacted values in errors", () =>
+          Effect.gen(function*() {
+            const secret = Redacted.make("hunter2\0")
+            const commands: Array<[() => ChildProcess.Command, string]> = [
+              [() => ChildProcess.make("nonexistent-command-12345", [Redacted.make("hunter2")]), "NotFound"],
+              [() => ChildProcess.make("echo", [secret]), "BadArgument"],
+              [() => ChildProcess.make`echo ${secret}`, "BadArgument"],
+              [() => ChildProcess.make("echo", [], { env: { SECRET: secret } }), "BadArgument"]
+            ]
+            for (const [command, reason] of commands) {
+              const error = yield* Effect.flip(Effect.scoped(Effect.gen(function*() {
+                return yield* command()
+              })))
+
+              assert.strictEqual(error.reason._tag, reason)
+              assert.notInclude(inspect(error, { depth: Infinity }), "hunter2")
+              assert.notInclude(JSON.stringify(error), "hunter2")
+            }
           }))
 
         it.effect("should handle spawn error with invalid cwd", () =>
