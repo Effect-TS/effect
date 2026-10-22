@@ -816,6 +816,7 @@ export class Complete extends Rpc.make("completion/complete", {
  * @internal
  */
 export const SubscriptionFilter = Schema.Struct({
+  taskIds: optional(Schema.Array(Schema.String)),
   toolsListChanged: optional(Schema.Boolean),
   promptsListChanged: optional(Schema.Boolean),
   resourcesListChanged: optional(Schema.Boolean),
