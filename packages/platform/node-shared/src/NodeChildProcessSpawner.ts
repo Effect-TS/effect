@@ -93,12 +93,28 @@ const handleInputErrors = (writable: Writable): void => {
   writable.once("close", () => writable.off("error", onError))
 }
 
+/** Node has recorded the leader's exit, after which its PID may be reused by an unrelated process. */
+const hasExited = (childProcess: NodeChildProcess.ChildProcess): boolean =>
+  childProcess.exitCode !== null || childProcess.signalCode !== null
+
+/**
+ * A non-detached leader shares its parent's process group, so once it has
+ * exited there is no group of its own left to signal or poll.
+ */
+const ownsProcessGroup = (
+  command: ChildProcess.StandardCommand,
+  childProcess: NodeChildProcess.ChildProcess
+): boolean => command.options.detached !== false || !hasExited(childProcess)
+
 /** The leader has not exited, or a member of its process group still exists. */
-const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean => {
-  if (!Deferred.isDoneUnsafe(exitSignal)) {
+const isProcessAlive = (
+  command: ChildProcess.StandardCommand,
+  childProcess: NodeChildProcess.ChildProcess
+): boolean => {
+  if (!hasExited(childProcess)) {
     return true
   }
-  if (globalThis.process.platform === "win32") {
+  if (globalThis.process.platform === "win32" || !ownsProcessGroup(command, childProcess)) {
     return false
   }
   try {
@@ -113,8 +129,7 @@ const taskkill = (
   childProcess: NodeChildProcess.ChildProcess,
   onExit: (error: NodeChildProcess.ExecException | null) => void = () => {}
 ) => {
-  // After the leader exits, its PID may be reused by an unrelated process.
-  if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
+  if (hasExited(childProcess)) {
     onExit(null)
     return
   }
@@ -466,8 +481,8 @@ const make = Effect.gen(function*() {
 
   /** Waits for the leader and its process group, bounded by native time. */
   const awaitProcessExit = (
+    command: ChildProcess.StandardCommand,
     childProcess: NodeChildProcess.ChildProcess,
-    exitSignal: ExitSignal,
     timeoutMillis: number
   ): Effect.Effect<void> =>
     Effect.callback<void>((resume) => {
@@ -479,14 +494,13 @@ const make = Effect.gen(function*() {
       }
       const poll = () => {
         clearTimeout(timer)
-        if (Date.now() >= deadline || !isProcessAlive(childProcess, exitSignal)) {
+        if (Date.now() >= deadline || !isProcessAlive(command, childProcess)) {
           stop()
           resume(Effect.void)
           return
         }
         timer = setTimeout(poll, processGroupPollIntervalMillis)
       }
-      // spawn's exit listener completes exitSignal before this listener runs
       childProcess.on("exit", poll)
       poll()
       return Effect.sync(stop)
@@ -499,18 +513,20 @@ const make = Effect.gen(function*() {
     options: ChildProcess.KillOptions | undefined
   ) {
     const signalGroup = (signal: NodeJS.Signals) =>
-      killProcessGroup(command, childProcess, signal).pipe(
-        Effect.catch(() => killProcess(command, childProcess, signal))
-      )
+      ownsProcessGroup(command, childProcess) ?
+        killProcessGroup(command, childProcess, signal).pipe(
+          Effect.catch(() => killProcess(command, childProcess, signal))
+        ) :
+        killProcess(command, childProcess, signal)
     yield* signalGroup(options?.killSignal ?? "SIGTERM")
     if (Predicate.isUndefined(options?.forceKillAfter)) {
       yield* Deferred.await(exitSignal)
-      yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
+      yield* awaitProcessExit(command, childProcess, processGroupGraceMillis)
     } else {
-      yield* awaitProcessExit(childProcess, exitSignal, Duration.toMillis(options.forceKillAfter))
-      if (isProcessAlive(childProcess, exitSignal)) {
+      yield* awaitProcessExit(command, childProcess, Duration.toMillis(options.forceKillAfter))
+      if (isProcessAlive(command, childProcess)) {
         yield* signalGroup("SIGKILL")
-        yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
+        yield* awaitProcessExit(command, childProcess, processGroupGraceMillis)
       }
     }
     yield* Deferred.await(exitSignal)
@@ -584,11 +600,14 @@ const make = Effect.gen(function*() {
         )
 
         const pid = ProcessId(childProcess.pid!)
-        childProcess.on("exit", (code) => {
-          if (code !== 0 && Predicate.isNotNull(code)) {
-            killProcessGroupOnExit(childProcess, cmd.options.killSignal ?? "SIGTERM")
-          }
-        })
+        // A non-detached child leaves no process group of its own to clean up.
+        if (cmd.options.detached !== false) {
+          childProcess.on("exit", (code) => {
+            if (code !== 0 && Predicate.isNotNull(code)) {
+              killProcessGroupOnExit(childProcess, cmd.options.killSignal ?? "SIGTERM")
+            }
+          })
+        }
         const reref = Effect.sync(() => {
           if (!isReferenced) {
             childProcess.ref()

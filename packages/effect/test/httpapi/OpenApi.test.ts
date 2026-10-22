@@ -157,7 +157,7 @@ describe("OpenApi", () => {
         name: "offset",
         in: "query",
         required: false,
-        schema: { anyOf: [{ type: "string" }, { type: "null" }] }
+        schema: { type: "string" }
       },
       {
         name: "search",
@@ -532,7 +532,7 @@ describe("OpenApi", () => {
         required: false
       },
       "x-offset": {
-        schema: { anyOf: [{ type: "string" }, { type: "null" }] },
+        schema: { type: "string" },
         required: false
       }
     })

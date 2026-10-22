@@ -445,10 +445,7 @@ describe("OpenAPI spec", () => {
               name: "optional",
               in: "query",
               schema: {
-                "anyOf": [
-                  { "type": "string" },
-                  { "type": "null" }
-                ]
+                "type": "string"
               },
               required: false
             }

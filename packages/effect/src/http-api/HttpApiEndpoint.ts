@@ -36,6 +36,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import { toCodecHttpProperties } from "./internal/toCodecHttpProperties.ts"
 
 const TypeId = "~effect/http-api/HttpApiEndpoint"
 
@@ -1217,14 +1218,14 @@ export const make = <Method extends HttpMethod>(method: Method): {
   Error extends ReadonlyArray<Schema.Constraint> ? Error[number] : Error
 > => {
   const disableCodecs = options?.disableCodecs ?? false
-  const transformStringTree = disableCodecs ? identity : Schema.toCodecStringTree
+  const transformProperties = disableCodecs ? identity : toCodecHttpProperties
   return makeProto({
     identifier,
     path,
     method,
-    params: ensureStruct(options?.params, transformStringTree),
-    query: ensureStruct(options?.query, transformStringTree),
-    headers: ensureStruct(options?.headers, transformStringTree),
+    params: ensureStruct(options?.params, transformProperties),
+    query: ensureStruct(options?.query, transformProperties),
+    headers: ensureStruct(options?.headers, transformProperties),
     payload: getPayload(options?.payload, method, disableCodecs),
     success: getSuccessResponse(options?.success, method, options?.payload !== undefined, disableCodecs),
     error: getErrorResponse(options?.error, disableCodecs),
@@ -1329,7 +1330,7 @@ const transformResponseSchema = memoize((schema: Schema.Top): Schema.Top => {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)
       ? schema.schema
       : applyResponseEncoding(schema.schema, HttpApiSchema.getResponseEncodingSchema(schema))
-    return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
+    return HttpApiSchema.rebuildWithHeaders(schema, inner, toCodecHttpProperties(schema.headers))
   }
   return transformResponse(schema)
 })
@@ -1535,7 +1536,7 @@ function transformResponse(schema: Schema.Top): Schema.Top {
     "~httpApiWithHeaders": {
       ...withHeaders,
       bodyCodec: applyResponseEncoding(withHeaders.body, encoding),
-      headersCodec: Schema.toCodecStringTree(withHeaders.headers)
+      headersCodec: toCodecHttpProperties(withHeaders.headers)
     }
   })
 }
@@ -1553,6 +1554,7 @@ function applyResponseEncoding(schema: Schema.Top, encoding: HttpApiSchema.Respo
 }
 
 function transformPayload(schema: Schema.Top, method: HttpMethod): Schema.Top {
+  if (!hasBody(method)) return toCodecHttpProperties(schema)
   const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
   switch (encoding._tag) {
     case "Json":

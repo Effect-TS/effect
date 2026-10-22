@@ -940,6 +940,25 @@ describe("PubSub", () => {
         assert.strictEqual(yield* PubSub.take(slow), 0)
       }))
 
+    it.effect("delivers a backpressured publish to a waiting subscriber when the resumed publisher ends the PubSub", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const fast = yield* PubSub.subscribe(pubsub)
+        const slow = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        yield* Effect.forkChild(
+          PubSub.publish(pubsub, 2).pipe(Effect.andThen(PubSub.end(pubsub, 0))),
+          { startImmediately: true }
+        )
+        assert.strictEqual(yield* PubSub.take(fast), 1)
+        const waiting = yield* Effect.forkChild(PubSub.take(fast), { startImmediately: true })
+
+        assert.strictEqual(yield* PubSub.take(slow), 1)
+
+        assert.strictEqual(yield* Fiber.join(waiting), 2)
+        assert.strictEqual(yield* PubSub.take(fast), 0)
+      }))
+
     it.effect("rejects a backpressured publish that yields before registering its surplus", () =>
       Effect.gen(function*() {
         const pubsub = yield* PubSub.bounded<number>(1)

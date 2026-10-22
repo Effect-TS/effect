@@ -79,6 +79,15 @@ describe("Queue", () => {
       assert.isTrue(Queue.isDequeue(dequeue))
     }))
 
+  it.effect("offerAll does not retain the input array", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const buffer = [1, 2, 3]
+      yield* Queue.offerAll(queue, buffer)
+      buffer[0] = 0
+      assert.deepStrictEqual(yield* Queue.takeAll(queue), [1, 2, 3])
+    }))
+
   it.effect("bounded offerAll waits until capacity is released", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(2)

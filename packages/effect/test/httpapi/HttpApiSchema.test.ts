@@ -307,22 +307,39 @@ describe("HttpApiSchema", () => {
       const created = Schema.String.pipe(HttpApiSchema.status(201))
       assert.strictEqual(HttpApiSchema.getStatusSuccess(created.annotate({ httpApiStatus: 202 }).ast), 202)
       assert.strictEqual(HttpApiSchema.getStatusSuccess(created.annotate({ httpApiStatus: undefined }).ast), 200)
-      const annotated = Schema.String.annotate({ httpApiStatus: 404 })
+      const annotated = Schema.String.annotate({ httpApiStatus: 404 }).check(Schema.isMinLength(1))
+      assert.strictEqual(HttpApiSchema.getStatusError(annotated.ast), 404)
       assert.strictEqual(HttpApiSchema.getStatusError(annotated.pipe(HttpApiSchema.status(409)).ast), 409)
     })
 
-    it("keeps the status only when set after the last check", () => {
+    it("preserves the status when adding checks", () => {
       const check = Schema.isMinLength(1)
-      const created = Schema.String.pipe(HttpApiSchema.status(201))
-      assert.strictEqual(
-        HttpApiSchema.getStatusSuccess(Schema.String.check(check).pipe(HttpApiSchema.status(201)).ast),
-        201
-      )
-      assert.strictEqual(HttpApiSchema.getStatusSuccess(created.check(check).ast), 200)
-      assert.strictEqual(
-        HttpApiSchema.getStatusSuccess(created.annotate({ httpApiStatus: undefined }).check(check).ast),
-        200
-      )
+      const created = Schema.String.check(check).pipe(HttpApiSchema.status(201)).check(check)
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(created.ast), 201)
+
+      const annotated = created.annotate({ httpApiStatus: 202 }).check(check)
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(annotated.ast), 202)
+
+      const updated = annotated.pipe(HttpApiSchema.status(203)).check(check)
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(updated.ast), 203)
+
+      const cleared = updated.annotate({ httpApiStatus: undefined }).check(check)
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(cleared.ast), 200)
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(cleared.pipe(HttpApiSchema.status(201)).ast), 201)
+    })
+
+    it("resolves status annotations inside check groups", () => {
+      const group = Schema.makeFilterGroup([
+        Schema.isMinLength(1, { httpApiStatus: 201 }),
+        Schema.makeFilterGroup([Schema.isMaxLength(100, { httpApiStatus: 202 })])
+      ])
+      const schema = Schema.String.check(group).check(Schema.isTrimmed())
+
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(schema.ast), 202)
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(schema.pipe(HttpApiSchema.status(203)).ast), 203)
+
+      const cleared = Schema.String.check(group.annotate({ httpApiStatus: undefined }))
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(cleared.ast), 200)
     })
   })
 })
