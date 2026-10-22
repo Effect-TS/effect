@@ -128,7 +128,7 @@ export class CommandLineError extends Data.TaggedError("CommandLineError")<{
 
 /**
  * Quotes one argument so that a program reading the given format sees it as
- * exactly one argument.
+ * exactly one argument, with one PowerShell exception listed under Gotchas.
  *
  * **When to use**
  *
@@ -153,6 +153,9 @@ export class CommandLineError extends Data.TaggedError("CommandLineError")<{
  *   {@link display} for logs.
  * - Control characters are kept as they are. That is safe for `sh -c` and SSH
  *   commands, but not for text typed into an interactive shell.
+ * - PowerShell never passes an argument equal to `--%` to a native program,
+ *   however it is quoted. Use {@link join} for a whole native call, which
+ *   fails with `InvalidArgument` instead.
  *
  * **Example** (Quoting arguments for different shells)
  *
@@ -349,8 +352,9 @@ export const display = (words: ReadonlyArray<Word>, options?: Options): string =
  * - An invalid JavaScript escape sequence in the text, such as `\u` without
  *   hex digits, fails with `InvalidEscape`. Use `String.raw` or a `${}` value
  *   for backslashes.
- * - Values are not checked for NUL characters. {@link join} and the child
- *   process spawners reject them where they would truncate an argument.
+ * - Neither the text nor the values are checked for NUL characters.
+ *   {@link join} and the child process spawners reject them where they would
+ *   truncate an argument.
  *
  * **Example** (Building arguments with interpolated values)
  *

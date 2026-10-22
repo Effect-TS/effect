@@ -443,8 +443,10 @@ export interface CommandOptions extends KillOptions {
    * `CommandLine.join` or `CommandLine.quote` when it contains values.
    *
    * This is also the way to run a command configured as shell text, such as
-   * the `EDITOR` environment variable: use the setting as the start of the
-   * script and quote the values that follow it.
+   * the `EDITOR` environment variable. The setting is trusted shell text and
+   * runs as written, so use it as the start of the script and quote the values
+   * that follow it. Name a POSIX shell, because `shell: true` runs `cmd.exe` on
+   * Windows, which POSIX quoting does not protect.
    *
    * **Gotchas**
    *
@@ -455,6 +457,21 @@ export interface CommandOptions extends KillOptions {
    *   quotes for. `CommandLine.join` with `format: "windows"` is only safe for
    *   arguments without `%`, `^`, `&`, `|`, `<` or `>`.
    * - It is generally disadvised to use this option.
+   *
+   * **Example** (Running a configured editor)
+   *
+   * ```ts import.meta.vitest
+   * import { Result } from "effect"
+   * import { ChildProcess, CommandLine } from "effect/process"
+   *
+   * const editor = "code --wait" // for example, process.env.EDITOR
+   * const file = "notes from today.txt"
+   *
+   * const command = ChildProcess.make(`${editor} ${Result.getOrThrow(CommandLine.quote(file))}`, {
+   *   shell: "/bin/sh"
+   * })
+   * command.command // => "code --wait 'notes from today.txt'"
+   * ```
    */
   readonly shell?: boolean | string | undefined
   /**
