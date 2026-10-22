@@ -747,7 +747,7 @@ const firstSleepingWaiter = <A, E>(self: Pool<A, E>) => {
   return undefined
 }
 
-// Wakes every waiter so it can retry, e.g. after an acquisition. A waiter that
+// Wakes every waiter so it can retry after a failed acquisition. A waiter that
 // could not start a resize while another was running depends on this.
 const wakeAll = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   core.withFiber((fiber) => {
@@ -963,7 +963,14 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
               })
               : allocate(self)
         ),
-      wakeAll(self)
+      (item) =>
+        core.withFiber((fiber) => {
+          // A failed acquisition wakes everyone so they can retry it. A new
+          // item can only serve as many waiters as it has slots.
+          if (item.exit._tag === "Failure") return wakeAll(self)
+          wakeWaiters(self, fiber, self.config.concurrency)
+          return internal.void
+        })
     )
     if (toAcquire === 1) {
       return self.config.isFixed
