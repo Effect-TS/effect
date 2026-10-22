@@ -931,7 +931,7 @@ const CompilerProto = {
         case "ArrayHelper": {
           if (segment.value.length === 0) {
             const inKeyword = emptyInKeyword.exec(sql)
-            if (inKeyword === null) {
+            if (inKeyword === null || isInLineComment(sql, inKeyword.index)) {
               sql += "()"
             } else if (this.dialect === "pg") {
               // an empty subquery is typed as text in postgres, so compare with an
@@ -1685,3 +1685,5 @@ function in_(): Fragment | ArrayHelper {
 const neverFragment = fragment([literal("1=0")])
 
 const emptyInKeyword = /\b(NOT\s+)?IN\s*$/i
+
+const isInLineComment = (sql: string, index: number) => sql.lastIndexOf("--", index) > sql.lastIndexOf("\n", index)
