@@ -65,30 +65,23 @@ describe("Statement", () => {
     assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
 
-  it("quotes an updateValues alias", () => {
-    const sql = Statement.make(
-      {} as any,
-      Statement.makeCompiler({
-        dialect: "pg",
-        placeholder: (index) => `$${index}`,
-        onIdentifier(value, withoutTransform) {
-          return Statement.defaultEscape("\"")(withoutTransform ? value : `t_${value}`)
-        },
-        onRecordUpdate(placeholders, alias, columns, values) {
-          return [`(values ${placeholders}) AS ${alias}${columns}`, values.flat()]
-        },
-        onCustom: () => ["", []]
-      }),
-      [],
-      undefined
-    )
-    const alias = "data(\"name\") WHERE TRUE --"
-    const [query, params] = sql`UPDATE people SET name = data.name FROM ${
-      sql.updateValues([{ name: "Ada" }], alias)
-    } WHERE id = 7`.compile()
+  it("escapes updateValues aliases without transforming them", () => {
+    const compiler = Statement.makeCompiler({
+      dialect: "pg",
+      placeholder: (index) => `$${index}`,
+      onIdentifier: (value, withoutTransform) => Statement.defaultEscape("\"")(withoutTransform ? value : `t_${value}`),
+      onRecordUpdate: (placeholders, alias, columns, values) => [
+        `(values ${placeholders}) AS ${alias}${columns}`,
+        values.flat()
+      ],
+      onCustom: () => ["", []]
+    })
+    const fragment = Statement.fragment([
+      Statement.recordUpdateHelper([{ name: "Ada" }], "My\"Data --")
+    ])
 
-    assert.deepStrictEqual([query, params], [
-      "UPDATE people SET name = data.name FROM (values ($1)) AS \"data(\"\"name\"\") WHERE TRUE --\"(\"t_name\") WHERE id = 7",
+    assert.deepStrictEqual(compiler.compile(fragment, false), [
+      "(values ($1)) AS \"My\"\"Data --\"(\"t_name\")",
       ["Ada"]
     ])
   })
