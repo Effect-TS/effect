@@ -69,12 +69,13 @@ describe("Arbitrary concurrency", () => {
           }),
           ({ number }) => number % 3 !== 0
         )
-        const property = ({ number, values }: { number: number; values: Array<boolean> }) =>
-          Effect.gen(function*() {
-            for (let index = 0; index < Math.abs(number % 4); index++) yield* Effect.yieldNow
-            if (mode === "pass" || mode === "exhaust" || number < 5 || values.length < 2) return true
-            return mode === "error" ? yield* Effect.fail(number) : false
-          })
+        const property = Effect.fnUntraced(function*(
+          { number, values }: { number: number; values: Array<boolean> }
+        ) {
+          for (let index = 0; index < Math.abs(number % 4); index++) yield* Effect.yieldNow
+          if (mode === "pass" || mode === "exhaust" || number < 5 || values.length < 2) return true
+          return mode === "error" ? yield* Effect.fail(number) : false
+        })
         for (let seed = 0; seed < 8; seed++) {
           const options = { seed, runs: 30, size: 8, maxDiscards: mode === "exhaust" ? 0 : 100 }
           const sequential = yield* Arbitrary.checkEffect(arbitrary, property, options)
