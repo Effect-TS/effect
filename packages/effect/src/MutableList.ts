@@ -258,7 +258,8 @@ export const prepend = <A>(self: MutableList<A>, message: A): void => {
 /**
  * Prepends all elements from an iterable to the beginning of the MutableList.
  * The elements are added in order, so the first element in the iterable becomes
- * the new head of the list.
+ * the new head of the list. The elements are copied, so the input can be reused
+ * afterward. Use `prependAllUnsafe` to transfer ownership of an array instead.
  *
  * **Example** (Prepending multiple elements)
  *
@@ -327,7 +328,9 @@ export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArra
 
 /**
  * Appends all elements from an iterable to the end of the MutableList.
- * Returns the number of elements added.
+ * Returns the number of elements added. The elements are copied, so the input
+ * can be reused afterward. Use `appendAllUnsafe` to transfer ownership of an
+ * array instead.
  *
  * **Example** (Appending multiple elements)
  *
