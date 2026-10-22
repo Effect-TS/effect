@@ -1780,11 +1780,11 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
         : loop
       return Effect.onError(
         withClose,
-        (cause_) => {
-          if (Pull.isDoneCause(cause_)) return Effect.void
-          const cause = unwrapUpstreamFailure(cause_)
-          options.onAbort?.(cause as Cause.Cause<IE | E>)
-          return Effect.promise(() => writer.abort(cause).catch(constVoid))
+        (cause) => {
+          if (Pull.isDoneCause(cause)) return Effect.void
+          const reason = unwrapUpstreamFailure(cause) as Cause.Cause<IE | E>
+          options.onAbort?.(reason)
+          return Effect.promise(() => writer.abort(reason).catch(constVoid))
         }
       )
     },
