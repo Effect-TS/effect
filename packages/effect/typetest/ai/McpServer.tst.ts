@@ -410,6 +410,41 @@ describe("McpServer", () => {
       expect(McpServer.middleware()).type.not.toBeCallableWith(() => Effect.fail("boom"))
     })
 
+    it("should pass middleware one target for list requests too", () => {
+      expect<"tools/list" | "resources/list" | "resources/templates/list" | "prompts/list">().type
+        .toBeAssignableTo<McpServer.MiddlewareOptions["method"]>()
+      expect<McpServer.MiddlewareOptions["target"]>().type.toBe<string>()
+    })
+
+    describe("visibility", () => {
+      const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => user.id === "admin"))
+
+      it("should require services read by the check to come from combine", () => {
+        const gated = UserTools.pipe(Layer.provide(AdminOnly.combine(Auth).layer))
+
+        expect(AdminOnly.layer).type.toBe<McpServer.MissingRequestDependencies<CurrentUser>>()
+        expect(AdminOnly.combine(Auth).layer).type.toBe<Layer.Layer<Requires<CurrentUser>>>()
+        expect<Layer.Services<typeof gated>>().type.toBe<McpServer.McpServer | UserHandlers>()
+      })
+
+      it("should accept per-target checks in function and Effect forms", () => {
+        expect(McpServer.visibility).type.toBeCallableWith(
+          (options: McpServer.MiddlewareOptions) => Effect.succeed(options.target !== "DeleteUser")
+        )
+        expect(McpServer.visibility).type.toBeCallableWith(
+          Effect.succeed(({ target }: { readonly target: string }) => Effect.succeed(target !== "DeleteUser"))
+        )
+        expect(McpServer.visibility(() => Effect.succeed(true), { global: true })).type.toBe<
+          Layer.Layer<never, never, McpServer.McpServer>
+        >()
+      })
+
+      it("should reject checks that do not return booleans or fail with non-MCP errors", () => {
+        expect(McpServer.visibility).type.not.toBeCallableWith(() => Effect.succeed("visible"))
+        expect(McpServer.visibility).type.not.toBeCallableWith(() => Effect.fail("boom"))
+      })
+    })
+
     it("should leave undischarged markers on stdio and convert them on HTTP", () => {
       const stdio = McpServer.layerStdio({ ...serverOptions, registrations: UserTools })
       const http = McpServer.layerHttp({ ...serverOptions, path: "/mcp", registrations: UserTools })
