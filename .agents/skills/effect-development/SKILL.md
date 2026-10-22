@@ -17,9 +17,8 @@ has matching local guidance, or the search has established that none exists.
 
 ## API conventions
 
-Write option types inline in the signature. Do not declare a separate
-`interface` or type alias for a function's options, even when the option list
-is long. Mark fields `readonly` and add `| undefined` to optional fields:
+Write option types inline in the signature by default. Mark fields `readonly`
+and add `| undefined` to optional fields:
 
 ```ts
 export const make = (options: {
@@ -27,3 +26,13 @@ export const make = (options: {
   readonly strategy?: "dropping" | "sliding" | undefined
 }): Effect.Effect<Queue> => ...
 ```
+
+Declare a named options type only in these cases:
+
+- A substantial set of options is shared across several APIs, so a named type
+  keeps them in sync.
+- The options type needs complex conditional logic, such as conditional or
+  mapped types driven by type parameters.
+
+A long option list for a single API is not on its own a reason to extract a
+named type.
