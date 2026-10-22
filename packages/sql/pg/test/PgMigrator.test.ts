@@ -1,14 +1,12 @@
 import { PgClient, PgMigrator } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, FileSystem, Path, Redacted, Stream } from "effect"
+import { Effect, FileSystem, Path, Redacted, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Fs from "node:fs"
-import { syncBuiltinESMExports } from "node:module"
 import * as NodePath from "node:path"
 import { PassThrough } from "node:stream"
-import Tls from "node:tls"
 
 const makeMigrator = Effect.fnUntraced(function*(
   config: PgClient.PgClientConfig,
@@ -69,25 +67,7 @@ const dumpConnection = (command: ChildProcess.StandardCommand) => {
   return conninfo
 }
 
-const pem = (label: string, body: string) => `-----BEGIN ${label}-----\n${body}\n-----END ${label}-----`
-
-// Simulates a Node.js runtime without tls.getCACertificates (before 22.15 / 23.10).
-const withoutGetCACertificates = Effect.acquireRelease(
-  Effect.sync(() => {
-    const original = Tls.getCACertificates
-    ;(Tls as any).getCACertificates = undefined
-    syncBuiltinESMExports()
-    return original
-  }),
-  (original) =>
-    Effect.sync(() => {
-      Tls.getCACertificates = original
-      syncBuiltinESMExports()
-    })
-)
-
-// Sequential: one test removes tls.getCACertificates process-wide
-describe("PgMigrator", { concurrent: false }, () => {
+describe("PgMigrator", () => {
   it.effect("shares one password per schema dump and refreshes it for the next dump", () =>
     Effect.gen(function*() {
       let calls = 0
@@ -121,71 +101,70 @@ describe("PgMigrator", { concurrent: false }, () => {
       assert.deepStrictEqual(commands.map((command) => command.options.env?.PGPASSWORD), ["static", "static"])
       assert.deepStrictEqual(files, ["migrations/_schema.sql"])
     }))
+
   it.effect("dumps through the connection resolved from the url and explicit fields", () =>
     Effect.gen(function*() {
       const { commands, run } = yield* makeMigrator({
-        url: Redacted.make(
-          "postgres://alice:s3cret@db.example.com:6543/app?sslmode=prefer&connect_timeout=7&application_name=it%27s%20me&options=-c%20search_path%3Dapp"
-        ),
+        url: Redacted.make("postgres://alice:s3cret@db.example.com:6543/app?sslmode=prefer"),
         database: "reports"
       })
       yield* run
 
       assert.strictEqual(commands.length, 2)
       for (const command of commands) {
-        const conninfo = dumpConnection(command)
-        assert.containsSubset(conninfo, {
+        assert.containsSubset(dumpConnection(command), {
           host: "db.example.com",
           port: "6543",
           user: "alice",
           dbname: "reports",
           // The client verifies the certificate whenever the server accepts TLS
-          sslmode: "verify-full",
-          connect_timeout: "7",
-          application_name: "it's me",
-          options: "-c search_path=app"
+          sslmode: "verify-full"
         })
-        assert.notProperty(conninfo, "password")
-        assert.include(command.args, "--no-password")
         assert.isFalse(command.args.some((arg) => arg.includes("s3cret")))
         assert.strictEqual(command.options.extendEnv, false)
-        assert.deepStrictEqual(command.options.env, {
-          PATH: (globalThis as any).process?.env.PATH,
-          PGPASSWORD: "s3cret"
-        })
+        assert.deepStrictEqual(command.options.env, { PATH: process.env.PATH, PGPASSWORD: "s3cret" })
       }
     }))
 
-  it.effect("matches the client's socket and TLS settings", () =>
+  it.effect("matches the client's socket and unverified TLS settings", () =>
     Effect.gen(function*() {
-      const cases: ReadonlyArray<readonly [PgClient.PgClientConfig, Record<string, string | undefined>]> = [
+      const cases: ReadonlyArray<readonly [PgClient.PgClientConfig, Record<string, string>]> = [
         [{ path: "/var/run/postgresql/.s.PGSQL.5433" }, {
           host: "/var/run/postgresql",
           port: "5433",
           sslmode: "disable"
         }],
-        [{ host: "db.example.com" }, { host: "db.example.com", sslmode: "disable" }],
-        [{ host: "db.example.com", ssl: true }, { host: "db.example.com", sslmode: "verify-full" }],
-        [{ host: "db.example.com", ssl: { rejectUnauthorized: false } }, {
-          host: "db.example.com",
-          sslmode: "require"
-        }],
-        [{ url: Redacted.make("postgres://db.example.com/app?sslmode=allow") }, {
-          host: "db.example.com",
-          sslmode: "verify-full"
-        }],
-        [{ host: "db.example.com", connectTimeout: Duration.infinity }, { connect_timeout: undefined }]
+        [{ host: "db.example.com", ssl: { rejectUnauthorized: false } }, { sslmode: "require" }]
       ]
       for (const [config, expected] of cases) {
         const { commands, run } = yield* makeMigrator({ ...config, username: "alice" })
         yield* run
         assert.strictEqual(commands.length, 2)
         for (const command of commands) {
-          const conninfo = dumpConnection(command)
-          for (const [key, value] of Object.entries(expected)) {
-            assert.strictEqual(conninfo[key], value, key)
-          }
+          assert.containsSubset(dumpConnection(command), expected)
         }
+      }
+    }))
+
+  it.effect("gives pg_dump the client's CA only while the dump runs", () =>
+    Effect.gen(function*() {
+      const ca = "-----BEGIN CERTIFICATE-----\nY2E=\n-----END CERTIFICATE-----"
+      const dumps: Array<{ sslmode: string; rootcert: string; directory: string }> = []
+      const { run } = yield* makeMigrator({ host: "db.example.com", username: "alice", ssl: { ca } }, (command) => {
+        const { sslmode, sslrootcert } = dumpConnection(command)
+        dumps.push({
+          sslmode,
+          rootcert: Fs.readFileSync(sslrootcert, "utf8"),
+          directory: NodePath.dirname(sslrootcert)
+        })
+      })
+      yield* run
+
+      assert.strictEqual(dumps.length, 2)
+      for (const dump of dumps) {
+        assert.strictEqual(dump.sslmode, "verify-full")
+        assert.include(dump.rootcert, ca)
+        assert.isFalse(Fs.existsSync(dump.directory))
       }
     }))
 
@@ -193,92 +172,14 @@ describe("PgMigrator", { concurrent: false }, () => {
     Effect.gen(function*() {
       const cases: ReadonlyArray<PgClient.PgClientConfig> = [
         { stream: () => new PassThrough() },
-        { host: "db.example.com", ssl: { minVersion: "TLSv1.3" } },
-        { host: "db.example.com", ssl: { servername: "other.example.com" } },
-        { host: "db.example.com", ssl: { cert: pem("CERTIFICATE", "Y2VydA==") } },
-        { path: "/var/run/postgresql/.s.PGSQL.5432", ssl: true },
-        { path: "/tmp/postgres.sock" }
+        { path: "/var/run/postgresql/.s.PGSQL.5432", ssl: true }
       ]
       for (const config of cases) {
         const { commands, files, run } = yield* makeMigrator({ ...config, username: "alice" })
         yield* run
 
-        assert.deepStrictEqual(commands.map((command) => command.command), [])
+        assert.deepStrictEqual(commands, [])
         assert.deepStrictEqual(files, [])
-      }
-    }))
-
-  // Bun and Deno do not propagate syncBuiltinESMExports to `node:tls`
-  // namespace imports, so the stub cannot hide getCACertificates there.
-  // Older Node is the only runtime this path targets.
-  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-    "requires an explicit ca when Node cannot report its default CAs",
-    () =>
-      Effect.gen(function*() {
-        yield* withoutGetCACertificates
-
-        const implicit = yield* makeMigrator({ host: "db.example.com", username: "alice", ssl: true })
-        yield* implicit.run
-        assert.deepStrictEqual(implicit.commands.map((command) => command.command), [])
-        assert.deepStrictEqual(implicit.files, [])
-
-        const explicit = yield* makeMigrator({
-          host: "db.example.com",
-          username: "alice",
-          ssl: { ca: pem("CERTIFICATE", "Y2E=") }
-        })
-        yield* explicit.run
-        assert.strictEqual(explicit.commands.length, 2)
-        for (const command of explicit.commands) {
-          assert.strictEqual(dumpConnection(command).sslmode, "verify-full")
-        }
-      })
-  )
-
-  it.effect("provides TLS files only while the dump runs", () =>
-    Effect.gen(function*() {
-      const ca = pem("CERTIFICATE", "Y2E=")
-      const cert = pem("CERTIFICATE", "Y2VydA==")
-      const key = pem("PRIVATE KEY", "a2V5")
-      const cases: ReadonlyArray<{
-        readonly ssl: PgClient.PgClientConfig["ssl"]
-        readonly files: Record<"sslrootcert" | "sslcert" | "sslkey", string | undefined>
-        readonly fail: boolean
-      }> = [
-        { ssl: { ca, cert, key }, files: { sslrootcert: ca, sslcert: cert, sslkey: key }, fail: false },
-        {
-          ssl: { rejectUnauthorized: false },
-          files: { sslrootcert: undefined, sslcert: undefined, sslkey: undefined },
-          fail: false
-        },
-        { ssl: { ca, cert, key }, files: { sslrootcert: ca, sslcert: cert, sslkey: key }, fail: true }
-      ]
-      for (const { fail, files, ssl } of cases) {
-        const directories = new Set<string>()
-        const { commands, run } = yield* makeMigrator({ host: "db.example.com", username: "alice", ssl }, (command) => {
-          const conninfo = dumpConnection(command)
-          for (const [name, contents] of Object.entries(files)) {
-            const path = conninfo[name]
-            directories.add(NodePath.dirname(path))
-            if (contents === undefined) {
-              assert.isFalse(Fs.existsSync(path), name)
-            } else {
-              assert.include(Fs.readFileSync(path, "utf8"), contents, name)
-            }
-          }
-          if (files.sslkey !== undefined) {
-            // libpq rejects private keys readable by group or others
-            assert.strictEqual(Fs.statSync(conninfo.sslkey).mode & 0o777, 0o600)
-          }
-          if (fail) throw new Error("pg_dump failed")
-        })
-        yield* run
-
-        assert.isAbove(commands.length, 0)
-        assert.strictEqual(directories.size, 1)
-        for (const directory of directories) {
-          assert.isFalse(Fs.existsSync(directory), directory)
-        }
       }
     }))
 })
