@@ -755,8 +755,8 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  *   `StreamSse` and `StreamUint8Array`; error responses remain non-streaming.
  *   Nesting `WithHeaders` is rejected at construction.
  * - `headers` is any schema; endpoint construction applies
- *   `Schema.toCodecStringTree` unless codecs are disabled, so leaves become
- *   `string | undefined` on the wire and `undefined` leaves are omitted from the response.
+ *   a StringTree codec unless codecs are disabled. Optional headers that encode
+ *   to `undefined` are omitted from the response.
  * - Status and response-encoding annotations are resolved from the wrapper
  *   first, falling through to the inner schema.
  * - A header-carrying response cannot share its status and content type with
