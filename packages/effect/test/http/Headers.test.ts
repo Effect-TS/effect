@@ -161,7 +161,7 @@ describe("HttpDate", () => {
     assertTrue(Headers.isHeaderParseError(result.failure))
   })
 
-  it("reads RFC 850 two-digit years with the RFC 6265 pivot: 70-99 as 19xx, 00-69 as 20xx", () => {
+  it("reads RFC 850 two-digit years with a fixed pivot: 70-99 as 19xx, 00-69 as 20xx", () => {
     const year = (input: string) => DateTime.toDateUtc(Result.getOrThrow(Headers.parseHttpDate(input))).getUTCFullYear()
     strictEqual(year("Thursday, 01-Jan-70 00:00:00 GMT"), 1970)
     strictEqual(year("Wednesday, 31-Dec-69 23:59:59 GMT"), 2069)
