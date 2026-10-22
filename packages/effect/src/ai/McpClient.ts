@@ -323,12 +323,18 @@ export const make: (options: {
     timeout
   )
 
-  const requireCapability = (kind: "tools" | "prompts" | "resources") =>
+  // Retrieval requires the capability; discovery treats a missing one as empty.
+  const call = <A>(
+    kind: Capability,
+    method: string,
+    params: Record<string, unknown>,
+    tool?: McpSchema.Tool
+  ): Effect.Effect<A, McpClientError> =>
     capabilities[kind] === undefined
       ? Effect.fail(fail(new UnsupportedError({ description: `Server does not advertise ${kind}` })))
-      : Effect.void
+      : request<A>(method, params, tool)
 
-  const list = <K extends "tools" | "prompts" | "resources", A>(kind: K) =>
+  const list = <K extends Capability, A>(kind: K) =>
     Effect.fnUntraced(
       function*(_options?: CallOptions) {
         if (capabilities[kind] === undefined) return []
@@ -363,8 +369,8 @@ export const make: (options: {
       },
       _options?: CallOptions
     ) {
-      yield* requireCapability("tools")
-      const result = yield* request<McpSchema.CallToolResult>(
+      const result = yield* call<McpSchema.CallToolResult>(
+        "tools",
         "tools/call",
         { name: params.tool.name, ...(params.arguments === undefined ? {} : { arguments: params.arguments }) },
         params.tool
@@ -393,18 +399,16 @@ export const make: (options: {
     listResources: list("resources"),
     getPrompt: (params, callOptions) =>
       withDeadline(
-        requireCapability("prompts").pipe(Effect.andThen(request<McpSchema.GetPromptResult>("prompts/get", {
+        call<McpSchema.GetPromptResult>("prompts", "prompts/get", {
           name: params.prompt.name,
           ...(params.arguments === undefined ? {} : { arguments: params.arguments })
-        }))),
+        }),
         "prompts/get",
         callOptions?.timeout
       ),
     readResource: (params, callOptions) =>
       withDeadline(
-        requireCapability("resources").pipe(
-          Effect.andThen(request<McpSchema.ReadResourceResult>("resources/read", { uri: params.uri }))
-        ),
+        call<McpSchema.ReadResourceResult>("resources", "resources/read", { uri: params.uri }),
         "resources/read",
         callOptions?.timeout
       ),
@@ -667,12 +671,8 @@ export const stdio: (options: {
  *
  * **Details**
  *
- * The layer scope owns the client and subprocess.
- * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
- * `icons` identify the client to the server. `timeout` defaults to 60 seconds
- * and bounds initialization and each complete `listTools`, `listPrompts` or
- * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
- * deadline unless their own `timeout` option is supplied.
+ * The layer scope owns the client and subprocess. The options are those of
+ * {@link make} and {@link stdio}.
  *
  * @see {@link layerHttp}
  * @stability experimental
@@ -890,12 +890,8 @@ export const http: (options: {
  *
  * **Details**
  *
- * The layer scope owns the client and connection.
- * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
- * `icons` identify the client to the server. `timeout` defaults to 60 seconds
- * and bounds initialization and each complete `listTools`, `listPrompts` or
- * `listResources` scan. `callTool`, `getPrompt` and `readResource` have no
- * deadline unless their own `timeout` option is supplied.
+ * The layer scope owns the client and connection. The options are those of
+ * {@link make} and {@link http}.
  *
  * **Example** (Providing an HTTP client connection)
  *
@@ -954,6 +950,8 @@ type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
 
 type Options = Parameters<typeof make>[0]
 
+type Capability = "tools" | "prompts" | "resources"
+
 interface CallOptions {
   readonly timeout?: Duration.Input | undefined
 }
@@ -1001,12 +999,10 @@ const publicRpcs: ReadonlyMap<string, { readonly successSchema: Schema.Constrain
 const requiresTasks = (tool: unknown) =>
   isRecord(tool) && isRecord(tool.execution) && tool.execution.taskSupport === "required"
 
-const messageLimit = (input: ByteSize.Input | undefined) => {
-  const size = input === undefined ? DEFAULT_MAX_MESSAGE_BYTES : Option.getOrUndefined(ByteSize.fromInput(input))
-  const bytes = size === undefined ? undefined : Option.getOrUndefined(ByteSize.toNumber(size))
-
-  return bytes !== undefined && Number.isSafeInteger(bytes) && bytes > 0
-    ? Effect.succeed(bytes)
+const messageLimit = (input: ByteSize.Input = DEFAULT_MAX_MESSAGE_BYTES) => {
+  const bytes = Option.flatMap(ByteSize.fromInput(input), ByteSize.toNumber)
+  return Option.isSome(bytes) && bytes.value > 0
+    ? Effect.succeed(bytes.value)
     : Effect.fail(fail(new ConfigurationError({ description: "maxMessageBytes must be a positive safe integer" })))
 }
 
@@ -1180,6 +1176,10 @@ const routingHeaders = Effect.fnUntraced(function*(message: McpSchema.JsonRpcMes
 // =============================================================================
 
 const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClientError> => {
+  const unsupported = (content: string) =>
+    Effect.fail(
+      fail(new UnsupportedError({ description: `MCP ${content} requires an application text converter`, result }))
+    )
   const parts: Array<string> = []
   for (const block of result.content) {
     switch (block.type) {
@@ -1194,28 +1194,12 @@ const toText = (result: McpSchema.CallToolResult): Effect.Effect<string, McpClie
         break
       }
       case "resource": {
-        if (!("text" in block.resource)) {
-          return Effect.fail(
-            fail(
-              new UnsupportedError({
-                description: "MCP binary resources require an application text converter",
-                result
-              })
-            )
-          )
-        }
+        if (!("text" in block.resource)) return unsupported("binary resources")
         parts.push(block.resource.text)
         break
       }
       default: {
-        return Effect.fail(
-          fail(
-            new UnsupportedError({
-              description: `MCP ${block.type} content requires an application text converter`,
-              result
-            })
-          )
-        )
+        return unsupported(`${block.type} content`)
       }
     }
   }
