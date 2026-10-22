@@ -144,6 +144,13 @@ export const make = Effect.fnUntraced(function*<
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never, never> | undefined
     readonly spanAttributes?: Record<string, string> | undefined
+    /**
+     * Called once a retiring entity stops accepting requests, so callers
+     * waiting on requests it has not started can be released.
+     */
+    readonly abandonUndelivered?:
+      | ((address: EntityAddress, isDelivered: (requestId: Snowflake.Snowflake) => boolean) => Effect.Effect<void>)
+      | undefined
   }
 ) {
   const config = yield* ShardingConfig
@@ -540,6 +547,14 @@ export const make = Effect.fnUntraced(function*<
               yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
             }
             yield* state.write(0, { _tag: "Eof" })
+            // A handler this drain waits for may be parked on a request the
+            // retired entity will never start, such as its own queued request.
+            if (options.abandonUndelivered) {
+              yield* options.abandonUndelivered(
+                address,
+                (requestId) => activeRequests.get(requestId)?.delivered === true
+              )
+            }
           }).pipe(
             Effect.andThen(endLatch.await),
             // A defect restart that finds the entity retired opens `endLatch`

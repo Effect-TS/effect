@@ -1541,6 +1541,29 @@ const make = Effect.gen(function*() {
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
+  // Once a retiring entity can no longer be served here, as for new sends in
+  // `sendOutgoing`, abandon local callers parked on its persisted requests that
+  // it never started. They are served by the next owner.
+  const abandonUndelivered = (
+    address: EntityAddress,
+    isDelivered: (requestId: Snowflake.Snowflake) => boolean
+  ): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      if (!MutableRef.get(isShutdown) && entityManagers.get(address.entityType)?.status === "alive") {
+        return Effect.void
+      }
+      const abandon: Array<Effect.Effect<void>> = []
+      for (const [requestId, entry] of clientRequests) {
+        if (
+          !Context.get(entry.message.annotations, Persisted) ||
+          !Equal.equals(entry.message.envelope.address, address) ||
+          isDelivered(requestId)
+        ) continue
+        abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
+      }
+      return Effect.all(abandon, { discard: true })
+    })
+
   const clients: ResourceMap<
     Entity<any, any>,
     (entityId: string) => RpcClient.RpcClient<
@@ -1895,7 +1918,8 @@ const make = Effect.gen(function*() {
         storage,
         runnerAddress,
         residency,
-        sharding
+        sharding,
+        abandonUndelivered
       }).pipe(
         Effect.provideContext(services.pipe(
           // Registration overrides construction fallbacks, except for runner-owned services.

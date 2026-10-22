@@ -133,8 +133,15 @@ export class MessageStorage extends Context.Service<MessageStorage, {
 
   /**
    * Unregister the reply handler for the specified message.
+   *
+   * By default the waiters are resumed with `EntityNotAssignedToRunner`. With
+   * `interrupt: true` they are interrupted with a cluster-abandon annotation
+   * instead, for when the request will not be served by this runner.
    */
-  readonly unregisterReplyHandler: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
+  readonly unregisterReplyHandler: (
+    requestId: Snowflake.Snowflake,
+    options?: { readonly interrupt?: boolean | undefined }
+  ) => Effect.Effect<void>
 
   /**
    * Unregister the reply handlers for the specified ShardId.
@@ -614,7 +621,7 @@ export const make = (
           })
         })
       },
-      unregisterReplyHandler: (requestId) =>
+      unregisterReplyHandler: (requestId, options) =>
         Effect.sync(() => {
           const handlers = replyHandlers.get(requestId)
           if (!handlers) return
@@ -622,11 +629,13 @@ export const make = (
           for (let i = 0; i < handlers.length; i++) {
             const handler = handlers[i]
             handler.shardSet.delete(handler)
-            handler.resume(Effect.fail(
-              new EntityNotAssignedToRunner({
-                address: handler.message.envelope.address
-              })
-            ))
+            handler.resume(
+              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
+                new EntityNotAssignedToRunner({
+                  address: handler.message.envelope.address
+                })
+              )
+            )
           }
         }),
       unregisterShardReplyHandlers: (shardId, options) =>
