@@ -161,33 +161,52 @@ describe("AgUiServer", () => {
 
     // Every array in the payload, including messages and nested content
     // parts, must describe its items, and no union may have a branch that
-    // accepts anything: generated clients would reduce the union to `unknown`
+    // accepts anything or be empty: generated clients would reduce the union
+    // to `unknown`, and an empty `anyOf`/`oneOf` is invalid JSON Schema
     const annotationKeys = new Set(["title", "description", "examples", "default", "$comment", "deprecated"])
     const isUnconstrained = (schema: unknown) =>
       typeof schema !== "object" || schema === null ||
       Object.keys(schema).every((key) => annotationKeys.has(key))
-    const arraysWithoutItems: Array<string> = []
-    const unconstrainedBranches: Array<string> = []
-    const visit = (schema: unknown, path: string): void => {
-      if (typeof schema !== "object" || schema === null) return
-      const node = schema as Record<string, unknown>
-      if (node.type === "array" && isUnconstrained(node.items)) {
-        arraysWithoutItems.push(path)
-      }
-      for (const key of ["anyOf", "oneOf"]) {
-        const branches = node[key]
-        if (Array.isArray(branches)) {
+    const findProblems = (root: unknown): Array<string> => {
+      const problems: Array<string> = []
+      const visit = (schema: unknown, path: string): void => {
+        if (typeof schema !== "object" || schema === null) return
+        const node = schema as Record<string, unknown>
+        if (node.type === "array" && isUnconstrained(node.items)) {
+          problems.push(`${path}/items is missing`)
+        }
+        for (const key of ["anyOf", "oneOf"]) {
+          const branches = node[key]
+          if (!Array.isArray(branches)) continue
+          if (branches.length === 0) problems.push(`${path}/${key} is empty`)
           branches.forEach((branch, index) => {
-            if (isUnconstrained(branch)) unconstrainedBranches.push(`${path}/${key}/${index}`)
+            if (isUnconstrained(branch)) problems.push(`${path}/${key}/${index} is unconstrained`)
           })
         }
+        for (const [key, child] of Object.entries(node)) visit(child, `${path}/${key}`)
       }
-      for (const [key, child] of Object.entries(node)) visit(child, `${path}/${key}`)
+      visit(root, "")
+      return problems
     }
-    visit(payload, "")
 
     assert.isDefined(payload.properties.messages.items)
-    assert.deepStrictEqual(arraysWithoutItems, [])
-    assert.deepStrictEqual(unconstrainedBranches, [])
+    assert.deepStrictEqual(findProblems(payload), [])
+
+    // The check must catch the fallback branch surviving union flattening,
+    // at the top of a union and nested inside one
+    const injected = (inject: (payload: any) => void) => {
+      const copy = structuredClone(payload)
+      inject(copy)
+      return findProblems(copy)
+    }
+    const userContentParts = (payload: any) =>
+      payload.properties.messages.items.anyOf
+        .find((message: any) => message.properties.role.enum?.includes("user"))
+        .properties.content.anyOf.find((content: any) => content.type === "array").items
+    assert.isNotEmpty(injected((payload) => payload.properties.messages.items.anyOf.push({ anyOf: [] })))
+    assert.isNotEmpty(injected((payload) => userContentParts(payload).anyOf.push({ oneOf: [] })))
+    assert.isNotEmpty(injected((payload) => {
+      payload.properties.resume.items = { anyOf: [] }
+    }))
   })
 })
