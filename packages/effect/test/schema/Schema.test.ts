@@ -364,6 +364,22 @@ Missing key
 
       deepStrictEqual(schema.literals, ["a", "b"])
     })
+
+    it("omit", async () => {
+      const literals = Schema.Literals(["a", "b", "c", "d"])
+
+      deepStrictEqual(literals.omit([]).literals, ["a", "b", "c", "d"])
+
+      const schema = literals.omit(["c", "a"])
+      deepStrictEqual(schema.literals, ["b", "d"])
+      const make = new TestSchema.Asserts(schema).make()
+      await make.succeed("b")
+      await make.fail("a", `Expected "b" | "d"`)
+
+      const empty = literals.omit(["a", "b", "c", "d"])
+      deepStrictEqual(empty.literals, [])
+      await new TestSchema.Asserts(empty).make().fail("a", `Expected never`)
+    })
   })
 
   it("Never", async () => {

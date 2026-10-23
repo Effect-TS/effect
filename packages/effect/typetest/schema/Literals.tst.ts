@@ -44,6 +44,21 @@ describe("Literals", () => {
     >()
   })
 
+  it("omit", () => {
+    const schema = Schema.Literals(["a", "b", "c", "d"])
+
+    expect(schema.omit(["c", "a"])).type.toBe<Schema.Literals<readonly ["b", "d"]>>()
+    expect(schema.omit(["c", "a"]).members).type.toBe<readonly [Schema.Literal<"b">, Schema.Literal<"d">]>()
+    expect(schema.omit).type.not.toBeCallableWith(["x"])
+
+    // a widened omission array may not contain every member of its union at runtime
+    const omitted: ReadonlyArray<"a" | "b"> = ["a"]
+    expect(schema.omit(omitted)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+
+    const widened = Schema.Literals(["a", "b", "c"] as ReadonlyArray<"a" | "b" | "c">)
+    expect(widened.omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
+  })
+
   it("transform", () => {
     const schema = Schema.Literals([0, 1]).transform(["a", "b"])
     expect(schema).type.toBe<
