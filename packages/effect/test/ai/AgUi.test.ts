@@ -204,5 +204,27 @@ describe("AgUi", () => {
         assert.strictEqual(events.length, 3)
         assert.strictEqual(events[2].type, "RUN_ERROR")
       }))
+
+    it.effect("tracks steps per subagent and closes subagents left running", () =>
+      Effect.gen(function*() {
+        const events = yield* Stream.fromIterable<AgUiSchema.Event>([
+          { type: "STEP_STARTED", stepName: "work" },
+          { type: "SUBAGENT_STARTED", subagentRunId: "sub-1", name: "Researcher" },
+          { type: "STEP_STARTED", stepName: "work", subagentRunId: "sub-1" },
+          { type: "STEP_FINISHED", stepName: "work", subagentRunId: "sub-1" },
+          { type: "SUBAGENT_FINISHED", subagentRunId: "sub-1" },
+          { type: "SUBAGENT_STARTED", subagentRunId: "sub-2", name: "Writer" },
+          { type: "STEP_STARTED", stepName: "work", subagentRunId: "sub-2" }
+        ]).pipe(AgUi.withRunLifecycle(run), Stream.runCollect)
+
+        const closing = events.slice(8)
+        assert.deepStrictEqual(closing[0], { type: "STEP_FINISHED", stepName: "work", subagentRunId: "sub-2" })
+        assert.strictEqual(closing[1].type, "SUBAGENT_ERROR")
+        assert.strictEqual((closing[1] as AgUiSchema.SubagentErrorEvent).subagentRunId, "sub-2")
+        assert.deepStrictEqual(closing.slice(2), [
+          { type: "STEP_FINISHED", stepName: "work" },
+          { type: "RUN_FINISHED", threadId: "thread-1", runId: "run-1" }
+        ])
+      }))
   })
 })

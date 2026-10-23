@@ -112,4 +112,17 @@ describe("AgUiServer", () => {
           assert.strictEqual(events[1].type, "RUN_ERROR")
         })
     ))
+
+  it.effect("reports an event that cannot be encoded as RUN_ERROR", () =>
+    withHandler(
+      () => Stream.fromIterable<AgUiSchema.Event>([{ type: "CUSTOM", name: "progress", value: 1n }]),
+      (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+
+          assert.strictEqual(events.length, 2)
+          assert.strictEqual(events[0].type, "RUN_STARTED")
+          assert.strictEqual(events[1].type, "RUN_ERROR")
+        })
+    ))
 })
