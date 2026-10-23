@@ -62,8 +62,14 @@ import * as Wkt from "./internal/wkt.ts"
 // annotations
 // -----------------------------------------------------------------------------
 
-// The options of `field` and `extension`.
-interface FieldOptions {
+/**
+ * The options of {@link field}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.7
+ */
+export interface FieldOptions {
   /**
    * Writes a repeated numeric or enum field packed (`true`) or as one record
    * per element (`false`, the proto2 default). Other fields reject it.
@@ -204,8 +210,15 @@ export type UnknownFields = {
   readonly [unknown]: Schema.optionalKey<Schema.Uint8Array>
 }
 
-// The schema of a message: a struct of its fields and of the unknown fields.
-type Message<Fields extends Schema.Struct.Fields> = Schema.Struct<Fields & UnknownFields>
+/**
+ * The schema of a {@link Message}: a struct of its fields and of the
+ * {@link UnknownFields}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.7
+ */
+export type Message<Fields extends Schema.Struct.Fields> = Schema.Struct<Fields & UnknownFields>
 
 /**
  * Creates the schema of the protobuf message `name`, such as
@@ -283,9 +296,15 @@ export const MessageSet = (name: string): Message<{}> => {
   })
 }
 
-// The schema of a oneof: an optional property of a tagged union of a
-// `{ _tag, value }` struct per case.
-type Oneof<Cases extends Readonly<Record<string, Schema.Constraint>>> = Schema.optionalKey<
+/**
+ * The schema of a {@link Oneof}: an optional property of a tagged union of a
+ * `{ _tag, value }` struct per case.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.7
+ */
+export type Oneof<Cases extends Readonly<Record<string, Schema.Constraint>>> = Schema.optionalKey<
   Schema.TaggedUnion<
     { readonly [K in keyof Cases & string]: Schema.TaggedStruct<K, { readonly value: Cases[K] }> }
   >
@@ -1118,8 +1137,15 @@ export interface Extension<in out E extends Schema.Top, S extends Schema.Codec<a
   readonly annotation: ProtobufSchema.FieldAnnotation
 }
 
-// The options of `extension`.
-interface ExtensionOptions extends Omit<FieldOptions, "name" | "jsonName"> {
+/**
+ * The options of {@link extension}: those of {@link field}, except that
+ * `name` is the full name of the extension, and there is no `jsonName`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.7
+ */
+export interface ExtensionOptions extends Omit<FieldOptions, "name" | "jsonName"> {
   /**
    * The full name of the extension, such as `acme.v1.priority`. The JSON
    * mapping writes the extension under it, as `"[acme.v1.priority]"`, and
@@ -1488,8 +1514,14 @@ export interface toCodec<S extends Schema.Constraint> extends
   >
 {}
 
-// The options of `toCodec`.
-interface ToCodecOptions {
+/**
+ * The options of {@link toCodec}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.7
+ */
+export interface Options {
   /**
    * Extensions that decoding checks like declared fields, such as that their
    * strings are valid UTF-8. They are kept in the unknown fields all the same.
@@ -1549,7 +1581,7 @@ const registryCodecCache = new WeakMap<Registry, WeakMap<Schema.Constraint, toCo
  * @category constructors
  * @since 4.0.7
  */
-export const toCodec = <S extends Schema.Constraint>(schema: S, options?: ToCodecOptions): toCodec<S> => {
+export const toCodec = <S extends Schema.Constraint>(schema: S, options?: Options): toCodec<S> => {
   const registry = options?.registry
   let cache = codecCache
   if (registry !== undefined) {
