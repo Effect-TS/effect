@@ -48,6 +48,16 @@ export interface FlagDescriptor {
   readonly aliases: ReadonlyArray<string>
   readonly description: string | undefined
   readonly type: FlagType
+  /**
+   * Whether the flag's value is optional. Its value can only be attached with
+   * `=` (`--name=value`), never given as the next word.
+   */
+  readonly optionalValue?: boolean | undefined
+  /**
+   * Long name that sets a boolean flag to `false`. Defaults to `no-<name>`;
+   * `false` means the flag has no negated form.
+   */
+  readonly negation?: string | false | undefined
 }
 
 /**

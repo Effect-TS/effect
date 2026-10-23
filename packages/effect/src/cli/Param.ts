@@ -213,6 +213,15 @@ export interface Single<Kind extends ParamKind, out A> extends Param<Kind, A> {
   readonly primitiveType: Primitive.Primitive<A>
   readonly typeName?: string | undefined
   readonly hidden: boolean
+  /**
+   * Raw value used for a bare flag. See `withOptionalValue`.
+   */
+  readonly optionalValue?: string | undefined
+  /**
+   * Long name that sets a boolean flag to `false`. `undefined` means the
+   * default `no-<name>`, `false` means no negated form. See `withNegation`.
+   */
+  readonly negation?: string | false | undefined
 }
 
 /**
@@ -362,6 +371,8 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
   readonly description?: Option.Option<string> | undefined
   readonly aliases?: ReadonlyArray<string> | undefined
   readonly hidden?: boolean | undefined
+  readonly optionalValue?: string | undefined
+  readonly negation?: string | false | undefined
 }): Single<Kind, A> => {
   const parse: Parse<A> = (args) =>
     params.kind === argumentKind
@@ -1822,6 +1833,113 @@ export const withMetavar: {
       ...single,
       typeName: metavar
     })))
+
+/**
+ * Lets a flag be given without a value, in which case `value` is used.
+ *
+ * **Details**
+ *
+ * Follows GNU-style optional values. An explicit value must be attached with
+ * `=` (`--watch=until-done`), and a bare `--watch` is parsed as
+ * `--watch=<value>`. The flag never consumes the next token. It is still
+ * required unless it is made optional or given a default.
+ *
+ * **Example** (Flag with an optional value)
+ *
+ * ```ts import.meta.vitest
+ * import { Param } from "effect/cli"
+ *
+ * const watch = Param.String(Param.flagKind, "watch").pipe(
+ *   Param.withOptionalValue("first-failure"),
+ *   Param.optional
+ * )
+ * watch.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withOptionalValue: {
+  (value: string): <A>(self: Param<typeof flagKind, A>) => Param<typeof flagKind, A>
+  <A>(self: Param<typeof flagKind, A>, value: string): Param<typeof flagKind, A>
+} = dual(2, <A>(
+  self: Param<typeof flagKind, A>,
+  value: string
+) =>
+  transformSingle(self, (single) =>
+    makeSingle({
+      ...single,
+      optionalValue: value
+    })))
+
+/**
+ * Renames the negated form of a boolean flag, which defaults to `--no-<name>`.
+ *
+ * **Details**
+ *
+ * The new name replaces the default, so `--no-<name>` is no longer accepted.
+ * Has no effect on non-boolean flags.
+ *
+ * **Example** (Renaming a boolean flag's negation)
+ *
+ * ```ts import.meta.vitest
+ * import { Param } from "effect/cli"
+ *
+ * // --validate sets true, --skip-validate sets false
+ * const validate = Param.Boolean(Param.flagKind, "validate").pipe(
+ *   Param.withNegation("skip-validate")
+ * )
+ * validate.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withNegation: {
+  (name: string): <A>(self: Param<typeof flagKind, A>) => Param<typeof flagKind, A>
+  <A>(self: Param<typeof flagKind, A>, name: string): Param<typeof flagKind, A>
+} = dual(2, <A>(
+  self: Param<typeof flagKind, A>,
+  name: string
+) =>
+  transformSingle(self, (single) =>
+    makeSingle({
+      ...single,
+      negation: name
+    })))
+
+/**
+ * Removes the negated `--no-<name>` form of a boolean flag.
+ *
+ * **Details**
+ *
+ * The negated form is then rejected as an unrecognized flag and left out of
+ * shell completions. Has no effect on non-boolean flags.
+ *
+ * **Example** (Disabling a boolean flag's negation)
+ *
+ * ```ts import.meta.vitest
+ * import { Param } from "effect/cli"
+ *
+ * // --unsafe sets true, --no-unsafe is rejected
+ * const unsafe = Param.Boolean(Param.flagKind, "unsafe").pipe(
+ *   Param.withoutNegation
+ * )
+ * unsafe.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withoutNegation = <A>(self: Param<typeof flagKind, A>): Param<typeof flagKind, A> =>
+  transformSingle(self, (single) =>
+    makeSingle({
+      ...single,
+      negation: false
+    }))
 
 /**
  * Validates parsed values against a Schema, providing detailed error messages.

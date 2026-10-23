@@ -11,7 +11,7 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"
-import { byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
+import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
 import { addBackEdge, backEdges } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
@@ -144,6 +144,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
             h = (self as Hash)[symbol]()
           } else if (typeof self === "function") {
             h = random(self)
+          } else if (isArrayBufferLike(self)) {
+            const bytes = bufferBytes(self)
+            h = bytes === undefined ? random(self) : array(bytes)
           } else if (self instanceof DataView) {
             h = array(viewBytes(self))
           } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {

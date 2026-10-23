@@ -1,4 +1,4 @@
-import { afterAll, assert, describe, describeWrapped, expect, it, layer } from "@effect/vitest"
+import { afterAll, assert, beforeAll, beforeEach, describe, describeWrapped, expect, it, layer } from "@effect/vitest"
 import * as testAssert from "@effect/vitest/utils"
 import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import * as Arbitrary from "effect/Arbitrary"
@@ -251,6 +251,83 @@ describeWrapped("describeWrapped", (it) => {
   })
 })
 
+describe("Effect hooks", () => {
+  let beforeAllRan = false
+  let beforeEachRan = false
+
+  beforeAll(() => Effect.sync(() => (beforeAllRan = true)))
+  beforeEach(() => Effect.sync(() => (beforeEachRan = true)))
+
+  it("runs Effects returned by beforeAll and beforeEach", () => {
+    assert.isTrue(beforeAllRan)
+    assert.isTrue(beforeEachRan)
+  })
+})
+
+describe("scoped Effect hooks", { concurrent: false }, () => {
+  const events: Array<string> = []
+  const resource = (name: string) =>
+    Effect.acquireRelease(
+      Effect.sync(() => events.push(`${name}:acquired`)),
+      () => Effect.sleep(10).pipe(Effect.andThen(Effect.sync(() => events.push(`${name}:released`))))
+    )
+
+  describe("suite", () => {
+    beforeAll(() => resource("all"))
+    beforeEach(() => resource("each"))
+
+    it("keeps hook resources alive during the test", () => {
+      assert.deepStrictEqual(events, ["all:acquired", "each:acquired"])
+    })
+
+    it("releases the beforeEach resource before the next test", () => {
+      assert.deepStrictEqual(events, ["all:acquired", "each:acquired", "each:released", "each:acquired"])
+    })
+  })
+
+  it("releases the beforeAll resource when the suite ends", () => {
+    assert.deepStrictEqual(events, [
+      "all:acquired",
+      "each:acquired",
+      "each:released",
+      "each:acquired",
+      "each:released",
+      "all:released"
+    ])
+  })
+
+  describe("failing hook", () => {
+    beforeEach(() => resource("failed").pipe(Effect.andThen(Effect.fail("boom"))))
+    it.fails("fails the test", () => {})
+  })
+
+  describe("hook returning a cleanup function", () => {
+    beforeEach(() => resource("cleanup").pipe(Effect.as(() => events.push("cleanup:ran"))))
+    it("runs the test", () => {})
+  })
+
+  describe("hook returning a throwing cleanup function", () => {
+    beforeEach(() =>
+      resource("throwing").pipe(Effect.as(() => {
+        throw new Error("cleanup failed")
+      }))
+    )
+    it.fails("reports the cleanup error", () => {})
+  })
+
+  it("closes the scope after a failure and after a returned cleanup function", () => {
+    assert.deepStrictEqual(events.slice(6), [
+      "failed:acquired",
+      "failed:released",
+      "cleanup:acquired",
+      "cleanup:ran",
+      "cleanup:released",
+      "throwing:acquired",
+      "throwing:released"
+    ])
+  })
+})
+
 // property testing
 
 const realNumber = Schema.Finite
@@ -350,6 +427,13 @@ it.effect.prop(
 )
 
 describe("property failures", () => {
+  it.prop(
+    "rejects Effect returns from synchronous properties",
+    [Schema.Int],
+    () => Effect.fail("must not silently pass") as unknown as void,
+    { fails: true }
+  )
+
   const Input = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 1_000 }))
   const pureDefectValues: Array<number> = []
   const effectDefectValues: Array<number> = []

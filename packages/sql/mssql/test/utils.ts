@@ -29,8 +29,11 @@ export class MssqlContainer extends Context.Service<MssqlContainer>()("test/Mssq
         database: container.getDatabase(),
         username: container.getUsername(),
         password: Redacted.make(container.getPassword()),
+        // Deno does not enforce TLS fragment limits required by Tedious for large TDS writes.
+        // Disable transport encryption only for the local Deno fixture; keep Node TLS coverage.
+        encrypt: !("Deno" in globalThis),
         trustServer: true
       })
     })
-  ).pipe(Layer.provide(this.layer))
+  ).pipe(Layer.provideMerge(this.layer))
 }

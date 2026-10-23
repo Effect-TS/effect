@@ -184,7 +184,7 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
-    it.effect("drops invalid JSON and continues streaming", () =>
+    it.effect("drops invalid JSON and streams valid events until [DONE]", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
 
@@ -215,7 +215,8 @@ describe("OpenAiClient", () => {
               }]
             })
           }\n\n`,
-          "data: [DONE]\n\n"
+          "data: [DONE]\n\n",
+          "data: {\"ignored\":\"after completion\"}\n\n"
         ].join("")
       }))))
 
@@ -406,6 +407,7 @@ describe("OpenAiClient", () => {
     it("preserves and truncates a fallback HTTP response", () => {
       const body = `${"a".repeat(200)}b`
       const reason = Errors.mapStatusCodeToReason({
+        now: 0,
         status: 400,
         headers: {},
         message: undefined,
@@ -595,15 +597,14 @@ const makeResponse = (
   )
 }
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag === "Uint8Array") {
-      const text = new TextDecoder().decode(body.body)
-      return JSON.parse(text)
-    }
-    return yield* Effect.die(new Error("Expected Uint8Array body"))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag === "Uint8Array") {
+    const text = new TextDecoder().decode(body.body)
+    return JSON.parse(text)
+  }
+  return yield* Effect.die(new Error("Expected Uint8Array body"))
+})
 
 const toSseBody = (events: ReadonlyArray<Schema.Json>): string =>
   events.map((event) => {

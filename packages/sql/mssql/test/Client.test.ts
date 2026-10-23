@@ -173,7 +173,7 @@ describe("mssql", () => {
       )
     }`.compile()
     expect(query).toEqual(
-      `UPDATE people SET name = data.name FROM (values (@1),(@2)) AS data([name])`
+      `UPDATE people SET name = data.name FROM (values (@1),(@2)) AS [data]([name])`
     )
     expect(params).toEqual(["Tim", "John"])
   })
@@ -186,7 +186,7 @@ describe("mssql", () => {
       ).returning("*")
     }`.compile()
     expect(query).toEqual(
-      `UPDATE people SET name = data.name OUTPUT INSERTED.* FROM (values (@1),(@2)) AS data([name])`
+      `UPDATE people SET name = data.name OUTPUT INSERTED.* FROM (values (@1),(@2)) AS [data]([name])`
     )
     expect(params).toEqual(["Tim", "John"])
   })
@@ -231,7 +231,7 @@ describe("mssql", () => {
       }`.compile()
 
       assert.deepStrictEqual(result, [
-        `UPDATE people SET name = data.name OUTPUT [INSERTED].[name] FROM (values (@1),(@2)) AS data([name])`,
+        `UPDATE people SET name = data.name OUTPUT [INSERTED].[name] FROM (values (@1),(@2)) AS [data]([name])`,
         ["Rowan", "Mira"]
       ])
     })
@@ -317,6 +317,28 @@ const makeClient = MssqlClient.make({
 const bounded = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.timeout("2 seconds"))
 
 describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
+  for (const operation of ["withoutTransforms", "call"] as const) {
+    it.live(`${operation} reuses the transaction connection with a single-connection pool`, () =>
+      Effect.gen(function*() {
+        reset()
+        const client = yield* bounded(MssqlClient.make({
+          server: "localhost",
+          minConnections: 0,
+          maxConnections: 1,
+          transformResultNames: (name) => name.toUpperCase()
+        }))
+        const definition = Procedure.outputParam<number>()("answer", state.type as any)(Procedure.make("get_answer"))
+        yield* bounded(client.withTransaction(Effect.gen(function*() {
+          if (operation === "withoutTransforms") {
+            const rows = yield* client.withoutTransforms()`SELECT value`
+            assert.deepStrictEqual(rows, [{ value: 42 }])
+          } else {
+            const result = yield* client.call(Procedure.compile(definition)({}))
+            assert.deepStrictEqual(result, { output: { answer: 42 }, rows: [] })
+          }
+        })))
+      }).pipe(Effect.provide(Reactivity.layer)))
+  }
   it.live("handles a late error after an ended connection is discarded and recovers", () =>
     Effect.gen(function*() {
       reset()

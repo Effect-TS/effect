@@ -139,6 +139,14 @@ export const make = <RD = never>({
   name VARCHAR(255) NOT NULL,
   PRIMARY KEY (migration_id)
 )`,
+      clickhouse: () =>
+        // sqlite's `PRIMARY KEY NOT NULL` is a syntax error here
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id Int32,
+  created_at DateTime DEFAULT now(),
+  name String
+) ENGINE = MergeTree
+ORDER BY migration_id`,
       pg: () =>
         Effect.flatMap(
           migrationsTableExists(sql, table),
@@ -223,14 +231,12 @@ export const make = <RD = never>({
       name: string,
       effect: Effect.Effect<unknown, unknown, Client.SqlClient>
     ) =>
-      Effect.catch(effect, (error: unknown) =>
-        Effect.die(
-          new MigrationError({
-            cause: error,
-            kind: "Failed",
-            message: `Migration "${id}_${name}" failed`
-          })
-        ))
+      Effect.mapError(effect, (error) =>
+        new MigrationError({
+          cause: error,
+          kind: "Failed",
+          message: `Migration "${id}_${name}" failed`
+        }))
 
     // === run
 
@@ -319,7 +325,11 @@ export const make = <RD = never>({
     yield* ensureMigrationsTable
 
     const completed = yield* pipe(
-      sql.withTransaction(run),
+      sql.onDialectOrElse({
+        // BEGIN is still experimental on clickhouse
+        clickhouse: () => run,
+        orElse: () => sql.withTransaction(run)
+      }),
       Effect.catchTag("MigrationError", (_) =>
         _.kind === "Locked"
           ? Effect.as(Effect.logDebug(_.message), [])

@@ -115,7 +115,9 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 
 /**
  * Parents driver spans under the statement span for every client in the current scope,
- * including acquisition and stream pulls. Defaults to `false`; ignored when tracing is disabled.
+ * including acquisition and stream pulls, and records how long each statement
+ * waited for a connection as `db.client.connection.wait_time_ms`. Defaults to
+ * `false`; ignored when tracing is disabled.
  *
  * @stability unstable
  * @category services
@@ -517,6 +519,9 @@ export interface Constructor {
    * **Gotchas**
    *
    * Not supported in sqlite.
+   *
+   * The alias is escaped as an identifier and is not passed through name
+   * transforms.
    */
   readonly updateValues: (
     value: ReadonlyArray<Record<string, unknown>>,
@@ -820,6 +825,10 @@ export type CompilerOptions<C extends Custom<any, any, any, any> = any> = {
   readonly dialect: Dialect
   readonly placeholder: (index: number, value: unknown) => string
   readonly onIdentifier: (value: string, withoutTransform: boolean) => string
+  /**
+   * Renders `updateValues`. The `alias` is already escaped with
+   * `onIdentifier(alias, true)` and must be inserted as is.
+   */
   readonly onRecordUpdate: (
     placeholders: string,
     alias: string,
@@ -927,6 +936,19 @@ const CompilerProto = {
         }
 
         case "ArrayHelper": {
+          if (segment.value.length === 0) {
+            const inKeyword = emptyInKeyword.exec(sql)
+            if (inKeyword === null || isInLineComment(sql, inKeyword.index)) {
+              sql += "()"
+            } else if (this.dialect === "pg") {
+              // an empty subquery is typed as text in postgres, so compare with an
+              // empty array, which takes the type of the left operand instead
+              sql = sql.slice(0, inKeyword.index) + (inKeyword[1] ? "<> ALL('{}')" : "= ANY('{}')")
+            } else {
+              sql += "(SELECT NULL WHERE 1=0)"
+            }
+            break
+          }
           sql += `(${placeholders(segment.value)})`
           binds.push.apply(binds, segment.value as any)
           break
@@ -1070,7 +1092,7 @@ const CompilerProto = {
           }
           const [s, b] = opts.onRecordUpdate(
             placeholders,
-            segment.alias,
+            opts.onIdentifier(segment.alias, true),
             generateColumns(keys, opts.onIdentifier, withoutTransform),
             values,
             typeof segment.returningIdentifier === "string"
@@ -1312,6 +1334,7 @@ export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown
 // internal
 
 const ATTR_DB_QUERY_TEXT = "db.query.text"
+const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
 const ATTR_SQL_METHOD = "effect.sql.method"
 
 // the last value wins, matching the order the attributes are applied to spans
@@ -1419,12 +1442,19 @@ const StatementProto: Omit<
       }
       span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
+      const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+      const clock = propagate ? waitClock(fiber) : undefined
+      const run = clock === undefined
+        ? (connection: Connection) => f(connection, sql, params)
+        : (connection: Connection) =>
+          Effect.suspend(() => {
+            recordConnectionWait(span, clock)
+            return f(connection, sql, params)
+          })
       const execute = this.borrower === undefined
-        ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
-        : this.borrower((connection: Connection) => f(connection, sql, params))
-      return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-        ? Effect.provideService(execute, Tracer.ParentSpan, span)
-        : execute
+        ? Effect.scoped(Effect.flatMap(this.acquirer, run))
+        : this.borrower(run)
+      return propagate ? Effect.provideService(execute, Tracer.ParentSpan, span) : execute
     })
   },
 
@@ -1456,8 +1486,13 @@ const StatementProto: Omit<
           }
           span.attribute(ATTR_SQL_METHOD, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
-          const acquire = Effect.map(self.acquirer, (_) => _.executeStream(sql, params, self.transformRows))
-          return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const clock = propagate ? waitClock(fiber) : undefined
+          const acquire = Effect.map(self.acquirer, (connection) => {
+            if (clock !== undefined) recordConnectionWait(span, clock)
+            return connection.executeStream(sql, params, self.transformRows)
+          })
+          return propagate
             ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
             : acquire
         })
@@ -1523,6 +1558,18 @@ const StatementProto: Omit<
     }
   }
 }
+
+// Without span timing, the span has no start time to measure from.
+const waitClock = (fiber: Fiber.Fiber<unknown, unknown>): Clock | undefined =>
+  fiber.getRef(TracerTimingEnabled) ? fiber.getRef(Clock) : undefined
+
+// Measured from the statement span's start to the connection hand-off, so it
+// also covers compiling the statement and any `CurrentTransformer` run first.
+const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
+  span.attribute(
+    ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
+    Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
+  )
 
 const withStatement = <A, X, E, R>(
   self: StatementImpl<A>,
@@ -1643,3 +1690,7 @@ function in_(): Fragment | ArrayHelper {
 }
 
 const neverFragment = fragment([literal("1=0")])
+
+const emptyInKeyword = /\b(NOT\s+)?IN\s*$/i
+
+const isInLineComment = (sql: string, index: number) => sql.lastIndexOf("--", index) > sql.lastIndexOf("\n", index)

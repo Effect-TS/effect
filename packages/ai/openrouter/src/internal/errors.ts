@@ -1,9 +1,11 @@
 import * as AiError from "effect/ai/AiError"
 import type * as Response from "effect/ai/Response"
-import * as Duration from "effect/Duration"
+import * as Clock from "effect/Clock"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Sse from "effect/encoding/Sse"
 import { dual } from "effect/Function"
+import * as Headers from "effect/http/Headers"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
@@ -11,6 +13,7 @@ import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import type * as Generated from "../Generated.ts"
 import type { OpenRouterErrorMetadata } from "../OpenRouterError.ts"
@@ -50,7 +53,7 @@ export const mapSchemaError = dual<
   AiError.make({
     module: "OpenRouterClient",
     method,
-    reason: AiError.InvalidOutputError.fromSchemaError(error)
+    reason: AiError.InvalidResponseError.fromSchemaError(error)
   }))
 
 /** @internal */
@@ -61,32 +64,39 @@ export const mapSseError = dual<
   AiError.make({
     module: "OpenRouterClient",
     method,
-    reason: new AiError.InvalidOutputError({ description: error.message })
+    reason: new AiError.InvalidResponseError({ description: error.message })
   }))
+
+type ClientError = Generated.OpenRouterClientError<string, OpenRouterClientErrorBody>
 
 /** @internal */
 export const mapClientError = dual<
-  (method: string) => (error: Generated.OpenRouterClientError<string, OpenRouterClientErrorBody>) => AiError.AiError,
-  (error: Generated.OpenRouterClientError<string, OpenRouterClientErrorBody>, method: string) => AiError.AiError
->(2, (error, method) => {
-  const { request, response, cause } = error
-  const status = response.status
-  const headers = response.headers as Record<string, string>
-  const metadata: OpenRouterErrorMetadata = {
-    errorCode: cause.error.code ?? null,
-    errorType: cause.error.type ?? null,
-    requestId: headers["x-request-id"] ?? null
-  }
-  const http = buildHttpContext({ request, response, body: JSON.stringify(cause) })
-  const reason = mapStatusCodeToReason({
-    status,
-    headers,
-    message: cause.error.message,
-    metadata,
-    http
+  (method: string) => (error: ClientError) => Effect.Effect<never, AiError.AiError>,
+  (error: ClientError, method: string) => Effect.Effect<never, AiError.AiError>
+>(
+  2,
+  Effect.fnUntraced(function*(error: ClientError, method: string) {
+    const now = yield* Clock.currentTimeMillis
+    const { request, response, cause } = error
+    const status = response.status
+    const headers = response.headers as Record<string, string>
+    const metadata: OpenRouterErrorMetadata = {
+      errorCode: cause.error.code ?? null,
+      errorType: cause.error.type ?? null,
+      requestId: headers["x-request-id"] ?? null
+    }
+    const http = buildHttpContext({ request, response, body: JSON.stringify(cause) })
+    const reason = mapStatusCodeToReason({
+      now,
+      status,
+      headers,
+      message: cause.error.message,
+      metadata,
+      http
+    })
+    return yield* AiError.make({ module: "OpenRouterClient", method, reason })
   })
-  return AiError.make({ module: "OpenRouterClient", method, reason })
-})
+)
 
 /** @internal */
 export const mapHttpClientError = dual<
@@ -179,7 +189,9 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
   }
   const decoded = Schema.decodeUnknownOption(OpenRouterErrorBody)(json)
 
+  const now = yield* Clock.currentTimeMillis
   const reason = mapStatusCodeToReason({
+    now,
     status,
     headers,
     message: Option.isSome(decoded) ? decoded.value.error.message : undefined,
@@ -198,16 +210,16 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
 // Rate Limits
 // =============================================================================
 
+const retryAfterFromHeader = (raw: string, now: number): Duration.Duration | undefined => {
+  const retryAfter = Headers.parseRetryAfter(raw)
+  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
+}
+
 /** @internal */
-export const parseRateLimitHeaders = (headers: Record<string, string>) => {
+export const parseRateLimitHeaders = (headers: Record<string, string>, now: number) => {
   const retryAfterRaw = headers["retry-after"]
-  let retryAfter: Duration.Duration | undefined
-  if (Predicate.isNotUndefined(retryAfterRaw)) {
-    const parsed = Number.parse(retryAfterRaw)
-    if (Option.isSome(parsed)) {
-      retryAfter = Duration.seconds(parsed.value)
-    }
-  }
+  // an invalid Retry-After is treated as absent
+  const retryAfter = retryAfterRaw === undefined ? undefined : retryAfterFromHeader(retryAfterRaw, now)
   const remainingRaw = headers["x-ratelimit-remaining-requests"]
   const remaining = Predicate.isNotUndefined(remainingRaw)
     ? Option.getOrNull(Number.parse(remainingRaw))
@@ -257,8 +269,10 @@ export const buildHttpContext = (params: {
 // =============================================================================
 
 /** @internal */
-export const mapStatusCodeToReason = ({ status, headers, message, metadata, http }: {
+export const mapStatusCodeToReason = ({ status, headers, message, metadata, http, now }: {
   readonly status: number
+  /** Current time in epoch milliseconds, used to measure a Retry-After date. */
+  readonly now: number
   readonly headers: Record<string, string>
   readonly message: string | undefined
   readonly metadata: OpenRouterErrorMetadata
@@ -314,7 +328,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
           http
         })
       }
-      const { retryAfter, ...rateLimitMetadata } = parseRateLimitHeaders(headers)
+      const { retryAfter, ...rateLimitMetadata } = parseRateLimitHeaders(headers, now)
       return new AiError.RateLimitError({
         retryAfter,
         metadata: {

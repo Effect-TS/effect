@@ -137,6 +137,10 @@ describe("Hash", () => {
     it("does not collide for 10k multiples of 0.001", () => {
       assertNoHashCollisions(range(10_000).map((i) => i * 0.001))
     })
+
+    it("does not collide for ArrayBuffers with different bytes", () => {
+      assert.notStrictEqual(Hash.hash(Uint8Array.of(1, 2).buffer), Hash.hash(Uint8Array.of(9, 9).buffer))
+    })
   })
 
   describe("floats", () => {

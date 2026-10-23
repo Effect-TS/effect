@@ -4,9 +4,11 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
+import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
 import { CloudflareClient } from "./CloudflareClient.ts"
 import type * as CloudflareSchema from "./CloudflareSchema.ts"
@@ -35,6 +37,16 @@ export const model = (
 /**
  * Builds a decision service with tolerance for four-decimal probability rounding.
  *
+ * **Details**
+ *
+ * Byte arrays and base64 strings are sent as base64 with their media type.
+ * `data:` URLs are sent unchanged. The API enforces image limits.
+ *
+ * **Gotchas**
+ *
+ * - Remote URLs fail with `AiError.InvalidUserInputError` because Clef does
+ *   not fetch them.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -46,7 +58,8 @@ export const make = Effect.fnUntraced(
     const client = yield* CloudflareClient
     return yield* DecisionModel.make({
       probabilityPrecision: 4,
-      decide: Effect.fnUntraced(function*({ state, decisions }) {
+      supportsImages: true,
+      decide: Effect.fnUntraced(function*({ state, decisions, images }) {
         const questions: Record<string, typeof CloudflareSchema.Question.Encoded> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           switch (decision._tag) {
@@ -54,14 +67,32 @@ export const make = Effect.fnUntraced(
               questions[key] = { type: "choice", instructions: decision.instructions, criteria: decision.criteria }
               break
             case "Rate":
-              questions[key] = { type: "score", instructions: decision.instructions, criteria: decision.criteria }
+              questions[key] = {
+                type: "score",
+                instructions: decision.instructions,
+                criteria: decision.criteria.map((level) => level.description)
+              }
               break
             case "Probability":
               questions[key] = { type: "noul", instructions: decision.instructions, criteria: decision.criteria }
               break
           }
         }
-        const response = yield* client.createDecisions({ model: options.model, state, questions })
+        if (images?.some((image) => image.data instanceof URL && image.data.protocol !== "data:")) {
+          return yield* Effect.fail(AiError.make({
+            module: "CloudflareDecisionModel",
+            method: "decide",
+            reason: new AiError.InvalidUserInputError({
+              description: "Cloudflare Clef accepts base64 or data URL images, not remote URLs"
+            })
+          }))
+        }
+        const response = yield* client.createDecisions({
+          model: options.model,
+          state,
+          questions,
+          ...(images === undefined ? undefined : { images: images.map(encodeImage) })
+        })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           const answer = response.answers[key]
@@ -79,7 +110,7 @@ export const make = Effect.fnUntraced(
               const probabilities: Record<string, number> = Object.create(null)
               for (let index = 0; index < levels.length; index++) {
                 const probability = answer.probabilities[String(index)]
-                if (probability !== undefined) probabilities[levels[index]] = probability
+                if (probability !== undefined) probabilities[levels[index].label] = probability
               }
               answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
               break
@@ -97,6 +128,12 @@ export const make = Effect.fnUntraced(
     })
   }
 )
+
+const encodeImage = (image: DecisionModel.Image): typeof CloudflareSchema.Image.Encoded =>
+  image.data instanceof URL ? image.data.href : {
+    content_type: image.mediaType,
+    base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
+  }
 
 /**
  * Provides DecisionModel using an existing CloudflareClient.

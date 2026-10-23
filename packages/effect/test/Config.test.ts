@@ -1565,6 +1565,29 @@ Expected "Infinity" | "-Infinity" | "NaN"
       )
     })
 
+    it("loads matching numeric record keys", async () => {
+      const provider = ConfigProvider.fromUnknown({ a: { 80: "http", 1.5: "fractional", abc: "skipped" } })
+
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.Int, Schema.String), "a"),
+        provider,
+        { 80: "http" }
+      )
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.Number, Schema.String), "a"),
+        provider,
+        { 80: "http", 1.5: "fractional" }
+      )
+    })
+
+    it("preserves __proto__ record keys", async () => {
+      await assertSuccess(
+        Config.schema(Schema.Record(Schema.String, Schema.String), "a"),
+        ConfigProvider.fromUnknown({ a: { ["__proto__"]: "value" } }),
+        { ["__proto__"]: "value" }
+      )
+    })
+
     describe("built-in schema-backed constructors", () => {
       it("decodes supported boolean spellings", async () => {
         const provider = ConfigProvider.fromUnknown({

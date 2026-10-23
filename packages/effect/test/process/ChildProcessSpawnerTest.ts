@@ -4,10 +4,11 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
-import type * as PlatformError from "effect/PlatformError"
+import * as PlatformError from "effect/PlatformError"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 
@@ -15,6 +16,17 @@ export interface Options {
   readonly processGroups: boolean
   readonly additionalFds?: boolean | undefined
 }
+
+const sourceError = PlatformError.systemError({
+  _tag: "Unknown",
+  module: "FileSystem",
+  method: "read",
+  description: "source failed"
+})
+
+const failingInput = Stream.make(new TextEncoder().encode("first chunk\n")).pipe(
+  Stream.concat(Stream.fail(sourceError))
+)
 
 // Helper to collect stream output into a string
 const decodeByteStream = Effect.fnUntraced(
@@ -32,6 +44,18 @@ const decodeByteStream = Effect.fnUntraced(
     return new TextDecoder().decode(result).trim()
   }
 )
+
+// Sink that records how many bytes it received and completes with a marker
+const countingSink = () => {
+  const received = { bytes: 0 }
+  const result = new Uint8Array([42])
+  const sink = Sink.forEach((chunk: Uint8Array) =>
+    Effect.sync(() => {
+      received.bytes += chunk.length
+    })
+  ).pipe(Sink.as(result))
+  return { received, result, sink }
+}
 
 export const suite = (
   name: string,
@@ -443,6 +467,38 @@ export const suite = (
             }))
         })
 
+        describe("output sinks", () => {
+          it.effect("should only run a stdout sink while handle.stdout is consumed", () =>
+            Effect.gen(function*() {
+              const { received, result, sink } = countingSink()
+              const handle = yield* ChildProcess.make("sh", ["-c", "printf hello"], { stdout: sink })
+              const exitCode = yield* handle.exitCode
+
+              assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+              assert.strictEqual(received.bytes, 0)
+
+              const emitted = yield* Stream.runCollect(handle.stdout)
+
+              assert.strictEqual(received.bytes, 5)
+              assert.deepStrictEqual(emitted, [result])
+            }))
+
+          it.effect("should only run a stderr sink while handle.stderr is consumed", () =>
+            Effect.gen(function*() {
+              const { received, result, sink } = countingSink()
+              const handle = yield* ChildProcess.make("sh", ["-c", "printf hello >&2"], { stderr: sink })
+              const exitCode = yield* handle.exitCode
+
+              assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+              assert.strictEqual(received.bytes, 0)
+
+              const emitted = yield* Stream.runCollect(handle.stderr)
+
+              assert.strictEqual(received.bytes, 5)
+              assert.deepStrictEqual(emitted, [result])
+            }))
+        })
+
         describe("process control", () => {
           it.effect("should kill a process", () =>
             Effect.gen(function*() {
@@ -744,6 +800,22 @@ export const suite = (
             assert.deepStrictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, input)
           }))
+
+        it.effect("fails the command when the stdin stream fails", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("cat", { stdin: failingInput })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
+          }))
+
+        it.effect("fails the command when the stdin stream fails and stdin is kept open", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("cat", { stdin: { stream: failingInput, endOnDone: false } })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
+          }))
       })
 
       describe.skipIf(options.additionalFds === false)("additionalFds", () => {
@@ -760,6 +832,23 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd3Output, "hello from fd3")
+          }))
+
+        it.effect("should only run an output fd sink while the fd stream is consumed", () =>
+          Effect.gen(function*() {
+            const { received, result, sink } = countingSink()
+            const handle = yield* ChildProcess.make("sh", ["-c", "printf hello >&3"], {
+              additionalFds: { fd3: { type: "output", sink } }
+            })
+            const exitCode = yield* handle.exitCode
+
+            assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+            assert.strictEqual(received.bytes, 0)
+
+            const emitted = yield* Stream.runCollect(handle.getOutputFd(3))
+
+            assert.strictEqual(received.bytes, 5)
+            assert.deepStrictEqual(emitted, [result])
           }))
 
         it.effect("should write data to an input fd (fd3)", () =>
@@ -780,6 +869,17 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(stdout, inputData)
+          }))
+
+        it.effect("fails the command when an input fd stream fails", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("sh", ["-c", "cat <&3"], {
+              stdin: "ignore",
+              additionalFds: { fd3: { type: "input", stream: failingInput } }
+            })
+            const exit = yield* Effect.exit(handle.exitCode)
+
+            assert.deepStrictEqual(exit, Exit.fail(sourceError))
           }))
 
         it.effect("should handle multiple additional fds", () =>
@@ -888,15 +988,14 @@ export const suite = (
       })
 
       describe("process supervision", { concurrent: false }, () => {
-        const countMatchingProcesses = (pattern: string) =>
-          Effect.gen(function*() {
-            const handle = yield* ChildProcess.make("bash", [
-              "-c",
-              `ps aux | grep '${pattern}' | grep -v grep | wc -l`
-            ])
-            const output = yield* decodeByteStream(handle.stdout)
-            return Number.parseInt(output.trim())
-          }).pipe(Effect.orElseSucceed(() => 0))
+        const countMatchingProcesses = Effect.fnUntraced(function*(pattern: string) {
+          const handle = yield* ChildProcess.make("bash", [
+            "-c",
+            `ps aux | grep '${pattern}' | grep -v grep | wc -l`
+          ])
+          const output = yield* decodeByteStream(handle.stdout)
+          return Number.parseInt(output.trim())
+        }, Effect.orElseSucceed(() => 0))
 
         const killMatchingProcesses = (pattern: string) => {
           if (!/^[A-Za-z0-9_-]+$/.test(pattern)) {

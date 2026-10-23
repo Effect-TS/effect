@@ -109,24 +109,17 @@ export const make: Effect.Effect<
       const refillRate = Duration.divideUnsafe(window, options.limit)
       const refillRateMillis = Duration.toMillis(refillRate)
 
-      if (tokens > options.limit) {
-        return onExceeded === "fail"
-          ? Effect.fail(
-            new RateLimiterError({
-              reason: new RateLimitExceeded({
-                key: options.key,
-                retryAfter: window,
-                limit: options.limit,
-                remaining: 0
-              })
+      if (onExceeded === "fail" && tokens > options.limit) {
+        return Effect.fail(
+          new RateLimiterError({
+            reason: new RateLimitExceeded({
+              key: options.key,
+              retryAfter: window,
+              limit: options.limit,
+              remaining: 0
             })
-          )
-          : Effect.succeed<ConsumeResult>({
-            delay: window,
-            limit: options.limit,
-            remaining: 0,
-            resetAfter: window
           })
+        )
       }
 
       if (algorithm === "fixed-window") {
@@ -959,7 +952,10 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       const key = `${prefix}${options.key}`
       const refillMillis = Duration.toMillis(options.refillRate)
       return Effect.mapError(
-        fixedWindow(key, options.tokens, refillMillis, options.limit),
+        Effect.map(
+          fixedWindow(key, options.tokens, refillMillis, options.limit),
+          ([currentTokens, nextPttl]) => [Number(currentTokens), nextPttl] as const
+        ),
         (cause) =>
           new RateLimiterError({
             reason: new RateLimitStoreError({
@@ -1063,21 +1059,22 @@ local current = tonumber(redis.call("GET", key))
 if not current then
   local nextpttl = math.max(1, math.ceil(refillms * tokens))
   redis.call("SET", key, tokens, "PX", nextpttl)
-  return { tokens, nextpttl }
+  return { string.format("%.17g", tokens), nextpttl }
 end
 
 local currentpttl = tonumber(redis.call("PTTL", key) or "0")
 local next = current + tokens
 if limit and next > limit then
-  return { next, currentpttl }
+  return { string.format("%.17g", next), currentpttl }
 end
 
 local nextpttl = math.max(1, math.ceil(currentpttl + (refillms * tokens)))
 redis.call("SET", key, next, "PX", nextpttl)
-return { next, nextpttl }
+-- Use 17 significant digits to round-trip fractional token counts.
+return { string.format("%.17g", next), nextpttl }
 `
   }
-).withReturnType<readonly [currentTokens: number, nextPttl: number]>()
+).withReturnType<readonly [currentTokens: string, nextPttl: number]>()
 
 const tokenBucketScript = Redis.script(
   (

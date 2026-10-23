@@ -72,7 +72,8 @@ interface ModuleMetadata {
 }
 
 const extractModuleMetadata = (file: string, content: string): Effect.Effect<ModuleMetadata, BarrelCodegenError> => {
-  const block = content.match(/^\s*(\/\*\*[\s\S]*?\*\/)/)?.[1]
+  // allow triple-slash directives before the module JSDoc
+  const block = content.match(/^(?:\s*\/\/\/[^\n]*\n)*\s*(\/\*\*[\s\S]*?\*\/)/)?.[1]
   if (block === undefined) {
     return Effect.fail(
       new BarrelCodegenError({

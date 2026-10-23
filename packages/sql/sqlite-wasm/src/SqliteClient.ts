@@ -265,7 +265,7 @@ export const makeMemory = (
       })
     })
 
-    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, isTransaction, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: Effect.succeed(yield* makeConnection),
       semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
@@ -273,10 +273,13 @@ export const makeMemory = (
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-wasm",
         acquirer,
+        borrower,
         compiler,
         transactionAcquirer,
         onCommitFailure,
+        isTransaction,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -437,14 +440,16 @@ export const make = (
 
     const connectionRef = yield* ScopedRef.fromAcquire(makeConnection)
 
-    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: ScopedRef.get(connectionRef),
       semaphore: yield* Semaphore.make(1)
     })
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-wasm",
         acquirer,
+        borrower,
         compiler,
         transactionAcquirer,
         onCommitFailure,

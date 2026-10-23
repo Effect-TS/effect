@@ -3,11 +3,12 @@
  *
  * CLI errors describe problems such as unknown or duplicate flags, missing
  * flags or arguments, unexpected positional arguments, invalid values, unknown
- * subcommands, user handler failures, and requests to show command help. This
- * module includes the `CliError` union, the `isCliError` guard, the
- * `UserFacing` protocol for tagged handler failures, schema-backed error
- * classes with display messages, and the `NonShowHelpErrors` union used when
- * parse or validation errors should be shown with help output.
+ * subcommands, rejected input combinations, user handler failures, and
+ * requests to show command help. This module includes the `CliError` union,
+ * the `isCliError` guard, the `UserFacing` protocol for tagged handler
+ * failures, schema-backed error classes with display messages, and the
+ * `NonShowHelpErrors` union used when parse or validation errors should be
+ * shown with help output.
  *
  * @stability unstable
  * @since 4.0.0
@@ -165,6 +166,7 @@ export type CliError =
   | UnexpectedArgument
   | InvalidValue
   | UnknownSubcommand
+  | ValidationError
   | ShowHelp
   | UserError
 
@@ -583,6 +585,47 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
 }
 
 /**
+ * Error for parsed input that fails a rule of your own, such as two flags
+ * that cannot be used together.
+ *
+ * **Details**
+ *
+ * Fail with it from `Command.validate`, `Flag.mapEffect` or
+ * `Argument.mapEffect`. The runner shows it with the command help, like any
+ * other parse error. Handlers report their own failures with `UserError`.
+ *
+ * **Example** (Rejecting a flag combination)
+ *
+ * ```ts import.meta.vitest
+ * import { CliError } from "effect/cli"
+ *
+ * const error = new CliError.ValidationError({
+ *   message: "--use-api and --use-docker are mutually exclusive"
+ * })
+ *
+ * error._tag // => "ValidationError"
+ * error.message // => "--use-api and --use-docker are mutually exclusive"
+ * ```
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class ValidationError extends Schema.TaggedError<ValidationError>(
+  `${TypeId}/ValidationError`
+)("ValidationError", {
+  message: Schema.String
+}) {
+  /**
+   * Marks this value as a CLI validation error for runtime guards.
+   *
+   * @stability unstable
+   * @since 4.1.0
+   */
+  readonly [TypeId] = TypeId
+}
+
+/**
  * Error wrapper for user handler failures in the CLI error channel.
  *
  * **Details**
@@ -698,6 +741,7 @@ export const NonShowHelpErrors: Schema.Union<
     typeof UnexpectedArgument,
     typeof InvalidValue,
     typeof UnknownSubcommand,
+    typeof ValidationError,
     typeof UserError
   ]
 > = Schema.Union([
@@ -708,6 +752,7 @@ export const NonShowHelpErrors: Schema.Union<
   UnexpectedArgument,
   InvalidValue,
   UnknownSubcommand,
+  ValidationError,
   UserError
 ])
 

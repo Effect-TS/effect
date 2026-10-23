@@ -31,6 +31,32 @@ const countErrors = (run: () => void): number => {
 }
 
 describe("stack capture", { concurrent: false }, () => {
+  it("module loading bounds probes and restores the stack trace limit", async () => {
+    const original = globalThis.Error
+    const previous = original.stackTraceLimit
+    const limits: Array<number> = []
+    vi.resetModules()
+    original.stackTraceLimit = 10
+    globalThis.Error = new Proxy(original, {
+      construct(target, args, newTarget) {
+        limits.push(target.stackTraceLimit)
+        return Reflect.construct(target, args, newTarget)
+      }
+    })
+    try {
+      await import("effect/Utils")
+      assert.deepStrictEqual(limits.splice(0), [2])
+      assert.strictEqual(original.stackTraceLimit, 10)
+      await import("effect/internal/effect")
+      assert.deepStrictEqual(limits, [1])
+      assert.strictEqual(original.stackTraceLimit, 10)
+    } finally {
+      globalThis.Error = original
+      original.stackTraceLimit = previous
+      vi.resetModules()
+    }
+  })
+
   it("module loading skips stack formatting at limit zero", async () => {
     const original = globalThis.Error
     const limit = original.stackTraceLimit

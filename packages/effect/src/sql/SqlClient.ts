@@ -18,8 +18,9 @@ import { identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
-import { Reactivity } from "../reactivity/Reactivity.ts"
+import { type KeysInput, Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
@@ -56,7 +57,38 @@ export interface SqlClient extends Constructor {
   readonly reserve: Effect.Effect<Connection.Connection, SqlError, Scope.Scope>
 
   /**
+   * Identifies the driver that created this client.
+   *
+   * **Details**
+   *
+   * Effect drivers use their package name without the `@effect/sql-` prefix,
+   * such as `"pg"`, `"pglite"` or `"sqlite-node"`. Unlike the compiler
+   * dialect, it distinguishes drivers that share a SQL dialect but manage
+   * connections differently.
+   */
+  readonly driver: string
+
+  /**
    * With the given effect, ensure all sql queries are run in a transaction.
+   *
+   * **Details**
+   *
+   * Inside the transaction, `Reactivity.invalidate` and `Reactivity.mutation`
+   * invalidate once the outermost transaction commits, and not at all if it
+   * rolls back.
+   *
+   * To start a top-level transaction with a statement other than the
+   * client's, such as one that sets its isolation level, provide
+   * `BeginTransaction`.
+   *
+   * **Gotchas**
+   *
+   * Deferred invalidations run individually after the commit and don't join an
+   * enclosing `Reactivity.withBatch`. Only the `Reactivity` service read from
+   * the transaction's context defers, and a fiber that outlives the
+   * transaction can't defer through it, as with `afterCommit`. Transactions
+   * that don't go through `makeWithTransaction`, such as those of
+   * `@effect/sql-sqlite-do`, invalidate immediately.
    */
   readonly withTransaction: <R, E, A>(
     self: Effect.Effect<A, E, R>
@@ -68,10 +100,52 @@ export interface SqlClient extends Constructor {
   readonly transactionService: Context.Service<TransactionConnection, TransactionConnection.Service>
 
   /**
+   * Runs `effect` once the outermost transaction of this client commits, or
+   * immediately, and interruptibly, when no transaction is open.
+   *
+   * **When to use**
+   *
+   * Use to signal committed changes, such as waking workers, invalidating
+   * caches or notifying subscribers.
+   *
+   * **Details**
+   *
+   * Callbacks are discarded if the transaction rolls back or its `COMMIT`
+   * fails, and callbacks registered in a savepoint that rolls back are
+   * discarded even if the outer transaction commits. After a successful
+   * `COMMIT`, callbacks run once releasing the connection has been attempted,
+   * before `withTransaction` returns.
+   *
+   * A callback runs with the services that were in scope when it was
+   * registered, minus this client's transaction, so a callback that queries
+   * uses a new connection. A callback that dies is logged at
+   * `References.UnhandledLogLevel` and the rest still run.
+   *
+   * Callbacks run in registration order within a transaction or savepoint,
+   * and a committed savepoint's callbacks follow those already registered in
+   * the enclosing level. Callbacks registered concurrently from several
+   * fibers are not guaranteed to run in registration order.
+   *
+   * **Gotchas**
+   *
+   * Callbacks are lost if the process exits before they run or the outcome of
+   * `COMMIT` is unknown, so work that must happen belongs in a table written
+   * in the same transaction. After `COMMIT`, callbacks run uninterruptibly,
+   * even if the fiber was interrupted or releasing the connection failed, and
+   * `withTransaction` waits for them, so keep them short and fork
+   * long-running work.
+   * Registering after the transaction has ended is a defect.
+   *
+   * Transactions that don't go through `makeWithTransaction`, such as those
+   * of `@effect/sql-sqlite-do`, run callbacks immediately.
+   */
+  readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
+
+  /**
    * Use the Reactivity service to create a reactive query.
    */
   readonly reactive: <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Stream.Stream<A, E, R>
 
@@ -80,7 +154,7 @@ export interface SqlClient extends Constructor {
    * query.
    */
   readonly reactiveMailbox: <A, E, R>(
-    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    keys: KeysInput,
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<Queue.Dequeue<A, E>, never, R | Scope.Scope>
 }
@@ -126,6 +200,10 @@ export declare namespace SqlClient {
     readonly borrower?: Connection.Borrower | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
+    /**
+     * Identifies the driver creating the client, exposed as `SqlClient.driver`.
+     */
+    readonly driver: string
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly transactionService?: Context.Service<TransactionConnection, TransactionConnection.Service>
     /**
@@ -147,6 +225,11 @@ export declare namespace SqlClient {
     readonly commit?: string | ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
+    /**
+     * Reports whether a transaction is open. If false, rollback and savepoint
+     * cleanup are skipped.
+     */
+    readonly isTransaction?: ((conn: Connection.Connection) => boolean) | undefined
     readonly savepoint?: ((name: string) => string) | undefined
     /**
      * SQL to release a nested savepoint after success or a successful rollback.
@@ -195,27 +278,28 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   const control = options.prepareTransactionControls === true
     ? (conn: Connection.Connection, sql: string) => conn.execute(sql, [], undefined)
     : (conn: Connection.Connection, sql: string) => conn.executeUnprepared(sql, [], undefined)
+  const isTransaction = options.isTransaction
+  const cleanup = isTransaction
+    ? (conn: Connection.Connection, sql: string) => isTransaction(conn) ? control(conn, sql) : Effect.void
+    : control
   const withTransaction = makeWithTransaction({
     transactionService,
     spanAttributes: options.spanAttributes,
-    acquireConnection: Effect.flatMap(
-      Scope.make(),
-      (scope) =>
-        Scope.provide(transactionAcquirer!, scope).pipe(
-          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),
-          Effect.map((conn) => [scope, conn] as const)
-        )
-    ),
-    begin: (conn) => control(conn, beginTransaction),
+    acquireConnection: (restore) => restore(transactionAcquirer!),
+    // Unlike the client's own, a provided statement isn't fixed, so it isn't prepared.
+    begin: (conn, statement) =>
+      statement === undefined ? control(conn, beginTransaction) : conn.executeUnprepared(statement, [], undefined),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),
     releaseSavepoint: releaseSavepoint
-      ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
+      ? (conn, id) => cleanup(conn, releaseSavepoint(`effect_sql_${id}`))
       : undefined,
     commit: typeof commit === "string" ? (conn) => control(conn, commit) : commit,
     onCommitFailure: options.onCommitFailure,
-    rollback: (conn) => control(conn, rollback),
-    rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
+    rollback: (conn) => cleanup(conn, rollback),
+    rollbackSavepoint: (conn, id) => cleanup(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
+
+  const afterCommit = makeAfterCommit(transactionService)
 
   const reactivity = yield* Reactivity
   // A statement inside a transaction has to run on that transaction's
@@ -236,7 +320,9 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       safe: undefined as any,
       withTransaction,
       transactionService,
+      afterCommit,
       reserve: transactionAcquirer,
+      driver: options.driver,
       withoutTransforms(): any {
         if (options.transformRows === undefined) {
           return this
@@ -275,22 +361,22 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
 })
 
 /**
- * Builds the acquirers and failed-COMMIT cleanup for a SQLite client that
+ * Builds the acquirers, borrower and failed-COMMIT cleanup for a SQLite client that
  * shares one connection through a semaphore.
  *
  * **Details**
  *
  * Both acquirers lease the connection into the current scope and hold the
- * semaphore until that scope closes, so a statement or stream keeps the
- * connection until it finishes and another fiber cannot begin a transaction
- * underneath it. Effects that use the connection directly, such as an export,
- * have to run inside `Effect.scoped`.
+ * semaphore until that scope closes. The borrower holds the same semaphore
+ * until the statement finishes without creating a scope. Another fiber cannot
+ * begin a transaction underneath either. Effects that use the connection directly,
+ * such as an export, have to run inside `Effect.scoped`.
  *
  * SQLite can keep a transaction open after COMMIT fails, for example on a
  * deferred foreign key violation. `onCommitFailure` rolls it back before the
  * connection is reused. If that ROLLBACK fails, the connection is rejected, and
- * each acquisition retries the ROLLBACK once while holding the semaphore until
- * it succeeds. The database is never reopened, and transactions started with a
+ * each acquisition or borrow retries the ROLLBACK once while holding the semaphore
+ * until it succeeds. The database is never reopened, and transactions started with a
  * plain `BEGIN` are only touched after a failed cleanup.
  *
  * Pass `isTransaction` when the driver can report whether a transaction is
@@ -307,8 +393,10 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
   readonly isTransaction?: ((conn: C) => boolean) | undefined
 }): {
   readonly acquirer: Effect.Effect<C, SqlError, Scope.Scope>
+  readonly borrower: Connection.Borrower
   readonly transactionAcquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly onCommitFailure: (conn: Connection.Connection) => Effect.Effect<void, SqlError>
+  readonly isTransaction: ((conn: Connection.Connection) => boolean) | undefined
 } => {
   const { isTransaction, semaphore } = options
   let poisoned: SqlError | undefined
@@ -352,8 +440,10 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
 
   return {
     acquirer: lease,
+    borrower: (f) => semaphore.withPermit(Effect.flatMap(available, f)),
     transactionAcquirer: lease,
-    onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause)))
+    onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause))),
+    isTransaction: isTransaction && ((conn) => isTransaction(conn as C))
   }
 }
 
@@ -380,6 +470,56 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
   ))
 
 /**
+ * Callbacks registered with `afterCommit` in one transaction level. A
+ * committed savepoint hands its callbacks to its parent, and the outermost
+ * level runs them after it commits.
+ */
+interface AfterCommitBuffer {
+  readonly callbacks: Array<Effect.Effect<void>>
+  readonly parent: AfterCommitBuffer | undefined
+  open: boolean
+}
+
+/**
+ * Keyed by the transaction service value of each level, so removing the
+ * transaction service also hides its buffer, and a transaction that
+ * `makeWithTransaction` didn't start has none.
+ */
+const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
+
+const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
+  Effect.catchCause(effect, (cause) =>
+    Effect.withFiber((fiber) => {
+      const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
+      if (unhandledLogLevel) {
+        return Effect.logWithLevel(unhandledLogLevel)("Unhandled error in SqlClient.afterCommit callback", cause)
+      }
+      return Effect.void
+    }))
+
+const makeAfterCommit =
+  (transactionService: Context.Key<any, any>) =>
+  <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
+    Effect.withFiber((fiber) => {
+      const transaction = Context.getOrUndefined(fiber.context, transactionService)
+      const buffer = transaction && afterCommitBuffers.get(transaction)
+      // Outside a transaction, or in one that doesn't buffer callbacks.
+      if (buffer === undefined) {
+        return runAfterCommit(effect)
+      }
+      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
+        if (!current.open) {
+          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+        }
+      }
+      // Runs later with the services in scope now, without the transaction.
+      buffer.callbacks.push(
+        Effect.provideContext(effect, Context.omit(transactionService)(fiber.context) as Context.Context<R>)
+      )
+      return Effect.void
+    })
+
+/**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
@@ -392,8 +532,22 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
 export const makeWithTransaction = <I, S>(options: {
   readonly transactionService: Context.Key<I, readonly [conn: S, counter: number]>
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
-  readonly acquireConnection: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError>
-  readonly begin: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+  /**
+   * Acquires the connection for a top-level transaction. Runs under the
+   * transaction's uninterruptible mask; wrap the wait for a connection in
+   * `restore` so a queued transaction can be interrupted, and register
+   * releases on the provided scope. The scope closes with the transaction, or
+   * immediately when acquisition fails or is interrupted.
+   */
+  readonly acquireConnection: (
+    restore: <XA, XE, XR>(effect: Effect.Effect<XA, XE, XR>) => Effect.Effect<XA, XE, XR>
+  ) => Effect.Effect<S, SqlError, Scope.Scope>
+  /**
+   * Starts a top-level transaction. `statement` is the `BeginTransaction`
+   * provided to the transaction, if any; a driver that doesn't start
+   * transactions with a SQL statement ignores it.
+   */
+  readonly begin: (conn: NoInfer<S>, statement: string | undefined) => Effect.Effect<void, SqlError>
   readonly savepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
   /**
    * Releases a nested savepoint after success or a successful rollback.
@@ -410,6 +564,12 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
+  const afterCommit = makeAfterCommit(options.transactionService)
+  const deferInvalidations = (reactivity: Reactivity): Reactivity => {
+    const invalidate = (keys: Parameters<Reactivity["invalidate"]>[0]) =>
+      afterCommit(Effect.sync(() => reactivity.invalidateUnsafe(keys)))
+    return { ...reactivity, invalidate, mutation: (keys, effect) => Effect.tap(effect, invalidate(keys)) }
+  }
   return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
@@ -421,24 +581,38 @@ export const makeWithTransaction = <I, S>(options: {
               span.attribute(key, value)
             }
             const services = fiber.context
+            const reactivity = Context.getOrUndefined(services, Reactivity)
             const clock = fiber.getRef(Clock)
             const connOption = Context.getOption(services, options.transactionService)
-            const conn = connOption._tag === "Some"
+            const conn: Effect.Effect<readonly [Scope.Closeable | undefined, S], SqlError> = connOption._tag === "Some"
               ? Effect.succeed([undefined, connOption.value[0]] as const)
-              : options.acquireConnection
+              : Effect.flatMap(Scope.make(), (scope) =>
+                Scope.provide(options.acquireConnection(restore), scope).pipe(
+                  Effect.map((conn) => [scope, conn] as const),
+                  Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause)))
+                ))
             const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
+            const buffer: AfterCommitBuffer = {
+              callbacks: [],
+              parent: connOption._tag === "Some" ? afterCommitBuffers.get(connOption.value) : undefined,
+              open: true
+            }
+            let committed = false
             const transaction = Effect.flatMap(
               conn,
               (
                 [scope, conn]
               ) =>
-                (id === 0 ? options.begin(conn) : options.savepoint(conn, id)).pipe(
-                  Effect.flatMap(() =>
-                    Effect.onExitPrimitive(
+                (id === 0 ? options.begin(conn, fiber.getRef(BeginTransaction)) : options.savepoint(conn, id)).pipe(
+                  Effect.flatMap(() => {
+                    const level = [conn, id] as const
+                    afterCommitBuffers.set(level, buffer)
+                    return Effect.onExitPrimitive(
                       Effect.provideContext(
                         restore(effect),
                         services.pipe(
-                          Context.add(options.transactionService, [conn, id]),
+                          Context.add(options.transactionService, level),
+                          reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
                         )
@@ -472,17 +646,34 @@ export const makeWithTransaction = <I, S>(options: {
                         if (id > 0 && options.releaseSavepoint) {
                           effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)))
                         }
-                        return Effect.flatMap(effect, () => exit)
+                        return Effect.flatMap(effect, () => {
+                          committed = Exit.isSuccess(exit)
+                          return exit
+                        })
                       },
                       true
                     )
-                  ),
-                  scope ? (eff) => Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true) : identity
+                  }),
+                  scope
+                    ? (eff) => Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true)
+                    : identity
                 )
             )
+            // Runs once the connection is released, whether or not that succeeded.
+            const settled = Effect.onExitPrimitive(transaction, () => {
+              buffer.open = false
+              if (!committed || buffer.callbacks.length === 0) {
+                return undefined
+              }
+              if (buffer.parent !== undefined) {
+                buffer.parent.callbacks.push(...buffer.callbacks)
+                return undefined
+              }
+              return Effect.forEach(buffer.callbacks, runAfterCommit, { discard: true })
+            }, true)
             return id === 0
-              ? transaction
-              : Context.getUnsafe(services, transactionSemaphore).withPermit(transaction)
+              ? settled
+              : Context.getUnsafe(services, transactionSemaphore).withPermit(settled)
           })
       )
     )
@@ -541,4 +732,52 @@ export const TransactionConnection = (
  */
 export const SafeIntegers = Context.Reference<boolean>("effect/sql/SqlClient/SafeIntegers", {
   defaultValue: () => false
+})
+
+/**
+ * Context reference holding the statement that starts a top-level
+ * transaction in place of the client's `BEGIN`; defaults to `undefined`, which
+ * keeps the client's.
+ *
+ * **When to use**
+ *
+ * Use when one transaction needs its own isolation level or access mode, as
+ * in `BEGIN ISOLATION LEVEL SERIALIZABLE` on PostgreSQL, rather than following
+ * the client's `BEGIN` with a `SET TRANSACTION`, which costs another round
+ * trip.
+ *
+ * **Details**
+ *
+ * The statement runs unprepared. Nested transactions ignore it and keep their
+ * savepoints.
+ *
+ * **Gotchas**
+ *
+ * It applies to every top-level transaction started while it is provided,
+ * including in forked fibers, so provide it around the single
+ * `withTransaction` it is meant for. `@effect/sql-libsql`, `@effect/sql-mssql`
+ * and `@effect/sql-sqlite-do` don't start transactions with a SQL statement
+ * and ignore it. The statement is sent as raw SQL, so never build it from
+ * untrusted input.
+ *
+ * **Example** (Starting a serializable transaction)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { SqlClient } from "effect/sql"
+ *
+ * const program = Effect.gen(function*() {
+ *   const sql = yield* SqlClient.SqlClient
+ *   return yield* sql.withTransaction(sql`SELECT 1`).pipe(
+ *     Effect.provideService(SqlClient.BeginTransaction, "BEGIN ISOLATION LEVEL SERIALIZABLE")
+ *   )
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.6
+ */
+export const BeginTransaction = Context.Reference<string | undefined>("effect/sql/SqlClient/BeginTransaction", {
+  defaultValue: () => undefined
 })

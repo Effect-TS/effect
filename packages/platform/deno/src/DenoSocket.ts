@@ -406,5 +406,5 @@ const close = (conn: Deno.Conn): Effect.Effect<void> =>
 
 const closeWrite = (conn: Deno.Conn): Effect.Effect<void> =>
   Effect.tryPromise(() => conn.closeWrite()).pipe(
-    Effect.catch((error) => isBadResource(error) ? Effect.void : Effect.die(error))
+    Effect.catch(({ cause }) => isBadResource(cause) ? Effect.void : Effect.die(cause))
   )

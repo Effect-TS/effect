@@ -13,6 +13,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as BigDecimal from "../BigDecimal.ts"
+import * as Bytes from "../Bytes.ts"
 import * as Cause from "../Cause.ts"
 import * as Channel from "../Channel.ts"
 import * as Chunk from "../Chunk.ts"
@@ -43,7 +44,7 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
  *
  * The default mode supports compatible schema evolution. `fingerprint: true`
  * uses positional layouts and an 8-byte layout hash for smaller frames, but
- * requires peers to use the same schema definition.
+ * requires peers to use an identical encoded layout.
  *
  * @stability unstable
  * @category models
@@ -91,6 +92,14 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
  *
  * Encoded results are arena-backed views and may share a larger buffer. Use
  * `bytes.slice()` when independent ownership is required.
+ *
+ * **Gotchas**
+ *
+ * Bytes carry the layout of the schema that wrote them. In the default mode,
+ * decode them with that schema or a compatible evolution of it; fingerprint
+ * mode requires an identical encoded layout. Most union codecs prefix values
+ * with a member selector, so they cannot read bytes written by a member's own
+ * codec.
  *
  * **Example** (Deriving a binary codec)
  *
@@ -248,16 +257,7 @@ export function encodeManyUnknownSync<S extends Schema.Constraint>(
 }
 
 function concatFrames(frames: ReadonlyArray<Uint8Array<ArrayBuffer>>): Uint8Array<ArrayBuffer> {
-  if (frames.length === 1) return frames[0]
-  let length = 0
-  for (const frame of frames) length += frame.length
-  const out = new Uint8Array(length)
-  let offset = 0
-  for (const frame of frames) {
-    out.set(frame, offset)
-    offset += frame.length
-  }
-  return out
+  return frames.length === 1 ? frames[0] : Bytes.concat(frames)
 }
 
 /**
@@ -1072,14 +1072,6 @@ function pushU64(out: Array<number>, n: bigint) {
   for (let i = 0; i < 8; i++) {
     out.push(Number((n >> BigInt(i * 8)) & BIGINT_BYTE_MASK))
   }
-}
-
-function compareBytes(a: Uint8Array, b: Uint8Array): number {
-  const len = Math.min(a.length, b.length)
-  for (let i = 0; i < len; i++) {
-    if (a[i] !== b[i]) return a[i] - b[i]
-  }
-  return a.length - b.length
 }
 
 class IssueError extends Error {
@@ -2050,7 +2042,7 @@ function sentinelSetHash(sentinels: ReadonlyArray<SchemaAST.Sentinel>): number {
     const bn = typeof b.key === "number"
     if (an !== bn) return an ? -1 : 1
     if (an) return (a.key as number) - (b.key as number)
-    return compareBytes(utf8Encode.encode(a.key as string), utf8Encode.encode(b.key as string))
+    return Bytes.Order(utf8Encode.encode(a.key as string), utf8Encode.encode(b.key as string))
   })
   const out: Array<number> = []
   for (const sentinel of sorted) {
@@ -3171,7 +3163,7 @@ function extraPairs(ctx: EncodeContext, layout: StructLayout, obj: Record<string
     pairs.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
   } else {
     for (const pair of pairs) pair[2] = utf8Encode.encode(pair[0])
-    pairs.sort((a, b) => compareBytes(a[2]!, b[2]!))
+    pairs.sort((a, b) => Bytes.Order(a[2]!, b[2]!))
   }
   if (persistent) {
     for (const pair of pairs) pair[2] ??= utf8Encode.encode(pair[0])

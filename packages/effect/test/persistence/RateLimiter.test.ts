@@ -7,6 +7,61 @@ import * as RateLimiterTest from "./RateLimiterTest.ts"
 RateLimiterTest.suite("memory", RateLimiter.layerStoreMemory)
 
 describe(`RateLimiter`, () => {
+  for (const algorithm of ["fixed-window", "token-bucket"] as const) {
+    describe(`${algorithm}: oversized requests`, () => {
+      it.effect("charges oversized delay-mode requests behind the queue and delays later requests", () =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          // Queue a full window, then two oversized requests and a normal request.
+          // Do not sleep: every reservation must account for all earlier requests.
+          const results = yield* Effect.forEach([4, 4, 5, 5, 4], (tokens) =>
+            limiter.consume({
+              algorithm,
+              onExceeded: "delay",
+              key: "oversized",
+              limit: 4,
+              window: "1 minute",
+              tokens
+            }))
+
+          assert.deepStrictEqual(
+            results.map((result) => Duration.toMillis(result.delay)),
+            algorithm === "fixed-window"
+              ? [0, 60_000, 180_000, 240_000, 300_000]
+              : [0, 60_000, 135_000, 210_000, 270_000]
+          )
+          assert.deepStrictEqual(results.map((result) => result.remaining), [0, -4, -9, -14, -18])
+          assert.deepStrictEqual(
+            results.map((result) => Duration.toMillis(result.resetAfter)),
+            [60_000, 120_000, 195_000, 270_000, 330_000]
+          )
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
+      it.effect("rejects oversized fail-mode requests without charging them", () =>
+        Effect.gen(function*() {
+          const limiter = yield* RateLimiter.make
+          const options = {
+            algorithm,
+            onExceeded: "fail",
+            key: "oversized",
+            limit: 4,
+            window: "1 minute"
+          } as const
+          const error = yield* Effect.flip(limiter.consume({ ...options, tokens: 5 }))
+          if (error.reason._tag !== "RateLimitExceeded") {
+            throw new Error("Expected RateLimitExceeded")
+          }
+          assert.strictEqual(error.reason.key, "oversized")
+          assert.strictEqual(error.reason.limit, 4)
+          assert.strictEqual(error.reason.remaining, 0)
+          assert.deepStrictEqual(error.reason.retryAfter, Duration.minutes(1))
+
+          const result = yield* limiter.consume({ ...options, tokens: 4 })
+          assert.strictEqual(result.remaining, 0)
+        }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+    })
+  }
+
   it.effect("supports partially applied sleep", () =>
     Effect.gen(function*() {
       const limiter = yield* RateLimiter.make

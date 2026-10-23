@@ -7,6 +7,8 @@
  * remaining entries when the cache is closed. Lookups for the same missing key
  * share one in-progress effect, and entries can expire, be refreshed, be
  * invalidated, or be evicted by capacity limits.
+ * Expiry cleanup is lazy: an expired entry is removed on access to that key or
+ * a `keys`/`values`/`entries` scan, not by a background timer.
  *
  * @stability stable
  * @since 4.0.0
@@ -39,14 +41,15 @@ const TypeId = "~effect/ScopedCache"
  * **When to use**
  *
  * Use to cache values that acquire scoped resources and must release those
- * resources when entries expire, are evicted, or are invalidated.
+ * resources when entries are removed or the owning scope closes.
  *
  * **Details**
  *
  * Concurrent requests for the same key share the same in-flight lookup.
  * Entries can expire based on the lookup exit, are evicted when capacity is
- * exceeded, and release their entry scopes when invalidated, evicted, expired,
- * or when the cache's owning scope closes.
+ * exceeded, and release their entry scopes when invalidated, evicted, or when
+ * the cache's owning scope closes. Expired entries are cleaned up lazily on
+ * access to that key or a `keys`/`values`/`entries` scan, never in the background.
  *
  * @see {@link make} for creating a scoped cache with a fixed time-to-live
  * @see {@link makeWith} for creating a scoped cache with dynamic time-to-live
@@ -127,8 +130,9 @@ export interface Entry<A, E> {
  * **Details**
  *
  * The cache must be constructed in a `Scope`. Each lookup runs in its own entry
- * scope, and that scope is closed when the entry expires, is invalidated, is
- * evicted by capacity, or when the cache's owning scope closes.
+ * scope, and that scope is closed when the entry is invalidated, is evicted by
+ * capacity, or when the cache's owning scope closes. Expired entries are cleaned
+ * up on access to that key or a `keys`/`values`/`entries` scan, not in the background.
  * `requireServicesAt` controls whether lookup services are captured at
  * construction time or required when lookup operations run.
  *
@@ -192,8 +196,9 @@ export const makeWith = <
  *
  * This is the constant-TTL variant of `makeWith`: values are acquired by the
  * lookup effect in per-entry scopes, capacity can evict older entries, and
- * entry scopes are closed when entries expire, are invalidated, are evicted, or
- * when the cache's owning scope closes.
+ * entry scopes are closed when entries are invalidated, are evicted, or when
+ * the cache's owning scope closes. Expiry cleanup is lazy: expired entries close
+ * on access to that key or a `keys`/`values`/`entries` scan, not in the background.
  *
  * @see {@link makeWith} for computing time-to-live from each lookup result and key
  *
@@ -770,11 +775,11 @@ const invalidateAllImpl = <Key, A, E>(
   // Detach the batch before finalizers can reenter the cache.
   const entries = Array.from(MutableHashMap.values(map))
   MutableHashMap.clear(map)
-  const fibers = Arr.empty<Fiber.Fiber<unknown, unknown>>()
+  const fibers = Arr.empty<Fiber.Fiber<void>>()
   for (const entry of entries) {
     fibers.push(effect.forkUnsafe(parent as any, Scope.close(entry.scope, effect.exitVoid), true, true))
   }
-  return effect.fiberAwaitAll(fibers)
+  return effect.flatMap(effect.fiberAwaitAll(fibers), Exit.asVoidAll)
 }
 
 /**

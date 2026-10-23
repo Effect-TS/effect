@@ -88,6 +88,7 @@ export class MultipartStream extends Duplex {
     super({ readableObjectMode: true })
     let currentError: MultipartError | undefined
     let currentFile: FileStream | undefined
+    let initialized = false
     this._parser = makeParser({
       ...(config as any),
       onField: (info, value) => {
@@ -112,14 +113,20 @@ export class MultipartStream extends Duplex {
         }
       },
       onError: (error) => {
+        currentError = error
+        if (!initialized) return
         this.emit("error", error)
         currentFile?.emit("error", error)
-        currentError = error
       },
       onDone: () => {
         this.push(null)
       }
     })
+    initialized = true
+    if (currentError !== undefined) {
+      // destroy defers the error event so callers can attach their listeners.
+      this.destroy(currentError as any)
+    }
   }
 
   _resume() {

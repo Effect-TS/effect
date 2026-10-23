@@ -108,7 +108,25 @@ describe("Union", () => {
   })
 
   describe("Tagged unions", () => {
-    describe("asTaggedUnion", () => {
+    describe("toTaggedUnion", () => {
+      it("should accept generic member lists", () => {
+        type Tagged = Schema.Constraint & { readonly Type: { readonly _tag: PropertyKey } }
+
+        const pipeForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.Union(members).pipe(Schema.toTaggedUnion("_tag"))
+
+        const callForm = <const Members extends ReadonlyArray<Tagged>>(members: Members) =>
+          Schema.toTaggedUnion("_tag")(Schema.Union(members))
+
+        const A = Schema.TaggedStruct("A", { a: Schema.String })
+        const B = Schema.TaggedStruct("B", { b: Schema.Number })
+        const piped = pipeForm([A, B])
+        const called = callForm([A, B])
+
+        expect(piped).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+        expect(called).type.toBe<Schema.toTaggedUnion<"_tag", readonly [typeof A, typeof B]>>()
+      })
+
       it("should not be callable if the tag field is invalid", () => {
         const original = Schema.Union([
           Schema.TaggedStruct("A", { a: Schema.String }),
@@ -145,6 +163,24 @@ describe("Union", () => {
         expect(A).type.toBe<Schema.TaggedStruct<"A", { readonly a: Schema.String }>>()
         expect(B).type.toBe<Schema.TaggedStruct<"B", { readonly b: Schema.FiniteFromString }>>()
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
+      })
+
+      it("should collect discriminants for the selected tag", () => {
+        const original = Schema.Union([
+          Schema.Struct({ _tag: Schema.tag("A"), kind: Schema.tag("shared") }),
+          Schema.Struct({ _tag: Schema.tag("B"), kind: Schema.tag("shared") })
+        ])
+
+        const schema = original.pipe(Schema.toTaggedUnion("_tag"))
+        expect(schema.discriminants).type.toBe<readonly ["A", "B"]>()
+      })
+
+      it("should preserve numeric and string discriminants", () => {
+        const schema = Schema.Union([
+          Schema.Struct({ event: Schema.Literal(1) }),
+          Schema.Struct({ event: Schema.Literal("2") })
+        ]).pipe(Schema.toTaggedUnion("event"))
+        expect(schema.discriminants).type.toBe<readonly [1, "2"]>()
       })
 
       it("isAnyOf should narrow custom tags", () => {

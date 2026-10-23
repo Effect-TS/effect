@@ -14,16 +14,19 @@ import * as Arr from "../Array.ts"
 import * as Cache from "../Cache.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
+import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
+import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as Stream from "../Stream.ts"
-import type { RemoteId } from "./EventJournal.ts"
+import type { EntryId, RemoteId } from "./EventJournal.ts"
 import * as EventLog from "./EventLog.ts"
 import {
   ChunkedMessage,
@@ -32,7 +35,8 @@ import {
   EventLogRemoteRpcs,
   HelloResponse,
   SingleMessage,
-  type StoreId
+  type StoreId,
+  type WriteAck
 } from "./EventLogMessage.ts"
 import * as EventLogSessionAuth from "./EventLogSessionAuth.ts"
 
@@ -72,12 +76,16 @@ export const layerAuthMiddleware: Layer.Layer<
  * chunked writes, delegates write and change handling to the supplied callbacks,
  * and frames large change payloads into chunks.
  *
+ * Use the connection's `ConnectionWrites.track` in `onWrite` and
+ * `ConnectionWrites.filter` in `changes` to suppress its own write echoes.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
+  readonly firstSequence?: number | undefined
   readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
@@ -85,12 +93,14 @@ export const layerRpcHandlers = (options: {
   ) => Effect.Effect<Uint8Array<ArrayBuffer>>
   readonly onWrite: (
     data: Uint8Array<ArrayBuffer>,
-    authenticatedPublicKeys: ReadonlySet<string>
-  ) => Effect.Effect<void, EventLogProtocolError>
+    authenticatedPublicKeys: ReadonlySet<string>,
+    writes: ConnectionWrites
+  ) => Effect.Effect<ReadonlyArray<WriteAck>, EventLogProtocolError>
   readonly changes: (options: {
     readonly publicKey: string
     readonly storeId: StoreId
     readonly startSequence: number
+    readonly writes: ConnectionWrites
   }) => Stream.Stream<Uint8Array<ArrayBuffer>, unknown>
 }): Layer.Layer<
   Rpc.ToHandler<RpcGroup.Rpcs<typeof EventLogRemoteRpcs>> | EventLogAuthentication
@@ -103,8 +113,8 @@ export const layerRpcHandlers = (options: {
     })
     let chunkedIdCounter = 0
 
-    const persistedSigningPublicKeys = yield* Cache.make({
-      lookup: (key: SessionAuthCacheKey) =>
+    const persistedSigningPublicKeys = yield* Cache.makeWith(
+      (key: SessionAuthCacheKey) =>
         options.getOrCreateSessionAuthBinding(key.publicKey, key.signingPublicKey).pipe(
           Effect.catchCause((_) =>
             Effect.fail(
@@ -117,15 +127,19 @@ export const layerRpcHandlers = (options: {
             )
           )
         ),
-      capacity: 4096
-    })
+      {
+        capacity: 4096,
+        timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.infinity : Duration.zero
+      }
+    )
 
     return EventLogRemoteRpcs.of({
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
         const challenge = yield* Cache.get(clientChallenges, client.id)
         return new HelloResponse({
           remoteId: options.remoteId,
-          challenge
+          challenge,
+          firstSequence: options.firstSequence
         })
       }),
       "EventLog.Authenticate": Effect.fnUntraced(function*(request, { client }) {
@@ -181,21 +195,22 @@ export const layerRpcHandlers = (options: {
           .annotate(AuthenticatedIdentities, authenticatedIdentities)
           .annotate(ChunkedMessageState, new Map())
       }),
-      "EventLog.WriteSingle": Effect.fnUntraced(function*(request, { client }) {
-        yield* options.onWrite(
+      "EventLog.WriteSingle": (request, { client }) =>
+        options.onWrite(
           request.data,
-          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set()
-        )
-      }),
-      "EventLog.WriteChunked": Effect.fnUntraced(function*(request, { client }) {
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set(),
+          getConnectionWrites(client)
+        ),
+      "EventLog.WriteChunked": (request, { client }) => {
         const state = Context.get(client.annotations, ChunkedMessageState)
         const data = ChunkedMessage.join(state, request)
-        if (!data) return
-        yield* options.onWrite(
+        if (!data) return Effect.succeed([])
+        return options.onWrite(
           data,
-          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set()
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set(),
+          getConnectionWrites(client)
         )
-      }),
+      },
       "EventLog.Changes": (request, { client }) => {
         const authenticatedIdentities = Context.getOrUndefined(client.annotations, AuthenticatedIdentities)
         if (!authenticatedIdentities?.has(request.publicKey)) {
@@ -211,7 +226,8 @@ export const layerRpcHandlers = (options: {
         return options.changes({
           publicKey: request.publicKey,
           storeId: request.storeId,
-          startSequence: request.startSequence
+          startSequence: request.startSequence,
+          writes: getConnectionWrites(client)
         }).pipe(
           Stream.mapArray(Arr.flatMap((data): NonEmptyReadonlyArray<SingleMessage | ChunkedMessage> => {
             if (data.byteLength <= ChunkedMessage.chunkSize) {
@@ -258,6 +274,132 @@ export class ChunkedMessageState extends Context.Reference<
 >("effect/eventlog/EventLogServer/ChunkedMessageState", {
   defaultValue: () => new Map()
 }) {}
+
+/**
+ * Tracks writes to suppress their echoes on the same RPC connection.
+ *
+ * **Details**
+ *
+ * Only tracks entries for stores with an open change stream.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export class ConnectionWrites {
+  private readonly streams = new Map<string, Set<ConnectionStream>>()
+
+  /**
+   * Runs a storage write while suppressing its entries on this connection's streams.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  track<E, R>(
+    options: {
+      readonly publicKey: string
+      readonly storeId: StoreId
+      readonly entryIds: ReadonlyArray<EntryId>
+    },
+    write: Effect.Effect<ReadonlyArray<WriteAck>, E, R>
+  ): Effect.Effect<ReadonlyArray<WriteAck>, E, R> {
+    const open = this.streams.get(makeStreamKey(options.publicKey, options.storeId))
+    if (open === undefined || options.entryIds.length === 0) return write
+    const streams = Array.from(open)
+    const started = streams.map((stream) => stream.position)
+    const ids = options.entryIds.map(Uuid.stringify)
+    // Track before writing: storage can publish an entry before the write
+    // returns. Each occurrence is counted, as an id can be stored more than once.
+    for (const stream of streams) {
+      for (const id of ids) stream.ids.set(id, (stream.ids.get(id) ?? 0) + 1)
+    }
+    return Effect.onExit(write, (exit) =>
+      Effect.sync(() => {
+        for (let i = 0; i < streams.length; i++) {
+          const stream = streams[i]
+          if (exit._tag === "Failure") {
+            for (const id of ids) release(stream.ids, id)
+            continue
+          }
+          // Release occurrences the stream had already passed when the write began.
+          for (const ack of exit.value) {
+            if (ack.sequence <= started[i]) release(stream.ids, Uuid.stringify(ack.entryId))
+          }
+        }
+      }))
+  }
+
+  /**
+   * Filters this connection's writes from a store's change stream. An item can
+   * hold several entries; `sequence` returns its highest one.
+   *
+   * @stability unstable
+   * @since 4.0.6
+   */
+  filter<A, E, R>(
+    options: {
+      readonly publicKey: string
+      readonly storeId: StoreId
+      readonly entryIds: (item: A) => ReadonlyArray<EntryId>
+      readonly sequence: (item: A) => number
+    },
+    stream: Stream.Stream<A, E, R>
+  ): Stream.Stream<A, E, R> {
+    return Stream.suspend(() => {
+      const key = makeStreamKey(options.publicKey, options.storeId)
+      const state: ConnectionStream = { ids: new Map(), position: -1 }
+      let open = this.streams.get(key)
+      if (open === undefined) {
+        open = new Set()
+        this.streams.set(key, open)
+      }
+      open.add(state)
+      return stream.pipe(
+        Stream.filter((item) => {
+          const sequence = options.sequence(item)
+          if (sequence > state.position) state.position = sequence
+          if (state.ids.size === 0) return true
+          // An item is written by one request, so it is either all or none of ours.
+          const ids = options.entryIds(item).map(Uuid.stringify)
+          if (!ids.every((id) => state.ids.has(id))) return true
+          for (const id of ids) release(state.ids, id)
+          return false
+        }),
+        Stream.ensuring(Effect.sync(() => {
+          open.delete(state)
+          if (open.size === 0) this.streams.delete(key)
+        }))
+      )
+    })
+  }
+}
+
+interface ConnectionStream {
+  // Outstanding occurrences of this connection's writes, by entry id.
+  readonly ids: Map<string, number>
+  position: number
+}
+
+const release = (ids: Map<string, number>, id: string): void => {
+  const count = ids.get(id)
+  if (count === undefined) return
+  if (count <= 1) ids.delete(id)
+  else ids.set(id, count - 1)
+}
+
+const makeStreamKey = (publicKey: string, storeId: StoreId): string => `${publicKey}/${storeId}`
+
+class ConnectionWritesState extends Context.Service<ConnectionWritesState, ConnectionWrites>()(
+  "effect/eventlog/EventLogServer/ConnectionWrites"
+) {}
+
+const getConnectionWrites = (client: Rpc.ServerClient): ConnectionWrites => {
+  const existing = Context.getOrUndefined(client.annotations, ConnectionWritesState)
+  if (existing !== undefined) return existing
+  const writes = new ConnectionWrites()
+  client.annotate(ConnectionWritesState, writes)
+  return writes
+}
 
 /**
  * Annotation containing the public keys authenticated on an RPC connection.

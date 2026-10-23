@@ -509,6 +509,104 @@ export const withDescription: {
   <A>(self: Flag<A>, description: string): Flag<A>
 } = dual(2, <A>(self: Flag<A>, description: string) => Param.withDescription(self, description))
 
+/**
+ * Lets a flag be given without a value, in which case `value` is used.
+ *
+ * **Details**
+ *
+ * Follows GNU-style optional values, like `--color[=WHEN]`. An explicit value
+ * must be attached with `=` (`--watch=until-done` or `-w=until-done`). A bare
+ * `--watch` is parsed as `--watch=<value>`, so `value` is validated like any
+ * other input. The flag never consumes the next token, so in `--watch build`,
+ * `build` stays a positional argument or subcommand. The flag is still
+ * required unless it is made optional or given a default.
+ *
+ * **Example** (Flag with an optional value)
+ *
+ * ```ts import.meta.vitest
+ * import { Flag } from "effect/cli"
+ *
+ * const watch = Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
+ *   Flag.withOptionalValue("first-failure"),
+ *   Flag.optional
+ * )
+ * // --watch             => Option.some("first-failure")
+ * // --watch=until-done  => Option.some("until-done")
+ * // (absent)            => Option.none()
+ * // In help: --watch [=choice]
+ * watch.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withOptionalValue: {
+  (value: string): <A>(self: Flag<A>) => Flag<A>
+  <A>(self: Flag<A>, value: string): Flag<A>
+} = dual(2, <A>(self: Flag<A>, value: string) => Param.withOptionalValue(self, value))
+
+/**
+ * Renames the negated form of a boolean flag, which defaults to `--no-<name>`.
+ *
+ * **Details**
+ *
+ * The new name replaces the default, so `--no-<name>` is no longer accepted
+ * and shell completions offer the new name instead. Has no effect on
+ * non-boolean flags.
+ *
+ * **Example** (Renaming a boolean flag's negation)
+ *
+ * ```ts import.meta.vitest
+ * import { Flag } from "effect/cli"
+ *
+ * const validate = Flag.Boolean("validate").pipe(
+ *   Flag.withDefault(true),
+ *   Flag.withNegation("skip-validate")
+ * )
+ * // --validate       => true
+ * // --skip-validate  => false
+ * // --no-validate    => unrecognized flag
+ * validate.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withNegation: {
+  (name: string): <A>(self: Flag<A>) => Flag<A>
+  <A>(self: Flag<A>, name: string): Flag<A>
+} = dual(2, <A>(self: Flag<A>, name: string) => Param.withNegation(self, name))
+
+/**
+ * Removes the negated `--no-<name>` form of a boolean flag.
+ *
+ * **Details**
+ *
+ * The negated form is then rejected as an unrecognized flag and left out of
+ * shell completions. Has no effect on non-boolean flags.
+ *
+ * **Example** (Disabling a boolean flag's negation)
+ *
+ * ```ts import.meta.vitest
+ * import { Flag } from "effect/cli"
+ *
+ * const unsafe = Flag.Boolean("unsafe").pipe(
+ *   Flag.withDefault(false),
+ *   Flag.withoutNegation
+ * )
+ * // --unsafe     => true
+ * // --no-unsafe  => unrecognized flag
+ * unsafe.kind // => "flag"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.0
+ */
+export const withoutNegation = <A>(self: Flag<A>): Flag<A> => Param.withoutNegation(self)
+
 // -------------------------------------------------------------------------------------
 // metadata
 // -------------------------------------------------------------------------------------

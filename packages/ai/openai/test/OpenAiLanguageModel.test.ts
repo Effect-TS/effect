@@ -82,6 +82,40 @@ describe("OpenAiLanguageModel", () => {
     )
   })
 
+  describe("web search find_in_page", () => {
+    it.effect.each(["generateText", "streamText"] as const)(
+      "preserves actions without a URL with %s",
+      (method) =>
+        Effect.gen(function*() {
+          const action = { type: "find_in_page", pattern: "og:image" } as const
+          const item = { type: "web_search_call", id: "ws_123", status: "completed", action }
+          const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
+          const body = method === "generateText"
+            ? JSON.stringify({ ...makeDefaultResponse(), output: [item] })
+            : `data: ${JSON.stringify(event)}\n\n`
+          const client = makeRawResponseClient(
+            body,
+            method === "generateText" ? "application/json" : "text/event-stream"
+          )
+          const options = { prompt: "Search the page", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
+          const parts = yield* Effect.gen(function*() {
+            if (method === "generateText") return (yield* LanguageModel.generateText(options)).content
+            return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.4")),
+            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(HttpClient.HttpClient, client)
+          )
+
+          deepStrictEqual(parts.filter((part) => part.type === "tool-call").map((part) => part.params), [{ action }])
+          deepStrictEqual<unknown>(
+            parts.filter((part) => part.type === "tool-result").map((part) => part.result),
+            [{ action, status: "completed" }]
+          )
+        })
+    )
+  })
+
   describe("web search without an action", () => {
     it.effect.each(
       [
@@ -125,7 +159,7 @@ describe("OpenAiLanguageModel", () => {
       }))
 
     it.effect("rejects null and malformed actions when present", () =>
-      Effect.forEach([null, { type: "find_in_page", url: "https://example.com" }], (action) => {
+      Effect.forEach([null, { type: "find_in_page", url: "https://example.com", pattern: null }], (action) => {
         const event = {
           type: "response.output_item.done",
           sequence_number: 1,
@@ -150,7 +184,7 @@ describe("OpenAiLanguageModel", () => {
 
   describe("generateText", () => {
     describe("message preparation", () => {
-      it.effect("forwards prompt cache configuration and text breakpoints", () =>
+      it.effect("forwards prompt cache, safety configuration and text breakpoints", () =>
         Effect.gen(function*() {
           const breakpoint = { mode: "explicit" } as const
           yield* LanguageModel.generateText({
@@ -169,7 +203,9 @@ describe("OpenAiLanguageModel", () => {
           }).pipe(
             Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
               prompt_cache_key: "assistant:v1",
-              prompt_cache_options: { mode: "explicit", ttl: "30m", comparison_response_id: "resp_baseline" }
+              prompt_cache_options: { mode: "explicit", ttl: "30m", comparison_response_id: "resp_baseline" },
+              prompt_cache_retention: "24h",
+              safety_identifier: "user-hash-123"
             }))
           )
 
@@ -177,6 +213,8 @@ describe("OpenAiLanguageModel", () => {
           const body = yield* getRequestBody(requests[0])
 
           strictEqual(body.prompt_cache_key, "assistant:v1")
+          strictEqual(body.prompt_cache_retention, "24h")
+          strictEqual(body.safety_identifier, "user-hash-123")
           deepStrictEqual(body.prompt_cache_options, {
             mode: "explicit",
             ttl: "30m",
@@ -194,6 +232,46 @@ describe("OpenAiLanguageModel", () => {
             content: [{
               type: "input_text",
               text: "Stable context",
+              prompt_cache_breakpoint: breakpoint
+            }]
+          }])
+        }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" as any } }))))
+
+      it.effect("forwards image and file breakpoints", () =>
+        Effect.gen(function*() {
+          const breakpoint = { mode: "explicit" } as const
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              Prompt.userMessage({
+                content: [
+                  Prompt.filePart({
+                    mediaType: "image/png",
+                    data: new URL("https://example.com/image.png"),
+                    options: { openai: { promptCacheBreakpoint: breakpoint } }
+                  }),
+                  Prompt.filePart({
+                    mediaType: "application/pdf",
+                    data: new URL("https://example.com/document.pdf"),
+                    options: { openai: { promptCacheBreakpoint: breakpoint } }
+                  })
+                ]
+              })
+            ])
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          deepStrictEqual(body.input, [{
+            role: "user",
+            content: [{
+              type: "input_image",
+              image_url: "https://example.com/image.png",
+              detail: "auto",
+              prompt_cache_breakpoint: breakpoint
+            }, {
+              type: "input_file",
+              file_url: "https://example.com/document.pdf",
               prompt_cache_breakpoint: breakpoint
             }]
           }])
@@ -1286,7 +1364,7 @@ describe("OpenAiLanguageModel", () => {
     })
 
     describe("response handling", () => {
-      it.effect("preserves prompt cache diagnostics alongside the service tier", () =>
+      it.effect("preserves ultrafast service tier alongside prompt cache diagnostics", () =>
         Effect.gen(function*() {
           const diagnostics = {
             type: "cache_miss",
@@ -1295,7 +1373,7 @@ describe("OpenAiLanguageModel", () => {
             comparison_reusable_tokens: 2048
           } as const
           const body = JSON.stringify({
-            ...makeDefaultResponse({ service_tier: "priority" }),
+            ...makeDefaultResponse({ service_tier: "ultrafast" }),
             prompt_cache_diagnostics: diagnostics
           })
           const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
@@ -1307,7 +1385,7 @@ describe("OpenAiLanguageModel", () => {
           const finish = result.content.find((part) => part.type === "finish")
           assert.isDefined(finish)
           deepStrictEqual(finish.metadata.openai, {
-            serviceTier: "priority",
+            serviceTier: "ultrafast",
             promptCacheDiagnostics: diagnostics
           })
         }))
@@ -1798,9 +1876,27 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect.each(["completed", "failed"] as const)(
-      "preserves prompt cache diagnostics in response.%s",
-      (status) =>
+    it.effect.each(
+      [
+        {
+          status: "completed",
+          serviceTier: "fast",
+          expectedMetadata: { promptCacheDiagnostics: { type: "cache_hit" } }
+        },
+        {
+          status: "completed",
+          serviceTier: "ultrafast",
+          expectedMetadata: { serviceTier: "ultrafast", promptCacheDiagnostics: { type: "cache_hit" } }
+        },
+        {
+          status: "failed",
+          serviceTier: "ultrafast",
+          expectedMetadata: { serviceTier: "ultrafast", promptCacheDiagnostics: { type: "cache_hit" } }
+        }
+      ] as const
+    )(
+      "preserves supported tiers and prompt cache diagnostics in response.$status with $serviceTier",
+      ({ status, serviceTier, expectedMetadata }) =>
         Effect.gen(function*() {
           const event = {
             type: `response.${status}`,
@@ -1810,7 +1906,7 @@ describe("OpenAiLanguageModel", () => {
                 status,
                 error: status === "failed" ? { code: "server_error", message: "generation failed" } : null
               }),
-              service_tier: "fast",
+              service_tier: serviceTier,
               prompt_cache_diagnostics: { type: "cache_hit" }
             }
           }
@@ -1829,7 +1925,7 @@ describe("OpenAiLanguageModel", () => {
 
           const finish = parts.find((part) => part.type === "finish")
           assert.isDefined(finish)
-          deepStrictEqual(finish.metadata.openai, { promptCacheDiagnostics: { type: "cache_hit" } })
+          deepStrictEqual(finish.metadata.openai, expectedMetadata)
         })
     )
 
@@ -2659,6 +2755,7 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStre
     OpenAiClient.OpenAiClient,
     OpenAiClient.OpenAiClient.of({
       client: undefined as any,
+      createDecisions: () => Effect.die(new Error("unexpected createDecisions call")),
       createResponse: () => Effect.die(new Error("unexpected createResponse call")),
       createResponseStream: () => Effect.succeed([response, Stream.fromIterable(events)]),
       createEmbedding: () => Effect.die(new Error("unexpected createEmbedding call"))
@@ -2701,15 +2798,14 @@ const makeTestLayer = (options: {
     }))
   )
 
-const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
-  Effect.gen(function*() {
-    const body = request.body
-    if (body._tag === "Uint8Array") {
-      const text = new TextDecoder().decode(body.body)
-      return JSON.parse(text)
-    }
-    return yield* Effect.die(new Error("Expected Uint8Array body"))
-  })
+const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest) {
+  const body = request.body
+  if (body._tag === "Uint8Array") {
+    const text = new TextDecoder().decode(body.body)
+    return JSON.parse(text)
+  }
+  return yield* Effect.die(new Error("Expected Uint8Array body"))
+})
 
 const decodeToolParamsFromStream = (
   parts: ReadonlyArray<any>,

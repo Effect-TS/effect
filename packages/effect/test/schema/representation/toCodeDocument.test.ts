@@ -458,6 +458,12 @@ describe("toCodeDocument", () => {
       })
     })
 
+    it("Int", () => {
+      assertSchema({ schema: Schema.Int }, {
+        codes: makeCode("Schema.Int", "number")
+      })
+    })
+
     it("Number & non-canonical finite check", () => {
       const expectRuntime = (schema: Schema.Constraint, runtime: string) =>
         assertSchema({ schema }, { codes: makeCode(runtime, "number") })
@@ -1758,7 +1764,7 @@ describe("toCodeDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isGreaterThan(0).annotate({ "expected": "a value greater than 0" }))`,
+            `Schema.Int.check(Schema.isGreaterThan(0).annotate({ "expected": "a value greater than 0" }))`,
             `number`
           )
         }

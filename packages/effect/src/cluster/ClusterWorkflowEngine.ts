@@ -24,7 +24,7 @@ import * as Rpc from "../rpc/Rpc.ts"
 import { ClientAbort } from "../rpc/RpcSchema.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
@@ -135,11 +135,21 @@ export const make = Effect.gen(function*() {
   // Rebuilds share an activation; overlapping activations have separate results.
   // Weak keys do not retain scopes, but contexts captured by clients, activities,
   // or finalizers can keep a closed scope (and its results) reachable until later.
-  const pendingByActivation = new WeakMap<Scope.Scope, {
-    readonly workflowName: string
-    readonly executionId: string
-    readonly results: Map<string, Exit.Exit<unknown, unknown>>
-  }>()
+  const pendingByActivation = new WeakMap<Scope.Scope, ActivationState>()
+  // Closes the scopes retained by suspended runs. The latest run already closed
+  // its own scope with its real exit, so earlier finalizers observe success and
+  // skip superseded compensations. Abandonment releases owner-local resources
+  // without running durable finalizers, so the run can replay elsewhere.
+  const closeRuns = (state: ActivationState, abandoned: boolean) =>
+    Effect.suspend(() => {
+      const scope = state.scope
+      if (abandoned) {
+        for (const instance of state.instances) instance.abandoned = true
+      }
+      state.instances.clear()
+      state.scope = Scope.makeUnsafe()
+      return Scope.close(scope, Exit.void)
+    })
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -282,7 +292,7 @@ export const make = Effect.gen(function*() {
     yield* storage.clearAddress(clockAddress)
   })
 
-  const resume = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string) {
+  const resume = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string, mode: WakeMode) {
     const maybeReply = yield* requestReply({
       workflow,
       entityType: `Workflow/${workflow._tag}`,
@@ -294,6 +304,8 @@ export const make = Effect.gen(function*() {
     const maybeSuspended = Option.filter(maybeReply, isSuspendedReply)
 
     if (Option.isNone(maybeSuspended)) return
+    // Replies without `failed` retain automatic wakes for compatibility.
+    if (mode === "automatic" && isFailedReply(maybeSuspended.value)) return
     if (
       !(yield* sharding.reset(
         Snowflake.Snowflake(maybeSuspended.value.requestId),
@@ -304,6 +316,15 @@ export const make = Effect.gen(function*() {
     }
     yield* sharding.pollStorage
   })
+
+  // Activations load a persisted interrupt when they start, so the per-call
+  // check reads only memory.
+  const interruptPending = (instance: WorkflowEngine.WorkflowInstance["Service"]) =>
+    Effect.map(Effect.serviceOption(CurrentActivationScope), (activation) => {
+      const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
+      return pending?.workflowName === instance.workflow._tag && pending.executionId === instance.executionId &&
+        pending.results.has(InterruptSignal.name)
+    })
 
   const sendResumeParent = Effect.fnUntraced(function*(options: {
     readonly workflowName: string
@@ -363,26 +384,25 @@ export const make = Effect.gen(function*() {
   // `Suspended`. Replies are only observed on the runner that saves them, so
   // callers on other runners, and any failure here, leave delivery to the
   // caller's retry schedule.
-  const awaitComplete = (workflow: Workflow.Any, executionId: string) =>
-    Effect.gen(function*() {
-      const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
-      if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
-      const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
-      if (Option.isNone(requestId)) return yield* Effect.never
-      const request = Envelope.makeRequest<any>({
-        requestId: requestId.value,
-        address,
-        tag: "run",
-        payload: {},
-        headers: Headers.empty
-      })
-      // A replay that suspends again re-arms the wait, so it does not spend a
-      // step of the caller's retry schedule.
-      let settled = false
-      while (!settled) {
-        settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
-      }
-    }).pipe(Effect.catchCause(() => Effect.never))
+  const awaitComplete = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string) {
+    const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
+    if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
+    const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
+    if (Option.isNone(requestId)) return yield* Effect.never
+    const request = Envelope.makeRequest<any>({
+      requestId: requestId.value,
+      address,
+      tag: "run",
+      payload: {},
+      headers: Headers.empty
+    })
+    // A replay that suspends again re-arms the wait, so it does not spend a
+    // step of the caller's retry schedule.
+    let settled = false
+    while (!settled) {
+      settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
+    }
+  }, Effect.catchCause(() => Effect.never))
 
   const interrupt = Effect.fnUntraced(
     function*(workflow: Workflow.Any, executionId: string) {
@@ -436,7 +456,32 @@ export const make = Effect.gen(function*() {
             const activation = yield* CurrentActivationScope
             let pending = pendingByActivation.get(activation)
             if (!pending) {
-              pending = { workflowName: workflow._tag, executionId, results: new Map() }
+              const results = new Map<string, Exit.Exit<unknown, unknown>>()
+              // A new owner must see an interrupt persisted before it took over.
+              // Publish the cache only once loaded, so a retried build repeats
+              // a failed lookup.
+              const interrupt = yield* Effect.orDie(requestReply({
+                workflow,
+                entityType: `Workflow/${workflow._tag}`,
+                executionId,
+                tag: "deferred",
+                id: InterruptSignal.name
+              }))
+              if (Option.isSome(interrupt)) {
+                const decoded = decodeDeferredWithExit(interrupt.value as any)
+                results.set(
+                  InterruptSignal.name,
+                  (decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit) as Exit.Exit<unknown, unknown>
+                )
+              }
+              pending = {
+                workflowName: workflow._tag,
+                executionId,
+                results,
+                instances: new Set(),
+                scope: Scope.makeUnsafe()
+              }
+              yield* Scope.addFinalizer(activation, closeRuns(pending, true))
               pendingByActivation.set(activation, pending)
             }
             // Retain awaited names through reply persistence, including suspension.
@@ -444,25 +489,40 @@ export const make = Effect.gen(function*() {
             let currentRun: {
               readonly request: Entity.Request<any>
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
+              // Activity awaits must wake the run after suspension without preempting it.
+              readonly activityAwaits: Map<string, number>
             } | undefined
-            // Concurrent wakes share one wait for the current run to publish its reply.
+            // Concurrent automatic wakes share one wait for the current run to
+            // publish its reply. Explicit wakes cannot be dropped, because an
+            // automatic wake skips the reset of a failure suspension, so they
+            // wait outside the gate. Operator resume does not use the gate.
             const resumeGate = Semaphore.makeUnsafe(1)
-            const resumeCurrentRun = Effect.suspend(() =>
-              resumeGate.withPermitsIfAvailable(1)(
-                currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
-              )
-            ).pipe(
-              // Release the gate before reset can start another run, so later
-              // completions can wake that replay.
-              Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
-              ensureSuccess
+            const waitForCurrentRunReply = Effect.suspend(() =>
+              currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
             )
+            const resumeCurrentRun = (mode: WakeMode) =>
+              ensureSuccess(
+                mode === "explicit"
+                  ? Effect.andThen(waitForCurrentRunReply, resume(workflow, executionId, mode))
+                  : resumeGate.withPermitsIfAvailable(1)(waitForCurrentRunReply).pipe(
+                    // Release the gate before reset can start another run, so later
+                    // completions can wake that replay.
+                    Effect.flatMap((waited) =>
+                      Option.isSome(waited) ? resume(workflow, executionId, mode) : Effect.void
+                    )
+                  )
+              )
             return {
               run: (request: Entity.Request<any>) => {
-                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                currentRun = { request, instance }
+                // Each run gets a fresh scope under the activation's parent, so
+                // replays rebuild compensations while suspended runs keep theirs.
+                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+                  scope: Scope.forkUnsafe(pending.scope)
+                })
+                pending.instances.add(instance)
+                currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
-                  | { workflowName: string; executionId: string }
+                  | { workflowName: string; executionId: string; detached?: boolean }
                   | undefined
                 return execute(workflow.payloadSchema.make(request.payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
@@ -479,7 +539,9 @@ export const make = Effect.gen(function*() {
                       !instance.abandoned &&
                       !(suspendOnFailure && exit._tag === "Failure")
                     ) {
-                      return parent ? ensureSuccess(sendResumeParent(parent, executionId)) : Effect.void
+                      return parent && !parent.detached
+                        ? ensureSuccess(sendResumeParent(parent, executionId))
+                        : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeExit) => {
@@ -497,6 +559,11 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
+                  Effect.onExit((exit) =>
+                    Exit.isSuccess(exit) && exit.value._tag === "Suspended"
+                      ? Effect.void
+                      : closeRuns(pending, instance.abandoned)
+                  ),
                   (effect) => deferredState.trackRun(instance, effect),
                   // Request middleware and local callers may carry another entity's context.
                   Effect.provideService(CurrentActivationScope, activation)
@@ -506,7 +573,9 @@ export const make = Effect.gen(function*() {
               activity(request: Entity.Request<any>) {
                 const payload = request.payload as { name: string; attempt: number }
                 const activityId = `${executionId}/${payload.name}`
-                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+                  awaitedDeferreds: currentRun?.activityAwaits
+                })
                 interruptedActivities.delete(activityId)
                 const entry = activities.get(activityId)
                 if (!entry) {
@@ -546,18 +615,26 @@ export const make = Effect.gen(function*() {
               deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
+                const mode: WakeMode = payload.name === InterruptSignal.name ? "explicit" : "automatic"
                 // Await registers before reading the cache. If this run has not
                 // registered yet, a later await will see the result just stored.
                 // Check when the wake runs and skip preemption too: interrupting
                 // a later await would require waiting for its reply before reset.
                 // A run completing its own deferred also reads it from the cache
-                // when it awaits later, so that completion never wakes the run.
+                // when it awaits later, unless an activity is already parked on it.
+                // A run only reads InterruptSignal while suspending, so an interrupt
+                // always waits for the current run's reply before it resets the run.
                 const wake = Effect.suspend(() =>
-                  currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
-                    ? currentRun.instance.completedDeferreds.has(payload.name)
+                  currentRun && mode === "automatic" && !currentRun.instance.awaitedDeferreds.has(payload.name)
+                    ? currentRun.activityAwaits.has(payload.name)
+                      // Hold an activity wake until the run has published its reply.
+                      ? resumeCurrentRun(mode)
+                      : currentRun.instance.completedDeferreds.has(payload.name)
                       ? Effect.void
-                      : ensureSuccess(resume(workflow, executionId))
-                    : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
+                      : ensureSuccess(resume(workflow, executionId, mode))
+                    : deferredState.deferredDone(executionId, payload.name).pipe(
+                      Effect.andThen(resumeCurrentRun(mode))
+                    )
                 )
                 // An asynchronous reply releases the RPC concurrency permit while
                 // the wake waits; the pending request still occupies mailbox capacity.
@@ -572,7 +649,7 @@ export const make = Effect.gen(function*() {
                 )
               },
 
-              resume: () => resumeCurrentRun.pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
+              resume: () => resumeCurrentRun("automatic").pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
           }),
           // Alongside the run, let deferred handlers briefly acquire a permit to
@@ -589,7 +666,7 @@ export const make = Effect.gen(function*() {
         ).pipe(Effect.andThen(registration))
       }),
 
-    execute: (workflow, { discard, executionId, parent, payload }) => {
+    execute: (workflow, { detached, discard, executionId, parent, payload }) => {
       ensureEntity(workflow)
       return RcMap.get(clients, workflow._tag).pipe(
         Effect.flatMap((make) =>
@@ -597,7 +674,10 @@ export const make = Effect.gen(function*() {
             parent ?
               {
                 ...payload,
-                [payloadParentKey]: { workflowName: parent.workflow._tag, executionId: parent.executionId }
+                // A detached child keeps its parent for observability only.
+                [payloadParentKey]: detached
+                  ? { workflowName: parent.workflow._tag, executionId: parent.executionId, detached: true }
+                  : { workflowName: parent.workflow._tag, executionId: parent.executionId }
               } :
               payload,
             { discard }
@@ -649,7 +729,7 @@ export const make = Effect.gen(function*() {
       ))
     }),
 
-    resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId)),
+    resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId, "explicit")),
 
     awaitComplete,
 
@@ -659,6 +739,21 @@ export const make = Effect.gen(function*() {
         const instance = Context.get(services, WorkflowEngine.WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
         const activityId = `${instance.executionId}/${activity.name}`
+        // A pending interrupt replays only to rebuild compensations, so it must
+        // not run new activities. Finalizers run once `interrupted` is set.
+        if (!instance.interrupted && (yield* interruptPending(instance))) {
+          const reply = yield* Effect.orDie(requestReply({
+            workflow: instance.workflow,
+            entityType: `Workflow/${instance.workflow._tag}`,
+            executionId: instance.executionId,
+            tag: "activity",
+            id: activityPrimaryKey(activity.name, attempt)
+          }))
+          // Suspend so `onExit` applies the interrupt to the run.
+          if (Option.isNone(reply) || isSuspendedReply(reply.value)) {
+            return new Workflow.Suspended({})
+          }
+        }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow._tag))(instance.executionId)
         while (true) {
           if (!activities.has(activityId)) {
@@ -845,8 +940,23 @@ const DeferredRpc = Rpc.make("deferred", {
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
 
+type WakeMode = "explicit" | "automatic"
+
+interface ActivationState {
+  readonly workflowName: string
+  readonly executionId: string
+  readonly results: Map<string, Exit.Exit<unknown, unknown>>
+  // Every run forks its scope from here, so runs that suspended keep their
+  // resources and durable finalizers until the execution finishes.
+  scope: Scope.Closeable
+  readonly instances: Set<WorkflowEngine.WorkflowInstance["Service"]>
+}
+
 const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
+
+const isFailedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
+  reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended" && reply.exit.value.failed === true
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 
@@ -875,7 +985,8 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
         ...workflow.payloadSchema.fields,
         [payloadParentKey]: Schema.optional(Schema.Struct({
           workflowName: Schema.String,
-          executionId: Schema.String
+          executionId: Schema.String,
+          detached: Schema.optional(Schema.Boolean)
         }))
       },
       primaryKey: () => "",

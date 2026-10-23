@@ -1,12 +1,14 @@
 import * as AiError from "effect/ai/AiError"
-import * as Duration from "effect/Duration"
+import * as Clock from "effect/Clock"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Headers from "effect/http/Headers"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
-import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 
 const requestDetails = (request: HttpClientRequest.HttpClientRequest) => ({
@@ -23,12 +25,11 @@ const ErrorBody = Schema.Struct({
 
 const decodeErrorBody = Schema.decodeUnknownOption(ErrorBody)
 
-const retryAfter = (raw: string | undefined): Duration.Duration | undefined => {
-  if (raw === undefined || raw.trim() === "") return undefined
-  const seconds = Option.getOrUndefined(Num.parse(raw))
-  if (seconds !== undefined) return Number.isFinite(seconds) && seconds >= 0 ? Duration.seconds(seconds) : undefined
-  const date = Date.parse(raw)
-  return Number.isNaN(date) ? undefined : Duration.millis(Math.max(0, date - Date.now()))
+// an invalid Retry-After is treated as absent
+const retryAfter = (raw: string | undefined, now: number): Duration.Duration | undefined => {
+  if (raw === undefined) return undefined
+  const retryAfter = Headers.parseRetryAfter(raw)
+  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
 }
 
 const fail = (reason: AiError.AiErrorReason) =>
@@ -57,7 +58,7 @@ export const mapResponseError = Effect.fnUntraced(
     if (status === 429) {
       return yield* fail(
         new AiError.RateLimitError({
-          retryAfter: retryAfter(response.headers["retry-after"]),
+          retryAfter: retryAfter(response.headers["retry-after"], yield* Clock.currentTimeMillis),
           http,
           metadata: { cloudflare: { rayId: response.headers["cf-ray"] ?? null, errors: details?.errors ?? [] } }
         })

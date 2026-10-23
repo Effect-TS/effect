@@ -210,6 +210,19 @@ describe("HttpServerRequest", () => {
       assert.isFalse("version" in decoded)
     }))
 
+  describe("toURL", () => {
+    const cases: ReadonlyArray<[url: string, headers: Record<string, string>, expected: string]> = [
+      ["https://example.test/a?b=1", { host: "example.test" }, "https://example.test/a?b=1"],
+      ["http://example.test/a", { host: "example.test", "x-forwarded-proto": "https" }, "http://example.test/a"]
+    ]
+    for (const [url, headers, expected] of cases) {
+      it(`${url} ${JSON.stringify(headers)} -> ${expected}`, () => {
+        const request = HttpServerRequest.fromWeb(new Request(url, { headers }))
+        strictEqual(Option.getOrThrow(HttpServerRequest.toURL(request)).href, expected)
+      })
+    }
+  })
+
   it("remoteAddress defaults to none for web requests", () => {
     const request = HttpServerRequest.fromWeb(new Request("http://example.com"))
     assertNone(request.remoteAddress)

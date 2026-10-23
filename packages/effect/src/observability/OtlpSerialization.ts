@@ -30,17 +30,31 @@ export class OtlpSerialization extends Context.Service<OtlpSerialization, {
   readonly logs: (data: LogsData) => HttpBody.HttpBody
 }>()("effect/observability/OtlpSerialization") {}
 
+// OTLP/JSON writes NaN and Infinity as strings, but JSON.stringify writes null
+const nonFiniteToString = (_key: string, value: unknown) =>
+  typeof value === "number" && !Number.isFinite(value) ? String(value) : value
+
+const jsonBody = (data: unknown): HttpBody.HttpBody => {
+  const json = JSON.stringify(data)
+  return HttpBody.text(json.includes("null") ? JSON.stringify(data, nonFiniteToString) : json, "application/json")
+}
+
 /**
  * Provides `OtlpSerialization` using OTLP/HTTP JSON bodies.
+ *
+ * **Details**
+ *
+ * `NaN`, `Infinity` and `-Infinity` are written as the strings OTLP/JSON
+ * expects, not as `null`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerJson = Layer.succeed(OtlpSerialization, {
-  traces: (spans) => HttpBody.jsonUnsafe(spans),
-  metrics: (metrics) => HttpBody.jsonUnsafe(metrics),
-  logs: (logs) => HttpBody.jsonUnsafe(logs)
+  traces: (spans) => jsonBody(spans),
+  metrics: (metrics) => jsonBody(metrics),
+  logs: (logs) => jsonBody(logs)
 })
 
 /**

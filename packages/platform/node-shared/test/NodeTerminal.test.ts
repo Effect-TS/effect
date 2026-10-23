@@ -120,6 +120,14 @@ describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
     assertResult("read-line-after-end", "", "\"QuitError\"")
   })
 
+  it("leaves a TTY in cooked mode for readLine", () => {
+    assertResult("tty-read-line", "line\n", "{\"line\":\"line\",\"rawMode\":[]}")
+  })
+
+  it("enables raw mode on a TTY while reading key input", () => {
+    assertResult("tty-read-input", "y", "{\"input\":\"y\",\"rawMode\":[true,false]}")
+  })
+
   it.effect("disposes readline after its idle TTL", () =>
     assertOpenResult(
       "read-line-disposed",

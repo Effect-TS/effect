@@ -169,9 +169,9 @@ class TomlParser {
           this.advance()
         }
         key = this.input.slice(start, this.index)
-      }
-      if (key.length === 0) {
-        this.fail("Expected a key")
+        if (key.length === 0) {
+          this.fail("Expected a key")
+        }
       }
       keys.push(key)
       this.skipInlineWhitespace()

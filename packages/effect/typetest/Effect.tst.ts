@@ -596,6 +596,27 @@ describe("Effect.catchIf", () => {
     )
     expect(_program).type.toBe<Effect.Effect<string, SimpleError>>()
   })
+
+  it("supports unknown refinement input in data-first usage", () => {
+    const result = Effect.catchIf(
+      mixedEffect,
+      (e: unknown): e is AiError => e instanceof AiError,
+      () => Effect.succeed("ok")
+    )
+    expect(result).type.toBe<Effect.Effect<string, OtherError>>()
+  })
+
+  it("does not widen to unknown with unrelated refinement in data-first usage", () => {
+    const result = Effect.catchIf(
+      mixedEffect,
+      (e: unknown): e is { _tag: "Whatever" } => (e as { _tag: string })._tag === "Whatever",
+      (e) => {
+        expect(e).type.toBe<AiError | OtherError>()
+        return Effect.succeed(12 as const)
+      }
+    )
+    expect(result).type.toBe<Effect.Effect<string | 12, AiError | OtherError>>()
+  })
 })
 
 describe("Effect.catchFilter", () => {

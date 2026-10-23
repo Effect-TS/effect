@@ -44,6 +44,8 @@ export const stream = (
       NodeStream.fromReadable<MP.Part, Multipart.MultipartError>({
         evaluate() {
           const parser = MP.make(config)
+          // `pipe` does not forward source errors, such as a body that ends early.
+          source.once("error", (error) => parser.destroy(error))
           source.pipe(parser)
           return parser as any
         },

@@ -91,58 +91,57 @@ const make = Effect.fnUntraced(function*(
         try: () => client.sendCommand([command, ...args]) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
       }),
-    subscribe: (channel, onMessage) =>
-      Effect.gen(function*() {
-        const terminal = yield* Deferred.make<void, Redis.RedisError>()
-        yield* Effect.acquireRelease(
-          Effect.tryPromise({
-            try: async () => {
-              let subscriberReady = false
-              const subscriber = client.duplicate(
-                socket?.reconnectStrategy === undefined
-                  ? {
-                    socket: {
-                      ...socket,
-                      reconnectStrategy: (retries, cause) => {
-                        if (!subscriberReady) return cause
-                        if (cause instanceof SocketTimeoutError) return false
-                        const jitter = Math.floor(Math.random() * 200)
-                        const delay = Math.min(2 ** retries * 50, 2000)
-                        return delay + jitter
-                      }
+    subscribe: Effect.fnUntraced(function*(channel, onMessage) {
+      const terminal = yield* Deferred.make<void, Redis.RedisError>()
+      yield* Effect.acquireRelease(
+        Effect.tryPromise({
+          try: async () => {
+            let subscriberReady = false
+            const subscriber = client.duplicate(
+              socket?.reconnectStrategy === undefined
+                ? {
+                  socket: {
+                    ...socket,
+                    reconnectStrategy: (retries, cause) => {
+                      if (!subscriberReady) return cause
+                      if (cause instanceof SocketTimeoutError) return false
+                      const jitter = Math.floor(Math.random() * 200)
+                      const delay = Math.min(2 ** retries * 50, 2000)
+                      return delay + jitter
                     }
                   }
-                  : {}
-              )
-              subscriber.once("ready", () => {
-                subscriberReady = true
-              })
-              subscriber.on("error", (cause) => {
-                runSync(Effect.logWarning("NodeRedis subscriber error", cause))
-                if (!subscriber.isOpen) {
-                  runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
                 }
-              })
-              try {
-                await subscriber.connect()
-                await subscriber.subscribe(channel, (message, channel) => {
-                  onMessage({ channel, message })
-                })
-                return subscriber
-              } catch (cause) {
-                if (subscriber.isOpen) subscriber.destroy()
-                throw cause
-              }
-            },
-            catch: (cause) => new Redis.RedisError({ cause })
-          }),
-          (subscriber) =>
-            Effect.sync(() => {
-              if (subscriber.isOpen) subscriber.destroy()
+                : {}
+            )
+            subscriber.once("ready", () => {
+              subscriberReady = true
             })
-        )
-        return Deferred.await(terminal)
-      })
+            subscriber.on("error", (cause) => {
+              runSync(Effect.logWarning("NodeRedis subscriber error", cause))
+              if (!subscriber.isOpen) {
+                runSync(Deferred.fail(terminal, new Redis.RedisError({ cause })))
+              }
+            })
+            try {
+              await subscriber.connect()
+              await subscriber.subscribe(channel, (message, channel) => {
+                onMessage({ channel, message })
+              })
+              return subscriber
+            } catch (cause) {
+              if (subscriber.isOpen) subscriber.destroy()
+              throw cause
+            }
+          },
+          catch: (cause) => new Redis.RedisError({ cause })
+        }),
+        (subscriber) =>
+          Effect.sync(() => {
+            if (subscriber.isOpen) subscriber.destroy()
+          })
+      )
+      return Deferred.await(terminal)
+    })
   })
 
   const nodeRedis = Fn.identity<NodeRedis["Service"]>({

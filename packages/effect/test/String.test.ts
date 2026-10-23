@@ -114,6 +114,20 @@ describe("String", () => {
     it("does not change already capitalized", () => {
       strictEqual(S.capitalize("Hello"), "Hello")
     })
+
+    it("expands an eszett", () => {
+      strictEqual(S.capitalize("ß"), "SS")
+      strictEqual(S.capitalize("ßx"), "SSx")
+    })
+
+    it("capitalizes an astral letter", () => {
+      strictEqual(S.capitalize("𐐨foo"), "𐐀foo")
+      strictEqual(S.capitalize("\uD801x"), "\uD801x")
+    })
+
+    it("leaves an emoji code point unchanged", () => {
+      strictEqual(S.capitalize("😀x"), "😀x")
+    })
   })
 
   describe("uncapitalize", () => {
@@ -131,6 +145,15 @@ describe("String", () => {
 
     it("preserves rest of string", () => {
       strictEqual(S.uncapitalize("ABC"), "aBC")
+      strictEqual(S.uncapitalize("AΣ"), "aΣ")
+    })
+
+    it("uncapitalizes an astral letter", () => {
+      strictEqual(S.uncapitalize("𐐀FOO"), "𐐨FOO")
+    })
+
+    it("expands a dotted capital i", () => {
+      strictEqual(S.uncapitalize("İX"), "i\u0307X")
     })
   })
 
@@ -598,6 +621,11 @@ describe("String", () => {
     it("handles an empty string", () => {
       strictEqual(S.snakeToCamel(""), "")
     })
+
+    it("handles trailing and separator-only inputs", () => {
+      strictEqual(S.snakeToCamel("foo_"), "foo")
+      strictEqual(S.snakeToCamel("__"), "")
+    })
   })
 
   describe("snakeToPascal", () => {
@@ -608,6 +636,11 @@ describe("String", () => {
 
     it("handles an empty string", () => {
       strictEqual(S.snakeToPascal(""), "")
+    })
+
+    it("handles trailing and separator-only inputs", () => {
+      strictEqual(S.snakeToPascal("foo_"), "Foo")
+      strictEqual(S.snakeToPascal("__"), "")
     })
   })
 
@@ -673,6 +706,17 @@ describe("String", () => {
     it("splits digit-letter boundaries", () => {
       strictEqual(S.noCase("field2value"), "field 2 value")
       strictEqual(S.noCase("field2Value"), "field 2 value")
+    })
+
+    it("does not transform a word for inputs without words", () => {
+      const parts: Array<string> = []
+      const transform = (part: string) => {
+        parts.push(part)
+        return part
+      }
+      strictEqual(S.noCase("", { transform }), "")
+      strictEqual(S.noCase("---", { transform }), "")
+      deepStrictEqual(parts, [])
     })
   })
 

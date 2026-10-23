@@ -192,6 +192,13 @@ declare module "effect/ai/Prompt" {
        * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
        */
       readonly imageDetail?: ImageDetail | null
+      /**
+       * Marks the input image or file as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
+       */
+      readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
     } | null
   }
 
@@ -590,7 +597,7 @@ declare module "effect/ai/Response" {
       /**
        * The service tier reported by OpenAI for the response.
        */
-      readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | null
+      readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | "ultrafast" | null
       /**
        * Prompt cache diagnostics for `prompt_cache_options.comparison_response_id`.
        */
@@ -925,12 +932,13 @@ const prepareMessages = Effect.fnUntraced(
               }
 
               case "file": {
+                const promptCacheBreakpoint = getPromptCacheBreakpoint(part)
                 if (part.mediaType.startsWith("image/")) {
                   const detail = getImageDetail(part)
                   const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
 
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_image", file_id: part.data, detail })
+                    content.push({ type: "input_image", file_id: part.data, detail, ...promptCacheBreakpoint })
                   } else {
                     const imageUrl = part.data instanceof URL
                       ? part.data.toString()
@@ -939,22 +947,27 @@ const prepareMessages = Effect.fnUntraced(
                       : /^(data:|https?:\/\/)/i.test(part.data)
                       ? part.data
                       : `data:${mediaType};base64,${part.data}`
-                    content.push({ type: "input_image", image_url: imageUrl, detail })
+                    content.push({ type: "input_image", image_url: imageUrl, detail, ...promptCacheBreakpoint })
                   }
                 } else if (part.mediaType === "application/pdf") {
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_file", file_id: part.data })
+                    content.push({ type: "input_file", file_id: part.data, ...promptCacheBreakpoint })
                   }
 
                   if (part.data instanceof URL) {
-                    content.push({ type: "input_file", file_url: part.data.toString() })
+                    content.push({ type: "input_file", file_url: part.data.toString(), ...promptCacheBreakpoint })
                   }
 
                   if (part.data instanceof Uint8Array) {
                     const base64 = Base64.encode(part.data)
                     const fileName = part.fileName ?? `part-${index}.pdf`
                     const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({ type: "input_file", filename: fileName, file_data: fileData })
+                    content.push({
+                      type: "input_file",
+                      filename: fileName,
+                      file_data: fileData,
+                      ...promptCacheBreakpoint
+                    })
                   }
                 } else {
                   return yield* AiError.make({
@@ -3133,7 +3146,7 @@ const getEncryptedContent = (
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
 
 const getPromptCacheBreakpoint = (
-  input: Prompt.SystemMessage | Prompt.TextPart
+  input: Prompt.SystemMessage | Prompt.TextPart | Prompt.FilePart
 ) => {
   const promptCacheBreakpoint = input.options.openai?.promptCacheBreakpoint
   return Predicate.isNotNullish(promptCacheBreakpoint) ? { prompt_cache_breakpoint: promptCacheBreakpoint } : undefined
@@ -3298,7 +3311,7 @@ const getUsage = (usage: OpenAiSchema.ResponseUsage | null | undefined): Respons
   }
 }
 
-type ServiceTier = "default" | "auto" | "flex" | "scale" | "priority" | null
+type ServiceTier = "default" | "auto" | "flex" | "scale" | "priority" | "ultrafast" | null
 
 const toFinishMetadata = (response: OpenAiSchema.Response): {
   readonly metadata: Response.FinishPartMetadata
@@ -3310,6 +3323,7 @@ const toFinishMetadata = (response: OpenAiSchema.Response): {
     case "flex":
     case "scale":
     case "priority":
+    case "ultrafast":
       serviceTier = response.service_tier
       break
   }

@@ -5,6 +5,9 @@ import type * as Headers from "../Headers.ts"
 import * as HttpBody from "../HttpBody.ts"
 import type { Compression, CompressionAlgorithm, CompressionOptions } from "../HttpPlatform.ts"
 import * as Response from "../HttpServerResponse.ts"
+import { compressionTransformWeb, singleChunkStream } from "./compressionBody.ts"
+
+export { compressionTransformWeb } from "./compressionBody.ts"
 
 /**
  * @internal
@@ -40,15 +43,6 @@ export const wrapCompression = (impl: Compression): Compression => ({
     })
   }
 })
-
-/**
- * @internal
- */
-export const compressionTransformWeb =
-  (format: string) => (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> =>
-    stream.pipeThrough(
-      new CompressionStream(format as CompressionFormat) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-    )
 
 /**
  * @internal
@@ -116,14 +110,6 @@ const streamBody = (
     response,
     HttpBody.stream(Stream.fromReadableStream({ evaluate, onError: identity }), contentType)
   )
-
-const singleChunkStream = (data: Uint8Array): ReadableStream<Uint8Array> =>
-  new ReadableStream({
-    start(controller) {
-      controller.enqueue(data)
-      controller.close()
-    }
-  })
 
 const rawReadableStream = (raw: unknown): ReadableStream<Uint8Array> | undefined => {
   if (typeof ReadableStream !== "undefined" && raw instanceof ReadableStream) {

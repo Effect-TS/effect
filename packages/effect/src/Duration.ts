@@ -35,12 +35,25 @@ const bigint60 = BigInt(60)
 const bigint1e3 = BigInt(1_000)
 const bigint1e6 = BigInt(1_000_000)
 const bigint1e9 = BigInt(1_000_000_000)
+const bigintNanosPerMinute = BigInt(60_000_000_000)
+const bigintNanosPerHour = BigInt(3_600_000_000_000)
+const bigintNanosPerDay = BigInt(86_400_000_000_000)
+const bigintNanosPerWeek = BigInt(604_800_000_000_000)
 
 const roundTiesAwayFromZero = (input: number): bigint => BigInt(Math.sign(input) * Math.round(Math.abs(input)))
 
-const roundMillisToNanos = (millis: number): bigint => roundTiesAwayFromZero(millis * 1_000_000)
+const roundMillisToNanos = (millis: number): bigint =>
+  Number.isInteger(millis) ? BigInt(millis) * bigint1e6 : roundTiesAwayFromZero(millis * 1_000_000)
 
 const fromNanosNumber = (nanos: number): Duration => make(Number.isFinite(nanos) ? roundTiesAwayFromZero(nanos) : nanos)
+
+const nanosToUnit = (nanos: bigint, divisor: number): number => {
+  const value = Number(nanos)
+  // Preserve ordinary-input rounding; scale first only when nanoseconds overflow.
+  if (Number.isFinite(value)) return value / divisor
+  const scale = BigInt(divisor)
+  return Number(nanos / scale) + Number(nanos % scale) / divisor
+}
 
 const parseNanos = (input: string, scale: bigint): bigint => {
   const decimalIndex = input.indexOf(".")
@@ -59,6 +72,14 @@ const divideTiesAwayFromZero = (numerator: bigint, denominator: bigint): bigint 
   const absolute = numerator < bigint0 ? -numerator : numerator
   const rounded = absolute / denominator + (absolute % denominator * bigint2 >= denominator ? bigint1 : bigint0)
   return numerator < bigint0 ? -rounded : rounded
+}
+
+const fromMillisString = (input: string, scale: number): Duration => {
+  const millis = Number(input) * scale
+  if (!Number.isFinite(millis)) return make(millis)
+  const nanos = parseNanos(input, BigInt(scale) * bigint1e6)
+  // Keep the millisecond representation only when it preserves the exact value.
+  return make(Number.isInteger(millis) && BigInt(millis) * bigint1e6 === nanos ? millis : nanos)
 }
 
 const nanosToHrTime = (nanos: bigint): [seconds: number, nanos: number] => {
@@ -273,26 +294,25 @@ export const fromInputUnsafe = (input: Input): Duration => {
       if (unit === "micro" || unit === "micros") {
         return nanos(parseNanos(valueStr, bigint1e3))
       }
-      const value = Number(valueStr)
       switch (unit) {
         case "milli":
         case "millis":
-          return millis(value)
+          return fromMillisString(valueStr, 1)
         case "second":
         case "seconds":
-          return seconds(value)
+          return fromMillisString(valueStr, 1_000)
         case "minute":
         case "minutes":
-          return minutes(value)
+          return fromMillisString(valueStr, 60_000)
         case "hour":
         case "hours":
-          return hours(value)
+          return fromMillisString(valueStr, 3_600_000)
         case "day":
         case "days":
-          return days(value)
+          return fromMillisString(valueStr, 86_400_000)
         case "week":
         case "weeks":
-          return weeks(value)
+          return fromMillisString(valueStr, 604_800_000)
       }
       break
     }
@@ -312,7 +332,10 @@ export const fromInputUnsafe = (input: Input): Duration => {
         if (input[0] === Infinity || input[1] === Infinity) {
           return infinity
         }
-        return fromNanosNumber(input[0] * 1_000_000_000 + input[1])
+        const nanos = input[0] * 1_000_000_000 + input[1]
+        return Number.isFinite(nanos) && Number.isInteger(input[0]) && Number.isInteger(input[1])
+          ? make(BigInt(input[0]) * bigint1e9 + BigInt(input[1]))
+          : fromNanosNumber(nanos)
       }
       const obj = input as DurationObject
       let millis = 0
@@ -323,11 +346,39 @@ export const fromInputUnsafe = (input: Input): Duration => {
       if (obj.minutes) millis += obj.minutes * 60_000
       if (obj.seconds) millis += obj.seconds * 1_000
       if (obj.milliseconds) millis += obj.milliseconds
-      if (!obj.microseconds && !obj.nanoseconds) return make(millis)
-      return fromNanosNumber(millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0))
+      if (!obj.microseconds && !obj.nanoseconds) {
+        if (!Number.isFinite(millis)) return make(millis)
+        const exact = sumObjectNanos(obj)
+        // keep the Millis representation when the numeric total is already exact
+        return exact === undefined || BigInt(millis) * bigint1e6 === exact ? make(millis) : make(exact)
+      }
+      const nanos = millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0)
+      const exact = Number.isFinite(nanos) ? sumObjectNanos(obj) : undefined
+      return exact === undefined ? fromNanosNumber(nanos) : make(exact)
     }
   }
   return invalid(input)
+}
+
+const isIntegerOrUnset = (n: number | undefined): boolean => !n || Number.isInteger(n)
+
+// sums the fields exactly, or returns undefined if any field is fractional
+const sumObjectNanos = (obj: DurationObject): bigint | undefined => {
+  if (
+    !isIntegerOrUnset(obj.weeks) || !isIntegerOrUnset(obj.days) || !isIntegerOrUnset(obj.hours) ||
+    !isIntegerOrUnset(obj.minutes) || !isIntegerOrUnset(obj.seconds) || !isIntegerOrUnset(obj.milliseconds) ||
+    !isIntegerOrUnset(obj.microseconds) || !isIntegerOrUnset(obj.nanoseconds)
+  ) return undefined
+  let nanos = bigint0
+  if (obj.weeks) nanos += BigInt(obj.weeks) * bigintNanosPerWeek
+  if (obj.days) nanos += BigInt(obj.days) * bigintNanosPerDay
+  if (obj.hours) nanos += BigInt(obj.hours) * bigintNanosPerHour
+  if (obj.minutes) nanos += BigInt(obj.minutes) * bigintNanosPerMinute
+  if (obj.seconds) nanos += BigInt(obj.seconds) * bigint1e9
+  if (obj.milliseconds) nanos += BigInt(obj.milliseconds) * bigint1e6
+  if (obj.microseconds) nanos += BigInt(obj.microseconds) * bigint1e3
+  if (obj.nanoseconds) nanos += BigInt(obj.nanoseconds)
+  return nanos
 }
 
 const invalid = (input: unknown): never => {
@@ -365,10 +416,8 @@ const DurationProto: Omit<Duration, "value"> = {
     // Hash equal finite durations using the same canonical nanoseconds
     // representation used by `equals`.
     switch (this.value._tag) {
-      case "Millis": {
-        const nanos = this.value.millis * 1_000_000
-        return Number.isFinite(nanos) ? Hash.hash(roundTiesAwayFromZero(nanos)) : Hash.number(this.value.millis)
-      }
+      case "Millis":
+        return Hash.hash(roundMillisToNanos(this.value.millis))
       case "Nanos":
         return Hash.hash(this.value.nanos)
       default:
@@ -818,7 +867,7 @@ export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
 export const toMillis = (self: Input): number =>
   match(fromInputUnsafe(self), {
     onMillis: identity,
-    onNanos: (nanos) => Number(nanos) / 1_000_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 1_000_000),
     onInfinity: () => Infinity,
     onNegativeInfinity: () => -Infinity
   })
@@ -842,7 +891,7 @@ export const toMillis = (self: Input): number =>
 export const toSeconds = (self: Input): number =>
   match(fromInputUnsafe(self), {
     onMillis: (millis) => millis / 1_000,
-    onNanos: (nanos) => Number(nanos) / 1_000_000_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 1_000_000_000),
     onInfinity: () => Infinity,
     onNegativeInfinity: () => -Infinity
   })
@@ -866,7 +915,7 @@ export const toSeconds = (self: Input): number =>
 export const toMinutes = (self: Input): number =>
   match(fromInputUnsafe(self), {
     onMillis: (millis) => millis / 60_000,
-    onNanos: (nanos) => Number(nanos) / 60_000_000_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 60_000_000_000),
     onInfinity: () => Infinity,
     onNegativeInfinity: () => -Infinity
   })
@@ -890,7 +939,7 @@ export const toMinutes = (self: Input): number =>
 export const toHours = (self: Input): number =>
   match(fromInputUnsafe(self), {
     onMillis: (millis) => millis / 3_600_000,
-    onNanos: (nanos) => Number(nanos) / 3_600_000_000_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 3_600_000_000_000),
     onInfinity: () => Infinity,
     onNegativeInfinity: () => -Infinity
   })
@@ -914,7 +963,7 @@ export const toHours = (self: Input): number =>
 export const toDays = (self: Input): number =>
   match(fromInputUnsafe(self), {
     onMillis: (millis) => millis / 86_400_000,
-    onNanos: (nanos) => Number(nanos) / 86_400_000_000_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 86_400_000_000_000),
     onInfinity: () => Infinity,
     onNegativeInfinity: () => -Infinity
   })
@@ -938,7 +987,7 @@ export const toDays = (self: Input): number =>
 export const toWeeks = (self: Input): number =>
   match(fromInputUnsafe(self), {
     onMillis: (millis) => millis / 604_800_000,
-    onNanos: (nanos) => Number(nanos) / 604_800_000_000_000,
+    onNanos: (nanos) => nanosToUnit(nanos, 604_800_000_000_000),
     onInfinity: () => Infinity,
     onNegativeInfinity: () => -Infinity
   })

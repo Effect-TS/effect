@@ -21,6 +21,7 @@ import * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
 import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
+import type { Readable } from "node:stream"
 import * as NodeStream from "./NodeStream.ts"
 
 const textDecoder = new TextDecoder()
@@ -54,6 +55,8 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
   readonly source: Http.IncomingMessage
   readonly onError: (error: unknown) => E
   readonly remoteAddressOverride?: Option.Option<string> | undefined
+  protected readonly destroyOnOverflow: boolean = true
+  protected readonly closeOnDone: boolean = true
 
   constructor(
     source: Http.IncomingMessage,
@@ -108,10 +111,19 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
       }))
   }
 
+  /**
+   * The readable the body is read from, `source` unless a subclass reads the
+   * body from elsewhere.
+   */
+  protected get bodySource(): Readable {
+    return this.source
+  }
+
   get stream(): Stream.Stream<Uint8Array, E> {
     return NodeStream.fromReadable({
-      evaluate: () => this.source,
-      onError: this.onError
+      evaluate: () => this.bodySource,
+      onError: this.onError,
+      closeOnDone: this.closeOnDone
     })
   }
 
@@ -121,8 +133,9 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
       return this.arrayBufferEffect
     }
     this.arrayBufferEffect = Effect.withFiber((fiber) =>
-      NodeStream.toArrayBuffer(() => this.source, {
+      NodeStream.toArrayBuffer(() => this.bodySource, {
         onError: this.onError,
+        destroyOnOverflow: this.destroyOnOverflow,
         maxBytes: fiber.getRef(IncomingMessage.MaxBodySize)
       })
     ).pipe(

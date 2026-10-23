@@ -10,13 +10,12 @@ const text = (packet: DatagramSocket.Datagram) => new TextDecoder().decode(packe
 const bounded = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.timeout("5 seconds"))
 
 // pull can return batches, so collect by packet count rather than pull count.
-const collect = (reader: DatagramSocket.Reader, count: number) =>
-  Effect.gen(function*() {
-    const packets: Array<DatagramSocket.Datagram> = []
-    while (packets.length < count) packets.push(...(yield* reader.pull))
-    assert.strictEqual(packets.length, count)
-    return packets
-  })
+const collect = Effect.fnUntraced(function*(reader: DatagramSocket.Reader, count: number) {
+  const packets: Array<DatagramSocket.Datagram> = []
+  while (packets.length < count) packets.push(...(yield* reader.pull))
+  assert.strictEqual(packets.length, count)
+  return packets
+})
 
 const assertReason = (error: DatagramSocket.DatagramSocketError, tag: string) => {
   assert.instanceOf(error, DatagramSocket.DatagramSocketError)

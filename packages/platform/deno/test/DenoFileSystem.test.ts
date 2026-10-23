@@ -3,6 +3,8 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
+import * as Stream from "effect/Stream"
 import { afterEach } from "vitest"
 import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
@@ -12,6 +14,55 @@ describe("FileSystem", () =>
     tempFileScopedRemovesDirectory: false,
     noFollow: false
   }))
+
+describe("stat", () => {
+  it.effect("returns device and inode metadata as bigint", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const native = Deno.statSync(path)
+      const info = yield* fs.stat(path)
+
+      assert.strictEqual(info.dev, BigInt(native.dev))
+      assert.deepStrictEqual(info.ino, Option.map(Option.fromNullishOr(native.ino), BigInt))
+    }).pipe(Effect.provide(DenoFileSystem.layer)))
+})
+
+describe("watch", () => {
+  it.effect("prefers the caller WatchBackend over the construction backend", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const callerEvent: FileSystem.WatchEvent = { _tag: "Create", path: "from-caller" }
+      const event = yield* fs.watch(root).pipe(
+        Stream.runHead,
+        Effect.provideService(FileSystem.WatchBackend, {
+          register: () => Option.some(Stream.make(callerEvent))
+        })
+      )
+      assert.deepStrictEqual(event, Option.some(callerEvent))
+    }).pipe(
+      Effect.provide(DenoFileSystem.layer),
+      Effect.provideService(FileSystem.WatchBackend, {
+        register: () => Option.some(Stream.make({ _tag: "Create" as const, path: "from-construction" }))
+      })
+    ))
+
+  it.live("uses a WatchBackend provided after the layer is built", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const backendEvent: FileSystem.WatchEvent = { _tag: "Create", path: "from-backend" }
+      const event = yield* fs.watch(root).pipe(
+        Stream.runHead,
+        Effect.provideService(FileSystem.WatchBackend, {
+          register: () => Option.some(Stream.make(backendEvent))
+        }),
+        Effect.timeout("1 second")
+      )
+      assert.deepStrictEqual(event, Option.some(backendEvent))
+    }).pipe(Effect.provide(DenoFileSystem.layer)))
+})
 
 describe("truncate", () => {
   it.effect.each([1.5, NaN])(

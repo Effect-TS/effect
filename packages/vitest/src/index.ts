@@ -158,8 +158,8 @@ export declare namespace Vitest {
      *
      * **Details**
      *
-     * Returning `false` or throwing falsifies the property and triggers shrinking. A callback that returns normally
-     * without returning `false` passes for that generated input.
+     * Returning `false` or throwing falsifies the property and triggers shrinking. Returning `true` or `undefined`
+     * passes for that generated input. Other return values are rejected; use `it.effect.prop` for Effect callbacks.
      *
      * The Vitest timeout interrupts the Effect fiber running generation and shrinking.
      *
@@ -177,7 +177,7 @@ export declare namespace Vitest {
           [K in keyof Arbs]: ArbitraryValue<Arbs[K]>
         },
         ctx: V.TestContext
-      ) => void,
+      ) => boolean | void,
       timeout?:
         | number
         | V.TestOptions & {
@@ -216,6 +216,36 @@ export declare namespace Vitest {
  * @since 4.0.0
  */
 export const addEqualityTesters: () => void = internal.addEqualityTesters
+
+/**
+ * Registers a callback to run once before all tests in the current suite. If
+ * the callback returns an `Effect`, it is run and awaited with a `Scope` that
+ * closes in a cleanup after the suite's `afterAll` hooks, within the hook's
+ * timeout. The `Effect` must not require any other services.
+ *
+ * **Details**
+ *
+ * If Vitest stops waiting for the setup, the setup is interrupted before the
+ * `Scope` closes. As with any `beforeAll` cleanup, Vitest reports a closing
+ * that exceeds the hook's timeout and does not wait for it.
+ *
+ * @stability unstable
+ * @category hooks
+ * @since 4.0.0
+ */
+export const beforeAll: typeof V.beforeAll = internal.beforeAll
+
+/**
+ * Registers a callback to run before each test in the current suite. If the
+ * callback returns an `Effect`, it is run and awaited with a `Scope` that
+ * closes when the test finishes, and interrupted if the hook times out. The
+ * `Effect` must not require any other services.
+ *
+ * @stability unstable
+ * @category hooks
+ * @since 4.0.0
+ */
+export const beforeEach: typeof V.beforeEach = internal.beforeEach
 
 /**
  * Runs a scoped Effect test with test clock and console services.

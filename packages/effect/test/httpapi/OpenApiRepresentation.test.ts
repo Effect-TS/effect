@@ -31,6 +31,23 @@ describe("OpenApi representation v2 consumer", () => {
     )
   })
 
+  it("includes selected custom annotation keys", () => {
+    const Value = Schema.String.annotate({ identifier: "Value", "x-test-brand": "Value" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("value", "/value", { success: Value })
+      )
+    )
+
+    assert.deepStrictEqual(
+      OpenApi.fromApi(Api, { includeAnnotationKey: (key) => key === "x-test-brand" }).components.schemas,
+      { Value: { type: "string", "x-test-brand": "Value" } }
+    )
+    assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
+      Value: { type: "string" }
+    })
+  })
+
   it("uses canonical JSON codecs for response declaration schemas", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
@@ -149,6 +166,39 @@ describe("OpenApi representation v2 consumer", () => {
       properties: { value: { type: "string" } },
       required: ["value"],
       additionalProperties: false
+    })
+  })
+
+  describe("shares a named schema across response statuses", () => {
+    const base = Schema.Struct({
+      id: Schema.String,
+      metadata: Schema.Record(Schema.String, Schema.Unknown)
+    })
+
+    it.each([
+      { name: "plain", schema: base },
+      { name: "checked", schema: base.check(Schema.isMinProperties(1)) },
+      { name: "with key context", schema: base.pipe(HttpApiSchema.status(200)) }
+    ])("$name", ({ schema }) => {
+      const Widget = schema.annotate({ identifier: "Widget" })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/widget", { success: Widget }),
+          HttpApiEndpoint.post("create", "/widget", { success: Widget.pipe(HttpApiSchema.status(201)) })
+        )
+      )
+
+      const spec = OpenApi.fromApi(Api)
+
+      assert.deepStrictEqual(Object.keys(spec.components.schemas), ["Widget"])
+      assert.deepStrictEqual(
+        spec.paths["/widget"]?.get?.responses[200]?.content?.["application/json"]?.schema,
+        { $ref: "#/components/schemas/Widget" }
+      )
+      assert.deepStrictEqual(
+        spec.paths["/widget"]?.post?.responses[201]?.content?.["application/json"]?.schema,
+        { $ref: "#/components/schemas/Widget" }
+      )
     })
   })
 

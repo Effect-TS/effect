@@ -12,7 +12,7 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import { byReferenceInstances, getAllObjectKeys, viewBytes } from "./internal/equal.ts"
+import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -257,6 +257,13 @@ function compareStructure(self: object, that: object): boolean {
       return false
     }
     return compareArrays(self, that)
+  } else if (isArrayBufferLike(self)) {
+    if (!isArrayBufferLike(that) || (self instanceof ArrayBuffer) !== (that instanceof ArrayBuffer)) {
+      return false
+    }
+    const selfBytes = bufferBytes(self)
+    const thatBytes = bufferBytes(that)
+    return selfBytes !== undefined && thatBytes !== undefined && compareTypedArrays(selfBytes, thatBytes)
   } else if (ArrayBuffer.isView(self)) {
     const selfIsDataView = self instanceof DataView
     if (
