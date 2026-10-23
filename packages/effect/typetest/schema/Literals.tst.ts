@@ -48,8 +48,10 @@ describe("Literals", () => {
   it("omit", () => {
     const schema = Schema.Literals(["a", "b", "c", "d"])
 
-    expect(schema.omit(["c", "a"])).type.toBe<Schema.Literals<readonly ["b", "d"]>>()
-    expect(schema.omit(["c", "a"]).members).type.toBe<readonly [Schema.Literal<"b">, Schema.Literal<"d">]>()
+    expect(schema.omit(["c", "a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "d">>>()
+    expect(schema.omit(["c", "a"]).members).type.toBe<ReadonlyArray<Schema.Literal<"b" | "d">>>()
+    expect(schema.omit([])).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+    expect(schema.omit(["a", "b", "c", "d"])).type.toBe<Schema.Literals<ReadonlyArray<never>>>()
     expect(schema.omit).type.not.toBeCallableWith(["x"])
 
     // a widened omission array may not contain every member of its union at runtime
@@ -75,8 +77,17 @@ describe("Literals", () => {
     // a parent element typed as a union may or may not be omitted at runtime
     expect(Schema.Literals([ab, "c"]).omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
 
+    // a branded parent element may share its runtime value with an omitted literal
+    expect(Schema.Literals([1 as Id, 1, "other"]).omit([1])).type.toBe<Schema.Literals<ReadonlyArray<Id | "other">>>()
+
     const widened = Schema.Literals(["a", "b", "c"] as ReadonlyArray<"a" | "b" | "c">)
     expect(widened.omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
+
+    // must not hit the instantiation limit with many literals
+    type Many<N extends number, Acc extends Array<string> = []> = Acc["length"] extends N ? Acc
+      : Many<N, [...Acc, `k${Acc["length"]}`]>
+    const many = Schema.Literals([] as unknown as Many<240>)
+    expect(many.omit(["k0", "k239"])["Type"]).type.toBe<Exclude<(typeof many)["Type"], "k0" | "k239">>()
   })
 
   it("transform", () => {
