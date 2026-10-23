@@ -219,9 +219,9 @@ const builtInSharedScalars: ReadonlyMap<string, BuiltInScalar> = new Map([
 ])
 
 /**
- * The strongly connected components of the graph reached from `roots`, each
- * after every component it has an edge to (Tarjan's algorithm). A
- * component's nodes are in the order they were reached.
+ * Tarjan's strongly connected components of the graph reached from `roots`,
+ * in dependency order. Each component's nodes are in the order they were
+ * reached.
  */
 const stronglyConnectedComponents = (
   roots: Iterable<string>,
@@ -1385,9 +1385,8 @@ class Emitter {
 
   /** The shared module, and the custom scalars it holds without a mapping. */
   emitShared(): { readonly file: GeneratedFile; readonly unmapped: ReadonlyArray<string> } {
-    // Close over input objects: each one reaches the types of all its fields.
-    // Inputs are declared after the inputs they use, and the members of a
-    // cycle together.
+    // Close over input objects in dependency order, keeping each cycle's
+    // members together.
     const fieldTypes = (name: string): ReadonlyArray<string> => {
       const type = this.type(name)
       return type._tag === "InputObjectType" ? type.fields.map((field) => SchemaModel.namedTypeOf(field.type)) : []
@@ -1399,7 +1398,7 @@ class Emitter {
       const type = this.type(name)
       return type._tag === "InputObjectType" ? [type] : []
     })
-    /** The members of the cycle each recursive input object is on. */
+    /** Each recursive input object's cycle. */
     const cycles = new Map<string, ReadonlySet<string>>()
     /** The input objects whose Encoded type differs from their Type. */
     const transforms = new Set<string>()
@@ -1503,7 +1502,7 @@ class Emitter {
         (b, e) => `${e}const ${b} = ${schema}.Literals([${literals}])\n${e}type ${b} = typeof ${b}.Type`
       ))
     }
-    // A recursive input object's Encoded interface, when it differs from the Type.
+    // Recursive input objects whose Encoded type differs from their Type.
     const encodedNames = new Map<string, string>()
     for (const type of inputs) {
       if (cycles.has(type.name) && transforms.has(type.name)) {
@@ -1635,11 +1634,10 @@ interface Recursion {
 }
 
 /**
- * An input object on a cycle of input objects. TypeScript can't infer the
- * type of a const read in its own initializer, so the Type, and the Encoded
- * type when it differs, are written out and annotate a `Schema.Codec`. Every
- * reference to a type on the same cycle is a `Schema.suspend`, since the
- * cycle's later members aren't initialized yet.
+ * An input object on a cycle. TypeScript can't infer a const read in its own
+ * initializer, so the Type, and the Encoded type when it differs, are written
+ * out to annotate a `Schema.Codec`. References within the cycle are
+ * suspended, since later members aren't initialized yet.
  */
 const recursiveDeclaration = (
   type: SchemaModel.InputObjectType,
@@ -1682,9 +1680,8 @@ const recursiveDeclaration = (
 }
 
 /**
- * The TypeScript type of an input, as written in the shared module, with
- * `leaf` for each named type. Lists are `readonly T[]`, since a generated
- * type can be named `ReadonlyArray`.
+ * The TypeScript type of an input, with `leaf` for each named type. Lists are
+ * `readonly T[]`, since a generated type can be named `ReadonlyArray`.
  */
 const inputTypeText = (type: SchemaModel.TypeRef, leaf: (name: string) => string): string =>
   typeRef(

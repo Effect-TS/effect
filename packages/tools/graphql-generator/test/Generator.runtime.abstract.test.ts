@@ -3,8 +3,8 @@
  * `GraphQLClient` over a mock `GraphQLProtocol`: the GitHub timeline (`node`
  * on an interface, the `timelineItems` union and a fragment on the `Actor`
  * interface from another file), and the subscriptions set (a `Subscription`
- * root, a `@oneOf` input, nested interfaces, an enum and mutually recursive
- * input objects).
+ * root, a `@oneOf` input, nested interfaces, an enum and recursive input
+ * objects).
  */
 import { assert, describe, it } from "@effect/vitest"
 import * as DateTime from "effect/DateTime"
