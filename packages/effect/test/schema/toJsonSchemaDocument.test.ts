@@ -4660,8 +4660,7 @@ describe("toJsonSchemaDocument", () => {
         Schema.toEncoded(Schema.fromJsonString(Schema.Boolean)),
         {
           schema: {
-            "type": "string",
-            "contentMediaType": "application/json"
+            "type": "string"
           }
         }
       )

@@ -623,7 +623,6 @@ describe("SchemaRepresentation.toJson", () => {
       representation: {
         _tag: "String",
         annotations: {
-          contentMediaType: "application/json",
           expected: "a string that will be decoded as JSON"
         },
         checks: []

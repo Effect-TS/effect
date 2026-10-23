@@ -68,7 +68,6 @@ describe("SchemaRepresentation.toRepresentations", () => {
             _tag: "String",
             annotations: {
               expected: "a string that will be decoded as JSON",
-              contentMediaType: "application/json",
               "~identifier": "Tool.Content"
             },
             checks: [],
@@ -92,8 +91,7 @@ describe("SchemaRepresentation.toRepresentations", () => {
           {
             _tag: "String",
             annotations: {
-              expected: "a string that will be decoded as JSON",
-              contentMediaType: "application/json"
+              expected: "a string that will be decoded as JSON"
             },
             checks: [],
             content: {
@@ -104,8 +102,7 @@ describe("SchemaRepresentation.toRepresentations", () => {
           {
             _tag: "String",
             annotations: {
-              expected: "a string that will be decoded as JSON",
-              contentMediaType: "application/json"
+              expected: "a string that will be decoded as JSON"
             },
             checks: [],
             content: {

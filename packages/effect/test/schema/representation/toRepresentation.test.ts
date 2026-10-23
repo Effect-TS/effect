@@ -176,8 +176,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
         representation: {
           _tag: "String",
           annotations: {
-            expected: "a string that will be decoded as JSON",
-            contentMediaType: "application/json"
+            expected: "a string that will be decoded as JSON"
           },
           checks: [],
           content: { mediaType: "application/json" }
@@ -499,7 +498,6 @@ describe("SchemaRepresentation.toRepresentation", () => {
         representation: {
           _tag: "String",
           annotations: {
-            contentMediaType: "application/json",
             expected: "a string that will be decoded as JSON"
           },
           checks: []
