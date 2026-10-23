@@ -48,32 +48,37 @@ export interface SingletonRegistered {
   readonly address: SingletonAddress
 }
 
-const constructors = Data.taggedEnum<ShardingRegistrationEvent>()
-
 /**
- * Pattern matches on a sharding registration event and dispatches to the
- * matching variant handler.
+ * Constructors and matchers for sharding registration events.
  *
  * @stability unstable
  * @category pattern matching
  * @since 4.0.0
  */
-export const match = constructors.$match
-
-/**
- * Creates an event for an entity registered by the local runner.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const EntityRegistered = constructors.EntityRegistered
-
-/**
- * Creates an event for a singleton registered by the local runner.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const SingletonRegistered = constructors.SingletonRegistered
+export const {
+  /**
+   * Pattern matches on a sharding registration event and dispatches to the
+   * matching variant handler.
+   *
+   * @stability unstable
+   * @category pattern matching
+   * @since 4.0.0
+   */
+  $match: match,
+  /**
+   * Creates an event for an entity registered by the local runner.
+   *
+   * @stability unstable
+   * @category constructors
+   * @since 4.0.0
+   */
+  EntityRegistered,
+  /**
+   * Creates an event for a singleton registered by the local runner.
+   *
+   * @stability unstable
+   * @category constructors
+   * @since 4.0.0
+   */
+  SingletonRegistered
+} = Data.taggedEnum<ShardingRegistrationEvent>()
