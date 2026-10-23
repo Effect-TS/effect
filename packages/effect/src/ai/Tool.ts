@@ -1163,12 +1163,9 @@ export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
   infer _Config,
   infer _RequiresHandler
 > ? _RequiresHandler
-  : [ExecutionOf<Tool>] extends ["client"] ? false
+  // A tool type that allows either mode, such as `Tool.Any`, requires a handler
+  : Tool extends { readonly execution?: "client" | undefined } ? false
   : true
-
-// The execution modes a tool's type allows. A tool type that allows both,
-// such as `Tool.Any`, requires a handler.
-type ExecutionOf<T> = T extends { readonly execution?: infer E } ? Exclude<E, undefined> : never
 
 /**
  * Where calls to a tool are executed: by its handler on the `"server"`, or
@@ -1550,78 +1547,22 @@ export const make: {
  * @since 4.0.0
  */
 export const dynamic: {
-  <
-    const Name extends string,
-    const Options extends {
-      readonly description?: string | undefined
-      readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
-      readonly success?: Schema.Constraint | undefined
-      readonly failure?: Schema.Constraint | undefined
-      readonly failureMode?: FailureMode | undefined
-      readonly needsApproval?: NeedsApproval<any> | undefined
-      readonly execution?: Execution | undefined
-    }
-  >(
+  <const Name extends string, const Options extends DynamicOptions>(
     name: Name,
     options: Options
   ): Dynamic<
     Name,
-    {
-      readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
-        : P extends JsonSchema.JsonSchema ? P
-        : typeof Schema.Unknown
-        : typeof Schema.Unknown
-      readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
-        : typeof Schema.Unknown
-      readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
-        : typeof Schema.Never
-      readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
-    },
+    DynamicConfig<Options>,
     never,
     Options extends { readonly execution: infer E extends Execution } ? E : Execution
   >
-  <
-    const Name extends string,
-    const Options extends {
-      readonly description?: string | undefined
-      readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
-      readonly success?: Schema.Constraint | undefined
-      readonly failure?: Schema.Constraint | undefined
-      readonly failureMode?: FailureMode | undefined
-      readonly needsApproval?: NeedsApproval<any> | undefined
-      readonly execution?: Execution | undefined
-    }
-  >(
+  // When the options object may be absent, either execution mode is recorded,
+  // since absent options create a server-executed tool
+  <const Name extends string, const Options extends DynamicOptions>(
     name: Name,
     options?: Options | undefined
-  ): Dynamic<
-    Name,
-    {
-      readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
-        : P extends JsonSchema.JsonSchema ? P
-        : typeof Schema.Unknown
-        : typeof Schema.Unknown
-      readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
-        : typeof Schema.Unknown
-      readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
-        : typeof Schema.Never
-      readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
-    },
-    never,
-    Execution
-  >
-} = <
-  const Name extends string,
-  const Options extends {
-    readonly description?: string | undefined
-    readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
-    readonly success?: Schema.Constraint | undefined
-    readonly failure?: Schema.Constraint | undefined
-    readonly failureMode?: FailureMode | undefined
-    readonly needsApproval?: NeedsApproval<any> | undefined
-    readonly execution?: Execution | undefined
-  }
->(name: Name, options?: Options): any => {
+  ): Dynamic<Name, DynamicConfig<Options>, never, Execution>
+} = (name: string, options?: DynamicOptions): any => {
   const successSchema = options?.success ?? Schema.Unknown
   const failureSchema = options?.failure ?? Schema.Never
   const rawParameters = options?.parameters ?? Schema.Unknown
@@ -1640,6 +1581,30 @@ export const dynamic: {
     jsonSchema,
     execution: options?.execution
   })
+}
+
+// The tool configuration `Tool.dynamic` derives from its options
+type DynamicConfig<Options extends DynamicOptions> = {
+  readonly parameters: Options extends { readonly parameters: infer P } ? P extends Schema.Constraint ? P
+    : P extends JsonSchema.JsonSchema ? P
+    : typeof Schema.Unknown
+    : typeof Schema.Unknown
+  readonly success: Options extends { readonly success: infer S extends Schema.Constraint } ? S
+    : typeof Schema.Unknown
+  readonly failure: Options extends { readonly failure: infer F extends Schema.Constraint } ? F
+    : typeof Schema.Never
+  readonly failureMode: Options extends { readonly failureMode: infer M extends FailureMode } ? M : "error"
+}
+
+// Options accepted by `Tool.dynamic`
+interface DynamicOptions {
+  readonly description?: string | undefined
+  readonly parameters?: Schema.Constraint | JsonSchema.JsonSchema | undefined
+  readonly success?: Schema.Constraint | undefined
+  readonly failure?: Schema.Constraint | undefined
+  readonly failureMode?: FailureMode | undefined
+  readonly needsApproval?: NeedsApproval<any> | undefined
+  readonly execution?: Execution | undefined
 }
 
 /**
