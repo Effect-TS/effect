@@ -345,33 +345,6 @@ export interface MiddlewareOptions {
   readonly sessionId: string | undefined
 }
 
-/**
- * Services a transport supplies to a request before any MCP middleware runs.
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export type TransportServices = HttpServerRequest.HttpServerRequest | McpServerClient | Scope.Scope
-
-const MissingRequestDependenciesTypeId = "~effect/ai/McpServer/MissingRequestDependencies"
-
-/**
- * The type of a middleware layer whose per-request requirements are not met.
- *
- * **Details**
- *
- * Supply the missing services through `combine` or the transport.
- * The type argument identifies the missing services.
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export interface MissingRequestDependencies<Missing> {
-  readonly [MissingRequestDependenciesTypeId]: Missing
-}
-
 const MiddlewareTypeId = "~effect/ai/McpServer/Middleware"
 
 type MiddlewareConfig = {
@@ -382,13 +355,11 @@ type MiddlewareConfig = {
   layerRequires: any
 }
 
-type MiddlewareLayer<Config extends MiddlewareConfig, R> = [Exclude<Config["requires"], TransportServices>] extends
-  [never] ? Layer.Layer<
-    McpRequest.From<"Requires", Config["provides"]>,
-    Config["layerError"],
-    R | Config["layerRequires"] | McpRequest.From<"Requires", Config["requires"]>
-  >
-  : MissingRequestDependencies<Exclude<Config["requires"], TransportServices>>
+type MiddlewareLayer<Config extends MiddlewareConfig, R> = Layer.Layer<
+  McpRequest.From<"Requires", Config["provides"]>,
+  Config["layerError"],
+  R | Config["layerRequires"] | McpRequest.From<"Requires", Config["requires"]>
+>
 
 /**
  * Composable MCP middleware.
@@ -400,6 +371,12 @@ type MiddlewareLayer<Config extends MiddlewareConfig, R> = [Exclude<Config["requ
  * `layerGlobal` to run it for every request on the server. `a.combine(b)` runs
  * `b` outside `a`, so services provided by `b` satisfy the per-request
  * requirements of `a`.
+ *
+ * Per-request requirements stay in the layer as `McpRequest<"Requires", S>`
+ * markers until a middleware provided outside this one, or the transport,
+ * discharges them. An unmet marker on the server layer means: add
+ * `.combine(...)`, provide the middleware that supplies `S` outside this one,
+ * or, under `layerHttp`, add an `HttpRouter.middleware` that provides `S`.
  *
  * @see {@link middleware} for creating MCP middleware
  *
@@ -433,8 +410,12 @@ export interface Middleware<Config extends MiddlewareConfig> {
  *
  * Pass a function, or an Effect that builds the function. Services the Effect
  * reads are requirements of the middleware layer. Services the function reads
- * per request, other than `McpRequestContext`, must come from a middleware
- * combined with `combine` or from the transport.
+ * per request, other than `McpRequestContext`, can come from a middleware
+ * combined with `combine`, from a middleware provided outside this one, from
+ * the transport, or under `layerHttp` from an `HttpRouter.middleware`. Until
+ * then they are `McpRequest<"Requires", S>` requirements of the layer. Note
+ * that providing `layerGlobal` outside this layer installs that middleware for
+ * the whole server, not just these registrations.
  *
  * Failures must be `McpErrorBase` values. A middleware failure is sent as a
  * JSON-RPC error with its `code`, `message` and `data`, never as a tool
@@ -558,8 +539,9 @@ export declare namespace middleware {
  *
  * The result is a `Middleware` and composes like one. The check receives the
  * same {@link MiddlewareOptions} as middleware. Services it reads per request,
- * other than `McpRequestContext`, must come from middleware combined outside it
- * with `combine`, or from the transport. Scope a visibility to some tools by
+ * other than `McpRequestContext`, can come from middleware combined outside it
+ * with `combine`, from a middleware provided outside it, from the transport, or
+ * under `layerHttp` from an `HttpRouter.middleware`. Scope a visibility to some tools by
  * providing its layer to their toolkit only, or branch on `target`.
  *
  * On a list request, the check and the middleware outside the innermost
