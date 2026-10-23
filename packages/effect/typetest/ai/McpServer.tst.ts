@@ -399,10 +399,10 @@ describe("McpServer", () => {
       >()
     })
 
-    it("should require per-call middleware dependencies to come from combine", () => {
+    it("should leave per-call middleware dependencies as request markers until discharged", () => {
       const Audit = McpServer.middleware()((effect) => Effect.andThen(CurrentUser, effect))
 
-      expect(Audit.layer).type.toBe<McpServer.MissingRequestDependencies<CurrentUser>>()
+      expect(Audit.layer).type.toBe<Layer.Layer<never, never, Requires<CurrentUser>>>()
       expect(Audit.combine(Auth).layer).type.toBe<Layer.Layer<Requires<CurrentUser>>>()
     })
 
@@ -419,10 +419,10 @@ describe("McpServer", () => {
     describe("visibility", () => {
       const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => user.id === "admin"))
 
-      it("should require services read by the check to come from combine", () => {
+      it("should leave services read by the check as request markers until discharged", () => {
         const gated = UserTools.pipe(Layer.provide(AdminOnly.combine(Auth).layer))
 
-        expect(AdminOnly.layer).type.toBe<McpServer.MissingRequestDependencies<CurrentUser>>()
+        expect(AdminOnly.layer).type.toBe<Layer.Layer<never, never, Requires<CurrentUser>>>()
         expect(AdminOnly.combine(Auth).layer).type.toBe<Layer.Layer<Requires<CurrentUser>>>()
         expect<Layer.Services<typeof gated>>().type.toBe<McpServer.McpServer | UserHandlers>()
       })
@@ -453,6 +453,21 @@ describe("McpServer", () => {
       expect<Layer.Services<typeof http>>().type.toBe<
         HttpRouter.HttpRouter | UserHandlers | HttpRouter.Request<"Requires", CurrentUser>
       >()
+    })
+
+    it("should leave visibility markers on stdio, convert them on HTTP, and discharge them from outer middleware", () => {
+      const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => user.id === "admin"))
+      const gated = McpServer.resource({ uri: "file:///admin.txt", name: "admin", content: Effect.succeed("admin") })
+        .pipe(Layer.provide(AdminOnly.layer))
+      const stdio = McpServer.layerStdio({ ...serverOptions, registrations: gated })
+      const http = McpServer.layerHttp({ ...serverOptions, path: "/mcp", registrations: gated })
+      const authenticated = gated.pipe(Layer.provide(Auth.layerGlobal))
+
+      expect<Layer.Services<typeof stdio>>().type.toBe<Stdio.Stdio | Requires<CurrentUser>>()
+      expect<Layer.Services<typeof http>>().type.toBe<
+        HttpRouter.HttpRouter | HttpRouter.Request<"Requires", CurrentUser>
+      >()
+      expect<Layer.Services<typeof authenticated>>().type.toBe<McpServer.McpServer>()
     })
   })
 })
