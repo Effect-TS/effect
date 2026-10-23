@@ -299,10 +299,21 @@ describe("ProtobufJson", () => {
       fails(() => decode(WellKnown, { mask: "foo_bar" }), /expected a path in lowerCamelCase/)
     })
 
-    it("rejects a value that is not a finite number", () => {
+    // Encoding trusts the JSON it writes, so the codec itself rejects values
+    // without a JSON representation.
+    it("rejects a value without a JSON representation", () => {
       const meta = decode(Protobuf.Struct, { a: 1 })
       const nan = { fields: { a: { kind: { _tag: "numberValue" as const, value: NaN } } } }
       fails(() => encode(WellKnown, { meta: { ...meta, ...nan } }), /expected a finite number/)
+      class Text {
+        readonly text = "a"
+      }
+      const text = { kind: { _tag: "stringValue", value: new Text() } } as unknown as Protobuf.Value
+      fails(() => encode(Protobuf.Value, text), /expected a protobuf string/)
+      const values: Array<Protobuf.Value> = []
+      const cycle: Protobuf.Value = { kind: { _tag: "listValue", value: { values } } }
+      values.push(cycle)
+      fails(() => encode(Protobuf.Value, cycle), /nesting deeper than 100/)
     })
   })
 
