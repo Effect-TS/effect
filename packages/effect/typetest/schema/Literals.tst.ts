@@ -48,10 +48,11 @@ describe("Literals", () => {
   it("omit", () => {
     const schema = Schema.Literals(["a", "b", "c", "d"])
 
-    expect(schema.omit(["c", "a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "d">>>()
-    expect(schema.omit(["c", "a"]).members).type.toBe<ReadonlyArray<Schema.Literal<"b" | "d">>>()
-    expect(schema.omit([])).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
-    expect(schema.omit(["a", "b", "c", "d"])).type.toBe<Schema.Literals<ReadonlyArray<never>>>()
+    // a plain literal tuple keeps its positions, symmetric with `pick`
+    expect(schema.omit(["c", "a"])).type.toBe<Schema.Literals<readonly ["b", "d"]>>()
+    expect(schema.omit(["c", "a"]).members).type.toBe<readonly [Schema.Literal<"b">, Schema.Literal<"d">]>()
+    expect(schema.omit([])).type.toBe<Schema.Literals<readonly ["a", "b", "c", "d"]>>()
+    expect(schema.omit(["a", "b", "c", "d"])).type.toBe<Schema.Literals<readonly []>>()
     expect(schema.omit).type.not.toBeCallableWith(["x"])
 
     // a widened omission array may not contain every member of its union at runtime
@@ -88,6 +89,8 @@ describe("Literals", () => {
       : Many<N, [...Acc, `k${Acc["length"]}`]>
     const many = Schema.Literals([] as unknown as Many<240>)
     expect(many.omit(["k0", "k239"])["Type"]).type.toBe<Exclude<(typeof many)["Type"], "k0" | "k239">>()
+    expect(many.omit(["k0", "k239"]).literals["length"]).type.toBe<238>()
+    expect(many.omit(["k0", "k239"]).literals[0]).type.toBe<"k1">()
   })
 
   it("transform", () => {
