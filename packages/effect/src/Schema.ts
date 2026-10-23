@@ -5053,13 +5053,16 @@ type IsLiteralTuple<T extends ReadonlyArray<unknown>> = IsUnion<T> extends true 
   : { [K in keyof T]: IsLiteralUnit<T[K]> }[number] extends true ? true
   : false
 
+// literals are compared by runtime value, so enum members match equal literals but strings never match numbers
+type LiteralKey<T> = T extends string ? `s${T}` : T extends number ? `n${T}` : T extends bigint ? `b${T}` : T
+
 type OmitLiteralsTuple<
   L extends ReadonlyArray<SchemaAST.LiteralValue>,
-  Omitted extends SchemaAST.LiteralValue,
+  OmittedKey,
   Out extends ReadonlyArray<SchemaAST.LiteralValue> = readonly []
 > = L extends
   readonly [infer Head extends SchemaAST.LiteralValue, ...infer Tail extends ReadonlyArray<SchemaAST.LiteralValue>]
-  ? OmitLiteralsTuple<Tail, Omitted, Head extends Omitted ? Out : readonly [...Out, Head]>
+  ? OmitLiteralsTuple<Tail, OmittedKey, LiteralKey<Head> extends OmittedKey ? Out : readonly [...Out, Head]>
   : Out
 
 type OmitLiterals<L extends ReadonlyArray<SchemaAST.LiteralValue>, L2 extends ReadonlyArray<L[number]>> =
@@ -5067,7 +5070,7 @@ type OmitLiterals<L extends ReadonlyArray<SchemaAST.LiteralValue>, L2 extends Re
   IsLiteralTuple<L2> extends false ? ReadonlyArray<L[number]>
     // positions are unknown, but the definitely omitted literals can still be excluded
     : IsLiteralTuple<L> extends false ? ReadonlyArray<Exclude<L[number], L2[number]>>
-    : OmitLiteralsTuple<L, L2[number]>
+    : OmitLiteralsTuple<L, LiteralKey<L2[number]>>
 
 /**
  * Creates a union schema from an array of literal values.
