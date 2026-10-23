@@ -116,6 +116,31 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 })
 
+describe.skipIf(process.platform === "win32")("detached exit cleanup", { concurrent: false }, () => {
+  it.live("kill waits for a process group that exists but cannot be signalled", () =>
+    Effect.gen(function*() {
+      // macOS answers EPERM rather than ESRCH while the group's remaining members are zombies.
+      const zombieProbes = 3
+      const nativeKill = process.kill.bind(process)
+      let pid = 0
+      let probes = 0
+      const kill = vi.spyOn(process, "kill").mockImplementation((target, signal) => {
+        if (pid !== 0 && target === -pid && signal === 0) {
+          probes++
+          throw Object.assign(new Error("kill"), { code: probes <= zombieProbes ? "EPERM" : "ESRCH" })
+        }
+        return nativeKill(target, signal)
+      })
+      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      const handle = yield* ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"])
+      pid = handle.pid
+
+      yield* handle.kill()
+
+      assert.strictEqual(probes, zombieProbes + 1)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+})
+
 // Synchronous fixture runs must not block other tests with active timeout budgets.
 describe("interrupted buffered input", { concurrent: false, timeout: 15_000 }, () => {
   for (const input of ["stdin", "fd3"] as const) {
