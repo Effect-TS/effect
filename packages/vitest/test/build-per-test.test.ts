@@ -1,5 +1,6 @@
 import { afterAll, assert, describe, expect, layer } from "@effect/vitest"
-import { Context, Effect, Layer } from "effect"
+import { Clock, Context, Effect, Layer } from "effect"
+import { TestClock } from "effect/testing"
 
 describe("buildPerTest", { concurrent: false }, () => {
   let sharedBuilds = 0
@@ -45,11 +46,28 @@ describe("buildPerTest", { concurrent: false }, () => {
           assert.strictEqual(perTest.id, 2)
           assert.deepStrictEqual(releasedPerTestIds, [1])
         }))
+
+      it.layer(Layer.empty)((it) => {
+        it.effect.each([3, 4])("rebuilds the layer for nested test %s", (id) =>
+          Effect.gen(function*() {
+            const perTest = yield* PerTest
+
+            assert.strictEqual(perTest.id, id)
+          }))
+      })
     })
 
     afterAll(() => {
       expect(sharedBuilds).toEqual(1)
-      expect(releasedPerTestIds).toEqual([1, 2])
+      expect(releasedPerTestIds).toEqual([1, 2, 3, 4])
     })
   })
+})
+
+layer(Layer.empty, { buildPerTest: true })("top-level buildPerTest", (it) => {
+  it.effect.each([1, 2])("provides new test services for test %s", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(yield* Clock.currentTimeMillis, 0)
+      yield* TestClock.adjust("1 second")
+    }))
 })
