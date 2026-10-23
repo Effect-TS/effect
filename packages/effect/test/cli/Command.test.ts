@@ -2174,7 +2174,7 @@ describe("Command", () => {
 
         const runCmd = Command.runWith(cmd, { version: "1.0.0" })
 
-        yield* runCmd(["--verbose", "a.txt", "b.txt", "--verbose", "c.txt"])
+        yield* runCmd(["a.txt", "b.txt", "--verbose", "c.txt"])
 
         assert.deepStrictEqual(captured, [{ files: ["a.txt", "b.txt", "c.txt"], verbose: true }])
       }).pipe(Effect.provide(TestLayer)))

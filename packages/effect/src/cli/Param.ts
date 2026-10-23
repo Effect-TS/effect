@@ -2126,7 +2126,15 @@ const parseFlag: <A>(
     return yield* new CliError.MissingOption({ option: name })
   }
 
-  // Parse the first value (later we can handle multiple)
+  if (providedValues.length > 1) {
+    return yield* new CliError.InvalidValue({
+      option: name,
+      value: `${providedValues.length} occurrences`,
+      expected: "at most 1 value",
+      kind: "flag"
+    })
+  }
+
   const arg = providedValues[0]
   const value = yield* Effect.mapError(
     primitiveType.parse(arg),
