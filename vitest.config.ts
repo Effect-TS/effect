@@ -91,7 +91,7 @@ export default defineConfig({
     // The shared cluster storage suite runs MSSQL alongside the other databases.
     ...(mssqlIntegrationTestsDisabled ? { testNamePattern: /^(?!.*SqlMessageStorage > mssql > )/ } : {}),
     projects: [
-      ...project("scripts", "scripts", true, {}, undefined, ["codemods/jsdoc.test.ts", "effect-bot.test.ts"]),
+      ...project("scripts", "scripts", true, {}, undefined, ["codemods/jsdoc.test.ts"]),
       ...project(
         "effect",
         "packages/effect",

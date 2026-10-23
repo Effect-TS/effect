@@ -11,7 +11,7 @@ jobs:
     if: >-
       github.repository == 'Effect-TS/effect' &&
       github.event.comment.user.login != 'effect-bot' &&
-      contains(github.event.comment.body, '@effect-bot')
+      startsWith(github.event.comment.body, '@effect-bot')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

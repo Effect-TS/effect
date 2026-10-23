@@ -3,11 +3,7 @@ import { readFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 
 export const botLogin = "effect-bot"
-// A standalone @effect-bot mention outside quoted lines and fenced code blocks.
-export const isCommand = (body) =>
-  /(?:^|[^\w@/.-])@effect-bot(?![\w-])/iu.test(
-    body.replace(/^ {0,3}(```|~~~)[^]*?(?:^ {0,3}\1|(?![^]))/gmu, "").replace(/^ {0,3}>.*$/gmu, "")
-  )
+export const isCommand = (body) => /^@effect-bot(?![\w-])/iu.test(body)
 export const deliveryKey = (eventName, event) =>
   `${event.repository.full_name}:${eventName}:${event.comment.id}`
 
