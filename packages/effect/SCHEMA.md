@@ -6389,9 +6389,10 @@ The input is assumed to be a valid Draft 2020-12 document and is not validated
 against the meta-schema. Instance validation assumes JSON-compatible JavaScript
 values produced by `JSON.parse`.
 
-Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
-references, external references, and pointers below a definition are rejected with the supported reference format.
-Missing definitions are reported by name. References reached inside a nested schema
+Local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported, including pointers
+below a definition. Pointer targets are shared and can recurse through object properties or array items;
+circular pointer aliases are rejected. Root and external references are rejected with the supported reference format.
+Missing definitions are reported by name, and missing pointer targets include the full reference. References reached inside a nested schema
 resource introduced by `$id` are rejected with their path instead of being resolved against the top-level definitions.
 A root `$id`, or a nested `$id` without reached references, is supported.
 

@@ -403,19 +403,31 @@ function translateJsonSchemaMultiDocument(
     inNestedResource = wasInNestedResource
     definitionCache.set(key, representation)
     if (pointer !== undefined) {
-      const seen = new Set<string>()
-      let alias = representation
-      while (true) {
-        if (alias._tag === "Reference") {
-          alias = resolveReference(alias, path, recursiveReferenceError, seen)
-        } else if (alias._tag === "Union" && alias.types.length === 1) {
-          alias = alias.types[0]
-        } else {
-          break
-        }
-      }
+      validatePointerAliases(representation, path, recursiveReferenceError)
     }
     return representation
+  }
+
+  function validatePointerAliases(
+    representation: ImportedJsonSchemaRepresentation,
+    path: Path,
+    recursiveReferenceError?: string,
+    seen: Set<string> = new Set()
+  ): void {
+    if (representation._tag === "Reference") {
+      validatePointerAliases(
+        resolveReference(representation, path, recursiveReferenceError, seen),
+        path,
+        recursiveReferenceError,
+        seen
+      )
+    } else if (representation._tag === "Union") {
+      // Each alternative validates the same input, with its own reference path.
+      for (const type of representation.types) {
+        validatePointerAliases(type, path, recursiveReferenceError, new Set(seen))
+      }
+    }
+    // Recursion through object properties or array items consumes a child value.
   }
 
   function resolveReference(

@@ -1421,6 +1421,138 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("rejects a circular pointer alias alongside another anyOf branch", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Container: {
+            properties: {
+              value: {
+                anyOf: [
+                  { $ref: "#/$defs/Container/properties/value" },
+                  { type: "string" }
+                ]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Container/properties/value" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects a circular pointer alias in a later oneOf branch", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Container: {
+            properties: {
+              value: {
+                oneOf: [
+                  { type: "string" },
+                  { $ref: "#/$defs/Container/properties/value" }
+                ]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Container/properties/value" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects a circular alias chain through unions with multiple branches", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Alias: {
+            oneOf: [
+              { type: "number" },
+              { $ref: "#/$defs/Container/properties/value" }
+            ]
+          },
+          Container: {
+            properties: {
+              value: {
+                anyOf: [
+                  { type: "string" },
+                  { $ref: "#/$defs/Alias" }
+                ]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Alias" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("allows union branches to share the same alias", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Alias: { $ref: "#/$defs/Text" },
+          Text: { type: "string" },
+          Container: {
+            properties: {
+              value: {
+                anyOf: [
+                  { $ref: "#/$defs/Alias" },
+                  { oneOf: [{ $ref: "#/$defs/Alias" }, { type: "number" }] }
+                ]
+              }
+            }
+          }
+        }
+      })
+      const schema = toSchemaFromJsonSchemaDocument(document)
+      const is = Schema.is(schema)
+
+      assert.isTrue(is("text"))
+      assert.isTrue(is(123))
+      assert.isFalse(is(false))
+    })
+
+    it("allows union branches to recurse through object properties and array items", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Tree/properties/node",
+        $defs: {
+          Tree: {
+            properties: {
+              node: {
+                anyOf: [
+                  {
+                    type: "object",
+                    properties: {
+                      next: { $ref: "#/$defs/Tree/properties/node" }
+                    }
+                  },
+                  { type: "array", items: { $ref: "#/$defs/Tree/properties/node" } },
+                  { type: "null" }
+                ]
+              }
+            }
+          }
+        }
+      })
+      const schema = toSchemaFromJsonSchemaDocument(document)
+      const is = Schema.is(schema)
+
+      assert.isTrue(is({ next: [{ next: null }] }))
+      assert.isTrue(is([{ next: [] }]))
+      assert.isFalse(is({ next: [123] }))
+      assert.isFalse(is([{ next: "invalid" }]))
+    })
+
     it("allows a singleton union around a recursive object", () => {
       const document = JsonSchema.fromSchemaDraft2020_12({
         $ref: "#/$defs/Tree/properties/node",
