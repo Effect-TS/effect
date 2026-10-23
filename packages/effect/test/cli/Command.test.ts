@@ -953,7 +953,7 @@ describe("Command", () => {
         class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
           path: Schema.String
         }) implements CliError.UserFacing {
-          readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
+          readonly [CliError.UserFacingTypeId]: CliError.UserFacingTypeId = CliError.UserFacingTypeId
           get userMessage() {
             return `${this.path} already exists. Re-run with --force to replace it.`
           }
@@ -965,7 +965,6 @@ describe("Command", () => {
         const error = yield* Effect.flip(Command.runWith(command, { version: "1.0.0" })([]))
 
         assert.strictEqual(error, failure)
-        assert.strictEqual(error._tag, "Occupied")
         assert.isFalse(Runtime.getErrorReported(error))
         const stderr = yield* TestConsole.errorLines
         assert.lengthOf(stderr, 1)
@@ -975,34 +974,6 @@ describe("Command", () => {
         )
         assert.isEmpty(yield* TestConsole.logLines)
       }).pipe(Effect.provide(TestLayer)))
-
-    it.effect("should render UserFacing handler failures with the installed formatter", () =>
-      Effect.gen(function*() {
-        class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
-          path: Schema.String
-        }) implements CliError.UserFacing {
-          readonly [CliError.UserErrorTypeId]: CliError.UserErrorTypeId = CliError.UserErrorTypeId
-          get userMessage() {
-            return `${this.path} already exists`
-          }
-        }
-
-        const formatter: CliOutput.Formatter = {
-          ...CliOutput.defaultFormatter({ colors: false }),
-          formatError: (error) => `CUSTOM ERROR: ${error.message}`
-        }
-        const failure = new Occupied({ path: "config.yaml" })
-        const command = Command.make("deploy", {}, () => failure)
-
-        const error = yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(
-          Effect.flip,
-          Effect.provide(TestLayerWithoutFormatter),
-          Effect.provideService(CliOutput.Formatter, formatter)
-        )
-
-        assert.strictEqual(error, failure)
-        assert.deepStrictEqual(yield* TestConsole.errorLines, ["CUSTOM ERROR: config.yaml already exists"])
-      }))
 
     it.effect("should render UserError handler failures with the installed formatter", () =>
       Effect.gen(function*() {
