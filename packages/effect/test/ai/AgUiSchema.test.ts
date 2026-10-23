@@ -31,6 +31,34 @@ describe("AgUiSchema", () => {
       )
     })
 
+    it("drops entries whose closed-set values are unrecognised", () => {
+      const exit = decodeInput({
+        ...input([{
+          id: "1",
+          role: "assistant",
+          toolCalls: [
+            { id: "call-1", type: "function", function: { name: "GetWeather", arguments: "{}" } },
+            { id: "call-2", type: "remote", function: { name: "GetTime", arguments: "{}" } }
+          ]
+        }]),
+        resume: [
+          { interruptId: "interrupt-1", status: "expired" },
+          { interruptId: "interrupt-2", status: "resolved" }
+        ]
+      })
+
+      assert.strictEqual(exit._tag, "Success")
+      if (exit._tag !== "Success") return
+      assert.deepStrictEqual(exit.value.messages, [{
+        id: "1",
+        role: "assistant",
+        toolCalls: [{ id: "call-1", type: "function", function: { name: "GetWeather", arguments: "{}" } }]
+      }])
+      assert.deepStrictEqual(exit.value.resume, [{ interruptId: "interrupt-2", status: "resolved" }])
+
+      assert.strictEqual(decodeInput({ ...input([]), resume: [{ status: "resolved" }] })._tag, "Failure")
+    })
+
     it("rejects a malformed recognised union member", () => {
       const exit = decodeInput(input([{ id: "1", role: "user", content: [{ type: "text" }] }]))
 

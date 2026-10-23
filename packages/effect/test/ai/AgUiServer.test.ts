@@ -3,6 +3,7 @@ import { Effect, FileSystem, Layer, Path, Stream } from "effect"
 import type { AgUiSchema } from "effect/ai"
 import { AgUiServer } from "effect/ai"
 import { Etag, HttpPlatform, HttpRouter } from "effect/http"
+import { HttpApi, HttpApiGroup, OpenApi } from "effect/http-api"
 
 const TestServices = Layer.mergeAll(
   Path.layer,
@@ -125,4 +126,53 @@ describe("AgUiServer", () => {
           assert.strictEqual(events[1].type, "RUN_ERROR")
         })
     ))
+
+  it.effect("never serializes an event outside the run's error handling", () => {
+    // A value whose JSON form can only be computed once: delivering it is fine
+    // if it is serialized once, and failing the run is fine, but a second
+    // serialization must not leak an HttpApi failure frame
+    let serialized = 0
+    const value = {
+      toJSON: () => {
+        if (++serialized > 1) throw new Error("serialized twice")
+        return { done: 1 }
+      }
+    }
+    return withHandler(
+      () => Stream.fromIterable<AgUiSchema.Event>([{ type: "CUSTOM", name: "progress", value }]),
+      (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+          const last = events[events.length - 1]
+
+          assert.strictEqual(events[0].type, "RUN_STARTED")
+          assert.include(["RUN_FINISHED", "RUN_ERROR"], last.type)
+          for (const event of events.filter((event) => event.type === "CUSTOM")) {
+            assert.deepStrictEqual(event, { type: "CUSTOM", name: "progress", value: { done: 1 } })
+          }
+        })
+    )
+  })
+
+  it("documents the item schemas of the run input in OpenAPI", () => {
+    const api = HttpApi.make("Api").add(HttpApiGroup.make("agent").add(AgUiServer.endpoint("run", "/agent")))
+    const spec = JSON.parse(JSON.stringify(OpenApi.fromApi(api)))
+    const payload = spec.paths["/agent"].post.requestBody.content["application/json"].schema
+
+    // Every array in the payload, including messages and nested content
+    // parts, must describe its items
+    const arraysWithoutItems: Array<string> = []
+    const visit = (schema: unknown, path: string): void => {
+      if (typeof schema !== "object" || schema === null) return
+      const node = schema as Record<string, unknown>
+      if (node.type === "array" && (typeof node.items !== "object" || Object.keys(node.items ?? {}).length === 0)) {
+        arraysWithoutItems.push(path)
+      }
+      for (const [key, child] of Object.entries(node)) visit(child, `${path}/${key}`)
+    }
+    visit(payload, "")
+
+    assert.isDefined(payload.properties.messages.items)
+    assert.deepStrictEqual(arraysWithoutItems, [])
+  })
 })
