@@ -95,6 +95,42 @@ export interface OpenApiGeneratorWarning {
 }
 
 /**
+ * Formats a generation warning as a single human-readable line.
+ *
+ * **Details**
+ *
+ * The line starts with `WARNING [code]`, followed by the HTTP method, path and
+ * operation id when the warning carries them, then the warning message.
+ *
+ * **Example** (Formatting an operation warning)
+ *
+ * ```ts import.meta.vitest
+ * import { formatWarning } from "@effect/openapi-generator/OpenApiGenerator"
+ *
+ * formatWarning({
+ *   code: "cookie-parameter-dropped",
+ *   message: "Cookie parameter was dropped.",
+ *   path: "/items",
+ *   method: "get",
+ *   operationId: "listItems"
+ * }) // => "WARNING [cookie-parameter-dropped] GET /items (listItems): Cookie parameter was dropped."
+ * ```
+ *
+ * @category formatting
+ * @since 4.0.0
+ */
+export const formatWarning = (warning: OpenApiGeneratorWarning): string => {
+  const context = [
+    warning.method?.toUpperCase(),
+    warning.path,
+    warning.operationId ? `(${warning.operationId})` : undefined
+  ].filter((value): value is string => value !== undefined)
+  return context.length > 0
+    ? `WARNING [${warning.code}] ${context.join(" ")}: ${warning.message}`
+    : `WARNING [${warning.code}] ${warning.message}`
+}
+
+/**
  * Options that control one OpenAPI generation run.
  *
  * @category options

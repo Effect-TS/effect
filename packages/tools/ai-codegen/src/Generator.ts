@@ -6,6 +6,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
 import * as Arr from "effect/Array"
+import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -576,15 +577,25 @@ export const layer: Layer.Layer<
       return disableAdditionalProperties && shouldClose(out) ? closeObject(out) : out
     }
 
-    return yield* openApiGen
+    const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+    const code = yield* openApiGen
       .generate(patchedSpec as unknown as Parameters<typeof openApiGen.generate>[0], {
         name: provider.config.clientName,
         format: provider.config.isTypeOnly ? "httpclient-type-only" : "httpclient",
-        onEnter
+        onEnter,
+        onWarning: (warning) => {
+          warnings.push(warning)
+        }
       })
       .pipe(
         Effect.mapError((cause) => new GenerationError({ provider: provider.name, cause }))
       )
+    yield* Effect.forEach(
+      warnings,
+      (warning) => Console.error(OpenApiGenerator.formatWarning(warning)),
+      { discard: true }
+    )
+    return code
   })
 
   return { generate }
