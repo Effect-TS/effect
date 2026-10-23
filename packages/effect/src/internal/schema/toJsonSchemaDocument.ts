@@ -747,6 +747,8 @@ function compileJsonSchema(
       case "TemplateLiteral":
         return getTemplateLiteralPattern(part.parts, dependencies, seenReferences)
       case "Union":
+        // Regex alternatives do not enforce that exactly one branch matches.
+        if (part.options?.mode === "oneOf") dependencies.push(false)
         return `(?:${part.types.map((type) => getPartPattern(type, dependencies, seenReferences)).join("|")})`
       default:
         throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])

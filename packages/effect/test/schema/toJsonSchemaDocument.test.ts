@@ -2542,7 +2542,7 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  describe("TemplateLiteral segment checks", () => {
+  describe("TemplateLiteral segments", () => {
     const segment = Schema.String.check(Schema.isPattern(/^abc$/u))
     const template = Schema.TemplateLiteral(["item.", segment])
     const templates = [
@@ -2641,9 +2641,33 @@ describe("toJsonSchemaDocument", () => {
       assert.isUndefined(document.schema.oneOf)
     })
 
-    it("keeps oneOf when template segments have no omitted checks", () => {
+    it.each(["unnamed", "named"] as const)("uses anyOf when %s segments lose oneOf exclusivity", (name) => {
+      const segment = Schema.Union([Schema.String, Schema.Literal("abc")], { mode: "oneOf" })
+      const part = name === "named" ? segment.annotate({ identifier: "Segment" }) : segment
+      const template = Schema.TemplateLiteral(["item.", part])
+      const schema = Schema.Union([template, Schema.Literal("item.abc")], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(template)("item.abc"), false)
+      assert.strictEqual(Schema.is(schema)("item.abc"), true)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), true)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), true)
+      assert.strictEqual(validate("item.xyz"), true)
+      assert.strictEqual(validate("other.abc"), false)
+      assert.isDefined(document.schema.anyOf)
+      assert.isUndefined(document.schema.oneOf)
+      if (name === "named") assert.isDefined(document.definitions.Segment.oneOf)
+    })
+
+    it.each(
+      [
+        ["string", Schema.String],
+        ["anyOf union", Schema.Union([Schema.String, Schema.Literal("abc")])]
+      ] as const
+    )("keeps oneOf when the %s segment is exported exactly", (_, part) => {
       const schema = Schema.Union([
-        Schema.TemplateLiteral(["item.", Schema.String]),
+        Schema.TemplateLiteral(["item.", part]),
         Schema.Literal("item.xyz")
       ], { mode: "oneOf" })
       assert.strictEqual(Schema.is(schema)("item.abc"), true)
