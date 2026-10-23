@@ -5009,10 +5009,62 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
 
   pick<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<L2>
 
+  /**
+   * Returns a new `Literals` schema without the given literals.
+   *
+   * **Details**
+   *
+   * The remaining literals keep their original order. When both the original
+   * and the omitted literals are tuples of single literal values, the result
+   * keeps the positional typing of the original literals. Otherwise, the
+   * result is typed as a `ReadonlyArray` that excludes only the literals that
+   * are definitely omitted.
+   *
+   * **Example** (Omitting literals)
+   *
+   * ```ts import.meta.vitest
+   * import { Schema } from "effect"
+   *
+   * const schema = Schema.Literals(["a", "b", "c", "d"]).omit(["b", "d"])
+   * // Schema.Literals<readonly ["a", "c"]>
+   *
+   * Schema.decodeUnknownSync(schema)("a") // => "a"
+   * ```
+   */
+  omit<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<OmitLiterals<L, L2>>
+
   transform<const L2 extends { readonly [I in keyof L]: SchemaAST.LiteralValue }>(
     to: L2
   ): Union<{ [I in keyof L]: decodeTo<Literal<L2[I]>, Literal<L[I]>> }>
 }
+
+type IsLiteralUnit<T> = [T] extends [never] ? false
+  : IsUnion<T> extends true ? false
+  : T extends string ? {} extends Record<T, 0> ? false : true
+  : T extends number ? number extends T ? false : true
+  : T extends bigint ? bigint extends T ? false : true
+  : true
+
+type AllLiteralUnits<L> = L extends readonly [] ? true
+  : L extends readonly [infer Head, ...infer Tail] ? IsLiteralUnit<Head> extends true ? AllLiteralUnits<Tail> : false
+  : false
+
+// `false` when an element may or may not be omitted at runtime
+type OmitLiteralsTuple<L, Omitted> = L extends readonly [] ? readonly []
+  : L extends readonly [infer Head, ...infer Tail] ? [Head] extends [Omitted] ? OmitLiteralsTuple<Tail, Omitted>
+    : [Extract<Omitted, Head>] extends [never] ?
+      OmitLiteralsTuple<Tail, Omitted> extends infer Rest extends ReadonlyArray<unknown> ? readonly [Head, ...Rest]
+      : false
+    : false
+  : false
+
+type OmitLiterals<L extends ReadonlyArray<SchemaAST.LiteralValue>, L2 extends ReadonlyArray<L[number]>> =
+  AllLiteralUnits<L2> extends true ?
+    OmitLiteralsTuple<L, L2[number]> extends infer Out extends ReadonlyArray<L[number]> ? Out
+    : ReadonlyArray<Exclude<L[number], L2[number]>>
+    // a widened omission array may not contain every member of its element type
+    : ReadonlyArray<L[number]>
+
 /**
  * Creates a union schema from an array of literal values.
  *
@@ -5043,6 +5095,9 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
     },
     pick<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<L2> {
       return Literals(literals)
+    },
+    omit<const L2 extends ReadonlyArray<L[number]>>(omitted: L2): Literals<OmitLiterals<L, L2>> {
+      return Literals(literals.filter((literal) => !omitted.includes(literal)) as any)
     },
     transform<const L2 extends { readonly [I in keyof L]: SchemaAST.LiteralValue }>(
       to: L2
