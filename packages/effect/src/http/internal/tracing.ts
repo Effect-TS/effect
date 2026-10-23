@@ -59,11 +59,12 @@ export const addHeaderAttributes = (
   filter: (headerName: string, phase: "request" | "response") => boolean,
   redactedNames: ReadonlyArray<string | RegExp>
 ): void => {
+  const patterns = Headers.withRedactedNames(headers, redactedNames)
   for (const name in headers) {
     if (!filter(name, phase)) continue
     span.attribute(
       `http.${phase}.header.${name}`,
-      Headers.isRedactedName(name, redactedNames) ? "<redacted>" : headers[name]
+      Headers.isRedactedName(name, patterns) ? "<redacted>" : headers[name]
     )
   }
 }

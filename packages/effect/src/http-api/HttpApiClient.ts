@@ -19,7 +19,7 @@ import * as Effect from "../Effect.ts"
 import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
-import type * as Headers from "../http/Headers.ts"
+import * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
@@ -29,7 +29,9 @@ import * as HttpMethod from "../http/HttpMethod.ts"
 import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
+import { redactedRegistry } from "../internal/redacted.ts"
 import * as Predicate from "../Predicate.ts"
+import * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
@@ -538,11 +540,19 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                   httpRequest = HttpClientRequest.bodyFormData(httpRequest, request.payload)
                 } else {
                   const body = (yield* encodePayload(request.payload)) as HttpBody.HttpBody
-                  httpRequest = HttpClientRequest.setBody(httpRequest, body)
+                  httpRequest = HttpClientRequest.setBody(
+                    httpRequest,
+                    body._tag === "Uint8Array" && collectRedacted(request.payload).size > 0
+                      ? HttpBody.redact(body)
+                      : body
+                  )
                 }
               } else {
                 const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
-                httpRequest = HttpClientRequest.appendUrlParams(httpRequest, urlParams)
+                httpRequest = HttpClientRequest.appendUrlParams(
+                  httpRequest,
+                  redactUrlParams(urlParams, collectRedacted(request.payload)) as UrlParams.Input
+                )
               }
             } else if (streamPayloadEncoder !== undefined) {
               return yield* new Schema.SchemaError(
@@ -553,13 +563,16 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             // headers
             if (encodeHeaders !== undefined) {
               const headers = (yield* encodeHeaders(request.headers)) as Record<string, string>
-              httpRequest = HttpClientRequest.setHeaders(httpRequest, headers)
+              httpRequest = setHeaders(httpRequest, headers, collectRedacted(request.headers))
             }
 
             // query
             if (encodeQuery !== undefined) {
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
-              httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
+              httpRequest = HttpClientRequest.appendUrlParams(
+                httpRequest,
+                redactUrlParams(query, collectRedacted(request.query)) as UrlParams.Input
+              )
             }
           }
 
@@ -845,6 +858,65 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 }
 
 // ----------------------------------------------------------------------------
+
+// Schema encoding unwraps `Redacted` values, so the plain values of the
+// `Redacted` values in a request input are collected first. Encoded query,
+// header and URL parameter values matching them are redacted again, and a body
+// encoded from such an input is hidden from inspection as a whole.
+const collectRedacted = (input: unknown): Set<unknown> => {
+  const out = new Set<unknown>()
+  const visited = new Set<object>()
+  const loop = (value: unknown): void => {
+    if (Redacted.isRedacted(value)) {
+      // wiped values have nothing left to redact
+      if (!redactedRegistry.has(value)) return
+      const inner = redactedRegistry.get(value)
+      out.add(Predicate.isObject(inner) ? inner : String(inner))
+    } else if (Predicate.isObject(value) && !globalThis.ArrayBuffer.isView(value) && !visited.has(value)) {
+      visited.add(value)
+      for (const key in value) loop((value as Record<string, unknown>)[key])
+    }
+  }
+  loop(input)
+  return out
+}
+
+const redactUrlParams = (value: unknown, secrets: Set<unknown>): unknown => {
+  if (secrets.size === 0) return value
+  if (
+    typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean"
+  ) {
+    return secrets.has(String(value)) ? Redacted.make(String(value)) : value
+  } else if (Array.isArray(value)) {
+    return value.map((item) => redactUrlParams(item, secrets))
+  } else if (Predicate.isObject(value) && !Redacted.isRedacted(value)) {
+    const out: Record<string, unknown> = {}
+    for (const key in value) {
+      InternalRecord.assignProperty(out, key, redactUrlParams((value as Record<string, unknown>)[key], secrets))
+    }
+    return out
+  }
+  return value
+}
+
+const setHeaders = (
+  request: HttpClientRequest.HttpClientRequest,
+  headers: Record<string, string>,
+  secrets: Set<unknown>
+): HttpClientRequest.HttpClientRequest => {
+  if (secrets.size === 0) return HttpClientRequest.setHeaders(request, headers)
+  const plain: Record<string, string> = {}
+  const redacted: Array<string> = []
+  for (const key in headers) {
+    if (secrets.has(headers[key])) redacted.push(key)
+    else InternalRecord.assignProperty(plain, key, headers[key])
+  }
+  return HttpClientRequest.updateHeaders(request, (current) => {
+    let out = Headers.setAll(current, plain)
+    for (const key of redacted) out = Headers.setRedacted(out, key, Redacted.make(headers[key]))
+    return out
+  })
+}
 
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {

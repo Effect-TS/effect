@@ -253,19 +253,23 @@ export class Uint8Array extends Proto {
   readonly contentLength: number
   /** Original text retained for adapters that can skip encoding. */
   readonly text: string | undefined
+  /** Hides the body content from inspection. */
+  readonly redacted: boolean
   private _body: globalThis.Uint8Array | undefined
 
   constructor(
     body: globalThis.Uint8Array | undefined,
     contentType: string,
     contentLength: number,
-    text?: string
+    text?: string,
+    redacted = false
   ) {
     super()
     this._body = body
     this.text = text
     this.contentType = contentType
     this.contentLength = contentLength
+    this.redacted = redacted
   }
   get body(): globalThis.Uint8Array {
     return this._body ??= encodeText(this.text!)
@@ -275,7 +279,11 @@ export class Uint8Array extends Proto {
     return {
       _id: "effect/HttpBody",
       _tag: "Uint8Array",
-      body: toString ? new TextDecoder().decode(this.body) : `Uint8Array(${this.body.length})`,
+      body: this.redacted
+        ? "<redacted>"
+        : toString
+        ? new TextDecoder().decode(this.body)
+        : `Uint8Array(${this.body.length})`,
       contentType: this.contentType,
       contentLength: this.contentLength
     }
@@ -295,6 +303,21 @@ export class Uint8Array extends Proto {
  */
 export const uint8Array = (body: globalThis.Uint8Array, contentType?: string): Uint8Array =>
   new Uint8Array(body, contentType ?? "application/octet-stream", body.length)
+
+/**
+ * Returns a copy of a byte-array body whose content is hidden from inspection.
+ *
+ * **Details**
+ *
+ * The transmitted bytes, content type and content length are unchanged; only
+ * `toJSON` and inspection output replace the content with `"<redacted>"`.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const redact = (self: Uint8Array): Uint8Array =>
+  new Uint8Array(self.text === undefined ? self.body : undefined, self.contentType, self.contentLength, self.text, true)
 
 const encoder = new TextEncoder()
 

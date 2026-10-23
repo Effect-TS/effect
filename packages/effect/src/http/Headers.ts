@@ -83,7 +83,7 @@ const Proto = Object.defineProperties(Object.create(null), {
   },
   [Redactable.symbolRedactable]: {
     value(this: Headers, context: Context.Context<never>): Record<string, string | Redacted.Redacted<string>> {
-      return redact(this, Context.get(context, CurrentRedactedNames))
+      return redact(this, withRedactedNames(this, Context.get(context, CurrentRedactedNames)))
     }
   },
   toJSON: {
@@ -111,6 +111,40 @@ const Proto = Object.defineProperties(Object.create(null), {
 
 const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
   Object.assign(Object.create(Proto), input) as Headers
+
+// Header names marked by `setRedacted`, kept per collection so they only
+// affect the request or response that carries them.
+const redactedNames = new WeakMap<Headers, ReadonlySet<string>>()
+
+const inheritRedactedNames = (
+  out: Headers,
+  self: Headers,
+  replaced: Iterable<string>,
+  added?: ReadonlySet<string> | undefined
+): Headers => {
+  const inherited = redactedNames.get(self)
+  if (inherited === undefined && added === undefined) return out
+  const names = new Set(inherited)
+  for (const name of replaced) names.delete(name)
+  if (added !== undefined) {
+    for (const name of added) names.add(name)
+  }
+  if (names.size > 0) redactedNames.set(out, names)
+  return out
+}
+
+/**
+ * Adds the names marked by `setRedacted` to a list of redaction patterns.
+ *
+ * @internal
+ */
+export const withRedactedNames = (
+  self: Headers,
+  patterns: ReadonlyArray<string | RegExp>
+): ReadonlyArray<string | RegExp> => {
+  const names = redactedNames.get(self)
+  return names === undefined ? patterns : [...patterns, ...names]
+}
 
 /**
  * Provides an `Equivalence` instance that compares `Headers` by header names
@@ -249,8 +283,36 @@ export const set: {
   (self: Headers, key: string, value: string) => Headers
 >(3, (self, key, value) => {
   const out = make(self)
-  out[key.toLowerCase()] = value
-  return out
+  const name = key.toLowerCase()
+  out[name] = value
+  return inheritRedactedNames(out, self, [name])
+})
+
+/**
+ * Returns a new `Headers` collection with the given header set to the value of
+ * a `Redacted` string.
+ *
+ * **Details**
+ *
+ * The header is sent with its plain value, but inspection, `toJSON` and
+ * tracing treat its name as redacted for this collection and for collections
+ * derived from it, until the header is set again or removed.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const setRedacted: {
+  (key: string, value: Redacted.Redacted<string>): (self: Headers) => Headers
+  (self: Headers, key: string, value: Redacted.Redacted<string>): Headers
+} = dual<
+  (key: string, value: Redacted.Redacted<string>) => (self: Headers) => Headers,
+  (self: Headers, key: string, value: Redacted.Redacted<string>) => Headers
+>(3, (self, key, value) => {
+  const out = make(self)
+  const name = key.toLowerCase()
+  out[name] = Redacted.value(value)
+  return inheritRedactedNames(out, self, [], new Set([name]))
 })
 
 /**
@@ -270,11 +332,15 @@ export const setAll: {
 } = dual<
   (headers: Input) => (self: Headers) => Headers,
   (self: Headers, headers: Input) => Headers
->(2, (self, headers) =>
-  make({
-    ...self,
-    ...fromInput(headers)
-  }))
+>(2, (self, headers) => {
+  const input = fromInput(headers)
+  return inheritRedactedNames(
+    make({ ...self, ...input }),
+    self,
+    Object.keys(input),
+    isHeaders(headers) ? redactedNames.get(headers) : undefined
+  )
+})
 
 /**
  * Returns a new `Headers` collection containing headers from both collections.
@@ -296,7 +362,7 @@ export const merge: {
 >(2, (self, headers) => {
   const out = make(self)
   Object.assign(out, headers)
-  return out
+  return inheritRedactedNames(out, self, Object.keys(headers), redactedNames.get(headers))
 })
 
 /**
@@ -318,8 +384,9 @@ export const remove: {
   (self: Headers, key: string) => Headers
 >(2, (self, key) => {
   const out = make(self)
-  delete out[key.toLowerCase()]
-  return out
+  const name = key.toLowerCase()
+  delete out[name]
+  return inheritRedactedNames(out, self, [name])
 })
 
 /**
@@ -341,10 +408,13 @@ export const removeMany: {
   (self: Headers, keys: Iterable<string>) => Headers
 >(2, (self, keys) => {
   const out = make(self)
+  const names: Array<string> = []
   for (const key of keys) {
-    delete out[key.toLowerCase()]
+    const name = key.toLowerCase()
+    delete out[name]
+    names.push(name)
   }
-  return out
+  return inheritRedactedNames(out, self, names)
 })
 
 /**
