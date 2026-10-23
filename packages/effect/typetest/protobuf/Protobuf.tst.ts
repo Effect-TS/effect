@@ -110,6 +110,25 @@ describe("Protobuf", () => {
     expect(new Event({ id: 1 })[Protobuf.unknown]).type.toBe<Uint8Array<ArrayBufferLike> | undefined>()
   })
 
+  it("Message and Oneof return the exported Message and Oneof types", () => {
+    const fields = { name: Schema.String.pipe(Protobuf.field(1)) }
+    expect(Protobuf.Message("acme.v1.Named", fields)).type.toBe<Protobuf.Message<typeof fields>>()
+    expect(Protobuf.Empty).type.toBe<Protobuf.Message<{}>>()
+    const cases = { text: Schema.String.pipe(Protobuf.field(1)) }
+    expect(Protobuf.Oneof(cases)).type.toBe<Protobuf.Oneof<typeof cases>>()
+  })
+
+  it("field, extension, and toCodec take the exported option types", () => {
+    const fieldOptions: Protobuf.FieldOptions = { packed: false, jsonName: "fullName" }
+    expect(Protobuf.field).type.toBeCallableWith(1, fieldOptions)
+    const extensionOptions: Protobuf.ExtensionOptions = { name: "acme.v1.priority", required: true }
+    expect(Protobuf.extension).type.toBeCallableWith(User, 100, Protobuf.Int32, extensionOptions)
+    expect(Protobuf.extension).type.not.toBeCallableWith(User, 100, Protobuf.Int32, { jsonName: "priority" })
+    const options: Protobuf.Options = { registry: Protobuf.registry(User) }
+    expect(Protobuf.toCodec).type.toBeCallableWith(User, options)
+    expect(Protobuf.toCodec).type.not.toBeCallableWith(User, { unknownOption: true })
+  })
+
   it("extensions and Any are typed by their schema", () => {
     const Product = Protobuf.Message("acme.Product", { name: Schema.String.pipe(Protobuf.field(1)) })
     const priority = Protobuf.extension(Product, 100, Protobuf.Int32)
