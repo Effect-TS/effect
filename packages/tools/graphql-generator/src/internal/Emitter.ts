@@ -219,13 +219,6 @@ const builtInSharedScalars: ReadonlyMap<string, BuiltInScalar> = new Map([
 ])
 
 /**
- * Whether a shared-module scalar's Encoded type may differ from its Type. A
- * mapped codec may transform; an unmapped custom scalar is `Schema.Json`.
- */
-const scalarTransforms = (name: string, scalars: ReadonlyMap<string, ScalarMapping>): boolean =>
-  scalars.has(name) || builtInSharedScalars.get(name)?.transforms === true
-
-/**
  * The strongly connected components of the graph reached from `roots`, each
  * after every component it has an edge to (Tarjan's algorithm). A
  * component's nodes are in the order they were reached.
@@ -1400,8 +1393,9 @@ class Emitter {
       return type._tag === "InputObjectType" ? type.fields.map((field) => SchemaModel.namedTypeOf(field.type)) : []
     }
     const components = stronglyConnectedComponents(Array.from(this.reached).sort(), fieldTypes)
-    const all = new Set(components.flat())
-    const inputs = components.flat().flatMap((name) => {
+    const order = components.flat()
+    const all = new Set(order)
+    const inputs = order.flatMap((name) => {
       const type = this.type(name)
       return type._tag === "InputObjectType" ? [type] : []
     })
@@ -1409,8 +1403,11 @@ class Emitter {
     const cycles = new Map<string, ReadonlySet<string>>()
     /** The input objects whose Encoded type differs from their Type. */
     const transforms = new Set<string>()
+    // A mapped scalar codec may transform; an unmapped custom scalar is `Schema.Json`.
     const transformsLeaf = (name: string): boolean =>
-      this.type(name)._tag === "ScalarType" ? scalarTransforms(name, this.options.scalars) : transforms.has(name)
+      this.type(name)._tag === "ScalarType"
+        ? this.options.scalars.has(name) || builtInSharedScalars.get(name)?.transforms === true
+        : transforms.has(name)
     for (const component of components) {
       const members = new Set(component)
       const leaves = component.flatMap(fieldTypes)
