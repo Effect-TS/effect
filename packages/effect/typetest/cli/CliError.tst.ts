@@ -1,5 +1,4 @@
-import { Data } from "effect"
-import { CliError } from "effect/cli"
+import type { CliError } from "effect/cli"
 import { describe, expect, it } from "tstyche"
 
 describe("CliError", () => {
@@ -9,10 +8,9 @@ describe("CliError", () => {
     })
 
     it("rejects non-string annotations", () => {
-      class NotFound extends Data.TaggedError("NotFound")<{}> {
-        // @ts-expect-error is not assignable to type 'string'
-        readonly [CliError.userMessage] = 404
-      }
+      expect<{ readonly [CliError.userMessage]: number }>().type.not.toBeAssignableTo<
+        Pick<Error, CliError.userMessage>
+      >()
     })
   })
 })

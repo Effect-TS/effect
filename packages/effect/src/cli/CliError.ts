@@ -75,7 +75,8 @@ export type userMessage = "~effect/cli/CliError/userMessage"
  *
  * When a handler failure has a string `[CliError.userMessage]`, `Command.run`
  * renders it with the installed formatter, sets `Runtime.errorReported` to
- * `false`, and rethrows the original error, so its tag is preserved.
+ * `false`, and rethrows the original error, so its tag is preserved. The
+ * global `Error` interface declares this key as an optional string.
  *
  * **Example** (Rendering a tagged handler failure)
  *
@@ -86,7 +87,7 @@ export type userMessage = "~effect/cli/CliError/userMessage"
  * class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
  *   path: Schema.String
  * }) {
- *   get [CliError.userMessage]() {
+ *   override get [CliError.userMessage]() {
  *     return `${this.path} already exists`
  *   }
  * }
@@ -102,6 +103,12 @@ export type userMessage = "~effect/cli/CliError/userMessage"
  * @since 4.0.0
  */
 export const userMessage: userMessage = "~effect/cli/CliError/userMessage"
+
+declare global {
+  interface Error {
+    readonly [userMessage]?: string
+  }
+}
 
 /**
  * Reads the `CliError.userMessage` annotation from an error object, returning
@@ -701,7 +708,7 @@ export class UserError extends Schema.TaggedError<UserError>(
    * @stability unstable
    * @since 4.0.0
    */
-  get [userMessage]() {
+  override get [userMessage]() {
     return this.message
   }
 }
