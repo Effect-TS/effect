@@ -93,4 +93,18 @@ describe("Response", () => {
     expect<typeof streamPart["DecodingServices"]>().type.toBe<ParamsDecoder | ResultDecoder>()
     expect<typeof streamPart["EncodingServices"]>().type.toBe<ParamsEncoder | ResultEncoder>()
   })
+
+  it("requires tool parameter and result services in handled toolkit schemas", () => {
+    const toolkit = hole<Toolkit.WithHandler<typeof ServiceToolkit.tools>>()
+    const allParts = Response.AllParts(toolkit)
+    const part = Response.Part(toolkit)
+    const streamPart = Response.StreamPart(toolkit)
+
+    expect<typeof allParts["DecodingServices"]>().type.toBe<ParamsDecoder | ResultDecoder>()
+    expect<typeof allParts["EncodingServices"]>().type.toBe<ParamsEncoder | ResultEncoder>()
+    expect<typeof part["DecodingServices"]>().type.toBe<ParamsDecoder | ResultDecoder>()
+    expect<typeof part["EncodingServices"]>().type.toBe<ParamsEncoder | ResultEncoder>()
+    expect<typeof streamPart["DecodingServices"]>().type.toBe<ParamsDecoder | ResultDecoder>()
+    expect<typeof streamPart["EncodingServices"]>().type.toBe<ParamsEncoder | ResultEncoder>()
+  })
 })
