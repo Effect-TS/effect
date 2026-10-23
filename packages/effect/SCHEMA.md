@@ -1797,6 +1797,8 @@ A record schema describes an object whose keys are dynamic (not known ahead of t
 
 Properties that are not selected by the key schema are ignored by that record. For example, `Schema.Record(Schema.String.check(Schema.isPattern(/^a/)), Schema.Number)` decodes only string keys that start with `"a"`.
 
+Dynamic records already allow keys to be absent, so their value schemas cannot use `Schema.optionalKey` or `Schema.optional`. Use `Schema.UndefinedOr` when a present property may contain `undefined`. Records with finite literal keys become struct-like schemas and may use the optional combinators.
+
 ### Key Transformations
 
 `Schema.Record` supports transforming keys during decoding and encoding. This can be useful when working with different naming conventions.

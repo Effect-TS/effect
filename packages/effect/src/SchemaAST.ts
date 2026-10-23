@@ -2739,8 +2739,10 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  *
  * **Gotchas**
  *
- * Using `Schema.optionalKey` on the value type is not allowed for index
- * signatures (throws at construction); use `Schema.optional` instead.
+ * Using `Schema.optionalKey` or `Schema.optional` on the value type is not
+ * allowed for index signatures (throws at construction). Index signatures
+ * already allow keys to be absent; use `Schema.UndefinedOr` to allow
+ * `undefined` values.
  *
  * @see {@link Objects}
  * @see {@link PropertySignature}
@@ -2773,8 +2775,10 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
     }
     this.parameter = parameter
     this.type = type
-    if (isOptional(type) && !containsUndefined(type)) {
-      throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
+    if (isOptional(type) || (type.encoding !== undefined && isOptional(toEncoded(type)))) {
+      throw new Error(
+        "Cannot use `Schema.optionalKey` or `Schema.optional` with index signatures. Index signatures already allow keys to be absent; use `Schema.UndefinedOr` to allow `undefined` values."
+      )
     }
   }
 }
@@ -4811,18 +4815,6 @@ export const flip = memoize((ast: AST): AST => {
   }
   return "flip" in ast ? ast.flip(flip) : "recur" in ast ? ast.recur(flip) : ast
 })
-
-/** @internal */
-export function containsUndefined(ast: AST): boolean {
-  switch (ast._tag) {
-    case "Undefined":
-      return true
-    case "Union":
-      return ast.types.some(containsUndefined)
-    default:
-      return false
-  }
-}
 
 function fromConst<const T>(
   ast: AST,

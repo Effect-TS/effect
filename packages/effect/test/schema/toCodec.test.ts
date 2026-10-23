@@ -772,6 +772,14 @@ describe("Serializers", () => {
         })
       })
 
+      it("Record(String, UndefinedOr(Number))", async () => {
+        const schema = Schema.Record(Schema.String, Schema.UndefinedOr(Schema.Number))
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        await asserts.encoding().succeed({ a: 1, b: undefined }, { a: 1, b: null })
+        await asserts.decoding().succeed({ a: 1, b: null }, { a: 1, b: undefined })
+      })
+
       it("Record(Symbol, Date)", async () => {
         const schema = Schema.Record(Schema.Symbol, Schema.Date)
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))

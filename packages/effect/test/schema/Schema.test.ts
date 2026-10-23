@@ -4069,15 +4069,34 @@ Expected a value between -2147483648 and 2147483647`
         deepStrictEqual(calls, ["a", "b", "c"])
       }))
 
-    it("Record(String, optionalKey(Number)) should throw", async () => {
-      throws(
-        () => Schema.Record(Schema.String, Schema.optionalKey(Schema.Number)),
-        new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
-      )
+    const optionalIndexSignatureError = new Error(
+      "Cannot use `Schema.optionalKey` or `Schema.optional` with index signatures. Index signatures already allow keys to be absent; use `Schema.UndefinedOr` to allow `undefined` values."
+    )
+
+    it("Record(String, optionalKey(Number)) should throw", () => {
+      for (
+        const value of [
+          Schema.optionalKey(Schema.Number),
+          Schema.optionalKey(Schema.Number).pipe(Schema.decodeTo(Schema.Number))
+        ]
+      ) {
+        throws(() => Schema.Record(Schema.String, value), optionalIndexSignatureError)
+      }
     })
 
-    it("Record(String, optional(Number))", async () => {
-      const schema = Schema.Record(Schema.String, Schema.optional(Schema.Number))
+    it("Record(String, optional(Number)) should throw", () => {
+      for (
+        const value of [
+          Schema.optional(Schema.Number),
+          Schema.optional(Schema.Number).pipe(Schema.decodeTo(Schema.UndefinedOr(Schema.Number)))
+        ]
+      ) {
+        throws(() => Schema.Record(Schema.String, value), optionalIndexSignatureError)
+      }
+    })
+
+    it("Record(String, UndefinedOr(Number))", async () => {
+      const schema = Schema.Record(Schema.String, Schema.UndefinedOr(Schema.Number))
       const asserts = new TestSchema.Asserts(schema)
 
       const make = asserts.make()
@@ -4262,6 +4281,21 @@ Expected a value between -2147483648 and 2147483647`
         await decoding.succeed({ a: 1 })
         await decoding.succeed({ b: 2 })
         await decoding.succeed({ a: 1, b: 2 })
+      })
+
+      it("Record(Literals, optional(Number))", async () => {
+        const schema = Schema.Record(Schema.Literals(["a", "b"]), Schema.optional(Schema.Number))
+        const asserts = new TestSchema.Asserts(schema)
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({})
+        await decoding.succeed({ a: 1 })
+        await decoding.succeed({ a: undefined })
+
+        const encoding = asserts.encoding()
+        await encoding.succeed({})
+        await encoding.succeed({ a: 1 })
+        await encoding.succeed({ a: undefined })
       })
 
       it("Record(Literals, mutableKey(Number))", async () => {
