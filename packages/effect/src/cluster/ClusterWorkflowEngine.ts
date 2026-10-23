@@ -7,6 +7,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Deferred from "../Deferred.ts"
@@ -539,9 +540,26 @@ export const make = Effect.gen(function*() {
                       !instance.abandoned &&
                       !(suspendOnFailure && exit._tag === "Failure")
                     ) {
-                      return parent && !parent.detached
+                      const resumeParent = parent && !parent.detached
                         ? ensureSuccess(sendResumeParent(parent, executionId))
                         : Effect.void
+                      if (exit._tag === "Success" || !Cause.hasInterruptsOnly(exit.cause)) {
+                        return resumeParent
+                      }
+                      // `interruptUnsafe` cuts the run off without a result and
+                      // its replay applies the interrupt. Retain the scope like a
+                      // suspended run, so `closeRuns` supersedes it and only the
+                      // final run's compensations observe the interrupt.
+                      return engine.deferredResult(InterruptSignal).pipe(
+                        Effect.flatMap((maybeExit) => {
+                          if (Option.isNone(maybeExit)) {
+                            return resumeParent
+                          }
+                          instance.suspended = true
+                          return Effect.void
+                        }),
+                        Effect.orDie
+                      )
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeExit) => {
