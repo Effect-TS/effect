@@ -1,6 +1,14 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Schema, Stream } from "effect"
-import { type AgUiSchema, type Response as AiResponse,AgUiServer,LanguageModel,type Prompt,Tool,Toolkit } from "effect/ai"
+import {
+  type AgUiSchema,
+  AgUiServer,
+  LanguageModel,
+  type Prompt,
+  type Response as AiResponse,
+  Tool,
+  Toolkit
+} from "effect/ai"
 import { Etag, HttpPlatform, HttpRouter } from "effect/http"
 import { HttpApi, HttpApiGroup, OpenApi } from "effect/http-api"
 
