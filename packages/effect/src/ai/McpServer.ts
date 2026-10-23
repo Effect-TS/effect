@@ -368,15 +368,16 @@ type MiddlewareLayer<Config extends MiddlewareConfig, R> = Layer.Layer<
  *
  * Provide `layer` to registration layers, or to the Effect form of a
  * registration, to run the middleware for those registrations. Use
- * `layerGlobal` to run it for every request on the server. `a.combine(b)` runs
- * `b` outside `a`, so services provided by `b` satisfy the per-request
- * requirements of `a`.
+ * `layerGlobal` to run it for every request on the server.
  *
- * Per-request requirements stay in the layer as `McpRequest<"Requires", S>`
- * markers until a middleware provided outside this one, or the transport,
- * discharges them. An unmet marker on the server layer means: add
- * `.combine(...)`, provide the middleware that supplies `S` outside this one,
- * or, under `layerHttp`, add an `HttpRouter.middleware` that provides `S`.
+ * Services the middleware reads per request are `McpRequest<"Requires", S>`
+ * requirements of `layer` and `layerGlobal`, like the request-level
+ * dependencies of a registration. A middleware that provides `S` meets them
+ * when it runs outside this one: `a.combine(b)` runs `b` outside `a`, and so
+ * does providing `b.layer` or `b.layerGlobal` outside `a.layer`, though
+ * `layerGlobal` installs `b` for the whole server. The transport discharges
+ * the services it supplies, and `layerHttp` turns the rest into
+ * `HttpRouter.Request` requirements that an `HttpRouter.middleware` can meet.
  *
  * @see {@link middleware} for creating MCP middleware
  *
@@ -410,12 +411,8 @@ export interface Middleware<Config extends MiddlewareConfig> {
  *
  * Pass a function, or an Effect that builds the function. Services the Effect
  * reads are requirements of the middleware layer. Services the function reads
- * per request, other than `McpRequestContext`, can come from a middleware
- * combined with `combine`, from a middleware provided outside this one, from
- * the transport, or under `layerHttp` from an `HttpRouter.middleware`. Until
- * then they are `McpRequest<"Requires", S>` requirements of the layer. Note
- * that providing `layerGlobal` outside this layer installs that middleware for
- * the whole server, not just these registrations.
+ * per request, other than `McpRequestContext`, are per-request requirements
+ * of the result; see {@link Middleware} for how they are met.
  *
  * Failures must be `McpErrorBase` values. A middleware failure is sent as a
  * JSON-RPC error with its `code`, `message` and `data`, never as a tool
@@ -538,11 +535,10 @@ export declare namespace middleware {
  * it was not registered.
  *
  * The result is a `Middleware` and composes like one. The check receives the
- * same {@link MiddlewareOptions} as middleware. Services it reads per request,
- * other than `McpRequestContext`, can come from middleware combined outside it
- * with `combine`, from a middleware provided outside it, from the transport, or
- * under `layerHttp` from an `HttpRouter.middleware`. Scope a visibility to some tools by
- * providing its layer to their toolkit only, or branch on `target`.
+ * same {@link MiddlewareOptions} as middleware, and services it reads per
+ * request, other than `McpRequestContext`, are met the same way. Scope a
+ * visibility to some tools by providing its layer to their toolkit only, or
+ * branch on `target`.
  *
  * On a list request, the check and the middleware outside the innermost
  * visibility run once for each registration. Middleware inside it does not

@@ -267,12 +267,10 @@ A few rules to know:
 - `middleware.layer` applies the middleware to the registrations it is provided to.
   `middleware.layerGlobal`, or `McpServer.middleware(fn, { global: true })`, applies it to every
   request on the server. Global middleware runs outside local middleware.
-- A middleware that needs a service per request gets it from another middleware through
-  `a.combine(b)`, which runs `b` outside `a`, from a middleware provided outside it, from the
-  transport, or under `layerHttp` from an `HttpRouter.middleware`. Until then its `layer` requires
-  `McpRequest<"Requires", S>`. An unmet marker on the server layer means: add `.combine(...)`,
-  provide the middleware that supplies `S` outside, or add an `HttpRouter.middleware`. Providing
-  `layerGlobal` outside installs that middleware for the whole server, not just those registrations.
+- A middleware that needs a service per request gets it from a middleware that provides it and
+  runs outside it: `a.combine(b)` runs `b` outside `a`, and so does providing `b.layer` or
+  `b.layerGlobal` outside `a.layer`. Until then `a.layer` requires `McpRequest<"Requires", S>`,
+  like a registration with request-level dependencies, so the transport rules below apply.
 - The transport discharges what it supplies. Every transport supplies `Scope`, HTTP transports
   supply `HttpServerRequest`, and `McpServerClient` is supplied only when every protocol in a
   literal `protocols` tuple is sessionful. Mixing in a sessionless protocol such as `v2026_07_28`,
