@@ -19,7 +19,8 @@ const partitionable = Effect.gen(function*() {
     eval: <Config extends { readonly params: ReadonlyArray<unknown>; readonly result: unknown }>(
       script: Redis.Script<Config>
     ) =>
-    (...params: Config["params"]) => gate(redis.eval(script)(...params))
+    (...params: Config["params"]) => gate(redis.eval(script)(...params)),
+    reserve: redis.reserve
   }
   return { partition, redis: service } as const
 })

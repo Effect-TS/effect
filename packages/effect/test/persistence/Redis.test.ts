@@ -26,7 +26,8 @@ describe("Redis", () => {
         return Effect.succeed(undefined as unknown as A)
       },
       subscribe: () => Queue.unbounded<Redis.RedisMessage, Redis.RedisError>(),
-      eval: () => () => Effect.die("unused")
+      eval: () => () => Effect.die("unused"),
+      reserve: Effect.die("unused")
     })
     return Effect.gen(function*() {
       const backing = yield* Persistence.BackingPersistence
@@ -51,7 +52,8 @@ describe("Redis", () => {
         (...params: Config["params"]) => {
           scripts.push(params[0])
           return Effect.succeed(undefined as Config["result"])
-        }
+        },
+      reserve: Effect.die("unused")
     })
     return Effect.gen(function*() {
       const backing = yield* Persistence.BackingPersistence

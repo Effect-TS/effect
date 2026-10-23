@@ -4,7 +4,8 @@
  * This module creates a scoped `node-redis` client and exposes it in two forms:
  * the generic `Redis` service and the {@link NodeRedis} service for direct
  * access to the underlying client. `layer` accepts node-redis client options
- * directly, while `layerConfig` reads them from Effect config. `node-redis`
+ * directly, while `layerConfig` reads them from Effect config. Both also accept
+ * `Redis.PoolOptions` for the connections behind `Redis.reserve`. `node-redis`
  * connects explicitly, so layer construction can fail with a `RedisError`.
  * Both layers close the client when the layer scope ends.
  *
@@ -22,6 +23,7 @@ import { createClient, SocketTimeoutError } from "redis"
 
 type NodeRedisClient = ReturnType<typeof createClient>
 type NodeRedisClientOptions = NonNullable<Parameters<typeof createClient>[0]>
+type NodeRedisOptions = NodeRedisClientOptions & Redis.PoolOptions
 
 /**
  * Service tag for the Node Redis integration, exposing the underlying
@@ -38,10 +40,10 @@ export class NodeRedis extends Context.Service<NodeRedis, {
 }>()("@effect/platform-node/NodeRedis") {}
 
 const make = Effect.fnUntraced(function*(
-  options?: NodeRedisClientOptions
+  { acquireTimeout, idleTimeout, maxConnections, minConnections, ...options }: NodeRedisOptions = {}
 ) {
   let ready = false
-  const socket = options?.socket
+  const socket = options.socket
   const client = yield* Effect.acquireRelease(
     Effect.sync((): NodeRedisClient =>
       createClient({
@@ -91,6 +93,38 @@ const make = Effect.fnUntraced(function*(
         try: () => client.sendCommand([command, ...args]) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
       }),
+    // Reserved connections do not reconnect: a dropped socket fails the
+    // in-flight command and the connection leaves the pool.
+    connect: Effect.tryPromise({
+      try: async () => {
+        const connection = client.duplicate({ socket: { ...socket, reconnectStrategy: false } })
+        connection.on("error", (cause) => {
+          runSync(Effect.logWarning("NodeRedis reserved connection error", cause))
+        })
+        try {
+          await connection.connect()
+          return connection
+        } catch (cause) {
+          if (connection.isOpen) connection.destroy()
+          throw cause
+        }
+      },
+      catch: (cause) => new Redis.RedisError({ cause })
+    }).pipe(
+      Effect.map((connection) => ({
+        send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+          Effect.tryPromise({
+            try: () => connection.sendCommand([command, ...args]) as Promise<A>,
+            catch: (cause) => new Redis.RedisError({ cause })
+          }),
+        // `destroy` rejects in-flight commands instead of waiting for their
+        // replies like `close` does.
+        close: Effect.sync(() => {
+          if (connection.isOpen) connection.destroy()
+        })
+      }))
+    ),
+    pool: { acquireTimeout, idleTimeout, maxConnections, minConnections },
     subscribe: Effect.fnUntraced(function*(channel, onMessage) {
       const terminal = yield* Deferred.make<void, Redis.RedisError>()
       yield* Effect.acquireRelease(
@@ -166,15 +200,18 @@ const make = Effect.fnUntraced(function*(
  * the client has emitted `ready`, the default reconnect strategy uses
  * node-redis' exponential backoff and stops on socket timeouts.
  *
- * Scope finalization calls `close()`, which waits for in-flight commands,
- * including blocking commands, and can therefore delay scope closure.
+ * Scope finalization calls `close()` on the shared client, which waits for
+ * in-flight commands, including blocking commands, and can therefore delay
+ * scope closure. Run blocking commands on `Redis.reserve` instead: reserved
+ * connections are destroyed when the scope closes, failing their in-flight
+ * commands.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layer = (
-  options?: NodeRedisClientOptions | undefined
+  options?: NodeRedisOptions | undefined
 ): Layer.Layer<Redis.Redis | NodeRedis, Redis.RedisError> => Layer.effectContext(make(options))
 
 /**
@@ -189,17 +226,20 @@ export const layer = (
  * the client has emitted `ready`, the default reconnect strategy uses
  * node-redis' exponential backoff and stops on socket timeouts.
  *
- * Scope finalization calls `close()`, which waits for in-flight commands,
- * including blocking commands, and can therefore delay scope closure.
+ * Scope finalization calls `close()` on the shared client, which waits for
+ * in-flight commands, including blocking commands, and can therefore delay
+ * scope closure. Run blocking commands on `Redis.reserve` instead: reserved
+ * connections are destroyed when the scope closes, failing their in-flight
+ * commands.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerConfig: (
-  options: Config.Wrap<NodeRedisClientOptions>
+  options: Config.Wrap<NodeRedisOptions>
 ) => Layer.Layer<Redis.Redis | NodeRedis, Redis.RedisError | Config.ConfigError> = (
-  options: Config.Wrap<NodeRedisClientOptions>
+  options: Config.Wrap<NodeRedisOptions>
 ): Layer.Layer<Redis.Redis | NodeRedis, Redis.RedisError | Config.ConfigError> =>
   Layer.effectContext(
     Config.unwrap(options).pipe(

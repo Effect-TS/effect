@@ -5,7 +5,8 @@
  * both the portable `Redis` service and the Deno-specific {@link DenoRedis}
  * service for direct access to the raw client. Unlike Bun's built-in client,
  * `@db/redis` connects eagerly using RESP2, so layer construction can fail
- * with a `RedisError`.
+ * with a `RedisError`. The layers also accept `Redis.PoolOptions` for the
+ * connections behind `Redis.reserve`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -46,7 +47,9 @@ export class DenoRedis extends Context.Service<DenoRedis, {
   readonly use: <A>(f: (client: RedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
 }>()("@effect/platform-deno/DenoRedis") {}
 
-const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
+const make = Effect.fnUntraced(function*(
+  { acquireTimeout, idleTimeout, maxConnections, minConnections, ...options }: RedisOptions & Redis.PoolOptions = {}
+) {
   const connectClient = () => {
     const { url, ...connectOptions } = options
     const parsedUrl = url === undefined ? undefined : new URL(url)
@@ -80,6 +83,20 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
         try: () => client.sendCommand(command, args as Array<string>) as Promise<A>,
         catch: (cause) => new Redis.RedisError({ cause })
       }),
+    connect: Effect.tryPromise({
+      try: connectClient,
+      catch: (cause) => new Redis.RedisError({ cause })
+    }).pipe(
+      Effect.map((connection) => ({
+        send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+          Effect.tryPromise({
+            try: () => connection.sendCommand(command, args as Array<string>) as Promise<A>,
+            catch: (cause) => new Redis.RedisError({ cause })
+          }),
+        close: Effect.sync(() => connection.close())
+      }))
+    ),
+    pool: { acquireTimeout, idleTimeout, maxConnections, minConnections },
     subscribe: (channel, onMessage) =>
       Effect.acquireRelease(
         Effect.tryPromise({
@@ -134,7 +151,7 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
  * @since 4.0.0
  */
 export const layer = (
-  options?: RedisOptions | undefined
+  options?: (RedisOptions & Redis.PoolOptions) | undefined
 ): Layer.Layer<Redis.Redis | DenoRedis, Redis.RedisError> => Layer.effectContext(make(options))
 
 /**
@@ -146,7 +163,7 @@ export const layer = (
  * @since 4.0.0
  */
 export const layerConfig = (
-  options: Config.Wrap<RedisOptions>
+  options: Config.Wrap<RedisOptions & Redis.PoolOptions>
 ): Layer.Layer<Redis.Redis | DenoRedis, Redis.RedisError | Config.ConfigError> =>
   Layer.effectContext(
     Config.unwrap(options).pipe(
