@@ -4540,7 +4540,15 @@ const RestartSharding = <R>(
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provide(Runners.layerNoop),
     Layer.provide(Layer.succeed(MessageStorage.MessageStorage, storage)),
-    Layer.provide(ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 60_000, ...config }))
+    Layer.provide(
+      ShardingConfig.layer({
+        ...testConfigDefaults,
+        entityTerminationTimeout: 60_000,
+        entityReplyPollInterval: 1,
+        sendRetryInterval: 10,
+        ...config
+      })
+    )
   )
 
 // Closes a runner, failing if shutdown waits for `entityTerminationTimeout`.
