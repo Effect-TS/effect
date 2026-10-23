@@ -281,6 +281,67 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(layer(Layer.succeed(MessageStorage.MessageStorage, storage))))
     }))
 
+  it.effect("shutdown waits for a running activity before finalizing its workflow", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("RunningActivityShutdown", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const events: Array<string> = []
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const step = Activity.make({
+        name: "step",
+        execute: Effect.gen(function*() {
+          events.push("activity:start")
+          yield* started.open
+          yield* release.await
+          events.push("activity:end")
+        })
+      })
+      const storage = yield* makeSharedStorage
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              events.push("finalized")
+            })
+          ).pipe(Workflow.provideScope)
+          yield* step
+        })
+      ).pipe(
+        Layer.provideMerge(makeTestWorkflowEngine({
+          storageLayer: Layer.succeed(MessageStorage.MessageStorage, storage),
+          config: { entityTerminationTimeout: Duration.minutes(1) }
+        }))
+      )
+
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(layer, scope)
+      const executionId = yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* advanceUntil(() => started.isOpen(), "activity must start")
+      const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      for (let i = 0; i < 100; i++) yield* TestClock.adjust(10)
+      const pendingWhileRunning = shutdown.pollUnsafe() === undefined
+      yield* release.open
+      for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+      const closedBeforeTimeout = shutdown.pollUnsafe() !== undefined
+      // Let a stalled shutdown finish, so the runner is released before asserting.
+      yield* TestClock.adjust(Duration.minutes(1))
+      yield* Fiber.join(shutdown)
+      assert.isTrue(pendingWhileRunning, "shutdown must wait for the running activity")
+      assert.isTrue(closedBeforeTimeout, "shutdown must finish once the activity completes")
+      assert.deepStrictEqual(events, ["activity:start", "activity:end", "finalized"])
+
+      yield* Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.void })
+        )
+      }).pipe(Effect.provide(layer))
+      assert.deepStrictEqual(events, ["activity:start", "activity:end", "finalized"])
+    }))
+
   it.effect("retries an early activity registered while its Suspended reply is still being persisted", () =>
     Effect.gen(function*() {
       const workflow = Workflow.make("EarlyActivity", {

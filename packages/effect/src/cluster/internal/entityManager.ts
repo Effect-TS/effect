@@ -37,6 +37,7 @@ import type { ShardId } from "../ShardId.ts"
 import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
+import * as ClusterAbandon from "./clusterAbandon.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
@@ -338,12 +339,18 @@ export const make = Effect.fnUntraced(function*<
                 // Also, if the request is uninterruptible, we ignore the
                 // interrupt.
                 const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
+                // A durable request abandoned because this owner can no longer
+                // serve it is left for the next owner, not answered or retried here.
+                const abandoned = persisted && Exit.isFailure(response.exit) &&
+                  ClusterAbandon.isCause(response.exit.cause) &&
+                  (!isActive() || !options.sharding.hasShardId(address.shardId))
                 if (
                   persisted &&
                   Exit.hasInterrupts(response.exit) &&
-                  (isShuttingDown || request.terminating || isUninterruptibleForServer(request.message.annotations))
+                  (abandoned || isShuttingDown || request.terminating ||
+                    isUninterruptibleForServer(request.message.annotations))
                 ) {
-                  if (!isShuttingDown && !request.terminating) {
+                  if (!abandoned && !isShuttingDown && !request.terminating) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.setContext(handlerContext),
@@ -546,15 +553,16 @@ export const make = Effect.fnUntraced(function*<
               request.terminating = true
               yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
             }
-            yield* state.write(0, { _tag: "Eof" })
             // A handler this drain waits for may be parked on a request the
             // retired entity will never start, such as its own queued request.
+            // Release callers before `Eof`, which waits for handler acquisition.
             if (options.abandonUndelivered) {
               yield* options.abandonUndelivered(
                 address,
                 (requestId) => activeRequests.get(requestId)?.delivered === true
               )
             }
+            yield* state.write(0, { _tag: "Eof" })
           }).pipe(
             Effect.andThen(endLatch.await),
             // A defect restart that finds the entity retired opens `endLatch`

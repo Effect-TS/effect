@@ -2352,6 +2352,75 @@ describe.concurrent("Sharding defect recovery", () => {
       yield* Deferred.succeed(acquired, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 
+  it.effect("replays a durable caller abandoned on its queued request during shutdown", () =>
+    Effect.gen(function*() {
+      const storage = yield* makeSharedMemoryStorage
+      const queued = yield* Latch.make()
+      const state = { children: 0, continued: [] as Array<string> }
+      const scope = yield* Scope.make()
+      yield* Effect.gen(function*() {
+        const client = (yield* AbandonedCaller.client)("1")
+        yield* client.Call({ id: "call" }, { discard: true })
+        yield* queued.await
+      }).pipe(Effect.provide(
+        yield* Layer.buildWithScope(
+          RestartSharding(AbandonedCallerLayer(state), unreadStorage(storage, "Child", queued)),
+          scope
+        )
+      ))
+      yield* closeWithinGrace(scope)
+      assert.deepStrictEqual(state, { children: 0, continued: [] })
+
+      const result = yield* Effect.gen(function*() {
+        const client = (yield* AbandonedCaller.client)("1")
+        return yield* advanceUntil(client.Call({ id: "call" }))
+      }).pipe(Effect.provide(RestartSharding(AbandonedCallerLayer(state), storage)))
+      assert.strictEqual(result, "child")
+      assert.deepStrictEqual(state, { children: 1, continued: ["child"] })
+    }))
+
+  it.effect("releases the caller of a request admitted during replacement acquisition on shutdown", () => {
+    const registry: Metric.MetricRegistry = new Map()
+    return Effect.gen(function*() {
+      const storage = yield* makeSharedMemoryStorage
+      const state = { generation: 0, pings: 0, acquiring: Latch.makeUnsafe(), acquired: Latch.makeUnsafe() }
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(RestartSharding(AcquisitionShutdownLayer(state), storage), scope)
+      const ping = yield* Effect.gen(function*() {
+        const client = (yield* AcquisitionShutdown.client)("1")
+        yield* client.Crash({ id: "crash" }, { discard: true })
+        yield* advanceUntil(state.acquiring.await)
+        const ping = yield* Effect.forkChild(client.Ping({ id: "ping" }), { startImmediately: true })
+        // Admitted behind the replay of the crashed request.
+        for (let i = 0; i < 100 && mailboxSizeMax(registry, AcquisitionShutdown.type) < 2; i++) {
+          yield* TestClock.adjust(1)
+        }
+        assert.strictEqual(mailboxSizeMax(registry, AcquisitionShutdown.type), 2)
+        return ping
+      }).pipe(Effect.provide(context))
+
+      // The replacement handlers stay in acquisition throughout shutdown.
+      yield* closeWithinGrace(scope)
+      const released = yield* Fiber.await(ping)
+
+      assert.isTrue(
+        Exit.isFailure(released) &&
+          released.cause.reasons.some((reason) =>
+            reason._tag === "Interrupt" && reason.annotations.has(ClusterSchema.Abandon.key)
+          ),
+        "the caller must be abandoned for the next owner"
+      )
+      assert.strictEqual(state.pings, 0)
+
+      const result = yield* Effect.gen(function*() {
+        const client = (yield* AcquisitionShutdown.client)("1")
+        return yield* advanceUntil(client.Ping({ id: "ping" }))
+      }).pipe(Effect.provide(RestartSharding(AcquisitionShutdownLayer(state), storage)))
+      assert.strictEqual(result, 1)
+      assert.strictEqual(state.pings, 1)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
+  })
+
   it.effect("interrupts an entity whose id is also active on a shard that was interrupted first", () =>
     Effect.gen(function*() {
       const run = Rpc.make("run")
@@ -4397,6 +4466,115 @@ const BlockedRebuildSharding = Layer.mergeAll(
   Snowflake.layerGenerator,
   ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 1000 })
 ).pipe(Layer.provideMerge(UnregisteredSharding({})))
+
+// Shared across runners, so a restarted runner sees the previous runner's requests.
+const makeSharedMemoryStorage = Effect.map(
+  Layer.build(MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))),
+  (context) => Context.get(context, MessageStorage.MessageStorage)
+)
+
+// Persists requests with `tag`, but never reads them back for delivery.
+const unreadStorage = (storage: MessageStorage.MessageStorage["Service"], tag: string, saved: Latch.Latch) => {
+  const isUnread = (message: Message.Incoming<any>) =>
+    message.envelope._tag === "Request" && message.envelope.tag === tag
+  return MessageStorage.MessageStorage.of({
+    ...storage,
+    saveRequest: (message) =>
+      Effect.tap(storage.saveRequest(message), () => message.envelope.tag === tag ? saved.open : Effect.void),
+    unprocessedMessages: (shardIds, options) =>
+      Effect.map(storage.unprocessedMessages(shardIds, options), (messages) => messages.filter((m) => !isUnread(m))),
+    unprocessedMessagesById: (ids) =>
+      Effect.map(storage.unprocessedMessagesById(ids), (messages) => messages.filter((m) => !isUnread(m)))
+  })
+}
+
+const RestartSharding = <R>(
+  entityLayer: Layer.Layer<never, never, R>,
+  storage: MessageStorage.MessageStorage["Service"]
+) =>
+  entityLayer.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(RunnerStorage.layerMemory),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide(Layer.succeed(MessageStorage.MessageStorage, storage)),
+    Layer.provide(ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 60_000 }))
+  )
+
+// Closes a runner, failing if shutdown waits for `entityTerminationTimeout`.
+const closeWithinGrace = Effect.fnUntraced(function*(scope: Scope.Closeable) {
+  const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+  for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+  const closedBeforeTimeout = shutdown.pollUnsafe() !== undefined
+  // Let a stalled shutdown finish, so the runner is released before asserting.
+  yield* TestClock.adjust(60_000)
+  yield* Fiber.join(shutdown)
+  assert.isTrue(closedBeforeTimeout, "shutdown must not wait for entityTerminationTimeout")
+})
+
+const AbandonedCaller = Entity.make("AbandonedCaller", [
+  Rpc.make("Call", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
+    .annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Child", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
+    .annotate(ClusterSchema.Persisted, true)
+])
+
+// `Call` is an ordinary durable handler that continues after its own child request.
+const AbandonedCallerLayer = (state: { children: number; readonly continued: Array<string> }) =>
+  AbandonedCaller.toLayer(
+    Effect.gen(function*() {
+      const address = yield* Entity.CurrentAddress
+      const self = (yield* AbandonedCaller.client)(address.entityId)
+      return AbandonedCaller.of({
+        Call: () =>
+          Effect.tap(self.Child({ id: "child" }), (value) =>
+            Effect.sync(() => {
+              state.continued.push(value)
+            })),
+        Child: () =>
+          Effect.sync(() => {
+            state.children++
+            return "child"
+          })
+      })
+    }),
+    { concurrency: "unbounded" }
+  )
+
+const AcquisitionShutdown = Entity.make("AcquisitionShutdown", [
+  Rpc.make("Crash", { payload: { id: Schema.String }, primaryKey: ({ id }) => id })
+    .annotate(ClusterSchema.Persisted, true),
+  Rpc.make("Ping", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.Number })
+    .annotate(ClusterSchema.Persisted, true)
+])
+
+// The first handlers crash on `Crash`, and the replacement handlers stay in
+// acquisition until `acquired` opens.
+const AcquisitionShutdownLayer = (state: {
+  generation: number
+  pings: number
+  readonly acquiring: Latch.Latch
+  readonly acquired: Latch.Latch
+}) =>
+  AcquisitionShutdown.toLayer(
+    Effect.gen(function*() {
+      const generation = ++state.generation
+      if (generation === 2) {
+        yield* state.acquiring.open
+        yield* state.acquired.await
+      }
+      return AcquisitionShutdown.of({
+        Crash: () => generation === 1 ? Effect.die("restart") : Effect.void,
+        Ping: () => Effect.sync(() => ++state.pings)
+      })
+    }),
+    { defectRetryPolicy }
+  )
+
+const mailboxSizeMax = (registry: Metric.MetricRegistry, type: string) => {
+  const series = entityMailboxSizeMaxSeries(registry).find(([attributes]) => attributes?.type === type)
+  return series ? Number((series[1] as { readonly value: bigint }).value) : 0
+}
 
 const entityMailboxSizeMaxSeries = (registry: Metric.MetricRegistry) =>
   Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
