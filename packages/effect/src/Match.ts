@@ -38,9 +38,10 @@ type ValueTagHandlers<I> = {
 }
 
 // Finite string / number literal members. Widened `string`, `number` and
-// template literal members are excluded, as is any number whose string
-// spelling is also a member (both share the same runtime key).
-type LiteralKeys<R> = AmbiguousLiterals<FiniteLiterals<R>, FiniteLiterals<R>>
+// template literal members are excluded, as is any literal whose runtime key
+// is shared with another string / number member (e.g. `1` with `"1"` or
+// `string`, and `"1"` with `number`).
+type LiteralKeys<R> = AmbiguousLiterals<FiniteLiterals<R>, Extract<R, string | number>>
 
 type FiniteLiterals<R> = R extends string | number ? {} extends Record<R, unknown> ? never : R : never
 
@@ -56,6 +57,9 @@ type LiteralHandlers<R, Ret> = [Exclude<R, LiteralKeys<R>>] extends [never] ? {
 type PartialLiteralHandlers<R, Ret> = {
   readonly [K in LiteralKeys<R>]?: ((_: K) => Ret) | undefined
 }
+
+// Only keys with a defined handler remove a literal from the remaining input.
+type HandledLiterals<P> = { readonly [K in keyof P]-?: undefined extends P[K] ? never : K }[keyof P]
 
 /**
  * Marker used by `Matcher` to distinguish matchers created with `Match.value`.
@@ -1315,8 +1319,8 @@ export const literals: <
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, keyof P>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, keyof P>>>,
+  Types.AddWithout<F, Extract<R, HandledLiterals<P>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, HandledLiterals<P>>>>,
   A | ReturnType<P[keyof P] & {}>,
   Pr,
   Ret
