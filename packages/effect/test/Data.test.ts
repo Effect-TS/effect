@@ -2,6 +2,10 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { dirname, join, relative } from "node:path"
+import { fileURLToPath } from "node:url"
 import { describe, it } from "vitest"
 
 describe("Data", () => {
@@ -188,6 +192,68 @@ describe("Data", () => {
         assert.strictEqual(show(Option.Some({ value: 42 })), "some(42)")
       })
     })
+
+    it("declarations reference the named constructor types", () => {
+      const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
+      const directory = mkdtempSync(join(packageRoot, "test", ".taggedEnum-declarations-"))
+      try {
+        writeFileSync(
+          join(directory, "fixture.ts"),
+          `import * as Data from "effect/Data"
+
+export type Plain = Data.TaggedEnum<{
+  CaseA: { readonly name: string; readonly count: number; readonly active: boolean }
+  CaseB: { readonly message: string; readonly retry: boolean }
+}>
+export const Plain = Data.taggedEnum<Plain>()
+
+export type TE<T> = Data.TaggedEnum<{
+  A: { a: T }
+  B: { b?: T }
+}>
+export interface TEDefinition extends Data.TaggedEnum.WithGenerics<1> {
+  readonly taggedEnum: TE<this["A"]>
+}
+export const TE = Data.taggedEnum<TEDefinition>()
+`
+        )
+        writeFileSync(
+          join(directory, "tsconfig.json"),
+          JSON.stringify({
+            extends: join(packageRoot, "../../tsconfig.base.json"),
+            compilerOptions: {
+              composite: false,
+              incremental: false,
+              declaration: true,
+              declarationMap: false,
+              emitDeclarationOnly: true,
+              sourceMap: false,
+              rootDir: packageRoot,
+              outDir: join(directory, "out"),
+              types: ["node"]
+            },
+            files: ["fixture.ts"]
+          })
+        )
+        const repositoryRoot = join(packageRoot, "../..")
+        const result = spawnSync(
+          join(repositoryRoot, "node_modules/.bin/tsc"),
+          ["-p", join(directory, "tsconfig.json"), "--pretty", "false"],
+          { cwd: repositoryRoot, encoding: "utf8" }
+        )
+        assert.strictEqual(result.status, 0, `${result.stdout}${result.stderr}`)
+        const declarations = readFileSync(
+          join(directory, "out", relative(packageRoot, directory), "fixture.d.ts"),
+          "utf8"
+        )
+        assert.deepStrictEqual(declarations.match(/^export declare const .*$/gm), [
+          "export declare const Plain: Data.TaggedEnum.Constructor<Plain>;",
+          "export declare const TE: Data.TaggedEnum.GenericConstructor<TEDefinition>;"
+        ])
+      } finally {
+        rmSync(directory, { recursive: true, force: true })
+      }
+    }, 60_000)
   })
 
   describe("Error", () => {
