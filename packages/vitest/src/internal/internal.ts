@@ -308,6 +308,7 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     readonly memoMap?: Layer.MemoMap
     readonly timeout?: Duration.Input
     readonly excludeTestServices?: boolean
+    readonly buildPerTest?: boolean
   }
 ): {
   (f: (it: Vitest.Vitest.MethodsNonLive<R, ExtraContext>) => void): void
@@ -331,6 +332,49 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     ? layer_ as Layer.Layer<R, E>
     : Layer.provideMerge(layer_, TestEnv)
   const memoMap = options?.memoMap ?? Effect.runSync(Layer.makeMemoMap)
+  const buildPerTest = options?.buildPerTest ?? false
+  const suiteOptions = options?.concurrent === undefined ? {} : { concurrent: options.concurrent }
+
+  const makeBlockMethods = (
+    provide: <A, E>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E>
+  ): Vitest.Vitest.MethodsNonLive<R, ExtraContext> =>
+    makeItProxy(it, {
+      effect: makeTester<R | Scope.Scope, ExtraContext>((effect) => provide(Effect.scoped(effect)), it),
+      prop: makeProp<ExtraContext>(it),
+      flakyTest,
+      layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, nestedOptions?: {
+        readonly concurrent?: boolean
+        readonly timeout?: Duration.Input
+        readonly buildPerTest?: boolean
+      }) {
+        return makeLayer(it)(Layer.provideMerge(nestedLayer, withTestEnv), {
+          ...nestedOptions,
+          memoMap: Layer.forkMemoMapUnsafe(memoMap),
+          excludeTestServices,
+          // The services of a per-test block only exist during a test, so
+          // blocks nested in it are built per test as well.
+          buildPerTest: buildPerTest || nestedOptions?.buildPerTest === true
+        })
+      }
+    })
+
+  if (buildPerTest) {
+    // Each test builds into its own fork of the memo map, so it reuses the
+    // services of enclosing blocks and releases the rest when it finishes.
+    const methods = makeBlockMethods((effect) =>
+      Effect.scopedWith((scope) =>
+        Layer.buildWithMemoMap(withTestEnv, Layer.forkMemoMapUnsafe(memoMap), scope).pipe(
+          Effect.orDie,
+          Effect.flatMap((context) => Effect.provide(effect, context))
+        )
+      )
+    )
+    if (args.length === 1) {
+      return args[0](methods)
+    }
+    return V.describe(args[0], suiteOptions, () => args[1](methods))
+  }
+
   const scope = Effect.runSync(Scope.make())
   const contextEffect = Layer.buildWithMemoMap(withTestEnv, memoMap, scope).pipe(
     Effect.orDie,
@@ -347,29 +391,9 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     return runPromise(Scope.close(scope, Exit.void))
   }
 
-  const methods: Vitest.Vitest.MethodsNonLive<R, ExtraContext> = makeItProxy(it, {
-    effect: makeTester<R | Scope.Scope, ExtraContext>(
-      (effect) =>
-        Effect.flatMap(contextEffect, (context) =>
-          effect.pipe(
-            Effect.scoped,
-            Effect.provide(context)
-          )),
-      it
-    ),
-    prop: makeProp<ExtraContext>(it),
-    flakyTest,
-    layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
-      readonly concurrent?: boolean
-      readonly timeout?: Duration.Input
-    }) {
-      return makeLayer(it)(Layer.provideMerge(nestedLayer, withTestEnv), {
-        ...options,
-        memoMap: Layer.forkMemoMapUnsafe(memoMap),
-        excludeTestServices
-      })
-    }
-  })
+  const methods = makeBlockMethods((effect) =>
+    Effect.flatMap(contextEffect, (context) => Effect.provide(effect, context))
+  )
 
   if (args.length === 1) {
     const currentSuite = getCurrentSuite()
@@ -408,7 +432,6 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     return
   }
 
-  const suiteOptions = options?.concurrent === undefined ? {} : { concurrent: options.concurrent }
   return V.describe(args[0], suiteOptions, () => {
     V.beforeAll(
       () => runPromise(Effect.asVoid(contextEffect)),
