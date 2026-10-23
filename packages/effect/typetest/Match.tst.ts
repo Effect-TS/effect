@@ -387,6 +387,12 @@ describe("Match", () => {
     Match.type<string | 1>().pipe(Match.literals({ 1: () => 0 }))
     // @ts-expect-error is not assignable to
     Match.type<number | "1">().pipe(Match.literals({ "1": () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "NaN">().pipe(Match.literals({ NaN: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "Infinity">().pipe(Match.literals({ Infinity: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "-Infinity">().pipe(Match.literals({ "-Infinity": () => 0 }))
 
     // an `undefined` handler cannot prove a literal handled
     // @ts-expect-error is not assignable to
