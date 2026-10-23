@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Redacted, Schema, SchemaTransformation, Stream } from "effect"
+import { Cause, Chunk, Effect, Exit, Redacted, Schema, SchemaTransformation, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -1328,6 +1328,52 @@ describe("HttpApiClient", () => {
         }),
         [[], [], []]
       )
+    }))
+
+  it.effect("keeps Redacted values inside collections out of failed request inspection", () =>
+    Effect.gen(function*() {
+      const Secret = Schema.RedactedFromValue(Schema.String)
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("g").add(
+          HttpApiEndpoint.post("mapKey", "/map-key", {
+            payload: Schema.Struct({ value: Schema.ReadonlyMap(Secret, Schema.String) })
+          }),
+          HttpApiEndpoint.post("mapValue", "/map-value", {
+            payload: Schema.Struct({ value: Schema.ReadonlyMap(Schema.String, Secret) })
+          }),
+          HttpApiEndpoint.post("set", "/set", { payload: Schema.Struct({ value: Schema.ReadonlySet(Secret) }) }),
+          HttpApiEndpoint.post("chunk", "/chunk", { payload: Schema.Struct({ value: Schema.Chunk(Secret) }) })
+        )
+      )
+      const wire: Array<string> = []
+      const httpClient = HttpClient.make((request) => {
+        wire.push(request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : "")
+        return Effect.fail(
+          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+        )
+      })
+      const client = yield* HttpApiClient.makeWith(Api, { httpClient, baseUrl: "http://x" })
+      const secret = Redacted.make("s3cret")
+
+      const errors = [
+        yield* Effect.flip(client.g.mapKey({ payload: { value: new Map([[secret, "v"]]) } })),
+        yield* Effect.flip(client.g.mapValue({ payload: { value: new Map([["k", secret]]) } })),
+        yield* Effect.flip(client.g.set({ payload: { value: new Set([secret]) } })),
+        yield* Effect.flip(client.g.chunk({ payload: { value: Chunk.make(secret) } }))
+      ]
+
+      assert.deepStrictEqual(wire, [
+        "{\"value\":[[\"s3cret\",\"v\"]]}",
+        "{\"value\":[[\"k\",\"s3cret\"]]}",
+        "{\"value\":[\"s3cret\"]}",
+        "{\"value\":[\"s3cret\"]}"
+      ])
+      assert.deepStrictEqual(errors.map((error) => JSON.stringify(error.toJSON()).includes("s3cret")), [
+        false,
+        false,
+        false,
+        false
+      ])
     }))
 })
 
