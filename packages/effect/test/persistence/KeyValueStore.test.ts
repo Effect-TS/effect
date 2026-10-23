@@ -65,6 +65,17 @@ export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>)
         strictEqual(length, 0)
       })))
 
+    it("keys", () =>
+      run(Effect.gen(function*() {
+        const kv = yield* (KeyValueStore.KeyValueStore)
+        deepStrictEqual(yield* (kv.keys), [])
+
+        yield* (kv.set("/foo/bar", "bar"))
+        yield* (kv.set("baz", "qux"))
+
+        deepStrictEqual([...(yield* kv.keys)].sort(), ["/foo/bar", "baz"])
+      })))
+
     it("modify", () =>
       run(Effect.gen(function*() {
         const kv = yield* (KeyValueStore.KeyValueStore)
@@ -124,6 +135,28 @@ describe("KeyValueStore / prefix", () => {
     }).pipe(
       Effect.provide(KeyValueStore.layerMemory)
     ))
+
+  it.effect("scopes keys, size, isEmpty and clear to the prefix", () =>
+    Effect.gen(function*() {
+      const store = yield* (KeyValueStore.KeyValueStore)
+      const prefixed = KeyValueStore.prefix(store, "prefix/")
+
+      yield* (store.set("other", "1"))
+      assertTrue(yield* (prefixed.isEmpty))
+
+      yield* (prefixed.set("foo", "2"))
+      yield* (prefixed.set("bar", "3"))
+
+      deepStrictEqual([...(yield* prefixed.keys)].sort(), ["bar", "foo"])
+      strictEqual(yield* (prefixed.size), 2)
+
+      yield* (prefixed.clear)
+
+      assertTrue(yield* (prefixed.isEmpty))
+      deepStrictEqual(yield* (store.keys), ["other"])
+    }).pipe(
+      Effect.provide(KeyValueStore.layerMemory)
+    ))
 })
 
 describe("toSchemaStore", () => {
@@ -143,6 +176,7 @@ describe("toSchemaStore", () => {
       assertTrue(Option.isSome(value))
       strictEqual(value.value.name, "foo")
       strictEqual(value.value.age, 43)
+      deepStrictEqual(yield* schemaStore.keys, ["foo"])
     }).pipe(
       Effect.provide(KeyValueStore.layerMemory)
     ))
