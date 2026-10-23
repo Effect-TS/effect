@@ -984,28 +984,12 @@ const prepareMessages = Effect.fnUntraced(
                     isLastPart ? getCacheControl(message) : null
                   )
 
-                  const toolResultContent: Array<
-                    | typeof Generated.BetaRequestTextBlock.Encoded
-                    | typeof Generated.BetaRequestImageBlock.Encoded
-                    | typeof Generated.BetaRequestDocumentBlock.Encoded
-                  > = []
-                  for (const outputPart of part.modelOutput ?? []) {
-                    toolResultContent.push(
-                      outputPart.type === "text"
-                        ? { type: "text", text: outputPart.text, cache_control: getCacheControl(outputPart) }
-                        : yield* prepareFilePart(outputPart, getCacheControl(outputPart), betas)
-                    )
-                  }
-
                   content.push({
                     type: "tool_result",
                     tool_use_id: part.id,
-                    content: Predicate.isNotUndefined(part.modelOutput)
-                      // An explicitly empty model output sends nothing from the result
-                      ? (toolResultContent.length > 0 ? toolResultContent : "")
-                      : typeof part.result === "string"
-                      ? part.result
-                      : JSON.stringify(part.result),
+                    content: Predicate.isUndefined(part.modelOutput)
+                      ? typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+                      : yield* prepareToolResultContent(part.modelOutput, betas),
                     is_error: part.isFailure,
                     cache_control: cacheControl
                   })
@@ -1326,6 +1310,47 @@ export type AnthropicProviderDefinedTool =
   | typeof Generated.BetaWebFetchTool_20250910.Encoded
   | typeof Generated.BetaWebSearchTool_20250305.Encoded
 
+/**
+ * Converts the model output of a tool result into tool result content blocks.
+ * An empty model output sends nothing from the result.
+ */
+const prepareToolResultContent = Effect.fnUntraced(function*(
+  modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>,
+  betas: Set<string>
+): Effect.fn.Return<
+  | string
+  | Array<
+    | typeof Generated.BetaRequestTextBlock.Encoded
+    | typeof Generated.BetaRequestImageBlock.Encoded
+    | typeof Generated.BetaRequestDocumentBlock.Encoded
+  >,
+  AiError.AiError
+> {
+  if (modelOutput.length === 0) {
+    return ""
+  }
+  const content: Array<
+    | typeof Generated.BetaRequestTextBlock.Encoded
+    | typeof Generated.BetaRequestImageBlock.Encoded
+    | typeof Generated.BetaRequestDocumentBlock.Encoded
+  > = []
+  for (const part of modelOutput) {
+    const cacheControl = getCacheControl(part)
+    content.push(
+      part.type === "text"
+        ? { type: "text", text: part.text, cache_control: cacheControl }
+        : yield* prepareFilePart(part, cacheControl, betas)
+    )
+  }
+  return content
+})
+
+/**
+ * Returns the base64 payload of file data, stripping any data URL prefix.
+ */
+const getBase64Data = (data: string | Uint8Array): string =>
+  typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
+
 const prepareFilePart = Effect.fnUntraced(function*(
   part: Prompt.FilePart,
   cacheControl: typeof Generated.CacheControlEphemeral.Encoded | null,
@@ -1340,13 +1365,7 @@ const prepareFilePart = Effect.fnUntraced(function*(
 
     const source = isUrlData(part.data)
       ? { type: "url", url: getUrlString(part.data) } as const
-      : {
-        type: "base64",
-        media_type: mediaType,
-        data: typeof part.data === "string"
-          ? part.data.replace(/^data:[^;]+;base64,/, "")
-          : Base64.encode(part.data)
-      } as const
+      : { type: "base64", media_type: mediaType, data: getBase64Data(part.data) } as const
 
     return { type: "image", source, cache_control: cacheControl }
   }
@@ -1363,13 +1382,7 @@ const prepareFilePart = Effect.fnUntraced(function*(
         url: getUrlString(part.data)
       } as const
       : part.mediaType === "application/pdf"
-      ? {
-        type: "base64",
-        media_type: "application/pdf",
-        data: typeof part.data === "string"
-          ? part.data.replace(/^data:[^;]+;base64,/, "")
-          : Base64.encode(part.data)
-      } as const
+      ? { type: "base64", media_type: "application/pdf", data: getBase64Data(part.data) } as const
       : {
         type: "text",
         media_type: "text/plain",

@@ -1323,26 +1323,12 @@ const prepareMessages = Effect.fnUntraced(
               continue
             }
 
-            const output: Array<typeof OpenAiSchema.InputContent.Encoded> = []
-            const modelOutput = part.modelOutput ?? []
-            for (let index = 0; index < modelOutput.length; index++) {
-              const outputPart = modelOutput[index]
-              output.push(
-                outputPart.type === "text"
-                  ? { type: "input_text", text: outputPart.text, ...getPromptCacheBreakpoint(outputPart) }
-                  : yield* prepareFilePart(outputPart, index, config)
-              )
-            }
-
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: Predicate.isNotUndefined(part.modelOutput)
-                // An explicitly empty model output sends nothing from the result
-                ? (output.length > 0 ? output : "")
-                : typeof part.result === "string"
-                ? part.result
-                : JSON.stringify(part.result),
+              output: Predicate.isUndefined(part.modelOutput)
+                ? typeof part.result === "string" ? part.result : JSON.stringify(part.result)
+                : yield* prepareToolResultOutput(part.modelOutput, config),
               ...(Predicate.isNotNull(status) ? { status } : {})
             })
           }
@@ -3089,6 +3075,29 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   }
 
   return { tools, toolChoice }
+})
+
+/**
+ * Converts the model output of a tool result into function call output items.
+ * An empty model output sends nothing from the result.
+ */
+const prepareToolResultOutput = Effect.fnUntraced(function*(
+  modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>,
+  config: typeof Config.Service
+): Effect.fn.Return<string | Array<typeof OpenAiSchema.InputContent.Encoded>, AiError.AiError> {
+  if (modelOutput.length === 0) {
+    return ""
+  }
+  const output: Array<typeof OpenAiSchema.InputContent.Encoded> = []
+  for (let index = 0; index < modelOutput.length; index++) {
+    const part = modelOutput[index]
+    output.push(
+      part.type === "text"
+        ? { type: "input_text", text: part.text, ...getPromptCacheBreakpoint(part) }
+        : yield* prepareFilePart(part, index, config)
+    )
+  }
+  return output
 })
 
 const prepareFilePart = Effect.fnUntraced(function*(
