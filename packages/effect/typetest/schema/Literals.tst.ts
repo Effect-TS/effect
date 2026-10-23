@@ -1,3 +1,4 @@
+import type { Brand } from "effect"
 import { Schema, Tuple } from "effect"
 import { describe, expect, it } from "tstyche"
 
@@ -62,6 +63,14 @@ describe("Literals", () => {
     // and for a union of omission tuples
     const conditional = ["a"] as readonly ["a"] | readonly ["b"]
     expect(schema.omit(conditional)["Type"]).type.toBe<"a" | "b" | "c" | "d">()
+
+    // and for an omitted element typed as a branded number or bigint
+    type Id = number & Brand.Brand<"Id">
+    expect(Schema.Literals([1 as Id, 2 as Id, "other"]).omit([1 as Id])["Type"]).type.toBe<Id | "other">()
+    type BigId = bigint & Brand.Brand<"BigId">
+    expect(Schema.Literals([1n as BigId, 2n as BigId, "other"]).omit([1n as BigId])["Type"]).type.toBe<
+      BigId | "other"
+    >()
 
     // a parent element typed as a union may or may not be omitted at runtime
     expect(Schema.Literals([ab, "c"]).omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
