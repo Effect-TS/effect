@@ -1191,6 +1191,19 @@ describe("OpenAiLanguageModel", () => {
           deepStrictEqual(tool.parameters, inputSchema)
         }).pipe(Effect.provide(makeTestLayer())))
 
+      it.effect("names the tool when its parameters are not an object schema", () =>
+        Effect.gen(function*() {
+          const error = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")), Effect.flip)
+
+          strictEqual(error.reason._tag, "UnsupportedSchemaError")
+          assert.include(error.message, `"NoParams"`)
+          assert.include(error.message, "Tool.EmptyParams")
+        }).pipe(Effect.provide(makeTestLayer())))
+
       it.effect("empty object on properties for empty parameters", () =>
         Effect.gen(function*() {
           const EmptyTool = Tool.make("EmptyParamsTool", {
@@ -3047,27 +3060,4 @@ const McpToolkit = Toolkit.make(OpenAiTool.Mcp({
 
 const TestToolkitLayer = TestToolkit.toLayer({
   TestTool: ({ input }) => Effect.succeed({ output: `processed: ${input}` })
-})
-
-describe("OpenAiLanguageModel tool parameters", () => {
-  it.effect("names the tool and suggests Tool.EmptyParams when parameters are not an object schema", () =>
-    Effect.gen(function*() {
-      const NoParams = Tool.make("NoParams", { parameters: Schema.Struct({}) })
-      const error = yield* LanguageModel.generateText({
-        prompt: "Use the tool",
-        toolkit: Toolkit.make(NoParams),
-        disableToolCallResolution: true
-      }).pipe(
-        Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-        Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-        Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected request"))),
-        Effect.flip
-      )
-      const reason = error.reason
-      if (reason._tag !== "UnsupportedSchemaError") {
-        return assert.fail(`expected UnsupportedSchemaError, received ${reason._tag}`)
-      }
-      assert.include(reason.description, `tool "NoParams"`)
-      assert.include(reason.description, "Tool.EmptyParams")
-    }))
 })

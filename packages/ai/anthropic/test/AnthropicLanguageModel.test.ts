@@ -1213,6 +1213,24 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(dynamicTool.input_schema, inputSchema)
       }))
 
+    it.effect("names the tool when its parameters are not an object schema", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: "Use the tool",
+          toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, makeHttpClient(() => Effect.die("unexpected request"))),
+          Effect.flip
+        )
+
+        assert.strictEqual(error.reason._tag, "UnsupportedSchemaError")
+        assert.include(error.message, `"NoParams"`)
+        assert.include(error.message, "Tool.EmptyParams")
+      }))
+
     it.effect("serializes provider-executed web_search parts from the assistant message", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
@@ -1993,26 +2011,3 @@ const getRequestBody = Effect.fnUntraced(function*(request: HttpClientRequest.Ht
 
 const toSseBody = (events: ReadonlyArray<unknown>): string =>
   events.map((event) => `event: message_stream\ndata: ${JSON.stringify(event)}\n\n`).join("")
-
-describe("AnthropicLanguageModel tool parameters", () => {
-  it.effect("names the tool and suggests Tool.EmptyParams when parameters are not an object schema", () =>
-    Effect.gen(function*() {
-      const NoParams = Tool.make("NoParams", { parameters: Schema.Struct({}) })
-      const error = yield* LanguageModel.generateText({
-        prompt: "Use the tool",
-        toolkit: Toolkit.make(NoParams),
-        disableToolCallResolution: true
-      }).pipe(
-        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
-        Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-        Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected request"))),
-        Effect.flip
-      )
-      const reason = error.reason
-      if (reason._tag !== "UnsupportedSchemaError") {
-        return assert.fail(`expected UnsupportedSchemaError, received ${reason._tag}`)
-      }
-      assert.include(reason.description, `tool "NoParams"`)
-      assert.include(reason.description, "Tool.EmptyParams")
-    }))
-})

@@ -428,6 +428,19 @@ describe("OpenRouterLanguageModel", () => {
           strictEqual(tool.function.description, "A dynamic tool")
           deepStrictEqual(tool.function.parameters, inputSchema)
         }).pipe(Effect.provide(makeTestLayer())))
+
+      it.effect("names the tool when its parameters are not an object schema", () =>
+        Effect.gen(function*() {
+          const error = yield* LanguageModel.generateText({
+            prompt: "Use the tool",
+            toolkit: Toolkit.make(Tool.make("NoParams", { parameters: Schema.Struct({}) })),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")), Effect.flip)
+
+          strictEqual(error.reason._tag, "UnsupportedSchemaError")
+          assert.include(error.message, `"NoParams"`)
+          assert.include(error.message, "Tool.EmptyParams")
+        }).pipe(Effect.provide(makeTestLayer())))
     })
 
     describe("usage", () => {
@@ -803,26 +816,3 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ChatStreamCh
     Layer.provideMerge(httpClientLayer)
   )
 }
-
-describe("OpenRouterLanguageModel tool parameters", () => {
-  it.effect("names the tool and suggests Tool.EmptyParams when parameters are not an object schema", () =>
-    Effect.gen(function*() {
-      const NoParams = Tool.make("NoParams", { parameters: Schema.Struct({}) })
-      const error = yield* LanguageModel.generateText({
-        prompt: "Use the tool",
-        toolkit: Toolkit.make(NoParams),
-        disableToolCallResolution: true
-      }).pipe(
-        Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
-        Effect.provide(OpenRouterClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-        Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected request"))),
-        Effect.flip
-      )
-      const reason = error.reason
-      if (reason._tag !== "UnsupportedSchemaError") {
-        return assert.fail(`expected UnsupportedSchemaError, received ${reason._tag}`)
-      }
-      assert.include(reason.description, `tool "NoParams"`)
-      assert.include(reason.description, "Tool.EmptyParams")
-    }))
-})
