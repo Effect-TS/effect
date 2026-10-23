@@ -175,18 +175,17 @@ export const layerHttp: {
     never,
     HttpRouter.HttpRouter | Etag.Generator | FileSystem.FileSystem | HttpPlatform.HttpPlatform | Path.Path | R
   >
-} = (
-  options:
-    & { readonly path: HttpRouter.PathInput }
-    & (
-      | { readonly agent: Agent<any> }
-      | { readonly run: (input: AgUiSchema.RunAgentInput) => Stream.Stream<AgUiSchema.Event, unknown, any> }
-    )
-): Layer.Layer<never, never, any> => {
+} = (options: {
+  readonly path: HttpRouter.PathInput
+  readonly agent?: Agent<any> | undefined
+  readonly run?: ((input: AgUiSchema.RunAgentInput) => Stream.Stream<AgUiSchema.Event, unknown, any>) | undefined
+}): Layer.Layer<never, never, any> => {
   const api = HttpApi.make("effect/ai/AgUiServer").add(
     HttpApiGroup.make("agUi").add(endpoint("run", options.path))
   )
-  const agent = "agent" in options ? options.agent : fromRun(options.run)
+  // The overloads guarantee one of the two, but a variable passed to the run
+  // overload may still carry `agent: undefined`, so test the value
+  const agent = options.agent ?? fromRun(options.run!)
   return HttpApiBuilder.layer(api).pipe(
     Layer.provide(HttpApiBuilder.group(
       api,
