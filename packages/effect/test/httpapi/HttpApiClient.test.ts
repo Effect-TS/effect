@@ -1423,6 +1423,75 @@ describe("HttpApiClient", () => {
         false
       ])
     }))
+
+  it.effect("redacts request inspection based on the schema, not the input shape", () =>
+    Effect.gen(function*() {
+      const Secret = Schema.RedactedFromValue(Schema.String)
+      interface SecretNode {
+        readonly token: Redacted.Redacted<string>
+        readonly next: SecretNode | null
+      }
+      interface SecretNodeEncoded {
+        readonly token: string
+        readonly next: SecretNodeEncoded | null
+      }
+      const SecretNode = Schema.Struct({
+        token: Secret,
+        next: Schema.NullOr(Schema.suspend((): Schema.Codec<SecretNode, SecretNodeEncoded> => SecretNode))
+      })
+      interface PlainNode {
+        readonly token: string
+        readonly next: PlainNode | null
+      }
+      const PlainNode = Schema.Struct({
+        token: Schema.String,
+        next: Schema.NullOr(Schema.suspend((): Schema.Codec<PlainNode> => PlainNode))
+      })
+      class Credentials extends Schema.Class<Credentials>("Credentials")({ token: Secret }) {}
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("g").add(
+          // the Redacted declaration is only reachable through the suspended node
+          HttpApiEndpoint.post("recursive", "/recursive", {
+            payload: Schema.Struct({
+              node: Schema.suspend((): Schema.Codec<SecretNode, SecretNodeEncoded> => SecretNode)
+            })
+          }),
+          HttpApiEndpoint.post("plain", "/plain", {
+            payload: Schema.Struct({ node: Schema.suspend((): Schema.Codec<PlainNode> => PlainNode) })
+          }),
+          HttpApiEndpoint.post("class", "/class", { payload: Credentials })
+        )
+      )
+      const wire: Array<string> = []
+      const httpClient = HttpClient.make((request) => {
+        wire.push(request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : "")
+        return Effect.fail(
+          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+        )
+      })
+      const client = yield* HttpApiClient.makeWith(Api, { httpClient, baseUrl: "http://x" })
+      const secret = Redacted.make("s3cret")
+
+      const errors = [
+        yield* Effect.flip(
+          client.g.recursive({ payload: { node: { token: secret, next: { token: secret, next: null } } } })
+        ),
+        yield* Effect.flip(client.g.plain({ payload: { node: { token: "s3cret", next: null } } })),
+        yield* Effect.flip(client.g.class({ payload: new Credentials({ token: secret }) }))
+      ]
+
+      assert.deepStrictEqual(wire, [
+        "{\"node\":{\"token\":\"s3cret\",\"next\":{\"token\":\"s3cret\",\"next\":null}}}",
+        "{\"node\":{\"token\":\"s3cret\",\"next\":null}}",
+        "{\"token\":\"s3cret\"}"
+      ])
+      // slots without a Redacted schema keep their inspection output
+      assert.deepStrictEqual(errors.map((error) => JSON.stringify(error.toJSON()).includes("s3cret")), [
+        false,
+        true,
+        false
+      ])
+    }))
 })
 
 const textEncoder = new TextEncoder()
