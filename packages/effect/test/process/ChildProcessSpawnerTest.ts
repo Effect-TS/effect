@@ -1237,6 +1237,17 @@ export const suite = (
               ], { discard: true })))
             )
           }).pipe(Effect.provide(layer)))
+
+        it.effect("ChildProcess.exitCode should not wait for descendants holding output pipes", () =>
+          Effect.gen(function*() {
+            const marker = "exit-code-open-pipes"
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+            const exitCode = yield* spawner.exitCode(
+              ChildProcess.make("sh", ["-c", "sh -c 'while :; do sleep 0.1; done' \"$0\" &", marker])
+            ).pipe(Effect.ensuring(Effect.ignore(killMatchingProcesses(marker))))
+
+            assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+          }).pipe(Effect.provide(layer)))
       })
 
       it.effect("should not deadlock on large stdout output", () =>
@@ -1267,6 +1278,20 @@ export const suite = (
           assert.strictEqual(lines.length, 100000)
           assert.strictEqual(lines[0], "1")
           assert.strictEqual(lines[99999], "100000")
+        }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.exitCode should not deadlock on large output", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const exitCode = yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "seq 1 100000; seq 1 100000 >&2"]))
+          assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+        }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.string should not deadlock on large stderr output", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const output = yield* spawner.string(ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"]))
+          assert.strictEqual(output, "done")
         }), { timeout: 10_000 })
     })
   })
