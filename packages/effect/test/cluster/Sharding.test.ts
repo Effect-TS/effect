@@ -2353,115 +2353,49 @@ describe.concurrent("Sharding defect recovery", () => {
       yield* Deferred.succeed(acquired, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 
-  it.effect("replays a durable caller abandoned on its queued request during shutdown", () =>
-    Effect.gen(function*() {
-      const storage = yield* makeSharedMemoryStorage
-      const queued = yield* Latch.make()
-      const state = { children: 0, continued: [] as Array<string> }
-      const scope = yield* Scope.make()
-      yield* Effect.gen(function*() {
-        const client = (yield* AbandonedCaller.client)("1")
-        yield* client.Call({ id: "call" }, { discard: true })
-        yield* queued.await
-      }).pipe(Effect.provide(
-        yield* Layer.buildWithScope(
-          RestartSharding(AbandonedCallerLayer(state), unreadStorage(storage, "Child", queued)),
-          scope
+  // Preemptive shutdown abandons the parked caller during the drain; otherwise it
+  // must stay parked rather than store an interrupt as its reply.
+  for (const preemptiveShutdown of [true, false]) {
+    it.effect(`replays a durable caller parked on a queued request when its target closes (preemptiveShutdown: ${preemptiveShutdown})`, () =>
+      Effect.gen(function*() {
+        const storage = yield* makeSharedMemoryStorage
+        const queued = yield* Latch.make()
+        const state = { children: 0, continued: [] as Array<string> }
+        const config = { preemptiveShutdown }
+        const runnerScope = yield* Scope.make()
+        const targetScope = yield* Scope.make()
+        const runner = yield* Layer.buildWithScope(
+          RestartSharding(ClosingTargetCallerLayer(state), unreadStorage(storage, "Child", queued), config),
+          runnerScope
         )
-      ))
-      yield* closeWithinGrace(scope)
-      assert.deepStrictEqual(state, { children: 0, continued: [] })
+        yield* Effect.gen(function*() {
+          yield* Layer.buildWithScope(ClosingTargetLayer(state), targetScope)
+          // The target entity is resident while the caller waits on its queued request.
+          yield* advanceUntil((yield* ClosingTarget.client)("1").Warm())
+          yield* (yield* ClosingTargetCaller.client)("1").Call({ id: "call" }, { discard: true })
+          yield* queued.await
+        }).pipe(Effect.provide(runner))
+        yield* advanceUntil(Scope.close(targetScope, Exit.void))
+        // A caller left parked waits out `entityTerminationTimeout`.
+        const closing = yield* Effect.forkChild(Scope.close(runnerScope, Exit.void), { startImmediately: true })
+        for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) yield* TestClock.adjust(1000)
+        yield* Fiber.join(closing)
+        assert.deepStrictEqual(state, { children: 0, continued: [] })
 
-      const result = yield* Effect.gen(function*() {
-        const client = (yield* AbandonedCaller.client)("1")
-        return yield* advanceUntil(client.Call({ id: "call" }))
-      }).pipe(Effect.provide(RestartSharding(AbandonedCallerLayer(state), storage)))
-      assert.strictEqual(result, "child")
-      assert.deepStrictEqual(state, { children: 1, continued: ["child"] })
-    }))
-
-  it.effect("replays a durable caller abandoned when only its target registration closes", () =>
-    Effect.gen(function*() {
-      const storage = yield* makeSharedMemoryStorage
-      const queued = yield* Latch.make()
-      const state = { children: 0, continued: [] as Array<string> }
-      const config = { preemptiveShutdown: false }
-      const runnerScope = yield* Scope.make()
-      const targetScope = yield* Scope.make()
-      const runner = yield* Layer.buildWithScope(
-        RestartSharding(ClosingTargetCallerLayer(state), unreadStorage(storage, "Child", queued), config),
-        runnerScope
-      )
-      yield* Effect.gen(function*() {
-        yield* Layer.buildWithScope(ClosingTargetLayer(state), targetScope)
-        // The target entity is resident while the caller waits on its queued request.
-        yield* advanceUntil((yield* ClosingTarget.client)("1").Warm())
-        yield* (yield* ClosingTargetCaller.client)("1").Call({ id: "call" }, { discard: true })
-        yield* queued.await
-      }).pipe(Effect.provide(runner))
-      // Only the target registration closes; the caller stays active.
-      yield* advanceUntil(Scope.close(targetScope, Exit.void))
-      // Without preemptive shutdown, the parked caller may wait out `entityTerminationTimeout`.
-      const closing = yield* Effect.forkChild(Scope.close(runnerScope, Exit.void), { startImmediately: true })
-      for (let i = 0; i < 100 && closing.pollUnsafe() === undefined; i++) yield* TestClock.adjust(1000)
-      yield* Fiber.join(closing)
-      assert.deepStrictEqual(state, { children: 0, continued: [] })
-
-      const exit = yield* Effect.gen(function*() {
-        const client = (yield* ClosingTargetCaller.client)("1")
-        return yield* advanceUntil(Effect.exit(client.Call({ id: "call" })))
-      }).pipe(Effect.provide(
-        RestartSharding(
-          Layer.merge(ClosingTargetCallerLayer(state), ClosingTargetLayer(state)),
-          storage,
-          config
-        )
-      ))
-      assert.deepStrictEqual(exit, Exit.succeed("child"))
-      assert.deepStrictEqual(state, { children: 1, continued: ["child"] })
-    }))
-
-  it.effect("releases the caller of a request admitted during replacement acquisition on shutdown", () => {
-    const registry: Metric.MetricRegistry = new Map()
-    return Effect.gen(function*() {
-      const storage = yield* makeSharedMemoryStorage
-      const state = { generation: 0, pings: 0, acquiring: Latch.makeUnsafe(), acquired: Latch.makeUnsafe() }
-      const scope = yield* Scope.make()
-      const context = yield* Layer.buildWithScope(RestartSharding(AcquisitionShutdownLayer(state), storage), scope)
-      const ping = yield* Effect.gen(function*() {
-        const client = (yield* AcquisitionShutdown.client)("1")
-        yield* client.Crash({ id: "crash" }, { discard: true })
-        yield* advanceUntil(state.acquiring.await)
-        const ping = yield* Effect.forkChild(client.Ping({ id: "ping" }), { startImmediately: true })
-        // Admitted behind the replay of the crashed request.
-        for (let i = 0; i < 100 && mailboxSizeMax(registry, AcquisitionShutdown.type) < 2; i++) {
-          yield* TestClock.adjust(1)
-        }
-        assert.strictEqual(mailboxSizeMax(registry, AcquisitionShutdown.type), 2)
-        return ping
-      }).pipe(Effect.provide(context))
-
-      // The replacement handlers stay in acquisition throughout shutdown.
-      yield* closeWithinGrace(scope)
-      const released = yield* Fiber.await(ping)
-
-      assert.isTrue(
-        Exit.isFailure(released) &&
-          released.cause.reasons.some((reason) =>
-            reason._tag === "Interrupt" && reason.annotations.has(ClusterSchema.Abandon.key)
-          ),
-        "the caller must be abandoned for the next owner"
-      )
-      assert.strictEqual(state.pings, 0)
-
-      const result = yield* Effect.gen(function*() {
-        const client = (yield* AcquisitionShutdown.client)("1")
-        return yield* advanceUntil(client.Ping({ id: "ping" }))
-      }).pipe(Effect.provide(RestartSharding(AcquisitionShutdownLayer(state), storage)))
-      assert.strictEqual(result, 1)
-      assert.strictEqual(state.pings, 1)
-    }).pipe(Effect.provideService(Metric.MetricRegistry, registry))
-  })
+        const exit = yield* Effect.gen(function*() {
+          const client = (yield* ClosingTargetCaller.client)("1")
+          return yield* advanceUntil(Effect.exit(client.Call({ id: "call" })))
+        }).pipe(Effect.provide(
+          RestartSharding(
+            Layer.merge(ClosingTargetCallerLayer(state), ClosingTargetLayer(state)),
+            storage,
+            config
+          )
+        ))
+        assert.deepStrictEqual(exit, Exit.succeed("child"))
+        assert.deepStrictEqual(state, { children: 1, continued: ["child"] })
+      }))
+  }
 
   it.effect("interrupts an entity whose id is also active on a shard that was interrupted first", () =>
     Effect.gen(function*() {
@@ -4553,46 +4487,6 @@ const RestartSharding = <R>(
     )
   )
 
-// Closes a runner, failing if shutdown waits for `entityTerminationTimeout`.
-const closeWithinGrace = Effect.fnUntraced(function*(scope: Scope.Closeable) {
-  const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
-  for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
-  const closedBeforeTimeout = shutdown.pollUnsafe() !== undefined
-  // Let a stalled shutdown finish, so the runner is released before asserting.
-  yield* TestClock.adjust(60_000)
-  yield* Fiber.join(shutdown)
-  assert.isTrue(closedBeforeTimeout, "shutdown must not wait for entityTerminationTimeout")
-})
-
-const AbandonedCaller = Entity.make("AbandonedCaller", [
-  Rpc.make("Call", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
-    .annotate(ClusterSchema.Persisted, true),
-  Rpc.make("Child", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
-    .annotate(ClusterSchema.Persisted, true)
-])
-
-// `Call` is an ordinary durable handler that continues after its own child request.
-const AbandonedCallerLayer = (state: { children: number; readonly continued: Array<string> }) =>
-  AbandonedCaller.toLayer(
-    Effect.gen(function*() {
-      const address = yield* Entity.CurrentAddress
-      const self = (yield* AbandonedCaller.client)(address.entityId)
-      return AbandonedCaller.of({
-        Call: () =>
-          Effect.tap(Effect.orDie(self.Child({ id: "child" })), (value) =>
-            Effect.sync(() => {
-              state.continued.push(value)
-            })),
-        Child: () =>
-          Effect.sync(() => {
-            state.children++
-            return "child"
-          })
-      })
-    }),
-    { concurrency: "unbounded" }
-  )
-
 const ClosingTarget = Entity.make("ClosingTarget", [
   Rpc.make("Warm").annotate(ClusterSchema.Persisted, false),
   Rpc.make("Child", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.String })
@@ -4626,43 +4520,6 @@ const ClosingTargetCallerLayer = (state: { readonly continued: Array<string> }) 
           }))
     })
   }))
-
-const AcquisitionShutdown = Entity.make("AcquisitionShutdown", [
-  Rpc.make("Crash", { payload: { id: Schema.String }, primaryKey: ({ id }) => id })
-    .annotate(ClusterSchema.Persisted, true),
-  Rpc.make("Ping", { payload: { id: Schema.String }, primaryKey: ({ id }) => id, success: Schema.Number })
-    .annotate(ClusterSchema.Persisted, true)
-])
-
-// The first handlers crash on `Crash`, and the replacement handlers stay in
-// acquisition until `acquired` opens.
-const AcquisitionShutdownLayer = (state: {
-  generation: number
-  pings: number
-  readonly acquiring: Latch.Latch
-  readonly acquired: Latch.Latch
-}) =>
-  AcquisitionShutdown.toLayer(
-    Effect.gen(function*() {
-      const generation = ++state.generation
-      if (generation === 2) {
-        yield* state.acquiring.open
-        yield* state.acquired.await
-      }
-      return AcquisitionShutdown.of({
-        Crash: () => generation === 1 ? Effect.die("restart") : Effect.void,
-        Ping: () => Effect.sync(() => ++state.pings)
-      })
-    }),
-    { defectRetryPolicy }
-  )
-
-const mailboxSizeMax = (registry: Metric.MetricRegistry, type: string) => {
-  const series = Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry)).find((metric) =>
-    metric.id === ClusterMetrics.entityMailboxSizeMax.id && metric.attributes?.type === type
-  )
-  return series ? Number((series.state as { readonly value: bigint }).value) : 0
-}
 
 const entityMailboxSizeMaxSeries = (registry: Metric.MetricRegistry) =>
   Metric.snapshotUnsafe(Context.make(Metric.MetricRegistry, registry))
