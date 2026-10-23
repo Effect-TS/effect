@@ -38,7 +38,7 @@ export const RoleFilter: Schema.Codec<RoleFilter> = Schema.Struct({
   not: Schema.optional(Schema.NullOr(Schema.suspend(() => RoleFilter)))
 })
 export interface RoleFilter {
-  readonly in?: ReadonlyArray<typeof Role.Type> | null | undefined
+  readonly in?: ReadonlyArray<Role> | null | undefined
   readonly not?: RoleFilter | null | undefined
 }
 
@@ -52,8 +52,8 @@ export const MessageFilter: Schema.Codec<MessageFilter, MessageFilterEncoded> = 
   rooms: Schema.optional(Schema.NullOr(Schema.Array(ID)))
 })
 export interface MessageFilter {
-  readonly body?: typeof StringComparator.Type | null | undefined
-  readonly postedAt?: typeof DateComparator.Type | null | undefined
+  readonly body?: StringComparator | null | undefined
+  readonly postedAt?: DateComparator | null | undefined
   readonly member?: MemberFilter | null | undefined
   /** All of these filters. */
   readonly and?: ReadonlyArray<MessageFilter> | null | undefined
@@ -84,8 +84,8 @@ export const MemberFilter: Schema.Codec<MemberFilter, MemberFilterEncoded> = Sch
   and: Schema.optional(Schema.NullOr(Schema.Array(Schema.suspend(() => MemberFilter))))
 })
 export interface MemberFilter {
-  readonly name?: typeof StringComparator.Type | null | undefined
-  readonly role?: typeof RoleFilter.Type | null | undefined
+  readonly name?: StringComparator | null | undefined
+  readonly role?: RoleFilter | null | undefined
   readonly match?: MemberMatch | null | undefined
   /** Members who posted a matching message. */
   readonly posted?: MessageFilter | null | undefined
@@ -93,7 +93,7 @@ export interface MemberFilter {
 }
 export interface MemberFilterEncoded {
   readonly name?: typeof StringComparator.Encoded | null | undefined
-  readonly role?: typeof RoleFilter.Encoded | null | undefined
+  readonly role?: RoleFilter | null | undefined
   readonly match?: MemberMatchEncoded | null | undefined
   readonly posted?: MessageFilterEncoded | null | undefined
   readonly and?: ReadonlyArray<MemberFilterEncoded> | null | undefined

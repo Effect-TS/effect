@@ -1493,6 +1493,11 @@ class Emitter {
         encodedNames.set(type.name, allocate(`${type.name}Encoded`))
       }
     }
+    // Enums and input objects declare a type under their name; scalars don't.
+    const typeLeaf = (name: string): string =>
+      this.type(name)._tag === "ScalarType" ? `typeof ${alias(name)}.Type` : alias(name)
+    const encodedLeaf = (name: string): string =>
+      cycles.has(name) ? encodedNames.get(name) ?? alias(name) : `typeof ${alias(name)}.Encoded`
     for (const type of inputs) {
       const doc = descriptionLines(type.description)
       const cycle = cycles.get(type.name)
@@ -1500,15 +1505,14 @@ class Emitter {
         const recursion: Recursion = {
           encoded: encodedNames.get(type.name),
           ref: (name) => cycle.has(name) ? `${schema}.suspend(() => ${alias(name)})` : alias(name),
-          typeLeaf: (name) => cycle.has(name) ? alias(name) : `typeof ${alias(name)}.Type`,
-          encodedLeaf: (name) =>
-            cycle.has(name) ? encodedNames.get(name) ?? alias(name) : `typeof ${alias(name)}.Encoded`
+          typeLeaf,
+          encodedLeaf
         }
         blocks.push(declare(type.name, doc, (b, e) => recursiveDeclaration(type, b, e, schema, recursion)))
         continue
       }
       if (type.oneOf) {
-        blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, alias)))
+        blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, alias, typeLeaf)))
         continue
       }
       const members = type.fields.map((field) => {
@@ -1567,12 +1571,13 @@ const oneOfDeclaration = (
   binding: string,
   exported: string,
   schema: string,
-  ref: (name: string) => string
+  ref: (name: string) => string,
+  typeLeaf: (name: string) => string
 ): string =>
   `${exported}const ${binding} = ${schema}.Opaque<${binding}>()(${schema}.Union([\n${
     oneOfStructs(type, schema, ref).join(",\n")
   }\n]))\n` +
-  `${exported}type ${binding} =\n${oneOfAlternatives(type, (name) => `typeof ${ref(name)}.Type`).join("\n")}`
+  `${exported}type ${binding} =\n${oneOfAlternatives(type, typeLeaf).join("\n")}`
 
 const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
   field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
