@@ -116,6 +116,53 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 })
 
+const zombieProbes = 3
+
+// macOS answers EPERM rather than ESRCH while the group's remaining members are zombies.
+const stubZombieProcessGroup = Effect.fnUntraced(function*() {
+  const nativeKill = process.kill.bind(process)
+  const group = { pid: 0, probes: 0, signals: [] as Array<string | number | undefined> }
+  const kill = vi.spyOn(process, "kill").mockImplementation((target, signal) => {
+    if (group.pid === 0 || target !== -group.pid) {
+      return nativeKill(target, signal)
+    }
+    if (signal === 0) {
+      group.probes++
+    } else {
+      group.signals.push(signal)
+    }
+    throw Object.assign(new Error("kill"), { code: group.probes <= zombieProbes ? "EPERM" : "ESRCH" })
+  })
+  yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+  return group
+})
+
+describe.skipIf(process.platform === "win32")("detached exit cleanup", { concurrent: false }, () => {
+  it.live("kill waits for a process group that exists but cannot be signalled", () =>
+    Effect.gen(function*() {
+      const group = yield* stubZombieProcessGroup()
+      const handle = yield* ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"])
+      group.pid = handle.pid
+
+      yield* handle.kill()
+
+      assert.strictEqual(group.probes, zombieProbes + 1)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+
+  it.live("kill escalates and waits for a process group whose exited leader left only zombies", () =>
+    Effect.gen(function*() {
+      const group = yield* stubZombieProcessGroup()
+      const handle = yield* ChildProcess.make(process.execPath, ["-e", ""])
+      group.pid = handle.pid
+      assert.strictEqual(yield* handle.exitCode, 0)
+
+      yield* handle.kill({ forceKillAfter: "0 millis" })
+
+      assert.deepStrictEqual(group.signals, ["SIGTERM", "SIGKILL"])
+      assert.strictEqual(group.probes, zombieProbes + 1)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+})
+
 // Synchronous fixture runs must not block other tests with active timeout budgets.
 describe("interrupted buffered input", { concurrent: false, timeout: 15_000 }, () => {
   for (const input of ["stdin", "fd3"] as const) {
