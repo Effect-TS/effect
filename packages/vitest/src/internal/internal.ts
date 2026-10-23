@@ -20,22 +20,28 @@ import type * as Vitest from "../index.ts"
 
 const getCurrentSuite = V.TestRunner.getCurrentSuite
 
-const runPromise: <E, A>(
-  _: Effect.Effect<A, E, never>,
-  ctx?: Pick<V.TestContext, "signal"> | undefined
-) => Promise<A> = Effect.fnUntraced(function*<E, A>(
+const runPromise = <E, A>(
   effect: Effect.Effect<A, E>,
-  _ctx?: Pick<Vitest.TestContext, "signal">
-) {
-  const exit = yield* Effect.exit(effect)
-  if (Exit.isFailure(exit)) {
-    const errors = Cause.prettyErrors(exit.cause)
-    for (let i = 0; i < errors.length; i++) {
-      yield* Effect.logError(errors[i])
-    }
-  }
-  return yield* exit
-}, (effect, _, ctx) => Effect.runPromise(effect, { signal: ctx?.signal }))
+  ctx?: Pick<V.TestContext, "signal">
+): Promise<A> =>
+  Effect.runPromise(
+    // Only the test is interruptible: once the signal aborts, the fiber stops
+    // at its next interruptible step, which would skip reporting the defects
+    // raised by finalizers.
+    Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(restore(effect))
+        if (Exit.isFailure(exit)) {
+          const errors = Cause.prettyErrors(exit.cause)
+          for (let i = 0; i < errors.length; i++) {
+            yield* Effect.logError(errors[i])
+          }
+        }
+        return yield* exit
+      })
+    ),
+    { signal: ctx?.signal }
+  )
 
 const settleOnAbort = <A>(ctx: Vitest.TestContext, promise: Promise<A>) => {
   // Vitest stops awaiting the promise once the signal aborts (timeout or
