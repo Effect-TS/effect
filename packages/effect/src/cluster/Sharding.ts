@@ -1541,6 +1541,27 @@ const make = Effect.gen(function*() {
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
+  // During shutdown, abandon local callers parked on persisted requests that a
+  // retiring entity never started. They are served by the next owner. Callers
+  // on a runner that keeps running are left waiting, so they stay durable.
+  const abandonUndelivered = (
+    address: EntityAddress,
+    isDelivered: (requestId: Snowflake.Snowflake) => boolean
+  ): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      if (!MutableRef.get(isShutdown)) return Effect.void
+      const abandon: Array<Effect.Effect<void>> = []
+      for (const [requestId, entry] of clientRequests) {
+        if (
+          !Context.get(entry.message.annotations, Persisted) ||
+          !Equal.equals(entry.message.envelope.address, address) ||
+          isDelivered(requestId)
+        ) continue
+        abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
+      }
+      return Effect.all(abandon, { discard: true })
+    })
+
   const clients: ResourceMap<
     Entity<any, any>,
     (entityId: string) => RpcClient.RpcClient<
@@ -1895,7 +1916,8 @@ const make = Effect.gen(function*() {
         storage,
         runnerAddress,
         residency,
-        sharding
+        sharding,
+        abandonUndelivered
       }).pipe(
         Effect.provideContext(services.pipe(
           // Registration overrides construction fallbacks, except for runner-owned services.

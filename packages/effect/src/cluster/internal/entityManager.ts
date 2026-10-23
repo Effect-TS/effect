@@ -37,6 +37,7 @@ import type { ShardId } from "../ShardId.ts"
 import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
+import * as ClusterAbandon from "./clusterAbandon.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
@@ -144,6 +145,14 @@ export const make = Effect.fnUntraced(function*<
     readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: Schedule.Schedule<any, unknown, never, never> | undefined
     readonly spanAttributes?: Record<string, string> | undefined
+    /**
+     * Called once a retiring entity stops accepting requests, so callers
+     * waiting on requests it has not started can be released.
+     */
+    readonly abandonUndelivered: (
+      address: EntityAddress,
+      isDelivered: (requestId: Snowflake.Snowflake) => boolean
+    ) => Effect.Effect<void>
   }
 ) {
   const config = yield* ShardingConfig
@@ -326,25 +335,25 @@ export const make = Effect.fnUntraced(function*<
                   return Effect.void
                 }
 
-                // For durable messages, ignore interrupts during shutdown.
-                // They will be retried when the entity is restarted.
-                // Also, if the request is uninterruptible, we ignore the
-                // interrupt.
                 const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
-                if (
-                  persisted &&
-                  Exit.hasInterrupts(response.exit) &&
-                  (isShuttingDown || request.terminating || isUninterruptibleForServer(request.message.annotations))
-                ) {
-                  if (!isShuttingDown && !request.terminating) {
+                if (persisted && Exit.isFailure(response.exit) && Cause.hasInterrupts(response.exit.cause)) {
+                  // A durable request interrupted by shutdown, or abandoned
+                  // because this owner can no longer serve it, is left for
+                  // replay instead of being answered.
+                  const abandoned = ClusterAbandon.isCause(response.exit.cause) &&
+                    (!isActive() || !options.sharding.hasShardId(address.shardId))
+                  if (isShuttingDown || request.terminating || abandoned) {
+                    activeRequests.delete(Snowflake.Snowflake(response.requestId))
+                    return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                  }
+                  // An uninterruptible request ignores the interrupt and runs again.
+                  if (isUninterruptibleForServer(request.message.annotations)) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.setContext(handlerContext),
                       Effect.forkIn(handlerScope)
                     )
                   }
-                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
-                  return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
                 const save = retryRespond(
                   4,
@@ -539,6 +548,13 @@ export const make = Effect.fnUntraced(function*<
               request.terminating = true
               yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
             }
+            // A handler this drain waits for may be parked on a request the
+            // retired entity will never start, such as its own queued request.
+            // Release callers before `Eof`, which waits for handler acquisition.
+            yield* options.abandonUndelivered(
+              address,
+              (requestId) => activeRequests.get(requestId)?.delivered === true
+            )
             yield* state.write(0, { _tag: "Eof" })
           }).pipe(
             Effect.andThen(endLatch.await),

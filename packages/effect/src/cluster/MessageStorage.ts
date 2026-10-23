@@ -133,8 +133,15 @@ export class MessageStorage extends Context.Service<MessageStorage, {
 
   /**
    * Unregister the reply handler for the specified message.
+   *
+   * By default the waiters are resumed with `EntityNotAssignedToRunner`. With
+   * `interrupt: true` they are interrupted with a cluster-abandon annotation
+   * instead, for when the request will not be served by this runner.
    */
-  readonly unregisterReplyHandler: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
+  readonly unregisterReplyHandler: (
+    requestId: Snowflake.Snowflake,
+    options?: { readonly interrupt?: boolean | undefined }
+  ) => Effect.Effect<void>
 
   /**
    * Unregister the reply handlers for the specified ShardId.
@@ -569,6 +576,14 @@ export const make = (
     }
     const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
+    const resumeUnregistered = (handler: ReplyHandler, options?: { readonly interrupt?: boolean | undefined }) =>
+      handler.resume(
+        options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
+          new EntityNotAssignedToRunner({
+            address: handler.message.envelope.address
+          })
+        )
+      )
     return MessageStorage.of({
       ...storage,
       // Nested transactions defer notifications to the outermost commit.
@@ -614,7 +629,7 @@ export const make = (
           })
         })
       },
-      unregisterReplyHandler: (requestId) =>
+      unregisterReplyHandler: (requestId, options) =>
         Effect.sync(() => {
           const handlers = replyHandlers.get(requestId)
           if (!handlers) return
@@ -622,11 +637,7 @@ export const make = (
           for (let i = 0; i < handlers.length; i++) {
             const handler = handlers[i]
             handler.shardSet.delete(handler)
-            handler.resume(Effect.fail(
-              new EntityNotAssignedToRunner({
-                address: handler.message.envelope.address
-              })
-            ))
+            resumeUnregistered(handler, options)
           }
         }),
       unregisterShardReplyHandlers: (shardId, options) =>
@@ -637,13 +648,7 @@ export const make = (
           replyHandlersShard.delete(id)
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
-            handler.resume(
-              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
-                new EntityNotAssignedToRunner({
-                  address: handler.message.envelope.address
-                })
-              )
-            )
+            resumeUnregistered(handler, options)
           })
         }),
       saveReply(reply) {
