@@ -218,7 +218,7 @@ const fromRun = (
  *
  * @see {@link handler} for serving a function that streams events
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.0
  */
@@ -242,7 +242,7 @@ export const agentHandler = <R>(agent: Agent<R>) =>
  * a server tool's handler. Declare it in the tool's `dependencies`, and the
  * {@link agent} provides it for each run.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
  * @since 4.1.0
  */
@@ -260,7 +260,7 @@ export class RunInput extends Context.Service<RunInput, AgUiSchema.RunAgentInput
  *
  * @see {@link agent} for creating a `LanguageModel` agent
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.1.0
  */
@@ -311,7 +311,7 @@ export interface Agent<R> {
  *
  * @see {@link layerHttp} for serving the agent
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.1.0
  */
