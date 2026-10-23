@@ -106,6 +106,13 @@ const ownsProcessGroup = (
   childProcess: NodeChildProcess.ChildProcess
 ): boolean => command.options.detached !== false || !hasExited(childProcess)
 
+/**
+ * The process group exists but has no member that can be signalled, such as
+ * on macOS when its remaining members are zombies.
+ */
+const isUnsignallableProcessGroup = (error: unknown): boolean =>
+  (error as NodeJS.ErrnoException | undefined)?.code === "EPERM"
+
 /** The leader has not exited, or a member of its process group still exists. */
 const isProcessAlive = (
   command: ChildProcess.StandardCommand,
@@ -120,8 +127,8 @@ const isProcessAlive = (
   try {
     globalThis.process.kill(-childProcess.pid!, 0)
     return true
-  } catch {
-    return false
+  } catch (error) {
+    return isUnsignallableProcessGroup(error)
   }
 }
 
@@ -525,7 +532,12 @@ const make = Effect.gen(function*() {
     const signalGroup = (signal: NodeJS.Signals) =>
       ownsProcessGroup(command, childProcess) ?
         killProcessGroup(command, childProcess, signal).pipe(
-          Effect.catch(() => killProcess(command, childProcess, signal))
+          Effect.catch((error) =>
+            // Only zombies remain in the exited leader's group, so nothing is left to signal.
+            hasExited(childProcess) && isUnsignallableProcessGroup(error.cause) ?
+              Effect.void :
+              killProcess(command, childProcess, signal)
+          )
         ) :
         killProcess(command, childProcess, signal)
     yield* signalGroup(options?.killSignal ?? "SIGTERM")
