@@ -60,6 +60,7 @@ describe("OtlpProxy", () => {
         upstream.client,
         post("/otlp/v1/traces?target=https://attacker.example", new Uint8Array([1, 2, 3]), {
           "content-encoding": "gzip",
+          "accept-encoding": "gzip, br",
           authorization: "Bearer client",
           cookie: "session=secret",
           traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
@@ -74,11 +75,13 @@ describe("OtlpProxy", () => {
       assert.strictEqual(request.url, "https://otlp.example/base/v1/traces")
       assert.strictEqual(request.urlParams.params.length, 0)
       // No client credentials, cookies or trace context, and no trace context
-      // from the proxy's own outbound span either.
+      // from the proxy's own outbound span either. The response is requested
+      // uncompressed so its body can be returned without a content-encoding.
       assert.deepStrictEqual(Object.fromEntries(Object.entries(request.headers)), {
         "content-type": "application/x-protobuf",
         "content-encoding": "gzip",
         "content-length": "3",
+        "accept-encoding": "identity",
         authorization: "Bearer server"
       })
       assert.strictEqual(request.body._tag, "Uint8Array")
