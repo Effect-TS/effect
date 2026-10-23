@@ -1116,11 +1116,6 @@ class BodyTooLargeError extends Error {
   }
 }
 
-// Bun and Deno frame the body by its content-length and read it natively
-// faster than a reader loop. Undici copies the body twice in `arrayBuffer()`,
-// so reading into a preallocated buffer is faster there.
-const nativeArrayBuffer = "Bun" in globalThis || "Deno" in globalThis
-
 const readArrayBufferLimited = async (
   source: Request,
   maxBytes: number,
@@ -1134,16 +1129,14 @@ const readArrayBufferLimited = async (
   if (source.body === null) {
     return new ArrayBuffer(0)
   }
-  if (contentLength !== undefined && nativeArrayBuffer) {
-    const buffer = await source.arrayBuffer()
-    if (buffer.byteLength > maxBytes) {
-      throw new BodyTooLargeError(maxBytes)
-    }
-    return buffer
-  }
+  // A constructed request can understate its content-length, so bytes are
+  // counted on every runtime. Cancellation is not awaited, as the source's
+  // cleanup may never settle.
   const reader = source.body.getReader()
-  const onAbort = () => reader.cancel().catch(() => {})
-  signal.addEventListener("abort", onAbort, { once: true })
+  const cancel = () => {
+    reader.cancel().catch(() => {})
+  }
+  signal.addEventListener("abort", cancel, { once: true })
   try {
     if (contentLength !== undefined) {
       const buffer = new Uint8Array(contentLength)
@@ -1152,7 +1145,7 @@ const readArrayBufferLimited = async (
         const { done, value } = await reader.read()
         if (done) break
         if (offset + value.byteLength > contentLength) {
-          await reader.cancel().catch(() => {})
+          cancel()
           if (offset + value.byteLength > maxBytes) {
             throw new BodyTooLargeError(maxBytes)
           }
@@ -1170,7 +1163,7 @@ const readArrayBufferLimited = async (
       if (done) break
       bytes += value.byteLength
       if (bytes > maxBytes) {
-        await reader.cancel().catch(() => {})
+        cancel()
         throw new BodyTooLargeError(maxBytes)
       }
       chunks.push(value)
@@ -1183,7 +1176,7 @@ const readArrayBufferLimited = async (
     }
     return buffer.buffer
   } finally {
-    signal.removeEventListener("abort", onAbort)
+    signal.removeEventListener("abort", cancel)
     reader.releaseLock()
   }
 }
