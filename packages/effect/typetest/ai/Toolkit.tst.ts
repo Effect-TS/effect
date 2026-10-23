@@ -80,6 +80,14 @@ describe("Toolkit", () => {
     expect<Tool.RequiresHandler<ReturnType<typeof dynamic>>>().type.toBe<true>()
     expect(Toolkit.make(make(undefined)).toLayer).type.not.toBeCallableWith({})
 
+    // The same holds when the whole options object may be absent
+    const makeOptional = (options: { readonly execution: "client" } | undefined) => Tool.make("Ask", options)
+    const dynamicOptional = (options: { readonly execution: "client" } | undefined) => Tool.dynamic("Confirm", options)
+    expect<Tool.RequiresHandler<ReturnType<typeof makeOptional>>>().type.toBe<true>()
+    expect<Tool.RequiresHandler<ReturnType<typeof dynamicOptional>>>().type.toBe<true>()
+    expect(Toolkit.make(makeOptional(undefined)).toLayer).type.not.toBeCallableWith({})
+    expect(Toolkit.make(dynamicOptional(undefined)).toLayer).type.not.toBeCallableWith({})
+
     // A runtime check establishes client execution, and configuring the
     // narrowed tool keeps it
     const widened: Tool.Tool<"Ask", {
@@ -95,5 +103,32 @@ describe("Toolkit", () => {
       expect<Tool.RequiresHandler<typeof configured>>().type.toBe<false>()
       expect(Toolkit.make(configured).toLayer).type.toBeCallableWith({})
     }
+
+    // Narrowing an erased dynamic tool keeps its dynamic type and client
+    // execution through every combinator. Results that are no longer tools
+    // report "not a tool" rather than failing to compile.
+    type NeedsHandler<T> = T extends Tool.Any ? Tool.RequiresHandler<T> : "not a tool"
+    const erased = Tool.dynamic("Confirm", { execution: "client" }) as Tool.AnyDynamic
+    if (Tool.isClientExecuted(erased)) {
+      expect(erased).type.toBeAssignableTo<Tool.AnyDynamic>()
+      expect<Tool.RequiresHandler<typeof erased>>().type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.setParameters<typeof Schema.String>>>>().type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.setSuccess<typeof Schema.Number>>>>().type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.setFailure<typeof Schema.String>>>>().type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.setNeedsApproval>>>().type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.addDependency<Decoder, { readonly value: number }>>>>()
+        .type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.annotate<boolean, boolean>>>>().type.toBe<false>()
+      expect<NeedsHandler<ReturnType<typeof erased.annotateMerge<never>>>>().type.toBe<false>()
+    }
+
+    // The guard narrows when passed as a predicate callback
+    const tools: ReadonlyArray<Tool.Any> = []
+    const dynamicTools: ReadonlyArray<Tool.AnyDynamic> = []
+    const clients = tools.filter(Tool.isClientExecuted)
+    const dynamicClients = dynamicTools.filter(Tool.isClientExecuted)
+    expect<Tool.RequiresHandler<typeof clients[number]>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<typeof dynamicClients[number]>>().type.toBe<false>()
+    expect(dynamicClients).type.toBeAssignableTo<ReadonlyArray<Tool.AnyDynamic>>()
   })
 })
