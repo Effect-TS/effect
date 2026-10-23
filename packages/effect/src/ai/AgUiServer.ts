@@ -183,20 +183,48 @@ export const layerHttp: {
     HttpApiGroup.make("agUi").add(endpoint("run", options.path))
   )
   const agent = options.agent ?? fromRun(options.run!)
-  return Layer.unwrap(Effect.map(Effect.context<any>(), (context) =>
-    HttpApiBuilder.layer(api).pipe(
-      Layer.provide(HttpApiBuilder.group(api, "agUi", (handlers) =>
-        handlers.handle("run", ({ payload }) =>
-          Effect.map(
-            Effect.provideContext(agent.run(payload), context),
-            (events) => respond(payload, events, context)
-          ))))
-    )))
+  return HttpApiBuilder.layer(api).pipe(
+    Layer.provide(HttpApiBuilder.group(
+      api,
+      "agUi",
+      (handlers) => Effect.map(agentHandler(agent), (run) => handlers.handle("run", run))
+    ))
+  )
 }
 
 const fromRun = (
   run: (input: AgUiSchema.RunAgentInput) => Stream.Stream<AgUiSchema.Event, unknown, any>
 ): Agent<any> => ({ run: (input) => Effect.succeed(run(input)) })
+
+/**
+ * Creates an `HttpApiBuilder` handler for an {@link endpoint} that serves an
+ * {@link Agent}.
+ *
+ * **When to use**
+ *
+ * Use to serve an {@link agent} from an endpoint in an existing `HttpApi`.
+ * Yield it while building the `HttpApiBuilder.group` that implements the
+ * endpoint.
+ *
+ * **Details**
+ *
+ * The services the agent needs are captured when the handler is created. Each
+ * request first runs the agent's validation, so a rejected input is answered
+ * with `400` before the event stream opens. The events are then served as
+ * described in {@link handler}.
+ *
+ * @see {@link handler} for serving a function that streams events
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const agentHandler = <R>(agent: Agent<R>) =>
+  Effect.map(
+    Effect.context<R>(),
+    (context) => ({ payload }: { readonly payload: AgUiSchema.RunAgentInput }) =>
+      Effect.map(agent.run(payload), (events) => respond(payload, events, context))
+  )
 
 // =============================================================================
 // Agent
@@ -309,7 +337,7 @@ export const agent = <Tools extends Record<string, Tool.Any>>(options: {
       options.system === undefined ? Prompt.empty : Prompt.make([{ role: "system", content: options.system }]),
       AgUi.toPrompt(input)
     ))
-    const run = makeRunSummary(input)
+    const run = makeRunSummary(input, toolkit.tools)
     const parts = chat.streamText({ prompt: [], toolkit, maxSteps: options.maxSteps }) as Stream.Stream<
       Response.AnyPart,
       unknown,
@@ -330,8 +358,8 @@ export const agent = <Tools extends Record<string, Tool.Any>>(options: {
 
 // Accumulates what `RUN_FINISHED` reports: the token usage of every round and
 // the client-executed tool calls nothing answered
-const makeRunSummary = (input: AgUiSchema.RunAgentInput) => {
-  const clientTools = new Set(input.tools.map((tool) => tool.name))
+const makeRunSummary = (input: AgUiSchema.RunAgentInput, tools: Record<string, Tool.Any>) => {
+  const clientTools = new Set(Object.values(tools).filter(Tool.isClientExecuted).map((tool) => tool.name))
   const pending = new Set<string>()
   const usage: {
     -readonly [K in keyof AgUiSchema.TokenUsage]: AgUiSchema.TokenUsage[K]

@@ -309,7 +309,10 @@ describe("AgUiServer", () => {
 
     it.effect("lists calls to client-executed toolkit tools as pending", () => {
       const { layer } = serveAgent(
-        [[{ type: "tool-call", id: "call-1", name: "Confirm", params: { question: "Proceed?" } }, finish("tool-calls")]],
+        [[
+          { type: "tool-call", id: "call-1", name: "Confirm", params: { question: "Proceed?" } },
+          finish("tool-calls")
+        ]],
         AgUiServer.agent({ toolkit: Toolkit.make(Lookup, Confirm), maxSteps: 5 })
       )
       return withLayer(layer, (handler) =>
