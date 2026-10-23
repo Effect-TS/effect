@@ -145,6 +145,7 @@ export declare namespace Vitest {
     readonly layer: <R2, E>(layer: Layer.Layer<R2, E, R>, options?: {
       readonly concurrent?: boolean
       readonly timeout?: Duration.Input
+      readonly buildPerTest?: boolean
     }) => {
       (f: (it: Vitest.MethodsNonLive<R | R2, ExtraContext>) => void): void
       (
@@ -198,6 +199,7 @@ export declare namespace Vitest {
       readonly memoMap?: Layer.MemoMap
       readonly timeout?: Duration.Input
       readonly excludeTestServices?: boolean
+      readonly buildPerTest?: boolean
     }) => {
       (f: (it: Vitest.MethodsNonLive<R | R2, ExtraContext>) => void): void
       (
@@ -275,6 +277,13 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * Anonymous layers always inherit the enclosing suite's concurrency.
  * Use `ctx.expect` in concurrent tests for test-local snapshots and assertion counts.
  *
+ * Pass `buildPerTest: true` to build the layer once per test instead of once
+ * per block. Each test gets new services, released when the test finishes,
+ * while services from an enclosing `layer` block stay shared. A build failure
+ * fails only that test. Blocks nested inside a per-test block are built per
+ * test as well. `timeout` has no effect on a per-test block, since the test's
+ * own timeout covers the build.
+ *
  * **Example** (Sharing layers between tests)
  *
  * ```ts
@@ -311,6 +320,42 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * })
  * ```
  *
+ * **Example** (Building a layer for each test)
+ *
+ * ```ts
+ * import { assert, layer } from "@effect/vitest"
+ * import { Effect, Layer, Context, Ref } from "effect"
+ *
+ * class Database extends Context.Service<Database, "database">()("Database") {
+ *   static layer = Layer.succeed(Database, "database")
+ * }
+ *
+ * class Cache extends Context.Service<Cache, Ref.Ref<Array<string>>>()("Cache") {
+ *   static layer = Layer.effect(
+ *     Cache,
+ *     Effect.andThen(Database, Ref.make<Array<string>>([]))
+ *   )
+ * }
+ *
+ * layer(Database.layer)("repository", (it) => {
+ *   // Database is shared, Cache is built for each test
+ *   it.layer(Cache.layer, { buildPerTest: true })((it) => {
+ *     it.effect("writes to the cache", () =>
+ *       Effect.gen(function*() {
+ *         const cache = yield* Cache
+ *         yield* Ref.update(cache, (keys) => [...keys, "a"])
+ *         assert.deepStrictEqual(yield* Ref.get(cache), ["a"])
+ *       }))
+ *
+ *     it.effect("starts with an empty cache", () =>
+ *       Effect.gen(function*() {
+ *         const cache = yield* Cache
+ *         assert.deepStrictEqual(yield* Ref.get(cache), [])
+ *       }))
+ *   })
+ * })
+ * ```
+ *
  * @stability unstable
  * @category testing
  * @since 4.0.0
@@ -322,6 +367,7 @@ export const layer: <R, E>(
     readonly memoMap?: Layer.MemoMap
     readonly timeout?: Duration.Input
     readonly excludeTestServices?: boolean
+    readonly buildPerTest?: boolean
   }
 ) => {
   (f: (it: Vitest.MethodsNonLive<R>) => void): void
