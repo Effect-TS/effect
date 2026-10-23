@@ -50,7 +50,7 @@ export class DenoRedis extends Context.Service<DenoRedis, {
 const make = Effect.fnUntraced(function*(
   { acquireTimeout, idleTimeout, maxConnections, minConnections, ...options }: RedisOptions & Redis.PoolOptions = {}
 ) {
-  const connectClient = () => {
+  const connectClient = (overrides?: Partial<RedisConnectOptions>) => {
     const { url, ...connectOptions } = options
     const parsedUrl = url === undefined ? undefined : new URL(url)
     const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
@@ -59,13 +59,14 @@ const make = Effect.fnUntraced(function*(
       ...(name === undefined ? {} : { username: name }),
       ...(parsedUrl?.username ? { username: decodeURIComponent(parsedUrl.username) } : {}),
       ...(parsedUrl?.password ? { password: decodeURIComponent(parsedUrl.password) } : {}),
-      ...Record.filter(connectOptions, Predicate.isNotUndefined)
+      ...Record.filter(connectOptions, Predicate.isNotUndefined),
+      ...overrides
     })
   }
 
   const client = yield* Effect.acquireRelease(
     Effect.tryPromise({
-      try: connectClient,
+      try: () => connectClient(),
       catch: (cause) => new Redis.RedisError({ cause })
     }),
     (client) => Effect.sync(() => client.close())
@@ -84,7 +85,9 @@ const make = Effect.fnUntraced(function*(
         catch: (cause) => new Redis.RedisError({ cause })
       }),
     connect: Effect.tryPromise({
-      try: connectClient,
+      // @db/redis re-executes commands after a reconnect, which could repeat
+      // a destructive blocking command whose reply was lost.
+      try: () => connectClient({ maxRetryCount: 0 }),
       catch: (cause) => new Redis.RedisError({ cause })
     }).pipe(
       Effect.map((connection) => ({

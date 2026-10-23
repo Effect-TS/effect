@@ -75,8 +75,8 @@ export class Redis extends Context.Service<Redis, {
    * hold up every command queued behind them on the shared connection.
    *
    * When the scope closes, the connection returns to the pool. If a command on
-   * it failed or was interrupted, the connection is closed instead, because
-   * Redis may still be processing the command.
+   * it failed, was interrupted, or is still running, the connection is closed
+   * instead, because Redis may still be processing the command.
    */
   readonly reserve: Effect.Effect<Connection, RedisError, Scope.Scope>
 }>()("effect/persistence/Redis") {}
@@ -198,7 +198,7 @@ export const make = Effect.fnUntraced(function*(
           connections.delete(close) ? connection.close : Effect.void
         )
         connections.add(close)
-        return { send: connection.send, close, healthy: true }
+        return { send: connection.send, close, healthy: true, active: 0 }
       }),
       (connection) => connection.close
     ),
@@ -222,14 +222,20 @@ export const make = Effect.fnUntraced(function*(
 
   const reserve = Effect.gen(function*() {
     const connection = yield* get
-    yield* Effect.addFinalizer(() => connection.healthy ? Effect.void : Pool.invalidate(pool, connection))
+    yield* Effect.addFinalizer(() =>
+      connection.healthy && connection.active === 0 ? Effect.void : Pool.invalidate(pool, connection)
+    )
     const send = <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-      connection.send<A>(command, ...args).pipe(
-        Effect.onExit((exit) => {
-          if (Exit.isFailure(exit)) connection.healthy = false
-          return Effect.void
-        })
-      )
+      Effect.suspend(() => {
+        connection.active++
+        return connection.send<A>(command, ...args).pipe(
+          Effect.onExit((exit) => {
+            connection.active--
+            if (Exit.isFailure(exit)) connection.healthy = false
+            return Effect.void
+          })
+        )
+      })
     return identity<Connection>({ send, eval: makeEval(send) })
   })
 
