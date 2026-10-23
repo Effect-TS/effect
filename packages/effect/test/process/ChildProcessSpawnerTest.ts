@@ -28,6 +28,13 @@ const failingInput = Stream.make(new TextEncoder().encode("first chunk\n")).pipe
   Stream.concat(Stream.fail(sourceError))
 )
 
+const sinkError = PlatformError.systemError({
+  _tag: "Unknown",
+  module: "ChildProcess",
+  method: "sink",
+  description: "sink failed"
+})
+
 // Helper to collect stream output into a string
 const decodeByteStream = Effect.fnUntraced(
   function*(
@@ -1288,6 +1295,26 @@ export const suite = (
 
           assert.strictEqual(output, "done")
           assert.deepStrictEqual(lines, ["done"])
+        }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.exitCode should fail when discarded output cannot be read", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const error = yield* spawner.exitCode(
+            ChildProcess.make("sh", ["-c", "seq 1 100000"], { stderr: Sink.fail(sinkError) })
+          ).pipe(Effect.flip)
+
+          assert.deepStrictEqual(error, sinkError)
+        }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.string should fail when discarded stderr cannot be read", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const error = yield* spawner.string(
+            ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"], { stderr: Sink.fail(sinkError) })
+          ).pipe(Effect.flip)
+
+          assert.deepStrictEqual(error, sinkError)
         }), { timeout: 10_000 })
 
       it.effect("ChildProcess.string should include stderr only with includeStderr", () =>

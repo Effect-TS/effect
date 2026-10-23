@@ -231,15 +231,15 @@ export const makeHandle = (params: Omit<ChildProcessHandle, typeof HandleTypeId>
  */
 export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProcessSpawner["Service"] => {
   // The derived helpers own the handle, so they read the output they do not
-  // return. An unread pipe can fill and block the child before it exits.
-  const drainOutput = (output: Stream.Stream<Uint8Array, PlatformError.PlatformError>) =>
-    Effect.forkScoped(Stream.runDrain(output))
+  // return. An unread pipe can fill and block the child before it exits. A
+  // failure while reading that output, such as a failing output `Sink`, fails
+  // the helper instead of leaving the child blocked.
   const streamString: ChildProcessSpawner["Service"]["streamLines"] = (command, options) =>
     spawn(command).pipe(
-      Effect.flatMap((handle) =>
+      Effect.map((handle) =>
         options?.includeStderr === true
-          ? Effect.succeed(Stream.decodeText(handle.all))
-          : Effect.as(drainOutput(handle.stderr), Stream.decodeText(handle.stdout))
+          ? Stream.decodeText(handle.all)
+          : Stream.mergeEffect(Stream.decodeText(handle.stdout), Stream.runDrain(handle.stderr))
       ),
       Stream.unwrap
     )
@@ -250,7 +250,10 @@ export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProce
     spawn,
     exitCode: (command) =>
       Effect.scoped(
-        Effect.flatMap(spawn(command), (handle) => Effect.andThen(drainOutput(handle.all), handle.exitCode))
+        Effect.flatMap(
+          spawn(command),
+          (handle) => Effect.raceFirst(handle.exitCode, Effect.andThen(Stream.runDrain(handle.all), Effect.never))
+        )
       ),
     streamString,
     streamLines,
@@ -279,7 +282,8 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
    *
    * **Details**
    *
-   * Piped `stdout` and `stderr` output is read and discarded.
+   * Piped `stdout` and `stderr` output is read and discarded. A failure while
+   * reading it, such as from an output `Sink`, fails the effect.
    */
   exitCode(
     command: Command
@@ -291,7 +295,8 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
    *
    * **Details**
    *
-   * Without `includeStderr`, piped `stderr` output is read and discarded.
+   * Without `includeStderr`, piped `stderr` output is read and discarded. A
+   * failure while reading it, such as from an output `Sink`, fails the result.
    */
   streamString(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
@@ -303,7 +308,8 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
    *
    * **Details**
    *
-   * Without `includeStderr`, piped `stderr` output is read and discarded.
+   * Without `includeStderr`, piped `stderr` output is read and discarded. A
+   * failure while reading it, such as from an output `Sink`, fails the result.
    */
   streamLines(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
@@ -314,7 +320,8 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
    *
    * **Details**
    *
-   * Without `includeStderr`, piped `stderr` output is read and discarded.
+   * Without `includeStderr`, piped `stderr` output is read and discarded. A
+   * failure while reading it, such as from an output `Sink`, fails the result.
    */
   lines(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
@@ -325,7 +332,8 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
    *
    * **Details**
    *
-   * Without `includeStderr`, piped `stderr` output is read and discarded.
+   * Without `includeStderr`, piped `stderr` output is read and discarded. A
+   * failure while reading it, such as from an output `Sink`, fails the result.
    */
   string(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
