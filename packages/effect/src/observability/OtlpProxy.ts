@@ -246,11 +246,15 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
     if (!isSupportedContentType(contentType)) {
       return unsupportedMediaType
     }
+    const limit = maxBodySize ?? (yield* HttpIncomingMessage.MaxBodySize) ?? defaultMaxBodySize
+    // Node's reader only counts bytes as they arrive, and would send
+    // 100 Continue first, so reject an over-limit declared length up front.
+    const contentLength = parseContentLength(request.headers["content-length"])
+    if (contentLength !== undefined && contentLength > Number(limit)) {
+      return contentTooLarge
+    }
     const body = yield* request.arrayBuffer.pipe(
-      Effect.provideService(
-        HttpIncomingMessage.MaxBodySize,
-        maxBodySize ?? (yield* HttpIncomingMessage.MaxBodySize) ?? defaultMaxBodySize
-      ),
+      Effect.provideService(HttpIncomingMessage.MaxBodySize, limit),
       Effect.catch(HttpServerRespondable.toResponse)
     )
     if (HttpServerResponse.isHttpServerResponse(body)) {
@@ -281,12 +285,16 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
 }
 
 const unsupportedMediaType = HttpServerResponse.empty({ status: 415 })
+const contentTooLarge = HttpServerResponse.empty({ status: 413 })
 const badGateway = HttpServerResponse.empty({ status: 502 })
 const gatewayTimeout = HttpServerResponse.empty({ status: 504 })
 
 const isSupportedContentType = (contentType: string | undefined): contentType is string =>
   contentType !== undefined &&
   (contentTypes.has(contentType) || contentTypes.has(contentType.split(";")[0].trim().toLowerCase()))
+
+const parseContentLength = (contentLength: string | undefined): number | undefined =>
+  contentLength !== undefined && /^\d+$/.test(contentLength) ? Number(contentLength) : undefined
 
 const toServerResponse = (
   response: HttpClientResponse.HttpClientResponse,
