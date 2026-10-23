@@ -285,6 +285,7 @@ function translateJsonSchemaMultiDocument(
   singleRoot = false
 ): SchemaRepresentation.MultiDocument {
   const definitionCache = new Map<string, ImportedJsonSchemaRepresentation | null>()
+  const validatedAliases = new Set<string>()
   const resolvingChoices = new Set<string>()
   const finalReferences = new Map<string, ImportedReference>()
   let inNestedResource = false
@@ -412,19 +413,27 @@ function translateJsonSchemaMultiDocument(
     representation: ImportedJsonSchemaRepresentation,
     path: Path,
     recursiveReferenceError?: string,
-    seen: Set<string> = new Set()
+    visiting: Set<string> = new Set()
   ): void {
     if (representation._tag === "Reference") {
+      const key = representation.$ref
+      if (validatedAliases.has(key)) return
+      if (visiting.has(key)) {
+        throw errorWithPath(`Definition ${JSON.stringify(key)} is a circular alias.`, [...path, "$ref"])
+      }
+      visiting.add(key)
       validatePointerAliases(
-        resolveReference(representation, path, recursiveReferenceError, seen),
+        translateDefinition(key, path, recursiveReferenceError),
         path,
         recursiveReferenceError,
-        seen
+        visiting
       )
+      visiting.delete(key)
+      validatedAliases.add(key)
     } else if (representation._tag === "Union") {
-      // Each alternative validates the same input, with its own reference path.
+      // Alternatives share completed checks, but only ancestors belong to the active path.
       for (const type of representation.types) {
-        validatePointerAliases(type, path, recursiveReferenceError, new Set(seen))
+        validatePointerAliases(type, path, recursiveReferenceError, visiting)
       }
     }
     // Recursion through object properties or array items consumes a child value.

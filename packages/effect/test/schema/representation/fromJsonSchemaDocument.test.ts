@@ -1522,6 +1522,57 @@ describe("fromJsonSchemaDocument", () => {
       assert.isFalse(is(false))
     })
 
+    it("imports a deeply shared union graph", () => {
+      const definitions: Record<string, JsonSchema.JsonSchema> = {
+        Text: { type: "string" }
+      }
+      const levelCount = 20
+      for (let level = levelCount - 1; level >= 0; level--) {
+        const next = level === levelCount - 1 ? "Text" : `Level${level + 1}`
+        definitions[`Level${level}`] = {
+          anyOf: [{ $ref: `#/$defs/${next}` }, { $ref: `#/$defs/${next}` }]
+        }
+      }
+      definitions.Container = {
+        properties: { value: { $ref: "#/$defs/Level0" } }
+      }
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: definitions
+      })
+      const schema = toSchemaFromJsonSchemaDocument(document)
+
+      assert.isTrue(Schema.is(schema)("text"))
+    })
+
+    it("rejects a circular alias after validating a shared branch", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        anyOf: [
+          { $ref: "#/$defs/Container/properties/shared" },
+          { $ref: "#/$defs/Container/properties/circular" }
+        ],
+        $defs: {
+          Text: { type: "string" },
+          Container: {
+            properties: {
+              shared: { $ref: "#/$defs/Text" },
+              circular: {
+                anyOf: [
+                  { $ref: "#/$defs/Text" },
+                  { $ref: "#/$defs/Container/properties/circular" }
+                ]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Container/properties/circular" is a circular alias.\n  at ["schema"]["anyOf"][1]["$ref"]`
+      )
+    })
+
     it("allows union branches to recurse through object properties and array items", () => {
       const document = JsonSchema.fromSchemaDraft2020_12({
         $ref: "#/$defs/Tree/properties/node",
