@@ -1000,8 +1000,9 @@ const prepareMessages = Effect.fnUntraced(
                   content.push({
                     type: "tool_result",
                     tool_use_id: part.id,
-                    content: toolResultContent.length > 0
-                      ? toolResultContent
+                    content: Predicate.isNotUndefined(part.modelOutput)
+                      // An explicitly empty model output sends nothing from the result
+                      ? (toolResultContent.length > 0 ? toolResultContent : "")
                       : typeof part.result === "string"
                       ? part.result
                       : JSON.stringify(part.result),
@@ -1365,7 +1366,9 @@ const prepareFilePart = Effect.fnUntraced(function*(
       ? {
         type: "base64",
         media_type: "application/pdf",
-        data: typeof part.data === "string" ? part.data : Base64.encode(part.data)
+        data: typeof part.data === "string"
+          ? part.data.replace(/^data:[^;]+;base64,/, "")
+          : Base64.encode(part.data)
       } as const
       : {
         type: "text",

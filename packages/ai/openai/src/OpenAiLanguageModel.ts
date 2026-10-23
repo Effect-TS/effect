@@ -1337,8 +1337,9 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: output.length > 0
-                ? output
+              output: Predicate.isNotUndefined(part.modelOutput)
+                // An explicitly empty model output sends nothing from the result
+                ? (output.length > 0 ? output : "")
                 : typeof part.result === "string"
                 ? part.result
                 : JSON.stringify(part.result),
