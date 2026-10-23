@@ -1,6 +1,6 @@
 import { PgClient } from "@effect/sql-pg"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { Clock, Context, Data, Effect, Fiber, Layer, Redacted, String } from "effect"
+import { type Cause, Clock, Console, Context, Data, Effect, Fiber, Layer, Redacted, String } from "effect"
 import { constVoid } from "effect/Function"
 import { SqlClient } from "effect/sql"
 import { getContainerRuntimeClient } from "testcontainers"
@@ -10,8 +10,14 @@ export class ContainerError extends Data.TaggedError("ContainerError")<{
 }> {}
 
 // it.effect and it.layer provide a TestClock that only moves when a test
-// adjusts it, so container deadlines must read the real clock.
-const withLiveClock = Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
+// adjusts it, and a TestConsole that keeps output in memory. Container
+// deadlines must read the real clock, and lifecycle logs must reach the host
+// console.
+const withLiveServices = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.provideService(Clock.Clock, Clock.Clock.defaultValue()),
+    Effect.provideService(Console.Console, Console.Console.defaultValue())
+  )
 
 // testcontainers waits up to 120 seconds for a healthy container. Give up
 // sooner so a stuck start fails with a ContainerError inside the hook budget.
@@ -33,24 +39,35 @@ const stopAndRemove = Effect.fnUntraced(
   },
   // Cleanup failures remain visible defects rather than being suppressed.
   Effect.orDie,
-  withLiveClock
+  withLiveServices
 )
+
+// A release nobody waits on any more has no observer for its failure, so it
+// reports the failure itself.
+const reportReleaseFailure = (container: StartedPostgreSqlContainer) => (cause: Cause.Cause<unknown>) =>
+  Effect.logError(`Failed to release PostgreSQL container ${container.getId()}`, cause)
 
 // Wait up to eight seconds, leaving headroom under Vitest's ten-second
 // cancellation-hook deadline. A slower release finishes in the background
 // instead of failing whichever test closes the layer.
 const releaseContainer = (container: StartedPostgreSqlContainer) =>
-  Effect.flatMap(Effect.forkDetach(stopAndRemove(container)), (fiber) =>
-    Fiber.join(fiber).pipe(
-      Effect.timeoutOrElse({
+  Effect.suspend(() => {
+    let waiting = true
+    const release = Effect.tapCause(
+      stopAndRemove(container),
+      (cause) => waiting ? Effect.void : reportReleaseFailure(container)(cause)
+    )
+    return Effect.flatMap(Effect.forkDetach(release), (fiber) =>
+      Effect.timeoutOrElse(Fiber.join(fiber), {
         duration: "8 seconds",
-        orElse: () =>
-          Effect.logWarning(
+        orElse: () => {
+          waiting = false
+          return Effect.logWarning(
             `PostgreSQL container ${container.getId()} is still being released, continuing in the background`
           )
-      }),
-      withLiveClock
-    ))
+        }
+      }))
+  }).pipe(withLiveServices)
 
 interface Starting {
   readonly promise: Promise<StartedPostgreSqlContainer>
@@ -73,7 +90,10 @@ const startContainer = Effect.acquireRelease(
     starting.started !== undefined
       ? releaseContainer(starting.started)
       : Effect.sync(() => {
-        starting.promise.then((container) => Effect.runFork(stopAndRemove(container)), constVoid)
+        starting.promise.then(
+          (container) => Effect.runFork(Effect.catchCause(stopAndRemove(container), reportReleaseFailure(container))),
+          constVoid
+        )
       })
 )
 
@@ -84,7 +104,7 @@ const runAdmin = (container: StartedPostgreSqlContainer, statement: string) =>
     Effect.provide(PgClient.layer({ url: Redacted.make(container.getConnectionUri()) })),
     Effect.timeout("10 seconds"),
     Effect.orDie,
-    withLiveClock
+    withLiveServices
   )
 
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
@@ -100,7 +120,7 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
             new ContainerError({ cause: new Error(`PostgreSQL container did not start within ${startupTimeout}`) })
           )
       }),
-      withLiveClock
+      withLiveServices
     ))
 }) {
   static readonly layer = Layer.effect(this)(this.make)
