@@ -159,6 +159,29 @@ describe("KeyValueStore / prefix", () => {
     ))
 })
 
+describe("KeyValueStore / make", () => {
+  it.effect("derives clearPrefix from keys", () =>
+    Effect.gen(function*() {
+      const map = new Map<string, string>()
+      const store = KeyValueStore.makeStringOnly({
+        get: (key) => Effect.sync(() => map.get(key)),
+        set: (key, value) => Effect.sync(() => void map.set(key, value)),
+        remove: (key) => Effect.sync(() => void map.delete(key)),
+        clear: Effect.sync(() => map.clear()),
+        size: Effect.sync(() => map.size),
+        keys: Effect.sync(() => Array.from(map.keys()))
+      })
+
+      yield* (store.set("prefix/foo", "1"))
+      yield* (store.set("prefix/bar", "2"))
+      yield* (store.set("other", "3"))
+
+      yield* (store.clearPrefix("prefix/"))
+
+      deepStrictEqual(yield* (store.keys), ["other"])
+    }))
+})
+
 describe("toSchemaStore", () => {
   class User extends Schema.Class<User>("User")({
     name: Schema.String,
