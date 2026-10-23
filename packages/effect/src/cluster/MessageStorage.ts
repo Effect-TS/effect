@@ -576,6 +576,14 @@ export const make = (
     }
     const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
+    const resumeUnregistered = (handler: ReplyHandler, options?: { readonly interrupt?: boolean | undefined }) =>
+      handler.resume(
+        options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
+          new EntityNotAssignedToRunner({
+            address: handler.message.envelope.address
+          })
+        )
+      )
     return MessageStorage.of({
       ...storage,
       // Nested transactions defer notifications to the outermost commit.
@@ -629,13 +637,7 @@ export const make = (
           for (let i = 0; i < handlers.length; i++) {
             const handler = handlers[i]
             handler.shardSet.delete(handler)
-            handler.resume(
-              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
-                new EntityNotAssignedToRunner({
-                  address: handler.message.envelope.address
-                })
-              )
-            )
+            resumeUnregistered(handler, options)
           }
         }),
       unregisterShardReplyHandlers: (shardId, options) =>
@@ -646,13 +648,7 @@ export const make = (
           replyHandlersShard.delete(id)
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
-            handler.resume(
-              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
-                new EntityNotAssignedToRunner({
-                  address: handler.message.envelope.address
-                })
-              )
-            )
+            resumeUnregistered(handler, options)
           })
         }),
       saveReply(reply) {

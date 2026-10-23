@@ -334,31 +334,25 @@ export const make = Effect.fnUntraced(function*<
                   return Effect.void
                 }
 
-                // For durable messages, ignore interrupts during shutdown.
-                // They will be retried when the entity is restarted.
-                // Also, if the request is uninterruptible, we ignore the
-                // interrupt.
                 const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
-                // A durable request abandoned because this owner can no longer
-                // serve it is left for the next owner, not answered or retried here.
-                const abandoned = persisted && Exit.isFailure(response.exit) &&
-                  ClusterAbandon.isCause(response.exit.cause) &&
-                  (!isActive() || !options.sharding.hasShardId(address.shardId))
-                if (
-                  persisted &&
-                  Exit.hasInterrupts(response.exit) &&
-                  (abandoned || isShuttingDown || request.terminating ||
-                    isUninterruptibleForServer(request.message.annotations))
-                ) {
-                  if (!abandoned && !isShuttingDown && !request.terminating) {
+                if (persisted && Exit.isFailure(response.exit) && Cause.hasInterrupts(response.exit.cause)) {
+                  // A durable request interrupted by shutdown, or abandoned
+                  // because this owner can no longer serve it, is left for
+                  // replay instead of being answered.
+                  const abandoned = ClusterAbandon.isCause(response.exit.cause) &&
+                    (!isActive() || !options.sharding.hasShardId(address.shardId))
+                  if (isShuttingDown || request.terminating || abandoned) {
+                    activeRequests.delete(Snowflake.Snowflake(response.requestId))
+                    return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                  }
+                  // An uninterruptible request ignores the interrupt and runs again.
+                  if (isUninterruptibleForServer(request.message.annotations)) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.setContext(handlerContext),
                       Effect.forkIn(handlerScope)
                     )
                   }
-                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
-                  return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
                 const save = retryRespond(
                   4,
