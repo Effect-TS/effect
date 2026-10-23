@@ -109,7 +109,7 @@ export const make = (options: {
   Effect.gen(function*() {
     const client = yield* HttpClient.HttpClient
     const base = HttpClientRequest.post(options.baseUrl)
-    const handlers = {} as Record<Signal, ReturnType<typeof makeHandler>>
+    const handlers = {} as Record<Signal, Handler>
     for (const signal of allSignals) {
       handlers[signal] = makeHandler(client, {
         ...options,
@@ -161,7 +161,10 @@ export const layer = (options: {
 }): Layer.Layer<never, never, HttpRouter.HttpRouter | HttpClient.HttpClient> =>
   Layer.effectDiscard(Effect.gen(function*() {
     const handler = yield* make(options)
-    yield* addRoutes(options, handler)
+    yield* addRoutes(
+      options.prefix,
+      (options.signals ?? allSignals).map((signal) => [signal, handler(signal)] as const)
+    )
   }))
 
 /**
@@ -192,21 +195,21 @@ export const layerFromConfig = (options?: {
   Layer.effectDiscard(
     Effect.gen(function*() {
       const client = yield* HttpClient.HttpClient
-      const handlers = new Map<Signal, ReturnType<typeof makeHandler>>()
+      const routes: Array<readonly [Signal, Handler]> = []
       for (const signal of options?.signals ?? allSignals) {
         const envSignal = signal.toUpperCase() as OtlpEnv.Signal
         const url = yield* OtlpEnv.endpoint(envSignal)
         if (url === undefined) continue
-        handlers.set(
+        routes.push([
           signal,
           makeHandler(client, {
             ...options,
             url: url.toString(),
             headers: options?.headers ?? (yield* OtlpEnv.headers(envSignal))
           })
-        )
+        ])
       }
-      yield* addRoutes({ prefix: options?.prefix, signals: [...handlers.keys()] }, (signal) => handlers.get(signal)!)
+      yield* addRoutes(options?.prefix, routes)
     }).pipe(Effect.orDie)
   )
 
@@ -218,14 +221,16 @@ const contentTypes = new Set(["application/json", "application/x-protobuf"])
 
 const defaultMaxBodySize = ByteSize.mebibytes(10)
 
+type Handler = Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpServerRequest.HttpServerRequest>
+
 const addRoutes = Effect.fnUntraced(function*(
-  options: { readonly prefix?: string | undefined; readonly signals?: ReadonlyArray<Signal> | undefined },
-  handler: (signal: Signal) => ReturnType<typeof makeHandler>
+  prefix: string | undefined,
+  routes: Iterable<readonly [signal: Signal, handler: Handler]>
 ) {
   const router = yield* HttpRouter.HttpRouter
-  const target = options.prefix === undefined ? router : router.prefixed(options.prefix)
-  for (const signal of options.signals ?? allSignals) {
-    yield* target.add("POST", `/v1/${signal}`, handler(signal))
+  const target = prefix === undefined ? router : router.prefixed(prefix)
+  for (const [signal, handler] of routes) {
+    yield* target.add("POST", `/v1/${signal}`, handler)
   }
 })
 
@@ -235,7 +240,7 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
   readonly forwardHeaders?: ReadonlyArray<string> | undefined
   readonly maxBodySize?: ByteSize.Input | undefined
   readonly timeout?: Duration.Input | undefined
-}): Effect.Effect<HttpServerResponse.HttpServerResponse, never, HttpServerRequest.HttpServerRequest> => {
+}): Handler => {
   const upstream = client.pipe(
     HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false))
   )
