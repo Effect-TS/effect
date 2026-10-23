@@ -338,12 +338,7 @@ export const setAll: {
   (self: Headers, headers: Input) => Headers
 >(2, (self, headers) => {
   const input = fromInput(headers)
-  return inheritRedactedNames(
-    make({ ...self, ...input }),
-    self,
-    Object.keys(input),
-    isHeaders(headers) ? redactedNames.get(headers) : undefined
-  )
+  return inheritRedactedNames(make({ ...self, ...input }), self, Object.keys(input), redactedNames.get(input))
 })
 
 /**

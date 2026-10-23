@@ -865,7 +865,7 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 // caller supplies. Declarations are followed through their type parameters
 // (`Option`, `Map`, `Schema.Class`, ...); a custom declaration that holds a
 // `Redacted` value without exposing it as a type parameter is not detected.
-const containsRedactedSchema = (ast: SchemaAST.AST): boolean => {
+const containsRedactedSchema = (root: SchemaAST.AST): boolean => {
   const visited = new Set<SchemaAST.AST>()
   const loop = (ast: SchemaAST.AST): boolean => {
     if (visited.has(ast)) return false
@@ -888,32 +888,22 @@ const containsRedactedSchema = (ast: SchemaAST.AST): boolean => {
         return false
     }
   }
-  return loop(ast)
+  return loop(root)
 }
 
-const redactUrlParams = (value: unknown): unknown => {
-  if (
-    typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean"
-  ) {
-    return Redacted.make(String(value))
-  } else if (Array.isArray(value)) {
-    return value.map(redactUrlParams)
-  } else if (Predicate.isObject(value) && !Redacted.isRedacted(value)) {
-    const out: Record<string, unknown> = {}
-    for (const key in value) {
-      InternalRecord.assignProperty(out, key, redactUrlParams((value as Record<string, unknown>)[key]))
-    }
-    return out
-  }
-  return value
-}
+// `UrlParams` keeps `Redacted` values wrapped for inspection and sends them
+// unwrapped, so redacting a slot is wrapping each coerced value.
+const redactUrlParams = (params: UrlParams.Input): UrlParams.Input =>
+  UrlParams.fromInput(params).params.map(([key, value]) =>
+    [key, typeof value === "string" ? Redacted.make(value) : value] as const
+  )
 
 const appendUrlParams = (
   request: HttpClientRequest.HttpClientRequest,
   params: Record<string, string>,
   redact: boolean
 ): HttpClientRequest.HttpClientRequest =>
-  HttpClientRequest.appendUrlParams(request, redact ? redactUrlParams(params) as UrlParams.Input : params)
+  HttpClientRequest.appendUrlParams(request, redact ? redactUrlParams(params) : params)
 
 const setHeaders = (
   request: HttpClientRequest.HttpClientRequest,
