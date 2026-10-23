@@ -3986,8 +3986,9 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * When decoded or encoded key transformations produce the same property key,
  * sequential parsing applies selected own properties in selection order, so
  * the later selected property overwrites the earlier value. Dynamic key
- * selection always examines own properties. Finite literal keys are declared
- * fields and may therefore be inherited. Output key order is not guaranteed.
+ * selection always examines own properties. Finite literal and enum keys are
+ * declared fields and may therefore be inherited. Output key order is not
+ * guaranteed.
  *
  * **Example** (Defining a string-keyed record of numbers)
  *

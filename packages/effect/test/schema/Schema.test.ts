@@ -4035,6 +4035,37 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.fail(null, "Expected object")
     })
 
+    it("Record(Enum, Number)", async () => {
+      enum Color {
+        // oxlint-disable-next-line typescript/no-duplicate-enum-values -- aliases must not produce duplicate keys
+        Red = "red",
+        Crimson = "red",
+        Green = "green",
+        Blue = 2
+      }
+      const schema = Schema.Record(Schema.Enum(Color), Schema.Number)
+      assert.deepStrictEqual(schema.ast.propertySignatures.map((property) => property.name), ["red", "green", 2])
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.succeed({ red: 1, green: 2, 2: 3 })
+      await decoding.fail(
+        { red: 1, 2: 3 },
+        `Missing key
+  at ["green"]`
+      )
+      await decoding.fail(
+        { red: 1, green: 2 },
+        `Missing key
+  at [2]`
+      )
+      await asserts.encoding().succeed({ red: 1, green: 2, 2: 3 })
+
+      const union = Schema.Record(Schema.Union([Schema.Enum(Color), Schema.Literal("red")]), Schema.Number)
+      assert.deepStrictEqual(union.ast.propertySignatures.map((property) => property.name), ["red", "green", 2])
+      await new TestSchema.Asserts(union).decoding().succeed({ red: 1, green: 2, 2: 3 })
+    })
+
     it("recursive values stay lazy", async () => {
       interface Recursive {
         readonly [key: string]: Recursive

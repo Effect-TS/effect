@@ -4598,16 +4598,24 @@ function parseParameter(ast: AST): {
 } {
   const literals: Array<PropertyKey> = []
   const parameters: Array<AST> = []
+  function addLiteral(literal: PropertyKey) {
+    if (!literals.includes(literal)) {
+      literals.push(literal)
+    }
+  }
   function go(ast: AST) {
     switch (ast._tag) {
       case "Literal":
-        if (Predicate.isPropertyKey(ast.literal) && !literals.includes(ast.literal)) {
-          literals.push(ast.literal)
+        if (Predicate.isPropertyKey(ast.literal)) {
+          addLiteral(ast.literal)
         }
         return
       case "UniqueSymbol":
-        if (!literals.includes(ast.symbol)) {
-          literals.push(ast.symbol)
+        addLiteral(ast.symbol)
+        return
+      case "Enum":
+        for (const [, value] of ast.enums) {
+          addLiteral(value)
         }
         return
       case "Never":
