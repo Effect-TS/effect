@@ -4601,59 +4601,52 @@ describe("toJsonSchemaDocument", () => {
       required: ["value"],
       additionalProperties: false
     }
-    const explicitContentCases: ReadonlyArray<
-      readonly [
-        name: string,
-        annotations: Schema.Annotations.Annotations,
-        expected: JsonSchema.JsonSchema,
-        preservesGeneratedSchema: boolean
-      ]
-    > = [
+    const explicitContentCases: ReadonlyArray<readonly [name: string, annotations: Schema.Annotations.Annotations]> = [
       [
-        "prefers an explicit contentSchema annotation",
-        { contentSchema: { type: "string", format: "custom" } },
-        {
-          contentMediaType: "application/json",
-          contentSchema: { type: "string", format: "custom" }
-        },
-        false
+        "ignores an explicit contentSchema annotation",
+        { contentSchema: { type: "string", format: "custom" } }
       ],
       [
         "preserves the generated schema for a matching explicit contentMediaType annotation",
-        { contentMediaType: "application/json" },
-        {
-          contentMediaType: "application/json",
-          contentSchema: { $ref: "#/$defs/GeneratedContent" }
-        },
-        true
+        { contentMediaType: "application/json" }
       ],
       [
-        "drops the generated schema for a different explicit contentMediaType annotation",
-        { contentMediaType: "text/plain" },
-        { contentMediaType: "text/plain" },
-        false
+        "ignores a different explicit contentMediaType annotation",
+        { contentMediaType: "text/plain" }
       ],
       [
-        "prefers explicit contentMediaType and contentSchema annotations",
-        { contentMediaType: "text/plain", contentSchema: { type: "string" } },
-        { contentMediaType: "text/plain", contentSchema: { type: "string" } },
-        false
+        "ignores explicit contentMediaType and contentSchema annotations",
+        { contentMediaType: "text/plain", contentSchema: { type: "string" } }
       ]
     ]
 
-    for (const [name, annotations, expected, preservesGeneratedSchema] of explicitContentCases) {
+    for (const [name, annotations] of explicitContentCases) {
       it(name, () => {
         const schema = Schema.fromJsonString(GeneratedContent).pipe(Schema.annotateEncoded(annotations))
 
         assertJsonSchemaDocument(schema, {
           schema: { $ref: "#/$defs/GeneratedContentEncoded" },
           definitions: {
-            ...(preservesGeneratedSchema ? { GeneratedContent: generatedContentDefinition } : undefined),
-            GeneratedContentEncoded: { type: "string", ...expected }
+            GeneratedContent: generatedContentDefinition,
+            GeneratedContentEncoded: {
+              type: "string",
+              contentMediaType: "application/json",
+              contentSchema: { $ref: "#/$defs/GeneratedContent" }
+            }
           }
         })
       })
     }
+
+    it("ignores content annotations when a reviver prevents deriving the content schema", () => {
+      const schema = Schema.fromJsonString(Schema.Boolean, { reviver: (_key, value) => value }).pipe(
+        Schema.annotateEncoded({ contentMediaType: "text/plain", contentSchema: { type: "string" } })
+      )
+
+      assertJsonSchemaDocument(schema, {
+        schema: { type: "string", contentMediaType: "application/json" }
+      })
+    })
 
     it("toEncoded removes the content relationship", () => {
       assertJsonSchemaDocument(

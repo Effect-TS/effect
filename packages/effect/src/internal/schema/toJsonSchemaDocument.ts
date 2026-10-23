@@ -401,6 +401,10 @@ function compileJsonSchema(
     let output = on(representation, path, local)
     const ordinary = collectJsonSchemaAnnotations(representation.annotations, options)
     if (ordinary !== undefined) {
+      if (representation._tag === "String" && representation.content !== undefined) {
+        delete ordinary.contentMediaType
+        delete ordinary.contentSchema
+      }
       output = { ...output, ...ordinary }
     }
     for (let index = 0; index < representation.checks.length; index++) {
@@ -447,12 +451,7 @@ function compileJsonSchema(
         const content = representation.content
         if (content !== undefined) {
           out.contentMediaType = content.mediaType
-          const annotatedMediaType = representation.annotations?.contentMediaType
-          if (
-            content.schema !== undefined &&
-            !InternalAST.isJson(representation.annotations?.contentSchema) &&
-            (typeof annotatedMediaType !== "string" || annotatedMediaType === content.mediaType)
-          ) {
+          if (content.schema !== undefined) {
             out.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
           }
         }
