@@ -75,6 +75,11 @@ export interface KeyValueStore {
   readonly size: Effect.Effect<number, KeyValueStoreError>
 
   /**
+   * Returns a snapshot of the keys in the store. The order is unspecified.
+   */
+  readonly keys: Effect.Effect<ReadonlyArray<string>, KeyValueStoreError>
+
+  /**
    * Updates the value of the specified key if it exists.
    */
   readonly modify: (
@@ -143,6 +148,11 @@ export type MakeOptions = Partial<KeyValueStore> & {
    * Returns the number of entries.
    */
   readonly size: Effect.Effect<number, KeyValueStoreError>
+
+  /**
+   * Returns a snapshot of the keys in the store. The order is unspecified.
+   */
+  readonly keys: Effect.Effect<ReadonlyArray<string>, KeyValueStoreError>
 }
 
 /**
@@ -178,6 +188,11 @@ export type MakeStringOptions = Partial<Omit<KeyValueStore, "set">> & {
    * Returns the number of entries.
    */
   readonly size: Effect.Effect<number, KeyValueStoreError>
+
+  /**
+   * Returns a snapshot of the keys in the store. The order is unspecified.
+   */
+  readonly keys: Effect.Effect<ReadonlyArray<string>, KeyValueStoreError>
 }
 
 const ErrorTypeId = "~effect/persistence/KeyValueStore/KeyValueStoreError" as const
@@ -227,11 +242,12 @@ export const KeyValueStore: Context.Service<
  *
  * **Details**
  *
- * Default implementations are derived for `has`, `isEmpty`, `modify`, and
- * `modifyUint8Array` unless they are provided in the options.
+ * Default implementations are derived for `has`, `isEmpty`, `clearPrefix`,
+ * `modify`, and `modifyUint8Array` unless they are provided in the options.
  *
  * If `clearPrefix` is not provided, it delegates to `clear` for an empty prefix
- * and fails for any other prefix, rather than removing unrelated entries.
+ * and otherwise removes each key returned by `keys` that starts with the
+ * prefix.
  *
  * @stability unstable
  * @category constructors
@@ -243,11 +259,10 @@ export const make = (options: MakeOptions): KeyValueStore =>
     has: (key) => Effect.map(options.get(key), Predicate.isNotUndefined),
     isEmpty: Effect.map(options.size, (size) => size === 0),
     clearPrefix: (prefix) =>
-      prefix.length === 0 ? options.clear : Effect.fail(
-        new KeyValueStoreError({
-          method: "clearPrefix",
-          message: `clearPrefix is not supported by this store`
-        })
+      prefix.length === 0 ? options.clear : Effect.flatMap(
+        options.keys,
+        (keys) =>
+          Effect.forEach(keys, (key) => key.startsWith(prefix) ? options.remove(key) : Effect.void, { discard: true })
       ),
     modify: (key, f) =>
       Effect.flatMap(
@@ -317,8 +332,10 @@ export const makeStringOnly = (
  *
  * **Details**
  *
- * `clear` only removes keys that start with the prefix. `size` and `isEmpty`
- * still report on the whole backing store.
+ * `keys`, `size`, `isEmpty`, and `clear` only see entries whose key starts
+ * with the prefix, and `keys` returns them with the prefix removed. `keys`,
+ * `size`, and `isEmpty` list every key in the underlying store and filter the
+ * result, while `clear` delegates to `clearPrefix`.
  *
  * @stability unstable
  * @category combinators
@@ -327,18 +344,27 @@ export const makeStringOnly = (
 export const prefix: {
   (prefix: string): (self: KeyValueStore) => KeyValueStore
   (self: KeyValueStore, prefix: string): KeyValueStore
-} = dual(2, (self: KeyValueStore, prefix: string): KeyValueStore => ({
-  ...self,
-  get: (key) => self.get(`${prefix}${key}`),
-  getUint8Array: (key) => self.getUint8Array(`${prefix}${key}`),
-  set: (key, value) => self.set(`${prefix}${key}`, value),
-  remove: (key) => self.remove(`${prefix}${key}`),
-  clear: self.clearPrefix(prefix),
-  clearPrefix: (key) => self.clearPrefix(`${prefix}${key}`),
-  has: (key) => self.has(`${prefix}${key}`),
-  modify: (key, f) => self.modify(`${prefix}${key}`, f),
-  modifyUint8Array: (key, f) => self.modifyUint8Array(`${prefix}${key}`, f)
-}))
+} = dual(2, (self: KeyValueStore, prefix: string): KeyValueStore => {
+  const keys = Effect.map(
+    self.keys,
+    (keys) => keys.flatMap((key) => key.startsWith(prefix) ? [key.slice(prefix.length)] : [])
+  )
+  return {
+    ...self,
+    get: (key) => self.get(`${prefix}${key}`),
+    getUint8Array: (key) => self.getUint8Array(`${prefix}${key}`),
+    set: (key, value) => self.set(`${prefix}${key}`, value),
+    remove: (key) => self.remove(`${prefix}${key}`),
+    clear: self.clearPrefix(prefix),
+    clearPrefix: (key) => self.clearPrefix(`${prefix}${key}`),
+    keys,
+    size: Effect.map(keys, (keys) => keys.length),
+    isEmpty: Effect.map(keys, (keys) => keys.length === 0),
+    has: (key) => self.has(`${prefix}${key}`),
+    modify: (key, f) => self.modify(`${prefix}${key}`, f),
+    modifyUint8Array: (key, f) => self.modifyUint8Array(`${prefix}${key}`, f)
+  }
+})
 
 /**
  * Provides a process-local in-memory `KeyValueStore` backed by a `Map`.
@@ -371,7 +397,8 @@ export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(KeyValueStore)
           if (key.startsWith(prefix)) store.delete(key)
         }
       }),
-    size: Effect.sync(() => store.size)
+    size: Effect.sync(() => store.size),
+    keys: Effect.sync(() => Array.from(store.keys()))
   })
 })
 
@@ -525,6 +552,16 @@ export const layerFileSystem = (
               })
             )
         }
+      ),
+      keys: fs.readDirectory(directory).pipe(
+        Effect.flatMap((files) => Effect.try(() => files.map(decodeURIComponent))),
+        Effect.mapError((cause) =>
+          new KeyValueStoreError({
+            method: "keys",
+            message: `Unable to get keys`,
+            cause
+          })
+        )
       )
     })
   }))
@@ -796,6 +833,16 @@ export const layerSql = (
             })
           ),
           Effect.map((rows) => rows.length === 0 ? 0 : Number(rows[0].count))
+        ),
+        keys: sql<{ id: string }>`SELECT id FROM ${table}`.pipe(
+          Effect.mapError((cause) =>
+            new KeyValueStoreError({
+              method: "keys",
+              message: `Unable to get keys`,
+              cause
+            })
+          ),
+          Effect.map((rows) => rows.map((row) => row.id))
         )
       })
     })
@@ -841,6 +888,11 @@ export interface SchemaStore<S extends Schema.Constraint> {
    * Returns the number of entries.
    */
   readonly size: Effect.Effect<number, KeyValueStoreError>
+
+  /**
+   * Returns a snapshot of the keys in the store. The order is unspecified.
+   */
+  readonly keys: Effect.Effect<ReadonlyArray<string>, KeyValueStoreError>
 
   /**
    * Updates the value of the specified key if it exists.
@@ -912,6 +964,7 @@ export const toSchemaStore = <S extends Schema.Constraint>(self: KeyValueStore, 
     remove: self.remove,
     clear: self.clear,
     size: self.size,
+    keys: self.keys,
     has: self.has,
     isEmpty: self.isEmpty
   }
@@ -1007,6 +1060,23 @@ export const layerStorage = (
           new KeyValueStoreError({
             method: "size",
             message: `Unable to get size`,
+            cause
+          })
+      }),
+
+      keys: Effect.try({
+        try: () => {
+          const keys: Array<string> = []
+          for (let i = 0; i < storage.length; i++) {
+            const key = storage.key(i)
+            if (key !== null) keys.push(key)
+          }
+          return keys
+        },
+        catch: (cause) =>
+          new KeyValueStoreError({
+            method: "keys",
+            message: `Unable to get keys`,
             cause
           })
       })
