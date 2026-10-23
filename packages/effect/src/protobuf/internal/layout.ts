@@ -298,6 +298,18 @@ export const enumValue = (type: Enum, n: number): unknown => {
 export const UNKNOWN_ENUM = Symbol("Protobuf/unknownEnum")
 
 /**
+ * The number of an enum value, or of a number that an open enum holds.
+ *
+ * @internal
+ */
+export const enumNumber = (type: Enum, value: unknown): number => {
+  const n = type.toNumber.get(value)
+  if (n !== undefined) return n
+  if (type.open && typeof value === "number" && Wire.isInt32(value)) return value
+  throw new Wire.WireError("expected an enum value", value)
+}
+
+/**
  * The value of an absent repeated or map field, shared like the empty bytes of
  * `Wire.EMPTY_BYTES`, and frozen so that no one can change it.
  *

@@ -8,6 +8,7 @@
 // specification asks: both names of a field, `null` for an unset field, and
 // numbers in quotes.
 
+import * as Bytes from "../../Bytes.ts"
 import * as Base64 from "../../encoding/Base64.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -17,6 +18,7 @@ import * as Codec from "./codec.ts"
 import * as L from "./layout.ts"
 import { is64Bit, type ScalarName } from "./schema.ts"
 import * as Wire from "./wire.ts"
+import * as Wkt from "./wkt.ts"
 
 /** @internal */
 export interface Options {
@@ -131,12 +133,6 @@ const prepare = (ctx: Context, message: L.Message): JsonMessage => {
   return out
 }
 
-// Rethrows a wire error with `key` prepended to its path.
-const rethrowAt = (e: unknown, key: PropertyKey | undefined): never => {
-  if (e instanceof Wire.WireError && key !== undefined) e.path.unshift(key)
-  throw e
-}
-
 const checkDepth = (depth: number): void => {
   if (depth > MAX_DEPTH) throw new Wire.WireError(`nesting deeper than ${MAX_DEPTH}`)
 }
@@ -146,8 +142,6 @@ const slotValue = (message: L.Message, slot: L.Slot, container: any): unknown =>
   if (message.shape === "wrapper") return container
   return slot.guarded && !Object.hasOwn(container, slot.key) ? undefined : container[slot.key]
 }
-
-const missing = (): Wire.WireError => new Wire.WireError("missing field", undefined, true)
 
 // -----------------------------------------------------------------------------
 // encode
@@ -255,15 +249,8 @@ const INTEGER = /^-?(?:0|[1-9]\d*)$/
 // hold as Unicode, even for strings that the binary format does not validate.
 const LONE_SURROGATE = /[\uD800-\uDFFF]/u
 
-const enumNumber = (type: L.Enum, value: unknown): number => {
-  const n = type.toNumber.get(value)
-  if (n !== undefined) return n
-  if (type.open && typeof value === "number" && Wire.isInt32(value)) return value
-  throw new Wire.WireError("expected an enum value", value)
-}
-
 const encodeEnum = (ctx: Context, type: L.Enum, value: unknown): Schema.Json => {
-  const n = enumNumber(type, value)
+  const n = L.enumNumber(type, value)
   if (type.name === NULL_VALUE) return null
   if (ctx.options.enumAsInteger) return n
   const name = type.fromNumber.get(n)
@@ -307,9 +294,9 @@ const encodeMessage = (ctx: Context, message: L.Message, value: unknown, depth: 
       return encodeValue(ctx, slot.type, slotValue(message, slot, value), depth + 1)
     }
     case "Timestamp":
-      return formatTimestamp(partsOf(message, value), value)
+      return formatTime(Wkt.Timestamp, partsOf(message, value), value)
     case "Duration":
-      return formatDuration(partsOf(message, value), value)
+      return formatTime(Wkt.Duration, partsOf(message, value), value)
     case "FieldMask":
       return encodeFieldMask(message, value)
     case "Struct":
@@ -324,10 +311,7 @@ const encodeMessage = (ctx: Context, message: L.Message, value: unknown, depth: 
 }
 
 const encodeConverted = (type: L.Converted, value: unknown): Schema.Json => {
-  const parts = type.toMessage(value) as Parts
-  return type.message.name === "google.protobuf.Duration"
-    ? formatDuration(parts, value)
-    : formatTimestamp(parts, value)
+  return formatTime(type, type.toMessage(value) as Parts, value)
 }
 
 const encodeFields = (ctx: Context, prepared: JsonMessage, value: unknown, depth: number): Schema.Json => {
@@ -342,7 +326,7 @@ const encodeFields = (ctx: Context, prepared: JsonMessage, value: unknown, depth
     const v = slotValue(message, oneof, container)
     if (v === undefined && !Object.hasOwn(container, oneof.key)) continue
     const c = oneof.select(v)
-    if (c === undefined) rethrowAt(new Wire.WireError("value matches no oneof case", v), oneof.key)
+    if (c === undefined) Wire.rethrowAt(new Wire.WireError("value matches no oneof case", v), oneof.key)
     cases.set(oneof, c!)
   }
   for (const field of message.fields) {
@@ -358,12 +342,12 @@ const encodeFields = (ctx: Context, prepared: JsonMessage, value: unknown, depth
       const v = slotValue(message, field, container)
       if (v === undefined) {
         if (field.absent === "omit" && !Object.hasOwn(container, field.key)) continue
-        if (!Object.hasOwn(container, field.key)) throw missing()
+        if (!Object.hasOwn(container, field.key)) throw Wire.missing()
       }
       const json = encodeField(ctx, field, v, depth, alwaysEmitImplicit)
       if (json !== undefined) InternalRecord.assignProperty(out, name, json)
     } catch (e) {
-      rethrowAt(e, message.synthetic ? undefined : key)
+      Wire.rethrowAt(e, message.synthetic ? undefined : key)
     }
   }
   encodeExtensions(ctx, message, container, out, depth)
@@ -391,7 +375,7 @@ const encodeField = (
         try {
           out.push(encodeValue(ctx, field.element, value[i], depth + 1))
         } catch (e) {
-          rethrowAt(e, i)
+          Wire.rethrowAt(e, i)
         }
       }
       return out
@@ -412,7 +396,7 @@ const encodeField = (
             encodeValue(ctx, field.value, (value as any)[key], depth + 1)
           )
         } catch (e) {
-          rethrowAt(e, key)
+          Wire.rethrowAt(e, key)
         }
       }
       return out
@@ -449,7 +433,7 @@ const encodeExtensions = (
           : encodeField(ctx, slot, value, depth, true)!
       )
     } catch (e) {
-      rethrowAt(e, key)
+      Wire.rethrowAt(e, key)
     }
   }
 }
@@ -458,23 +442,13 @@ const encodeExtensions = (
 const selectField = (bytes: Uint8Array, number: number): Uint8Array => {
   const r = new Wire.Reader(bytes)
   const chunks: Array<Uint8Array> = []
-  let size = 0
   while (r.pos < bytes.length) {
     const start = r.pos
     const tag = r.tag()
     r.skip(tag & 7, tag >>> 3, 0)
-    if (tag >>> 3 === number) {
-      chunks.push(bytes.subarray(start, r.pos))
-      size += r.pos - start
-    }
+    if (tag >>> 3 === number) chunks.push(bytes.subarray(start, r.pos))
   }
-  const out = new Uint8Array(size)
-  let offset = 0
-  for (const chunk of chunks) {
-    out.set(chunk, offset)
-    offset += chunk.length
-  }
-  return out
+  return Bytes.concat(chunks)
 }
 
 const binaryCodecs = new WeakMap<L.Root, Codec.Codec>()
@@ -509,27 +483,23 @@ const partsOf = (message: L.Message, value: unknown): Parts => {
   return { seconds: s, nanos: n }
 }
 
-// 0001-01-01T00:00:00Z and 9999-12-31T23:59:59Z
-const MIN_TIMESTAMP_SECONDS = BigInt(-62_135_596_800)
-const MAX_TIMESTAMP_SECONDS = BigInt(253_402_300_799)
-const MAX_DURATION_SECONDS = BigInt(315_576_000_000)
-const MAX_NANOS = 999_999_999
+const isDuration = (type: L.Converted): boolean => type.message.name === "google.protobuf.Duration"
 
-const formatTimestamp = ({ nanos, seconds }: Parts, input: unknown): string => {
-  if (seconds < MIN_TIMESTAMP_SECONDS || seconds > MAX_TIMESTAMP_SECONDS || nanos < 0 || nanos > MAX_NANOS) {
-    throw new Wire.WireError("timestamp out of range", input)
-  }
+// A `google.protobuf.Timestamp` as an RFC 3339 string, or a
+// `google.protobuf.Duration` as seconds, such as `"1.5s"`. The layout of the
+// type checks its range, as it does for the binary codec.
+const formatTime = (type: L.Converted, parts: Parts, input: unknown): string => {
+  const reason = type.invalid(parts)
+  if (reason !== undefined) throw new Wire.WireError(reason, input)
+  return isDuration(type) ? formatDuration(parts) : formatTimestamp(parts)
+}
+
+const formatTimestamp = ({ nanos, seconds }: Parts): string => {
   const iso = new Date(Number(seconds) * 1000).toISOString()
   return `${iso.slice(0, 19)}${nanos === 0 ? "" : `.${fraction(nanos)}`}Z`
 }
 
-const formatDuration = ({ nanos, seconds }: Parts, input: unknown): string => {
-  if (
-    seconds > MAX_DURATION_SECONDS || seconds < -MAX_DURATION_SECONDS || nanos > MAX_NANOS || nanos < -MAX_NANOS ||
-    (seconds > Wire.BIGINT_ZERO && nanos < 0) || (seconds < Wire.BIGINT_ZERO && nanos > 0)
-  ) {
-    throw new Wire.WireError("duration out of range", input)
-  }
+const formatDuration = ({ nanos, seconds }: Parts): string => {
   const negative = seconds < Wire.BIGINT_ZERO || nanos < 0
   const abs = seconds < Wire.BIGINT_ZERO ? -seconds : seconds
   return `${negative ? "-" : ""}${abs}${nanos === 0 ? "" : `.${fraction(Math.abs(nanos))}`}s`
@@ -545,11 +515,11 @@ const encodeFieldMask = (message: L.Message, value: unknown): string => {
   const paths = slotValue(message, message.slots[0], value)
   if (!Array.isArray(paths)) throw new Wire.WireError("expected the paths of a google.protobuf.FieldMask", value)
   return paths.map((path, i) => {
-    if (typeof path !== "string") return rethrowAt(new Wire.WireError("expected a path", path), i)
+    if (typeof path !== "string") return Wire.rethrowAt(new Wire.WireError("expected a path", path), i)
     // A path round-trips when each `_` is followed by a lower-case letter, and
     // there are no upper-case letters.
     if (!path.split(".").every((segment) => FIELD_MASK_SEGMENT.test(segment))) {
-      return rethrowAt(new Wire.WireError("path has no JSON representation", path), i)
+      return Wire.rethrowAt(new Wire.WireError("path has no JSON representation", path), i)
     }
     return path.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
   }).join(",")
@@ -577,7 +547,7 @@ const encodeJsonValue = (ctx: Context, message: L.Message, value: unknown, depth
   try {
     switch (c.number) {
       case KIND_NULL:
-        enumNumber(c.type as L.Enum, v)
+        L.enumNumber(c.type as L.Enum, v)
         return null
       case KIND_NUMBER:
         if (typeof v !== "number" || !Number.isFinite(v)) throw new Wire.WireError("expected a finite number", v)
@@ -586,7 +556,7 @@ const encodeJsonValue = (ctx: Context, message: L.Message, value: unknown, depth
         return encodeValue(ctx, c.type, v, depth + 1)
     }
   } catch (e) {
-    return rethrowAt(e, oneof.key)
+    return Wire.rethrowAt(e, oneof.key)
   }
 }
 
@@ -596,7 +566,7 @@ const encodeStruct = (ctx: Context, message: L.Message, value: unknown, depth: n
   try {
     return encodeField(ctx, slot, slotValue(message, slot, value), depth, true)!
   } catch (e) {
-    return rethrowAt(e, slot.key)
+    return Wire.rethrowAt(e, slot.key)
   }
 }
 
@@ -606,7 +576,7 @@ const encodeList = (ctx: Context, message: L.Message, value: unknown, depth: num
   try {
     return encodeField(ctx, slot, slotValue(message, slot, value), depth, true)!
   } catch (e) {
-    return rethrowAt(e, slot.key)
+    return Wire.rethrowAt(e, slot.key)
   }
 }
 
@@ -615,8 +585,10 @@ const encodeAny = (ctx: Context, message: L.Message, value: unknown, depth: numb
   const [typeUrlSlot, valueSlot] = message.fields as unknown as [L.Singular, L.Singular]
   const typeUrl = slotValue(message, typeUrlSlot, value)
   const bytes = slotValue(message, valueSlot, value)
-  if (typeof typeUrl !== "string") return rethrowAt(new Wire.WireError("expected a type URL", typeUrl), typeUrlSlot.key)
-  if (!(bytes instanceof Uint8Array)) return rethrowAt(expected("bytes", bytes), valueSlot.key)
+  if (typeof typeUrl !== "string") {
+    return Wire.rethrowAt(new Wire.WireError("expected a type URL", typeUrl), typeUrlSlot.key)
+  }
+  if (!(bytes instanceof Uint8Array)) return Wire.rethrowAt(expected("bytes", bytes), valueSlot.key)
   if (typeUrl === "" && bytes.length === 0) return {}
   const root = resolveAny(ctx, typeUrl)
   const inner = binaryCodec(root).decode(bytes)
@@ -659,12 +631,8 @@ const decodeValue = (ctx: Context, type: L.Type, json: unknown, depth: number): 
       return decodeEnum(ctx, type, json)
     case "Message":
       return decodeMessage(ctx, type.message, json, depth)
-    case "Converted": {
-      const parts = type.message.name === "google.protobuf.Duration" ? parseDuration(json) : parseTimestamp(json)
-      const invalid = type.invalid(parts)
-      if (invalid !== undefined) throw new Wire.WireError(invalid, json)
-      return type.fromMessage(parts)
-    }
+    case "Converted":
+      return type.fromMessage(parseTime(type, json))
   }
 }
 
@@ -798,9 +766,9 @@ const decodeMessage = (ctx: Context, message: L.Message, json: unknown, depth: n
       return message.shape === "wrapper" ? value : build(prepared, new Map([[slot, value]]), undefined)
     }
     case "Timestamp":
-      return fromParts(prepared, parseTimestamp(json))
+      return fromParts(prepared, parseTime(Wkt.Timestamp, json))
     case "Duration":
-      return fromParts(prepared, parseDuration(json))
+      return fromParts(prepared, parseTime(Wkt.Duration, json))
     case "FieldMask":
       return decodeFieldMask(prepared, json)
     case "Struct":
@@ -847,7 +815,7 @@ const decodeFields = (ctx: Context, prepared: JsonMessage, json: unknown, depth:
       const v = decodeField(ctx, field, value, depth)
       if (v !== SKIP) values.set(field, v)
     } catch (e) {
-      rethrowAt(e, key)
+      Wire.rethrowAt(e, key)
     }
   }
   return build(prepared, values, extensions)
@@ -872,7 +840,7 @@ const decodeField = (
           const v = decodeValue(ctx, field.element, element, depth + 1)
           if (v !== SKIP) out.push(v)
         } catch (e) {
-          rethrowAt(e, i)
+          Wire.rethrowAt(e, i)
         }
       }
       return out
@@ -889,7 +857,7 @@ const decodeField = (
           const v = decodeValue(ctx, field.value, element, depth + 1)
           if (v !== SKIP) InternalRecord.assignProperty(out, k, v)
         } catch (e) {
-          rethrowAt(e, key)
+          Wire.rethrowAt(e, key)
         }
       }
       return out
@@ -933,7 +901,7 @@ const build = (
   const out: Record<PropertyKey, unknown> = {}
   for (const key of message.order) {
     if (key === message.unknown) {
-      if (extensions !== undefined) InternalRecord.assignProperty(out, key, concat(extensions))
+      if (extensions !== undefined) InternalRecord.assignProperty(out, key, Bytes.concat(extensions))
       continue
     }
     const slot = prepared.slotsByKey.get(key)!
@@ -946,20 +914,8 @@ const build = (
         InternalRecord.assignProperty(out, key, L.absentValue(slot))
         break
       case "required":
-        rethrowAt(missing(), message.synthetic ? undefined : key)
+        Wire.rethrowAt(Wire.missing(), message.synthetic ? undefined : key)
     }
-  }
-  return out
-}
-
-const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
-  let size = 0
-  for (const chunk of chunks) size += chunk.length
-  const out = new Uint8Array(size)
-  let offset = 0
-  for (const chunk of chunks) {
-    out.set(chunk, offset)
-    offset += chunk.length
   }
   return out
 }
@@ -993,6 +949,15 @@ const fromParts = (prepared: JsonMessage, parts: Parts): unknown => {
   )
 }
 
+// The fields of a `google.protobuf.Timestamp` from an RFC 3339 string, or of
+// a `google.protobuf.Duration` from seconds, such as `"1.5s"`.
+const parseTime = (type: L.Converted, json: unknown): Parts => {
+  const parts = isDuration(type) ? parseDuration(json) : parseTimestamp(json)
+  const reason = type.invalid(parts)
+  if (reason !== undefined) throw new Wire.WireError(reason, json)
+  return parts
+}
+
 // Upper-case `T` and `Z` only, as the strict profile of RFC 3339 requires.
 const TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(?:Z|([+-])(\d{2}):(\d{2}))$/
 
@@ -1015,8 +980,7 @@ const parseTimestamp = (json: unknown): Parts => {
       const offset = (m[8] === "-" ? -1 : 1) * (offsetHours * 60 + offsetMinutes) * 60
       const seconds = BigInt(date.getTime() / 1000 + (hours * 60 + minutes) * 60 + secs - offset)
       const nanos = m[7] === undefined ? 0 : Number(m[7].padEnd(9, "0"))
-      if (seconds >= MIN_TIMESTAMP_SECONDS && seconds <= MAX_TIMESTAMP_SECONDS) return { seconds, nanos }
-      throw new Wire.WireError("timestamp out of range", json)
+      return { seconds, nanos }
     }
   }
   throw new Wire.WireError("expected an RFC 3339 timestamp", json)
@@ -1028,7 +992,6 @@ const parseDuration = (json: unknown): Parts => {
   const m = typeof json === "string" ? DURATION.exec(json) : null
   if (m === null) throw new Wire.WireError("expected a duration in seconds, such as \"1.5s\"", json)
   const seconds = BigInt(m[2])
-  if (seconds > MAX_DURATION_SECONDS) throw new Wire.WireError("duration out of range", json)
   const nanos = m[3] === undefined ? 0 : Number(m[3].padEnd(9, "0"))
   return m[1] === "-" ? { seconds: -seconds, nanos: nanos === 0 ? 0 : -nanos } : { seconds, nanos }
 }
@@ -1096,7 +1059,7 @@ const decodeAny = (ctx: Context, prepared: JsonMessage, json: unknown, depth: nu
     if (!ctx.options.ignoreUnknownFields) {
       for (const key of Object.keys(json)) {
         if (key !== "@type" && key !== "value") {
-          rethrowAt(new Wire.WireError("unknown field of google.protobuf.Any"), key)
+          Wire.rethrowAt(new Wire.WireError("unknown field of google.protobuf.Any"), key)
         }
       }
     }
@@ -1104,7 +1067,7 @@ const decodeAny = (ctx: Context, prepared: JsonMessage, json: unknown, depth: nu
     try {
       inner = decodeValue(ctx, root, json.value, depth + 1)
     } catch (e) {
-      rethrowAt(e, "value")
+      Wire.rethrowAt(e, "value")
     }
   } else {
     const fields: Record<string, unknown> = {}

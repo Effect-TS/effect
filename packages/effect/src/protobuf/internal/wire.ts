@@ -53,6 +53,19 @@ export class WireError extends Error {
   }
 }
 
+/**
+ * Rethrows a wire error with `key` prepended to its path.
+ *
+ * @internal
+ */
+export const rethrowAt: (e: unknown, key: PropertyKey | undefined) => never = (e, key) => {
+  if (e instanceof WireError && key !== undefined) e.path.unshift(key)
+  throw e
+}
+
+/** @internal */
+export const missing = (): WireError => new WireError("missing field", undefined, true)
+
 /** @internal */
 export const isInt32 = (n: number): boolean => {
   return Number.isInteger(n) && n >= -2147483648 && n <= 2147483647

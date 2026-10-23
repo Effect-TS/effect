@@ -137,7 +137,7 @@ const compileMessage = (compiled: Map<L.Message, Compiled>, message: L.Message):
       const required = out.required
       for (let i = 0; i < required.length; i++) {
         if (target[required[i].key] === undefined) {
-          const e = missing()
+          const e = Wire.missing()
           e.path.push(required[i].key)
           return e
         }
@@ -234,18 +234,8 @@ const pathKey = (message: L.Message, field: L.Field): PropertyKey | undefined =>
   return field._tag === "Case" ? field.oneof.key : field.key
 }
 
-// Rethrows a wire error with `key` prepended to its path.
-const rethrowAt: (e: unknown, key: PropertyKey | undefined) => never = (e, key) => {
-  if (e instanceof Wire.WireError && key !== undefined) e.path.unshift(key)
-  throw e
-}
-
 const wrongWireType: (actual: number, expected: number) => never = (actual, expected) => {
   throw new Wire.WireError(`wire type ${actual} does not match the field (expected ${expected})`)
-}
-
-const missing = (): Wire.WireError => {
-  return new Wire.WireError("missing field", undefined, true)
 }
 
 // Message values merge with an earlier occurrence; other values replace it.
@@ -476,13 +466,6 @@ const scalarCodec = (type: L.Scalar): ScalarCodec => {
   return type.scalar === "string" && !type.validateUtf8 ? LAX_STRING : SCALARS[type.scalar]
 }
 
-const enumNumber = (type: L.Enum, value: unknown): number => {
-  const n = type.toNumber.get(value)
-  if (n !== undefined) return n
-  if (type.open && typeof value === "number" && Wire.isInt32(value)) return value
-  throw new Wire.WireError("expected an enum value", value)
-}
-
 // -----------------------------------------------------------------------------
 // encode
 // -----------------------------------------------------------------------------
@@ -499,7 +482,7 @@ const getter = (message: L.Message, slot: L.Slot): (container: any) => unknown =
 // for its writer to reject.
 const isAbsent = (slot: L.Slot, container: object): boolean => {
   if (slot.absent === "omit") return !Object.hasOwn(container, slot.key)
-  if (!Object.hasOwn(container, slot.key)) throw missing()
+  if (!Object.hasOwn(container, slot.key)) throw Wire.missing()
   return false
 }
 
@@ -541,7 +524,7 @@ const writeMessage = (w: Wire.Writer, compiled: Compiled, value: any, depth: num
       if (bytes !== undefined) writeUnknown(w, compiled, bytes, depth)
     }
   } catch (e) {
-    rethrowAt(e, key)
+    Wire.rethrowAt(e, key)
   }
 }
 
@@ -726,7 +709,7 @@ const listWriter = (
           w.end(begin)
         }
       } catch (e) {
-        rethrowAt(e, i)
+        Wire.rethrowAt(e, i)
       }
     }
   }
@@ -736,14 +719,14 @@ const listWriter = (
     try {
       for (; i < list.length; i++) write(w, list[i], depth)
     } catch (e) {
-      rethrowAt(e, i)
+      Wire.rethrowAt(e, i)
     }
   }
 }
 
 const packableWriter = (type: L.Scalar | L.Enum): (w: Wire.Writer, value: unknown) => void => {
   if (type._tag === "Scalar") return scalarCodec(type).write
-  return (w, v) => w.int32(enumNumber(type, v))
+  return (w, v) => w.int32(L.enumNumber(type, v))
 }
 
 const fixedSize = (type: L.Scalar): number => {
@@ -808,7 +791,7 @@ const entryWriter = (
       writeValue(w, value, depth)
       w.end(start)
     } catch (e) {
-      rethrowAt(e, key)
+      Wire.rethrowAt(e, key)
     }
   }
 }
@@ -828,7 +811,7 @@ const valueWriter = (
     case "Enum": {
       const tag = number * 8 + Wire.WIRE_VARINT
       return (w, value) => {
-        const n = enumNumber(type, value)
+        const n = L.enumNumber(type, value)
         if (skipZero && n === 0) return
         w.uint32(tag)
         w.int32(n)
@@ -1057,7 +1040,7 @@ const readMessage = (
   const value = values[0]
   if (value !== undefined) return value
   const slot = message.slots[0]
-  if (slot.absent === "required") throw missing()
+  if (slot.absent === "required") throw Wire.missing()
   return L.absentValue(slot)
 }
 
@@ -1178,7 +1161,7 @@ const readInto = (
     }
     if (group === undefined && r.pos !== end) throw new Wire.WireError("field overruns its message")
   } catch (e) {
-    rethrowAt(e, path)
+    Wire.rethrowAt(e, path)
   }
   return unknown
 }
@@ -1375,7 +1358,7 @@ const readElements = (
       if (!r.drop) list.push(value)
     }
   } catch (e) {
-    rethrowAt(e, list.length)
+    Wire.rethrowAt(e, list.length)
   }
 }
 
@@ -1461,7 +1444,7 @@ const entryReader = (compiled: Map<L.Message, Compiled>, field: L.MapField): Ent
       }
       if (r.pos !== end) throw new Wire.WireError("map entry overruns its field")
     } catch (e) {
-      rethrowAt(e, key === undefined ? undefined : String(key))
+      Wire.rethrowAt(e, key === undefined ? undefined : String(key))
     }
     if (drop) {
       r.drop = true
