@@ -1306,7 +1306,7 @@ export const tagsExhaustive: <
  *
  * @stability unstable
  * @category defining patterns
- * @since 4.0.7
+ * @since 4.1.0
  */
 export const literals: <
   R,
@@ -1360,7 +1360,7 @@ export const literals: <
  *
  * @stability unstable
  * @category defining patterns
- * @since 4.0.7
+ * @since 4.1.0
  */
 export const literalsExhaustive: <
   R,
