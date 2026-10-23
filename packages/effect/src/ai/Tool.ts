@@ -681,13 +681,37 @@ export const isDynamic = (u: unknown): u is Dynamic<string, any> => Predicate.ha
  * Returns whether calls to a tool are executed by the application that sent
  * the request rather than by a handler.
  *
- * @see {@link ClientExecuted} for the marker carried by such tools
+ * **Details**
+ *
+ * Narrows the tool to the same type with execution mode `"client"`, so it and
+ * the tools its combinators return need no handler.
  *
  * @stability unstable
  * @category guards
  * @since 4.1.0
  */
-export const isClientExecuted = <T extends Any>(tool: T): tool is T & ClientExecuted => tool.execution === "client"
+export const isClientExecuted: {
+  <
+    Name extends string,
+    Config extends {
+      readonly parameters: Schema.Constraint | JsonSchema.JsonSchema
+      readonly success: Schema.Constraint
+      readonly failure: Schema.Constraint
+      readonly failureMode: FailureMode
+    },
+    Requirements
+  >(tool: Dynamic<Name, Config, Requirements, Execution>): tool is Dynamic<Name, Config, Requirements, "client">
+  <
+    Name extends string,
+    Config extends {
+      readonly parameters: Schema.Constraint
+      readonly success: Schema.Constraint
+      readonly failure: Schema.Constraint
+      readonly failureMode: FailureMode
+    },
+    Requirements
+  >(tool: Tool<Name, Config, Requirements, Execution>): tool is Tool<Name, Config, Requirements, "client">
+} = (tool: Any): tool is any => tool.execution === "client"
 
 // =============================================================================
 // utility types
@@ -1146,19 +1170,10 @@ type ExecutionOf<T> = T extends { readonly execution?: infer E } ? Exclude<E, un
  */
 export type Execution = "server" | "client"
 
-/**
- * Narrows a tool to one whose calls are executed by the application that sent
- * the request.
- *
- * @see {@link isClientExecuted} for checking a tool at runtime
- *
- * @stability unstable
- * @category models
- * @since 4.1.0
- */
-export interface ClientExecuted {
-  readonly execution: "client"
-}
+// Only an execution that is definitely given records its mode. One that may
+// be `undefined` creates a server-executed tool when it is, so it records
+// either mode, which keeps the handler requirement.
+type ExecutionFrom<E extends Execution | undefined> = undefined extends E ? Execution : Exclude<E, undefined>
 
 // =============================================================================
 // Constructors
@@ -1339,7 +1354,7 @@ export const make = <
   Failure extends Schema.Constraint = typeof Schema.Never,
   Mode extends FailureMode | undefined = undefined,
   Dependencies extends Array<Context.Key<any, any> | Context.Key<never, any>> = [],
-  const Exec extends Execution = Execution
+  const Exec extends Execution | undefined = undefined
 >(name: Name, options?: {
   /**
    * An optional description explaining what the tool does.
@@ -1396,7 +1411,7 @@ export const make = <
    * executes, such as a frontend tool. Its calls are emitted but never
    * resolved, and it needs no handler. Defaults to `"server"`.
    */
-  readonly execution?: Exec | undefined
+  readonly execution?: Exec
 }): Tool<
   Name,
   {
@@ -1406,7 +1421,7 @@ export const make = <
     readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   Context.Service.Identifier<Dependencies[number]>,
-  Exec
+  ExecutionFrom<Exec>
 > => {
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
