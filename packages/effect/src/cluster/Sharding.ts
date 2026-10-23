@@ -1541,17 +1541,15 @@ const make = Effect.gen(function*() {
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
-  // Once a retiring entity can no longer be served here, as for new sends in
-  // `sendOutgoing`, abandon local callers parked on its persisted requests that
-  // it never started. They are served by the next owner.
+  // During shutdown, abandon local callers parked on persisted requests that a
+  // retiring entity never started. They are served by the next owner. Callers
+  // on a runner that keeps running are left waiting, so they stay durable.
   const abandonUndelivered = (
     address: EntityAddress,
     isDelivered: (requestId: Snowflake.Snowflake) => boolean
   ): Effect.Effect<void> =>
     Effect.suspend(() => {
-      if (!MutableRef.get(isShutdown) && entityManagers.get(address.entityType)?.status === "alive") {
-        return Effect.void
-      }
+      if (!MutableRef.get(isShutdown)) return Effect.void
       const abandon: Array<Effect.Effect<void>> = []
       for (const [requestId, entry] of clientRequests) {
         if (
