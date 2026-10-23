@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Report undeclared response statuses from `HttpApiClient` as a `StatusCodeError` instead of a `DecodeError`.
+Fix `HttpApiClient` reporting a response status the endpoint doesn't declare as a `DecodeError`. It now fails with an `HttpClientError` whose reason is a `StatusCodeError`, whatever the response body.
