@@ -312,6 +312,40 @@ describe("LanguageModel", () => {
         Effect.provide(TransformToolkitLayer)
       ))
 
+    it.effect("keeps the typed tool result and carries model output into the follow-up prompt", () =>
+      Effect.gen(function*() {
+        const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="
+        const Screenshot = Tool.make("Screenshot", {
+          success: Schema.Struct({ path: Schema.String, png: Schema.String }),
+          toModelOutput: (result) => [
+            Prompt.textPart({ text: `Screenshot of ${result.path}` }),
+            Prompt.filePart({ mediaType: "image/png", data: result.png })
+          ]
+        })
+        const toolkit = Toolkit.make(Screenshot)
+
+        const response = yield* LanguageModel.generateText({ prompt: [], toolkit }).pipe(
+          Effect.provide(toolkit.toLayer({ Screenshot: () => Effect.succeed({ path: "/home", png }) }))
+        )
+
+        deepStrictEqual(response.toolResults[0]!.result, { path: "/home", png })
+
+        const prompt = Prompt.fromResponseParts(response.content)
+        deepStrictEqual(Schema.decodeSync(Prompt.Prompt)(Schema.encodeSync(Prompt.Prompt)(prompt)), prompt)
+
+        const toolResult = prompt.content[1]!.content[0]
+        assertTrue(typeof toolResult === "object" && toolResult.type === "tool-result")
+        deepStrictEqual(toolResult.result, { path: "/home", png })
+        deepStrictEqual(toolResult.modelOutput, [
+          Prompt.textPart({ text: "Screenshot of /home" }),
+          Prompt.filePart({ mediaType: "image/png", data: png })
+        ])
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{ type: "tool-call", id: "call_screenshot", name: "Screenshot", params: {} }]
+        })
+      ))
+
     it.effect("validates tool parameters against the schemas of each request", () =>
       Effect.gen(function*() {
         const StructTransformToolkit = Toolkit.make(Tool.make("TransformTool", {

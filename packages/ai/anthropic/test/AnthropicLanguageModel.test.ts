@@ -1097,6 +1097,86 @@ describe("AnthropicLanguageModel", () => {
         assert.strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
       }))
 
+    it.effect("sends tool result model output as native content blocks", () =>
+      Effect.gen(function*() {
+        const base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([
+            { role: "user", content: "Take a screenshot" },
+            {
+              role: "assistant",
+              content: [Prompt.toolCallPart({
+                id: "call_screenshot",
+                name: "screenshot",
+                params: {},
+                providerExecuted: false
+              })]
+            },
+            {
+              role: "tool",
+              content: [Prompt.toolResultPart({
+                id: "call_screenshot",
+                name: "screenshot",
+                result: { path: "/home", png: base64 },
+                modelOutput: [
+                  Prompt.textPart({ text: "Screenshot of /home" }),
+                  Prompt.filePart({ mediaType: "image/png", data: base64 })
+                ],
+                isFailure: false,
+                providerExecuted: false
+              })]
+            }
+          ]),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        const body = yield* getRequestBody(capturedRequest)
+        const toolResult = body.messages
+          .flatMap((message: any) => Array.isArray(message.content) ? message.content : [])
+          .find((block: any) => block.type === "tool_result")
+
+        assert.strictEqual(toolResult.tool_use_id, "call_screenshot")
+        assert.deepStrictEqual(
+          toolResult.content.map(({ cache_control: _, ...block }: any) => block),
+          [
+            { type: "text", text: "Screenshot of /home" },
+            { type: "image", source: { type: "base64", media_type: "image/png", data: base64 } }
+          ]
+        )
+      }))
+
     it.effect("preserves base64 image string payloads", () =>
       Effect.gen(function*() {
         const base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="

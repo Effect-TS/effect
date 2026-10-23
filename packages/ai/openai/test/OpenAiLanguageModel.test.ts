@@ -972,6 +972,55 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(toolOutput.output, "PLAIN_TEXT_SENTINEL\n")
           }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
 
+        it.effect("sends tool result model output as native input items", () =>
+          Effect.gen(function*() {
+            const base64 =
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Use the tool" },
+                {
+                  role: "assistant",
+                  content: [
+                    Prompt.toolCallPart({
+                      id: "call_image",
+                      name: "TestTool",
+                      params: { input: "test" },
+                      providerExecuted: false
+                    })
+                  ]
+                },
+                {
+                  role: "tool",
+                  content: [
+                    Prompt.toolResultPart({
+                      id: "call_image",
+                      name: "TestTool",
+                      isFailure: false,
+                      result: { output: base64 },
+                      modelOutput: [
+                        Prompt.textPart({ text: "Screenshot" }),
+                        Prompt.filePart({ mediaType: "image/png", data: base64 })
+                      ],
+                      providerExecuted: false
+                    })
+                  ]
+                }
+              ]),
+              toolkit: TestToolkit
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const toolOutput = body.input.find((item: any) => item.type === "function_call_output")
+
+            strictEqual(toolOutput.call_id, "call_image")
+            deepStrictEqual(toolOutput.output.map(({ detail: _, ...item }: any) => item), [
+              { type: "input_text", text: "Screenshot" },
+              { type: "input_image", image_url: `data:image/png;base64,${base64}` }
+            ])
+          }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
+
         it.effect("emits only the specialized output for apply_patch results", () =>
           Effect.gen(function*() {
             const toolkit = Toolkit.make(OpenAiTool.ApplyPatch({}))

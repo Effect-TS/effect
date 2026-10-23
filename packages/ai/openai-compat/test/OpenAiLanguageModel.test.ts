@@ -741,6 +741,66 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
+    it.effect("sends the serialized tool result when the tool result has model output", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([
+            {
+              role: "assistant",
+              content: [Prompt.toolCallPart({
+                id: "call_1",
+                name: "TestTool",
+                params: { input: "screenshot" },
+                providerExecuted: false
+              })]
+            },
+            {
+              role: "tool",
+              content: [Prompt.toolResultPart({
+                id: "call_1",
+                name: "TestTool",
+                isFailure: false,
+                result: { output: "screenshot.png" },
+                modelOutput: [
+                  Prompt.textPart({ text: "Screenshot" }),
+                  Prompt.filePart({ mediaType: "image/png", data: "iVBORw0KGgo=" })
+                ],
+                providerExecuted: false
+              })]
+            }
+          ]),
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const requestBody = yield* getRequestBody(capturedRequest)
+        assert.deepStrictEqual(requestBody.messages[1], {
+          role: "tool",
+          tool_call_id: "call_1",
+          content: JSON.stringify({ output: "screenshot.png" })
+        })
+      }))
+
     it.effect("echoes tool call extra_content in follow-up requests", () =>
       Effect.gen(function*() {
         const extraContent = { google: { thought_signature: "signature-1" } }
