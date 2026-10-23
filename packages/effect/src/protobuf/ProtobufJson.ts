@@ -40,7 +40,7 @@
  * @stability experimental
  * @since 4.0.7
  */
-import * as Schema from "../Schema.ts"
+import type * as Schema from "../Schema.ts"
 import * as Compile from "./internal/compile.ts"
 import * as Json from "./internal/json.ts"
 import type * as Layout from "./internal/layout.ts"
@@ -167,7 +167,7 @@ export const toCodec = <S extends Schema.Constraint>(schema: S, options?: Option
   const cached = byOptions.get(key)
   if (cached !== undefined) return cached
   const out = Transform.derive(
-    Schema.Json,
+    Transform.Json,
     schema,
     Json.makeCodec(rootOf(schema), jsonOptions)
   ) as unknown as toCodec<S>

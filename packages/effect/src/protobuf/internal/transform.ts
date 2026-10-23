@@ -40,6 +40,28 @@ export const derive = <E>(
   )
 }
 
+/**
+ * `Schema.Json` for the JSON codec: decoding checks the input, and encoding
+ * trusts the JSON that the codec wrote. That holds because the codec builds
+ * every array and object of its output, and copies only primitives it has
+ * checked into them; a path that returns part of the value as it is would
+ * have to check it.
+ *
+ * @internal
+ */
+export const Json: Schema.Codec<Schema.Json> = Schema.make(
+  new SchemaAST.Declaration(
+    [],
+    (Schema.Json.ast as SchemaAST.Declaration).run,
+    Schema.Json.ast.annotations,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    () => () => InternalParser.sameExit
+  )
+)
+
 // The value the codec last decoded, which the schema pass returns as it is.
 /** @internal */
 export interface Trusted {
