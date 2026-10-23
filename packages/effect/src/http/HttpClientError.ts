@@ -92,6 +92,9 @@ const formatMessage = (reason: string, description: string | undefined, info: st
 const formatMethodAndUrl = (request: HttpClientRequest.HttpClientRequest) =>
   `${request.method} ${UrlParams.redactUrl(request.url)}`
 
+// Serialized reasons carry the same request and response information as the
+// message, so headers, URL parameters and bodies stay out of logs. The full
+// objects remain available through the `request` and `response` properties.
 const reasonToJSON = (reason: HttpClientErrorReason, json: unknown) => ({
   ...(json as object),
   request: { _id: "HttpClientRequest", method: reason.request.method, url: UrlParams.redactUrl(reason.request.url) },
@@ -130,13 +133,6 @@ export class TransportError extends Data.TaggedError("TransportError")<{
     return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
   }
 
-  /**
-   * Serializes the error with only the request method and redacted URL, so
-   * request headers, query parameters and body are not exposed.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override toJSON(): unknown {
     return reasonToJSON(this, super.toJSON())
   }
@@ -174,13 +170,6 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
     return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
   }
 
-  /**
-   * Serializes the error with only the request method and redacted URL, so
-   * request headers, query parameters and body are not exposed.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override toJSON(): unknown {
     return reasonToJSON(this, super.toJSON())
   }
@@ -218,13 +207,6 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
     return formatMessage(formatReason(this._tag), this.description, this.methodAndUrl)
   }
 
-  /**
-   * Serializes the error with only the request method and redacted URL, so
-   * request headers, query parameters and body are not exposed.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override toJSON(): unknown {
     return reasonToJSON(this, super.toJSON())
   }
@@ -264,13 +246,6 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
     return formatMessage(formatReason(this._tag), this.description, info)
   }
 
-  /**
-   * Serializes the error with only the request method and redacted URL, so
-   * request headers, query parameters and body are not exposed.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override toJSON(): unknown {
     return reasonToJSON(this, super.toJSON())
   }
@@ -310,13 +285,6 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
     return formatMessage(formatReason(this._tag), this.description, info)
   }
 
-  /**
-   * Serializes the error with only the request method and redacted URL, so
-   * request headers, query parameters and body are not exposed.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override toJSON(): unknown {
     return reasonToJSON(this, super.toJSON())
   }
@@ -356,13 +324,6 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
     return formatMessage(formatReason(this._tag), this.description, info)
   }
 
-  /**
-   * Serializes the error with only the request method and redacted URL, so
-   * request headers, query parameters and body are not exposed.
-   *
-   * @stability unstable
-   * @since 4.0.0
-   */
   override toJSON(): unknown {
     return reasonToJSON(this, super.toJSON())
   }
