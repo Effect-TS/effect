@@ -237,9 +237,11 @@ export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProce
   const streamString: ChildProcessSpawner["Service"]["streamLines"] = (command, options) =>
     spawn(command).pipe(
       Effect.map((handle) =>
-        options?.includeStderr === true
-          ? Stream.decodeText(handle.all)
-          : Stream.mergeEffect(Stream.decodeText(handle.stdout), Stream.runDrain(handle.stderr))
+        Stream.decodeText(
+          options?.includeStderr === true
+            ? handle.all
+            : Stream.mergeEffect(handle.stdout, Stream.runDrain(handle.stderr))
+        )
       ),
       Stream.unwrap
     )
