@@ -3243,8 +3243,29 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
 const tryToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(tool: T, method: string) =>
   Effect.try({
     try: () => Tool.getJsonSchema(tool, { transformer: toCodecAnthropic }),
-    catch: (error) => unsupportedSchemaError(error, method)
+    catch: (error) => toolParametersError(tool, error, method)
+  }).pipe(Effect.flatMap((jsonSchema) => checkToolJsonSchema(tool, jsonSchema, method)))
+
+const toolParametersError = (tool: Tool.Any | Tool.AnyDynamic, cause: unknown, method: string): AiError.AiError =>
+  AiError.make({
+    module: "AnthropicLanguageModel",
+    method,
+    reason: new AiError.UnsupportedSchemaError({
+      description: `The parameters of tool "${tool.name}" must be an object schema (JSON Schema type "object"). ` +
+        "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`. " +
+        `Cause: ${cause instanceof Error ? cause.message : String(cause)}`
+    })
   })
+
+const checkToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(
+  tool: T,
+  jsonSchema: ReturnType<typeof Tool.getJsonSchema>,
+  method: string
+): Effect.Effect<ReturnType<typeof Tool.getJsonSchema>, AiError.AiError> =>
+  // A JSON Schema given directly to a dynamic tool is sent as it is
+  (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) || jsonSchema.type === "object"
+    ? Effect.succeed(jsonSchema)
+    : Effect.fail(toolParametersError(tool, `received ${JSON.stringify(jsonSchema)}`, method))
 
 const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   readonly capabilities: ModelCapabilities

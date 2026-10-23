@@ -2499,3 +2499,26 @@ const toSseBody = (events: ReadonlyArray<unknown>): string =>
     }
     return `data: ${JSON.stringify(event)}\n\n`
   }).join("")
+
+describe("OpenAiLanguageModel tool parameters", () => {
+  it.effect("names the tool and suggests Tool.EmptyParams when parameters are not an object schema", () =>
+    Effect.gen(function*() {
+      const NoParams = Tool.make("NoParams", { parameters: Schema.Struct({}) })
+      const error = yield* LanguageModel.generateText({
+        prompt: "Use the tool",
+        toolkit: Toolkit.make(NoParams),
+        disableToolCallResolution: true
+      }).pipe(
+        Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+        Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+        Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("unexpected request"))),
+        Effect.flip
+      )
+      const reason = error.reason
+      if (reason._tag !== "UnsupportedSchemaError") {
+        return assert.fail(`expected UnsupportedSchemaError, received ${reason._tag}`)
+      }
+      assert.include(reason.description, `tool "NoParams"`)
+      assert.include(reason.description, "Tool.EmptyParams")
+    }))
+})
