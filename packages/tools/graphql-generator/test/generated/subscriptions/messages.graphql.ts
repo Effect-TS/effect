@@ -15,16 +15,14 @@ export interface MessagePosted extends Schema.Struct.Type<typeof MessagePosted.f
 export const Messages = GraphQL.query("Messages", {
   document: {
     variables: [
-      { name: "first", body: "Int!" },
       { name: "filter", body: "MessageFilter!" }
     ],
     selections: [
-      { name: "messages", body: ["(first:$", "first", " filter:$", "filter", "){id body}"] }
+      { name: "messages", body: ["(filter:$", "filter", "){id body}"] }
     ],
     fragments: []
   },
   variables: {
-    first: Shared.Int,
     filter: Shared.MessageFilter
   },
   result: Schema.Struct({

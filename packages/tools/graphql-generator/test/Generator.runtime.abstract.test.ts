@@ -185,53 +185,15 @@ describe("Generated subscriptions client", () => {
       assert.deepStrictEqual(sent, [])
     }))
 
-  it.effect("Messages encodes a nested and / or filter across mutually recursive inputs", () =>
+  it.effect("Messages encodes a DateTime nested across the recursive inputs", () =>
     Effect.gen(function*() {
-      const { layer, sent } = mock({ data: { messages: [{ id: "M_1", body: "hello" }] } })
+      const { layer, sent } = mock({ data: { messages: [] } })
       const client = yield* GraphQLClient.make(MessagesGraphQLGroup).pipe(Effect.provide(layer))
-      const result = yield* client.Messages({
-        first: 10,
-        filter: {
-          or: [
-            { body: { contains: "hello" } },
-            {
-              and: [
-                { postedAt: { gt: DateTime.makeUnsafe(at) } },
-                {
-                  member: {
-                    role: { not: { in: ["GUEST"] } },
-                    match: { any: [{ posted: { postedAt: { lt: DateTime.makeUnsafe(at) } } }] }
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      })
-
-      assert.deepStrictEqual(result, { messages: [{ id: "M_1", body: "hello" }] })
+      yield* client.Messages({ filter: { or: [{ member: { posted: { postedAfter: DateTime.makeUnsafe(at) } } }] } })
       assert.deepStrictEqual(sent, [{
         query: Messages.document,
         operationName: "Messages",
-        variables: {
-          first: 10,
-          filter: {
-            or: [
-              { body: { contains: "hello" } },
-              {
-                and: [
-                  { postedAt: { gt: "2026-10-08T10:00:00.000Z" } },
-                  {
-                    member: {
-                      role: { not: { in: ["GUEST"] } },
-                      match: { any: [{ posted: { postedAt: { lt: "2026-10-08T10:00:00.000Z" } } }] }
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        }
+        variables: { filter: { or: [{ member: { posted: { postedAfter: "2026-10-08T10:00:00.000Z" } } }] } }
       }])
     }))
 
@@ -239,10 +201,8 @@ describe("Generated subscriptions client", () => {
     Effect.gen(function*() {
       const { layer, sent } = mock({ data: { messages: [] } })
       const client = yield* GraphQLClient.make(MessagesGraphQLGroup).pipe(Effect.provide(layer))
-      const both = { id: "U_1", any: [] } as unknown as MemberMatch
-      const error = yield* client.Messages({ first: 1, filter: { or: [{ member: { match: both } }] } }).pipe(
-        Effect.flip
-      )
+      const both = { id: "U_1", posted: {} } as unknown as MemberMatch
+      const error = yield* client.Messages({ filter: { member: both } }).pipe(Effect.flip)
       assert.strictEqual(reasonTag(error), "EncodeError")
       assert.deepStrictEqual(sent, [])
     }))

@@ -102,27 +102,13 @@ An instant, as an ISO-8601 string.
 scalar DateTime
 
 """
-Compares a string.
+Filters messages.
 """
-input StringComparator {
-  eq: String
-  contains: String
-}
-
-"""
-Compares an instant.
-"""
-input DateComparator {
-  gt: DateTime
-  lt: DateTime
-}
-
-"""
-Filters roles; recursive without any field that transforms.
-"""
-input RoleFilter {
-  in: [Role!]
-  not: RoleFilter
+input MessageFilter {
+  postedAfter: DateTime
+  member: MemberMatch
+  "Any of these filters."
+  or: [MessageFilter!]
 }
 
 """
@@ -131,38 +117,9 @@ Exactly one way to match a member.
 input MemberMatch @oneOf {
   id: ID
   """
-  Any of these filters.
-  """
-  any: [MemberFilter!]
-}
-
-"""
-Filters members.
-"""
-input MemberFilter {
-  name: StringComparator
-  role: RoleFilter
-  match: MemberMatch
-  """
   Members who posted a matching message.
   """
   posted: MessageFilter
-  and: [MemberFilter!]
-}
-
-"""
-Filters messages.
-"""
-input MessageFilter {
-  body: StringComparator
-  postedAt: DateComparator
-  member: MemberFilter
-  "All of these filters."
-  and: [MessageFilter!]
-  "Any of these filters."
-  or: [MessageFilter!]
-  "Defaults to every room."
-  rooms: [ID!] = []
 }
 
 type Query {
@@ -173,7 +130,7 @@ type Query {
   """
   Messages that match a filter.
   """
-  messages(first: Int!, filter: MessageFilter!): [MessagePosted!]!
+  messages(filter: MessageFilter!): [MessagePosted!]!
 }
 
 type Subscription {

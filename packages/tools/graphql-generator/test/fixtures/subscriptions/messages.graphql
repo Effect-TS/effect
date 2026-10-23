@@ -1,5 +1,5 @@
-query Messages($first: Int!, $filter: MessageFilter!) {
-  messages(first: $first, filter: $filter) {
+query Messages($filter: MessageFilter!) {
+  messages(filter: $filter) {
     id
     body
   }
