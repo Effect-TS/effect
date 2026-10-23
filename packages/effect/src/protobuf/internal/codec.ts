@@ -538,7 +538,7 @@ const writeMessage = (w: Wire.Writer, compiled: Compiled, value: any, depth: num
     if (message.unknown !== undefined) {
       key = message.unknown
       const bytes = Object.hasOwn(value, key) ? value[key] : undefined
-      if (bytes !== undefined) writeUnknown(w, message, bytes, depth)
+      if (bytes !== undefined) writeUnknown(w, compiled, bytes, depth)
     }
   } catch (e) {
     rethrowAt(e, key)
@@ -563,39 +563,45 @@ const caseSelector = (message: L.Message, oneof: L.Oneof): (container: any) => L
 const caseValue = (value: unknown): unknown => (value as { readonly value: unknown }).value
 
 // Unknown fields must be well-formed, and must not hold declared fields, which
-// would be read back into them. Decoding keeps a number that a closed enum does
-// not have as an unknown field, so those are written back.
-const writeUnknown = (w: Wire.Writer, message: L.Message, bytes: unknown, depth: number): void => {
+// would be read back into them. Decoding keeps some occurrences of declared
+// fields as unknown fields, such as a number that a closed enum does not have,
+// and those are written back.
+const writeUnknown = (w: Wire.Writer, compiled: Compiled, bytes: unknown, depth: number): void => {
   if (!(bytes instanceof Uint8Array)) throw new Wire.WireError("expected the bytes of unknown fields", bytes)
   const r = new Wire.Reader(bytes)
   while (r.pos < bytes.length) {
     const tag = r.tag()
     const start = r.pos
     r.skip(tag & 7, tag >>> 3, depth)
-    const field = message.byNumber.get(tag >>> 3)
-    if (field !== undefined && !isUnknownEnum(field, tag & 7, bytes.subarray(start, r.pos), depth)) {
+    const reader = compiled.readers.get(tag >>> 3)
+    if (reader !== undefined && !keptUnknown(compiled, reader, bytes, tag, start, r.pos, depth)) {
       throw new Wire.WireError(`unknown fields hold declared field ${tag >>> 3}`)
     }
   }
   w.raw(bytes)
 }
 
-// Whether decoding keeps the content of an occurrence of a field as an unknown
-// field: a number that a closed enum does not have, or a map entry holding one.
-const isUnknownEnum = (field: L.Field, wireType: number, content: Uint8Array, depth: number): boolean => {
-  const type = field._tag === "Repeated" ? field.element : field._tag === "Map" ? field.value : field.type
-  if (type._tag !== "Enum" || type.open) return false
-  const r = new Wire.Reader(content)
-  if (field._tag !== "Map") return wireType === Wire.WIRE_VARINT && L.enumValue(type, r.int32()) === L.UNKNOWN_ENUM
-  if (wireType !== Wire.WIRE_LEN) return false
-  const end = r.delimited()
-  let unknown = false
-  while (r.pos < end) {
-    const tag = r.tag()
-    if (tag !== 2 * 8 + Wire.WIRE_VARINT) r.skip(tag & 7, tag >>> 3, depth)
-    else if (L.enumValue(type, r.int32()) === L.UNKNOWN_ENUM) unknown = true
+// Whether decoding keeps the occurrence of a declared field from `start` to
+// `end` of `bytes` as an unknown field. The reader of the field decides, so the
+// occurrence must also be one that decoding accepts.
+const keptUnknown = (
+  compiled: Compiled,
+  reader: FieldReaders,
+  bytes: Uint8Array,
+  tag: number,
+  start: number,
+  end: number,
+  depth: number
+): boolean => {
+  const r = new Input(bytes)
+  r.pos = start
+  try {
+    reader.read(r, new Array(compiled.keys.length), tag & 7, tag >>> 3, depth)
+  } catch (e) {
+    if (e instanceof Wire.WireError) return false
+    throw e
   }
-  return unknown
+  return r.drop && r.pos === end
 }
 
 const fieldWriter = (compiled: Map<L.Message, Compiled>, message: L.Message, field: L.Field): FieldWriter => {
