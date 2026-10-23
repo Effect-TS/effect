@@ -47,4 +47,26 @@ describe("Toolkit", () => {
     expect(toolkit.toLayer).type.toBeCallableWith({ Lookup: () => Effect.succeed("value") })
     expect(toolkit.toLayer).type.not.toBeCallableWith({})
   })
+
+  it("keeps client execution through tool combinators", () => {
+    const Ask = Tool.make("Ask", { execution: "client" })
+    const Confirm = Tool.dynamic("Confirm", { parameters: { type: "object", properties: {} }, execution: "client" })
+
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.setParameters<typeof Schema.String>>>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.setSuccess<typeof Schema.Boolean>>>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.setFailure<typeof Schema.String>>>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.setNeedsApproval>>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.addDependency<Decoder, { readonly value: number }>>>>().type
+      .toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.annotate<boolean, boolean>>>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Ask.annotateMerge<never>>>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<ReturnType<typeof Confirm.setNeedsApproval>>>().type.toBe<false>()
+
+    // A configured client tool still needs no handler, and a configured server
+    // tool still needs one
+    const Configured = Ask.setParameters(Schema.Struct({ question: Schema.String }))
+    expect(Toolkit.make(Configured).toLayer).type.toBeCallableWith({})
+    const Lookup = Tool.make("Lookup").setSuccess(Schema.String)
+    expect<Tool.RequiresHandler<typeof Lookup>>().type.toBe<true>()
+  })
 })
