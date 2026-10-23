@@ -2091,6 +2091,20 @@ const schema = Schema.Literals(["red", "green", "blue"])
 
 #### Deriving new literals
 
+You can select a subset of the literals with `pick`, or remove literals with `omit`. Both return a new `Schema.Literals` with positional (tuple) typing, and `omit` keeps the remaining literals in their original order. If the literals are not fixed-length tuples of single literal values (for example a widened array, or an element typed as a union or a branded type), `omit` is typed as a `ReadonlyArray` that excludes only the literals that are definitely omitted.
+
+```ts
+import { Schema } from "effect"
+
+const schema = Schema.Literals(["red", "green", "blue"])
+
+// Schema.Literals<readonly ["red", "blue"]>
+const picked = schema.pick(["red", "blue"])
+
+// Schema.Literals<readonly ["red", "blue"]>
+const omitted = schema.omit(["green"])
+```
+
 You can map the members of a `Schema.Literals` schema using the `mapMembers` method. The `mapMembers` method accepts a function from `Literals.members` to new members, and returns a new `Schema.Union` based on the result.
 
 ```ts

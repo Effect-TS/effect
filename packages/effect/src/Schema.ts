@@ -5009,10 +5009,68 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
 
   pick<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<L2>
 
+  /**
+   * Returns a new `Literals` schema without the given literals.
+   *
+   * **Details**
+   *
+   * The remaining literals keep their original order. Like `pick`, the result
+   * keeps the positional typing of `literals` and `members` when the original
+   * and the omitted literals are fixed-length tuples of single literal values.
+   *
+   * Otherwise the result is typed as `Literals<ReadonlyArray<...>>`. A literal
+   * is excluded from that type only when it is definitely omitted, so omitting
+   * an element typed as a union or a branded type, or an array without a fixed
+   * length, excludes nothing.
+   *
+   * **Example** (Omitting literals)
+   *
+   * ```ts import.meta.vitest
+   * import { Schema } from "effect"
+   *
+   * const schema = Schema.Literals(["a", "b", "c", "d"]).omit(["b", "d"])
+   * // Schema.Literals<readonly ["a", "c"]>
+   *
+   * Schema.decodeUnknownSync(schema)("a") // => "a"
+   * ```
+   */
+  omit<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<OmitLiterals<L, L2>>
+
   transform<const L2 extends { readonly [I in keyof L]: SchemaAST.LiteralValue }>(
     to: L2
   ): Union<{ [I in keyof L]: decodeTo<Literal<L2[I]>, Literal<L[I]>> }>
 }
+
+type IsLiteralUnit<T> = IsUnion<T> extends true ? false
+  // `${T}` is a single key only for one value, e.g. not for `string`, `number`, brands, or patterns
+  : T extends string | number | bigint ? {} extends Record<`${T}`, 0> ? false : true
+  : true
+
+// a fixed-length tuple of single literal values, so its element union is exactly its runtime values
+type IsLiteralTuple<T extends ReadonlyArray<unknown>> = IsUnion<T> extends true ? false
+  : IsLiteralUnit<T["length"]> extends false ? false
+  : { [K in keyof T]: IsLiteralUnit<T[K]> }[number] extends true ? true
+  : false
+
+// literals are compared by runtime value, so enum members match equal literals but strings never match numbers
+type LiteralKey<T> = T extends string ? `s${T}` : T extends number ? `n${T}` : T extends bigint ? `b${T}` : T
+
+type OmitLiteralsTuple<
+  L extends ReadonlyArray<SchemaAST.LiteralValue>,
+  OmittedKey,
+  Out extends ReadonlyArray<SchemaAST.LiteralValue> = readonly []
+> = L extends
+  readonly [infer Head extends SchemaAST.LiteralValue, ...infer Tail extends ReadonlyArray<SchemaAST.LiteralValue>]
+  ? OmitLiteralsTuple<Tail, OmittedKey, LiteralKey<Head> extends OmittedKey ? Out : readonly [...Out, Head]>
+  : Out
+
+type OmitLiterals<L extends ReadonlyArray<SchemaAST.LiteralValue>, L2 extends ReadonlyArray<L[number]>> =
+  // the omission may not hold every value of its element type at runtime: exclude nothing
+  IsLiteralTuple<L2> extends false ? ReadonlyArray<L[number]>
+    // positions are unknown, but the definitely omitted literals can still be excluded
+    : IsLiteralTuple<L> extends false ? ReadonlyArray<Exclude<L[number], L2[number]>>
+    : OmitLiteralsTuple<L, LiteralKey<L2[number]>>
+
 /**
  * Creates a union schema from an array of literal values.
  *
@@ -5043,6 +5101,9 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
     },
     pick<const L2 extends ReadonlyArray<L[number]>>(literals: L2): Literals<L2> {
       return Literals(literals)
+    },
+    omit<const L2 extends ReadonlyArray<L[number]>>(omitted: L2): Literals<OmitLiterals<L, L2>> {
+      return Literals(literals.filter((literal) => !omitted.includes(literal)) as any)
     },
     transform<const L2 extends { readonly [I in keyof L]: SchemaAST.LiteralValue }>(
       to: L2

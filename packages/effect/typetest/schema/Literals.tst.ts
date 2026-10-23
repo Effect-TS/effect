@@ -1,3 +1,4 @@
+import type { Brand } from "effect"
 import { Schema, Tuple } from "effect"
 import { describe, expect, it } from "tstyche"
 
@@ -42,6 +43,69 @@ describe("Literals", () => {
         never
       >
     >()
+  })
+
+  it("omit", () => {
+    const schema = Schema.Literals(["a", "b", "c", "d"])
+
+    // a plain literal tuple keeps its positions, symmetric with `pick`
+    expect(schema.omit(["c", "a"])).type.toBe<Schema.Literals<readonly ["b", "d"]>>()
+    expect(schema.omit(["c", "a"]).members).type.toBe<readonly [Schema.Literal<"b">, Schema.Literal<"d">]>()
+    expect(schema.omit([])).type.toBe<Schema.Literals<readonly ["a", "b", "c", "d"]>>()
+    expect(schema.omit(["a", "b", "c", "d"])).type.toBe<Schema.Literals<readonly []>>()
+    expect(schema.omit).type.not.toBeCallableWith(["x"])
+
+    // literals are omitted by runtime value, so enum members match equal literals, but strings never match numbers
+    enum S {
+      One = "1"
+    }
+    expect(Schema.Literals(["1", 1, "b"]).omit([S.One])).type.toBe<Schema.Literals<readonly [1, "b"]>>()
+    enum N1 {
+      A = 1
+    }
+    enum N2 {
+      A = 1
+    }
+    expect(Schema.Literals([N1.A, N2.A, "1"]).omit([N1.A])).type.toBe<Schema.Literals<readonly ["1"]>>()
+
+    // a widened omission array may not contain every member of its union at runtime
+    const omitted: ReadonlyArray<"a" | "b"> = ["a"]
+    expect(schema.omit(omitted)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+    // even when its element type is a single literal
+    expect(schema.omit([] as ReadonlyArray<"a">)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+
+    // likewise for an omitted tuple element typed as a union
+    const ab = "a" as "a" | "b"
+    expect(schema.omit([ab])).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+
+    // and for a union of omission tuples
+    const conditional = ["a"] as readonly ["a"] | readonly ["b"]
+    expect(schema.omit(conditional)["Type"]).type.toBe<"a" | "b" | "c" | "d">()
+
+    // and for an omitted element typed as a branded number or bigint
+    type Id = number & Brand.Brand<"Id">
+    expect(Schema.Literals([1 as Id, 2 as Id, "other"]).omit([1 as Id])["Type"]).type.toBe<Id | "other">()
+    type BigId = bigint & Brand.Brand<"BigId">
+    expect(Schema.Literals([1n as BigId, 2n as BigId, "other"]).omit([1n as BigId])["Type"]).type.toBe<
+      BigId | "other"
+    >()
+
+    // a parent element typed as a union may or may not be omitted at runtime
+    expect(Schema.Literals([ab, "c"]).omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
+
+    // a branded parent element may share its runtime value with an omitted literal
+    expect(Schema.Literals([1 as Id, 1, "other"]).omit([1])).type.toBe<Schema.Literals<ReadonlyArray<Id | "other">>>()
+
+    const widened = Schema.Literals(["a", "b", "c"] as ReadonlyArray<"a" | "b" | "c">)
+    expect(widened.omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
+
+    // must not hit the instantiation limit with many literals
+    type Many<N extends number, Acc extends Array<string> = []> = Acc["length"] extends N ? Acc
+      : Many<N, [...Acc, `k${Acc["length"]}`]>
+    const many = Schema.Literals([] as unknown as Many<240>)
+    expect(many.omit(["k0", "k239"])["Type"]).type.toBe<Exclude<(typeof many)["Type"], "k0" | "k239">>()
+    expect(many.omit(["k0", "k239"]).literals["length"]).type.toBe<238>()
+    expect(many.omit(["k0", "k239"]).literals[0]).type.toBe<"k1">()
   })
 
   it("transform", () => {
