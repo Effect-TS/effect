@@ -252,9 +252,7 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
     if (contentLength !== undefined && contentLength > limit) {
       return contentTooLarge
     }
-    // The HTTP parser stops a declared-length body at that length, so only
-    // chunked uploads need their bytes counted.
-    const body = yield* (contentLength === undefined ? readBody(request, limit) : readDeclaredBody(request, limit))
+    const body = yield* readBody(request, limit)
     if (HttpServerResponse.isHttpServerResponse(body)) {
       return body
     }
@@ -307,21 +305,9 @@ const toServerResponse = (
     })
 }
 
-const readDeclaredBody = (
-  request: HttpServerRequest.HttpServerRequest,
-  limit: number
-): Effect.Effect<Uint8Array | HttpServerResponse.HttpServerResponse> =>
-  Effect.catch(
-    Effect.map(
-      request.arrayBuffer,
-      (body): Uint8Array | HttpServerResponse.HttpServerResponse =>
-        body.byteLength > limit ? contentTooLarge : new Uint8Array(body)
-    ),
-    HttpServerRespondable.toResponse
-  )
-
-// Counts bytes on the stream because only some platforms apply MaxBodySize to
-// buffered reads.
+// Counts bytes on the stream because a declared content-length does not bound
+// every request body, and only some platforms apply MaxBodySize to buffered
+// reads.
 const readBody = (
   request: HttpServerRequest.HttpServerRequest,
   limit: number
