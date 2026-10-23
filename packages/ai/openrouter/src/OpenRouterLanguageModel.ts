@@ -1837,18 +1837,17 @@ const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transfor
     catch: (error) => toolParametersError(tool, error, method)
   }).pipe(Effect.filterOrFail(
     // A raw JSON Schema given to a dynamic tool is sent unchanged
-    (jsonSchema) => isObjectOrObjectUnion(jsonSchema) || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
+    (jsonSchema) => isObjectOrUnion(jsonSchema) || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
     (jsonSchema) =>
       toolParametersError(
         tool,
-        `expected a JSON Schema with type "object" or an "anyOf" of them, received ${JSON.stringify(jsonSchema)}`,
+        `expected a JSON Schema with type "object" or "anyOf", received ${JSON.stringify(jsonSchema)}`,
         method
       )
   ))
 
-const isObjectOrObjectUnion = (jsonSchema: JsonSchema.JsonSchema): boolean =>
-  jsonSchema.type === "object" ||
-  (Array.isArray(jsonSchema.anyOf) && jsonSchema.anyOf.every((member) => member?.type === "object"))
+const isObjectOrUnion = (jsonSchema: JsonSchema.JsonSchema): boolean =>
+  jsonSchema.type === "object" || Array.isArray(jsonSchema.anyOf)
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
   readonly config: typeof Config.Service
