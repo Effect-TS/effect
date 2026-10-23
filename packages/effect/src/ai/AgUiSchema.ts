@@ -74,11 +74,12 @@ const TokenCount = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 // rejecting the value holding them. Recognised but malformed elements still
 // fail to decode.
 const withoutUnknownMembers = <S extends Schema.Constraint>(item: S, isUnknown: (value: unknown) => boolean) => {
-  // Accepts only unrecognised material, so it never hides a malformed item and
-  // the item schema stays visible to JSON Schema and OpenAPI
-  const Unrecognised = Schema.Unknown.check(Schema.makeFilter(isUnknown, {
-    description: "A member from a newer protocol version, removed during decoding",
-    toJsonSchema: () => [{}, true]
+  // Accepts only unrecognised material, so it never hides a malformed item.
+  // JSON Schema and OpenAPI document the canonical model: a union splices in
+  // a member that is only an `anyOf`, so an empty one leaves just the item's
+  // variants and generated clients keep their discriminated types.
+  const Unrecognised = Schema.Any.check(Schema.makeFilter(isUnknown, {
+    toJsonSchema: () => ({ anyOf: [] })
   }))
   return Schema.Array(Schema.Union([item, Unrecognised])).pipe(
     Schema.decodeTo(
@@ -311,10 +312,14 @@ export type ContentPart = typeof ContentPart.Type
 const contentPartTypes: ReadonlySet<string> = new Set(["text", "image", "audio", "video", "document"])
 const partSourceTypes: ReadonlySet<string> = new Set(["data", "url", "file"])
 
-// A media part whose required source is unrecognised is removed with it
+const mediaPartTypes: ReadonlySet<unknown> = new Set(["image", "audio", "video", "document"])
+
+// A recognised media part whose required source is unrecognised is removed
+// with it
 const isUnknownContentPart = (value: unknown): boolean =>
   hasUnknownTag(value, "type", contentPartTypes) ||
-  (Predicate.isObject(value) && value.type !== "text" && hasUnknownTag(value.source, "type", partSourceTypes))
+  (Predicate.isObject(value) && mediaPartTypes.has(value.type) &&
+    hasUnknownTag(value.source, "type", partSourceTypes))
 
 const Content = Schema.Union([Schema.String, withoutUnknownMembers(ContentPart, isUnknownContentPart)])
 
