@@ -10,7 +10,7 @@ import {
   Toolkit
 } from "effect/ai"
 import { Etag, HttpPlatform, HttpRouter } from "effect/http"
-import { HttpApi, HttpApiGroup, OpenApi } from "effect/http-api"
+import { HttpApi, HttpApiBuilder, HttpApiGroup, OpenApi } from "effect/http-api"
 
 const TestServices = Layer.mergeAll(
   Path.layer,
@@ -96,9 +96,9 @@ const finish = (reason: AiResponse.FinishReason): AiResponse.StreamPartEncoded =
   usage: { inputTokens: { total: 3 }, outputTokens: { total: 2 } }
 })
 
-// Serves an agent whose model answers each request with the next round and
-// records the prompt and tool names it was given
-const serveAgent = (rounds: ReadonlyArray<ReadonlyArray<AiResponse.StreamPartEncoded>>) => {
+// A model that answers each request with the next round and records the
+// prompt and tool names it was given
+const fakeModel = (rounds: ReadonlyArray<ReadonlyArray<AiResponse.StreamPartEncoded>>) => {
   const requests: Array<{ readonly prompt: Prompt.Prompt; readonly tools: ReadonlyArray<string> }> = []
   const model = Layer.effect(
     LanguageModel.LanguageModel,
@@ -110,12 +110,29 @@ const serveAgent = (rounds: ReadonlyArray<ReadonlyArray<AiResponse.StreamPartEnc
       }
     })
   )
-  const layer = AgUiServer.layerHttp({
-    path: "/agent",
-    agent: AgUiServer.agent({ toolkit: AgentToolkit, system: "Be brief", maxSteps: 5 })
-  }).pipe(Layer.provide([TestServices, model, AgentToolkitLayer]))
+  return { requests, model }
+}
+
+const serveAgent = (
+  rounds: ReadonlyArray<ReadonlyArray<AiResponse.StreamPartEncoded>>,
+  agent: AgUiServer.Agent<
+    LanguageModel.LanguageModel | Tool.HandlersFor<Toolkit.Tools<typeof AgentToolkit>>
+  > = AgUiServer.agent({ toolkit: AgentToolkit, system: "Be brief", maxSteps: 5 })
+) => {
+  const { model, requests } = fakeModel(rounds)
+  const layer = AgUiServer.layerHttp({ path: "/agent", agent }).pipe(
+    Layer.provide([TestServices, model, AgentToolkitLayer])
+  )
   return { requests, layer }
 }
+
+// A client-executed tool configured on the server rather than sent by the
+// application
+const Confirm = Tool.make("Confirm", {
+  parameters: Schema.Struct({ question: Schema.String }),
+  success: Schema.Boolean,
+  execution: "client"
+})
 
 // Generated message ids differ per run
 const stableIds = (events: ReadonlyArray<any>) =>
@@ -287,6 +304,54 @@ describe("AgUiServer", () => {
             outcome: { type: "success", pendingToolCallIds: ["call-1"] },
             usage: [{ inputTokens: 3, outputTokens: 2, totalTokens: 5 }]
           })
+        }))
+    })
+
+    it.effect("lists calls to client-executed toolkit tools as pending", () => {
+      const { layer } = serveAgent(
+        [[{ type: "tool-call", id: "call-1", name: "Confirm", params: { question: "Proceed?" } }, finish("tool-calls")]],
+        AgUiServer.agent({ toolkit: Toolkit.make(Lookup, Confirm), maxSteps: 5 })
+      )
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+
+          assert.deepStrictEqual(events[events.length - 1].outcome, { type: "success", pendingToolCallIds: ["call-1"] })
+        }))
+    })
+
+    it.effect("serves an agent from an endpoint in an existing HttpApi", () => {
+      const { model, requests } = fakeModel([[
+        { type: "text-start", id: "m1" },
+        { type: "text-delta", id: "m1", delta: "Hi there" },
+        { type: "text-end", id: "m1" },
+        finish("stop")
+      ]])
+      const api = HttpApi.make("App").add(HttpApiGroup.make("ai").add(AgUiServer.endpoint("run", "/agent")))
+      const AiLive = HttpApiBuilder.group(api, "ai", (handlers) =>
+        Effect.map(
+          AgUiServer.agentHandler(AgUiServer.agent({ toolkit: AgentToolkit, maxSteps: 5 })),
+          (run) => handlers.handle("run", run)
+        ))
+      const layer = HttpApiBuilder.layer(api).pipe(
+        Layer.provide(AiLive),
+        Layer.provide([TestServices, model, AgentToolkitLayer])
+      )
+      return withLayer(layer, (handler) =>
+        Effect.gen(function*() {
+          const events = yield* post(handler, input).pipe(Effect.flatMap(readEvents))
+          assert.strictEqual(events[0].type, "RUN_STARTED")
+          assert.deepStrictEqual(events[events.length - 1], {
+            type: "RUN_FINISHED",
+            threadId: "thread-1",
+            runId: "run-1",
+            usage: [{ inputTokens: 3, outputTokens: 2, totalTokens: 5 }]
+          })
+
+          // Validation still answers before the stream opens
+          const rejected = yield* post(handler, { ...input, tools: [{ name: "Lookup", description: "Shadows" }] })
+          assert.strictEqual(rejected.status, 400)
+          assert.strictEqual(requests.length, 1)
         }))
     })
 
