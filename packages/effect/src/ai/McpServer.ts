@@ -345,33 +345,6 @@ export interface MiddlewareOptions {
   readonly sessionId: string | undefined
 }
 
-/**
- * Services a transport supplies to a request before any MCP middleware runs.
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export type TransportServices = HttpServerRequest.HttpServerRequest | McpServerClient | Scope.Scope
-
-const MissingRequestDependenciesTypeId = "~effect/ai/McpServer/MissingRequestDependencies"
-
-/**
- * The type of a middleware layer whose per-request requirements are not met.
- *
- * **Details**
- *
- * Supply the missing services through `combine` or the transport.
- * The type argument identifies the missing services.
- *
- * @stability unstable
- * @category middleware
- * @since 4.0.0
- */
-export interface MissingRequestDependencies<Missing> {
-  readonly [MissingRequestDependenciesTypeId]: Missing
-}
-
 const MiddlewareTypeId = "~effect/ai/McpServer/Middleware"
 
 type MiddlewareConfig = {
@@ -382,13 +355,11 @@ type MiddlewareConfig = {
   layerRequires: any
 }
 
-type MiddlewareLayer<Config extends MiddlewareConfig, R> = [Exclude<Config["requires"], TransportServices>] extends
-  [never] ? Layer.Layer<
-    McpRequest.From<"Requires", Config["provides"]>,
-    Config["layerError"],
-    R | Config["layerRequires"] | McpRequest.From<"Requires", Config["requires"]>
-  >
-  : MissingRequestDependencies<Exclude<Config["requires"], TransportServices>>
+type MiddlewareLayer<Config extends MiddlewareConfig, R> = Layer.Layer<
+  McpRequest.From<"Requires", Config["provides"]>,
+  Config["layerError"],
+  R | Config["layerRequires"] | McpRequest.From<"Requires", Config["requires"]>
+>
 
 /**
  * Composable MCP middleware.
@@ -397,9 +368,16 @@ type MiddlewareLayer<Config extends MiddlewareConfig, R> = [Exclude<Config["requ
  *
  * Provide `layer` to registration layers, or to the Effect form of a
  * registration, to run the middleware for those registrations. Use
- * `layerGlobal` to run it for every request on the server. `a.combine(b)` runs
- * `b` outside `a`, so services provided by `b` satisfy the per-request
- * requirements of `a`.
+ * `layerGlobal` to run it for every request on the server.
+ *
+ * Services the middleware reads per request are `McpRequest<"Requires", S>`
+ * requirements of `layer` and `layerGlobal`, like the request-level
+ * dependencies of a registration. A middleware that provides `S` meets them
+ * when it runs outside this one: `a.combine(b)` runs `b` outside `a`, and so
+ * does providing `b.layer` or `b.layerGlobal` outside `a.layer`, though
+ * `layerGlobal` installs `b` for the whole server. The transport discharges
+ * the services it supplies, and `layerHttp` turns the rest into
+ * `HttpRouter.Request` requirements that an `HttpRouter.middleware` can meet.
  *
  * @see {@link middleware} for creating MCP middleware
  *
@@ -433,8 +411,8 @@ export interface Middleware<Config extends MiddlewareConfig> {
  *
  * Pass a function, or an Effect that builds the function. Services the Effect
  * reads are requirements of the middleware layer. Services the function reads
- * per request, other than `McpRequestContext`, must come from a middleware
- * combined with `combine` or from the transport.
+ * per request, other than `McpRequestContext`, are per-request requirements
+ * of the result; see {@link Middleware} for how they are met.
  *
  * Failures must be `McpErrorBase` values. A middleware failure is sent as a
  * JSON-RPC error with its `code`, `message` and `data`, never as a tool
@@ -557,10 +535,10 @@ export declare namespace middleware {
  * it was not registered.
  *
  * The result is a `Middleware` and composes like one. The check receives the
- * same {@link MiddlewareOptions} as middleware. Services it reads per request,
- * other than `McpRequestContext`, must come from middleware combined outside it
- * with `combine`, or from the transport. Scope a visibility to some tools by
- * providing its layer to their toolkit only, or branch on `target`.
+ * same {@link MiddlewareOptions} as middleware, and services it reads per
+ * request, other than `McpRequestContext`, are met the same way. Scope a
+ * visibility to some tools by providing its layer to their toolkit only, or
+ * branch on `target`.
  *
  * On a list request, the check and the middleware outside the innermost
  * visibility run once for each registration. Middleware inside it does not
