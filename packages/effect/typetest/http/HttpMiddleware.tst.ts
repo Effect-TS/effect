@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { HttpMiddleware, type HttpServerRequest, type HttpServerResponse } from "effect/http"
+import { IpNetwork } from "effect/net"
 import { describe, expect, it } from "tstyche"
 
 declare const app: Effect.Effect<HttpServerResponse.HttpServerResponse, "app-error", "app-service">
@@ -37,5 +38,17 @@ describe("HttpMiddleware", () => {
         >
       >()
     })
+  })
+
+  it("xForwardedHeaders preserves app types", () => {
+    const middleware = HttpMiddleware.xForwardedHeaders({ trustedProxies: [IpNetwork.fromStringUnsafe("10.0.0.0/8")] })
+
+    expect(middleware(app)).type.toBe<
+      Effect.Effect<
+        HttpServerResponse.HttpServerResponse,
+        "app-error",
+        "app-service" | HttpServerRequest.HttpServerRequest
+      >
+    >()
   })
 })
