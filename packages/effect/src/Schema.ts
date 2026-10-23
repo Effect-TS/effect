@@ -5040,9 +5040,8 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
 
 type IsLiteralUnit<T> = [T] extends [never] ? false
   : IsUnion<T> extends true ? false
-  : T extends string ? {} extends Record<T, 0> ? false : true
-  : T extends number ? number extends T ? false : true
-  : T extends bigint ? bigint extends T ? false : true
+  // `${T}` is a single key only for one value, e.g. not for `string`, `number`, brands, or patterns
+  : T extends string | number | bigint ? {} extends Record<`${T}`, 0> ? false : true
   : true
 
 // non-distributive, so a union of tuples is not treated as a single omission set
