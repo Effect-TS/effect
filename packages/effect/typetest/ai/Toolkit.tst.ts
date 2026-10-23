@@ -29,4 +29,22 @@ describe("Toolkit", () => {
     )
     expect<[Decoder] extends [Effect.Services<typeof streamOnly>] ? true : false>().type.toBe<true>()
   })
+
+  it("does not require handlers for client-executed tools", () => {
+    const Ask = Tool.make("Ask", {
+      parameters: Schema.Struct({ question: Schema.String }),
+      success: Schema.Boolean,
+      execution: "client"
+    })
+    const Confirm = Tool.dynamic("Confirm", { parameters: { type: "object", properties: {} }, execution: "client" })
+    const Lookup = Tool.make("Lookup", { success: Schema.String })
+
+    expect<Tool.RequiresHandler<typeof Ask>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<typeof Confirm>>().type.toBe<false>()
+    expect<Tool.RequiresHandler<typeof Lookup>>().type.toBe<true>()
+
+    const toolkit = Toolkit.make(Ask, Confirm, Lookup)
+    expect(toolkit.toLayer).type.toBeCallableWith({ Lookup: () => Effect.succeed("value") })
+    expect(toolkit.toLayer).type.not.toBeCallableWith({})
+  })
 })
