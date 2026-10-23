@@ -9,6 +9,7 @@
  * @stability stable
  * @since 4.0.0
  */
+import * as InternalJsonSchema from "./internal/jsonSchema.ts"
 import * as InternalRecord from "./internal/record.ts"
 import { formatUriFragment, parseUriFragment } from "./JsonPointer.ts"
 import * as Predicate from "./Predicate.ts"
@@ -725,30 +726,14 @@ function transformSchema(
     for (const key of Object.keys(node)) {
       const value = node[key]
       let transformed = value
-      switch (key) {
-        case "$defs":
-        case "properties":
-        case "patternProperties":
-        case "dependentSchemas":
+      switch (InternalJsonSchema.getSubschemaKind(key)) {
+        case "map":
           transformed = mapObject(value, (value) => walk(value, inEmbeddedResource)) ?? value
           break
-        case "allOf":
-        case "anyOf":
-        case "oneOf":
-        case "prefixItems":
+        case "array":
           transformed = Array.isArray(value) ? value.map((value) => walk(value, inEmbeddedResource)) : value
           break
-        case "not":
-        case "additionalProperties":
-        case "propertyNames":
-        case "unevaluatedProperties":
-        case "items":
-        case "contains":
-        case "unevaluatedItems":
-        case "if":
-        case "then":
-        case "else":
-        case "contentSchema":
+        case "schema":
           transformed = walk(value, inEmbeddedResource)
       }
       InternalRecord.assignProperty(out, key, transformed)
@@ -1559,30 +1544,14 @@ function hasSchemaIdentifier(node: unknown): boolean {
   if (Object.hasOwn(node, "$id") || Object.hasOwn(node, "$anchor")) return true
   for (const key of Object.keys(node)) {
     const value = node[key]
-    switch (key) {
-      case "$defs":
-      case "properties":
-      case "patternProperties":
-      case "dependentSchemas":
+    switch (InternalJsonSchema.getSubschemaKind(key)) {
+      case "map":
         if (Predicate.isObject(value) && Object.values(value).some(hasSchemaIdentifier)) return true
         break
-      case "allOf":
-      case "anyOf":
-      case "oneOf":
-      case "prefixItems":
+      case "array":
         if (Array.isArray(value) && value.some(hasSchemaIdentifier)) return true
         break
-      case "not":
-      case "additionalProperties":
-      case "propertyNames":
-      case "unevaluatedProperties":
-      case "items":
-      case "contains":
-      case "unevaluatedItems":
-      case "if":
-      case "then":
-      case "else":
-      case "contentSchema":
+      case "schema":
         if (hasSchemaIdentifier(value)) return true
     }
   }

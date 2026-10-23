@@ -6,6 +6,7 @@ import type * as Schema from "../../Schema.ts"
 import * as InternalAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
+import * as InternalJsonSchema from "../jsonSchema.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
 import { fromRepresentation, fromRepresentations } from "./fromRepresentation.ts"
@@ -117,31 +118,6 @@ const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] 
 const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
 const unsupportedStructuredValue = "Only primitive values are supported in \"const\" and \"enum\"."
 const jsonSchemaPatternFlags = "u"
-
-// Keywords whose value is a subschema, or a map or array of subschemas (same table as JsonSchema.transformSchema)
-const subschemaKeywords = new Set([
-  "not",
-  "items",
-  "contains",
-  "if",
-  "then",
-  "else",
-  "additionalProperties",
-  "propertyNames",
-  "unevaluatedItems",
-  "unevaluatedProperties",
-  "contentSchema"
-])
-const subschemaContainerKeywords = new Set([
-  "$defs",
-  "properties",
-  "patternProperties",
-  "dependentSchemas",
-  "allOf",
-  "anyOf",
-  "oneOf",
-  "prefixItems"
-])
 
 function isObject(input: unknown): input is Record<string, unknown> {
   return typeof input === "object" && input !== null && !Array.isArray(input)
@@ -426,8 +402,18 @@ function translateJsonSchemaMultiDocument(
       : translateSchema(pointer.target, ["definitions", ...pointer.tokens])
     inNestedResource = wasInNestedResource
     definitionCache.set(key, representation)
-    if (pointer !== undefined && representation._tag === "Reference") {
-      resolveReference(representation, path)
+    if (pointer !== undefined) {
+      const seen = new Set<string>()
+      let alias = representation
+      while (true) {
+        if (alias._tag === "Reference") {
+          alias = resolveReference(alias, path, recursiveReferenceError, seen)
+        } else if (alias._tag === "Union" && alias.types.length === 1) {
+          alias = alias.types[0]
+        } else {
+          break
+        }
+      }
     }
     return representation
   }
@@ -485,11 +471,12 @@ function translateJsonSchemaMultiDocument(
       } else if (position === "schema" && isObject(node)) {
         if (options?.onEnter !== undefined) node = options.onEnter(node as JsonSchema.JsonSchema)
         crossesResource ||= isObject(node) && typeof node.$id === "string"
-        position = subschemaKeywords.has(token)
+        const kind = InternalJsonSchema.getSubschemaKind(token)
+        position = kind === "schema"
           ? "schema"
-          : subschemaContainerKeywords.has(token)
-          ? "container"
-          : "value"
+          : kind === undefined
+          ? "value"
+          : "container"
       } else {
         position = "value"
       }

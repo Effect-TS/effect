@@ -1358,6 +1358,94 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("rejects a circular pointer alias wrapped in anyOf", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Container: {
+            properties: {
+              value: {
+                anyOf: [{ $ref: "#/$defs/Container/properties/value" }]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Container/properties/value" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects a circular pointer alias wrapped in oneOf", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Container: {
+            properties: {
+              value: {
+                oneOf: [{ $ref: "#/$defs/Container/properties/value" }]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Container/properties/value" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects a circular alias chain through singleton unions", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Alias: {
+            oneOf: [{ $ref: "#/$defs/Container/properties/value" }]
+          },
+          Container: {
+            properties: {
+              value: {
+                anyOf: [{ $ref: "#/$defs/Alias" }]
+              }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Alias" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("allows a singleton union around a recursive object", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Tree/properties/node",
+        $defs: {
+          Tree: {
+            properties: {
+              node: {
+                anyOf: [{
+                  type: "object",
+                  properties: {
+                    next: { $ref: "#/$defs/Tree/properties/node" }
+                  }
+                }]
+              }
+            }
+          }
+        }
+      })
+      const schema = toSchemaFromJsonSchemaDocument(document)
+      const is = Schema.is(schema)
+
+      assert.isTrue(is({ next: { next: {} } }))
+      assert.isFalse(is({ next: { next: 1 } }))
+    })
+
     it("allows aliases that recurse through object properties", () => {
       const document = JsonSchema.fromSchemaDraft2020_12({
         $ref: "#/$defs/Alias",
