@@ -6,6 +6,10 @@ export const ID = Schema.String
 /** An instant, as an ISO-8601 string. */
 export const DateTime = Schema.DateTimeUtcFromString
 
+/** - `ANY` */
+export const ReadonlyArray = Schema.Literals(["ANY"])
+export type ReadonlyArray = typeof ReadonlyArray.Type
+
 /**
  * What a member may do in a room.
  *
@@ -20,18 +24,22 @@ export type Role = typeof Role.Type
 export const MessageFilter: Schema.Codec<MessageFilter, MessageFilterEncoded> = Schema.Struct({
   postedAfter: Schema.optional(Schema.NullOr(DateTime)),
   member: Schema.optional(Schema.NullOr(Schema.suspend(() => MemberMatch))),
-  or: Schema.optional(Schema.NullOr(Schema.Array(Schema.suspend(() => MessageFilter))))
+  or: Schema.optional(Schema.NullOr(Schema.Array(Schema.suspend(() => MessageFilter)))),
+  shadow: Schema.optional(Schema.NullOr(ReadonlyArray))
 })
 export interface MessageFilter {
   readonly postedAfter?: typeof DateTime.Type | null | undefined
   readonly member?: MemberMatch | null | undefined
   /** Any of these filters. */
   readonly or?: ReadonlyArray<MessageFilter> | null | undefined
+  /** A type named like a TypeScript global, which generated code must not shadow. */
+  readonly shadow?: ReadonlyArray | null | undefined
 }
 export interface MessageFilterEncoded {
   readonly postedAfter?: typeof DateTime.Encoded | null | undefined
   readonly member?: MemberMatchEncoded | null | undefined
   readonly or?: ReadonlyArray<MessageFilterEncoded> | null | undefined
+  readonly shadow?: typeof ReadonlyArray.Encoded | null | undefined
 }
 
 /** Exactly one way to match a member. */

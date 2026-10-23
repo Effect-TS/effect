@@ -109,6 +109,12 @@ input MessageFilter {
   member: MemberMatch
   "Any of these filters."
   or: [MessageFilter!]
+  "A type named like a TypeScript global, which generated code must not shadow."
+  shadow: ReadonlyArray
+}
+
+enum ReadonlyArray {
+  ANY
 }
 
 """
