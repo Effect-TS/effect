@@ -327,6 +327,12 @@ const Content = Schema.Union([Schema.String, withoutUnknownMembers(ContentPart, 
 // Messages
 // =============================================================================
 
+const messageFields = {
+  subagentRunId: Schema.optionalKey(Schema.String),
+  id: Schema.String,
+  metadata: Schema.optionalKey(Metadata)
+}
+
 /**
  * Schema for instructions from the application developer.
  *
@@ -335,12 +341,10 @@ const Content = Schema.Union([Schema.String, withoutUnknownMembers(ContentPart, 
  * @since 4.1.0
  */
 export const DeveloperMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("developer"),
   name: Schema.optionalKey(Schema.String),
   encryptedValue: Schema.optionalKey(Schema.String),
-  metadata: Schema.optionalKey(Metadata),
   content: Schema.String
 })
 
@@ -361,12 +365,10 @@ export type DeveloperMessage = typeof DeveloperMessage.Type
  * @since 4.1.0
  */
 export const SystemMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("system"),
   name: Schema.optionalKey(Schema.String),
   encryptedValue: Schema.optionalKey(Schema.String),
-  metadata: Schema.optionalKey(Metadata),
   content: Schema.String
 })
 
@@ -420,12 +422,10 @@ const toolCallTypes: ReadonlySet<string> = new Set(["function"])
  * @since 4.1.0
  */
 export const AssistantMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("assistant"),
   name: Schema.optionalKey(Schema.String),
   encryptedValue: Schema.optionalKey(Schema.String),
-  metadata: Schema.optionalKey(Metadata),
   content: Schema.optionalKey(Schema.String),
   toolCalls: Schema.optionalKey(
     withoutUnknownMembers(ToolCall, (value) => hasUnknownTag(value, "type", toolCallTypes))
@@ -449,12 +449,10 @@ export type AssistantMessage = typeof AssistantMessage.Type
  * @since 4.1.0
  */
 export const UserMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("user"),
   name: Schema.optionalKey(Schema.String),
   encryptedValue: Schema.optionalKey(Schema.String),
-  metadata: Schema.optionalKey(Metadata),
   content: Content
 })
 
@@ -479,14 +477,12 @@ export type UserMessage = typeof UserMessage.Type
  * @since 4.1.0
  */
 export const ToolMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("tool"),
   content: Content,
   toolCallId: Schema.String,
   error: Schema.optionalKey(Schema.String),
-  encryptedValue: Schema.optionalKey(Schema.String),
-  metadata: Schema.optionalKey(Metadata)
+  encryptedValue: Schema.optionalKey(Schema.String)
 })
 
 /**
@@ -506,12 +502,10 @@ export type ToolMessage = typeof ToolMessage.Type
  * @since 4.1.0
  */
 export const ActivityMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("activity"),
   activityType: Schema.String,
-  content: Schema.Record(Schema.String, Schema.Unknown),
-  metadata: Schema.optionalKey(Metadata)
+  content: Schema.Record(Schema.String, Schema.Unknown)
 })
 
 /**
@@ -532,12 +526,10 @@ export type ActivityMessage = typeof ActivityMessage.Type
  * @since 4.1.0
  */
 export const ReasoningMessage = Schema.Struct({
-  subagentRunId: Schema.optionalKey(Schema.String),
-  id: Schema.String,
+  ...messageFields,
   role: Schema.Literal("reasoning"),
   content: Schema.String,
-  encryptedValue: Schema.optionalKey(Schema.String),
-  metadata: Schema.optionalKey(Metadata)
+  encryptedValue: Schema.optionalKey(Schema.String)
 })
 
 /**

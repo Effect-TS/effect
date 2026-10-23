@@ -226,48 +226,46 @@ export const fromStreamParts = <E, R>(
         ? { type: "TOOL_CALL_START", toolCallId: id, toolCallName: name }
         : { type: "TOOL_CALL_START", toolCallId: id, toolCallName: name, parentMessageId }
 
-    const toEvents = (
-      part: Response.AnyPart
-    ): Effect.Effect<ReadonlyArray<AgUiSchema.Event>> | ReadonlyArray<AgUiSchema.Event> => {
+    const toEvents = (part: Response.AnyPart): Effect.Effect<ReadonlyArray<AgUiSchema.Event>> => {
       switch (part.type) {
         case "text-start": {
           parentMessageId = part.id
-          return [{ type: "TEXT_MESSAGE_START", messageId: part.id, role: "assistant" }]
+          return Effect.succeed([{ type: "TEXT_MESSAGE_START", messageId: part.id, role: "assistant" }])
         }
         case "text-delta":
-          return [{ type: "TEXT_MESSAGE_CONTENT", messageId: part.id, delta: part.delta }]
+          return Effect.succeed([{ type: "TEXT_MESSAGE_CONTENT", messageId: part.id, delta: part.delta }])
         case "text-end":
-          return [{ type: "TEXT_MESSAGE_END", messageId: part.id }]
+          return Effect.succeed([{ type: "TEXT_MESSAGE_END", messageId: part.id }])
         case "reasoning-start":
-          return [
+          return Effect.succeed([
             { type: "REASONING_START", messageId: part.id },
             { type: "REASONING_MESSAGE_START", messageId: part.id, role: "reasoning" }
-          ]
+          ])
         case "reasoning-delta":
-          return [{ type: "REASONING_MESSAGE_CONTENT", messageId: part.id, delta: part.delta }]
+          return Effect.succeed([{ type: "REASONING_MESSAGE_CONTENT", messageId: part.id, delta: part.delta }])
         case "reasoning-end":
-          return [
+          return Effect.succeed([
             { type: "REASONING_MESSAGE_END", messageId: part.id },
             { type: "REASONING_END", messageId: part.id }
-          ]
+          ])
         case "tool-params-start": {
           streamedToolCalls.add(part.id)
-          return [toolCallStart(part.id, part.name)]
+          return Effect.succeed([toolCallStart(part.id, part.name)])
         }
         case "tool-params-delta":
-          return [{ type: "TOOL_CALL_ARGS", toolCallId: part.id, delta: part.delta }]
+          return Effect.succeed([{ type: "TOOL_CALL_ARGS", toolCallId: part.id, delta: part.delta }])
         case "tool-params-end":
-          return [{ type: "TOOL_CALL_END", toolCallId: part.id }]
+          return Effect.succeed([{ type: "TOOL_CALL_END", toolCallId: part.id }])
         case "tool-call": {
-          if (streamedToolCalls.has(part.id)) return []
-          return [
+          if (streamedToolCalls.has(part.id)) return noEvents
+          return Effect.succeed([
             toolCallStart(part.id, part.name),
             { type: "TOOL_CALL_ARGS", toolCallId: part.id, delta: JSON.stringify(part.params ?? {}) },
             { type: "TOOL_CALL_END", toolCallId: part.id }
-          ]
+          ])
         }
         case "tool-result": {
-          if (part.preliminary) return []
+          if (part.preliminary) return noEvents
           const content = typeof part.encodedResult === "string"
             ? part.encodedResult
             : JSON.stringify(part.encodedResult) ?? ""
@@ -286,28 +284,24 @@ export const fromStreamParts = <E, R>(
         case "finish": {
           inStep = false
           parentMessageId = undefined
-          return [{ type: "STEP_FINISHED", stepName: `step-${step}` }]
+          return Effect.succeed([{ type: "STEP_FINISHED", stepName: `step-${step}` }])
         }
         case "error":
           return Effect.as(Effect.logError(part.error), [{ type: "RUN_ERROR", message: modelErrorMessage }])
         default:
-          return []
+          return noEvents
       }
     }
 
     return Stream.mapEffect(self, (part) => {
-      if (inStep) {
-        const events = toEvents(part)
-        return Effect.isEffect(events) ? events : Effect.succeed(events)
-      }
+      if (inStep) return toEvents(part)
       inStep = true
       const started: AgUiSchema.Event = { type: "STEP_STARTED", stepName: `step-${++step}` }
-      const events = toEvents(part)
-      return Effect.isEffect(events)
-        ? Effect.map(events, (events) => [started, ...events])
-        : Effect.succeed([started, ...events])
+      return Effect.map(toEvents(part), (events) => [started, ...events])
     }).pipe(Stream.flattenIterable)
   }))
+
+const noEvents = Effect.succeed<ReadonlyArray<AgUiSchema.Event>>([])
 
 const modelErrorMessage = "The model reported an error."
 
@@ -455,13 +449,15 @@ export const withRunLifecycle = (run: {
     }
 
     const started: AgUiSchema.Event = { type: "RUN_STARTED", threadId, runId, protocolVersion }
+    const finished: AgUiSchema.Event = { type: "RUN_FINISHED", threadId, runId }
 
     return self.pipe(
       Stream.map(track),
       Stream.flattenIterable,
       Stream.takeUntil((event) => event.type === "RUN_FINISHED" || event.type === "RUN_ERROR"),
       Stream.catchCause((cause) => {
-        if (Cause.hasInterruptsOnly(cause)) return Stream.failCause(cause)
+        // An interrupt-only cause carries no failure of type E
+        if (Cause.hasInterruptsOnly(cause)) return Stream.failCause(cause as Cause.Cause<never>)
         ended = true
         return Stream.fromEffect(
           Effect.logError(cause).pipe(
@@ -470,11 +466,9 @@ export const withRunLifecycle = (run: {
           )
         )
       }),
-      Stream.concat(Stream.suspend(() =>
-        ended ? Stream.empty : Stream.fromIterable([...closeOpen(), { type: "RUN_FINISHED", threadId, runId }])
-      )),
+      Stream.concat(Stream.suspend(() => ended ? Stream.empty : Stream.fromIterable([...closeOpen(), finished]))),
       Stream.prepend([started])
-    ) as Stream.Stream<AgUiSchema.Event, never, R>
+    )
   })
 
 const runErrorMessage = "The agent run failed."
