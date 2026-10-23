@@ -198,6 +198,16 @@ describe("Context", () => {
     strictEqual((context as unknown as { depth: number }).depth, 0)
   })
 
+  it("keeps maxDepth when picking zero or one key", () => {
+    const source = Context.makeUnsafe(new Map([[A.key, 1]]), { maxDepth: 2 })
+    for (let context of [Context.pick()(source), Context.pick(A)(source)]) {
+      context = Context.add(context, B, 2).pipe(Context.add(C, 3))
+      strictEqual((context as unknown as { depth: number }).depth, 2)
+      context = Context.add(context, A, 4)
+      strictEqual((context as unknown as { depth: number }).depth, 0)
+    }
+  })
+
   it("uses depth 8 by default, for invalid options, and after mergeAll", () => {
     const contexts = [
       Context.makeUnsafe(new Map()),
