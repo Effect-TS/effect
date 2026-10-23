@@ -1321,6 +1321,67 @@ describe("fromJsonSchemaDocument", () => {
       assert.isFalse(is({ next: { next: 1 } }))
     })
 
+    it("rejects a pointer that refers directly to itself", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Container: {
+            properties: {
+              value: { $ref: "#/$defs/Container/properties/value" }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Container/properties/value" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("rejects a pointer that refers back to itself through a definition", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Container/properties/value",
+        $defs: {
+          Alias: { $ref: "#/$defs/Container/properties/value" },
+          Container: {
+            properties: {
+              value: { $ref: "#/$defs/Alias" }
+            }
+          }
+        }
+      })
+
+      throws(
+        () => toSchemaFromJsonSchemaDocument(document),
+        `Definition "Alias" is a circular alias.\n  at ["schema"]["$ref"]`
+      )
+    })
+
+    it("allows aliases that recurse through object properties", () => {
+      const document = JsonSchema.fromSchemaDraft2020_12({
+        $ref: "#/$defs/Alias",
+        $defs: {
+          Alias: { $ref: "#/$defs/Tree/properties/node" },
+          Tree: {
+            properties: {
+              node: {
+                type: "object",
+                properties: {
+                  next: { $ref: "#/$defs/Alias" }
+                }
+              }
+            }
+          }
+        }
+      })
+      const schema = toSchemaFromJsonSchemaDocument(document)
+      const is = Schema.is(schema)
+
+      assert.isTrue(is({ next: { next: {} } }))
+      assert.isFalse(is({ next: { next: 1 } }))
+    })
+
     it("exports a reference below a definition as one shared definition", () => {
       const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
         type: "object",

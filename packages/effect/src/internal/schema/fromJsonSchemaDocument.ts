@@ -426,6 +426,9 @@ function translateJsonSchemaMultiDocument(
       : translateSchema(pointer.target, ["definitions", ...pointer.tokens])
     inNestedResource = wasInNestedResource
     definitionCache.set(key, representation)
+    if (pointer !== undefined && representation._tag === "Reference") {
+      resolveReference(representation, path)
+    }
     return representation
   }
 

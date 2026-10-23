@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-`SchemaRepresentation.fromJsonSchemaDocument` now resolves `$ref` pointers below a top-level definition, such as `#/$defs/update/properties/schedule`, as shared, possibly recursive, definitions instead of rejecting the document.
+`SchemaRepresentation.fromJsonSchemaDocument` now supports `$ref` pointers below top-level definitions, including shared and recursive schemas, and rejects circular pointer aliases during import.
