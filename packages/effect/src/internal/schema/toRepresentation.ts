@@ -18,9 +18,9 @@ interface ReferenceCandidate {
   readonly fallback: string | undefined
   readonly content: Content | undefined
   occurrences: number
-  visiting: boolean
-  isRecursive: boolean
-  reference: string | undefined
+  visiting?: boolean | undefined
+  isRecursive?: boolean | undefined
+  reference?: string | undefined
   emitted?: boolean | undefined
 }
 
@@ -73,7 +73,7 @@ export function toRepresentations(
     }
   }
 
-  const representations = Arr.map(asts, (ast) => recur(ast))
+  const representations = Arr.map(asts, recur)
 
   return { representations, references }
 
@@ -149,18 +149,16 @@ export function toRepresentations(
         identifier,
         fallback,
         content,
-        occurrences: 0,
-        visiting: false,
-        isRecursive: false,
-        reference: undefined
+        occurrences: 0
       }
       variants.push(candidate)
     }
     return candidate
   }
 
-  function visit(input: SchemaAST.AST): void {
+  function visit(input: SchemaAST.AST): SchemaAST.AST {
     visitCandidate(getCandidate(input))
+    return input
   }
 
   function visitCandidate(candidate: ReferenceCandidate): void {
@@ -175,14 +173,8 @@ export function toRepresentations(
     if (candidate.content?.schema !== undefined) visitCandidate(candidate.content.schema)
     visitChecks(ast.checks)
     switch (ast._tag) {
-      case "Declaration":
-      case "Arrays":
-      case "Objects":
-      case "Union":
-        ast.recur((child) => {
-          visit(child)
-          return child
-        })
+      default:
+        if ("recur" in ast) ast.recur(visit)
         break
       case "TemplateLiteral":
         ast.parts.forEach(visit)
@@ -221,58 +213,55 @@ export function toRepresentations(
   }
 
   function on(ast: SchemaAST.AST, content: Content | undefined): SchemaRepresentation.Representation {
-    const checks = fromChecks(ast.checks)
+    const common = {
+      checks: ast.checks?.map(fromCheck) ?? [],
+      ...(ast._tag === "Declaration" ? fromAnnotations(ast.annotations) : annotationsField(ast.annotations))
+    }
     switch (ast._tag) {
       case "Declaration":
         return {
-          _tag: "Declaration",
-          typeParameters: ast.typeParameters.map((ast) => recur(ast)),
-          checks,
-          ...fromAnnotations(ast.annotations)
+          _tag: ast._tag,
+          typeParameters: ast.typeParameters.map(recur),
+          ...common
         }
       default:
         return {
           _tag: ast._tag,
-          checks,
-          ...annotationsField(ast.annotations),
           ...(content === undefined ? undefined : {
             content: {
               mediaType: content.mediaType,
               ...(content.schema === undefined ? undefined : { schema: recurCandidate(content.schema) })
             }
-          })
+          }),
+          ...common
         }
       case "Literal":
         return {
-          _tag: "Literal",
+          _tag: ast._tag,
           literal: ast.literal,
-          checks,
-          ...annotationsField(ast.annotations)
+          ...common
         }
       case "UniqueSymbol":
         return {
-          _tag: "UniqueSymbol",
+          _tag: ast._tag,
           symbol: ast.symbol,
-          checks,
-          ...annotationsField(ast.annotations)
+          ...common
         }
       case "Enum":
         return {
-          _tag: "Enum",
+          _tag: ast._tag,
           enums: ast.enums,
-          checks,
-          ...annotationsField(ast.annotations)
+          ...common
         }
       case "TemplateLiteral":
         return {
-          _tag: "TemplateLiteral",
-          parts: ast.parts.map((ast) => recur(ast)),
-          checks,
-          ...annotationsField(ast.annotations)
+          _tag: ast._tag,
+          parts: ast.parts.map(recur),
+          ...common
         }
       case "Arrays":
         return {
-          _tag: "Arrays",
+          _tag: ast._tag,
           elements: ast.elements.map((element) => {
             const projected = SchemaAST.getLastEncoding(element)
             const annotations = projected.context?.annotations
@@ -282,13 +271,12 @@ export function toRepresentations(
               ...annotationsField(annotations)
             }
           }),
-          rest: ast.rest.map((ast) => recur(ast)),
-          checks,
-          ...annotationsField(ast.annotations)
+          rest: ast.rest.map(recur),
+          ...common
         }
       case "Objects":
         return {
-          _tag: "Objects",
+          _tag: ast._tag,
           propertySignatures: ast.propertySignatures.map((property) => {
             const projected = SchemaAST.getLastEncoding(property.type)
             const annotations = projected.context?.annotations
@@ -304,31 +292,23 @@ export function toRepresentations(
             parameter: recur(index.parameter),
             type: recur(index.type)
           })),
-          checks,
-          ...annotationsField(ast.annotations)
+          ...common
         }
       case "Union":
         return {
-          _tag: "Union",
-          types: ast.types.map((ast) => recur(ast)),
+          _tag: ast._tag,
+          types: ast.types.map(recur),
           ...(ast.options === undefined ? {} : { options: ast.options }),
-          checks,
-          ...annotationsField(ast.annotations)
+          ...common
         }
       case "Suspend":
         return {
-          _tag: "Suspend",
+          _tag: ast._tag,
+          ...common,
           checks: [],
-          thunk: recur(ast.thunk()),
-          ...annotationsField(ast.annotations)
+          thunk: recur(ast.thunk())
         }
     }
-  }
-
-  function fromChecks(
-    checks: readonly [SchemaAST.Check<any>, ...Array<SchemaAST.Check<any>>] | undefined
-  ): Array<SchemaRepresentation.Check> {
-    return checks?.map(fromCheck) ?? []
   }
 
   function fromCheck(

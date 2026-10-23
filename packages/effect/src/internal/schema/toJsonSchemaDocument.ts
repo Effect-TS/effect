@@ -398,14 +398,17 @@ function compileJsonSchema(
 
     const local: Array<Exactness> = []
     dependencies.push(local)
-    let output = on(representation, path, local)
-    const ordinary = collectJsonSchemaAnnotations(representation.annotations, options)
-    if (ordinary !== undefined) {
-      if (representation._tag === "String" && representation.content !== undefined) {
-        delete ordinary.contentMediaType
-        delete ordinary.contentSchema
+    let output = {
+      ...on(representation, path, local),
+      ...collectJsonSchemaAnnotations(representation.annotations, options)
+    }
+    if (representation._tag === "String" && representation.content !== undefined) {
+      const content = representation.content
+      output.contentMediaType = content.mediaType
+      delete output.contentSchema
+      if (content.schema !== undefined) {
+        output.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
       }
-      output = { ...output, ...ordinary }
     }
     for (let index = 0; index < representation.checks.length; index++) {
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined
@@ -446,17 +449,8 @@ function compileJsonSchema(
         return recur(representation.thunk, [...path, "thunk"], dependencies)
       case "Never":
         return { not: {} }
-      case "String": {
-        const out: JsonSchema.JsonSchema = { type: "string" }
-        const content = representation.content
-        if (content !== undefined) {
-          out.contentMediaType = content.mediaType
-          if (content.schema !== undefined) {
-            out.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
-          }
-        }
-        return out
-      }
+      case "String":
+        return { type: "string" }
       case "Number":
         return {
           anyOf: [
