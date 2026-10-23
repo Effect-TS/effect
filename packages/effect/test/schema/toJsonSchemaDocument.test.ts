@@ -2542,6 +2542,233 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
+  describe("TemplateLiteral segments", () => {
+    const segment = Schema.String.check(Schema.isPattern(/^abc$/u))
+    const template = Schema.TemplateLiteral(["item.", segment])
+    const templates = [
+      ["direct", template],
+      ["named", Schema.TemplateLiteral(["item.", segment.annotate({ identifier: "Segment" })])],
+      ["named template", template.annotate({ identifier: "Item" })],
+      ["nested template", Schema.TemplateLiteral(["item.", Schema.TemplateLiteral([segment])])],
+      ["union", Schema.TemplateLiteral(["item.", Schema.Union([segment, Schema.Literal("def")])])]
+    ] as const
+
+    it("resolves repeated named segments without checks", () => {
+      const named = Schema.String.annotate({ identifier: "Segment" })
+      const schema = Schema.TemplateLiteral([named, ".", named])
+      assertJsonSchemaDocument(schema, {
+        schema: { type: "string", pattern: "^[\\s\\S]*?\\.[\\s\\S]*?$" },
+        definitions: { Segment: { type: "string" } }
+      })
+      assertJsonSchemaAcceptsEffectValues(schema, ["abc.xyz", "."])
+    })
+
+    it("resolves named nested templates and union segments", () => {
+      const named = Schema.String.annotate({ identifier: "Segment" })
+      const nested = Schema.TemplateLiteral(["item.", named]).annotate({ identifier: "Nested" })
+      const choice = Schema.Union([nested, Schema.Literal("other")]).annotate({ identifier: "Choice" })
+      const schema = Schema.TemplateLiteral([choice, ".", named])
+      const document = Schema.toJsonSchemaDocument(schema)
+
+      deepStrictEqual(document.schema, {
+        type: "string",
+        pattern: "^(?:item\\.[\\s\\S]*?|other)\\.[\\s\\S]*?$"
+      })
+      assertJsonSchemaAcceptsEffectValues(schema, ["item.abc.xyz", "other.xyz"])
+    })
+
+    it("resolves named segments in record keys", () => {
+      const named = Schema.String.annotate({ identifier: "Segment" })
+      const schema = Schema.Record(Schema.TemplateLiteral(["item.", named]), Schema.Finite)
+
+      assertJsonSchemaDocument(schema, {
+        schema: {
+          type: "object",
+          patternProperties: { "^item\\.[\\s\\S]*?$": { type: "number" } },
+          additionalProperties: false
+        },
+        definitions: { Segment: { type: "string" } }
+      })
+      assertJsonSchemaAcceptsEffectValues(schema, [{ "item.abc": 1 }])
+    })
+
+    it.each(
+      [
+        ["unnamed", segment],
+        ["named", segment.annotate({ identifier: "Segment" })]
+      ] as const
+    )("approximates %s segment checks while preserving runtime validation", (_, part) => {
+      const schema = Schema.TemplateLiteral(["item.", part])
+      assert.strictEqual(Schema.is(schema)("item.abc"), true)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), false)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), true)
+      assert.strictEqual(validate("item.xyz"), true)
+      assert.strictEqual(validate("other.abc"), false)
+      deepStrictEqual(document.schema, { type: "string", pattern: "^item\\.[\\s\\S]*?$" })
+    })
+
+    it.each(templates)("uses anyOf when %s segment checks are omitted", (_, part) => {
+      const schema = Schema.Union([part, Schema.Literal("item.xyz")], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(schema)("item.abc"), true)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), true)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), true)
+      assert.strictEqual(validate("item.xyz"), true)
+      assert.strictEqual(validate("other.abc"), false)
+      assert.isDefined(document.schema.anyOf)
+      assert.isUndefined(document.schema.oneOf)
+    })
+
+    it("uses anyOf when numeric segment checks are omitted", () => {
+      const schema = Schema.Union([
+        Schema.TemplateLiteral(["item.", Schema.Int]),
+        Schema.Literal("item.1.5")
+      ], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(schema)("item.1"), true)
+      assert.strictEqual(Schema.is(schema)("item.1.5"), true)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.1"), true)
+      assert.strictEqual(validate("item.1.5"), true)
+      assert.strictEqual(validate("item.abc"), false)
+      assert.isDefined(document.schema.anyOf)
+      assert.isUndefined(document.schema.oneOf)
+    })
+
+    it.each(["unnamed", "named"] as const)("uses anyOf when %s segments lose oneOf exclusivity", (name) => {
+      const segment = Schema.Union([Schema.String, Schema.Literal("abc")], { mode: "oneOf" })
+      const part = name === "named" ? segment.annotate({ identifier: "Segment" }) : segment
+      const template = Schema.TemplateLiteral(["item.", part])
+      const schema = Schema.Union([template, Schema.Literal("item.abc")], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(template)("item.abc"), false)
+      assert.strictEqual(Schema.is(schema)("item.abc"), true)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), true)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), true)
+      assert.strictEqual(validate("item.xyz"), true)
+      assert.strictEqual(validate("other.abc"), false)
+      assert.isDefined(document.schema.anyOf)
+      assert.isUndefined(document.schema.oneOf)
+      if (name === "named") assert.isDefined(document.definitions.Segment.oneOf)
+    })
+
+    describe("empty union segments", () => {
+      const anyOf = Schema.Union([])
+      const oneOf = Schema.Union([], { mode: "oneOf" })
+      const segments = [
+        ["unnamed anyOf", anyOf],
+        ["named anyOf", anyOf.annotate({ identifier: "EmptySegment" })],
+        ["unnamed oneOf", oneOf],
+        ["named oneOf", oneOf.annotate({ identifier: "EmptySegment" })]
+      ] as const
+
+      it.each(segments)("preserves surrounding oneOf for %s", (_, part) => {
+        const template = Schema.TemplateLiteral(["item.", part])
+        const schema = Schema.Union([template, Schema.Literal("item.")], { mode: "oneOf" })
+        assert.strictEqual(Schema.is(template)("item."), false)
+        assert.strictEqual(Schema.is(schema)("item."), true)
+        assert.strictEqual(Schema.is(schema)("item.abc"), false)
+
+        const document = Schema.toJsonSchemaDocument(schema)
+        const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+        assert.strictEqual(validate("item."), true)
+        assert.strictEqual(validate("item.abc"), false)
+        assert.isDefined(document.schema.oneOf)
+        assert.isUndefined(document.schema.anyOf)
+      })
+
+      it.each(segments)("does not select record keys for %s", (_, part) => {
+        const schema = Schema.Record(Schema.TemplateLiteral(["item.", part]), Schema.Finite)
+        const input = { "item.": "ignored" }
+        deepStrictEqual(Schema.decodeUnknownSync(schema)(input), {})
+
+        const document = Schema.toJsonSchemaDocument(schema)
+        const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+        assert.strictEqual(validate(input), true)
+        assert.isDefined(document.schema.patternProperties)
+
+        const strict = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+        const validateStrict = ajvDraft2020_12.compile({ ...strict.schema, $defs: strict.definitions })
+        assert.strictEqual(validateStrict({}), true)
+        assert.strictEqual(validateStrict({ "item.": 1 }), false)
+      })
+    })
+
+    it.each(
+      [
+        ["string", Schema.String],
+        ["anyOf union", Schema.Union([Schema.String, Schema.Literal("abc")])]
+      ] as const
+    )("keeps oneOf when the %s segment is exported exactly", (_, part) => {
+      const schema = Schema.Union([
+        Schema.TemplateLiteral(["item.", part]),
+        Schema.Literal("item.xyz")
+      ], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(schema)("item.abc"), true)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), false)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), true)
+      assert.strictEqual(validate("item.xyz"), false)
+      assert.isDefined(document.schema.oneOf)
+    })
+
+    it("keeps oneOf when a check on the whole template is exported exactly", () => {
+      const schema = Schema.Union([
+        Schema.TemplateLiteral(["item.", Schema.String]).check(Schema.isPattern(/^item\.abc$/u)),
+        Schema.Literal("item.abc")
+      ], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(schema)("item.abc"), false)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), false)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), false)
+      assert.strictEqual(validate("item.xyz"), false)
+      assert.isDefined(document.schema.oneOf)
+    })
+
+    it.each(templates)("does not apply record value checks to keys outside the %s filtered template", (_, part) => {
+      const schema = Schema.Record(part, Schema.Finite)
+      const input = { "item.abc": 1, "item.xyz": "ignored" }
+      deepStrictEqual(Schema.decodeUnknownSync(schema)(input), { "item.abc": 1 })
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate(input), true)
+      deepStrictEqual(document.schema, { type: "object", additionalProperties: true })
+    })
+
+    it.each(templates)(
+      "does not apply %s template record value checks to explicit properties in strict mode",
+      (_, part) => {
+        const schema = Schema.StructWithRest(
+          Schema.Struct({ "item.xyz": Schema.String }),
+          [Schema.Record(part, Schema.Finite)]
+        )
+        const input = { "item.abc": 1, "item.xyz": "text" }
+        deepStrictEqual<unknown>(Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(input), input)
+
+        const document = Schema.toJsonSchemaDocument(schema, { onExcessProperty: "error" })
+        const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+        assert.strictEqual(validate(input), true)
+        assert.strictEqual(validate({ "item.abc": "not a number", "item.xyz": "text" }), false)
+        assert.strictEqual(validate({ "item.abc": 1, "item.xyz": "text", other: 1 }), false)
+        assert.isUndefined(document.schema.patternProperties)
+        assert.isDefined(document.schema.propertyNames)
+      }
+    )
+  })
+
   describe("Struct", () => {
     it("empty struct", () => {
       const schema = Schema.Struct({})
