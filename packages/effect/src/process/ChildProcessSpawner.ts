@@ -230,12 +230,16 @@ export const makeHandle = (params: Omit<ChildProcessHandle, typeof HandleTypeId>
  * @since 4.0.0
  */
 export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProcessSpawner["Service"] => {
+  // The derived helpers own the handle, so they read the output they do not
+  // return. An unread pipe can fill and block the child before it exits.
+  const drainOutput = (output: Stream.Stream<Uint8Array, PlatformError.PlatformError>) =>
+    Effect.forkScoped(Stream.runDrain(output))
   const streamString: ChildProcessSpawner["Service"]["streamLines"] = (command, options) =>
     spawn(command).pipe(
-      Effect.map((handle) =>
-        Stream.decodeText(
-          options?.includeStderr === true ? handle.all : handle.stdout
-        )
+      Effect.flatMap((handle) =>
+        options?.includeStderr === true
+          ? Effect.succeed(Stream.decodeText(handle.all))
+          : Effect.as(drainOutput(handle.stderr), Stream.decodeText(handle.stdout))
       ),
       Stream.unwrap
     )
@@ -244,7 +248,10 @@ export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProce
 
   return ChildProcessSpawner.of({
     spawn,
-    exitCode: (command) => Effect.scoped(Effect.flatMap(spawn(command), (handle) => handle.exitCode)),
+    exitCode: (command) =>
+      Effect.scoped(
+        Effect.flatMap(spawn(command), (handle) => Effect.andThen(drainOutput(handle.all), handle.exitCode))
+      ),
     streamString,
     streamLines,
     lines: (command, options) => Stream.runCollect(streamLines(command, options)),
@@ -269,6 +276,10 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
 
   /**
    * Run a command and return its exit code.
+   *
+   * **Details**
+   *
+   * Piped `stdout` and `stderr` output is read and discarded.
    */
   exitCode(
     command: Command
@@ -277,6 +288,10 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
   /**
    * Stream the output of a command as strings. Optionally include stderr output
    * interleaved with stdout.
+   *
+   * **Details**
+   *
+   * Without `includeStderr`, piped `stderr` output is read and discarded.
    */
   streamString(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
@@ -285,6 +300,10 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
   /**
    * Stream the output of a command as lines. Optionally include stderr output
    * interleaved with stdout.
+   *
+   * **Details**
+   *
+   * Without `includeStderr`, piped `stderr` output is read and discarded.
    */
   streamLines(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
@@ -292,6 +311,10 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
 
   /**
    * Run a command and return the lines of its output as an array of strings.
+   *
+   * **Details**
+   *
+   * Without `includeStderr`, piped `stderr` output is read and discarded.
    */
   lines(command: Command, options?: {
     readonly includeStderr?: boolean | undefined
@@ -299,6 +322,10 @@ export class ChildProcessSpawner extends Context.Service<ChildProcessSpawner, {
 
   /**
    * Run a command and return its output as a string.
+   *
+   * **Details**
+   *
+   * Without `includeStderr`, piped `stderr` output is read and discarded.
    */
   string(command: Command, options?: {
     readonly includeStderr?: boolean | undefined

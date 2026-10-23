@@ -1268,5 +1268,37 @@ export const suite = (
           assert.strictEqual(lines[0], "1")
           assert.strictEqual(lines[99999], "100000")
         }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.exitCode should not deadlock on large output", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const stdout = yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "seq 1 100000"]))
+          const stderr = yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; exit 3"]))
+
+          assert.strictEqual(stdout, ChildProcessSpawner.ExitCode(0))
+          assert.strictEqual(stderr, ChildProcessSpawner.ExitCode(3))
+        }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.string and lines should not deadlock on large stderr output", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const command = ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"])
+          const output = yield* spawner.string(command)
+          const lines = yield* spawner.lines(command)
+
+          assert.strictEqual(output, "done")
+          assert.deepStrictEqual(lines, ["done"])
+        }), { timeout: 10_000 })
+
+      it.effect("ChildProcess.string should include stderr only with includeStderr", () =>
+        Effect.gen(function*() {
+          const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+          const command = ChildProcess.make("sh", ["-c", "printf out; printf err >&2"])
+          const stdoutOnly = yield* spawner.string(command)
+          const combined = yield* spawner.string(command, { includeStderr: true })
+
+          assert.strictEqual(stdoutOnly, "out")
+          assert.deepStrictEqual([...combined.matchAll(/out|err/g)].map(([match]) => match).sort(), ["err", "out"])
+        }))
     })
   })
