@@ -683,10 +683,12 @@ function compileJsonSchema(
           ? [schema.pattern]
           : undefined
       }
-      case "TemplateLiteral":
-        return parameter.checks.length === 0
-          ? [`^${getTemplateLiteralPattern(parameter.parts, [], new Set())}$`]
-          : undefined
+      case "TemplateLiteral": {
+        if (parameter.checks.length > 0) return undefined
+        const dependencies: Array<Exactness> = []
+        const pattern = getTemplateLiteralPattern(parameter.parts, dependencies, new Set())
+        return isExact(dependencies) ? [`^${pattern}$`] : undefined
+      }
       case "Union": {
         if (parameter.types.length === 0 || parameter.checks.length > 0 || parameter.options?.mode === "oneOf") {
           return undefined
