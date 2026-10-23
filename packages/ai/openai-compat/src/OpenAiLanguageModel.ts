@@ -1375,22 +1375,12 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
-const toolParametersError = (tool: Tool.Any, cause: unknown, method: string): AiError.AiError =>
-  AiError.make({
-    module: "OpenAiLanguageModel",
-    method,
-    reason: new AiError.UnsupportedSchemaError({
-      description: `The parameters of tool "${tool.name}" must be an object schema (JSON Schema type "object"). ` +
-        "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`. " +
-        `Cause: ${cause instanceof Error ? cause.message : String(cause)}`
-    })
-  })
-
-const tryToolCodecTransform = <T extends Tool.Any>(tool: T, method: string) =>
-  Effect.try({
-    try: () => toCodecOpenAI(tool.parametersSchema),
-    catch: (error) => toolParametersError(tool, error, method)
-  })
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
 
 type ToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
 type ToolCodecs = ReadonlyMap<Tool.Any, ToolCodec>
@@ -1476,7 +1466,10 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
       if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
         parameters = tool.jsonSchema
       } else {
-        const prepared = yield* tryToolCodecTransform(tool, "prepareTools")
+        const prepared = yield* Effect.try({
+          try: () => toCodecOpenAI(tool.parametersSchema),
+          catch: (error) => toolParametersError(tool, error, "prepareTools")
+        })
         parameters = prepared.jsonSchema
         // Reused to normalize this tool's calls in the response.
         toolCodecs.set(tool, prepared.codec)

@@ -1823,32 +1823,27 @@ const tryJsonSchema = <S extends Schema.Constraint>(
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
+const toolParametersError = (tool: Tool.Any, error: unknown, method: string): AiError.AiError =>
+  unsupportedSchemaError(
+    `Tool "${tool.name}" parameters: ${error instanceof Error ? error.message : String(error)}. ` +
+      "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`",
+    method
+  )
+
 const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
   Effect.try({
     try: () => Tool.getJsonSchema(tool, { transformer }),
     catch: (error) => toolParametersError(tool, error, method)
-  }).pipe(Effect.flatMap((jsonSchema) => checkToolJsonSchema(tool, jsonSchema, method)))
-
-const toolParametersError = (tool: Tool.Any | Tool.AnyDynamic, cause: unknown, method: string): AiError.AiError =>
-  AiError.make({
-    module: "OpenRouterLanguageModel",
-    method,
-    reason: new AiError.UnsupportedSchemaError({
-      description: `The parameters of tool "${tool.name}" must be an object schema (JSON Schema type "object"). ` +
-        "For a tool without parameters, omit `parameters` or use `Tool.EmptyParams`. " +
-        `Cause: ${cause instanceof Error ? cause.message : String(cause)}`
-    })
-  })
-
-const checkToolJsonSchema = <T extends Tool.Any | Tool.AnyDynamic>(
-  tool: T,
-  jsonSchema: ReturnType<typeof Tool.getJsonSchema>,
-  method: string
-): Effect.Effect<ReturnType<typeof Tool.getJsonSchema>, AiError.AiError> =>
-  // A JSON Schema given directly to a dynamic tool is sent as it is
-  (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) || jsonSchema.type === "object"
-    ? Effect.succeed(jsonSchema)
-    : Effect.fail(toolParametersError(tool, `received ${JSON.stringify(jsonSchema)}`, method))
+  }).pipe(Effect.filterOrFail(
+    // A raw JSON Schema given to a dynamic tool is sent unchanged
+    (jsonSchema) => jsonSchema.type === "object" || (Tool.isDynamic(tool) && tool.jsonSchema !== undefined),
+    (jsonSchema) =>
+      toolParametersError(
+        tool,
+        `expected a JSON Schema with type "object", received ${JSON.stringify(jsonSchema)}`,
+        method
+      )
+  ))
 
 const getResponseFormat = Effect.fnUntraced(function*({ config, options, transformer }: {
   readonly config: typeof Config.Service
