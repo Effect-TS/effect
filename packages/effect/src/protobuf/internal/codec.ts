@@ -600,11 +600,23 @@ const fieldWriter = (compiled: Map<L.Message, Compiled>, message: L.Message, fie
     }
     case "Map": {
       const writeEntry = entryWriter(compiled, field)
-      const entries = numberKeys(field)
+      const toKey = field.wireKey
+      const numbers = hasNumberKeys(field)
       return collectionWriter(message, field, L.EMPTY_RECORD, (w, v, depth) => {
         if (!Predicate.isObject(v) || Array.isArray(v)) throw new Wire.WireError("expected a record", v)
-        const record = entries === undefined ? v as Record<string, unknown> : entries(v as Record<string, unknown>)
-        for (const k of Object.keys(record)) writeEntry(w, k, record[k], depth)
+        let record = v as Record<string, unknown>
+        let keys = Object.keys(record)
+        if (!numbers) {
+          for (let i = 0; i < keys.length; i++) writeEntry(w, keys[i], toKey(keys[i]), record[keys[i]], depth)
+          return
+        }
+        let wire = keys.map(toKey)
+        if (!isCanonical(keys, wire)) {
+          record = canonicalRecord(keys, wire, record)
+          keys = Object.keys(record)
+          wire = keys.map(toKey)
+        }
+        for (let i = 0; i < keys.length; i++) writeEntry(w, keys[i], wire[i], record[keys[i]], depth)
       })
     }
     case "Case": {
@@ -744,44 +756,44 @@ const fixedSize = (type: L.Scalar): number => {
 // leaves them: under the canonical spelling of each key (`"+7"` and `"7.0"` are
 // `"7"`), the last of the same key winning, in the order of an object of those
 // keys. A record of canonical keys already is that.
-const numberKeys = (
-  field: L.MapField
-): ((record: Record<string, unknown>) => Record<string, unknown>) | undefined => {
+const hasNumberKeys = (field: L.MapField): boolean => {
   const scalar = field.keyType.scalar
-  if (scalar === "string" || scalar === "bool" || is64Bit(scalar)) return undefined
-  const toKey = field.wireKey
-  return (record) => {
-    const keys = Object.keys(record)
-    if (
-      keys.every((k) => {
-        const n = toKey(k)
-        return n === undefined || String(n) === k
-      })
-    ) return record
-    const out: Record<string, unknown> = {}
-    for (const k of keys) {
-      const n = toKey(k)
-      if (n !== undefined) out[String(n)] = record[k]
-    }
-    return out
-  }
+  return scalar !== "string" && scalar !== "bool" && !is64Bit(scalar)
 }
 
-// Writes a map entry, reporting its key when it fails. Both the key and the
-// value are written, even when they are zero. An entry whose key the key schema
-// rejects is left out, as the schema pass of `Schema.Record` leaves it out.
+const isCanonical = (keys: ReadonlyArray<string>, wire: ReadonlyArray<unknown>): boolean => {
+  for (let i = 0; i < keys.length; i++) {
+    if (wire[i] !== undefined && String(wire[i]) !== keys[i]) return false
+  }
+  return true
+}
+
+const canonicalRecord = (
+  keys: ReadonlyArray<string>,
+  wire: ReadonlyArray<unknown>,
+  record: Record<string, unknown>
+): Record<string, unknown> => {
+  const out: Record<string, unknown> = {}
+  for (let i = 0; i < keys.length; i++) {
+    if (wire[i] !== undefined) out[String(wire[i])] = record[keys[i]]
+  }
+  return out
+}
+
+// Writes a map entry given its key and the wire value of the key, reporting
+// the key when it fails. Both the key and the value are written, even when they
+// are zero. An entry whose key the key schema rejects, whose wire value is
+// `undefined`, is left out, as the schema pass of `Schema.Record` leaves it out.
 const entryWriter = (
   compiled: Map<L.Message, Compiled>,
   field: L.MapField
-): (w: Wire.Writer, key: string, value: unknown, depth: number) => void => {
+): (w: Wire.Writer, key: string, k: unknown, value: unknown, depth: number) => void => {
   const tag = field.number * 8 + Wire.WIRE_LEN
   const keyType = field.keyType
   const keyTag = 8 + keyType.wireType
   const writeKey = scalarCodec(keyType).write
   const writeValue = valueWriter(compiled, field.value, 2, false)
-  const toKey = field.wireKey
-  return (w, key, value, depth) => {
-    const k = toKey(key)
+  return (w, key, k, value, depth) => {
     if (k === undefined) return
     try {
       w.uint32(tag)

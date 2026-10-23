@@ -105,14 +105,36 @@ const split64 = (n: bigint | number): void => {
   }
 }
 
+// Floats are read through these rather than a `DataView` of the input, which
+// would be created for each decode.
+const scratch = new Uint8Array(8)
+const scratchFloat32 = new Float32Array(scratch.buffer, 0, 1)
+const scratchFloat64 = new Float64Array(scratch.buffer)
+const littleEndian = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1
+
+// Copies `n` little-endian bytes into the scratch floats, in platform order.
+const copyScratch = (buf: Uint8Array, pos: number, n: number): void => {
+  if (littleEndian) {
+    for (let i = 0; i < n; i++) scratch[i] = buf[pos + i]
+  } else {
+    for (let i = 0; i < n; i++) scratch[n - 1 - i] = buf[pos + i]
+  }
+}
+
 const utf8Encoder = new TextEncoder()
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 const laxUtf8Decoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 // The buffer of the last finished writer, which the next writer starts with.
 // Only a writer created while another one is active allocates a buffer.
-let spare: { readonly buf: Uint8Array<ArrayBuffer>; readonly view: DataView } | undefined
+let spareBuf: Uint8Array<ArrayBuffer> | undefined
+let spareView: DataView | undefined
 const SPARE_MAX = 1 << 20
+
+// Strings up to this length are encoded by hand, and ASCII strings up to it
+// are decoded by hand, which is faster than calling the native encoder and
+// decoder.
+const SHORT_STRING = 32
 
 /** @internal */
 export class Writer {
@@ -121,20 +143,23 @@ export class Writer {
   pos = 0
 
   constructor() {
-    if (spare === undefined) {
+    if (spareBuf === undefined) {
       this.buf = new Uint8Array(1024)
       this.view = new DataView(this.buf.buffer)
     } else {
-      this.buf = spare.buf
-      this.view = spare.view
-      spare = undefined
+      this.buf = spareBuf
+      this.view = spareView!
+      spareBuf = spareView = undefined
     }
   }
 
   // Copies out the written bytes, and gives the buffer to the next writer.
   finish(): Uint8Array<ArrayBuffer> {
     const out = this.buf.slice(0, this.pos)
-    if (this.buf.length <= SPARE_MAX) spare = { buf: this.buf, view: this.view }
+    if (this.buf.length <= SPARE_MAX) {
+      spareBuf = this.buf
+      spareView = this.view
+    }
     return out
   }
 
@@ -273,21 +298,61 @@ export class Writer {
   }
 
   string(s: string): void {
-    const start = this.begin()
     const n = s.length
+    const start = this.begin()
+    // A UTF-16 code unit takes at most three bytes.
     this.ensure(n * 3)
+    if (n > SHORT_STRING) {
+      this.pos += utf8Encoder.encodeInto(s, this.buf.subarray(this.pos)).written
+      this.end(start)
+      return
+    }
     const buf = this.buf
     let pos = this.pos
-    let i = 0
-    for (; i < n; i++) {
-      const c = s.charCodeAt(i)
-      if (c >= 0x80) break
-      buf[pos++] = c
+    for (let i = 0; i < n; i++) {
+      let c = s.charCodeAt(i)
+      if (c < 0x80) {
+        buf[pos++] = c
+        continue
+      }
+      if (c < 0x800) {
+        buf[pos++] = 0xC0 | (c >> 6)
+        buf[pos++] = 0x80 | (c & 0x3F)
+        continue
+      }
+      if (c >= 0xD800 && c <= 0xDFFF) {
+        const next = i + 1 < n ? s.charCodeAt(i + 1) : 0
+        if (c <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) {
+          const cp = 0x10000 + ((c - 0xD800) << 10) + (next - 0xDC00)
+          i++
+          buf[pos++] = 0xF0 | (cp >> 18)
+          buf[pos++] = 0x80 | ((cp >> 12) & 0x3F)
+          buf[pos++] = 0x80 | ((cp >> 6) & 0x3F)
+          buf[pos++] = 0x80 | (cp & 0x3F)
+          continue
+        }
+        // A lone surrogate is written as U+FFFD, as `TextEncoder` writes it.
+        c = 0xFFFD
+      }
+      buf[pos++] = 0xE0 | (c >> 12)
+      buf[pos++] = 0x80 | ((c >> 6) & 0x3F)
+      buf[pos++] = 0x80 | (c & 0x3F)
     }
-    if (i < n) pos += utf8Encoder.encodeInto(s.slice(i), buf.subarray(pos)).written
     this.pos = pos
     this.end(start)
   }
+}
+
+// A short ASCII string, which skips the decoder, or `undefined`.
+const ascii = (buf: Uint8Array, start: number, end: number): string | undefined => {
+  if (end - start > SHORT_STRING) return undefined
+  let out = ""
+  for (let i = start; i < end; i++) {
+    const c = buf[i]
+    if (c >= 0x80) return undefined
+    out += String.fromCharCode(c)
+  }
+  return out
 }
 
 /** @internal */
@@ -304,7 +369,7 @@ export class Reader {
   }
 
   // Created when first needed, since it costs more than reading a small
-  // message without fixed-width fields.
+  // message. Single fixed-width values are read without it.
   get view(): DataView {
     return this.dataView ??= new DataView(this.buf.buffer, this.buf.byteOffset, this.buf.byteLength)
   }
@@ -345,9 +410,15 @@ export class Reader {
   varint32(): number {
     const buf = this.buf
     let p = this.pos
+    let b = buf[p]
+    // Most varints are a single byte. Past the end, `b` is undefined.
+    if (b < 0x80) {
+      this.pos = p + 1
+      return b
+    }
     // With ten bytes left, no varint can run past the end.
     if (p + 10 > buf.length) return this.varint32Checked()
-    let b = buf[p++]
+    b = buf[p++]
     let result = b & 0x7F
     if (b >= 0x80) {
       b = buf[p++]
@@ -387,8 +458,15 @@ export class Reader {
   varint64(): void {
     const buf = this.buf
     let p = this.pos
+    let b = buf[p]
+    if (b < 0x80) {
+      this.pos = p + 1
+      this.lo = b
+      this.hi = 0
+      return
+    }
     if (p + 10 > buf.length) return this.varint64Checked()
-    let b = buf[p++]
+    b = buf[p++]
     let lo = b & 0x7F
     let hi = 0
     if (b >= 0x80) {
@@ -438,8 +516,7 @@ export class Reader {
   // A varint truncated to a signed 32-bit integer, as `int32` and enum values
   // are.
   int32(): number {
-    this.varint64()
-    return this.lo | 0
+    return this.varint32() | 0
   }
 
   bool(): boolean {
@@ -448,39 +525,36 @@ export class Reader {
   }
 
   fixed32(): number {
-    this.need(4)
-    const n = this.view.getUint32(this.pos, true)
-    this.pos += 4
-    return n
+    return this.sfixed32() >>> 0
   }
 
   sfixed32(): number {
     this.need(4)
-    const n = this.view.getInt32(this.pos, true)
-    this.pos += 4
-    return n
+    const buf = this.buf
+    const p = this.pos
+    this.pos = p + 4
+    return buf[p] | (buf[p + 1] << 8) | (buf[p + 2] << 16) | (buf[p + 3] << 24)
   }
 
   // Reads eight bytes into `lo` and `hi`.
   fixed64(): void {
     this.need(8)
-    this.lo = this.view.getUint32(this.pos, true)
-    this.hi = this.view.getUint32(this.pos + 4, true)
-    this.pos += 8
+    this.lo = this.fixed32()
+    this.hi = this.fixed32()
   }
 
   float(): number {
     this.need(4)
-    const n = this.view.getFloat32(this.pos, true)
+    copyScratch(this.buf, this.pos, 4)
     this.pos += 4
-    return n
+    return scratchFloat32[0]
   }
 
   double(): number {
     this.need(8)
-    const n = this.view.getFloat64(this.pos, true)
+    copyScratch(this.buf, this.pos, 8)
     this.pos += 8
-    return n
+    return scratchFloat64[0]
   }
 
   // Reads a length prefix and returns the offset where the data ends.
@@ -501,20 +575,10 @@ export class Reader {
 
   string(): string {
     const end = this.delimited()
-    const buf = this.buf
-    let out = ""
-    let i = this.pos
-    // Short ASCII strings skip the decoder.
-    if (end - i <= 32) {
-      for (; i < end; i++) {
-        const c = buf[i]
-        if (c >= 0x80) break
-        out += String.fromCharCode(c)
-      }
-    }
-    if (i < end) {
+    let out = ascii(this.buf, this.pos, end)
+    if (out === undefined) {
       try {
-        out = utf8Decoder.decode(buf.subarray(this.pos, end))
+        out = utf8Decoder.decode(this.buf.subarray(this.pos, end))
       } catch {
         throw new WireError("invalid UTF-8 in string field")
       }
@@ -527,7 +591,7 @@ export class Reader {
   // characters.
   laxString(): string {
     const end = this.delimited()
-    const out = laxUtf8Decoder.decode(this.buf.subarray(this.pos, end))
+    const out = ascii(this.buf, this.pos, end) ?? laxUtf8Decoder.decode(this.buf.subarray(this.pos, end))
     this.pos = end
     return out
   }
