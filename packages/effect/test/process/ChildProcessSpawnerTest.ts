@@ -1237,6 +1237,17 @@ export const suite = (
               ], { discard: true })))
             )
           }).pipe(Effect.provide(layer)))
+
+        it.effect("ChildProcess.exitCode should not wait for descendants holding output pipes", () =>
+          Effect.gen(function*() {
+            const marker = "exit-code-open-pipes"
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+            const exitCode = yield* spawner.exitCode(
+              ChildProcess.make("sh", ["-c", "sh -c 'while :; do sleep 0.1; done' \"$0\" &", marker])
+            ).pipe(Effect.ensuring(killMatchingProcesses(marker)))
+
+            assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+          }).pipe(Effect.provide(layer)))
       })
 
       it.effect("should not deadlock on large stdout output", () =>
