@@ -607,6 +607,11 @@ describe("Protobuf", () => {
       })
       assert.deepStrictEqual(decode(Explicit, "0a030a0161"), { m: { a: "low" } })
     })
+
+    it("writes back the unknown numbers of a closed enum", () => {
+      const hex = "0801 1001 22050a01621001 0807 1007 22050a01611007"
+      assert.strictEqual(encode(Enums, decode(Enums, hex)), hex.replaceAll(" ", ""))
+    })
   })
 
   describe("extensions", () => {
@@ -667,6 +672,20 @@ describe("Protobuf", () => {
       assert.deepStrictEqual(Protobuf.getExtension(decoded, item), Option.some({ i: 99 }))
       assert.strictEqual(Hex.encode(Protobuf.clearExtension(decoded, item)[Protobuf.unknown]!), "0b10011a000c")
       assert.throws(() => Protobuf.extension(Set, 5, Protobuf.Int32), /extends a MessageSet/)
+    })
+
+    it("reads an empty message item of a MessageSet", () => {
+      const empty = Protobuf.extension(Protobuf.MessageSet("test.v2.Set"), 100, Protobuf.Empty)
+      const set = Protobuf.setExtension({}, empty, {})
+      assert.isTrue(Protobuf.hasExtension(set, empty))
+      assert.deepStrictEqual(Protobuf.getExtension(set, empty), Option.some({}))
+    })
+
+    it("checks the required fields of the extensions of a registry when decoding", () => {
+      const strict = Protobuf.extension(Product, 102, message({ n: Protobuf.Int32.pipe(f(1, { required: true })) }))
+      const codec = Protobuf.toCodec(Product, { registry: Protobuf.registry(Product, strict) })
+      // strict = 102: an empty message
+      assert.throws(() => Schema.decodeUnknownSync(codec)(bytes("b20600")), /Missing key/)
     })
 
     it("fails for values the schema rejects", () => {
@@ -795,6 +814,12 @@ describe("Protobuf", () => {
         assert.isUndefined(({} as Record<string, unknown>).polluted)
       })
     }
+
+    it("a property, when an extension is set", () => {
+      const Named = Protobuf.Message("test.v1.Named", { ["__proto__"]: Schema.String.pipe(f(1)) })
+      const extra = Protobuf.extension(Named, 100, Protobuf.Int32)
+      assert.strictEqual(encode(Named, Protobuf.setExtension(decode(Named, "0a0178"), extra, 3)), "0a0178a00603")
+    })
   })
 
   // The tag names the case, even when the encoded values of cases overlap.

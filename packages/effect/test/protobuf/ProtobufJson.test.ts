@@ -278,6 +278,12 @@ describe("ProtobufJson", () => {
       assert.deepStrictEqual(encode(WellKnown, { meta }), { meta: json })
     })
 
+    it("writes a null Value as null", () => {
+      const value: Protobuf.Value = { kind: { _tag: "nullValue", value: "NULL_VALUE" } }
+      assert.strictEqual(encode(Protobuf.Value, value), null)
+      assert.deepStrictEqual(decode(Protobuf.Value, null), value)
+    })
+
     it("reads timestamps with an offset, and rejects invalid ones", () => {
       assert.deepStrictEqual(decode(WellKnown, { exact: "1970-01-01T01:00:00.5+01:00" }), {
         exact: { seconds: 0n, nanos: 500_000_000 }
@@ -321,6 +327,15 @@ describe("ProtobufJson", () => {
       const json = { "@type": "type.googleapis.com/google.protobuf.Duration", value: "1s" }
       assert.deepStrictEqual(encode(Protobuf.Any, any, { registry }), json)
       assert.deepStrictEqual(decode(Protobuf.Any, json, { registry }), any)
+    })
+
+    it("ignores unknown fields next to a well-known type, only when they are ignored", () => {
+      const json = { "@type": "type.googleapis.com/google.protobuf.Duration", value: "1s", extra: 1 }
+      fails(() => decode(Protobuf.Any, json, { registry }), /unknown field of google.protobuf.Any/)
+      assert.deepStrictEqual(
+        decode(Protobuf.Any, json, { registry, ignoreUnknownFields: true }),
+        Protobuf.anyPack(Protobuf.DurationParts, { seconds: 1n, nanos: 0 })
+      )
     })
 
     it("reads an empty object as an empty Any", () => {
