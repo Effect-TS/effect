@@ -194,7 +194,10 @@ function appendJsonSchema(
 // cycle is exact unless it can reach `false`.
 type Exactness = boolean | ReadonlyArray<Exactness>
 
-type CompiledJsonSchema = [schema: JsonSchema.JsonSchema, dependencies: Array<Exactness>]
+type CompiledJsonSchema = {
+  schema: JsonSchema.JsonSchema
+  dependencies: Array<Exactness>
+}
 
 function isExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>()): boolean {
   if (typeof exactness === "boolean") return exactness
@@ -218,12 +221,13 @@ function compileJsonSchema(
   references: SchemaRepresentation.References,
   options: Schema.ToJsonSchemaOptions | undefined
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
+  const numberKeyPattern = `^(?:${InternalAST.FINITE_PATTERN}|Infinity|-Infinity|NaN)$`
   const compiledDefinitions = new Map<string, CompiledJsonSchema>()
   const definitionAliases = new Map<string, string>()
   const compiledRepresentations = new WeakMap<SchemaRepresentation.Representation, CompiledJsonSchema>()
   const pendingOneOf = new Map<
     ReadonlyArray<JsonSchema.JsonSchema>,
-    readonly [branches: ReadonlyArray<Exactness>, schemas: Array<JsonSchema.JsonSchema>]
+    { branches: ReadonlyArray<Exactness>; schemas: Array<JsonSchema.JsonSchema> }
   >()
   const fallbackDefinitions = new Map<string, Array<string>>()
   const referenceKeys = Object.keys(references)
@@ -234,7 +238,7 @@ function compileJsonSchema(
     representations,
     (representation, index) => recur(representation, rootPaths[index], [])
   )
-  for (const [branches, schemas] of pendingOneOf.values()) {
+  for (const { branches, schemas } of pendingOneOf.values()) {
     if (!isExact(branches)) {
       for (const schema of schemas) {
         if (Array.isArray(schema.oneOf)) {
@@ -248,9 +252,9 @@ function compileJsonSchema(
     const representation = references[key]
     const fallback = getIdentifierFallback(representation)
     if (fallback === undefined) continue
-    const schema = compiledDefinitions.get(key)![0]
+    const schema = compiledDefinitions.get(key)!.schema
     const candidates = fallbackDefinitions.get(fallback)
-    const match = candidates?.find((candidate) => Equal.equals(compiledDefinitions.get(candidate)![0], schema))
+    const match = candidates?.find((candidate) => Equal.equals(compiledDefinitions.get(candidate)!.schema, schema))
     if (match === undefined) {
       if (candidates === undefined) fallbackDefinitions.set(fallback, [key])
       else candidates.push(key)
@@ -262,14 +266,24 @@ function compileJsonSchema(
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
   for (const key of referenceKeys) {
     if (!definitionAliases.has(key)) {
-      InternalRecord.assignProperty(definitions, key, finalizeJsonSchema(compiledDefinitions.get(key)![0]))
+      InternalRecord.assignProperty(definitions, key, finalizeJsonSchema(compiledDefinitions.get(key)!.schema))
     }
   }
   return { dialect: "draft-2020-12", schemas, definitions }
 
   function registerPendingOneOf(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
-    if (Array.isArray(schema.oneOf)) pendingOneOf.get(schema.oneOf)?.[1].push(schema)
+    if (Array.isArray(schema.oneOf)) pendingOneOf.get(schema.oneOf)?.schemas.push(schema)
     return schema
+  }
+
+  function compileAnnotatedMember(
+    member: SchemaRepresentation.Element | SchemaRepresentation.PropertySignature,
+    path: Path,
+    dependencies: Array<Exactness>
+  ): JsonSchema.JsonSchema {
+    const schema = recur(member.type, [...path, "type"], dependencies)
+    const annotations = collectJsonSchemaAnnotations(member.annotations, options)
+    return annotations === undefined ? schema : registerPendingOneOf(appendJsonSchema(schema, annotations))
   }
 
   function compileDefinition(key: string, path: Path): CompiledJsonSchema {
@@ -280,9 +294,9 @@ function compileJsonSchema(
     if (cached !== undefined) return cached
 
     // Register the dependency cell before compiling so recursive references share it.
-    const result: CompiledJsonSchema = [{}, []]
+    const result: CompiledJsonSchema = { schema: {}, dependencies: [] }
     compiledDefinitions.set(key, result)
-    result[0] = recur(references[key], ["references", key], result[1])
+    result.schema = recur(references[key], ["references", key], result.dependencies)
     return result
   }
 
@@ -373,13 +387,13 @@ function compileJsonSchema(
     dependencies: Array<Exactness>
   ): JsonSchema.JsonSchema {
     if (representation._tag === "Reference") {
-      dependencies.push(compileDefinition(representation.$ref, path)[1])
+      dependencies.push(compileDefinition(representation.$ref, path).dependencies)
       return { $ref: formatDefinitionReference(representation.$ref) }
     }
     const cached = compiledRepresentations.get(representation)
     if (cached !== undefined) {
-      dependencies.push(cached[1])
-      return cached[0]
+      dependencies.push(cached.dependencies)
+      return cached.schema
     }
 
     const local: Array<Exactness> = []
@@ -394,7 +408,7 @@ function compileJsonSchema(
       const check = compileCheck(representation.checks[index], type, [...path, "checks", index], local)
       if (check !== undefined) output = appendJsonSchema(output, ...check)
     }
-    compiledRepresentations.set(representation, [output, local])
+    compiledRepresentations.set(representation, { schema: output, dependencies: local })
     return registerPendingOneOf(output)
   }
 
@@ -453,21 +467,17 @@ function compileJsonSchema(
         }))
         return types.length === 0 ? { not: {} } : { anyOf: types }
       }
-      case "TemplateLiteral":
-        return {
-          type: "string",
-          pattern: `^${getTemplateLiteralPattern(representation.parts, dependencies, new Set())}$`
-        }
+      case "TemplateLiteral": {
+        const { exact, pattern } = getTemplateLiteralPattern(representation.parts)
+        if (!exact) dependencies.push(false)
+        return { type: "string", pattern }
+      }
       case "Arrays": {
         const out: JsonSchema.JsonSchema = { type: "array" }
         let minItems = representation.elements.length
         const prefixItems = representation.elements.map((element, index) => {
           if (element.isOptional) minItems--
-          const schema = recur(element.type, [...path, "elements", index, "type"], dependencies)
-          const annotations = collectJsonSchemaAnnotations(element.annotations, options)
-          return annotations === undefined
-            ? schema
-            : registerPendingOneOf(appendJsonSchema(schema, annotations))
+          return compileAnnotatedMember(element, [...path, "elements", index], dependencies)
         })
         if (prefixItems.length > 0) {
           out.prefixItems = prefixItems
@@ -489,130 +499,15 @@ function compileJsonSchema(
         }
         return out
       }
-      case "Objects": {
-        if (representation.propertySignatures.length === 0 && representation.indexSignatures.length === 0) {
-          return { not: { type: "null" } }
-        }
-        const out: JsonSchema.JsonSchema = { type: "object" }
-        const properties: Record<string, JsonSchema.JsonSchema> = {}
-        const required: Array<string> = []
-        for (let index = 0; index < representation.propertySignatures.length; index++) {
-          const property = representation.propertySignatures[index]
-          if (typeof property.name !== "string") {
-            throw errorWithPath("Objects property names must be strings", [
-              ...path,
-              "propertySignatures",
-              index,
-              "name"
-            ])
-          }
-          const name = property.name
-          const schema = recur(property.type, [...path, "propertySignatures", index, "type"], dependencies)
-          const annotations = collectJsonSchemaAnnotations(property.annotations, options)
-          InternalRecord.assignProperty(
-            properties,
-            name,
-            annotations === undefined
-              ? schema
-              : registerPendingOneOf(appendJsonSchema(schema, annotations))
-          )
-          if (!property.isOptional) required.push(name)
-        }
-        if (representation.propertySignatures.length > 0) out.properties = properties
-        if (required.length > 0) out.required = required
-        const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
-        const additionalPropertySchemas: Array<JsonSchema.JsonSchema | false> = []
-        const indexValueSchemas: Array<JsonSchema.JsonSchema | false> = []
-        let hasUnrepresentableIndexPattern = false
-        for (let index = 0; index < representation.indexSignatures.length; index++) {
-          const signature = representation.indexSignatures[index]
-          let type: JsonSchema.JsonSchema | false = recur(
-            signature.type,
-            [...path, "indexSignatures", index, "type"],
-            dependencies
-          )
-          if (Equal.equals(type, { not: {} })) type = false
-          indexValueSchemas.push(type)
-          const patterns = getParameterPatterns(
-            signature.parameter,
-            [...path, "indexSignatures", index, "parameter"],
-            new Set()
-          )
-          if (patterns === undefined) {
-            hasUnrepresentableIndexPattern = true
-            dependencies.push(false)
-            continue
-          }
-          if (patterns.length === 0) {
-            additionalPropertySchemas.push(type)
-          } else {
-            for (const pattern of patterns) {
-              const previous = patternProperties[pattern]
-              InternalRecord.assignProperty(
-                patternProperties,
-                pattern,
-                previous === undefined
-                  ? type
-                  : previous === false || type === false
-                  ? false
-                  : registerPendingOneOf(appendJsonSchema(previous, type))
-              )
-            }
-          }
-        }
-        const hasPatternProperties = Object.keys(patternProperties).length > 0
-        if (hasPatternProperties) {
-          out.patternProperties = patternProperties
-        }
-        if (hasUnrepresentableIndexPattern && options?.onExcessProperty === "error") {
-          const propertyNames: Array<JsonSchema.JsonSchema> = []
-          if (representation.propertySignatures.length > 0) {
-            propertyNames.push({ enum: Object.keys(properties) })
-          }
-          for (let index = 0; index < representation.indexSignatures.length; index++) {
-            propertyNames.push(
-              getPropertyNameSchema(
-                representation.indexSignatures[index].parameter,
-                [...path, "indexSignatures", index, "parameter"],
-                dependencies,
-                new Set()
-              )
-            )
-          }
-          out.propertyNames = propertyNames.length === 1 ? propertyNames[0] : { anyOf: propertyNames }
-          out.additionalProperties = indexValueSchemas.length === 1
-            ? indexValueSchemas[0]
-            : { anyOf: indexValueSchemas }
-          if (additionalPropertySchemas.length > 0) {
-            out.allOf = additionalPropertySchemas.map((type) => ({ type: "object", additionalProperties: type }))
-          }
-        } else if (additionalPropertySchemas.length === 0) {
-          out.additionalProperties = hasUnrepresentableIndexPattern || options?.onExcessProperty !== "error"
-        } else if (
-          additionalPropertySchemas.length === 1 &&
-          representation.propertySignatures.length === 0 &&
-          !hasPatternProperties
-        ) {
-          out.additionalProperties = additionalPropertySchemas[0]
-        } else if (additionalPropertySchemas.length > 0) {
-          out.allOf = additionalPropertySchemas.map((type) => ({ type: "object", additionalProperties: type }))
-        }
-        if (
-          typeof out.additionalProperties === "object" &&
-          out.additionalProperties !== null &&
-          Object.keys(out.additionalProperties).length === 0
-        ) {
-          delete out.additionalProperties
-        }
-        return out
-      }
+      case "Objects":
+        return compileObjects(representation, path, dependencies)
       case "Union": {
         const branches: Array<Exactness> = []
         const types = representation.types.map((type, index) => recur(type, [...path, "types", index], branches))
         dependencies.push(branches)
         if (types.length === 0) return { not: {} }
         if (representation.options?.mode === "oneOf") {
-          pendingOneOf.set(types, [branches, []])
+          pendingOneOf.set(types, { branches, schemas: [] })
           return { oneOf: types }
         }
         if (types.length > 1) {
@@ -629,6 +524,96 @@ function compileJsonSchema(
     }
   }
 
+  function compileObjects(
+    representation: SchemaRepresentation.Objects,
+    path: Path,
+    dependencies: Array<Exactness>
+  ): JsonSchema.JsonSchema {
+    const { indexSignatures, propertySignatures } = representation
+    if (propertySignatures.length === 0 && indexSignatures.length === 0) return { not: { type: "null" } }
+
+    const out: JsonSchema.JsonSchema = { type: "object" }
+    const properties: Record<string, JsonSchema.JsonSchema> = {}
+    const required: Array<string> = []
+    for (const [index, property] of propertySignatures.entries()) {
+      const propertyPath = [...path, "propertySignatures", index]
+      if (typeof property.name !== "string") {
+        throw errorWithPath("Objects property names must be strings", [...propertyPath, "name"])
+      }
+      InternalRecord.assignProperty(
+        properties,
+        property.name,
+        compileAnnotatedMember(property, propertyPath, dependencies)
+      )
+      if (!property.isOptional) required.push(property.name)
+    }
+    if (propertySignatures.length > 0) out.properties = properties
+    if (required.length > 0) out.required = required
+
+    const indexes = indexSignatures.map((signature, index) => {
+      const indexPath = [...path, "indexSignatures", index]
+      const schema = recur(signature.type, [...indexPath, "type"], dependencies)
+      const type: JsonSchema.JsonSchema | false = Equal.equals(schema, { not: {} }) ? false : schema
+      const patterns = getParameterPatterns(signature.parameter, [...indexPath, "parameter"], new Set())
+      if (patterns === undefined) dependencies.push(false)
+      return { type, patterns }
+    })
+    const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
+    for (const { patterns, type } of indexes) {
+      for (const pattern of patterns ?? []) {
+        const previous = patternProperties[pattern]
+        InternalRecord.assignProperty(
+          patternProperties,
+          pattern,
+          previous === undefined
+            ? type
+            : previous === false || type === false
+            ? false
+            : registerPendingOneOf(appendJsonSchema(previous, type))
+        )
+      }
+    }
+    const hasPatternProperties = Object.keys(patternProperties).length > 0
+    if (hasPatternProperties) out.patternProperties = patternProperties
+
+    const additionalPropertySchemas = indexes.filter(({ patterns }) => patterns?.length === 0).map(({ type }) => type)
+    const hasUnrepresentableIndexPattern = indexes.some(({ patterns }) => patterns === undefined)
+    if (hasUnrepresentableIndexPattern && options?.onExcessProperty === "error") {
+      const propertyNames: Array<JsonSchema.JsonSchema> = []
+      if (propertySignatures.length > 0) propertyNames.push({ enum: Object.keys(properties) })
+      for (const [index, signature] of indexSignatures.entries()) {
+        propertyNames.push(
+          getPropertyNameSchema(
+            signature.parameter,
+            [...path, "indexSignatures", index, "parameter"],
+            dependencies,
+            new Set()
+          )
+        )
+      }
+      out.propertyNames = propertyNames.length === 1 ? propertyNames[0] : { anyOf: propertyNames }
+      const values = indexes.map(({ type }) => type)
+      out.additionalProperties = values.length === 1 ? values[0] : { anyOf: values }
+      if (additionalPropertySchemas.length > 0) {
+        out.allOf = additionalPropertySchemas.map((type) => ({ type: "object", additionalProperties: type }))
+      }
+    } else if (additionalPropertySchemas.length === 0) {
+      out.additionalProperties = hasUnrepresentableIndexPattern || options?.onExcessProperty !== "error"
+    } else if (additionalPropertySchemas.length === 1 && propertySignatures.length === 0 && !hasPatternProperties) {
+      out.additionalProperties = additionalPropertySchemas[0]
+    } else {
+      out.allOf = additionalPropertySchemas.map((type) => ({ type: "object", additionalProperties: type }))
+    }
+    if (
+      typeof out.additionalProperties === "object" &&
+      out.additionalProperties !== null &&
+      Object.keys(out.additionalProperties).length === 0
+    ) {
+      delete out.additionalProperties
+    }
+    return out
+  }
+
   function getPropertyNameSchema(
     parameter: SchemaRepresentation.Representation,
     path: Path,
@@ -637,7 +622,7 @@ function compileJsonSchema(
   ): JsonSchema.JsonSchema {
     switch (parameter._tag) {
       case "Number":
-        return { type: "string", pattern: `^(?:${InternalAST.FINITE_PATTERN}|Infinity|-Infinity|NaN)$` }
+        return { type: "string", pattern: numberKeyPattern }
       case "Reference": {
         if (seenReferences.has(parameter.$ref)) return { type: "string" }
         return getPropertyNameSchema(
@@ -685,9 +670,8 @@ function compileJsonSchema(
       }
       case "TemplateLiteral": {
         if (parameter.checks.length > 0) return undefined
-        const dependencies: Array<Exactness> = []
-        const pattern = getTemplateLiteralPattern(parameter.parts, dependencies, new Set())
-        return isExact(dependencies) ? [`^${pattern}$`] : undefined
+        const { exact, pattern } = getTemplateLiteralPattern(parameter.parts)
+        return exact ? [pattern] : undefined
       }
       case "Union": {
         if (parameter.types.length === 0 || parameter.checks.length > 0 || parameter.options?.mode === "oneOf") {
@@ -703,56 +687,54 @@ function compileJsonSchema(
         return patterns
       }
       case "Number":
-        return parameter.checks.length === 0
-          ? [`^(?:${InternalAST.FINITE_PATTERN}|Infinity|-Infinity|NaN)$`]
-          : undefined
+        return parameter.checks.length === 0 ? [numberKeyPattern] : undefined
       default:
         throw errorWithPath(`Invalid index signature parameter ${parameter._tag}`, path)
     }
   }
 
   function getTemplateLiteralPattern(
-    parts: ReadonlyArray<SchemaRepresentation.Representation>,
-    dependencies: Array<Exactness>,
-    seenReferences: ReadonlySet<string>
-  ): string {
-    return parts.map((part) => getPartPattern(part, dependencies, seenReferences)).join("")
-  }
+    parts: ReadonlyArray<SchemaRepresentation.Representation>
+  ): { pattern: string; exact: boolean } {
+    const activeReferences = new Set<string>()
+    let exact = true
+    const pattern = `^${parts.map(getPartPattern).join("")}$`
+    return { pattern, exact }
 
-  function getPartPattern(
-    part: SchemaRepresentation.Representation,
-    dependencies: Array<Exactness>,
-    seenReferences: ReadonlySet<string>
-  ): string {
-    // Segment checks are omitted from the pattern, even when they have a JSON Schema exporter.
-    if (part._tag !== "Reference" && part.checks.length > 0) dependencies.push(false)
-    switch (part._tag) {
-      case "Reference": {
-        if (!Object.hasOwn(references, part.$ref)) {
-          throw errorWithPath(`Invalid reference ${part.$ref}`, [])
+    function getPartPattern(part: SchemaRepresentation.Representation): string {
+      // Segment checks are omitted, even when they have a JSON Schema exporter.
+      if (part._tag !== "Reference" && part.checks.length > 0) exact = false
+      switch (part._tag) {
+        case "Reference": {
+          if (!Object.hasOwn(references, part.$ref)) {
+            throw errorWithPath(`Invalid reference ${part.$ref}`, [])
+          }
+          if (activeReferences.has(part.$ref)) {
+            throw errorWithPath(`Invalid recursive TemplateLiteral part ${part.$ref}`, [])
+          }
+          activeReferences.add(part.$ref)
+          const pattern = getPartPattern(references[part.$ref])
+          activeReferences.delete(part.$ref)
+          return pattern
         }
-        if (seenReferences.has(part.$ref)) {
-          throw errorWithPath(`Invalid recursive TemplateLiteral part ${part.$ref}`, [])
-        }
-        return getPartPattern(references[part.$ref], dependencies, new Set(seenReferences).add(part.$ref))
+        case "Literal":
+          return RegEx.escape(globalThis.String(part.literal))
+        case "String":
+          return InternalAST.STRING_PATTERN
+        case "Number":
+          return InternalAST.FINITE_PATTERN
+        case "BigInt":
+          return "-?\\d+"
+        case "TemplateLiteral":
+          return part.parts.map(getPartPattern).join("")
+        case "Union":
+          if (part.types.length === 0) return "(?!)"
+          // Regex alternatives do not enforce that exactly one branch matches.
+          if (part.options?.mode === "oneOf") exact = false
+          return `(?:${part.types.map(getPartPattern).join("|")})`
+        default:
+          throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])
       }
-      case "Literal":
-        return RegEx.escape(globalThis.String(part.literal))
-      case "String":
-        return InternalAST.STRING_PATTERN
-      case "Number":
-        return InternalAST.FINITE_PATTERN
-      case "BigInt":
-        return "-?\\d+"
-      case "TemplateLiteral":
-        return getTemplateLiteralPattern(part.parts, dependencies, seenReferences)
-      case "Union":
-        if (part.types.length === 0) return "(?!)"
-        // Regex alternatives do not enforce that exactly one branch matches.
-        if (part.options?.mode === "oneOf") dependencies.push(false)
-        return `(?:${part.types.map((type) => getPartPattern(type, dependencies, seenReferences)).join("|")})`
-      default:
-        throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])
     }
   }
 }
