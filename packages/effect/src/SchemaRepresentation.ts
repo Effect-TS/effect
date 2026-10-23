@@ -288,13 +288,19 @@ export interface Unknown extends Keyword<"Unknown"> {}
 export interface Any extends Keyword<"Any"> {}
 
 /**
- * A string representation.
+ * A string representation, optionally describing its content through a media
+ * type and a schema for the value encoded in the string.
  *
  * @stability stable
  * @category models
  * @since 4.0.0
  */
-export interface String extends Keyword<"String"> {}
+export interface String extends Keyword<"String"> {
+  readonly content?: {
+    readonly mediaType: string
+    readonly schema?: Representation | undefined
+  } | undefined
+}
 
 /**
  * A number representation.
@@ -2965,7 +2971,14 @@ const RepresentationUnion = Schema.Union([
   makeKeywordSchema("Never"),
   makeKeywordSchema("Unknown"),
   makeKeywordSchema("Any"),
-  makeKeywordSchema("String"),
+  Schema.Struct({
+    _tag: Schema.tag("String"),
+    ...KeywordFields,
+    content: Schema.optional(Schema.Struct({
+      mediaType: Schema.String,
+      schema: Schema.optional(RepresentationSchema)
+    }))
+  }),
   makeKeywordSchema("Number"),
   makeKeywordSchema("Boolean"),
   makeKeywordSchema("BigInt"),

@@ -398,10 +398,17 @@ function compileJsonSchema(
 
     const local: Array<Exactness> = []
     dependencies.push(local)
-    let output = on(representation, path, local)
-    const ordinary = collectJsonSchemaAnnotations(representation.annotations, options)
-    if (ordinary !== undefined) {
-      output = { ...output, ...ordinary }
+    let output = {
+      ...on(representation, path, local),
+      ...collectJsonSchemaAnnotations(representation.annotations, options)
+    }
+    if (representation._tag === "String" && representation.content !== undefined) {
+      const content = representation.content
+      output.contentMediaType = content.mediaType
+      delete output.contentSchema
+      if (content.schema !== undefined) {
+        output.contentSchema = recur(content.schema, [...path, "content", "schema"], [])
+      }
     }
     for (let index = 0; index < representation.checks.length; index++) {
       const type = typeof output.type === "string" && isJsonSchemaType(output.type) ? output.type : undefined

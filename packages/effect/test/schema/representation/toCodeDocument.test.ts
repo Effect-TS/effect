@@ -101,6 +101,16 @@ describe("toCodeDocument", () => {
       )
     })
 
+    it("requires a toCode callback for a named content declaration", () => {
+      const content = Schema.instanceOf(URL).annotate({ identifier: "Content" })
+      const document = SchemaRepresentation.toRepresentations([Schema.fromJsonString(content).ast])
+
+      throws(
+        () => SchemaRepresentation.toCodeDocument(document),
+        "Missing toCode callback\n  at [\"references\"][\"Content\"][\"annotations\"][\"toCode\"]"
+      )
+    })
+
     it("Error", () => {
       assertSchema({ schema: Schema.ErrorInstance() }, {
         codes: makeCode(`Schema.ErrorInstance()`, "globalThis.Error")

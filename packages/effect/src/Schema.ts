@@ -9803,8 +9803,7 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
 }
 
 const JsonString = String.annotate({
-  expected: "a string that will be decoded as JSON",
-  contentMediaType: "application/json"
+  expected: "a string that will be decoded as JSON"
 })
 /**
  * Returns a schema that decodes a JSON string and then decodes the parsed value
