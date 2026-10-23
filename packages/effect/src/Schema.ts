@@ -5045,8 +5045,10 @@ type IsLiteralUnit<T> = [T] extends [never] ? false
   : T extends bigint ? bigint extends T ? false : true
   : true
 
-type AllLiteralUnits<L> = L extends readonly [] ? true
-  : L extends readonly [infer Head, ...infer Tail] ? IsLiteralUnit<Head> extends true ? AllLiteralUnits<Tail> : false
+// non-distributive, so a union of tuples is not treated as a single omission set
+type AllLiteralUnits<L> = [L] extends [readonly []] ? true
+  : [L] extends [readonly [infer Head, ...infer Tail]] ?
+    IsLiteralUnit<Head> extends true ? AllLiteralUnits<Tail> : false
   : false
 
 // `false` when an element may or may not be omitted at runtime
