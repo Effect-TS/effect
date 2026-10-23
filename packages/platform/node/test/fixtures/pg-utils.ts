@@ -1,12 +1,16 @@
 import { PgClient } from "@effect/sql-pg"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { type Cause, Clock, Console, Context, Data, Effect, Fiber, Layer, Redacted, String } from "effect"
-import { constVoid } from "effect/Function"
+import { type Cause, Clock, Console, Context, Data, Effect, Exit, Fiber, Layer, Redacted, String } from "effect"
 import { SqlClient } from "effect/sql"
 import { getContainerRuntimeClient } from "testcontainers"
 
 export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
+}> {}
+
+class ReleaseError extends Data.TaggedError("ReleaseError")<{
+  message: string
+  cause: Cause.Cause<unknown>
 }> {}
 
 // it.effect and it.layer provide a TestClock that only moves when a test
@@ -23,6 +27,10 @@ const withLiveServices = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 // sooner so a stuck start fails with a ContainerError inside the hook budget.
 const startupTimeout = "90 seconds"
 
+// Leaves headroom under Vitest's ten-second cancellation-hook deadline.
+const releaseTimeout = "8 seconds"
+
+// A failure names the container, so whoever observes it can report it.
 const stopAndRemove = Effect.fnUntraced(
   function*(container: StartedPostgreSqlContainer) {
     yield* Effect.promise(() => container.stop({ remove: false }))
@@ -37,64 +45,47 @@ const stopAndRemove = Effect.fnUntraced(
     )
     yield* Effect.promise(() => client.container.remove(handle, { removeVolumes: true }))
   },
-  // Cleanup failures remain visible defects rather than being suppressed.
-  Effect.orDie,
-  withLiveServices
+  (effect, container) =>
+    Effect.catchCause(
+      effect,
+      (cause) => new ReleaseError({ message: `Failed to release PostgreSQL container ${container.getId()}`, cause })
+    )
 )
 
-// A release nobody waits on any more has no observer for its failure, so it
-// reports the failure itself.
-const reportReleaseFailure = (container: StartedPostgreSqlContainer) => (cause: Cause.Cause<unknown>) =>
-  Effect.logError(`Failed to release PostgreSQL container ${container.getId()}`, cause)
+// Releases the container once it has started. A start that failed leaves
+// nothing to release, and the acquisition already reported it.
+const release = (starting: Promise<StartedPostgreSqlContainer>) =>
+  Effect.tryPromise(() => starting).pipe(
+    Effect.flatMap(stopAndRemove),
+    Effect.catchTag("UnknownError", () => Effect.void)
+  )
 
-// Wait up to eight seconds, leaving headroom under Vitest's ten-second
-// cancellation-hook deadline. A slower release finishes in the background
-// instead of failing whichever test closes the layer.
-const releaseContainer = (container: StartedPostgreSqlContainer) =>
-  Effect.suspend(() => {
-    let waiting = true
-    const release = Effect.tapCause(
-      stopAndRemove(container),
-      (cause) => waiting ? Effect.void : reportReleaseFailure(container)(cause)
-    )
-    return Effect.flatMap(Effect.forkDetach(release), (fiber) =>
-      Effect.timeoutOrElse(Fiber.join(fiber), {
-        duration: "8 seconds",
-        orElse: () => {
-          waiting = false
-          return Effect.logWarning(
-            `PostgreSQL container ${container.getId()} is still being released, continuing in the background`
-          )
-        }
-      }))
-  }).pipe(withLiveServices)
+const reportReleaseFailure = (error: ReleaseError) => Effect.logError(error.message, error.cause)
 
-interface Starting {
-  readonly promise: Promise<StartedPostgreSqlContainer>
-  started: StartedPostgreSqlContainer | undefined
-}
-
-// The start runs outside the acquisition, so waiting for it stays
-// interruptible. The release owns the container either way: one that finishes
-// starting after its waiter gave up is released in the background, so
-// teardown never waits for a slow start.
-const startContainer = Effect.acquireRelease(
-  Effect.sync((): Starting => {
-    const starting: Starting = { promise: new PostgreSqlContainer("postgres:alpine").start(), started: undefined }
-    starting.promise.then((container) => {
-      starting.started = container
-    }, constVoid)
-    return starting
-  }),
-  (starting) =>
-    starting.started !== undefined
-      ? releaseContainer(starting.started)
-      : Effect.sync(() => {
-        starting.promise.then(
-          (container) => Effect.runFork(Effect.catchCause(stopAndRemove(container), reportReleaseFailure(container))),
-          constVoid
+// Waits up to `releaseTimeout` for the release, so a slow one does not fail
+// whichever test closes the layer. Past the wait, the release continues in the
+// background and only then gets a reporter, so a failure is reported exactly
+// once. Inside the wait, a failure is the caller's defect, unless the scope is
+// closing because its fiber was interrupted: Vitest cancelling a test drops that
+// fiber's exit, so the failure is logged instead.
+const releaseContainer = Effect.fnUntraced(
+  function*(starting: Promise<StartedPostgreSqlContainer>, exit: Exit.Exit<unknown, unknown>) {
+    const fiber = yield* Effect.forkDetach(release(starting))
+    const waited = Exit.hasInterrupts(exit)
+      ? Effect.catch(Fiber.join(fiber), reportReleaseFailure)
+      : Effect.orDie(Fiber.join(fiber))
+    yield* Effect.timeoutOrElse(waited, {
+      duration: releaseTimeout,
+      orElse: () =>
+        Effect.andThen(
+          Effect.logWarning(
+            `PostgreSQL container release is taking longer than ${releaseTimeout}, continuing in the background`
+          ),
+          Effect.forkDetach(Effect.catch(Fiber.join(fiber), reportReleaseFailure))
         )
-      })
+    })
+  },
+  withLiveServices
 )
 
 let databases = 0
@@ -108,9 +99,18 @@ const runAdmin = (container: StartedPostgreSqlContainer, statement: string) =>
   )
 
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
-  make: Effect.flatMap(startContainer, (starting) =>
-    Effect.tryPromise({
-      try: () => starting.promise,
+  // The start runs outside the acquisition, so waiting for it stays
+  // interruptible. The release owns the container from the moment the start
+  // begins, so one that finishes starting after its waiter gave up is still
+  // released.
+  make: Effect.gen(function*() {
+    const starting = yield* Effect.acquireRelease(
+      // @effect-diagnostics-next-line lazyPromiseInEffectSync:off
+      Effect.sync(() => new PostgreSqlContainer("postgres:alpine").start()),
+      releaseContainer
+    )
+    return yield* Effect.tryPromise({
+      try: () => starting,
       catch: (cause) => new ContainerError({ cause })
     }).pipe(
       Effect.timeoutOrElse({
@@ -119,9 +119,9 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
           Effect.fail(
             new ContainerError({ cause: new Error(`PostgreSQL container did not start within ${startupTimeout}`) })
           )
-      }),
-      withLiveServices
-    ))
+      })
+    )
+  }).pipe(withLiveServices)
 }) {
   static readonly layer = Layer.effect(this)(this.make)
 
