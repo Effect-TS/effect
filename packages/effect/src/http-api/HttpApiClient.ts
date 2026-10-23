@@ -1255,7 +1255,7 @@ const statusOrElse = (response: HttpClientResponse.HttpClientResponse) =>
       reason: new HttpClientError.StatusCodeError({
         request: response.request,
         response,
-        description: "Unexpected status code"
+        description: "undeclared status code"
       })
     })
   )
