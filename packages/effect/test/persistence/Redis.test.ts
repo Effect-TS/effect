@@ -318,6 +318,21 @@ describe("Redis", () => {
         assert.strictEqual(closes(), 1)
       }))
 
+    it.effect("closes instead of reusing a connection released while a command is still running", () =>
+      Effect.gen(function*() {
+        const { blocked, closes, connects, redis } = yield* makeHarness()
+        const reservation = yield* Scope.make()
+        const connection = yield* redis.reserve.pipe(Scope.provide(reservation))
+
+        yield* connection.send("XREAD", "BLOCK", "0", "STREAMS", "events", "$").pipe(Effect.forkChild)
+        yield* Deferred.await(blocked)
+        yield* Scope.close(reservation, Exit.void)
+
+        assert.strictEqual(yield* ping(redis), "PING")
+        assert.strictEqual(connects(), 2)
+        assert.strictEqual(closes(), 1)
+      }))
+
     it.effect("waits for a free connection at maxConnections and fails after acquireTimeout", () =>
       Effect.gen(function*() {
         const { connects, redis } = yield* makeHarness({ pool: { maxConnections: 1, acquireTimeout: "1 second" } })

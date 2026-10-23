@@ -1,7 +1,7 @@
 import * as DenoRedis from "@effect/platform-deno/DenoRedis"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Deferred, Effect, Fiber, Layer, Queue, Schema } from "effect"
+import { Deferred, Effect, Exit, Fiber, Layer, Queue, Schema } from "effect"
 import { CircuitBreaker, PersistedQueue, Persistence, Redis } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as CircuitBreakerRedisTest from "../../../effect/test/persistence/CircuitBreakerRedisTest.ts"
@@ -90,6 +90,29 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         yield* redis.send("XADD", "effect-test-reserve", "*", "key", "value")
 
         assert.include(JSON.stringify(yield* Fiber.join(read)), "value")
+      }))
+
+    it.effect("fails a reserved command when its connection drops instead of replaying it", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const list = "effect-test-reserve-drop"
+        const exit = yield* Effect.scoped(Effect.gen(function*() {
+          const connection = yield* redis.reserve
+          const id = yield* connection.send<number>("CLIENT", "ID")
+          const pop = yield* connection.send("BLPOP", list, "0").pipe(Effect.forkChild)
+          yield* redis.send<string>("CLIENT", "LIST").pipe(
+            Effect.repeat({
+              until: (clients) =>
+                clients.split("\n").some((client) => client.startsWith(`id=${id} `) && client.includes("cmd=blpop"))
+            })
+          )
+          yield* redis.send("CLIENT", "KILL", "ID", String(id))
+          yield* redis.send("LPUSH", list, "item")
+          return yield* Fiber.await(pop)
+        }))
+
+        assert.isTrue(Exit.isFailure(exit))
+        assert.strictEqual(yield* redis.send<number>("LLEN", list), 1)
       }))
 
     it.effect("moves exhausted elements to the failed list", () =>
