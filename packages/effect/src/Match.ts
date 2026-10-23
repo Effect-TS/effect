@@ -1304,9 +1304,9 @@ export const tagsExhaustive: <
  *
  * @see {@link literalsExhaustive} for handling every literal and finalizing the matcher
  *
- * @stability stable
+ * @stability unstable
  * @category defining patterns
- * @since 4.0.0
+ * @since 4.0.7
  */
 export const literals: <
   R,
@@ -1358,9 +1358,9 @@ export const literals: <
  *
  * @see {@link literals} for defining literal handlers without finalizing the matcher
  *
- * @stability stable
+ * @stability unstable
  * @category defining patterns
- * @since 4.0.0
+ * @since 4.0.7
  */
 export const literalsExhaustive: <
   R,
