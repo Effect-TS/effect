@@ -57,7 +57,6 @@ import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerRespondable from "../http/HttpServerRespondable.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
 import * as Layer from "../Layer.ts"
-import * as Stream from "../Stream.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 
 /**
@@ -247,17 +246,22 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
     if (!isSupportedContentType(contentType)) {
       return unsupportedMediaType
     }
-    const limit = Number(maxBodySize ?? (yield* HttpIncomingMessage.MaxBodySize) ?? defaultMaxBodySize)
-    const contentLength = parseContentLength(request.headers["content-length"])
-    if (contentLength !== undefined && contentLength > limit) {
-      return contentTooLarge
-    }
-    const body = yield* readBody(request, limit)
+    const body = yield* request.arrayBuffer.pipe(
+      Effect.provideService(
+        HttpIncomingMessage.MaxBodySize,
+        maxBodySize ?? (yield* HttpIncomingMessage.MaxBodySize) ?? defaultMaxBodySize
+      ),
+      Effect.catch(HttpServerRespondable.toResponse)
+    )
     if (HttpServerResponse.isHttpServerResponse(body)) {
       return body
     }
 
-    let outbound = HttpClientRequest.bodyUint8Array(HttpClientRequest.post(options.url), body, contentType)
+    let outbound = HttpClientRequest.bodyUint8Array(
+      HttpClientRequest.post(options.url),
+      new Uint8Array(body),
+      contentType
+    )
     const contentEncoding = request.headers["content-encoding"]
     if (contentEncoding !== undefined) {
       outbound = HttpClientRequest.setHeader(outbound, "content-encoding", contentEncoding)
@@ -277,16 +281,12 @@ const makeHandler = (client: HttpClient.HttpClient, options: {
 }
 
 const unsupportedMediaType = HttpServerResponse.empty({ status: 415 })
-const contentTooLarge = HttpServerResponse.empty({ status: 413 })
 const badGateway = HttpServerResponse.empty({ status: 502 })
 const gatewayTimeout = HttpServerResponse.empty({ status: 504 })
 
 const isSupportedContentType = (contentType: string | undefined): contentType is string =>
   contentType !== undefined &&
   (contentTypes.has(contentType) || contentTypes.has(contentType.split(";")[0].trim().toLowerCase()))
-
-const parseContentLength = (contentLength: string | undefined): number | undefined =>
-  contentLength !== undefined && /^\d+$/.test(contentLength) ? Number(contentLength) : undefined
 
 const toServerResponse = (
   response: HttpClientResponse.HttpClientResponse,
@@ -304,33 +304,3 @@ const toServerResponse = (
       contentType: response.headers["content-type"]
     })
 }
-
-// Counts bytes on the stream because a declared content-length does not bound
-// every request body, and only some platforms apply MaxBodySize to buffered
-// reads.
-const readBody = (
-  request: HttpServerRequest.HttpServerRequest,
-  limit: number
-): Effect.Effect<Uint8Array | HttpServerResponse.HttpServerResponse> =>
-  Effect.suspend(() => {
-    const chunks: Array<Uint8Array> = []
-    let size = 0
-    return Stream.runForEachWhile(request.stream, (chunk) => {
-      size += chunk.length
-      if (size > limit) return Effect.succeed(false)
-      chunks.push(chunk)
-      return Effect.succeed(true)
-    }).pipe(
-      Effect.map(() => {
-        if (size > limit) return contentTooLarge
-        const body = new Uint8Array(size)
-        let offset = 0
-        for (const chunk of chunks) {
-          body.set(chunk, offset)
-          offset += chunk.length
-        }
-        return body
-      }),
-      Effect.catch(HttpServerRespondable.toResponse)
-    )
-  })
