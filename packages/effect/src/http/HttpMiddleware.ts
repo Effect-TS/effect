@@ -434,7 +434,9 @@ export interface TrustedProxyOptions {
  * @category proxying
  * @since 4.0.0
  */
-export const xForwardedHeaders = (options: TrustedProxyOptions): HttpMiddleware => {
+export const xForwardedHeaders = (options: TrustedProxyOptions): <E, R>(
+  httpApp: Effect.Effect<HttpServerResponse, E, HttpServerRequest | R>
+) => Effect.Effect<HttpServerResponse, E, HttpServerRequest | R> => {
   const { trustedProxies } = options
   const isTrusted: Predicate<NetAddress.IpAddress> = typeof trustedProxies === "function"
     ? trustedProxies
