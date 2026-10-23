@@ -40,7 +40,7 @@ const serve = <E>(
     ({ dispose }) => Effect.promise(dispose)
   )
 
-const post = (path: string, body: Uint8Array, headers: Record<string, string> = {}) =>
+const post = (path: string, body: Uint8Array<ArrayBuffer>, headers: Record<string, string> = {}) =>
   new Request(`http://localhost${path}`, {
     method: "POST",
     body,
