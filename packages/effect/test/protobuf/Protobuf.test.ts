@@ -611,6 +611,9 @@ describe("Protobuf", () => {
     it("writes back the unknown numbers of a closed enum", () => {
       const hex = "0801 1001 22050a01621001 0807 1007 22050a01611007"
       assert.strictEqual(encode(Enums, decode(Enums, hex)), hex.replaceAll(" ", ""))
+      // A known number would be read back over the declared field.
+      assert.throws(() => encode(Enums, { ...empty, [Protobuf.unknown]: bytes("0801") }), /declared field 1/)
+      assert.throws(() => encode(Enums, { ...empty, [Protobuf.unknown]: bytes("22050a01621001") }), /declared field 4/)
     })
   })
 
@@ -686,6 +689,16 @@ describe("Protobuf", () => {
       const codec = Protobuf.toCodec(Product, { registry: Protobuf.registry(Product, strict) })
       // strict = 102: an empty message
       assert.throws(() => Schema.decodeUnknownSync(codec)(bytes("b20600")), /Missing key/)
+      // A later occurrence completes the earlier one.
+      assert.doesNotThrow(() => Schema.decodeUnknownSync(codec)(bytes("b20600 b206020801")))
+      const Owner = message({ p: Product.pipe(f(1)) })
+      const owner = Protobuf.toCodec(Owner, { registry: Protobuf.registry(Product, strict) })
+      assert.throws(
+        () => Schema.decodeUnknownSync(owner)(bytes("0a03b20600")),
+        /Missing key\n  at \["p"\]\["\$unknown"\]\["n"\]/
+      )
+      // A later occurrence of the owner completes its extension.
+      assert.doesNotThrow(() => Schema.decodeUnknownSync(owner)(bytes("0a03b20600 0a05b206020801")))
     })
 
     it("fails for values the schema rejects", () => {

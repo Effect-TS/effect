@@ -282,6 +282,7 @@ describe("ProtobufJson", () => {
       const value: Protobuf.Value = { kind: { _tag: "nullValue", value: "NULL_VALUE" } }
       assert.strictEqual(encode(Protobuf.Value, value), null)
       assert.deepStrictEqual(decode(Protobuf.Value, null), value)
+      fails(() => decode(Protobuf.Struct, null), /expected a JSON object/)
     })
 
     it("reads timestamps with an offset, and rejects invalid ones", () => {
