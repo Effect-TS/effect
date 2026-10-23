@@ -21,7 +21,7 @@ describe("Statement", () => {
   })
 
   it("keeps null and scalar items in transformed arrays", () => {
-    const rows = [{ posts: [null], tags: [{ tag_name: "admin" }, null, 1] }]
+    const rows: Array<Record<string, unknown>> = [{ posts: [null], tags: [{ tag_name: "admin" }, null, 1] }]
     assert.deepStrictEqual(Statement.defaultTransforms(Str.snakeToCamel).array(rows), [
       { posts: [null], tags: [{ tagName: "admin" }, null, 1] }
     ])
