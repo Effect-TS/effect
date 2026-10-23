@@ -37,18 +37,18 @@ type ValueTagHandlers<I> = {
   readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any
 }
 
-// Finite string / number literal members. Widened `string`, `number` and
-// template literal members are excluded, as is any literal whose runtime key
-// is shared with another string / number member (e.g. `1` with `"1"` or
-// `string`, and `"1"` or `"NaN"` with `number`).
-type LiteralKeys<R> = AmbiguousLiterals<FiniteLiterals<R>, Extract<R, string | number>>
-
-type FiniteLiterals<R> = R extends string | number ? {} extends Record<R, unknown> ? never : R : never
-
-type AmbiguousLiterals<L, All> = L extends number ? `${L}` extends All ? never : L
-  : L extends "NaN" | "Infinity" | "-Infinity" ? number extends All ? never : L
-  : L extends `${infer N extends number}` ? N extends All ? never : L
-  : L
+// Members of `R` that a literal record can dispatch on: finite string / number
+// literals whose runtime key no other string / number member can produce.
+// Widened `string` / `number` and template literals add no keys, and a literal
+// is dropped when another member spells the same key (`1` with `"1"` or
+// `string`, `"1"` or `"NaN"` with `number`).
+type LiteralKeys<R, All = Extract<R, string | number>> = R extends string | number
+  ? {} extends Record<R, unknown> ? never
+  : R extends number ? `${R}` extends All ? never : R
+  : R extends `${infer N extends number}` ? N extends All ? never : R
+  : R extends "NaN" | "Infinity" | "-Infinity" ? number extends All ? never : R
+  : R
+  : never
 
 type LiteralHandlers<R, Ret> = [Exclude<R, LiteralKeys<R>>] extends [never] ? {
     readonly [K in LiteralKeys<R>]: (_: K) => Ret
