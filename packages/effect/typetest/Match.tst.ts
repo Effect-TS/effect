@@ -378,11 +378,19 @@ describe("Match", () => {
     // @ts-expect-error is not assignable to
     Match.type<string>().pipe(Match.literals({ draft: () => 0 }))
 
-    // `1` and `"1"` share the runtime key "1"
+    // `1` and `"1"` share the runtime key "1", including through widened members
     // @ts-expect-error is not assignable to
     Match.type<1 | "1">().pipe(Match.literals({ 1: () => 0 }))
     // @ts-expect-error is not assignable to
     Match.type<1 | "1">().pipe(Match.literalsExhaustive({ 1: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<string | 1>().pipe(Match.literals({ 1: () => 0 }))
+    // @ts-expect-error is not assignable to
+    Match.type<number | "1">().pipe(Match.literals({ "1": () => 0 }))
+
+    // an `undefined` handler cannot prove a literal handled
+    // @ts-expect-error is not assignable to
+    Match.type<"draft">().pipe(Match.literals({ draft: undefined }), Match.exhaustive)
 
     // exhaustive matching cannot leave non-literal members unhandled
     // @ts-expect-error is not assignable to
