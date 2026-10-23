@@ -1,22 +1,24 @@
 /**
- * Formats CLI help and errors as text.
+ * Formats and presents CLI help, errors, and version information.
  *
- * This module turns help documents, CLI errors, grouped errors, and version
- * information into strings. It does not write those strings to the terminal
- * itself. It includes the `Formatter` interface, the formatter service, a layer
- * for custom formatters, and the default formatter with configurable color
- * support.
+ * The `Formatter` service turns help documents, errors, and version
+ * information into strings. The `Presenter` service decides where the built-in
+ * help, version, and invalid-invocation output of `Command.runWith` is written,
+ * and can be replaced to suppress or redirect it.
  *
  * @stability unstable
  * @since 4.0.0
  */
 
+import * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
+import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as CliError from "./CliError.ts"
 import type { HelpDoc } from "./HelpDoc.ts"
 import * as Ansi from "./internal/ansi.ts"
+import * as TerminalCapabilities from "./TerminalCapabilities.ts"
 
 /**
  * Defines the service interface for formatting CLI output including help, errors, and version info.
@@ -206,6 +208,124 @@ export interface Formatter {
 }
 
 /**
+ * Presents the built-in help, version, and invalid-invocation output of
+ * `Command.runWith`.
+ *
+ * **When to use**
+ *
+ * Use to suppress, redirect, or replace that output, for example to keep
+ * stdout clean for machine-readable results.
+ *
+ * **Details**
+ *
+ * Events carry the help document and errors rather than rendered text, so a
+ * presenter can still render them with the `Formatter` service. Presenting an
+ * event does not change the result of the run: implicit help and invalid
+ * invocations still fail with `CliError.ShowHelp`.
+ *
+ * **Gotchas**
+ *
+ * `--completions` scripts, wizard mode output, and handler failures rendered
+ * through `CliError.userMessage` do not go through the presenter.
+ *
+ * **Example** (Writing invalid-invocation output to stderr)
+ *
+ * ```ts import.meta.vitest
+ * import { Console, Effect } from "effect"
+ * import { CliOutput } from "effect/cli"
+ *
+ * const StderrPresenter = CliOutput.layerPresenter({
+ *   present: (event) =>
+ *     event._tag === "InvalidInvocation"
+ *       ? Effect.gen(function*() {
+ *         const formatter = yield* CliOutput.Formatter
+ *         yield* Console.error(formatter.formatHelpDoc(event.helpDoc))
+ *         yield* Console.error(formatter.formatErrors(event.errors))
+ *       })
+ *       : CliOutput.defaultPresenter.present(event)
+ * })
+ * ```
+ *
+ * @see {@link defaultPresenter} for the default console output
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Presenter {
+  /**
+   * Presents a CLI output event.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  readonly present: (event: Presenter.Event) => Effect.Effect<void>
+}
+
+/**
+ * Types used by the `Presenter` service.
+ *
+ * @stability unstable
+ * @since 4.0.0
+ */
+export declare namespace Presenter {
+  /**
+   * Output events produced while running a CLI command.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.0
+   */
+  export type Event = Help | InvalidInvocation | Version
+
+  /**
+   * Help for a command path.
+   *
+   * **Details**
+   *
+   * `reason` is `"Requested"` for `--help`, and `"Implicit"` when the run
+   * fails with a `CliError.ShowHelp` that carries no errors, such as selecting
+   * a command that has no handler, or when `renderErrors` is `false`.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Help {
+    readonly _tag: "Help"
+    readonly reason: "Requested" | "Implicit"
+    readonly commandPath: ReadonlyArray<string>
+    readonly helpDoc: HelpDoc
+  }
+
+  /**
+   * Help and parse or validation errors for an invalid invocation.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.0
+   */
+  export interface InvalidInvocation {
+    readonly _tag: "InvalidInvocation"
+    readonly commandPath: ReadonlyArray<string>
+    readonly helpDoc: HelpDoc
+    readonly errors: ReadonlyArray<CliError.NonShowHelpErrors>
+  }
+
+  /**
+   * Version information requested with `--version`.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Version {
+    readonly _tag: "Version"
+    readonly name: string
+    readonly version: string
+  }
+}
+
+/**
  * Service reference for the CLI output formatter. Provides a default implementation
  * that can be overridden for custom formatting or testing.
  *
@@ -239,6 +359,53 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
 )
 
 /**
+ * Default presenter that renders events with the current `Formatter` and
+ * writes them with `Console`.
+ *
+ * **Details**
+ *
+ * Help and version output goes to `Console.log`. Invalid invocations write
+ * help to `Console.log` and errors to `Console.error`. When no `Formatter` is
+ * installed, the default formatter colors output when `TerminalCapabilities`
+ * says it can.
+ *
+ * @see {@link Presenter} for replacing the default output
+ * @stability unstable
+ * @category defaults
+ * @since 4.0.0
+ */
+export const defaultPresenter: Presenter = {
+  present: Effect.fnUntraced(function*(event) {
+    const context = yield* Effect.context<never>()
+    const formatter = Context.getOrUndefined(context, Formatter) ??
+      defaultFormatter({ colors: Context.get(context, TerminalCapabilities.TerminalCapabilities).canColor })
+    switch (event._tag) {
+      case "Help":
+        return yield* Console.log(formatter.formatHelpDoc(event.helpDoc))
+      case "InvalidInvocation":
+        yield* Console.log(formatter.formatHelpDoc(event.helpDoc))
+        return yield* Console.error(formatter.formatErrors(event.errors))
+      case "Version":
+        return yield* Console.log(formatter.formatVersion(event.name, event.version))
+    }
+  })
+}
+
+/**
+ * Service reference for the CLI output presenter. Defaults to
+ * `defaultPresenter`.
+ *
+ * @see {@link layerPresenter} for providing a custom presenter
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const Presenter: Context.Reference<Presenter> = Context.Reference(
+  "effect/cli/CliOutput/Presenter",
+  { defaultValue: () => defaultPresenter }
+)
+
+/**
  * Creates a Layer that provides a custom Formatter implementation.
  *
  * **Example** (Providing a custom formatter)
@@ -267,6 +434,16 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  * @since 4.0.0
  */
 export const layer = (formatter: Formatter): Layer.Layer<never> => Layer.succeed(Formatter)(formatter)
+
+/**
+ * Creates a Layer that provides a custom Presenter implementation.
+ *
+ * @see {@link Presenter} for the events a presenter receives
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerPresenter = (presenter: Presenter): Layer.Layer<never> => Layer.succeed(Presenter)(presenter)
 
 const escapeControlCharacters = (text: string): string =>
   // oxlint-disable-next-line no-control-regex
