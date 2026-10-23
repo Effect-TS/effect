@@ -1226,7 +1226,7 @@ export const defaultTransforms = (
 ) => {
   const transformValue = (value: any) => {
     if (Array.isArray(value)) {
-      if (value.length === 0 || value[0].constructor !== Object) {
+      if (value.length === 0 || value[0]?.constructor !== Object) {
         return value
       }
       return array(value)
@@ -1252,6 +1252,8 @@ export const defaultTransforms = (
       const row = rows[i]
       if (Array.isArray(row)) {
         newRows[i] = transformArrayNested(row) as any
+      } else if (row === null || typeof row !== "object") {
+        newRows[i] = row
       } else {
         const obj: any = {}
         for (const [key, value] of Object.entries(row)) {
@@ -1271,6 +1273,8 @@ export const defaultTransforms = (
       const row = rows[i]
       if (Array.isArray(row)) {
         newRows[i] = transformArray(row) as any
+      } else if (row === null || typeof row !== "object") {
+        newRows[i] = row
       } else {
         const obj: any = {}
         for (const [key, value] of Object.entries(row)) {

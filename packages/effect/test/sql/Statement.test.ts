@@ -20,6 +20,17 @@ describe("Statement", () => {
     ])
   })
 
+  it("keeps null and scalar items in transformed arrays", () => {
+    const rows: Array<Record<string, unknown>> = [{ posts: [null], tags: [{ tag_name: "admin" }, null, 1] }]
+    assert.deepStrictEqual(Statement.defaultTransforms(Str.snakeToCamel).array(rows), [
+      { posts: [null], tags: [{ tagName: "admin" }, null, 1] }
+    ])
+    assert.deepStrictEqual(
+      Statement.defaultTransforms(Str.snakeToCamel, false).value([{ tag_name: "admin" }, null, 1]),
+      [{ tagName: "admin" }, null, 1]
+    )
+  })
+
   it("keeps previously distinct SQL column names distinct", () => {
     const rows: Array<Record<string, unknown>> = [
       { _id: 1, id: 2, foo__bar: 3, foo_bar: 4, _: 5, ___: 6 }
