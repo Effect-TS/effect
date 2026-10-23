@@ -615,18 +615,23 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.text(),
-        catch: (cause) =>
-          new HttpServerError({
-            reason: new RequestParseError({
-              request: this,
-              cause
+    this.textEffect = Effect.withFiber((fiber) =>
+      fiber.getRef(HttpIncomingMessage.MaxBodySize) === undefined
+        ? Effect.tryPromise({
+          try: () => this.source.text(),
+          catch: (cause) =>
+            new HttpServerError({
+              reason: new RequestParseError({
+                request: this,
+                cause
+              })
             })
-          })
-      })
-    ))
+        })
+        : Effect.map(this.arrayBuffer, (buffer) => textDecoder.decode(buffer))
+    ).pipe(
+      Effect.cached,
+      Effect.runSync
+    )
     return this.textEffect
   }
 
@@ -691,18 +696,26 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     if (this.arrayBufferEffect) {
       return this.arrayBufferEffect
     }
-    this.arrayBufferEffect = Effect.runSync(Effect.cached(
-      Effect.tryPromise({
-        try: () => this.source.arrayBuffer(),
+    this.arrayBufferEffect = Effect.withFiber((fiber) => {
+      const maxBodySize = fiber.getRef(HttpIncomingMessage.MaxBodySize)
+      return Effect.tryPromise({
+        try: (signal) =>
+          maxBodySize === undefined
+            ? this.source.arrayBuffer()
+            : readArrayBufferLimited(this.source, Number(maxBodySize), signal),
         catch: (cause) =>
           new HttpServerError({
             reason: new RequestParseError({
               request: this,
+              reason: cause instanceof BodyTooLargeError ? "BodyTooLarge" : "Parse",
               cause
             })
           })
       })
-    ))
+    }).pipe(
+      Effect.cached,
+      Effect.runSync
+    )
     return this.arrayBufferEffect
   }
 
@@ -1096,6 +1109,62 @@ const isBodyInit = (u: unknown): u is BodyInit =>
   isReadableStream(u)
 
 const textDecoder = new TextDecoder()
+
+class BodyTooLargeError extends Error {
+  constructor(maxBytes: number) {
+    super(`Request body exceeds ${maxBytes} bytes`)
+  }
+}
+
+const readArrayBufferLimited = async (
+  source: Request,
+  maxBytes: number,
+  signal: AbortSignal
+): Promise<ArrayBuffer> => {
+  const header = source.headers.get("content-length")
+  const contentLength = header !== null && /^\d+$/.test(header) ? Number(header) : undefined
+  if (contentLength !== undefined && contentLength > maxBytes) {
+    throw new BodyTooLargeError(maxBytes)
+  }
+  if (source.body === null) {
+    return new ArrayBuffer(0)
+  }
+  // A constructed request can understate its content-length, so bytes are
+  // counted on every runtime. Cancellation is not awaited, as the source's
+  // cleanup may never settle.
+  const limit = contentLength ?? maxBytes
+  const reader = source.body.getReader()
+  const cancel = () => {
+    reader.cancel().catch(() => {})
+  }
+  signal.addEventListener("abort", cancel, { once: true })
+  const chunks: Array<Uint8Array> = []
+  let bytes = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      bytes += value.byteLength
+      if (bytes > limit) {
+        cancel()
+        throw bytes > maxBytes
+          ? new BodyTooLargeError(maxBytes)
+          : new Error(`Request body is longer than its content-length of ${contentLength}`)
+      }
+      chunks.push(value)
+    }
+  } finally {
+    signal.removeEventListener("abort", cancel)
+    reader.releaseLock()
+  }
+  const buffer = new Uint8Array(bytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return buffer.buffer
+}
 
 /**
  * Attempts to construct an absolute `URL` for a server request safely.
