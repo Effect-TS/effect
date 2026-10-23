@@ -61,6 +61,18 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
         assert.deepStrictEqual(yield* kv.getUint8Array("utf8"), new TextEncoder().encode(value))
       }))
 
+    it.effect("keys", () =>
+      Effect.gen(function*() {
+        const kv = yield* KeyValueStore.KeyValueStore
+        yield* kv.clear
+        assert.deepStrictEqual(yield* kv.keys, [])
+
+        yield* kv.set("a", "1")
+        yield* kv.set("b", new Uint8Array([1]))
+
+        assert.deepStrictEqual([...(yield* kv.keys)].sort(), ["a", "b"])
+      }))
+
     it.effect("remove", () =>
       Effect.gen(function*() {
         const kv = yield* KeyValueStore.KeyValueStore
