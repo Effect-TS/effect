@@ -163,6 +163,29 @@ describe("AgUiServer", () => {
         })
     ))
 
+  it.effect("serves the run overload when an undefined agent property is present", () => {
+    // A variable passed to the run overload may carry extra properties, so an
+    // undefined agent must not be selected over the run function
+    const options = {
+      path: "/agent" as const,
+      agent: undefined,
+      run: (): Stream.Stream<AgUiSchema.Event> => Stream.empty
+    }
+    return withLayer(
+      AgUiServer.layerHttp(options).pipe(Layer.provide(TestServices)),
+      (handler) =>
+        Effect.gen(function*() {
+          const response = yield* post(handler, input)
+
+          assert.strictEqual(response.status, 200)
+          assert.deepStrictEqual(yield* readEvents(response), [
+            { type: "RUN_STARTED", threadId: "thread-1", runId: "run-1", protocolVersion: "1.0" },
+            { type: "RUN_FINISHED", threadId: "thread-1", runId: "run-1" }
+          ])
+        })
+    )
+  })
+
   it.effect("rejects an invalid RunAgentInput before opening the stream", () =>
     withHandler(
       () => Stream.empty,
