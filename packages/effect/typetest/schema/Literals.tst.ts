@@ -59,6 +59,10 @@ describe("Literals", () => {
     const ab = "a" as "a" | "b"
     expect(schema.omit([ab])).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
 
+    // and for a union of omission tuples
+    const conditional = ["a"] as readonly ["a"] | readonly ["b"]
+    expect(schema.omit(conditional)["Type"]).type.toBe<"a" | "b" | "c" | "d">()
+
     // a parent element typed as a union may or may not be omitted at runtime
     expect(Schema.Literals([ab, "c"]).omit(["a"])).type.toBe<Schema.Literals<ReadonlyArray<"b" | "c">>>()
 
