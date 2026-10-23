@@ -40,12 +40,13 @@ type ValueTagHandlers<I> = {
 // Finite string / number literal members. Widened `string`, `number` and
 // template literal members are excluded, as is any literal whose runtime key
 // is shared with another string / number member (e.g. `1` with `"1"` or
-// `string`, and `"1"` with `number`).
+// `string`, and `"1"` or `"NaN"` with `number`).
 type LiteralKeys<R> = AmbiguousLiterals<FiniteLiterals<R>, Extract<R, string | number>>
 
 type FiniteLiterals<R> = R extends string | number ? {} extends Record<R, unknown> ? never : R : never
 
 type AmbiguousLiterals<L, All> = L extends number ? `${L}` extends All ? never : L
+  : L extends "NaN" | "Infinity" | "-Infinity" ? number extends All ? never : L
   : L extends `${infer N extends number}` ? N extends All ? never : L
   : L
 
