@@ -19,6 +19,15 @@ const chunked = (chunks: ReadonlyArray<string>, close = true) =>
     }
   })
 
+// never ends, and its cancellation never settles
+const stalled = (chunks: ReadonlyArray<string>) =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk))
+    },
+    cancel: () => new Promise<void>(() => {})
+  })
+
 const post = (
   handler: (request: Request) => Promise<Response>,
   body: string | ReadableStream<Uint8Array>,
@@ -56,12 +65,12 @@ describe("request body", () => {
       })
 
       it("returns 413 for a chunked body over the limit", async () => {
-        const response = await post(handler, chunked(["123", "45"]))
+        const response = await post(handler, stalled(["123", "45"]))
         assert.strictEqual(response.status, 413)
       })
 
       it("returns 413 when the body is longer than its content-length", async () => {
-        const response = await post(handler, "12345", { "content-length": "4" })
+        const response = await post(handler, stalled(["12345"]), { "content-length": "4" })
         assert.strictEqual(response.status, 413)
       })
     })
