@@ -13939,20 +13939,22 @@ const dnsSeconds = dnsUint32.pipe(decodeTo(
 
 // Each record type is an opaque value whose JSON form is a plain object tagged
 // by record type, such as `{ "_tag": "MX", "exchange": "mail.example.com", "priority": 10 }`.
-const dnsRecordOfType = <T extends Dns_.RecordType>(
-  type: T,
-  fields: { readonly [K in keyof Dns_.RecordFields<T>]-?: Codec<Dns_.RecordFields<T>[K], unknown> }
+const dnsRecordSchema = <R extends Dns_.DnsRecord | Dns_.Unknown, F>(
+  type: string,
+  is: (u: unknown) => u is R,
+  fields: { readonly [K in keyof F]-?: Codec<F[K], unknown> },
+  make: (fields: F) => Result_.Result<R, NetAddress_.NetAddressError>
 ) =>
-  declare((u): u is Dns_.RecordFor<T> => Dns_.isDnsRecord(u) && u._tag === type, {
+  declare(is, {
     identifier: `Dns${type.charAt(0)}${type.slice(1).toLowerCase()}Record`,
     toCodecJson: () => {
       const json = TaggedStruct(type, fields)
-      return link<Dns_.RecordFor<T>>()(
+      return link<R>()(
         json,
         SchemaTransformation.transformEffect({
           decode: (input, options) => {
-            const { _tag, ...rest } = input as { readonly _tag: T }
-            const result = Dns_.makeRecord(type, rest as Dns_.RecordFields<T>)
+            const { _tag, ...rest } = input as { readonly _tag: string }
+            const result = make(rest as F)
             return Result_.isSuccess(result)
               ? Effect.succeed(result.success)
               : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
@@ -13963,6 +13965,17 @@ const dnsRecordOfType = <T extends Dns_.RecordType>(
       )
     }
   })
+
+const dnsRecordOfType = <T extends Dns_.RecordType>(
+  type: T,
+  fields: { readonly [K in keyof Dns_.RecordFields<T>]-?: Codec<Dns_.RecordFields<T>[K], unknown> }
+) =>
+  dnsRecordSchema<Dns_.RecordFor<T>, Dns_.RecordFields<T>>(
+    type,
+    (u): u is Dns_.RecordFor<T> => Dns_.isDnsRecord(u) && u._tag === type,
+    fields,
+    (fields) => Dns_.makeRecord(type, fields)
+  )
 
 /**
  * Type-level representation of {@link DnsARecord}.
@@ -14050,7 +14063,7 @@ export interface DnsCnameRecord extends declare<Dns_.Cname> {
  * @category schemas
  * @since 4.0.0
  */
-export const DnsCnameRecord: DnsCnameRecord = dnsRecordOfType("CNAME", { target: DomainName })
+export const DnsCnameRecord: DnsCnameRecord = dnsRecordOfType("CNAME", { target: NonEmptyString })
 
 /**
  * Type-level representation of {@link DnsMxRecord}.
@@ -14243,6 +14256,31 @@ export interface DnsTxtRecord extends declare<Dns_.Txt> {
 export const DnsTxtRecord: DnsTxtRecord = dnsRecordOfType("TXT", { chunks: NonEmptyArray(String) })
 
 /**
+ * Type-level representation of {@link DnsUnknownRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsUnknownRecord extends declare<Dns_.Unknown> {
+  readonly "Rebuild": DnsUnknownRecord
+}
+
+/**
+ * Schema for already-constructed `Dns.Unknown` records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsUnknownRecord: DnsUnknownRecord = dnsRecordSchema(
+  "UNKNOWN",
+  Dns_.isUnknownRecord,
+  { type: dnsUint16, data: Uint8ArrayFromHex },
+  Dns_.makeUnknownRecord
+)
+
+/**
  * Type-level representation of {@link DnsRecord}.
  *
  * @stability experimental
@@ -14300,6 +14338,51 @@ export const DnsRecord: DnsRecord = Union([
   DnsTlsaRecord,
   DnsTxtRecord
 ]).annotate({ identifier: "DnsRecord" })
+
+// TTLs are written as whole seconds, like SOA timers.
+const dnsTtl = Duration.annotate({
+  toCodecJson: () =>
+    link<Duration_.Duration>()(
+      dnsUint32,
+      SchemaTransformation.transform({ decode: Duration_.seconds, encode: Duration_.toSeconds })
+    )
+})
+
+/**
+ * Type-level representation of {@link DnsResourceRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsResourceRecord extends
+  Struct<{
+    readonly owner: NonEmptyString
+    readonly ttl: Duration
+    readonly class: Int
+    readonly data: Union<readonly [DnsRecord, DnsUnknownRecord]>
+  }>
+{}
+
+/**
+ * Schema for resource records of `DnsClient` responses.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes the TTL as whole seconds and the record
+ * data like {@link DnsRecord} and {@link DnsUnknownRecord}, such as
+ * `{ "owner": "example.com.", "ttl": 300, "class": 1, "data": { "_tag": "A", "address": "192.0.2.1" } }`.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsResourceRecord: DnsResourceRecord = Struct({
+  owner: NonEmptyString,
+  ttl: dnsTtl,
+  class: dnsUint16,
+  data: Union([DnsRecord, DnsUnknownRecord])
+}).annotate({ identifier: "DnsResourceRecord" })
 
 // -----------------------------------------------------------------------------
 // Exit schemas
