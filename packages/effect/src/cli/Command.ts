@@ -1844,11 +1844,14 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
     }
   })
 
-const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
+const showUserError = (error: object, userMessage: string): Effect.Effect<void> =>
   Effect.gen(function*() {
     const formatter = yield* resolveFormatter
-    yield* Console.error(formatter.formatError(error))
-    error[Runtime.errorReported] = false
+    const rendered = error instanceof CliError.UserError
+      ? error
+      : new CliError.UserError({ cause: error, userMessage })
+    yield* Console.error(formatter.formatError(rendered))
+    Object.assign(error, { [Runtime.errorReported]: false })
   })
 
 /**
@@ -1860,7 +1863,8 @@ const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
  * entry point.
  *
  * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
+ * handler failures annotated with `CliError.userMessage`, including
+ * `CliError.UserError`, are also rendered with the installed
  * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
  * `false` when the host application owns error rendering.
  *
@@ -1950,7 +1954,8 @@ export const run: {
  * commands with specific arguments.
  *
  * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
+ * handler failures annotated with `CliError.userMessage`, including
+ * `CliError.UserError`, are also rendered with the installed
  * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
  * `false` when the host application owns error rendering.
  *
@@ -2127,11 +2132,12 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       (error) => Effect.andThen(showHelp(command, error, config.renderErrors !== false), Effect.fail(error))
     ),
     Effect.catchFilter(
-      (error) =>
-        config.renderErrors !== false && CliError.isCliError(error) && error._tag === "UserError"
-          ? Result.succeed(error)
-          : Result.fail(error),
-      (error) => Effect.andThen(showUserError(error), Effect.fail(error))
+      (error) => {
+        if (config.renderErrors === false || !Predicate.isObjectKeyword(error)) return Result.fail(error)
+        const userMessage = CliError.getUserMessage(error)
+        return userMessage === undefined ? Result.fail(error) : Result.succeed({ error, userMessage })
+      },
+      ({ error, userMessage }) => Effect.andThen(showUserError(error, userMessage), Effect.fail(error))
     ),
     Effect.catchFilter(
       (e) =>

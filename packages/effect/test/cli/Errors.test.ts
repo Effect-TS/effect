@@ -446,4 +446,12 @@ describe("Command errors", () => {
       assert.strictEqual(multiple.message, `Unexpected positional arguments: "first", "second"`)
     })
   })
+
+  describe("userMessage", () => {
+    it("getUserMessage reads UserError messages and ignores values without the annotation", () => {
+      assert.strictEqual(CliError.getUserMessage(new CliError.UserError({ cause: "failed" })), "failed")
+      assert.isUndefined(CliError.getUserMessage({ userMessage: "nope" }))
+      assert.isUndefined(CliError.getUserMessage(new Error("nope")))
+    })
+  })
 })

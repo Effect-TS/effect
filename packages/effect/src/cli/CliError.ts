@@ -5,9 +5,10 @@
  * flags or arguments, unexpected positional arguments, invalid values, unknown
  * subcommands, rejected input combinations, user handler failures, and
  * requests to show command help. This module includes the `CliError` union,
- * the `isCliError` guard, schema-backed error classes with display messages,
- * and the `NonShowHelpErrors` union used when parse or validation errors
- * should be shown with help output.
+ * the `isCliError` guard, the `userMessage` annotation for rendering handler
+ * failures, schema-backed error classes with display messages, and the
+ * `NonShowHelpErrors` union used when parse or validation errors should be
+ * shown with help output.
  *
  * @stability unstable
  * @since 4.0.0
@@ -45,6 +46,82 @@ const TypeId = "~effect/cli/CliError"
  * @since 4.0.0
  */
 export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u, TypeId)
+
+/**
+ * Defines the string property key used to give an object error a user-facing
+ * message.
+ *
+ * **When to use**
+ *
+ * Use to type the property key that marks handler failures for rendering by
+ * `Command.run`.
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.0
+ */
+export type userMessage = "~effect/cli/CliError/userMessage"
+
+/**
+ * Defines the runtime property key used to give an object error a user-facing
+ * message.
+ *
+ * **When to use**
+ *
+ * Use when a handler fails with a domain error that should be shown to the
+ * user without wrapping it in {@link UserError}.
+ *
+ * **Details**
+ *
+ * When a handler failure has a string `[CliError.userMessage]`, `Command.run`
+ * renders it with the installed formatter, sets `Runtime.errorReported` to
+ * `false`, and rethrows the original error, so its tag is preserved. The
+ * global `Error` interface declares this key as an optional string.
+ *
+ * **Example** (Rendering a tagged handler failure)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { CliError } from "effect/cli"
+ *
+ * class Occupied extends Schema.TaggedError<Occupied>()("Occupied", {
+ *   path: Schema.String
+ * }) {
+ *   override get [CliError.userMessage]() {
+ *     return `${this.path} already exists`
+ *   }
+ * }
+ *
+ * const error = new Occupied({ path: "config.yaml" })
+ * CliError.getUserMessage(error) // => "config.yaml already exists"
+ * ```
+ *
+ * @see {@link getUserMessage} for reading the message stored under this key
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.0
+ */
+export const userMessage: userMessage = "~effect/cli/CliError/userMessage"
+
+declare global {
+  interface Error {
+    readonly [userMessage]?: string
+  }
+}
+
+/**
+ * Reads the `CliError.userMessage` annotation from an error object, returning
+ * `undefined` when it is unset or not a string.
+ *
+ * @see {@link userMessage} for the annotation key this getter reads
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.0.0
+ */
+export const getUserMessage = (error: object): string | undefined =>
+  userMessage in error && typeof error[userMessage] === "string" ? error[userMessage] : undefined
 
 /**
  * Union type representing all possible CLI error conditions.
@@ -623,6 +700,16 @@ export class UserError extends Schema.TaggedError<UserError>(
     if (typeof this.cause === "string" && this.cause) return this.cause
     if (this.cause instanceof Error && this.cause.message) return this.cause.message
     return "An error occurred"
+  }
+
+  /**
+   * Exposes `message` as the user-facing message rendered by `Command.run`.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  override get [userMessage]() {
+    return this.message
   }
 }
 
