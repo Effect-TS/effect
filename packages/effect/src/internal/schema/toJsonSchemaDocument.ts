@@ -454,7 +454,10 @@ function compileJsonSchema(
         return types.length === 0 ? { not: {} } : { anyOf: types }
       }
       case "TemplateLiteral":
-        return { type: "string", pattern: `^${getTemplateLiteralPattern(representation.parts, new Set())}$` }
+        return {
+          type: "string",
+          pattern: `^${getTemplateLiteralPattern(representation.parts, dependencies, new Set())}$`
+        }
       case "Arrays": {
         const out: JsonSchema.JsonSchema = { type: "array" }
         let minItems = representation.elements.length
@@ -682,7 +685,7 @@ function compileJsonSchema(
       }
       case "TemplateLiteral":
         return parameter.checks.length === 0
-          ? [`^${getTemplateLiteralPattern(parameter.parts, new Set())}$`]
+          ? [`^${getTemplateLiteralPattern(parameter.parts, [], new Set())}$`]
           : undefined
       case "Union": {
         if (parameter.types.length === 0 || parameter.checks.length > 0 || parameter.options?.mode === "oneOf") {
@@ -708,12 +711,19 @@ function compileJsonSchema(
 
   function getTemplateLiteralPattern(
     parts: ReadonlyArray<SchemaRepresentation.Representation>,
+    dependencies: Array<Exactness>,
     seenReferences: ReadonlySet<string>
   ): string {
-    return parts.map((part) => getPartPattern(part, seenReferences)).join("")
+    return parts.map((part) => getPartPattern(part, dependencies, seenReferences)).join("")
   }
 
-  function getPartPattern(part: SchemaRepresentation.Representation, seenReferences: ReadonlySet<string>): string {
+  function getPartPattern(
+    part: SchemaRepresentation.Representation,
+    dependencies: Array<Exactness>,
+    seenReferences: ReadonlySet<string>
+  ): string {
+    // Segment checks are omitted from the pattern, even when they have a JSON Schema exporter.
+    if (part._tag !== "Reference" && part.checks.length > 0) dependencies.push(false)
     switch (part._tag) {
       case "Reference": {
         if (!Object.hasOwn(references, part.$ref)) {
@@ -722,7 +732,7 @@ function compileJsonSchema(
         if (seenReferences.has(part.$ref)) {
           throw errorWithPath(`Invalid recursive TemplateLiteral part ${part.$ref}`, [])
         }
-        return getPartPattern(references[part.$ref], new Set(seenReferences).add(part.$ref))
+        return getPartPattern(references[part.$ref], dependencies, new Set(seenReferences).add(part.$ref))
       }
       case "Literal":
         return RegEx.escape(globalThis.String(part.literal))
@@ -733,9 +743,9 @@ function compileJsonSchema(
       case "BigInt":
         return "-?\\d+"
       case "TemplateLiteral":
-        return getTemplateLiteralPattern(part.parts, seenReferences)
+        return getTemplateLiteralPattern(part.parts, dependencies, seenReferences)
       case "Union":
-        return `(?:${part.types.map((type) => getPartPattern(type, seenReferences)).join("|")})`
+        return `(?:${part.types.map((type) => getPartPattern(type, dependencies, seenReferences)).join("|")})`
       default:
         throw errorWithPath(`Invalid TemplateLiteral part ${part._tag}`, [])
     }

@@ -2607,6 +2607,7 @@ describe("toJsonSchemaDocument", () => {
       [
         ["direct", template],
         ["named", Schema.TemplateLiteral(["item.", segment.annotate({ identifier: "Segment" })])],
+        ["named template", template.annotate({ identifier: "Item" })],
         ["nested template", Schema.TemplateLiteral(["item.", Schema.TemplateLiteral([segment])])],
         ["union", Schema.TemplateLiteral(["item.", Schema.Union([segment, Schema.Literal("def")])])]
       ] as const
@@ -2624,6 +2625,23 @@ describe("toJsonSchemaDocument", () => {
       assert.isUndefined(document.schema.oneOf)
     })
 
+    it("uses anyOf when numeric segment checks are omitted", () => {
+      const schema = Schema.Union([
+        Schema.TemplateLiteral(["item.", Schema.Int]),
+        Schema.Literal("item.1.5")
+      ], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(schema)("item.1"), true)
+      assert.strictEqual(Schema.is(schema)("item.1.5"), true)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.1"), true)
+      assert.strictEqual(validate("item.1.5"), true)
+      assert.strictEqual(validate("item.abc"), false)
+      assert.isDefined(document.schema.anyOf)
+      assert.isUndefined(document.schema.oneOf)
+    })
+
     it("keeps oneOf when template segments have no omitted checks", () => {
       const schema = Schema.Union([
         Schema.TemplateLiteral(["item.", Schema.String]),
@@ -2635,6 +2653,21 @@ describe("toJsonSchemaDocument", () => {
       const document = Schema.toJsonSchemaDocument(schema)
       const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
       assert.strictEqual(validate("item.abc"), true)
+      assert.strictEqual(validate("item.xyz"), false)
+      assert.isDefined(document.schema.oneOf)
+    })
+
+    it("keeps oneOf when a check on the whole template is exported exactly", () => {
+      const schema = Schema.Union([
+        Schema.TemplateLiteral(["item.", Schema.String]).check(Schema.isPattern(/^item\.abc$/u)),
+        Schema.Literal("item.abc")
+      ], { mode: "oneOf" })
+      assert.strictEqual(Schema.is(schema)("item.abc"), false)
+      assert.strictEqual(Schema.is(schema)("item.xyz"), false)
+
+      const document = Schema.toJsonSchemaDocument(schema)
+      const validate = ajvDraft2020_12.compile({ ...document.schema, $defs: document.definitions })
+      assert.strictEqual(validate("item.abc"), false)
       assert.strictEqual(validate("item.xyz"), false)
       assert.isDefined(document.schema.oneOf)
     })
