@@ -5014,15 +5014,14 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
    *
    * **Details**
    *
-   * The remaining literals keep their original order at runtime, but the
-   * result is typed as `Literals<ReadonlyArray<...>>` rather than as a tuple,
-   * so it scales to schemas with hundreds of literals. Use `pick` when you
-   * need positional typing of `literals` and `members`.
+   * The remaining literals keep their original order. Like `pick`, the result
+   * keeps the positional typing of `literals` and `members` when the original
+   * and the omitted literals are fixed-length tuples of single literal values.
    *
-   * A literal is excluded from the type only when it is definitely omitted:
-   * the omitted literals must be a fixed-length tuple whose elements are single
-   * literal values. An element typed as a union or a branded type, or an array
-   * without a fixed length, excludes nothing.
+   * Otherwise the result is typed as `Literals<ReadonlyArray<...>>`. A literal
+   * is excluded from that type only when it is definitely omitted, so omitting
+   * an element typed as a union or a branded type, or an array without a fixed
+   * length, excludes nothing.
    *
    * **Example** (Omitting literals)
    *
@@ -5030,7 +5029,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
    * import { Schema } from "effect"
    *
    * const schema = Schema.Literals(["a", "b", "c", "d"]).omit(["b", "d"])
-   * // Schema.Literals<ReadonlyArray<"a" | "c">>
+   * // Schema.Literals<readonly ["a", "c"]>
    *
    * Schema.decodeUnknownSync(schema)("a") // => "a"
    * ```
@@ -5048,17 +5047,27 @@ type IsLiteralUnit<T> = [T] extends [never] ? false
   : T extends string | number | bigint ? {} extends Record<`${T}`, 0> ? false : true
   : true
 
-// the omitted elements that definitely remove exactly one runtime value
-type OmittedLiteralUnits<L2 extends ReadonlyArray<unknown>> = {
-  [K in keyof L2]: IsLiteralUnit<L2[K]> extends true ? L2[K] : never
-}[number]
+// a fixed-length tuple of single literal values, so its element union is exactly its runtime values
+type IsLiteralTuple<T extends ReadonlyArray<unknown>> = IsUnion<T> extends true ? false
+  : IsLiteralUnit<T["length"]> extends false ? false
+  : { [K in keyof T]: IsLiteralUnit<T[K]> }[number] extends true ? true
+  : false
 
-type OmitLiterals<L extends ReadonlyArray<SchemaAST.LiteralValue>, L2 extends ReadonlyArray<L[number]>> = ReadonlyArray<
-  // a union of tuples or an array without a fixed length may not hold every value of its element type at runtime
-  IsUnion<L2> extends true ? L[number]
-    : IsLiteralUnit<L2["length"]> extends false ? L[number]
-    : Exclude<L[number], OmittedLiteralUnits<L2>>
->
+type OmitLiteralsTuple<
+  L extends ReadonlyArray<SchemaAST.LiteralValue>,
+  Omitted extends SchemaAST.LiteralValue,
+  Out extends ReadonlyArray<SchemaAST.LiteralValue> = readonly []
+> = L extends
+  readonly [infer Head extends SchemaAST.LiteralValue, ...infer Tail extends ReadonlyArray<SchemaAST.LiteralValue>]
+  ? OmitLiteralsTuple<Tail, Omitted, Head extends Omitted ? Out : readonly [...Out, Head]>
+  : Out
+
+type OmitLiterals<L extends ReadonlyArray<SchemaAST.LiteralValue>, L2 extends ReadonlyArray<L[number]>> =
+  // the omission may not hold every value of its element type at runtime: exclude nothing
+  IsLiteralTuple<L2> extends false ? ReadonlyArray<L[number]>
+    // positions are unknown, but the definitely omitted literals can still be excluded
+    : IsLiteralTuple<L> extends false ? ReadonlyArray<Exclude<L[number], L2[number]>>
+    : OmitLiteralsTuple<L, L2[number]>
 
 /**
  * Creates a union schema from an array of literal values.
