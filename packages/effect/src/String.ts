@@ -1455,6 +1455,9 @@ export const constantCase: (self: string) => string = noCase({
  * Unlike {@link constantCase}, digit-letter boundaries are not split. For
  * example, `"api-v2 xml"` becomes `"API_V2_XML"`.
  *
+ * `configCase` is not idempotent: `"field2value"` becomes `"FIELD2VALUE"`, and
+ * applying it again gives `"FIELD2_VALUE"`.
+ *
  * @see {@link constantCase} for standard uppercase underscore-separated output
  * @stability stable
  * @category transforming
