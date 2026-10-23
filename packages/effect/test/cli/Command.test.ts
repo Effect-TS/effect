@@ -924,6 +924,30 @@ describe("Command", () => {
         assert.isTrue(stderr.some((line) => String(line).includes("invalid-command")))
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should route built-in output through the configured presenter", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        const PresenterLayer = CliOutput.layerPresenter({
+          present: (event) =>
+            Effect.sync(() => {
+              events.push(event._tag === "Help" ? `Help(${event.reason})` : event._tag)
+            })
+        })
+        const run = Command.runWith(Command.make("greet", { name: Flag.String("name") }), { version: "1.0.0" })
+        const runEmpty = Command.runWith(Command.make("empty"), { version: "1.0.0" })
+
+        yield* Effect.gen(function*() {
+          yield* run(["--help"])
+          yield* run(["--version"])
+          yield* Effect.flip(run([]))
+          yield* Effect.flip(runEmpty([]))
+        }).pipe(Effect.provide(PresenterLayer))
+
+        assert.deepStrictEqual(events, ["Help(Requested)", "Version", "InvalidInvocation", "Help(Implicit)"])
+        assert.deepStrictEqual(yield* TestConsole.logLines, [])
+        assert.deepStrictEqual(yield* TestConsole.errorLines, [])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should propagate handler errors from run", () =>
       Effect.gen(function*() {
         const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))

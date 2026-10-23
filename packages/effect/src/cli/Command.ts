@@ -30,6 +30,7 @@ import * as Terminal from "../Terminal.ts"
 import type { Contravariant, Covariant, NoInfer, Simplify } from "../Types.ts"
 import * as CliConfig from "./CliConfig.ts"
 import * as CliError from "./CliError.ts"
+import * as CliOutput from "./CliOutput.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
 import { checkForDuplicateFlags, makeCommand, makeParser, toImpl, TypeId } from "./internal/command.ts"
 import { mergeConfig, parseConfig } from "./internal/config.ts"
@@ -1836,12 +1837,14 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
     const { builtIns } = yield* CliConfig.CliConfig
-    const formatter = yield* resolveFormatter
-    const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
-    yield* Console.log(formatter.formatHelpDoc(helpDoc))
-    if (renderErrors && error.errors.length > 0) {
-      yield* Console.error(formatter.formatErrors(error.errors as any))
-    }
+    const presenter = yield* CliOutput.Presenter
+    const { commandPath, errors } = error
+    const helpDoc = yield* getHelpForCommandPath(command, commandPath, builtIns)
+    yield* presenter.present(
+      renderErrors && errors.length > 0
+        ? { _tag: "InvalidInvocation", commandPath, helpDoc, errors }
+        : { _tag: "Help", reason: "Implicit", commandPath, helpDoc }
+    )
   })
 
 const showUserError = (error: object, userMessage: string): Effect.Effect<void> =>
@@ -1862,11 +1865,12 @@ const showUserError = (error: object, userMessage: string): Effect.Effect<void> 
  * Use when command-line arguments should come from `Stdio` at the application
  * entry point.
  *
- * Help documents are always rendered. By default, parse error details and
- * handler failures annotated with `CliError.userMessage`, including
- * `CliError.UserError`, are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * Help, version, and parse error output is written through
+ * `CliOutput.Presenter`. Help documents are always presented. By default,
+ * parse error details are also presented, and handler failures annotated with
+ * `CliError.userMessage`, including `CliError.UserError`, are rendered with the
+ * installed `CliOutput.Formatter` before the error is rethrown. Set
+ * `renderErrors` to `false` when the host application owns error rendering.
  *
  * **Example** (Running commands with standard input)
  *
@@ -1953,11 +1957,12 @@ export const run: {
  * Use when you need to test CLI applications or programmatically execute
  * commands with specific arguments.
  *
- * Help documents are always rendered. By default, parse error details and
- * handler failures annotated with `CliError.userMessage`, including
- * `CliError.UserError`, are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * Help, version, and parse error output is written through
+ * `CliOutput.Presenter`. Help documents are always presented. By default,
+ * parse error details are also presented, and handler failures annotated with
+ * `CliError.userMessage`, including `CliError.UserError`, are rendered with the
+ * installed `CliOutput.Formatter` before the error is rethrown. Set
+ * `renderErrors` to `false` when the host application owns error rendering.
  *
  * **Example** (Running commands with explicit arguments)
  *
