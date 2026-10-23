@@ -153,9 +153,9 @@ describe("OtlpProxy", () => {
       assert.strictEqual(upstream.requests.length, 1)
     }))
 
-  it.effect("stops reading at maxBodySize when content-length understates the body", () =>
+  it.effect("stops reading early when content-length understates the body", () =>
     Effect.gen(function*() {
-      for (const contentLength of ["0", "1"]) {
+      for (const [contentLength, status] of [["0", 400], ["1", 400], ["4", 413]] as const) {
         const upstream = makeUpstream()
         let pulls = 0
         const body = new ReadableStream<Uint8Array>({
@@ -175,9 +175,10 @@ describe("OtlpProxy", () => {
           } as RequestInit)
         )
 
-        assert.strictEqual(response.status, 413)
+        // Overrunning the declared length is a parse error unless the body is also over the limit.
+        assert.strictEqual(response.status, status, `content-length: ${contentLength}`)
         assert.strictEqual(upstream.requests.length, 0)
-        // Reading stops once the limit is crossed instead of buffering all ten chunks.
+        // Reading stops once the declared length or limit is crossed instead of buffering all ten chunks.
         assert.isAtMost(pulls, 4, `content-length: ${contentLength}`)
       }
     }))
