@@ -149,9 +149,10 @@ export const make = Effect.fnUntraced(function*<
      * Called once a retiring entity stops accepting requests, so callers
      * waiting on requests it has not started can be released.
      */
-    readonly abandonUndelivered?:
-      | ((address: EntityAddress, isDelivered: (requestId: Snowflake.Snowflake) => boolean) => Effect.Effect<void>)
-      | undefined
+    readonly abandonUndelivered: (
+      address: EntityAddress,
+      isDelivered: (requestId: Snowflake.Snowflake) => boolean
+    ) => Effect.Effect<void>
   }
 ) {
   const config = yield* ShardingConfig
@@ -550,12 +551,10 @@ export const make = Effect.fnUntraced(function*<
             // A handler this drain waits for may be parked on a request the
             // retired entity will never start, such as its own queued request.
             // Release callers before `Eof`, which waits for handler acquisition.
-            if (options.abandonUndelivered) {
-              yield* options.abandonUndelivered(
-                address,
-                (requestId) => activeRequests.get(requestId)?.delivered === true
-              )
-            }
+            yield* options.abandonUndelivered(
+              address,
+              (requestId) => activeRequests.get(requestId)?.delivered === true
+            )
             yield* state.write(0, { _tag: "Eof" })
           }).pipe(
             Effect.andThen(endLatch.await),
