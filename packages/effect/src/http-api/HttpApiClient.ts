@@ -241,7 +241,9 @@ export declare namespace Client {
         PayloadR
       >
     >
-  ) => MethodReturn<Endpoint, E, R, Mode, PayloadR>
+    // `NoInfer` keeps a contextual return type, such as an `Effect.all`
+    // element, from inferring `PayloadR` when there is no streaming payload.
+  ) => MethodReturn<Endpoint, E, R, Mode, NoInfer<PayloadR>>
 
   /**
    * Extracts client methods for endpoints in top-level groups so they can be exposed
