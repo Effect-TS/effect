@@ -1253,7 +1253,6 @@ export const defaultTransforms = (
       if (Array.isArray(row)) {
         newRows[i] = transformArrayNested(row) as any
       } else if (row === null || typeof row !== "object") {
-        // Nested JSON arrays can contain null and scalar items
         newRows[i] = row
       } else {
         const obj: any = {}
