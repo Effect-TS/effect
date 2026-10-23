@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
+import { Clock, Duration, Effect, Fiber, Layer, Queue, Schema } from "effect"
 import * as CircuitBreakerRedisTest from "effect-test/persistence/CircuitBreakerRedisTest"
 import * as CircuitBreakerTest from "effect-test/persistence/CircuitBreakerTest"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
@@ -176,6 +176,25 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
           channel: "effect-test",
           message: "hello"
         })
+      }))
+
+    it.effect("runs blocking reads on a reserved connection without delaying shared commands", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const read = yield* redis.reserve.pipe(
+          Effect.flatMap((connection) =>
+            connection.send("XREAD", "BLOCK", "5000", "STREAMS", "effect-test-reserve", "$")
+          ),
+          Effect.scoped,
+          Effect.forkChild
+        )
+        // XREAD with "$" only sees entries added after it starts blocking
+        yield* redis.send<string>("CLIENT", "LIST").pipe(
+          Effect.repeat({ until: (clients) => clients.includes("cmd=xread") })
+        )
+        yield* redis.send("XADD", "effect-test-reserve", "*", "key", "value")
+
+        assert.include(JSON.stringify(yield* Fiber.join(read)), "value")
       }))
 
     // The shared PersistedQueue suite can only assert that exhausted elements
