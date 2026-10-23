@@ -18,6 +18,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as AiError from "./AiError.ts"
+import * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
@@ -1578,6 +1579,15 @@ export interface BaseToolResult<Name extends string> extends BasePart<"tool-resu
    */
   readonly encodedResult: unknown
   /**
+   * Content for the model, made by the tool's `toModelContent` function.
+   *
+   * **Details**
+   *
+   * When this is set, providers that support rich tool results send these
+   * parts (for example, images) instead of the JSON text of the result.
+   */
+  readonly content?: ReadonlyArray<Prompt.ToolResultContentPart> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted: boolean
@@ -1705,6 +1715,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly isFailure: boolean
   /**
+   * Content for the model, made by the tool's `toModelContent` function.
+   */
+  readonly content?: ReadonlyArray<Prompt.ToolResultContentPartEncoded> | undefined
+  /**
    * Whether the tool was executed by the provider (true) or framework (false).
    */
   readonly providerExecuted?: boolean | undefined
@@ -1766,6 +1780,7 @@ const makeToolResultPart = (name: Schema.Top, success: Schema.Constraint, failur
       ...Common,
       [PartTypeId]: Schema.Literal(PartTypeId),
       result,
+      content: Schema.optional(Schema.Array(Prompt.ToolResultContentPart)),
       providerExecuted: Schema.Boolean,
       metadata: ProviderMetadata,
       encodedResult,
@@ -1774,6 +1789,7 @@ const makeToolResultPart = (name: Schema.Top, success: Schema.Constraint, failur
     const Encoded = Schema.Struct({
       ...Common,
       result: encodedResult,
+      content: Schema.optional(Schema.toEncoded(Schema.Array(Prompt.ToolResultContentPart))),
       providerExecuted: Schema.optional(Schema.Boolean),
       metadata: Schema.optional(ProviderMetadata),
       preliminary: Schema.optional(Schema.Boolean)
