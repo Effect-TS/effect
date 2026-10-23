@@ -614,6 +614,8 @@ describe("Protobuf", () => {
       // A known number would be read back over the declared field.
       assert.throws(() => encode(Enums, { ...empty, [Protobuf.unknown]: bytes("0801") }), /declared field 1/)
       assert.throws(() => encode(Enums, { ...empty, [Protobuf.unknown]: bytes("22050a01621001") }), /declared field 4/)
+      // An entry that decoding rejects, here for its key of invalid UTF-8, is not kept either.
+      assert.throws(() => encode(Enums, { ...empty, [Protobuf.unknown]: bytes("22050a01ff1007") }), /declared field 4/)
     })
   })
 
