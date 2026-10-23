@@ -1249,8 +1249,8 @@ export const getExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
   extension: Extension<E, S>
 ): Option.Option<S["Type"]> => {
   const bytes = unknownFields(message)
-  const fields = bytes === undefined ? undefined : selectExtension(bytes, extension, true)
-  if (fields === undefined || fields.length === 0) return Option.none()
+  const fields = bytes === undefined ? undefined : extensionFields(bytes, extension)
+  if (fields === undefined) return Option.none()
   return Option.some(Schema.decodeSync(extension.codec)(fields as Uint8Array<ArrayBuffer>))
 }
 
@@ -1268,7 +1268,7 @@ export const setExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
   value: S["Type"]
 ): E["Type"] => {
   const bytes = unknownFields(message)
-  const rest = bytes === undefined ? Wire.EMPTY_BYTES : selectExtension(bytes, extension, false)
+  const rest = bytes === undefined ? Wire.EMPTY_BYTES : otherFields(bytes, extension)
   const value_ = Schema.encodeSync(extension.codec)(value)
   const encoded = extension.messageSet ? Wire.messageSetItem(extension.number, value_) : value_
   return withUnknownFields(message, Bytes.concat([rest, encoded]))
@@ -1287,7 +1287,7 @@ export const clearExtension = <E extends Schema.Top, S extends Schema.Codec<any,
 ): E["Type"] => {
   const bytes = unknownFields(message)
   if (bytes === undefined) return message
-  const rest = selectExtension(bytes, extension, false)
+  const rest = otherFields(bytes, extension)
   return withUnknownFields(message, rest.length === 0 ? undefined : rest)
 }
 
@@ -1303,7 +1303,7 @@ export const hasExtension = <E extends Schema.Top, S extends Schema.Codec<any, a
   extension: Extension<E, S>
 ): boolean => {
   const bytes = unknownFields(message)
-  return bytes !== undefined && selectExtension(bytes, extension, true).length > 0
+  return bytes !== undefined && extensionFields(bytes, extension) !== undefined
 }
 
 const unknownFields = (message: unknown): Uint8Array | undefined => {
@@ -1314,38 +1314,59 @@ const unknownFields = (message: unknown): Uint8Array | undefined => {
 }
 
 const withUnknownFields = <A>(message: A, bytes: Uint8Array | undefined): A => {
-  const out = Object.assign(Object.create(Object.getPrototypeOf(message)), message)
+  const out = Object.create(Object.getPrototypeOf(message))
+  InternalRecord.assignProperties(out, message as object)
   if (bytes === undefined) delete out[unknown]
   else out[unknown] = bytes
   return out
 }
 
-// With `keep`, the occurrences of an extension in the unknown fields `bytes`:
-// its fields, or the message bytes of its MessageSet items. Otherwise, all the
-// other unknown fields.
-const selectExtension = (bytes: Uint8Array, extension: Extension<any, any>, keep: boolean): Uint8Array => {
+// Calls `f` with each field of the unknown fields `bytes`, and whether it is an
+// occurrence of `extension`, given as its field or as the message bytes of its
+// MessageSet item.
+const scanExtension = (
+  bytes: Uint8Array,
+  extension: Extension<any, any>,
+  f: (chunk: Uint8Array, matches: boolean) => void
+): void => {
   const r = new Wire.Reader(bytes)
-  const chunks: Array<Uint8Array> = []
   try {
     while (r.pos < bytes.length) {
       const start = r.pos
       const tag = r.tag()
       if (extension.messageSet && tag === Wire.MESSAGE_SET_ITEM_START) {
         const payload = Wire.readMessageSetItem(r, extension.number)
-        if (payload === undefined) {
-          if (!keep) chunks.push(bytes.subarray(start, r.pos))
-        } else if (keep) {
-          chunks.push(payload)
-        }
+        if (payload === undefined) f(bytes.subarray(start, r.pos), false)
+        else f(payload, true)
         continue
       }
       r.skip(tag & 7, tag >>> 3, 0)
-      const matches = !extension.messageSet && tag >>> 3 === extension.number
-      if (matches === keep) chunks.push(bytes.subarray(start, r.pos))
+      f(bytes.subarray(start, r.pos), !extension.messageSet && tag >>> 3 === extension.number)
     }
   } catch (e) {
     throw e instanceof Wire.WireError ? new Schema.SchemaError(Transform.toIssue(e, SchemaAST.defaultParseOptions)) : e
   }
+}
+
+// The occurrences of an extension in the unknown fields `bytes`, or `undefined`
+// without any. An occurrence can be empty: a MessageSet item of an empty message.
+const extensionFields = (bytes: Uint8Array, extension: Extension<any, any>): Uint8Array | undefined => {
+  const chunks: Array<Uint8Array> = []
+  let found = false
+  scanExtension(bytes, extension, (chunk, matches) => {
+    if (!matches) return
+    found = true
+    chunks.push(chunk)
+  })
+  return found ? Bytes.concat(chunks) : undefined
+}
+
+// The unknown fields `bytes` without the occurrences of an extension.
+const otherFields = (bytes: Uint8Array, extension: Extension<any, any>): Uint8Array => {
+  const chunks: Array<Uint8Array> = []
+  scanExtension(bytes, extension, (chunk, matches) => {
+    if (!matches) chunks.push(chunk)
+  })
   return Bytes.concat(chunks)
 }
 

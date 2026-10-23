@@ -61,7 +61,7 @@ export const makeCodec = (root: L.Root, options: Options): {
   return {
     encode: (value) => encodeValue(ctx, root, value, 0),
     decode: (json) => {
-      if (json === null) throw new Wire.WireError("expected a JSON object", json)
+      if (json === null && !takesNull(root)) throw new Wire.WireError("expected a JSON object", json)
       return decodeValue(ctx, root, json, 0)
     }
   }
@@ -1093,8 +1093,12 @@ const decodeAny = (ctx: Context, prepared: JsonMessage, json: unknown, depth: nu
   const root = resolveAny(ctx, typeUrl)
   let inner: unknown
   if (isSpecial(ctx, root)) {
-    for (const key of Object.keys(json)) {
-      if (key !== "@type" && key !== "value") rethrowAt(new Wire.WireError("unknown field of google.protobuf.Any"), key)
+    if (!ctx.options.ignoreUnknownFields) {
+      for (const key of Object.keys(json)) {
+        if (key !== "@type" && key !== "value") {
+          rethrowAt(new Wire.WireError("unknown field of google.protobuf.Any"), key)
+        }
+      }
     }
     if (!Object.hasOwn(json, "value")) throw new Wire.WireError("google.protobuf.Any has no value", json)
     try {

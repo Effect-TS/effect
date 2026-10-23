@@ -563,16 +563,39 @@ const caseSelector = (message: L.Message, oneof: L.Oneof): (container: any) => L
 const caseValue = (value: unknown): unknown => (value as { readonly value: unknown }).value
 
 // Unknown fields must be well-formed, and must not hold declared fields, which
-// would be read back into them.
+// would be read back into them. Decoding keeps a number that a closed enum does
+// not have as an unknown field, so those are written back.
 const writeUnknown = (w: Wire.Writer, message: L.Message, bytes: unknown, depth: number): void => {
   if (!(bytes instanceof Uint8Array)) throw new Wire.WireError("expected the bytes of unknown fields", bytes)
   const r = new Wire.Reader(bytes)
   while (r.pos < bytes.length) {
     const tag = r.tag()
-    if (message.byNumber.has(tag >>> 3)) throw new Wire.WireError(`unknown fields hold declared field ${tag >>> 3}`)
+    const start = r.pos
     r.skip(tag & 7, tag >>> 3, depth)
+    const field = message.byNumber.get(tag >>> 3)
+    if (field !== undefined && !isUnknownEnum(field, tag & 7, bytes.subarray(start, r.pos), depth)) {
+      throw new Wire.WireError(`unknown fields hold declared field ${tag >>> 3}`)
+    }
   }
   w.raw(bytes)
+}
+
+// Whether decoding keeps the content of an occurrence of a field as an unknown
+// field: a number that a closed enum does not have, or a map entry holding one.
+const isUnknownEnum = (field: L.Field, wireType: number, content: Uint8Array, depth: number): boolean => {
+  const type = field._tag === "Repeated" ? field.element : field._tag === "Map" ? field.value : field.type
+  if (type._tag !== "Enum" || type.open) return false
+  const r = new Wire.Reader(content)
+  if (field._tag !== "Map") return wireType === Wire.WIRE_VARINT && L.enumValue(type, r.int32()) === L.UNKNOWN_ENUM
+  if (wireType !== Wire.WIRE_LEN) return false
+  const end = r.delimited()
+  let unknown = false
+  while (r.pos < end) {
+    const tag = r.tag()
+    if (tag !== 2 * 8 + Wire.WIRE_VARINT) r.skip(tag & 7, tag >>> 3, depth)
+    else if (L.enumValue(type, r.int32()) === L.UNKNOWN_ENUM) unknown = true
+  }
+  return unknown
 }
 
 const fieldWriter = (compiled: Map<L.Message, Compiled>, message: L.Message, field: L.Field): FieldWriter => {
@@ -923,6 +946,7 @@ class Input extends Wire.Reader {
     r.drop = false
     r.extra = undefined
     r.pending = undefined
+    r.extensions = undefined
     Input.spare = r
   }
 
@@ -939,6 +963,10 @@ class Input extends Wire.Reader {
   // struct that lacks a required field, or an `Invalid` value, so they only
   // fail the decode if they are still invalid, and part of it, at the end.
   pending: Map<object, Pending> | undefined = undefined
+  // The values of the extensions that decoding checks, by the struct whose
+  // unknown fields hold them. Later occurrences merge into them, like fields,
+  // and their pending checks apply while the struct is part of the value.
+  extensions: Map<object, Extensions> | undefined = undefined
 
   settle(value: unknown): void {
     if (this.unknown !== undefined) {
@@ -950,7 +978,7 @@ class Input extends Wire.Reader {
       for (const [target, check] of this.pending) {
         const e = check(target)
         if (e === undefined) continue
-        const path = pathTo(value, target)
+        const path = pathTo(value, target, this.extensions)
         if (path === undefined) continue
         e.path.unshift(...path)
         throw e
@@ -961,6 +989,13 @@ class Input extends Wire.Reader {
 
 // Why a value fails the decode, with the path within it, or `undefined`.
 type Pending = (value: any) => Wire.WireError | undefined
+
+// The extension values of a struct, each in a one-element array that its field
+// reader reads into, and the key of the unknown fields that hold them.
+interface Extensions {
+  readonly key: PropertyKey | undefined
+  readonly values: Map<number, Array<unknown>>
+}
 
 const invalidValue: Pending = (value: Invalid) => new Wire.WireError(value.reason)
 
@@ -1042,7 +1077,12 @@ const readStruct = (
       if (value !== L.EMPTY_LIST && value !== L.EMPTY_RECORD) values[i] = value
     }
   }
-  const unknown = readInto(r, compiled, values, end, group, depth)
+  let extensions: Extensions | undefined
+  if (compiled.extensions !== undefined) {
+    extensions = (merging ? r.extensions?.get(previous) : undefined) ??
+      { key: compiled.message.unknown, values: new Map() }
+  }
+  const unknown = readInto(r, compiled, values, extensions, end, group, depth)
   // The unknown fields of earlier occurrences are joined at the end of the
   // decode, which keeps merging linear.
   let before: Uint8Array | undefined
@@ -1059,7 +1099,9 @@ const readStruct = (
       r.unknown!.set(out, merged)
     }
     r.pending?.delete(previous)
+    r.extensions?.delete(previous)
   }
+  if (extensions !== undefined && extensions.values.size > 0) (r.extensions ??= new Map()).set(out, extensions)
   if (before !== undefined) {
     const merged = r.unknown ??= new Map()
     let entry = merged.get(out)
@@ -1094,6 +1136,7 @@ const readInto = (
   r: Input,
   compiled: Compiled,
   values: Array<unknown>,
+  extensions: Extensions | undefined,
   end: number,
   group: number | undefined,
   depth: number
@@ -1111,7 +1154,7 @@ const readInto = (
         // An extension is checked like a field, and kept as an unknown field.
         const extension = compiled.extensions?.get(number)
         if (extension === undefined) r.skip(tag & 7, number, depth)
-        else readExtension(r, extension, tag, depth)
+        else readExtension(r, extension, extensions!, tag, depth)
         if (keepUnknown) (unknown ??= []).push(r.buf.subarray(start, r.pos))
         continue
       }
@@ -1134,9 +1177,12 @@ const readInto = (
   return unknown
 }
 
-const readExtension = (r: Input, extension: FieldReaders, tag: number, depth: number): void => {
+const readExtension = (r: Input, extension: FieldReaders, extensions: Extensions, tag: number, depth: number): void => {
+  const number = tag >>> 3
+  let values = extensions.values.get(number)
+  if (values === undefined) extensions.values.set(number, values = [undefined])
   try {
-    extension.read(r, [undefined], tag & 7, tag >>> 3, depth)
+    extension.read(r, values, tag & 7, number, depth)
   } finally {
     r.drop = false
     r.extra = undefined
@@ -1482,16 +1528,31 @@ const scalarReader = (type: L.Scalar): ValueReader => {
   return (r, _, wireType) => wireType === expected ? read(r) : wrongWireType(wireType, expected)
 }
 
-// The path of `target` in a decoded value.
-const pathTo = (value: unknown, target: object): Array<PropertyKey> | undefined => {
+// The path of `target` in a decoded value, or in the values of the extensions
+// of its structs, under their unknown fields.
+const pathTo = (
+  value: unknown,
+  target: object,
+  extensions: Map<object, Extensions> | undefined
+): Array<PropertyKey> | undefined => {
   if (value === target) return []
   if (typeof value !== "object" || value === null || !isDecodedCollection(value)) return undefined
   for (const key of Reflect.ownKeys(value)) {
     if (key === "length" && Array.isArray(value)) continue
-    const path = pathTo((value as Record<PropertyKey, unknown>)[key], target)
+    const path = pathTo((value as Record<PropertyKey, unknown>)[key], target, extensions)
     if (path !== undefined) {
       path.unshift(Array.isArray(value) ? Number(key) : key)
       return path
+    }
+  }
+  const own = extensions?.get(value)
+  if (own !== undefined) {
+    for (const values of own.values.values()) {
+      const path = pathTo(values[0], target, extensions)
+      if (path !== undefined) {
+        if (own.key !== undefined) path.unshift(own.key)
+        return path
+      }
     }
   }
   return undefined
