@@ -57,6 +57,27 @@ describe("McpServer request-level dependencies", () => {
       assert.deepStrictEqual(response.error, { code: -32001, message: "Unauthorized" })
     }))
 
+  it.effect("fails calls when a visibility reads a service from middleware provided inside it", () =>
+    Effect.gen(function*() {
+      const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.provideService(effect, CurrentUser, "admin")
+      )
+      const AdminOnly = McpServer.visibility(() => Effect.map(CurrentUser, (user) => user === "admin"))
+      const Search = Toolkit.make(Tool.make("Search", { success: Schema.String }))
+      // The types reject this order: the visibility's `CurrentUser` stays an unmet request requirement.
+      const registrations = McpServer.toolkit(Search).pipe(
+        Layer.provide(Auth.layer),
+        Layer.provide(AdminOnly.layer),
+        Layer.provide(Search.toLayer({ Search: () => Effect.succeed("found") }))
+      ) as Layer.Layer<never, never, McpServer.McpServer>
+      const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+      yield* harness.initialize()
+
+      const response = yield* harness.sendRequest("tools/call", { name: "Search", arguments: {} })
+
+      assert.deepStrictEqual(response.error, { code: -32603, message: "Internal error" })
+    }))
+
   it.effect("installs only its own middleware globally", () =>
     Effect.gen(function*() {
       const calls: Array<string> = []

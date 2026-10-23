@@ -7,8 +7,12 @@ import * as Toolkit from "effect/ai/Toolkit"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { type JsonRpcMessage, makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
 
 class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUser") {}
@@ -150,6 +154,46 @@ describe("McpServer visibility", () => {
       const response = yield* harness.sendRequest("tools/list", {})
 
       assert.deepStrictEqual(response.error, { code: -32001, message: "Unauthorized" })
+    }))
+
+  it.effect("reads services provided by HttpRouter middleware under layerHttp", () =>
+    Effect.gen(function*() {
+      const HttpAuth = HttpRouter.middleware<{ provides: CurrentUser }>()((effect) =>
+        Effect.flatMap(
+          HttpServerRequest.HttpServerRequest,
+          (request) => Effect.provideService(effect, CurrentUser, request.headers["x-user"] ?? "guest")
+        )
+      )
+      const WhoAmI = Toolkit.make(Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] }))
+      const registrations = McpServer.toolkit(WhoAmI).pipe(
+        Layer.provide(AdminOnly.layer),
+        Layer.provide(WhoAmI.toLayer({ WhoAmI: () => Effect.map(CurrentUser, (user) => user) }))
+      )
+      const harness = yield* makeHttpHarness(
+        McpServer.layerHttp({
+          name: "VisibilityServer",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [McpProtocol.v2025_11_25],
+          registrations
+        }).pipe(Layer.provide(HttpAuth.layer))
+      )
+      const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25)
+      const send = (user: string, method: string, params: object) =>
+        harness.post({ jsonrpc: "2.0", id: 1, method, params }, { ...headers, "x-user": user }).pipe(
+          Effect.flatMap(readMcpHttpResponse),
+          Effect.map((message) => message as JsonRpcMessage)
+        )
+
+      assert.deepStrictEqual(names(yield* send("guest", "tools/list", {}), "tools"), [])
+      const hidden = yield* send("guest", "tools/call", { name: "WhoAmI", arguments: {} })
+      assert.deepStrictEqual(hidden.error, { code: -32602, message: "Tool 'WhoAmI' not found" })
+
+      assert.deepStrictEqual(names(yield* send("admin", "tools/list", {}), "tools"), ["WhoAmI"])
+      const visible = yield* send("admin", "tools/call", { name: "WhoAmI", arguments: {} })
+      assert.deepStrictEqual((visible.result as { readonly content: unknown }).content, [
+        { type: "text", text: "admin" }
+      ])
     }))
 
   it.effect("applies a global visibility to every registration", () =>
