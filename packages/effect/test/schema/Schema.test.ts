@@ -4032,6 +4032,7 @@ Expected a value between -2147483648 and 2147483647`
         Blue = 2
       }
       const schema = Schema.Record(Schema.Enum(Color), Schema.Number)
+      assert.deepStrictEqual(schema.ast.propertySignatures.map((property) => property.name), ["red", "green", 2])
       const asserts = new TestSchema.Asserts(schema)
 
       const decoding = asserts.decoding()
@@ -4049,6 +4050,7 @@ Expected a value between -2147483648 and 2147483647`
       await asserts.encoding().succeed({ red: 1, green: 2, 2: 3 })
 
       const union = Schema.Record(Schema.Union([Schema.Enum(Color), Schema.Literal("red")]), Schema.Number)
+      assert.deepStrictEqual(union.ast.propertySignatures.map((property) => property.name), ["red", "green", 2])
       await new TestSchema.Asserts(union).decoding().succeed({ red: 1, green: 2, 2: 3 })
     })
 
