@@ -631,6 +631,17 @@ describe("Cause", () => {
       assert.throws(() => Cause.prettyErrors(Cause.fail(error)), /stack getter/)
       assert.strictEqual(Error.stackTraceLimit, limit)
     })
+
+    it("stops at a cyclic Error cause", () => {
+      const a = new Error("a")
+      const b = new Error("b", { cause: a })
+      a.cause = b
+      const [error] = Cause.prettyErrors(Cause.fail(a))
+      assert.strictEqual(error.message, "a")
+      assert.ok(error.cause instanceof Error)
+      assert.strictEqual(error.cause.message, "b")
+      assert.strictEqual(error.cause.cause, undefined)
+    })
   })
 
   describe("pretty", () => {

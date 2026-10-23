@@ -888,6 +888,21 @@ describe("Serializers", () => {
           await decoding.succeed([], [])
           await decoding.succeed([null], [undefined])
         })
+
+        it("omitted trailing optional elements", async () => {
+          const schema = Schema.Tuple([
+            Schema.String,
+            Schema.OptionFromOptionalKey(Schema.String),
+            Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("c"), { encodingStrategy: "omit" }))
+          ])
+          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+          for (const concurrency of [1, "unbounded"] as const) {
+            const encoding = asserts.encoding({ parseOptions: { concurrency } })
+            await encoding.succeed(["a", Option.some("b"), "c"], ["a", "b"])
+            await encoding.succeed(["a", Option.none(), "c"], ["a"])
+          }
+        })
       })
 
       it("Array(Date)", async () => {
@@ -1711,6 +1726,23 @@ describe("Serializers", () => {
   })
 
   describe("toCodecStringTree", () => {
+    it("shares a named reference across required and optional keys when codec derivation rebuilds it", () => {
+      const Value = Schema.Struct({ value: Schema.Unknown }).annotate({ identifier: "Value" })
+      const schema = Schema.Struct({ required: Value, optional: Schema.optionalKey(Value) })
+      const document = Schema.toRepresentation(Schema.toCodecStringTree(schema))
+
+      assert.deepStrictEqual(Object.keys(document.references), ["Value"])
+      assert.deepStrictEqual(document.representation, {
+        _tag: "Objects",
+        propertySignatures: [
+          { name: "required", type: { _tag: "Reference", $ref: "Value" }, isOptional: false, isMutable: false },
+          { name: "optional", type: { _tag: "Reference", $ref: "Value" }, isOptional: true, isMutable: false }
+        ],
+        indexSignatures: [],
+        checks: []
+      })
+    })
+
     it("exposes the source schema", () => {
       const schema = Schema.FiniteFromString
       const serializer = Schema.toCodecStringTree(schema)

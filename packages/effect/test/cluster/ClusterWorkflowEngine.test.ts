@@ -25,6 +25,7 @@ import {
   EntityAddress,
   EntityId,
   EntityType,
+  type Message,
   MessageStorage,
   RunnerHealth,
   Runners,
@@ -218,6 +219,115 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         )
         assert.deepStrictEqual(yield* activityReply(storage, requestId), Exit.succeed(new Workflow.Suspended({})))
       }).pipe(Effect.provide(layer()))
+    }))
+
+  it.effect("shuts down without waiting for a queued activity and replays it after restart", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("QueuedActivityShutdown", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      let executions = 0
+      const step = Activity.make({
+        name: "step",
+        execute: Effect.sync(() => {
+          executions++
+        })
+      })
+      const storage = yield* makeSharedStorage
+      const queued = yield* Latch.make()
+      const isActivity = (message: Message.Incoming<any>) =>
+        message.envelope._tag === "Request" && message.envelope.tag === "activity"
+      // The activity request is persisted, but the runner never reads it back.
+      const queuedStorage = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        saveRequest: (message) =>
+          Effect.tap(storage.saveRequest(message), () => message.rpc._tag === "activity" ? queued.open : Effect.void),
+        unprocessedMessages: (shardIds, options) =>
+          Effect.map(
+            storage.unprocessedMessages(shardIds, options),
+            (messages) => messages.filter((m) => !isActivity(m))
+          ),
+        unprocessedMessagesById: (ids) =>
+          Effect.map(storage.unprocessedMessagesById(ids), (messages) => messages.filter((m) => !isActivity(m)))
+      })
+      const layer = (storageLayer: Layer.Layer<MessageStorage.MessageStorage>) =>
+        workflow.toLayer(() => step).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({
+            storageLayer,
+            config: { entityTerminationTimeout: Duration.minutes(1) }
+          }))
+        )
+
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(layer(queuedStorage), scope)
+      const executionId = yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* queued.await
+      const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+      const closedBeforeTimeout = shutdown.pollUnsafe() !== undefined
+      // Let a stalled shutdown finish, so the runner is released before asserting.
+      yield* TestClock.adjust(Duration.minutes(1))
+      yield* Fiber.join(shutdown)
+      assert.isTrue(closedBeforeTimeout, "shutdown must not wait for entityTerminationTimeout")
+      assert.strictEqual(executions, 0)
+
+      yield* Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.void })
+        )
+        assert.strictEqual(executions, 1)
+      }).pipe(Effect.provide(layer(Layer.succeed(MessageStorage.MessageStorage, storage))))
+    }))
+
+  it.effect("shutdown waits for a running activity before finalizing its workflow", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("RunningActivityShutdown", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const events: Array<string> = []
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const step = Activity.make({
+        name: "step",
+        execute: Effect.gen(function*() {
+          events.push("activity:start")
+          yield* started.open
+          yield* release.await
+          events.push("activity:end")
+        })
+      })
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              events.push("finalized")
+            })
+          ).pipe(Workflow.provideScope)
+          yield* step
+        })
+      ).pipe(
+        Layer.provideMerge(makeTestWorkflowEngine({ config: { entityTerminationTimeout: Duration.minutes(1) } }))
+      )
+
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(layer, scope)
+      yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* advanceUntil(() => started.isOpen(), "activity must start")
+      const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      for (let i = 0; i < 100; i++) yield* TestClock.adjust(10)
+      const pendingWhileRunning = shutdown.pollUnsafe() === undefined
+      yield* release.open
+      for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+      const closedBeforeTimeout = shutdown.pollUnsafe() !== undefined
+      // Let a stalled shutdown finish, so the runner is released before asserting.
+      yield* TestClock.adjust(Duration.minutes(1))
+      yield* Fiber.join(shutdown)
+      assert.isTrue(pendingWhileRunning, "shutdown must wait for the running activity")
+      assert.isTrue(closedBeforeTimeout, "shutdown must finish once the activity completes")
+      assert.deepStrictEqual(events, ["activity:start", "activity:end", "finalized"])
     }))
 
   it.effect("retries an early activity registered while its Suspended reply is still being persisted", () =>
@@ -1778,28 +1888,37 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }))
       const ChildLayer = Child.toLayer(() => DurableDeferred.await(ChildGate))
       yield* Effect.gen(function*() {
-        const sharding = yield* Sharding.Sharding
-        const settle = Effect.gen(function*() {
-          for (let i = 0; i < 20; i++) {
-            yield* TestClock.adjust(1)
-            yield* sharding.pollStorage
-          }
-        })
+        const driver = yield* MessageStorage.MemoryDriver
+        const parentReply = (tag: "run" | "resume") =>
+          Array.from(driver.requests.values()).find(({ envelope }) =>
+            envelope._tag === "Request" && envelope.tag === tag &&
+            envelope.address.entityType === `Workflow/${Parent._tag}`
+          )?.replies.find((reply) => reply._tag === "WithExit")
         yield* TestClock.adjust(1)
         const executionId = yield* Parent.execute({}, { discard: true })
         const childId = yield* Child.executionId({})
         yield* pollUntil(Parent, executionId, "Suspended")
+        const suspended = parentReply("run")
+        assert.isDefined(suspended)
 
         yield* DurableDeferred.succeed(ChildGate, {
           token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
           value: void 0
         })
         yield* pollUntil(Child, childId, "Complete")
-        yield* settle
-        assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
+        // The completed child wakes the parent through its resume RPC. Once
+        // that wake has replied, a reset of the failure suspension would
+        // already have replaced the run reply.
+        yield* pollStorageUntil(() => parentReply("resume") !== undefined, "the child must wake its parent")
+        assert.strictEqual(parentReply("run")?.id, suspended.id, "only an explicit resume may reset the suspension")
+        assert.strictEqual(failures, 1)
 
+        // Resume resets the suspended reply, so the next Suspended reply
+        // belongs to the replay. Wait for it rather than a fixed number of
+        // steps: the replay derives the child execution id with
+        // crypto.subtle, which resolves outside of the TestClock.
         yield* Parent.resume(executionId)
-        yield* settle
+        yield* pollUntil(Parent, executionId, "Suspended")
         assert.strictEqual(failures, 2)
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))

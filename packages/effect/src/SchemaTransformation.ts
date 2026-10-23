@@ -555,7 +555,10 @@ export function trim(): Transformation<string, string> {
  *
  * Decoding converts values such as `"my_field_name"` to `"myFieldName"`.
  * Encoding converts values such as `"myFieldName"` back to `"my_field_name"`.
- * The transformation is round-trippable for standard snake_case and camelCase.
+ * Lowercase snake_case values round-trip when single underscores separate the
+ * segments and every segment after the first starts with a letter. A segment
+ * that starts with a digit does not: `"foo_2_bar"` decodes to `"foo2Bar"`,
+ * which encodes to `"foo2_bar"`.
  *
  * **Example** (Converting snake case to camel case)
  *

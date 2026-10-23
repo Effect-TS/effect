@@ -1567,9 +1567,15 @@ Expected a string including "c"`
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
+        await decoding.succeed("")
         await decoding.succeed("Abc")
+        await decoding.succeed("𐐀bc")
         await decoding.fail(
           "abc",
+          `Expected a string with the first character in uppercase`
+        )
+        await decoding.fail(
+          "𐐨bc",
           `Expected a string with the first character in uppercase`
         )
 
@@ -1586,9 +1592,15 @@ Expected a string including "c"`
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
+        await decoding.succeed("")
         await decoding.succeed("aBC")
+        await decoding.succeed("𐐨BC")
         await decoding.fail(
           "ABC",
+          `Expected a string with the first character in lowercase`
+        )
+        await decoding.fail(
+          "𐐀BC",
           `Expected a string with the first character in lowercase`
         )
 

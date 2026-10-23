@@ -1,8 +1,22 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import {
+  Cause,
+  Clock,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Redacted,
+  Ref,
+  Schedule,
+  Schema,
+  Stream
+} from "effect"
 import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
-import { RateLimiter } from "effect/persistence"
+import { CircuitBreaker, RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
 import { inspect } from "node:util"
@@ -51,6 +65,87 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 })
 
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
+
+const classifiedRequest = HttpClientRequest.get("http://test/")
+const classifiedResponse = (status: number, headers: Record<string, string> = {}) =>
+  HttpClientResponse.fromWeb(classifiedRequest, new Response(null, { status, headers }))
+const statusCodeError = (status: number, headers?: Record<string, string>) =>
+  new HttpClientError.HttpClientError({
+    reason: new HttpClientError.StatusCodeError({
+      request: classifiedRequest,
+      response: classifiedResponse(status, headers)
+    })
+  })
+const transportError = new HttpClientError.HttpClientError({
+  reason: new HttpClientError.TransportError({ request: classifiedRequest })
+})
+const encodeError = new HttpClientError.HttpClientError({
+  reason: new HttpClientError.EncodeError({ request: classifiedRequest })
+})
+const failures = (...errors: ReadonlyArray<unknown>) =>
+  Exit.failCause(Cause.fromReasons(errors.map((error) => Cause.makeFailReason(error))))
+
+const circuitOpenKey = (error: unknown) =>
+  error instanceof CircuitBreaker.CircuitBreakerError && error.reason._tag === "CircuitOpen"
+    ? error.reason.key
+    : undefined
+
+const classifierCases: ReadonlyArray<{
+  readonly name: string
+  readonly exit: (nowMillis: number) => Exit.Exit<HttpClientResponse.HttpClientResponse, unknown>
+  readonly outcome: CircuitBreaker.Outcome["_tag"]
+  readonly retryAfterMillis?: number
+}> = [
+  {
+    name: "a returned 503 with Retry-After seconds",
+    exit: () => Exit.succeed(classifiedResponse(503, { "retry-after": "5" })),
+    outcome: "Failure",
+    retryAfterMillis: 5_000
+  },
+  {
+    name: "a wrapped 503 with a Retry-After HTTP date",
+    exit: (nowMillis) => Exit.fail(statusCodeError(503, { "retry-after": new Date(nowMillis + 30_000).toUTCString() })),
+    outcome: "Failure",
+    retryAfterMillis: 30_000
+  },
+  { name: "a TransportError", exit: () => Exit.fail(transportError), outcome: "Failure" },
+  { name: "a TimeoutError", exit: () => Exit.fail(new Cause.TimeoutError()), outcome: "Failure" },
+  { name: "a wrapped 404", exit: () => Exit.fail(statusCodeError(404)), outcome: "Success" },
+  {
+    name: "a returned 429",
+    exit: () => Exit.succeed(classifiedResponse(429, { "retry-after": "5" })),
+    outcome: "Ignored"
+  },
+  { name: "an EncodeError", exit: () => Exit.fail(encodeError), outcome: "Ignored" },
+  { name: "a defect", exit: () => Exit.die(new Error("caller bug")), outcome: "Ignored" },
+  {
+    name: "an unknown typed error",
+    exit: () =>
+      Exit.fail(
+        new RateLimiter.RateLimiterError({
+          reason: new RateLimiter.RateLimitStoreError({ message: "store unavailable" })
+        })
+      ),
+    outcome: "Ignored"
+  },
+  {
+    name: "a success beside an ignored error",
+    exit: () => failures(encodeError, statusCodeError(404)),
+    outcome: "Success"
+  },
+  {
+    name: "failures beside a success and an ignored error",
+    exit: () =>
+      failures(
+        statusCodeError(404),
+        statusCodeError(503, { "retry-after": "5" }),
+        statusCodeError(429, { "retry-after": "60" }),
+        statusCodeError(502, { "retry-after": "10" })
+      ),
+    outcome: "Failure",
+    retryAfterMillis: 10_000
+  }
+]
 
 describe("HttpClient", () => {
   it.effect("preserves the response stream after JSON serialization", () =>
@@ -143,6 +238,46 @@ describe("HttpClient", () => {
       vi.unstubAllGlobals()
       vi.resetModules()
     }
+  })
+
+  // Stubbing globals and resetting modules would race with the concurrent tests.
+  describe("toWeb", { concurrent: false }, () => {
+    it("keeps unread response cleanup when toWeb finds no Web response", async () => {
+      const cleanups = new Map<object, () => void>()
+      vi.stubGlobal(
+        "FinalizationRegistry",
+        class<T> {
+          constructor(readonly cleanup: (value: T) => void) {}
+          register(_target: object, value: T, token: object) {
+            cleanups.set(token, () => this.cleanup(value))
+          }
+          unregister(token: object) {
+            return cleanups.delete(token)
+          }
+        }
+      )
+      try {
+        // Select the runtime registry on import, then drive GC cleanup deterministically.
+        vi.resetModules()
+        const { Effect, Option } = await import("effect")
+        const { HttpClient, HttpClientResponse, HttpServerResponse } = await import("effect/http")
+        let signal: AbortSignal | undefined
+        const client = HttpClient.make((request, _url, requestSignal) =>
+          Effect.sync(() => {
+            signal = requestSignal
+            return HttpServerResponse.toClientResponse(HttpServerResponse.text("unread"), { request })
+          })
+        )
+        const response = await Effect.runPromise(client.get("https://example.test/"))
+
+        assert.isTrue(Option.isNone(HttpClientResponse.toWeb(response)))
+        for (const cleanup of cleanups.values()) cleanup()
+        assert.isTrue(signal!.aborted)
+      } finally {
+        vi.unstubAllGlobals()
+        vi.resetModules()
+      }
+    })
   })
 
   it.effect("applies JSON revivers to response schema decoders", () =>
@@ -591,6 +726,16 @@ Missing key
         assert.strictEqual(redirected.headers.authorization, "Bearer secret")
       }))
 
+    it.effect("returns the redirect response when the location is invalid", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(302, "http://exa mple.com/")
+        const response = yield* client.get("https://origin.test/start")
+
+        assert.strictEqual(response.status, 302)
+        assert.strictEqual(response.headers.location, "http://exa mple.com/")
+        assert.strictEqual((yield* Ref.get(requests)).length, 1)
+      }))
+
     it.effect("switches 303 requests to GET and drops the body", () =>
       Effect.gen(function*() {
         const { client, requests } = yield* makeRedirectClient(303, "/destination")
@@ -655,7 +800,10 @@ Missing key
       { name: "a five-minute Retry-After", header: "300", status: 429, delay: 300_000 },
       { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
       { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
-      { name: "no header", status: 503, delay: 0 }
+      { name: "no header", status: 503, delay: 0 },
+      // invalid values are ignored rather than parsed as dates or fractions
+      { name: "a negative Retry-After", header: "-5", status: 503, delay: 0 },
+      { name: "a fractional Retry-After", header: "1.5", status: 503, delay: 0 }
     ])(
       "honors the retry delay for $name",
       ({ delay, header, scheduled, status }) =>
@@ -1927,6 +2075,75 @@ Missing key
         yield* Fiber.join(next)
         strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+  })
+
+  describe("withCircuitBreaker", () => {
+    it.effect.each(classifierCases)(
+      "circuitBreakerClassifier classifies $name as $outcome",
+      ({ exit, outcome, retryAfterMillis }) =>
+        Effect.gen(function*() {
+          const classified = yield* HttpClient.circuitBreakerClassifier(exit(yield* Clock.currentTimeMillis))
+          assert.deepStrictEqual(
+            {
+              _tag: classified._tag,
+              retryAfterMillis: classified._tag === "Failure" && classified.retryAfter !== undefined
+                ? Duration.toMillis(classified.retryAfter)
+                : undefined
+            },
+            { _tag: outcome, retryAfterMillis }
+          )
+        })
+    )
+
+    it.effect("retryTransient never retries a CircuitBreakerError", () =>
+      Effect.gen(function*() {
+        const reasons = [
+          new CircuitBreaker.CircuitOpen({ key: "test", retryAfter: Duration.zero }),
+          new CircuitBreaker.CircuitHalfOpen({ key: "test" }),
+          new CircuitBreaker.CircuitBreakerStoreError({ message: "store unavailable", cause: transportError })
+        ]
+        for (const reason of reasons) {
+          const attempts = yield* Ref.make(0)
+          const client = HttpClient.make(() => Effect.die("unreachable")).pipe(
+            HttpClient.transform(() =>
+              Ref.update(attempts, (n) => n + 1).pipe(
+                Effect.andThen(Effect.fail(new CircuitBreaker.CircuitBreakerError({ reason })))
+              )
+            ),
+            HttpClient.retryTransient({ times: 2 })
+          )
+          const error = yield* Effect.flip(client.get("http://test/"))
+          strictEqual(error._tag, "CircuitBreakerError")
+          strictEqual(yield* Ref.get(attempts), 1)
+        }
+      }))
+
+    it.effect("keys circuits by request origin by default", () =>
+      Effect.gen(function*() {
+        const hosts = yield* Ref.make<Array<string>>([])
+        const client = HttpClient.make((request, url) =>
+          Effect.as(
+            Ref.update(hosts, (hosts) => [...hosts, url.host]),
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, { status: url.hostname === "down.test" ? 503 : 200 })
+            )
+          )
+        ).pipe(
+          HttpClient.withCircuitBreaker({
+            breaker: yield* CircuitBreaker.make({
+              tripPolicy: CircuitBreaker.consecutive(1),
+              openDuration: "1 minute"
+            })
+          })
+        )
+
+        strictEqual((yield* client.get("http://down.test:8080/a")).status, 503)
+        const error = yield* Effect.flip(client.get("http://down.test:8080/b?q=1"))
+        strictEqual(circuitOpenKey(error), "http://down.test:8080")
+        strictEqual((yield* client.get("http://up.test/")).status, 200)
+        assert.deepStrictEqual(yield* Ref.get(hosts), ["down.test:8080", "up.test"])
+      }).pipe(Effect.provide(CircuitBreaker.layerStoreMemory())))
   })
 
   it("reads cookies when Headers has no getSetCookie", () => {

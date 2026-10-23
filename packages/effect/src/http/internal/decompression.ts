@@ -81,6 +81,8 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
       readonly url?: string
       readonly headers?: Headers.Headers
       readonly remoteAddress?: Option.Option<string>
+      readonly peerAddress?: Option.Option<string>
+      readonly protocol?: "http" | "https"
     }
   ): HttpServerRequest.HttpServerRequest {
     return new DecompressedRequest(this.inner.modify(options), this.codings, this.maxDecompressedSize)
@@ -110,8 +112,22 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return this.inner.remoteAddress
   }
 
+  get peerAddress(): Option.Option<string> {
+    return this.inner.peerAddress
+  }
+
+  get protocol(): "http" | "https" | undefined {
+    return this.inner.protocol
+  }
+
   get upgrade(): Effect.Effect<Socket.Socket, HttpServerError> {
     return this.inner.upgrade
+  }
+
+  upgradeWith(
+    options: { readonly headers?: Headers.Input | undefined }
+  ): Effect.Effect<Socket.Socket, HttpServerError> {
+    return this.inner.upgradeWith(options)
   }
 
   // Platform accessors such as `NodeHttpServerRequest.toServerResponse` read

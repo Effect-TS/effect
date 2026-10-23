@@ -1198,6 +1198,41 @@ describe("HttpApiClient", () => {
       strictEqual(urls[0], "https://api.example.com/files")
       strictEqual(urls[1], "https://api.example.com/files/a%2Fb")
     }))
+
+  it.effect("rejects dot segment path parameters before sending requests", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("users")
+            .add(
+              HttpApiEndpoint.delete("remove", "/users/:id", {
+                params: {
+                  id: Schema.String
+                }
+              })
+            )
+        )
+      const urls: Array<string> = []
+      const httpClient = HttpClient.make((request, url) =>
+        Effect.sync(() => {
+          urls.push(url.toString())
+          return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+        })
+      )
+      const client = yield* HttpApiClient.makeWith(Api, {
+        httpClient,
+        baseUrl: "https://api.example.com/api/v1"
+      })
+
+      const exits = yield* Effect.forEach([".", ".."], (id) =>
+        client.users.remove({
+          params: { id },
+          responseMode: "response-only"
+        }).pipe(Effect.exit))
+
+      assert.deepStrictEqual(urls, [])
+      assert.isTrue(exits.every(Exit.hasDies))
+    }))
 })
 
 const textEncoder = new TextEncoder()

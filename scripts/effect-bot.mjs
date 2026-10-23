@@ -2,7 +2,8 @@ import { createHmac } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 
-export const isCommand = (body) => /^\/effect-bot(?:\s|$)/u.test(body)
+export const botLogin = "effect-bot"
+export const isCommand = (body) => /^@effect-bot(?![\w-])/iu.test(body)
 export const deliveryKey = (eventName, event) =>
   `${event.repository.full_name}:${eventName}:${event.comment.id}`
 
@@ -13,6 +14,8 @@ export async function relayComment(options) {
   const keyFor = options.deliveryKey ?? deliveryKey
   if (eventName !== "issue_comment" ||
     event?.action !== "created" || typeof event.comment?.body !== "string" ||
+    // Never let the bot's own comments re-trigger it.
+    String(event.comment.user?.login).toLowerCase() === botLogin ||
     !matches(event.comment.body)) return { status: "ignored" }
 
   const repo = event.repository?.full_name

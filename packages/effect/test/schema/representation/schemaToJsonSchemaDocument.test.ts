@@ -16,6 +16,27 @@ describe("Schema.toJsonSchemaDocument", () => {
     })
   })
 
+  it("shares a named definition across required and optional keys when JSON codec derivation rebuilds it", () => {
+    const Value = Schema.Struct({ value: Schema.Unknown }).annotate({ identifier: "Value" })
+    const schema = Schema.Struct({
+      required: Value,
+      optional: Schema.optionalKey(Value)
+    })
+
+    const document = Schema.toJsonSchemaDocument(schema)
+
+    assert.deepStrictEqual(Object.keys(document.definitions), ["Value"])
+    assert.deepStrictEqual(document.schema, {
+      type: "object",
+      properties: {
+        required: { $ref: "#/$defs/Value" },
+        optional: { $ref: "#/$defs/Value" }
+      },
+      required: ["required"],
+      additionalProperties: true
+    })
+  })
+
   it("inlines repeated anonymous schemas by default", () => {
     const shared = Schema.Struct({ value: Schema.String })
 

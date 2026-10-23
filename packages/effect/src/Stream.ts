@@ -4732,17 +4732,12 @@ export const peel: {
   ): Effect.fn.Return<[A2, Stream<A, E, never>], E | E2, Scope.Scope | R | R2> {
     let cause: Cause.Cause<E | Cause.Done<void>> | undefined = undefined
     const originalPull = yield* Channel.toPull(self.channel)
-    const pull: Pull.Pull<
-      Arr.NonEmptyReadonlyArray<A>,
-      E
-    > = Effect.catchCause(originalPull, (cause_) => {
+    const pull = Effect.catchCause(originalPull, (cause_) => {
       cause = cause_
       return Effect.failCause(cause_)
     })
 
-    const [result, leftover] = yield* Effect.scopedWith((scope) =>
-      sink.transform(pull as Pull.Pull<Arr.NonEmptyReadonlyArray<A>>, scope)
-    )
+    const [result, leftover] = yield* Effect.scopedWith((scope) => runSink(sink, pull, scope))
     let stream: Stream<A, E> = cause ? empty : fromPull(Effect.succeed(originalPull))
     if (leftover) {
       stream = concat(fromArray(leftover), stream)
@@ -6781,7 +6776,7 @@ export const takeRight: {
     const count = Count.normalize(n)
     if (count === 0) return empty
     return mapAccumArray(self, MutableList.make<A>, (list, arr) => {
-      MutableList.appendAll(list, arr)
+      MutableList.appendAllUnsafe(list, arr)
       if (list.length > count) {
         MutableList.takeNVoid(list, list.length - count)
       }
@@ -9206,7 +9201,7 @@ export const aggregateWithin: {
         return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
       }
       hasInput.closeUnsafe()
-      const pull = emit(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
+      const pull = emit(Effect.suspend(() => runSink(sink, sinkUpstream, scope)))
       return buffer.state._tag === "Open" ? Effect.raceFirst(pull, stepToBuffer) : pull
     })
   }))))
@@ -11072,10 +11067,27 @@ export const run: {
 ): Effect.Effect<A2, E | E2, R | R2> =>
   Effect.scopedWith((scope) =>
     Channel.toPullScoped(self.channel, scope).pipe(
-      Effect.flatMap((upstream) => sink.transform(upstream as any, scope)),
+      Effect.flatMap((upstream) => runSink(sink, upstream, scope)),
       Effect.map(([a]) => a)
     )
   ))
+
+/**
+ * Runs `sink` against `upstream`. Upstream failures bypass the sink's error
+ * handlers and are restored once the sink has exited.
+ */
+const runSink = <A, E, R, A2, L, E2, R2>(
+  sink: Sink.Sink<A2, A, L, E2, R2>,
+  upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R>,
+  scope: Scope.Scope
+): Effect.Effect<Sink.End<A2, L>, E | E2, R | R2> =>
+  Channel.restoreUpstreamFailure<Sink.End<A2, L>, E | E2, R2>(
+    // The upstream pull runs in this fiber, which already provides `R`.
+    sink.transform(
+      Channel.upstreamFailureToDefect(upstream) as Pull.Pull<Arr.NonEmptyReadonlyArray<A>, never, void>,
+      scope
+    )
+  )
 
 /**
  * Runs the stream and collects all elements into an array.

@@ -5,11 +5,12 @@
  * @stability experimental
  * @since 4.0.0
  */
-import * as Duration from "../Duration.ts"
-import type * as Headers from "../http/Headers.ts"
+import type * as Duration from "../Duration.ts"
+import * as Headers from "../http/Headers.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
 import { HeadersSchema } from "../internal/graphqlHeaders.ts"
 import { hasProperty } from "../Predicate.ts"
+import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 
 const TypeId = "~effect/graphql/GraphQLClientError"
@@ -226,16 +227,8 @@ const isRetryableStatus = (status: number): boolean => status === 429 || (status
  */
 const parseRetryAfter = (value: string | undefined, now: number): Duration.Duration | undefined => {
   if (value === undefined) return undefined
-  const trimmed = value.trim()
-  if (/^\d+$/.test(trimmed)) {
-    return Duration.seconds(Number(trimmed))
-  }
-  // Every HTTP date names a day or month; `Date.parse` alone also accepts
-  // bare numbers such as `1.5` or `-1`.
-  if (!/[a-z]/i.test(trimmed)) return undefined
-  const date = Date.parse(trimmed)
-  if (Number.isNaN(date)) return undefined
-  return Duration.millis(Math.max(0, date - now))
+  const retryAfter = Headers.parseRetryAfter(value)
+  return Result.isSuccess(retryAfter) ? Headers.retryAfterDelay(retryAfter.success, now) : undefined
 }
 
 /**

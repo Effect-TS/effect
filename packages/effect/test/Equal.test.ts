@@ -416,6 +416,37 @@ describe("Equal.equals", () => {
     })
   })
 
+  describe("ArrayBuffer objects", () => {
+    const make = (Buffer: typeof ArrayBuffer | typeof SharedArrayBuffer, bytes: ReadonlyArray<number>) => {
+      const buffer = new Buffer(bytes.length)
+      new Uint8Array(buffer).set(bytes)
+      return buffer
+    }
+
+    it("should compare bytes", () => {
+      for (const Buffer of [ArrayBuffer, SharedArrayBuffer]) {
+        expect(Equal.equals(make(Buffer, [1, 2]), make(Buffer, [1, 2]))).toBe(true)
+        expect(Equal.equals(make(Buffer, [1, 2]), make(Buffer, [9, 9]))).toBe(false)
+      }
+    })
+
+    it("should not equal views or other buffer kinds with the same bytes", () => {
+      const buffer = make(ArrayBuffer, [1, 2])
+      for (const other of [new Uint8Array(buffer), make(SharedArrayBuffer, [1, 2])]) {
+        expect(Equal.equals(buffer, other)).toBe(false)
+        expect(Equal.equals(other, buffer)).toBe(false)
+      }
+    })
+
+    it("should compare detached buffers by reference", () => {
+      const self = new ArrayBuffer(2)
+      const that = new ArrayBuffer(2)
+      structuredClone(self, { transfer: [self] })
+      structuredClone(that, { transfer: [that] })
+      expect(Equal.equals(self, that)).toBe(false)
+    })
+  })
+
   describe("DataView objects", () => {
     it("should compare viewed bytes", () => {
       const self = new DataView(Uint8Array.of(1).buffer)

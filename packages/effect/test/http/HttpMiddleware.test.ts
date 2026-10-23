@@ -11,6 +11,8 @@ import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Logger from "effect/Logger"
+import * as IpNetwork from "effect/net/IpNetwork"
+import * as Option from "effect/Option"
 import * as References from "effect/References"
 import * as Scheduler from "effect/Scheduler"
 import * as Tracer from "effect/Tracer"
@@ -539,6 +541,81 @@ describe("HttpMiddleware", () => {
         if (serverSpan.status._tag === "Ended") {
           assert.deepStrictEqual(serverSpan.status.exit, Exit.fail(streamError))
         }
+      }))
+  })
+
+  describe("forwarded headers", () => {
+    const trustedProxies = [IpNetwork.fromStringUnsafe("10.0.0.0/8")]
+    const observe = Effect.fnUntraced(
+      function*(middleware: HttpMiddleware.HttpMiddleware, peer: string, headers: Record<string, string>) {
+        const app = middleware(
+          HttpServerRequest.HttpServerRequest.use((request) =>
+            Effect.succeed(HttpServerResponse.jsonUnsafe({
+              remoteAddress: Option.getOrUndefined(request.remoteAddress),
+              host: request.headers.host,
+              url: Option.getOrUndefined(HttpServerRequest.toURL(request))?.href
+            }))
+          )
+        )
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://app.test/a", { headers: { host: "app.test", ...headers } })
+        ).modify({ remoteAddress: Option.some(peer) })
+        const response = yield* app.pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
+        return yield* Effect.promise(() => HttpServerResponse.toWeb(response).json())
+      }
+    )
+
+    it.effect.each([
+      {
+        name: "ignores forwarded metadata from an untrusted peer",
+        peer: "203.0.113.9",
+        headers: { "x-forwarded-for": "6.6.6.6", "x-forwarded-host": "evil.test", "x-forwarded-proto": "https" },
+        expected: { remoteAddress: "203.0.113.9", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "selects the rightmost untrusted hop and its aligned host and proto",
+        peer: "10.0.0.1",
+        headers: {
+          "x-forwarded-for": "6.6.6.6, 198.51.100.7, 10.0.0.2",
+          "x-forwarded-host": "evil.test, b.test, internal.test",
+          "x-forwarded-proto": "http, https, http"
+        },
+        expected: { remoteAddress: "198.51.100.7", host: "b.test", url: "https://b.test/a" }
+      },
+      {
+        name: "keeps the transport host when X-Forwarded-Host does not align with X-Forwarded-For",
+        peer: "10.0.0.1",
+        headers: { "x-forwarded-for": "198.51.100.7", "x-forwarded-host": "a.test, b.test" },
+        expected: { remoteAddress: "198.51.100.7", host: "app.test", url: "http://app.test/a" }
+      },
+      {
+        name: "stops at an invalid entry instead of skipping to attacker-controlled entries",
+        peer: "10.0.0.1",
+        headers: { "x-forwarded-for": "6.6.6.6, unknown, 10.0.0.2", "x-forwarded-host": "a.test, b.test, c.test" },
+        expected: { remoteAddress: "10.0.0.1", host: "app.test", url: "http://app.test/a" }
+      }
+    ])("xForwardedHeaders $name", ({ expected, headers, peer }) =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* observe(HttpMiddleware.xForwardedHeaders({ trustedProxies }), peer, headers),
+          expected
+        )
+      }))
+
+    it.effect("authorizes against the transport peer, not an address resolved by earlier middleware", () =>
+      Effect.gen(function*() {
+        const outer = HttpMiddleware.xForwardedHeaders({ trustedProxies })
+        const inner = HttpMiddleware.xForwardedHeaders({
+          trustedProxies: [IpNetwork.fromStringUnsafe("198.51.100.0/24")]
+        })
+        assert.deepStrictEqual(
+          yield* observe((app) => outer(inner(app)), "10.0.0.1", {
+            "x-forwarded-for": "6.6.6.6, 198.51.100.7",
+            "x-forwarded-host": "evil.test, b.test",
+            "x-forwarded-proto": "https, http"
+          }),
+          { remoteAddress: "198.51.100.7", host: "b.test", url: "http://b.test/a" }
+        )
       }))
   })
 })

@@ -122,9 +122,15 @@ export type StatusLiteral = HttpStatus.Literal
  *
  * **Details**
  *
- * This is equivalent to calling `.annotate({ httpApiStatus: code })` on the
- * schema. You can pass either a numeric status code (for example, `201`) or a
- * common literal name (for example, `"Created"`).
+ * Stores the status with `.annotateKey({ httpApiStatus: code })` unless the
+ * schema or any of its checks already has an ordinary `httpApiStatus`
+ * annotation, including an explicit `undefined`. In that case, uses
+ * `.annotate({ httpApiStatus: code })` instead.
+ *
+ * Ordinary status annotations take precedence over key annotations. Checks
+ * without a status annotation preserve the existing status. You can pass
+ * either a numeric code (for example, `201`) or a common literal name
+ * (for example, `"Created"`).
  *
  * @stability unstable
  * @category schemas
@@ -144,7 +150,10 @@ export function status(code: StatusLiteral): {
  */
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? HttpStatus.fromLiteral(code) : code
-  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotate({ httpApiStatus: statusCode })
+  return <S extends Schema.Top>(self: S): S["Rebuild"] =>
+    findHttpApiStatusAnnotation(self.ast) === undefined
+      ? self.annotateKey({ httpApiStatus: statusCode })
+      : self.annotate({ httpApiStatus: statusCode })
 }
 
 /**
@@ -604,24 +613,27 @@ const UpgradeTypeId = "~effect/http-api/HttpApiSchema/Upgrade"
  *
  * Created with {@link Upgrade}. The response is `101 Switching Protocols`, and
  * the connection then carries raw bytes in both directions as a `Socket`.
+ * `Headers` is the schema of the custom `101` headers, or `never` when the
+ * upgrade declares none.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface Upgrade extends
+export interface Upgrade<Headers extends Schema.Top = Schema.Top> extends
   Schema.Bottom<
     Socket.Socket,
     Socket.Socket,
     never,
     never,
     SchemaAST.Declaration,
-    Upgrade
+    Upgrade<Headers>
   >
 {
-  readonly "Rebuild": Upgrade
+  readonly "Rebuild": Upgrade<Headers>
   readonly [UpgradeTypeId]: typeof UpgradeTypeId
   readonly protocol: string
+  readonly headers: Headers | undefined
 }
 
 const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
@@ -639,26 +651,41 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  *
  * **Details**
  *
- * The handler receives the connection as `socket`. The `101` response is
- * sent when the handler acquires the socket's reader, so a handler can still
- * fail with a declared error before then. Requests that do not ask for
- * `protocol` get `426 Upgrade Required`.
+ * The handler receives an `upgrade` function that returns the connection.
+ * The `101` response is sent when the handler acquires the socket's reader,
+ * so a handler can still fail with a declared error before then. Requests
+ * that do not ask for `protocol` get `426 Upgrade Required`.
+ *
+ * `headers` declares custom `101` response headers, encoded like
+ * `WithHeaders` headers. The handler passes them to `upgrade`, so they can
+ * depend on the decoded request. `Connection`, `Upgrade`, `Content-Length`
+ * and `Transfer-Encoding` cannot be set.
+ *
+ * The endpoint may declare a buffered payload, which is decoded before the
+ * handler runs. Streaming payloads are rejected.
  *
  * The client sends `Connection: Upgrade` and `Upgrade: protocol`, and returns
- * the response headers with the connection. Other responses are decoded as
- * the endpoint's errors.
+ * the response headers with the connection, decoded with `headers` when
+ * declared. Other responses are decoded as the endpoint's errors.
  *
- * The endpoint cannot declare a payload or other success schemas.
- *
- * **Example** (Declaring an attach endpoint)
+ * **Example** (Declaring an exec start endpoint)
  *
  * ```ts
  * import { Schema } from "effect"
  * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
  *
- * const attach = HttpApiEndpoint.post("attach", "/containers/:id/attach", {
+ * const start = HttpApiEndpoint.post("start", "/exec/:id/start", {
  *   params: { id: Schema.String },
- *   success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+ *   payload: Schema.Struct({ Detach: Schema.Boolean, Tty: Schema.Boolean }),
+ *   success: HttpApiSchema.Upgrade({
+ *     protocol: "tcp",
+ *     headers: {
+ *       "content-type": Schema.Literals([
+ *         "application/vnd.docker.raw-stream",
+ *         "application/vnd.docker.multiplexed-stream"
+ *       ])
+ *     }
+ *   })
  * })
  * ```
  *
@@ -666,17 +693,46 @@ const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
  * @category constructors
  * @since 4.0.6
  */
-export const Upgrade = (options: {
+export function Upgrade(options: { readonly protocol: string }): Upgrade<never>
+/**
+ * @stability unstable
+ */
+export function Upgrade<H extends Schema.Struct.Fields>(options: {
   readonly protocol: string
-}): Upgrade => {
+  readonly headers: H
+}): Upgrade<Schema.Struct<H>>
+/**
+ * @stability unstable
+ */
+export function Upgrade<H extends Schema.Top>(options: {
+  readonly protocol: string
+  readonly headers: H
+}): Upgrade<H>
+/**
+ * @stability unstable
+ */
+export function Upgrade(options: {
+  readonly protocol: string
+  readonly headers?: Schema.Top | Schema.Struct.Fields | undefined
+}): Upgrade {
   if (options.protocol.toLowerCase() === "websocket") {
     throw new Error("Upgrade does not support WebSocket")
   }
-  return Schema.make<Upgrade>(upgradeSchema.ast, {
-    [UpgradeTypeId]: UpgradeTypeId,
-    protocol: options.protocol
-  })
+  const headers = options.headers === undefined || Schema.isSchema(options.headers)
+    ? options.headers
+    : Schema.Struct(options.headers)
+  return rebuildUpgrade(options.protocol, headers)
 }
+
+/**
+ * @internal
+ */
+export const rebuildUpgrade = (protocol: string, headers: Schema.Top | undefined): Upgrade =>
+  Schema.make<Upgrade>(upgradeSchema.ast, {
+    [UpgradeTypeId]: UpgradeTypeId,
+    protocol,
+    headers
+  })
 
 /**
  * @internal
@@ -746,8 +802,8 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  *   `StreamSse` and `StreamUint8Array`; error responses remain non-streaming.
  *   Nesting `WithHeaders` is rejected at construction.
  * - `headers` is any schema; endpoint construction applies
- *   `Schema.toCodecStringTree` unless codecs are disabled, so leaves become
- *   `string | undefined` on the wire and `undefined` leaves are omitted from the response.
+ *   a StringTree codec unless codecs are disabled. Optional headers that encode
+ *   to `undefined` are omitted from the response.
  * - Status and response-encoding annotations are resolved from the wrapper
  *   first, falling through to the inner schema.
  * - A header-carrying response cannot share its status and content type with
@@ -1266,7 +1322,29 @@ const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
  */
 export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
-const resolveHttpApiStatus = SchemaAST.resolveAt<number>("httpApiStatus")
+function findHttpApiStatusAnnotation(
+  ast: SchemaAST.AST | SchemaAST.FilterGroup<any>
+): Schema.Annotations.Annotations | undefined {
+  if (ast.checks) {
+    for (let i = ast.checks.length - 1; i >= 0; i--) {
+      const check = ast.checks[i]
+      if (check.annotations && "httpApiStatus" in check.annotations) return check.annotations
+      if (check._tag === "FilterGroup") {
+        const annotations = findHttpApiStatusAnnotation(check)
+        if (annotations !== undefined) return annotations
+      }
+    }
+  }
+  const annotations = ast.annotations
+  return annotations && "httpApiStatus" in annotations ? annotations : undefined
+}
+
+function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
+  const annotations = findHttpApiStatusAnnotation(ast)
+  // An explicit undefined clears the status instead of falling back to key context.
+  if (annotations !== undefined) return annotations.httpApiStatus as number | undefined
+  return ast.context?.annotations?.httpApiStatus
+}
 
 const defaultJsonEncoding: Encoding = {
   _tag: "Json",

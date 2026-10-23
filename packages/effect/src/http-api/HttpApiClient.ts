@@ -102,7 +102,7 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
   : S extends HttpApiSchema.StreamNdjson<infer _S> ?
     Stream.Stream<_S["Type"], HttpClientError.HttpClientError | Schema.SchemaError, never>
-  : S extends HttpApiSchema.Upgrade ? Upgraded
+  : S extends HttpApiSchema.Upgrade<infer _Headers> ? [_Headers] extends [never] ? Upgraded : Upgraded<_Headers["Type"]>
   : S extends Schema.Constraint ? S["Type"]
   : never
 
@@ -113,15 +113,16 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
  *
  * **Details**
  *
- * See `HttpClientResponse.upgrade` for how the connection behaves and when it
- * closes.
+ * `headers` is decoded with the upgrade's `headers` schema when it declares
+ * one. See `HttpClientResponse.upgrade` for how the connection behaves and
+ * when it closes.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface Upgraded {
-  readonly headers: Headers.Headers
+export interface Upgraded<Headers = Headers.Headers> {
+  readonly headers: Headers
   readonly socket: Socket.Socket
 }
 
@@ -134,6 +135,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
     | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
   : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["DecodingServices"]
+  : S extends HttpApiSchema.Upgrade<infer _Headers> ? _Headers["DecodingServices"]
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
 
@@ -449,8 +451,15 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
         const upgrade = getUpgradeSuccessSchema(endpoint)
         if (upgrade !== undefined) {
+          const decodeHeaders = upgrade.headers === undefined
+            ? Effect.succeed
+            : Schema.decodeUnknownEffect(upgrade.headers, parseOptions.headers)
           decodeMap[101] = (response) =>
-            Effect.map(response.upgrade, (socket): Upgraded => ({ headers: response.headers, socket }))
+            Effect.zipWith(
+              decodeHeaders(response.headers),
+              response.upgrade,
+              (headers, socket): Upgraded<unknown> => ({ headers, socket })
+            )
         }
 
         const encodeParams = UndefinedOr.map(
@@ -837,28 +846,22 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 // ----------------------------------------------------------------------------
 
-const paramsRegExp = /(\/?):(\w+)(\?)?/g
-
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {
     return (_: any) => path
   }
   const paramNames = HttpApiPath.getParamNames(schema)
-  return (params: Record<string, string | undefined>) => {
-    return path.replace(paramsRegExp, (match, slash: string, key: string, optional: string | undefined) => {
-      if (paramNames !== undefined && !paramNames.has(key)) {
-        return match
-      }
+  return (params: Record<string, string | undefined>) =>
+    HttpApiPath.replaceParams(path, paramNames, (key, optional) => {
       const value = params[key]
-      if (value === undefined) {
-        if (optional !== undefined) {
-          return ""
-        }
-        throw new Error(`Missing path parameter: ${key}`)
+      if (value === "." || value === "..") {
+        // dot segments survive encoding and would be resolved by URL normalization
+        throw new Error(`Invalid path parameter: ${key}`)
       }
-      return `${slash}${encodeURIComponent(value)}`
+      if (value !== undefined) return encodeURIComponent(value)
+      if (optional) return undefined
+      throw new Error(`Missing path parameter: ${key}`)
     })
-  }
 }
 
 function schemasToResponse(

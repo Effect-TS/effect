@@ -3,6 +3,20 @@ import { Schema } from "effect"
 import * as McpSchema from "effect/ai/McpSchema"
 
 describe("McpSchema", () => {
+  // Property schemas may be objects or booleans.
+  // https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2
+  it("should round-trip tool schemas when properties contain object or boolean schemas", () => {
+    const inputSchema = {
+      type: "object" as const,
+      properties: { forbidden: false, anything: true, text: { type: "string" } }
+    }
+    assert.deepStrictEqual(
+      Schema.encodeSync(McpSchema.ToolJson)(Schema.decodeUnknownSync(McpSchema.ToolJson)(inputSchema)),
+      inputSchema
+    )
+    assert.throws(() => Schema.decodeUnknownSync(McpSchema.ToolJson)({ type: "object", properties: { invalid: null } }))
+  })
+
   it("should preserve custom metadata when a request is decoded and encoded", () => {
     const decode = Schema.decodeUnknownSync(McpSchema.RequestMeta)
     const encode = Schema.encodeSync(McpSchema.RequestMeta)

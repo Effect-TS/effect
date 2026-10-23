@@ -23,9 +23,9 @@ import * as Terminal from "effect/Terminal"
 import * as readline from "node:readline"
 
 /**
- * Creates a scoped process-backed `Terminal` using Node `readline` and TTY raw mode.
- * By default, Esc, Ctrl+C, and Ctrl+D end key input. Supply `shouldQuit` to
- * override these quit keys.
+ * Creates a scoped process-backed `Terminal` using Node `readline`, enabling
+ * TTY raw mode while key input is read. By default, Esc, Ctrl+C, and Ctrl+D
+ * end key input. Supply `shouldQuit` to override these quit keys.
  *
  * @stability unstable
  * @category constructors
@@ -65,10 +65,6 @@ export const make: (
           readline.emitKeypressEvents(stdin, rl)
           rl.on("line", onLine)
           rl.once("close", onClose)
-
-          if (stdin.isTTY) {
-            stdin.setRawMode(true)
-          }
           return { rl, onClose, onLine }
         }),
         ({ rl, onClose, onLine }) =>
@@ -76,15 +72,22 @@ export const make: (
             readlineActive = false
             rl.off("line", onLine)
             rl.off("close", onClose)
-            if (stdin.isTTY) {
-              stdin.setRawMode(false)
-            }
             rl.close()
             if (inputEnded) {
               Queue.endUnsafe(lines)
             }
           })
       ),
+      idleTimeToLive: "10 millis"
+    })
+
+    // Only key input needs raw mode; `readLine` never requests it.
+    const setRawMode = (enabled: boolean) =>
+      Effect.sync(() => {
+        if (stdin.isTTY) stdin.setRawMode(enabled)
+      })
+    const rawModeRef = yield* RcRef.make({
+      acquire: Effect.acquireRelease(setRawMode(true), () => setRawMode(false)),
       idleTimeToLive: "10 millis"
     })
 
@@ -124,6 +127,7 @@ export const make: (
         handleEnd()
       } else {
         yield* RcRef.get(rlRef)
+        yield* RcRef.get(rawModeRef)
         stdin.once("end", handleEnd)
       }
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>

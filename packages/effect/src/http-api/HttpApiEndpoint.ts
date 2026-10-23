@@ -36,6 +36,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
+import { toCodecHttpProperties } from "./internal/toCodecHttpProperties.ts"
 
 const TypeId = "~effect/http-api/HttpApiEndpoint"
 
@@ -71,6 +72,7 @@ type SuccessEncodingServices<S> = S extends HttpApiSchema.StreamSse<
 > ? _Events["EncodingServices"] | _Error["EncodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
   : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["EncodingServices"]
+  : S extends HttpApiSchema.Upgrade<infer _Headers> ? _Headers["EncodingServices"]
   : S extends Schema.Constraint ? S["EncodingServices"]
   : never
 
@@ -81,6 +83,7 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
 > ? _Events["DecodingServices"] | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
   : S extends HttpApiSchema.StreamNdjson<infer _S> ? _S["DecodingServices"]
+  : S extends HttpApiSchema.Upgrade<infer _Headers> ? _Headers["DecodingServices"]
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
 
@@ -95,10 +98,19 @@ type ExtractStreamSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> 
   Success extends HttpApiSchema.StreamSchema ? Success : never
   : never
 
-type ExtractUpgradeSuccess<S extends SuccessConstraint> = Extract<UnwrapReadonlyArray<S>, HttpApiSchema.Upgrade>
+type ExtractUpgradeSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
+  Success extends HttpApiSchema.Upgrade<infer _Headers> ?
+    [_Headers] extends [never] ? Success : HttpApiSchema.Upgrade<Schema.toCodecStringTree<_Headers>>
+  : never
+  : never
 
-type UpgradeSocket<Success> = [Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {}
-  : { readonly socket: Socket.Socket }
+type UpgradeRequest<Success> = [Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {}
+  : { readonly upgrade: UpgradeFunction<Extract<Success, HttpApiSchema.Upgrade>> }
+
+type UpgradeFunction<S> = S extends HttpApiSchema.Upgrade<infer _Headers> ?
+  [_Headers] extends [never] ? () => Effect<Socket.Socket>
+  : (options: { readonly headers: _Headers["Type"] }) => Effect<Socket.Socket>
+  : never
 
 type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.WithHeaders<infer _Inner, infer _Headers> ? HttpApiSchema.WithHeaders<
@@ -148,7 +160,7 @@ type PayloadError<Payload> = Payload extends HttpApiSchema.StreamUint8Array ? Ht
   : never
 
 type RequestFromParts<Endpoint, ParamsType, QueryType, Payload, HeadersType, Success> =
-  & UpgradeSocket<Success>
+  & UpgradeRequest<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([Payload] extends [never] ? {} : { readonly payload: RequestPayload<Payload> })
@@ -160,7 +172,7 @@ type RequestFromParts<Endpoint, ParamsType, QueryType, Payload, HeadersType, Suc
   }
 
 type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType, Success> =
-  & UpgradeSocket<Success>
+  & UpgradeRequest<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
@@ -1217,16 +1229,17 @@ export const make = <Method extends HttpMethod>(method: Method): {
   Error extends ReadonlyArray<Schema.Constraint> ? Error[number] : Error
 > => {
   const disableCodecs = options?.disableCodecs ?? false
-  const transformStringTree = disableCodecs ? identity : Schema.toCodecStringTree
+  const transformProperties = disableCodecs ? identity : toCodecHttpProperties
+  const payload = getPayload(options?.payload, method, disableCodecs)
   return makeProto({
     identifier,
     path,
     method,
-    params: ensureStruct(options?.params, transformStringTree),
-    query: ensureStruct(options?.query, transformStringTree),
-    headers: ensureStruct(options?.headers, transformStringTree),
-    payload: getPayload(options?.payload, method, disableCodecs),
-    success: getSuccessResponse(options?.success, method, options?.payload !== undefined, disableCodecs),
+    params: ensureStruct(options?.params, transformProperties),
+    query: ensureStruct(options?.query, transformProperties),
+    headers: ensureStruct(options?.headers, transformProperties),
+    payload,
+    success: getSuccessResponse(options?.success, method, payload, disableCodecs),
     error: getErrorResponse(options?.error, disableCodecs),
     annotations: Context.empty(),
     middlewares: new Set(),
@@ -1314,22 +1327,27 @@ const reservedStreamFailureEvent = "effect/http-api/stream/failure"
 function getSuccessResponse(
   success: Schema.Top | ReadonlyArray<Schema.Top> | undefined,
   method: HttpMethod,
-  hasPayload: boolean,
+  payload: PayloadMap,
   disableCodecs: boolean
 ): Set<Schema.Top> {
   if (success === undefined) return new Set()
   const schemas = Arr.ensure(success)
-  validateSuccessResponse(schemas, method, hasPayload)
+  validateSuccessResponse(schemas, method, payload)
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
 const transformResponseSchema = memoize((schema: Schema.Top): Schema.Top => {
-  if (HttpApiSchema.isStreamSchema(schema) || HttpApiSchema.isUpgrade(schema)) return schema
+  if (HttpApiSchema.isStreamSchema(schema)) return schema
+  if (HttpApiSchema.isUpgrade(schema)) {
+    return schema.headers === undefined
+      ? schema
+      : HttpApiSchema.rebuildUpgrade(schema.protocol, toCodecHttpProperties(schema.headers))
+  }
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)
       ? schema.schema
       : applyResponseEncoding(schema.schema, HttpApiSchema.getResponseEncodingSchema(schema))
-    return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
+    return HttpApiSchema.rebuildWithHeaders(schema, inner, toCodecHttpProperties(schema.headers))
   }
   return transformResponse(schema)
 })
@@ -1353,7 +1371,7 @@ function getErrorResponse(
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod, hasPayload: boolean) {
+function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod, payload: PayloadMap) {
   if (schemas.some(HttpApiSchema.isUpgrade)) {
     if (schemas.length > 1) {
       throw new Error("Cannot combine an upgrade with other success responses")
@@ -1361,8 +1379,11 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
     if (method === "HEAD") {
       throw new Error("HEAD endpoints cannot declare an upgrade")
     }
-    if (hasPayload) {
-      throw new Error("Upgrade endpoints cannot declare a payload")
+    // The 101 can only follow the end of the request, so the body is read before the upgrade.
+    for (const { encoding } of payload.values()) {
+      if (encoding._tag === "Stream" || (encoding._tag === "Multipart" && encoding.mode === "stream")) {
+        throw new Error("Upgrade endpoints cannot declare a streaming payload")
+      }
     }
     return
   }
@@ -1535,7 +1556,7 @@ function transformResponse(schema: Schema.Top): Schema.Top {
     "~httpApiWithHeaders": {
       ...withHeaders,
       bodyCodec: applyResponseEncoding(withHeaders.body, encoding),
-      headersCodec: Schema.toCodecStringTree(withHeaders.headers)
+      headersCodec: toCodecHttpProperties(withHeaders.headers)
     }
   })
 }
@@ -1553,6 +1574,7 @@ function applyResponseEncoding(schema: Schema.Top, encoding: HttpApiSchema.Respo
 }
 
 function transformPayload(schema: Schema.Top, method: HttpMethod): Schema.Top {
+  if (!hasBody(method)) return toCodecHttpProperties(schema)
   const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
   switch (encoding._tag) {
     case "Json":

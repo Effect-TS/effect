@@ -11,6 +11,19 @@ const StreamError = Schema.Struct({ reason: Schema.String })
 const sse = () => HttpApiSchema.StreamSse({ events: Events, error: StreamError })
 
 describe("HttpApiEndpoint", () => {
+  it("omits undefined optional HTTP properties", () => {
+    const endpoint = HttpApiEndpoint.get("get", "/", {
+      query: {
+        search: Schema.optional(Schema.String),
+        absent: Schema.optional(Schema.Undefined)
+      }
+    })
+    const schema = endpoint.query as typeof endpoint["~Query"]
+
+    assert.deepStrictEqual(Schema.encodeSync(schema)({ search: undefined, absent: undefined }), {})
+    assert.deepStrictEqual(Schema.encodeSync(schema)({ search: "value" }), { search: "value" })
+  })
+
   it("stores the supplied identifier", () => {
     const endpoint = HttpApiEndpoint.get("getUser", "/users/:id")
 
@@ -534,9 +547,19 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         message: "HEAD endpoints cannot declare an upgrade"
       },
       {
-        name: "with a payload",
-        make: () => HttpApiEndpoint.post("attach", "/attach", { payload: Schema.String, success: upgrade }),
-        message: "Upgrade endpoints cannot declare a payload"
+        name: "with a byte stream payload",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", { payload: HttpApiSchema.StreamUint8Array(), success: upgrade }),
+        message: "Upgrade endpoints cannot declare a streaming payload"
+      },
+      {
+        name: "with a multipart stream payload",
+        make: () =>
+          HttpApiEndpoint.post("attach", "/attach", {
+            payload: Schema.Struct({ file: Schema.String }).pipe(HttpApiSchema.asMultipartStream()),
+            success: upgrade
+          }),
+        message: "Upgrade endpoints cannot declare a streaming payload"
       },
       {
         name: "as an error",

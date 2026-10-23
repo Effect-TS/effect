@@ -214,6 +214,12 @@
 "@effect/vitest/index#HookCleanupCallback":
   replacement: "none"
   note: "No named Vitest 5 export replaces this alias. Let the hook return type infer, or type the cleanup function locally."
+"@effect/vitest/index#beforeAll":
+  replacement: "@effect/vitest#beforeAll"
+  note: "Still accepts Vitest callbacks. A callback may also return an Effect, which runs with a Scope that closes after the suite's afterAll hooks; the Effect must not require other services."
+"@effect/vitest/index#beforeEach":
+  replacement: "@effect/vitest#beforeEach"
+  note: "Still accepts Vitest callbacks. A callback may also return an Effect, which runs with a Scope that closes when the test finishes; the Effect must not require other services."
 "@effect/vitest/index#HookListener":
   replacement: "none"
   note: "Infer the callback from the public hook function, or derive it with Parameters<typeof import(\"vitest\").beforeAll>[0] and the corresponding hook name."

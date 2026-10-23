@@ -1,7 +1,12 @@
 import { PgClient, PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber } from "effect"
+import { Effect, Fiber, Latch, Option, Queue, References, Tracer } from "effect"
+import type * as Duration from "effect/Duration"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import type * as Scope from "effect/Scope"
+import type { SqlError } from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
+import * as TestClock from "effect/testing/TestClock"
 import { Duplex } from "node:stream"
 
 const backendMessage = (tag: string, payload: Buffer): Buffer => {
@@ -103,7 +108,9 @@ describe("PgPool failed startup", () => {
 })
 
 describe("PgPool acquireTimeout", () => {
-  it.live("fails a checkout that waits on an exhausted pool past acquireTimeout", () =>
+  // The timeouts run on the TestClock, so opening the first connection on a
+  // busy machine cannot use up the acquireTimeout before the pool is exhausted.
+  it.effect("fails a checkout that waits on an exhausted pool past acquireTimeout", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.make({
         username: "test",
@@ -122,23 +129,25 @@ describe("PgPool acquireTimeout", () => {
       })
       yield* sql.reserve
 
-      const statement = yield* Effect.flip(sql`SELECT 1`)
-      assert.strictEqual(statement.reason._tag, "ConnectionError")
-      assert.strictEqual(statement.reason.operation, "acquireConnection")
-      const transaction = yield* Effect.flip(sql.withTransaction(sql`SELECT 1`))
-      assert.strictEqual(transaction.reason._tag, "ConnectionError")
-      assert.strictEqual(transaction.reason.operation, "acquireConnection")
+      const statement = yield* Effect.forkChild(Effect.flip(sql`SELECT 1`))
+      const transaction = yield* Effect.forkChild(Effect.flip(sql.withTransaction(sql`SELECT 1`)))
+      yield* TestClock.adjust("100 millis")
+      for (const error of [yield* Fiber.join(statement), yield* Fiber.join(transaction)]) {
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        assert.strictEqual(error.reason.operation, "acquireConnection")
+      }
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ), 10_000)
 
-  it.live(
+  it.effect(
     "fails a multiplexed reservation that waits on a busy pipeline past acquireTimeout",
     () =>
       Effect.gen(function*() {
         let socket!: Duplex
         let writes = 0
+        const statementSent = Latch.makeUnsafe()
         const sql = yield* PgClient.make({
           username: "test",
           maxConnections: 1,
@@ -149,6 +158,7 @@ describe("PgPool acquireTimeout", () => {
               read() {},
               write(_chunk: Buffer, _encoding, callback) {
                 if (++writes === 1) queueMicrotask(() => socket.push(ready))
+                else statementSent.openUnsafe()
                 callback()
               }
             })
@@ -157,10 +167,12 @@ describe("PgPool acquireTimeout", () => {
         })
         // The shared statement stays on the wire until the backend answers it.
         const busy = yield* Effect.forkChild(sql`SELECT 1`)
-        yield* waitFor(() => writes === 2)
+        yield* statementSent.await
 
         // The failed reservation shares the test scope, which stays open.
-        const error = yield* Effect.flip(sql.reserve)
+        const reservation = yield* Effect.forkChild(Effect.flip(sql.reserve))
+        yield* TestClock.adjust("100 millis")
+        const error = yield* Fiber.join(reservation)
         assert.strictEqual(error.reason._tag, "ConnectionError")
         assert.strictEqual(error.reason.operation, "acquireConnection")
 
@@ -173,4 +185,126 @@ describe("PgPool acquireTimeout", () => {
       ),
     10_000
   )
+})
+
+describe("PgPool connection spans", () => {
+  // A server that holds each connection's startup until the test answers it, so
+  // the test decides when a connect finishes and the TestClock decides how long
+  // it took.
+  const heldServer = Effect.map(Queue.unbounded<Effect.Effect<void>>(), (startups) => ({
+    startups,
+    stream: () => {
+      let startup = true
+      const socket = new Duplex({
+        read() {},
+        write(_chunk: Buffer, _encoding, callback) {
+          if (startup) {
+            startup = false
+            Queue.offerUnsafe(startups, Effect.sync(() => socket.push(ready)))
+          }
+          callback()
+        }
+      })
+      return socket
+    }
+  }))
+
+  const recording = () => {
+    const spans: Array<Tracer.NativeSpan> = []
+    const tracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })
+    return { tracer, named: (name: string) => spans.filter((span) => span.name === name) }
+  }
+
+  const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate: boolean) =>
+    effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
+
+  // Runs a statement whose checkout opens the pool's first session, answers the
+  // connect after 40 ms, then runs a second statement on the same session.
+  const firstCheckout = (
+    checkout: (pool: PgPool.PgPool) => Effect.Effect<unknown, SqlError, Scope.Scope>,
+    options: {
+      readonly acquireTimeout?: Duration.Input | undefined
+      readonly propagate?: boolean
+      readonly timing?: boolean
+    } = {}
+  ) => {
+    const { named, tracer } = recording()
+    return Effect.scoped(Effect.gen(function*() {
+      const server = yield* heldServer
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        acquireTimeout: options.acquireTimeout,
+        stream: server.stream
+      })
+      const first = yield* Effect.forkChild(Effect.scoped(checkout(pool)).pipe(Effect.withSpan("first statement")))
+      const answer = yield* Queue.take(server.startups)
+      yield* TestClock.adjust("40 millis")
+      yield* answer
+      yield* Fiber.join(first)
+      yield* Effect.scoped(pool.get).pipe(Effect.withSpan("second statement"))
+      return { connects: named("db.connect"), first: named("first statement")[0] }
+    })).pipe(
+      Effect.provideService(References.TracerTimingEnabled, options.timing ?? true),
+      (effect) => traced(effect, tracer, options.propagate ?? true)
+    )
+  }
+
+  it.effect("reports the connect a statement waited for under its span, only with propagation and timing", () =>
+    Effect.gen(function*() {
+      const use = (pool: PgPool.PgPool) => pool.use(() => Effect.void)
+      for (
+        const [checkout, acquireTimeout] of [
+          [use, undefined],
+          [use, "1 second"],
+          [(pool: PgPool.PgPool) => pool.reserve, undefined]
+        ] as const
+      ) {
+        const { connects, first } = yield* firstCheckout(checkout, { acquireTimeout })
+        assert.strictEqual(connects.length, 1)
+        const [connect] = connects
+        assert.strictEqual(Option.getOrThrow(connect.parent).spanId, first.spanId)
+        assert.strictEqual(connect.status.startTime, first.status.startTime)
+        assert.strictEqual(connect.attributes.get("db.client.connection.connect_time_ms"), 40)
+      }
+      assert.strictEqual((yield* firstCheckout(use, { propagate: false })).connects.length, 0)
+      assert.strictEqual((yield* firstCheckout(use, { timing: false })).connects.length, 0)
+    }))
+
+  it.live("reports no connect for a session that was ready before the statement", () => {
+    const { named, tracer } = recording()
+    return traced(
+      Effect.scoped(Effect.gen(function*() {
+        const server = yield* heldServer
+        const pool = yield* PgPool.make({
+          username: "test",
+          minConnections: 1,
+          maxConnections: 2,
+          stream: server.stream
+        })
+        yield* Effect.flatten(Queue.take(server.startups))
+        // A background session gives no signal when its handshake lands, so this
+        // waits for it the way the failed-startup tests above do.
+        yield* Effect.sleep("50 millis")
+        yield* Effect.scoped(Effect.gen(function*() {
+          yield* pool.get.pipe(Effect.withSpan("ready statement"))
+          const waiting = yield* Effect.forkChild(Effect.scoped(pool.get).pipe(Effect.withSpan("waiting statement")))
+          yield* Effect.flatten(Queue.take(server.startups))
+          yield* Fiber.join(waiting)
+        }))
+
+        const connects = named("db.connect")
+        assert.strictEqual(connects.length, 1)
+        assert.strictEqual(Option.getOrThrow(connects[0].parent).spanId, named("waiting statement")[0].spanId)
+      })),
+      tracer,
+      true
+    )
+  })
 })

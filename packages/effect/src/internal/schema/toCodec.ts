@@ -14,12 +14,29 @@ export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): Publi
 }
 
 /** @internal */
-export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
-  const out = toCodecJsonASTStep(ast, toCodecJsonAST)
-  const context = ast.context
-  if (out === ast || context === undefined) return out
-  return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
-})
+export const toCodecJsonAST = makeCodecDerivation(toCodecJsonASTStep)
+
+function makeCodecDerivation(
+  step: (ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST) => SchemaAST.AST,
+  options?: { readonly stopAt?: (link: SchemaAST.Link) => boolean }
+): (ast: SchemaAST.AST) => SchemaAST.AST {
+  // Derive each body once, independently of its own context. Child contexts remain part of the body.
+  const deriveBody = memoize((owner: SchemaAST.AST) => {
+    const body = SchemaAST.replaceContext(owner, undefined)
+    const out = step(body, recur)
+    return out === body ? null : out
+  })
+  // Follow existing encodings before sharing bodies: their encoded forms may differ.
+  const recur = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+    const derived = deriveBody(SchemaAST.getContextOwner(ast))
+    if (derived === null) return ast
+    const out = SchemaAST.replaceContext(derived, ast.context)
+    return ast.context === undefined ?
+      out :
+      SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context))
+  }, options)
+  return recur
+}
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
   return context.constructorDefault === undefined ?
@@ -257,15 +274,10 @@ const arrayFromSingleTransformation = new InternalTransformation.Transformation(
 const isCodecArrayFromSingleLink = (link: SchemaAST.Link): boolean =>
   link.transformation === arrayFromSingleTransformation
 
-const toCodecStringTreeAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
-  const out = toCodecStringTreeASTStep(ast, toCodecStringTreeAST, (ast) => {
+const toCodecStringTreeAST = makeCodecDerivation((ast, recur) =>
+  toCodecStringTreeASTStep(ast, recur, (ast) => {
     throw new globalThis.Error("Missing structural codec for StringTree", { cause: ast })
-  })
-  if (out !== ast && ast.context !== undefined) {
-    return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context))
-  }
-  return out
-}, { stopAt: isCodecArrayFromSingleLink })
+  }), { stopAt: isCodecArrayFromSingleLink })
 
 const toArrayFromSingleInputElement = (ast: SchemaAST.AST): SchemaAST.AST =>
   SchemaAST.isOptional(ast) ? SchemaAST.optionalKey(SchemaAST.unknown) : SchemaAST.unknown

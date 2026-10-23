@@ -480,7 +480,7 @@ describe("fromJsonSchemaDocument", () => {
     it("type only", () => {
       assertFromJsonSchema(
         { schema: { type: "integer" } },
-        { codes: makeCode(`Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" }))`, `number`) }
+        { codes: makeCode(`Schema.Int`, `number`) }
       )
     })
 
@@ -490,7 +490,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "integer", minimum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }))`,
+              `Schema.Int.check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }))`,
               `number`
             )
           }
@@ -502,7 +502,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "integer", maximum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isLessThanOrEqualTo(1).annotate({ "expected": "a value less than or equal to 1" }))`,
+              `Schema.Int.check(Schema.isLessThanOrEqualTo(1).annotate({ "expected": "a value less than or equal to 1" }))`,
               `number`
             )
           }
@@ -514,7 +514,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "integer", exclusiveMinimum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isGreaterThan(1).annotate({ "expected": "a value greater than 1" }))`,
+              `Schema.Int.check(Schema.isGreaterThan(1).annotate({ "expected": "a value greater than 1" }))`,
               `number`
             )
           }
@@ -526,7 +526,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "integer", exclusiveMaximum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isLessThan(1).annotate({ "expected": "a value less than 1" }))`,
+              `Schema.Int.check(Schema.isLessThan(1).annotate({ "expected": "a value less than 1" }))`,
               `number`
             )
           }
@@ -538,7 +538,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "integer", multipleOf: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isMultipleOf(1).annotate({ "expected": "a value that is a multiple of 1" }))`,
+              `Schema.Int.check(Schema.isMultipleOf(1).annotate({ "expected": "a value that is a multiple of 1" }))`,
               `number`
             )
           }
@@ -2281,7 +2281,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
+              `Schema.Int.check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
               `number`
             )
           }

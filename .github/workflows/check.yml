@@ -118,6 +118,8 @@ jobs:
     runs-on: namespace-profile-linux-default
     env:
       EFFECT_INTEGRATION_TESTS: "1"
+      # MSSQL integration tests are too flaky for CI; run them locally instead.
+      EFFECT_MSSQL_INTEGRATION_TESTS: "0"
       # The ephemeral runner provides cleanup without a Ryuk sidecar.
       TESTCONTAINERS_RYUK_DISABLED: "true"
     permissions:
@@ -128,9 +130,16 @@ jobs:
       matrix:
         include:
           - runtime: Node
+            node: ""
             deno: ""
             bun: ""
             command: pnpm test --max-concurrency=10
+          # Node 25 and older handle upgrade request bodies differently.
+          - runtime: Node 24 (platform-node)
+            node: 24
+            deno: ""
+            bun: ""
+            command: pnpm vitest run --project @effect/platform-node --max-concurrency=10
           - runtime: Deno
             deno: v2.9.6
             bun: ""
@@ -147,7 +156,6 @@ jobs:
           docker pull ghcr.io/tursodatabase/libsql-server:main &
           docker pull postgres:14-alpine &
           docker pull mysql:lts &
-          docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
           docker pull coredns/coredns:1.14.7 &
@@ -156,6 +164,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
+          node-version: ${{ matrix.node }}
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test

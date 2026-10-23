@@ -435,10 +435,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       }
 
       const paramNames = HttpApiPath.getParamNames(endpoint.params)
-      const path = endpoint.path.replace(
-        /:(\w+)\??/g,
-        (match, key: string) => paramNames === undefined || paramNames.has(key) ? `{${key}}` : match
-      )
+      const path = HttpApiPath.replaceParams(endpoint.path, paramNames, (key) => `{${key}}`)
       const method = endpoint.method.toLowerCase() as Lowercase<HttpMethod.HttpMethod>
       const isQuery = method === "query"
       const operationKey = isQuery ? "QUERY" : method
@@ -905,6 +902,7 @@ function extractResponseBodies(
       map.get(status)!.headers.push(
         Schema.Struct({ connection: Schema.Literal("Upgrade"), upgrade: Schema.Literal(body.protocol) })
       )
+      if (body.headers !== undefined) map.get(status)!.headers.push(body.headers)
     } else if (HttpApiSchema.isStreamSchema(body)) {
       addStreamContent(body, status)
     } else if (HttpApiSchema.isNoContent(ast)) {

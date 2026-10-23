@@ -169,9 +169,9 @@ export const Help: Action<boolean> = Action({
     Flag.withDefault(false)
   ),
   run: Effect.fnUntraced(function*(_, { builtIns, command, commandPath }) {
-    const formatter = yield* CliOutput.Formatter
+    const presenter = yield* CliOutput.Presenter
     const helpDoc = yield* HelpInternal.getHelpForCommandPath(command, commandPath, builtIns)
-    yield* Console.log(formatter.formatHelpDoc(helpDoc))
+    yield* presenter.present({ _tag: "Help", reason: "Requested", commandPath, helpDoc })
   })
 })
 
@@ -193,8 +193,8 @@ export const Version: Action<boolean> = Action({
     Flag.withDefault(false)
   ),
   run: Effect.fnUntraced(function*(_, { command, version }) {
-    const formatter = yield* CliOutput.Formatter
-    yield* Console.log(formatter.formatVersion(command.name, version))
+    const presenter = yield* CliOutput.Presenter
+    yield* presenter.present({ _tag: "Version", name: command.name, version })
   })
 })
 

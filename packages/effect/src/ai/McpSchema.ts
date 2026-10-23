@@ -94,6 +94,10 @@ export const optional = <S extends Schema.Constraint>(
     })
   )
 
+// Objects are checked one level deep. Incoming payloads come from JSON.parse and
+// outgoing ones are serialized through Schema.toCodecJson.
+const UnknownObject = Schema.Record(Schema.String, Schema.Unknown)
+
 // =============================================================================
 // Common
 // =============================================================================
@@ -118,6 +122,109 @@ export const RequestId: Schema.Union<[
  * @since 4.0.0
  */
 export type RequestId = typeof RequestId.Type
+
+/**
+ * A JSON-RPC request.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const JsonRpcRequest = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  id: RequestId,
+  method: Schema.String,
+  params: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
+})
+
+/**
+ * A JSON-RPC request.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type JsonRpcRequest = typeof JsonRpcRequest.Type
+
+/**
+ * A JSON-RPC notification without a request identifier.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const JsonRpcNotification = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  method: Schema.String,
+  params: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
+})
+
+/**
+ * A JSON-RPC notification without a request identifier.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type JsonRpcNotification = typeof JsonRpcNotification.Type & { readonly id?: never }
+
+/**
+ * A JSON-RPC response carrying a result or remote error.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const JsonRpcResponse = Schema.Union([
+  Schema.Struct({
+    jsonrpc: Schema.Literal("2.0"),
+    id: RequestId,
+    result: Schema.Unknown
+  }),
+  Schema.Struct({
+    jsonrpc: Schema.Literal("2.0"),
+    id: Schema.optional(Schema.Union([RequestId, Schema.Null])),
+    error: Schema.Struct({
+      code: Schema.Int,
+      message: Schema.String,
+      data: Schema.optional(Schema.Unknown)
+    })
+  })
+])
+
+/**
+ * A JSON-RPC response carrying exactly one result or remote error.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type JsonRpcResponse =
+  | (typeof JsonRpcResponse.members[0]["Type"] & { readonly error?: never })
+  | (typeof JsonRpcResponse.members[1]["Type"] & { readonly result?: never })
+
+/**
+ * Schema for JSON-RPC messages exchanged by MCP peers.
+ *
+ * **Details**
+ *
+ * Only the envelope is validated. `params`, `result` and error `data` are left
+ * for the method's own schema to decode.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const JsonRpcMessage = Schema.Union([JsonRpcRequest, JsonRpcNotification, JsonRpcResponse])
+
+/**
+ * JSON-RPC messages exchanged by MCP peers.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcResponse
 
 /**
  * Schema for MCP progress tokens that associate progress notifications with the
@@ -165,7 +272,7 @@ export class RequestMeta extends Schema.Opaque<RequestMeta>()(Schema.Struct({
        */
       progressToken: optional(ProgressToken)
     }),
-    [Schema.JsonObject]
+    [UnknownObject]
   ))
 })) {}
 
@@ -186,7 +293,7 @@ export class ResultMeta extends Schema.Opaque<ResultMeta>()(Schema.Struct({
    * This result property is reserved by the protocol to allow clients and
    * servers to attach additional metadata to their responses.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -206,7 +313,7 @@ export class NotificationMeta extends Schema.Opaque<NotificationMeta>()(Schema.S
    * This parameter name is reserved by MCP to allow clients and servers to
    * attach additional metadata to their notifications.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -400,7 +507,7 @@ export class ClientCapabilities extends Schema.Class<ClientCapabilities>(
    * Optional extensions capabilities advertised by the client.
    * Keys are extension identifiers following <vendor-prefix>/<extension-name> (e.g. "io.modelcontextprotocol/ui").
    */
-  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Json)),
+  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Unknown)),
   /**
    * Present if the client supports listing roots.
    */
@@ -464,7 +571,7 @@ export class ServerCapabilities extends Schema.Opaque<ServerCapabilities>()(Sche
    * Optional extensions capabilities advertised by the server.
    * Keys are extension identifiers following <vendor-prefix>/<extension-name> (e.g. "io.modelcontextprotocol/ui").
    */
-  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Json)),
+  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Unknown)),
   /**
    * Present if the server supports sending log messages to the client.
    */
@@ -622,6 +729,16 @@ export const PARSE_ERROR_CODE = -32700 as const
  * @since 4.0.0
  */
 export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
+
+/**
+ * Represents the MCP error code returned when a server does not support the
+ * protocol version requested by a client.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.0.6
+ */
+export const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022 as const
 
 /**
  * Represents an MCP/JSON-RPC error for invalid JSON that could not be parsed.
@@ -987,7 +1104,7 @@ export class Resource extends Schema.Class<Resource>(
    * This parameter name is reserved by MCP to allow clients and servers to
    * attach additional metadata to resources.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -1038,7 +1155,7 @@ export class ResourceTemplate extends Schema.Class<ResourceTemplate>(
   /**
    * Optional additional metadata for the client.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -1060,7 +1177,7 @@ export class ResourceContents extends Schema.Opaque<ResourceContents>()(Schema.S
   /**
    * Optional additional metadata for the client.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -1319,7 +1436,7 @@ export class Prompt extends Schema.Class<Prompt>(
    * Icons that clients can display for this prompt.
    */
   icons: optional(Schema.Array(Icon)),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -1339,7 +1456,7 @@ export class TextContent extends Schema.Opaque<TextContent>()(Schema.Struct({
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -1364,7 +1481,7 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -1389,7 +1506,7 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -1411,7 +1528,7 @@ export class EmbeddedResource extends Schema.Opaque<EmbeddedResource>()(Schema.S
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -1629,16 +1746,17 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  *
  * **Details**
  *
- * Property definitions and additional root keywords are constrained to JSON
- * values. The open root supports generated keywords such as `$defs`.
+ * Property schemas may be objects or booleans. The open root supports
+ * generated keywords such as `$defs`. Nested values are not validated when
+ * decoding.
  *
  * @stability unstable
  * @category tools
  * @since 4.0.0
  */
-export type ToolJson = Schema.JsonObject & {
+export type ToolJson = { readonly [x: string]: unknown } & {
   readonly type: "object"
-  readonly properties?: Readonly<Record<string, Schema.JsonObject>> | undefined
+  readonly properties?: Readonly<Record<string, { readonly [x: string]: unknown } | boolean>> | undefined
   readonly required?: ReadonlyArray<string> | undefined
 }
 
@@ -1652,10 +1770,10 @@ export type ToolJson = Schema.JsonObject & {
 export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, Schema.JsonObject)),
+    properties: optional(Schema.Record(Schema.String, Schema.Union([UnknownObject, Schema.Boolean]))),
     required: optional(Schema.Array(Schema.String))
   }),
-  [Schema.JsonObject]
+  [UnknownObject]
 )
 
 /**
@@ -1669,7 +1787,7 @@ export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
  * @category tools
  * @since 4.0.0
  */
-export type ToolOutputJson = Schema.JsonObject
+export type ToolOutputJson = { readonly [x: string]: unknown }
 
 /**
  * Schema for {@link ToolOutputJson}.
@@ -1678,7 +1796,7 @@ export type ToolOutputJson = Schema.JsonObject
  * @category tools
  * @since 4.0.0
  */
-export const ToolOutputJson: Schema.Codec<ToolOutputJson> = Schema.JsonObject
+export const ToolOutputJson: Schema.Codec<ToolOutputJson> = UnknownObject
 
 /**
  * Schema for the definition of a tool the client can call.
@@ -1723,7 +1841,7 @@ export class Tool extends Schema.Class<Tool>(
    * This parameter name is reserved by MCP to allow clients and servers to
    * attach additional metadata to resources.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -1775,7 +1893,7 @@ export class CallToolResult extends Schema.Class<CallToolResult>("@effect/ai/Mcp
   /**
    * An optional JSON value containing the structured result of the tool call.
    */
-  structuredContent: optional(Schema.Json),
+  structuredContent: optional(Schema.Unknown),
   /**
    * Whether the tool call ended in an error.
    *
@@ -1955,7 +2073,7 @@ export class ToolUseContent extends Schema.Class<ToolUseContent>("@effect/ai/Mcp
    * Arguments supplied to the tool.
    */
   input: Schema.Record(Schema.String, Schema.Unknown),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -1978,12 +2096,12 @@ export class ToolResultContent extends Schema.Class<ToolResultContent>("@effect/
   /**
    * Optional structured result returned by the tool.
    */
-  structuredContent: optional(Schema.Json),
+  structuredContent: optional(Schema.Unknown),
   /**
    * Whether tool execution ended in an error.
    */
   isError: optional(Schema.Boolean),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -2020,7 +2138,7 @@ export type SamplingMessageContentBlock = typeof SamplingMessageContentBlock.Typ
 export class SamplingMessage extends Schema.Opaque<SamplingMessage>()(Schema.Struct({
   role: Role,
   content: Schema.Union([SamplingMessageContentBlock, Schema.Array(SamplingMessageContentBlock)]),
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 })) {}
 
 /**
@@ -2141,7 +2259,7 @@ export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
 )({
   role: Role,
   content: Schema.Union([SamplingMessageContentBlock, Schema.Array(SamplingMessageContentBlock)]),
-  _meta: optional(Schema.JsonObject),
+  _meta: optional(UnknownObject),
   /**
    * The name of the model that generated the message.
    */
@@ -2360,7 +2478,7 @@ export class Root extends Schema.Class<Root>(
   /**
    * Optional additional metadata associated with the root.
    */
-  _meta: optional(Schema.JsonObject)
+  _meta: optional(UnknownObject)
 }) {}
 
 /**
@@ -2799,9 +2917,9 @@ export type ElicitResult = typeof ElicitResult.Type
  * @since 4.0.0
  */
 export type McpInputRequest =
-  | { readonly method: "roots/list"; readonly params?: Schema.JsonObject | undefined }
-  | { readonly method: "sampling/createMessage"; readonly params: Schema.JsonObject }
-  | { readonly method: "elicitation/create"; readonly params: Schema.JsonObject }
+  | { readonly method: "roots/list"; readonly params?: Readonly<Record<string, unknown>> | undefined }
+  | { readonly method: "sampling/createMessage"; readonly params: Readonly<Record<string, unknown>> }
+  | { readonly method: "elicitation/create"; readonly params: Readonly<Record<string, unknown>> }
 
 /**
  * Version-neutral response supplied by an MCP client for a prior input request.
@@ -2810,7 +2928,7 @@ export type McpInputRequest =
  * @category models
  * @since 4.0.0
  */
-export type McpInputResponse = Schema.JsonObject
+export type McpInputResponse = Readonly<Record<string, unknown>>
 
 /**
  * Indicates that an MCP operation requires additional keyed input from the client.
@@ -2970,7 +3088,7 @@ export class McpRequestContext extends Context.Service<McpRequestContext, {
   readonly clientInfo?: Implementation | undefined
   readonly requestMetadata?:
     | NonNullable<typeof Initialize.payloadSchema.Type["_meta"]>
-    | Schema.JsonObject
+    | Readonly<Record<string, unknown>>
     | undefined
   readonly inputResponses?: Readonly<Record<string, McpInputResponse>> | undefined
   readonly requestState?: string | undefined
@@ -2994,7 +3112,7 @@ export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientCapabilities: ClientCapabilities
   readonly clientInfo: Implementation
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
-  readonly requestMetadata?: Schema.JsonObject | undefined
+  readonly requestMetadata?: Readonly<Record<string, unknown>> | undefined
   readonly getClient: Effect.Effect<
     McpReverseClient,
     never,

@@ -344,13 +344,18 @@ export const causePrettyError = (
   annotations?: ReadonlyMap<string, unknown>,
   options?: {
     readonly includeCauseInStack?: boolean | undefined
-  }
+  },
+  seen: Set<unknown> = new Set()
 ): Error => {
   const kind = typeof original
   let error: Error
   if (original && kind === "object") {
+    seen.add(original)
+    const cause = original.cause
     error = new globalThis.Error(causePrettyMessage(original), {
-      cause: original.cause !== undefined ? causePrettyError(original.cause as any) : undefined
+      cause: cause !== undefined && !seen.has(cause)
+        ? causePrettyError(cause as any, undefined, undefined, seen)
+        : undefined
     })
     if (typeof original.name === "string") {
       error.name = original.name
@@ -2052,17 +2057,17 @@ export const exitFindDefect = Filter.composePassthrough(
 /** @internal */
 export const exitHasInterrupts = <A, E>(
   self: Exit.Exit<A, E>
-): self is Exit.Failure<A, E> => self._tag === "Failure" && hasInterrupts(self.cause)
+): boolean => self._tag === "Failure" && hasInterrupts(self.cause)
 
 /** @internal */
 export const exitHasDies = <A, E>(
   self: Exit.Exit<A, E>
-): self is Exit.Failure<A, E> => self._tag === "Failure" && hasDies(self.cause)
+): boolean => self._tag === "Failure" && hasDies(self.cause)
 
 /** @internal */
 export const exitHasFails = <A, E>(
   self: Exit.Exit<A, E>
-): self is Exit.Failure<A, E> => self._tag === "Failure" && hasFails(self.cause)
+): boolean => self._tag === "Failure" && hasFails(self.cause)
 
 /** @internal */
 export const exitVoid: Exit.Exit<void> = exitSucceed(void 0)
@@ -4019,13 +4024,15 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
 ) {
   let exits: Array<Exit.Exit<any, never>> = []
   const fibers: Array<Fiber.Fiber<any, never>> = []
-  const arr = Array.from(finalizers.values())
+  const arr = Array.from(finalizers)
   const parent = getCurrentFiber()!
   for (let i = arr.length - 1; i >= 0; i--) {
-    const finalizer = arr[i]
+    const [key, finalizer] = arr[i]
     if (self.strategy === "sequential") {
       exits.push(yield* exit(runFinalizer(finalizer, exit_)))
-    } else {
+    } else if (key !== parent) {
+      // Skip the closing fiber's own `forkIn` / `Fiber.runIn` finalizer, as
+      // running it in another fiber would wait for the closing fiber to exit.
       fibers.push(forkUnsafe(parent, runFinalizer(finalizer, exit_), true, true, "inherit"))
     }
   }
@@ -5623,6 +5630,11 @@ export const awaitAllChildren = <A, E, R>(
     )
   })
 
+// Interrupts the attached fiber, unless it is the fiber running the close. It is
+// keyed by the fiber, so that parallel scopes can skip it on the closing fiber.
+const fiberScopeFinalizer = (fiber: Fiber.Fiber<any, any>) => (): Effect.Effect<void> =>
+  withFiber((current) => current === fiber ? void_ : fiberInterrupt(fiber))
+
 /** @internal */
 export const forkIn: {
   (
@@ -5659,10 +5671,8 @@ export const forkIn: {
         : forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
-          const key = {}
-          const finalizer = () => withFiberId((interruptor) => interruptor === fiber.id ? void_ : fiberInterrupt(fiber))
-          scopeAddFinalizerUnsafe(scope, key, finalizer)
-          fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
+          scopeAddFinalizerUnsafe(scope, fiber, fiberScopeFinalizer(fiber))
+          fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, fiber))
         } else {
           fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
         }
@@ -5748,7 +5758,7 @@ export const fiberRunIn: {
     return self
   }
   scopeRemoveFinalizerUnsafe(scope, self)
-  scopeAddFinalizerUnsafe(scope, self, () => fiberInterrupt(self))
+  scopeAddFinalizerUnsafe(scope, self, fiberScopeFinalizer(self))
   self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, self))
   return self
 })
@@ -6297,7 +6307,7 @@ export const annotateCurrentSpan: {
 } = (...args: [Record<string, unknown>] | [key: string, value: unknown]) =>
   withFiber((fiber) => {
     const span = fiber.currentSpanLocal
-    if (span) {
+    if (span && span.status._tag !== "Ended") {
       if (args.length === 1) {
         for (const [key, value] of Object.entries(args[0])) {
           span.attribute(key, value)
@@ -6940,7 +6950,7 @@ export const tracerLogger = loggerMake<unknown, void>(({ cause, fiber, logLevel,
   const clock = fiber.getRef(ClockRef)
   const annotations = fiber.getRef(CurrentLogAnnotations)
   const span = fiber.cache.span
-  if (span === undefined || span._tag === "ExternalSpan") return
+  if (span === undefined || span._tag === "ExternalSpan" || span.status._tag === "Ended") return
   const attributes: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(annotations)) {
     InternalRecord.assignProperty(attributes, key, value)

@@ -279,7 +279,7 @@ export const protocol = McpProtocol.make({
             McpSchema.Tool.make({
               name: tool.name,
               description: tool.description,
-              inputSchema: tool.inputSchema,
+              inputSchema: McpProtocol.projectLegacyToolInputSchema(tool.inputSchema),
               annotations: tool.title === undefined && tool.annotations === undefined
                 ? undefined
                 : McpSchema.ToolAnnotations.make({

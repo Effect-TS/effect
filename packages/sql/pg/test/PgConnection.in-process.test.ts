@@ -903,6 +903,32 @@ describe("PgConnection in-process server", () => {
       }
     })))
 
+  it.live("preserves a FATAL ErrorResponse sent before the server closes the connection", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { port } = yield* withTcpServer((socket) => {
+        consumeFrontend(socket, (tag) => {
+          if (tag === undefined) {
+            socket.write(Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+          } else if (tag === "S") {
+            socket.end(errorResponse([
+              ["S", "FATAL"],
+              ["C", "25P04"],
+              ["M", "terminating connection due to transaction timeout"]
+            ]))
+          }
+        })
+      })
+      const connection = yield* PgConnection.make({ host: "127.0.0.1", port, username: "test" })
+
+      const error = yield* Effect.flip(connection.query("SELECT pg_sleep(1)"))
+
+      assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.strictEqual(error.reason.message, "PgConnection: Query failed")
+      assert.instanceOf(error.reason.cause, Error)
+      assert.strictEqual(error.reason.cause.message, "terminating connection due to transaction timeout")
+      assert.strictEqual((error.reason.cause as { readonly code?: string }).code, "25P04")
+    })))
+
   it.live("sends Terminate when the connection scope closes", () =>
     Effect.scoped(Effect.gen(function*() {
       let signalTerminate!: (message: Buffer) => void

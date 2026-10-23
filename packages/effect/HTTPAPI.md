@@ -2398,7 +2398,7 @@ Things to know:
 
 `HttpApiSchema.Upgrade({ protocol })` declares an endpoint that switches the connection to another protocol with an HTTP/1.1 upgrade, like Docker's `Upgrade: tcp` for container attach. After `101 Switching Protocols` the connection carries raw bytes in both directions as a `Socket`.
 
-The handler receives the connection as `socket` and returns when it is done with it. The `101` is sent when the handler acquires the socket's reader, so the handler can still fail with a declared error before then. Socket operations fail with `SocketError`, which the handler handles itself, since the response has already switched protocols.
+The handler receives an `upgrade` function that returns the connection, and returns when it is done with it. The `101` is sent when the handler acquires the socket's reader, so the handler can still fail with a declared error before then. Socket operations fail with `SocketError`, which the handler handles itself, since the response has already switched protocols.
 
 **Example** (Implementing an Attach Endpoint)
 
@@ -2422,9 +2422,10 @@ const GroupLayer = HttpApiBuilder.group(
   Api,
   "containers",
   (handlers) =>
-    handlers.handle("attach", ({ params, socket }) =>
+    handlers.handle("attach", ({ params, upgrade }) =>
       Effect.gen(function*() {
         if (params.id !== "abc") return yield* new NotFound()
+        const socket = yield* upgrade()
         const reader = yield* socket.reader // sends the 101
         const writer = yield* socket.writer
         yield* writer.write("attached\n")
@@ -2445,12 +2446,51 @@ const { headers, socket } = yield * client.containers.attach({ params: { id: "ab
 const reader = yield * socket.reader
 ```
 
+An upgrade endpoint can declare a buffered payload, which is decoded before the handler runs, and typed `101` headers with the `headers` option. The handler passes the headers to `upgrade`, so they can depend on the request, and the client decodes them.
+
+**Example** (Choosing the Stream Format from the Payload)
+
+```ts
+const start = HttpApiEndpoint.post("start", "/exec/:id/start", {
+  params: { id: Schema.String },
+  payload: Schema.Struct({ Tty: Schema.Boolean }),
+  success: HttpApiSchema.Upgrade({
+    protocol: "tcp",
+    headers: {
+      "content-type": Schema.Literals([
+        "application/vnd.docker.raw-stream",
+        "application/vnd.docker.multiplexed-stream"
+      ])
+    }
+  })
+})
+
+// server
+handlers.handle("start", ({ payload, upgrade }) =>
+  Effect.gen(function*() {
+    const socket = yield* upgrade({
+      headers: {
+        "content-type": payload.Tty
+          ? "application/vnd.docker.raw-stream"
+          : "application/vnd.docker.multiplexed-stream"
+      }
+    })
+    // ...
+  }))
+
+// client
+const { headers, socket } = yield * client.exec.start({ params: { id }, payload: { Tty: true } })
+headers["content-type"] // "application/vnd.docker.raw-stream" | "application/vnd.docker.multiplexed-stream"
+```
+
 Things to know:
 
 - The client needs a backend that can hand over the connection: `NodeHttpClient.layerNodeHttp` (Node, Bun 1.4+, Deno) or `NodeHttpClient.layerUndici` (Node, Deno). Fetch and `XMLHttpRequest` cannot send upgrade requests, so the call fails with a `TransportError` before anything is sent.
 - Serve upgrade endpoints with `NodeHttpServer`, which also works on Bun 1.4+ and Deno. `Bun.serve` and `Deno.serve` only upgrade to WebSocket, so `BunHttpServer` and `DenoHttpServer` fail these upgrades.
-- Requests that do not ask for the declared protocol get `426 Upgrade Required`.
-- An upgrade endpoint cannot declare a payload or other success schemas, and upgrades are not supported in error responses. For WebSocket, use `HttpServerRequest.upgrade` and `Socket.makeWebSocket` instead.
+- Requests that do not ask for the declared protocol get `426 Upgrade Required`, before the payload is decoded.
+- An upgrade endpoint cannot declare a streaming payload or other success schemas, and upgrades are not supported in error responses. For WebSocket, use `HttpServerRequest.upgrade` and `Socket.makeWebSocket` instead.
+- `Connection`, `Upgrade`, `Content-Length` and `Transfer-Encoding` cannot be set on the `101`. Headers that fail to encode end the handler with a defect.
+- The `101` waits for the request body to end. Node 25 and older do not parse upgrade request bodies, so `NodeHttpServer` reads them with `Content-Length` there and answers chunked ones with `411 Length Required`.
 - Releasing the writer's scope half-closes the connection, and releasing the reader's scope closes it.
 
 # Error Handling

@@ -2996,6 +2996,15 @@ describe("Effect", () => {
         yield* Scope.close(scope, Exit.void)
         assert.isTrue(interrupted)
       }))
+
+    it.effect("does not wait for the fiber that closes a parallel scope", () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make("parallel")
+        const sibling = yield* Effect.forkIn(Effect.never, scope)
+        const closer = yield* Scope.close(scope, Exit.void).pipe(Effect.as("closed"), Effect.forkIn(scope))
+        assert.deepStrictEqual(yield* Fiber.await(closer), Exit.succeed("closed"))
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(sibling)))
+      }))
   })
 
   describe("forkScoped", () => {
@@ -5338,7 +5347,11 @@ describe("Effect", () => {
       })
     }
 
-    it("does not leave async resources open after the effect completes", async () => {
+    // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
+    // in the worker, including from concurrent tests, would count as a leak.
+    const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
+
+    itWithAsyncHooks("does not leave async resources open after the effect completes", async () => {
       // Mirrors vitest's detectAsyncLeaks: track every resource descended from a root scope
       // and report the ones that are still pending once the effect has completed.
       const root = new AsyncResource("test-root")
