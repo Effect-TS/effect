@@ -1245,7 +1245,7 @@ describe("HttpApiClient", () => {
             payload: Schema.Struct({ JoinToken: Secret })
           }),
           HttpApiEndpoint.get("search", "/search", {
-            payload: Schema.Struct({ token: Secret })
+            payload: { token: Secret }
           }),
           HttpApiEndpoint.post("form", "/form", {
             payload: Schema.Struct({ token: Secret }).pipe(HttpApiSchema.asFormUrlEncoded())
@@ -1297,7 +1297,7 @@ describe("HttpApiClient", () => {
         HttpApiGroup.make("g").add(
           HttpApiEndpoint.get("query", "/query", { query: fields }),
           HttpApiEndpoint.get("headers", "/headers", { headers: fields }),
-          HttpApiEndpoint.get("payload", "/payload", { payload: Schema.Struct(fields) })
+          HttpApiEndpoint.get("payload", "/payload", { payload: fields })
         )
       )
       const wire: Array<Array<[string, string]>> = []
