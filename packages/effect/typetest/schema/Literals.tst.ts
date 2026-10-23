@@ -71,6 +71,8 @@ describe("Literals", () => {
     // a widened omission array may not contain every member of its union at runtime
     const omitted: ReadonlyArray<"a" | "b"> = ["a"]
     expect(schema.omit(omitted)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
+    // even when its element type is a single literal
+    expect(schema.omit([] as ReadonlyArray<"a">)).type.toBe<Schema.Literals<ReadonlyArray<"a" | "b" | "c" | "d">>>()
 
     // likewise for an omitted tuple element typed as a union
     const ab = "a" as "a" | "b"
