@@ -5,4 +5,6 @@
 "@effect/ai-openrouter": patch
 ---
 
-Fail with a clear `UnsupportedSchemaError` when the parameters of a tool do not produce a JSON Schema object. The error names the tool and suggests `Tool.EmptyParams` for tools without parameters. Before, OpenAI failed with a message that did not name the tool, and Anthropic and OpenRouter sent a schema that the API rejects.
+Fail with an `UnsupportedSchemaError` that names the tool when its parameters do not produce a JSON Schema object, for example `Schema.Struct({})`. The error keeps the underlying cause and suggests `Tool.EmptyParams` for a tool without parameters.
+
+Before, OpenAI and OpenAI-compatible providers reported the error without the tool name, and Anthropic and OpenRouter sent the request. A raw JSON Schema given to `Tool.dynamic` is still sent unchanged.
