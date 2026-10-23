@@ -7,6 +7,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
+import * as TestConsole from "effect/testing/TestConsole"
 
 const TestLayer = Generator.layer.pipe(
   Layer.provide(Layer.succeed(OpenApiGenerator.OpenApiGenerator, {
@@ -64,4 +65,36 @@ describe("CodeGenerator patch inputs", () => {
         paths: {}
       })
     }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("CodeGenerator warnings", () => {
+  it.effect("reports OpenAPI generator warnings to stderr without changing the generated code", () =>
+    Effect.gen(function*() {
+      const generator = yield* Generator.CodeGenerator
+      const output = yield* generator.generate(provider("[]"), {
+        openapi: "3.1.0",
+        info: { title: "Test", version: "1.0.0" },
+        paths: {}
+      })
+      assert.strictEqual(output, "export const Generated = 1")
+      assert.deepStrictEqual(yield* TestConsole.errorLines, [
+        "WARNING [cookie-parameter-dropped] GET /items (listItems): Cookie parameter \"session\" was dropped."
+      ])
+    }).pipe(Effect.provide(
+      Generator.layer.pipe(
+        Layer.provide(Layer.succeed(OpenApiGenerator.OpenApiGenerator, {
+          generate: (_spec, options) => {
+            options.onWarning?.({
+              code: "cookie-parameter-dropped",
+              message: "Cookie parameter \"session\" was dropped.",
+              path: "/items",
+              method: "get",
+              operationId: "listItems"
+            })
+            return Effect.succeed("export const Generated = 1")
+          }
+        })),
+        Layer.provideMerge(Layer.mergeAll(NodeServices.layer, TestConsole.layer))
+      )
+    )))
 })
