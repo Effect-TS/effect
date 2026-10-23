@@ -1582,6 +1582,36 @@
               "size": 8
             }
           ]
+        },
+        {
+          "file": "suites/schema/fixtures/codec.ts",
+          "defaults": {
+            "tier": 1,
+            "implementation": "effect",
+            "family": "transformation",
+            "operation": "decode",
+            "astTags": [
+              "Arrays",
+              "Objects",
+              "String",
+              "Number",
+              "Boolean"
+            ],
+            "path": "valid",
+            "size": 1000
+          },
+          "cases": [
+            {
+              "name": "string-tree-struct-1000-valid-interpreted",
+              "export": "stringTreeStructInterpreted",
+              "scenario": "string-tree-struct-1000-valid-interpreted"
+            },
+            {
+              "name": "string-tree-struct-1000-valid-jit",
+              "export": "stringTreeStructJit",
+              "scenario": "string-tree-struct-1000-valid-jit"
+            }
+          ]
         }
       ]
     },
