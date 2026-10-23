@@ -321,7 +321,7 @@ describe("Match", () => {
           }
         })
       )
-    ).type.toBe<(u: "draft" | 404) => string | number>()
+    ).type.toBe<(u: "draft" | 404) => string | 404>()
 
     Match.value(status).pipe(
       // @ts-expect-error Property 'published' is missing
