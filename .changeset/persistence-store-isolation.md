@@ -5,7 +5,7 @@
 
 Isolate `Persistence` stores on the `KeyValueStore` and Redis backings. Clearing a store now only removes that store's entries, and different store / key pairs no longer map to the same backing key.
 
-Add `KeyValueStore.clearPrefix`, implemented by the memory, file system, SQL, Web Storage and IndexedDB stores. `KeyValueStore.prefix(...).clear` now only removes keys under the prefix. Stores built with `KeyValueStore.make` that don't provide `clearPrefix` fail for non-empty prefixes instead of clearing everything.
+Add `KeyValueStore.clearPrefix`, implemented by the memory, file system, SQL, Web Storage and IndexedDB stores. `KeyValueStore.prefix(...).clear` now only removes keys under the prefix. Stores built with `KeyValueStore.make` that don't provide `clearPrefix` remove the matching keys one by one instead of clearing everything.
 
 Both backings now store entries under `<storeId>:<key>`, with `%` and `:` in the store id percent-encoded.
 
